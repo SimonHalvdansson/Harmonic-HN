@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.data.LinkPreviewType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -133,6 +135,14 @@ class AppSettingsRepository(
     fun setPreferredStoryType(value: String) = mutator.setPreferredStoryType(value)
     fun setAdditionalFrontpages(value: Set<String>) = mutator.setAdditionalFrontpages(value)
     fun setFrontpageOrder(value: List<String>) = mutator.setFrontpageOrder(value)
+    fun setVisibleFrontpageOrder(value: List<StoryType>) {
+        val story = reader.story
+        setFrontpageOrder(StoryTypeMenuPolicy.mergeVisibleOrder(
+            story.additionalFrontpages,
+            story.frontpageOrder,
+            value,
+        ))
+    }
     fun setFaviconProvider(value: String) = mutator.setFaviconProvider(value)
     fun resetStoryLayout() = mutator.resetStoryLayout()
     fun setFont(value: String) = mutator.setFont(value)

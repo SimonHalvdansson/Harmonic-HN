@@ -201,6 +201,7 @@ fun SettingsShell(
                 SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(
                     repository = dependencies.settings,
                     onBack = onBack,
+                    hasAccount = settingsAccountState.accountOrNull != null,
                 )
                 SettingsSection.Comments -> AndroidCommentsSettingsScreen(
                     showNavigation = singlePane,

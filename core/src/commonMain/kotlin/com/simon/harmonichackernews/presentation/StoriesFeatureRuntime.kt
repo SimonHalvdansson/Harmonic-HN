@@ -280,11 +280,13 @@ class StoriesFeatureRuntime(
         hasAccount: Boolean,
         restoring: Boolean,
         frontpageOrder: List<String> = userSettings.story.frontpageOrder,
+        bookmarksEnabled: Boolean = userSettings.general.bookmarksEnabled,
     ) {
         availableStoryTypes = StoryTypeMenuPolicy.availableTypes(
             enabledAdditionalFrontpages,
             hasAccount,
             frontpageOrder,
+            bookmarksEnabled,
         )
         this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
         val preferredType = StoryTypeMenuPolicy.preferred(
@@ -294,6 +296,15 @@ class StoriesFeatureRuntime(
         if (!sessionState.initialized) {
             selectType(StoryListTarget.MAIN, preferredType)
             selectType(StoryListTarget.SEARCH, preferredType)
+        } else {
+            if (sessionState.mainStoryType !in availableStoryTypes) {
+                selectType(StoryListTarget.MAIN, preferredType)
+                clearStore(mainStore, preferredType)
+                if (searching) loadPendingBeforeSearch = true
+            }
+            if (sessionState.searchStoryType !in availableStoryTypes) {
+                selectType(StoryListTarget.SEARCH, preferredType)
+            }
         }
         updatePaginationModes()
         if (!restoring) {
@@ -311,6 +322,7 @@ class StoriesFeatureRuntime(
         hasAccount = hasAccount,
         restoring = restoring,
         frontpageOrder = settings.story.frontpageOrder,
+        bookmarksEnabled = settings.general.bookmarksEnabled,
     )
 
     fun initialize(restoring: Boolean) = initialize(
@@ -443,10 +455,24 @@ class StoriesFeatureRuntime(
         frontpageOrder: List<String> = userSettings.story.frontpageOrder,
     ): Boolean {
         this.enabledAdditionalFrontpages = enabledAdditionalFrontpages
-        val next = StoryTypeMenuPolicy.availableTypes(enabledAdditionalFrontpages, hasAccount, frontpageOrder)
+        val next = StoryTypeMenuPolicy.availableTypes(
+            enabledAdditionalFrontpages, hasAccount, frontpageOrder, userSettings.general.bookmarksEnabled,
+        )
         if (next == availableStoryTypes) return false
         availableStoryTypes = next
-        if (currentType !in next) {
+        if (sessionState.searchStoryType !in next) {
+            selectType(StoryListTarget.SEARCH, StoryType.TOP_STORIES)
+        }
+        if (sessionState.mainStoryType !in next) {
+            if (searching) {
+                // The retained feed is no longer available. Keep search open, but load the
+                // replacement feed when returning instead of exposing the old personal list.
+                selectType(StoryListTarget.MAIN, StoryType.TOP_STORIES)
+                clearStore(mainStore, StoryType.TOP_STORIES)
+                loadPendingBeforeSearch = true
+                changed()
+                return false
+            }
             selectTypeAndRefresh(StoryType.TOP_STORIES)
             return true
         }

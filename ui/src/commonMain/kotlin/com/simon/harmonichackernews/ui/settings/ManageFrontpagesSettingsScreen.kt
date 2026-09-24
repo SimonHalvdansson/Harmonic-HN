@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
@@ -99,31 +100,39 @@ fun ManageFrontpagesSettingsRoute(
     repository: AppSettingsRepository,
     onBack: () -> Unit,
     focusFrontpage: StoryType? = if (LocalSettingsParentSection.current == SettingsSection.FiltersTags) StoryType.UNSLOP else null,
+    hasAccount: Boolean = false,
 ) {
     val settings by repository.updates.collectAsState(initial = repository.snapshot())
     val story = settings.story
-    val frontpages = StoryTypeMenuPolicy.frontpages(story.additionalFrontpages, story.frontpageOrder)
+    val frontpages = StoryTypeMenuPolicy.availableTypes(
+        story.additionalFrontpages, hasAccount, story.frontpageOrder, settings.general.bookmarksEnabled,
+    )
     val available = StoryType.additionalFrontpages.filterNot { it in frontpages }
 
     ManageFrontpagesSettingsScreen(
         frontpages = frontpages,
         focusFrontpage = focusFrontpage,
-        defaultLabel = story.preferredStoryType,
+        defaultLabel = StoryTypeMenuPolicy.preferred(story.preferredStoryType, frontpages).label,
         available = available,
         onBack = onBack,
         onDefaultSelected = { repository.setPreferredStoryType(it.label) },
-        onOrderChanged = { repository.setFrontpageOrder(it.map(StoryType::name)) },
+        onOrderChanged = repository::setVisibleFrontpageOrder,
         onReset = {
             repository.setFrontpageOrder(emptyList())
             repository.setPreferredStoryType(StoryType.TOP_STORIES.label)
         },
         onRemove = { type ->
-            repository.setAdditionalFrontpages(story.additionalFrontpages - type.label)
-            repository.setFrontpageOrder(frontpages.filterNot { it == type }.map(StoryType::name))
+            val current = repository.snapshot().story
+            repository.setAdditionalFrontpages(current.additionalFrontpages - type.label)
+            repository.setFrontpageOrder(current.frontpageOrder.filterNot { it == type.name })
         },
         onAdd = { type ->
-            repository.setFrontpageOrder((frontpages + type).map(StoryType::name))
-            repository.setAdditionalFrontpages(story.additionalFrontpages + type.label)
+            val current = repository.snapshot().story
+            val allPages = StoryTypeMenuPolicy.availableTypes(
+                current.additionalFrontpages, hasAccount = true, frontpageOrder = current.frontpageOrder,
+            )
+            repository.setFrontpageOrder((allPages + type).map(StoryType::name))
+            repository.setAdditionalFrontpages(current.additionalFrontpages + type.label)
         },
     )
 }
@@ -155,6 +164,7 @@ fun ManageFrontpagesSettingsScreen(
     )
     // Persisting a drop must not replace the state that is still animating that drop.
     val reorder = remember(listState) { FrontpageReorderState(frontpages, listState) }
+    val currentOnOrderChanged by rememberUpdatedState(onOrderChanged)
     LaunchedEffect(frontpages) { reorder.updateItems(frontpages) }
     val focusPulse = remember(focusFrontpage) { Animatable(0f) }
     var focusHandled by rememberSaveable(focusFrontpage) { mutableStateOf(false) }
@@ -346,7 +356,7 @@ fun ManageFrontpagesSettingsScreen(
                             modifier = Modifier.size(48.dp).pointerInput(reorder, type) {
                                 detectDragGestures(
                                     onDragStart = { reorder.start(type) },
-                                    onDragEnd = { reorder.finish(); onOrderChanged(reorder.items) },
+                                    onDragEnd = { reorder.finish(); currentOnOrderChanged(reorder.items) },
                                     onDragCancel = reorder::cancel,
                                     onDrag = { change, amount -> change.consume(); reorder.move(amount.y) },
                                 )
@@ -485,6 +495,7 @@ private class FrontpageReorderState(initial: List<StoryType>, private val listSt
     fun updateItems(next: List<StoryType>) {
         if (next == items) return
         items = next
+        orderBeforeDrag = next
         draggedType = null
         drop = null
     }

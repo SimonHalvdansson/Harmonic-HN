@@ -29,6 +29,8 @@ import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import com.simon.harmonichackernews.settings.ContentFilters
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredUserSettings
+import com.simon.harmonichackernews.settings.UserSettings
+import com.simon.harmonichackernews.settings.UserPreferenceKeys
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,6 +54,98 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun logoutDuringSearchDiscardsRetainedPersonalFeedAndLoadsTopStoriesOnReturn() = runTest {
+        val accounts = MemoryAccounts()
+        accounts.saveAccount(HackerNewsAccount("reader", "password"))
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val feed = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList()))
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+            QueuedCacheDispatcher(), accounts = accounts,
+        )
+        runtime.initialize("Favorites", emptySet(), hasAccount = true, restoring = false)
+        runtime.mainStore.replace(listOf(Story("Saved favorite", 42, true, false)))
+        runtime.openSearch()
+        runCurrent()
+        accounts.clearAccount()
+        runCurrent()
+        assertTrue(runtime.searching)
+        assertTrue(runtime.mainStories.isEmpty())
+        assertEquals(StoryType.TOP_STORIES, session.mainStoryType)
+        assertEquals(StoryType.TOP_STORIES, session.searchStoryType)
+        assertFalse(runtime.closeSearch())
+        runCurrent()
+        assertEquals(listOf(Pair<StoryType, String?>(StoryType.TOP_STORIES, null)), feed.requests)
+    }
+
+    @Test
+    fun logoutReplacesSelectedAccountFeedAndLoginRestoresItsMenuPosition() = runTest {
+        for (type in listOf(StoryType.FAVORITES, StoryType.UPVOTED)) {
+            val preferences = MemoryKeyValueStore().apply {
+                putString(UserPreferenceKeys.DEFAULT_STORY_TYPE, type.label)
+                putString(UserPreferenceKeys.FRONTPAGE_ORDER, "UPVOTED,HISTORY,FAVORITES,TOP_STORIES")
+            }
+            val accounts = MemoryAccounts()
+            accounts.saveAccount(HackerNewsAccount("reader", "password"))
+            val session = StoriesSessionState()
+            val saved = SavedItemsRepository(MemoryKeyValueStore())
+            val runtime = cacheRuntime(
+                backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
+                QueuedCacheDispatcher(), accounts = accounts,
+                settings = StoredUserSettings(preferences, emptyFlow()),
+            )
+            runtime.initialize(restoring = false)
+            runCurrent()
+            val originalMenu = runtime.availableStoryTypes
+            assertEquals(type, runtime.currentType)
+            accounts.clearAccount()
+            runCurrent()
+            assertEquals(StoryType.TOP_STORIES, runtime.currentType)
+            assertFalse(runtime.availableStoryTypes.any { it.isUserItemList })
+            accounts.saveAccount(HackerNewsAccount("another-reader", "password"))
+            runCurrent()
+            assertEquals(originalMenu, runtime.availableStoryTypes)
+            assertEquals(StoryType.TOP_STORIES, runtime.currentType)
+            assertEquals(type.label, preferences.getString(UserPreferenceKeys.DEFAULT_STORY_TYPE))
+        }
+    }
+
+    @Test
+    fun disablingBookmarksReplacesSelectedFeedAndRestoringCannotSelectHiddenPages() = runTest {
+        val preferences = MemoryKeyValueStore().apply {
+            putString(UserPreferenceKeys.DEFAULT_STORY_TYPE, "Bookmarks")
+            putString(UserPreferenceKeys.FRONTPAGE_ORDER, "BOOKMARKS,HISTORY")
+        }
+        val settings = StoredUserSettings(preferences, emptyFlow())
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
+            QueuedCacheDispatcher(), settings = settings,
+        )
+        runtime.initialize(restoring = false)
+        assertEquals(StoryType.BOOKMARKS, runtime.currentType)
+        preferences.putBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, false)
+        runtime.reconcileSettings()
+        assertEquals(StoryType.TOP_STORIES, runtime.currentType)
+        assertFalse(StoryType.BOOKMARKS in runtime.availableStoryTypes)
+        preferences.putBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, true)
+        runtime.reconcileSettings()
+        assertEquals(StoryType.BOOKMARKS, runtime.availableStoryTypes.first())
+
+        for (hidden in listOf(StoryType.BOOKMARKS, StoryType.FAVORITES, StoryType.UPVOTED)) {
+            preferences.putBoolean(UserPreferenceKeys.BOOKMARKS_ENABLED, false)
+            session.initialized = true
+            session.mainStoryType = hidden
+            runtime.mainStore.replace(listOf(Story("Unavailable saved item", 42, true, false)))
+            runtime.initialize(restoring = true)
+            assertEquals(StoryType.TOP_STORIES, runtime.currentType)
+            assertTrue(runtime.mainStories.isEmpty())
+        }
+    }
+
     @Test
     fun pullRefreshUpdatesRetainedMetadataWithoutDiscardingVisibleContent() = runTest {
         val reply = CompletableDeferred<HackerNewsItemDto>()
@@ -300,6 +394,8 @@ class StoryRequestsTest {
         worker: CoroutineDispatcher,
         hydrate: (Story) -> Boolean = { false },
         cached: () -> List<Story> = { emptyList() },
+        accounts: ObservableHackerNewsAccountRepository = MemoryAccounts(),
+        settings: UserSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
@@ -309,9 +405,9 @@ class StoryRequestsTest {
             voteRequest = { _, _ -> error("Not used") },
             favoriteRequest = { _, _ -> error("Not used") }),
         historyStore = MemoryHistoryStore(),
-        accounts = MemoryAccounts(),
+        accounts = accounts,
         connectivity = AlwaysOnline,
-        userSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
+        userSettings = settings,
         loadContentFilters = { ContentFilters() },
         rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
         nowMillis = { 1_000L },

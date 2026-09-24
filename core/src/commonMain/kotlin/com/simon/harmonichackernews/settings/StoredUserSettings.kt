@@ -431,8 +431,6 @@ class StoredUserSettings(
                 .getOrDefault(emptySet()),
         )
         return if (
-            preferred == "Bookmarks" ||
-            preferred == "History" ||
             (AdditionalFrontpagePreferences.isLabel(preferred) && preferred !in enabled)
         ) {
             TOP_STORIES

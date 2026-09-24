@@ -253,7 +253,7 @@ class StoredUserSettingsTest {
     }
 
     @Test
-    fun unavailableOrPrivateDefaultStoryTypesFallBackToTopStories() {
+    fun unavailableOptionalDefaultFallsBackButPersonalDefaultIsPreserved() {
         val unavailableFrontpage = StoredUserSettings(
             TestKeyValueStore(
                 mapOf(
@@ -269,6 +269,6 @@ class StoredUserSettingsTest {
         )
 
         assertEquals("Top Stories", unavailableFrontpage.story.preferredStoryType)
-        assertEquals("Top Stories", bookmarks.story.preferredStoryType)
+        assertEquals("Bookmarks", bookmarks.story.preferredStoryType)
     }
 }

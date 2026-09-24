@@ -94,6 +94,13 @@ enum class StoryType(
 
 /** Portable ordering and availability policy for the stories source selector. */
 object StoryTypeMenuPolicy {
+    private val personalPages = listOf(
+        StoryType.BOOKMARKS,
+        StoryType.FAVORITES,
+        StoryType.HISTORY,
+        StoryType.UPVOTED,
+    )
+
     val baseFrontpages = listOf(
         StoryType.TOP_STORIES,
         StoryType.LAST_24_HOURS,
@@ -108,7 +115,7 @@ object StoryTypeMenuPolicy {
 
     /** Stable enum names are persisted independently of display labels and availability. */
     fun sanitizeOrder(order: List<String>): List<String> = order.distinct().filter { name ->
-        (baseFrontpages + StoryType.additionalFrontpages).any { it.name == name }
+        (baseFrontpages + StoryType.additionalFrontpages + personalPages).any { it.name == name }
     }
 
     fun frontpages(
@@ -125,12 +132,26 @@ object StoryTypeMenuPolicy {
         enabledAdditionalFrontpages: Set<String>,
         hasAccount: Boolean,
         frontpageOrder: List<String> = emptyList(),
-    ): List<StoryType> = buildList {
-        addAll(frontpages(enabledAdditionalFrontpages, frontpageOrder))
-        add(StoryType.BOOKMARKS)
-        if (hasAccount) add(StoryType.FAVORITES)
-        add(StoryType.HISTORY)
-        if (hasAccount) add(StoryType.UPVOTED)
+        bookmarksEnabled: Boolean = true,
+    ): List<StoryType> {
+        val pages = frontpages(enabledAdditionalFrontpages) + personalPages
+        val ordered = sanitizeOrder(frontpageOrder).mapNotNull { name -> pages.find { it.name == name } }
+        return (ordered + pages.filterNot { it in ordered }).filter {
+            (!it.isUserItemList || hasAccount) && (!it.isBookmarks || bookmarksEnabled)
+        }
+    }
+
+    /** Reorder visible slots without moving or forgetting temporarily hidden pages. */
+    fun mergeVisibleOrder(
+        enabledAdditionalFrontpages: Set<String>,
+        storedOrder: List<String>,
+        visibleOrder: List<StoryType>,
+    ): List<String> {
+        val current = availableTypes(enabledAdditionalFrontpages, hasAccount = true, storedOrder)
+        val reordered = visibleOrder.distinct().filter { it != StoryType.UNKNOWN }
+        val replacements = reordered.filter { it in current }.iterator()
+        return (current.map { if (it in reordered) replacements.next() else it } +
+            reordered.filterNot { it in current }).map { it.name }
     }
 
     fun preferred(label: CharSequence?, availableTypes: List<StoryType>): StoryType =

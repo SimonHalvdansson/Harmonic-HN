@@ -21,6 +21,7 @@ import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
+import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.NighttimeSchedule
@@ -75,7 +76,10 @@ fun PortableSettingsDetail(
         SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack) {
             onNavigate(SettingsSection.Frontpages, true)
         }
-        SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(app.settings, onBack)
+        SettingsSection.Frontpages -> {
+            val accountState by app.platform.accounts.accountState.collectAsState()
+            ManageFrontpagesSettingsRoute(app.settings, onBack, hasAccount = accountState.accountOrNull != null)
+        }
         SettingsSection.Comments -> CommentsSettingsRoute(
             repository = app.settings,
             showNavigation = singlePane,

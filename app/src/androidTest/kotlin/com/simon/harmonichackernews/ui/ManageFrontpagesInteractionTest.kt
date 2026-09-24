@@ -153,7 +153,8 @@ class ManageFrontpagesInteractionTest {
     fun lastAvailableFrontpageCanScrollAboveTheResetButtonInAShortWindow() {
         val store = InMemoryKeyValueStore()
         showRoute(AppSettingsRepository(store, store.changes))
-        val lastIndex = StoryTypeMenuPolicy.baseFrontpages.size + StoryType.additionalFrontpages.size + 1
+        val lastIndex = StoryTypeMenuPolicy.availableTypes(emptySet(), hasAccount = false).size +
+            StoryType.additionalFrontpages.size + 1
         compose.onNode(hasScrollAction()).performScrollToIndex(lastIndex)
         val last = compose.onNodeWithContentDescription("Add ${StoryType.additionalFrontpages.last().label}")
         last.assertIsDisplayed()
