@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
@@ -117,6 +118,11 @@ fun MainDestinationLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(if (settingsBehindStory) -1f else 5f)
+                .drawWithContent {
+                    // When a later destination covers the story, only the story is its back
+                    // target. Older surfaces must not leak around that target as it shrinks.
+                    if (!state.settingsBehindStory || !state.baseSemanticsHidden) drawContent()
+                }
                 .then(
                     if (state.settingsSemanticsHidden || state.settingsBehindStory) {
                         Modifier.clearAndSetSemantics { }
@@ -156,6 +162,9 @@ fun MainDestinationLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(if (submissionsBehindStory) -1f else 7f)
+                .drawWithContent {
+                    if (!state.submissionsBehindStory || !state.baseSemanticsHidden) drawContent()
+                }
                 .then(
                     if (state.submissionsSemanticsHidden || state.submissionsBehindStory) {
                         Modifier.clearAndSetSemantics { }

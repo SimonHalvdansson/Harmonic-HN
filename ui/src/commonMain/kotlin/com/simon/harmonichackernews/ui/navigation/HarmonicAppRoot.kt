@@ -61,23 +61,30 @@ internal fun mainDestinationLayerState(
     submissionsInTwoPane: Boolean,
 ): MainDestinationLayerState {
     val current = navigation.currentDestination
-    val settingsVisible = navigation.destinationStack.any {
+    val settingsIndex = navigation.destinationStack.indexOfLast {
         it.destination == MainDestination.SETTINGS
     }
-    val submissionsVisible = navigation.destinationStack.any {
+    val submissionsIndex = navigation.destinationStack.indexOfLast {
         it.destination == MainDestination.SUBMISSIONS
     }
+    val storyIndex = navigation.destinationStack.indexOfLast {
+        it.destination == MainDestination.STORY
+    }
+    val settingsVisible = settingsIndex >= 0
+    val submissionsVisible = submissionsIndex >= 0
     val storyInSubmissionsPane = submissionsInTwoPane &&
         navigation.storyStackParentDestination == MainDestination.SUBMISSIONS
     return MainDestinationLayerState(
         settingsVisible = settingsVisible,
         settingsCoversBase = current == MainDestination.SETTINGS,
-        settingsBehindStory = current == MainDestination.STORY && settingsVisible,
+        // Preserve stack order when another destination covers the story. Its back preview
+        // must reveal that retained story, not a Settings/Submissions surface from further back.
+        settingsBehindStory = settingsVisible && settingsIndex < storyIndex,
         settingsSemanticsHidden = settingsVisible && current != MainDestination.SETTINGS,
         submissionsVisible = submissionsVisible,
         submissionsCoversBase = current == MainDestination.SUBMISSIONS ||
             (current == MainDestination.STORY && storyInSubmissionsPane),
-        submissionsBehindStory = current == MainDestination.STORY && submissionsVisible &&
+        submissionsBehindStory = submissionsVisible && submissionsIndex < storyIndex &&
             !storyInSubmissionsPane,
         submissionsSemanticsHidden = submissionsVisible &&
             current != MainDestination.SUBMISSIONS &&

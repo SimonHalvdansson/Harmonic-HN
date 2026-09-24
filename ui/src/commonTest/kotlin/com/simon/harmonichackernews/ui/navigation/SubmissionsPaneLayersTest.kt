@@ -8,6 +8,46 @@ import kotlin.test.assertTrue
 
 class SubmissionsPaneLayersTest {
     @Test
+    fun submissionsAboveDebugStoryKeepsSettingsBelowItsBackTarget() {
+        val navigation = MainNavigationStore().apply {
+            openSettings("debug")
+            openStory(StoryDestination(1))
+            openSubmissions("alice")
+        }
+        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
+        assertTrue(layers.settingsBehindStory)
+        assertTrue(layers.settingsSemanticsHidden)
+        assertFalse(layers.submissionsBehindStory)
+        assertTrue(layers.submissionsCoversBase)
+        navigation.closeSubmissions()
+        assertTrue(mainDestinationLayerState(navigation.state.value, false).settingsBehindStory)
+        navigation.detailRemovedFromBackStack()
+        assertFalse(mainDestinationLayerState(navigation.state.value, false).settingsBehindStory)
+    }
+
+    @Test
+    fun settingsAboveSubmissionsStoryKeepsSubmissionsBelowItsBackTarget() {
+        val navigation = submissionsWithStory().apply { openSettings("debug") }
+        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
+        assertTrue(layers.submissionsBehindStory)
+        assertTrue(layers.submissionsSemanticsHidden)
+        assertFalse(layers.settingsBehindStory)
+        assertTrue(layers.settingsCoversBase)
+    }
+
+    @Test
+    fun submissionsOpenedDirectlyFromSettingsKeepsSettingsAboveAnOlderStory() {
+        val navigation = MainNavigationStore().apply {
+            openStory(StoryDestination(1))
+            openSettings("debug")
+            openSubmissions("alice")
+        }
+        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
+        assertFalse(layers.settingsBehindStory)
+        assertFalse(layers.submissionsBehindStory)
+    }
+
+    @Test
     fun phoneStoryStillCoversSubmissions() {
         val navigation = submissionsWithStory()
         val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
