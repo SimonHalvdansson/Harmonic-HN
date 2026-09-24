@@ -97,7 +97,10 @@ fun AndroidWelcomeSettingsDialog(
             if (!styleChooser) app.appearance.markWelcomeShown()
             onDismiss()
         },
-        onDismiss = onDismiss,
+        onDismiss = {
+            if (!styleChooser) app.appearance.markWelcomeShown()
+            onDismiss()
+        },
         filterButtonColors = rememberAndroidHarmonicFilterColors(),
         launcherIcon = { WelcomeLauncherIcon() },
     )

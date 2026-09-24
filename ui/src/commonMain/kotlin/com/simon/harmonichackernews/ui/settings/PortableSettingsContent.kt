@@ -496,7 +496,10 @@ fun PortableWelcomeDialog(
             app.appearance.markWelcomeShown()
             onDismiss()
         },
-        onDismiss = onDismiss,
+        onDismiss = {
+            app.appearance.markWelcomeShown()
+            onDismiss()
+        },
         filterButtonColors = harmonicFilterButtonColors(),
         launcherIcon = {
             Image(

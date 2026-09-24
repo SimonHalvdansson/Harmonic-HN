@@ -147,10 +147,8 @@ fun WelcomeSettingsDialog(
     val welcomeTextStyle = LocalSettingsPlatformStyle.current.textStyle
 
     SettingsAlertDialog(
-        onDismissRequest = { if (styleChooser) onDismiss() },
+        onDismissRequest = onDismiss,
         properties = DialogProperties(
-            dismissOnBackPress = styleChooser,
-            dismissOnClickOutside = styleChooser,
             usePlatformDefaultWidth = true,
         ),
         text = {

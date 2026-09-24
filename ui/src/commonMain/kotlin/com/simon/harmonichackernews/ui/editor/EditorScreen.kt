@@ -364,6 +364,7 @@ private fun EditorMessageActionDialog(
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
+        scrollableContent = true,
         title = title?.let { value ->
             {
                 if (keepImeVisible) EditorInformationDialogImeBehavior()
@@ -377,11 +378,11 @@ private fun EditorMessageActionDialog(
         text = {
             Text(
                 text = message,
-                modifier = if (addTitleBodySpacing && title != null) {
+                modifier = (if (addTitleBodySpacing && title != null) {
                     Modifier.padding(top = 16.dp)
                 } else {
                     Modifier
-                },
+                }).verticalScroll(rememberScrollState()),
                 color = HarmonicTheme.colors.contentPrimary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,

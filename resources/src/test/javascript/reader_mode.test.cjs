@@ -55,6 +55,81 @@ async function disable(page) {
     await page.waitForTimeout(600);
 }
 
+function contrast(foreground, background) {
+    const luminance = rgb => rgb.map(value => {
+        const channel = value / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+    return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+for (const useReadability of [false, true]) {
+    for (const dark of [false, true]) {
+        test(`reader corrects faint colors and preserves readable colors (${useReadability ? 'Readability' : 'fallback'}, ${dark ? 'dark' : 'light'})`, async () => {
+            const page = await article(useReadability);
+            try {
+                await page.addStyleTag({ content: `
+                    #faint { color: ${dark ? '#302028' : 'pink'} !important; }
+                    #readable { color: ${dark ? '#90ee90' : '#800000'} !important; }
+                    #alpha { color: rgba(120, 80, 180, .15); }
+                    #wide-gamut { color: color(display-p3 .7 .6 .8 / .1); }
+                ` });
+                await page.evaluate(dark => {
+                    HarmonicReaderMode.setTheme({ isLight: !dark });
+                    document.querySelector('article').insertAdjacentHTML('beforeend', `
+                        <p><q id="faint">A faint quotation with <b id="nested">nested emphasis</b>.</q>
+                        <q id="readable">Readable source color.</q>
+                        <q id="alpha">Translucent source text.</q>
+                        <q id="wide-gamut">Wide gamut source text.</q></p>`);
+                }, dark);
+                const original = await page.locator('#faint').evaluate(node => getComputedStyle(node).color);
+                await enable(page);
+                const colors = await page.evaluate(() => Object.fromEntries(
+                    ['faint', 'nested', 'readable', 'alpha', 'wide-gamut'].map(id =>
+                        [id, getComputedStyle(document.getElementById(id)).color.match(/[\d.]+/g).map(Number)]
+                    )
+                ));
+                const background = dark ? [21, 22, 23] : [250, 250, 250];
+                for (const [id, color] of Object.entries(colors)) {
+                    assert.ok(contrast(color, background) >= 4.5, `${id}: ${color}`);
+                }
+                assert.deepEqual(colors.readable, dark ? [144, 238, 144] : [128, 0, 0]);
+                assert.notDeepEqual(colors.faint, dark ? [232, 234, 237] : [32, 33, 36], 'retain some source tint');
+                await disable(page);
+                assert.equal(await page.locator('#faint').evaluate(node => getComputedStyle(node).color), original);
+            } finally { await page.close(); }
+        });
+    }
+
+    for (const separator of ['<br>', '</div><div>']) {
+        test(`byline preserves structural spacing without splitting inline words (${useReadability ? 'Readability' : 'fallback'}, ${separator})`, async () => {
+            const page = await article(useReadability);
+            try {
+                await page.evaluate(separator => {
+                    document.querySelector('article').insertAdjacentHTML('afterbegin',
+                        `<div class="byline"><div>By Jo Mc<em>Donald</em>${separator}September 23, 2026</div></div>`);
+                }, separator);
+                await enable(page);
+                assert.equal(await page.locator('#harmonic-reader-byline').textContent(), 'By Jo McDonald September 23, 2026');
+            } finally { await page.close(); }
+        });
+    }
+}
+
+test('contrast correction uses the code background and handles an insufficient theme text color', async () => {
+    const page = await article();
+    try {
+        await page.evaluate(() => {
+            HarmonicReaderMode.setTheme({ textColor: '#777777', codeBackgroundColor: '#888888' });
+            document.querySelector('article').insertAdjacentHTML('beforeend', '<pre id="code-contrast">code sample</pre>');
+        });
+        await enable(page);
+        const color = await page.locator('#code-contrast').evaluate(node => getComputedStyle(node).color.match(/\d+/g).map(Number));
+        assert.ok(contrast(color, [136, 136, 136]) >= 4.5, String(color));
+    } finally { await page.close(); }
+});
+
 for (const useReadability of [false, true]) {
     test(`reader preserves fragment destinations (${useReadability ? 'Readability' : 'fallback'})`, async () => {
         const page = await article(useReadability);

@@ -35,11 +35,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -47,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -235,6 +241,15 @@ fun SettingsPage(
 ) {
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val density = LocalDensity.current
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    // A preview that scrolled out of composition must be measured again after width/font changes.
+    // Temporarily declaring it sticky brings it back without changing its key or list position.
+    var previewSize by remember(viewportSize.width, density.density, density.fontScale, contentVersion) {
+        mutableStateOf<IntSize?>(null)
+    }
+    val contentHeight = viewportSize.height - with(density) { navigationBarPadding.roundToPx() }
+    val pinPreview = previewSize?.let { it.height <= contentHeight * 0.7f } ?: true
 
     Column(
         modifier = modifier
@@ -251,7 +266,7 @@ fun SettingsPage(
             onBack = onBack.takeIf { showNavigation },
         )
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },
             state = listState,
             contentPadding = PaddingValues(
                 start = 0.dp,
@@ -269,14 +284,20 @@ fun SettingsPage(
                 item(key = "settings-header") { header() }
             }
             pinnedContent?.let { preview ->
-                stickyHeader(key = "settings-preview") {
+                val previewContent: @Composable () -> Unit = {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onGloballyPositioned { previewSize = it.size }
                             .background(HarmonicTheme.colors.background),
                     ) {
                         preview()
                     }
+                }
+                if (pinPreview) {
+                    stickyHeader(key = "settings-preview") { previewContent() }
+                } else {
+                    item(key = "settings-preview") { previewContent() }
                 }
             }
             content()

@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 9) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 10) {
         return;
     }
 
@@ -59,6 +59,17 @@
             return "";
         }
         return (element.textContent || "").replace(/\s+/g, " ").trim();
+    }
+
+    // textContent joins adjacent blocks and <br> without a separator. Preserve those boundaries
+    // on extraction clones, without splitting words styled with inline elements (e.g. Mc<b>Donald</b>).
+    function separateBlockText(root) {
+        var blocks = root.querySelectorAll("br,p,div,section,article,header,footer,address,li,dt,dd,h1,h2,h3,h4,h5,h6,tr,td,th");
+        for (var i = 0; i < blocks.length; i++) {
+            var block = blocks[i];
+            block.parentNode.insertBefore(document.createTextNode(" "), block);
+            block.parentNode.insertBefore(document.createTextNode(" "), block.nextSibling);
+        }
     }
 
     function getAttributeSignature(element) {
@@ -152,6 +163,12 @@
 
         try {
             var documentClone = document.cloneNode(true);
+            var bylines = documentClone.querySelectorAll(
+                "[rel~='author'],[itemprop~='author'],[class*='byline' i],[id*='byline' i],[class*='author' i],[id*='author' i]"
+            );
+            for (var bylineIndex = 0; bylineIndex < bylines.length; bylineIndex++) {
+                separateBlockText(bylines[bylineIndex]);
+            }
             // Readability absolutizes URLs using <base>; keep article-local anchors local first.
             var fragmentLinks = documentClone.querySelectorAll("a[href^='#']");
             for (var i = 0; i < fragmentLinks.length; i++) {
@@ -187,7 +204,7 @@
             return {
                 root: container,
                 title: parsed.title || "",
-                byline: parsed.byline || "",
+                byline: (parsed.byline || "").replace(/\s+/g, " ").trim(),
                 siteName: parsed.siteName || "",
                 publishedTime: parsed.publishedTime || ""
             };
@@ -424,7 +441,9 @@
         ];
         for (var i = 0; i < selectors.length; i++) {
             var node = article.querySelector(selectors[i]);
-            var text = getText(node);
+            var clone = node && node.cloneNode(true);
+            if (clone) separateBlockText(clone);
+            var text = getText(clone);
             if (text && text.length <= 160) {
                 return text;
             }
@@ -542,6 +561,92 @@
             "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;background:transparent!important;color:" + theme.textColor + "!important;}",
             "</style>"
         ].join("");
+    }
+
+    function colorLuminance(color) {
+        var linear = color.slice(0, 3).map(function(channel) {
+            channel /= 255;
+            return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+        });
+        return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+    }
+
+    function colorContrast(first, second) {
+        var a = colorLuminance(first);
+        var b = colorLuminance(second);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    }
+
+    function compositeColor(foreground, background) {
+        return foreground.slice(0, 3).map(function(channel, index) {
+            return channel * foreground[3] + background[index] * (1 - foreground[3]);
+        });
+    }
+
+    function readableColor(color, background, normalText) {
+        var minimumContrast = 4.5;
+        if (colorContrast(color, background) >= minimumContrast) return null;
+        var target = normalText;
+        // A custom theme's normal text can itself be too faint on a code block's background.
+        if (colorContrast(target, background) < minimumContrast) {
+            target = colorContrast([0, 0, 0], background) > colorContrast([255, 255, 255], background)
+                ? [0, 0, 0] : [255, 255, 255];
+        }
+        var low = 0;
+        var high = 1;
+        var result = target;
+        for (var i = 0; i < 16; i++) {
+            var amount = (low + high) / 2;
+            var candidate = color.map(function(channel, index) {
+                return Math.round(channel + (target[index] - channel) * amount);
+            });
+            if (colorContrast(candidate, background) >= minimumContrast) {
+                high = amount;
+                result = candidate;
+            } else {
+                low = amount;
+            }
+        }
+        return "rgb(" + result.join(",") + ")";
+    }
+
+    function correctReaderContrast(root) {
+        var theme = getReaderTheme();
+        // Let the browser resolve CSS colors, including alpha and wide-gamut syntax, into sRGB.
+        var context = document.createElement("canvas").getContext("2d", {willReadFrequently: true});
+        if (!context) return;
+        var colors = Object.create(null);
+        function parseColor(cssColor) {
+            if (!colors[cssColor]) {
+                context.clearRect(0, 0, 1, 1);
+                context.fillStyle = cssColor;
+                context.fillRect(0, 0, 1, 1);
+                var pixel = context.getImageData(0, 0, 1, 1).data;
+                colors[cssColor] = [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
+            }
+            return colors[cssColor];
+        }
+        var normalText = parseColor(theme.textColor).slice(0, 3);
+        var changes = [];
+        function visit(element, parentBackground) {
+            var style = window.getComputedStyle(element);
+            var background = compositeColor(parseColor(style.backgroundColor), parentBackground);
+            for (var child = element.firstChild; child; child = child.nextSibling) {
+                if (child.nodeType === 3 && /\S/.test(child.nodeValue)) {
+                    var foreground = compositeColor(parseColor(style.color), background);
+                    var corrected = readableColor(foreground, background, normalText);
+                    if (corrected) changes.push({element: element, color: corrected});
+                    break;
+                }
+            }
+            for (var i = 0; i < element.children.length; i++) visit(element.children[i], background);
+        }
+        visit(root, parseColor(theme.backgroundColor));
+        // Read all computed styles before writing, preserving inherited source colors and avoiding
+        // a style recalculation for every text node. Original page nodes are never modified.
+        for (var i = 0; i < changes.length; i++) {
+            changes[i].element.style.setProperty("color", changes[i].color, "important");
+        }
     }
 
     function nextTransitionId() {
@@ -697,6 +802,7 @@
                 document.body.innerHTML = html;
                 document.documentElement.setAttribute("data-harmonic-reader", "true");
                 restoreAttributes(document.body, {"data-harmonic-reader": "true"});
+                correctReaderContrast(document.getElementById("harmonic-reader-mode"));
                 document.title = title || originalTitle;
                 window.scrollTo(0, 0);
                 animateIn(document.getElementById("harmonic-reader-mode") || document.body, transitionId);
@@ -751,7 +857,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 9,
+        version: 10,
         setTheme: setTheme,
         isAvailable: isAvailable,
         enable: enable,
