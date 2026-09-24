@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HttpStatusException
@@ -227,7 +228,7 @@ class StorySearchStoreTest {
         scope = scope,
         algoliaRepository = object : AlgoliaRepository {
             override suspend fun search(url: String) = search.invoke(url)
-            override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Not used")
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Not used")
             override suspend fun getItemJson(id: Int): String = error("Not used")
         },
         hackerNewsRepository = object : HackerNewsRepository {

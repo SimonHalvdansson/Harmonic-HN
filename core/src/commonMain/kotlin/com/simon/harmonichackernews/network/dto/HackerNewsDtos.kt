@@ -37,6 +37,8 @@ data class AlgoliaSearchResponseDto(
     val hits: List<AlgoliaSearchHitDto> = emptyList(),
     val page: Int = 0,
     val nbPages: Int = 0,
+    val nbHits: Int? = null,
+    val exhaustiveNbHits: Boolean = false,
 )
 
 @Serializable

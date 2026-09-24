@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import kotlinx.coroutines.CancellationException
@@ -61,7 +62,7 @@ class StoryCacheUseCaseTest {
         object : AlgoliaRepository {
             override suspend fun getItemJson(id: Int) = load(id)
             override suspend fun search(url: String): List<Story> = error("Unused")
-            override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Unused")
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
         },
         object : StoryCacheSink {
             override suspend fun cacheStory(id: Int, payload: String) = save(id)

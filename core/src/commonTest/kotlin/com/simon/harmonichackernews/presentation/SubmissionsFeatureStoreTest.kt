@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.navigation.toDestination
@@ -58,7 +60,7 @@ class SubmissionsFeatureStoreTest {
         assertNull(store.start())
         runCurrent()
 
-        assertEquals(2, repository.submissionsRequests)
+        assertEquals(3, repository.submissionsRequests)
         assertTrue(store.state.value.loadedSuccessfully)
     }
 
@@ -86,7 +88,7 @@ class SubmissionsFeatureStoreTest {
         assertFalse(store.state.value.loading)
         assertFalse(store.state.value.loadedSuccessfully)
         assertEquals(SubmissionFilter.BOTH, store.state.value.filter)
-        assertEquals(2, repository.submissionsRequests)
+        assertEquals(3, repository.submissionsRequests)
     }
 
     @Test
@@ -107,7 +109,7 @@ class SubmissionsFeatureStoreTest {
         store.accept(SubmissionsIntent.LoadMore)
         runCurrent()
 
-        assertEquals(3, repository.submissionsRequests)
+        assertEquals(4, repository.submissionsRequests)
         assertTrue(store.state.value.loading)
 
         response.complete(listOf(story(1), story(2)))
@@ -196,9 +198,9 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return page(items, limit, type)
+            return page(items, pageSize, type, cursor)
         }
 
         override suspend fun search(url: String): List<Story> = error("Not used")
@@ -210,9 +212,9 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return page(response.await(), limit, type)
+            return page(response.await(), pageSize, type, cursor)
         }
 
         override suspend fun search(url: String): List<Story> = error("Not used")
@@ -224,12 +226,12 @@ class SubmissionsFeatureStoreTest {
     ) : AlgoliaRepository {
         var submissionsRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
             submissionsRequests += 1
-            return if (type != AlgoliaSubmissionType.BOTH) {
-                page(listOf(story(3), story(2)), limit, type)
+            return if (cursor.page == 0) {
+                page(listOf(story(1), story(2)), pageSize, type, cursor)
             } else {
-                page(nextPage.await(), limit, type)
+                page(nextPage.await(), pageSize, type, cursor)
             }
         }
 
@@ -246,7 +248,7 @@ class SubmissionsFeatureStoreTest {
     }
 
     private companion object {
-        fun page(items: List<Story>, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage {
+        fun page(items: List<Story>, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
             val filtered = items.filter {
                 when (type) {
                     AlgoliaSubmissionType.BOTH -> true
@@ -254,7 +256,13 @@ class SubmissionsFeatureStoreTest {
                     AlgoliaSubmissionType.COMMENTS -> it.isComment
                 }
             }
-            return AlgoliaSubmissionsPage(filtered.take(limit), filtered.size > limit)
+            return AlgoliaSubmissionsPage(
+                filtered.drop(cursor.page * pageSize).take(pageSize),
+                nextCursor = if (pageSize > 0 && (cursor.page + 1) * pageSize < filtered.size) {
+                    AlgoliaSubmissionsCursor(page = cursor.page + 1)
+                } else null,
+                totalCount = AlgoliaSubmissionCount(filtered.size, true),
+            )
         }
         fun story(id: Int) = Story().also {
             it.id = id

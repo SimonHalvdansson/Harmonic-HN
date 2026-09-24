@@ -3,7 +3,8 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
-import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
+import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class SubmissionsUiState(
     val items: List<Story> = emptyList(),
+    val storyCount: AlgoliaSubmissionCount? = null,
+    val commentCount: AlgoliaSubmissionCount? = null,
     val filter: SubmissionFilter = SubmissionFilter.BOTH,
     val hasUnfilteredItems: Boolean = false,
     val canLoadMore: Boolean = false,
@@ -27,7 +30,7 @@ data class SubmissionsUiState(
     val revision: Int = 0,
 )
 
-/** Shared objects, with independent complete timeline prefixes for each filter. */
+/** Shared objects, with independently paginated timelines for each filter. */
 class SubmissionsListStore(
     private val userName: String,
     private val repository: AlgoliaRepository,
@@ -35,21 +38,20 @@ class SubmissionsListStore(
 ) {
     private data class LoadedRange(
         val ids: List<Int>,
-        val limit: Int,
-        val canLoadMore: Boolean,
-        val queried: Boolean,
+        val nextCursor: AlgoliaSubmissionsCursor?,
     )
 
     private val itemsById = mutableMapOf<Int, Story>()
     private val ranges = mutableMapOf<SubmissionFilter, LoadedRange>()
+    private val counts = mutableMapOf<SubmissionFilter, AlgoliaSubmissionCount>()
     private val mutableState = MutableStateFlow(SubmissionsUiState())
     val state: StateFlow<SubmissionsUiState> = mutableState.asStateFlow()
     private var requestSerial = 0
-    private var failedLoad: Pair<Int, Boolean>? = null
+    private var failedLoad: Pair<AlgoliaSubmissionsCursor, Boolean>? = null
 
     init {
         require(userName.isNotBlank()) { "A username is required" }
-        require(pageSize > 0) { "A positive page size is required" }
+        require(pageSize in 1..1000) { "Page size must be between 1 and 1000" }
     }
 
     fun selectFilter(filter: SubmissionFilter) {
@@ -61,31 +63,24 @@ class SubmissionsListStore(
     }
 
     suspend fun ensureLoaded() {
-        val range = ranges[mutableState.value.filter]
-        if (range == null || (!range.queried && range.canLoadMore)) {
-            load(limit = maxOf(batchSize(), range?.ids?.size ?: 0), refresh = false)
+        if (mutableState.value.loading) return
+        if (ranges[mutableState.value.filter] == null) {
+            load(AlgoliaSubmissionsCursor(), refresh = false)
         }
     }
 
-    suspend fun refresh() = load(limit = batchSize(), refresh = true)
+    suspend fun refresh() = load(AlgoliaSubmissionsCursor(), refresh = true)
 
     suspend fun retry() {
         if (mutableState.value.loading) return
-        val (limit, refresh) = failedLoad ?: return
-        load(limit, refresh)
-    }
-
-    private fun batchSize() = if (mutableState.value.filter == SubmissionFilter.BOTH) {
-        pageSize
-    } else {
-        maxOf(1, pageSize / 2)
+        val (cursor, refresh) = failedLoad ?: return
+        load(cursor, refresh)
     }
 
     suspend fun loadMore() {
-        if (mutableState.value.loading || !mutableState.value.canLoadMore) return
-        val range = ranges.getValue(mutableState.value.filter)
-        // Only commit the increased limit after success, so retries request the same range.
-        load(limit = maxOf(range.limit, range.ids.size) + batchSize(), refresh = false)
+        if (mutableState.value.loading) return
+        val cursor = ranges[mutableState.value.filter]?.nextCursor ?: return
+        load(cursor, refresh = false)
     }
 
     fun cancelLoad() {
@@ -101,7 +96,7 @@ class SubmissionsListStore(
         mutableState.value = mutableState.value.copy(revision = mutableState.value.revision + 1)
     }
 
-    private suspend fun load(limit: Int, refresh: Boolean) {
+    private suspend fun load(cursor: AlgoliaSubmissionsCursor, refresh: Boolean) {
         val filter = mutableState.value.filter
         val serial = ++requestSerial
         val previousRange = ranges[filter]
@@ -113,63 +108,42 @@ class SubmissionsListStore(
             loadingFailed = false,
         )
         try {
-            if (filter == SubmissionFilter.BOTH && (refresh || ranges.isEmpty())) {
-                val categoryLimit = maxOf(1, pageSize / 2)
-                val (stories, comments) = coroutineScope {
-                    val stories = async {
-                        repository.getSubmissions(userName, categoryLimit, AlgoliaSubmissionType.STORIES)
+            val (loaded, fetchedCounts) = coroutineScope {
+                // Reuse the active category's normal response; fetch only metadata for
+                // other categories. Count failures must not prevent reading submissions.
+                val countRequests = listOf(SubmissionFilter.STORIES, SubmissionFilter.COMMENTS)
+                    .filter { it != filter && (refresh || it !in counts) }
+                    .associateWith { category ->
+                        async { loadCount(category) }
                     }
-                    val comments = async {
-                        repository.getSubmissions(userName, categoryLimit, AlgoliaSubmissionType.COMMENTS)
-                    }
-                    stories.await() to comments.await()
-                }
-                currentCoroutineContext().ensureActive()
-                if (serial != requestSerial) return
-                ranges.clear()
-                itemsById.clear()
-                saveRange(SubmissionFilter.STORIES, stories, categoryLimit)
-                saveRange(SubmissionFilter.COMMENTS, comments, categoryLimit)
-                // Each category covers everything newer than its last timestamp. Exclude
-                // the boundary second when truncated: Algolia can split timestamp ties.
-                val cutoff = listOf(stories, comments)
-                    .filter { it.canLoadMore }
-                    .mapNotNull { it.items.lastOrNull()?.createdAtEpochSeconds }
-                    .maxOrNull()
-                val bothIds = itemsById.values
-                    .filter { cutoff == null || it.createdAtEpochSeconds > cutoff }
-                    .sortedWith(compareByDescending<Story> { it.createdAtEpochSeconds }.thenByDescending { it.id })
-                    .map(Story::id)
-                ranges[SubmissionFilter.BOTH] = LoadedRange(
-                    ids = bothIds,
-                    limit = pageSize,
-                    canLoadMore = stories.canLoadMore || comments.canLoadMore,
-                    queried = true,
-                )
-                publish()
-                return
+                val page = repository.getSubmissions(userName, pageSize, filter.apiType(), cursor)
+                page to countRequests.mapValues { (_, request) -> request.await() }
             }
-            val loaded = repository.getSubmissions(userName, limit, when (filter) {
-                SubmissionFilter.BOTH -> AlgoliaSubmissionType.BOTH
-                SubmissionFilter.STORIES -> AlgoliaSubmissionType.STORIES
-                SubmissionFilter.COMMENTS -> AlgoliaSubmissionType.COMMENTS
-            })
             currentCoroutineContext().ensureActive()
             if (serial != requestSerial) return
-            // Refresh starts a new snapshot; do not mix old coverage with a newer timeline.
+            // Commit only a successful refresh, preserving the previous snapshot on failure.
             if (refresh) {
                 ranges.clear()
                 itemsById.clear()
+                counts.clear()
             }
-            saveRange(filter, loaded, limit)
-            if (filter == SubmissionFilter.BOTH) shareBothRange()
+            fetchedCounts.forEach { (category, count) ->
+                if (count != null) counts[category] = count
+            }
+            loaded.totalCount?.let { counts[filter] = it }
+            loaded.items.forEach { itemsById.getOrPut(it.id) { it } }
+            val previousIds = if (refresh) emptyList() else previousRange?.ids.orEmpty()
+            ranges[filter] = LoadedRange(
+                ids = (previousIds + loaded.items.map(Story::id)).distinct(),
+                nextCursor = loaded.nextCursor,
+            )
             publish()
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
-            // Preserve the successful range and its pagination state for retry.
+            // Retain the cursor and content so retry requests exactly the failed page.
             if (serial == requestSerial) {
-                failedLoad = limit to refresh
+                failedLoad = cursor to refresh
                 mutableState.value = mutableState.value.copy(loadingFailed = true)
             }
         } finally {
@@ -177,35 +151,12 @@ class SubmissionsListStore(
         }
     }
 
-    private fun saveRange(filter: SubmissionFilter, page: AlgoliaSubmissionsPage, limit: Int) {
-        page.items.forEach { itemsById.getOrPut(it.id) { it } }
-        ranges[filter] = LoadedRange(
-            ids = page.items.map(Story::id).distinct(),
-            limit = limit,
-            canLoadMore = page.canLoadMore,
-            queried = true,
-        )
-    }
-
-    private fun shareBothRange() {
-        val both = ranges.getValue(SubmissionFilter.BOTH)
-        for (filter in listOf(SubmissionFilter.STORIES, SubmissionFilter.COMMENTS)) {
-            val sharedIds = both.ids.filter { id ->
-                itemsById.getValue(id).isComment == (filter == SubmissionFilter.COMMENTS)
-            }
-            val previous = ranges[filter]
-            // Both is a complete prefix. It may extend a filtered view, but a filtered
-            // response must never extend Both: the intervening other type may be missing.
-            val ids = (sharedIds + previous?.ids.orEmpty()).distinct().sortedWith(
-                compareByDescending<Int> { itemsById.getValue(it).createdAtEpochSeconds }.thenByDescending { it },
-            )
-            ranges[filter] = LoadedRange(
-                ids = ids,
-                limit = previous?.limit ?: pageSize,
-                canLoadMore = both.canLoadMore && previous?.canLoadMore != false,
-                queried = previous?.queried == true || !both.canLoadMore,
-            )
-        }
+    private suspend fun loadCount(filter: SubmissionFilter): AlgoliaSubmissionCount? = try {
+        repository.getSubmissions(userName, 0, filter.apiType()).totalCount
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        null
     }
 
     private fun publish() {
@@ -213,10 +164,10 @@ class SubmissionsListStore(
         val range = ranges[filter]
         mutableState.value = mutableState.value.copy(
             items = range?.ids.orEmpty().map(itemsById::getValue),
+            storyCount = counts[SubmissionFilter.STORIES],
+            commentCount = counts[SubmissionFilter.COMMENTS],
             hasUnfilteredItems = itemsById.isNotEmpty(),
-            // An inherited partial range needs a type-specific query before we know
-            // whether this filter has more results (or any results at all).
-            canLoadMore = range?.queried == true && range.canLoadMore,
+            canLoadMore = range?.nextCursor != null,
             loadedSuccessfully = range != null,
             emptyText = when (filter) {
                 SubmissionFilter.STORIES -> "No stories"
@@ -227,7 +178,13 @@ class SubmissionsListStore(
         )
     }
 
+    private fun SubmissionFilter.apiType() = when (this) {
+        SubmissionFilter.BOTH -> AlgoliaSubmissionType.BOTH
+        SubmissionFilter.STORIES -> AlgoliaSubmissionType.STORIES
+        SubmissionFilter.COMMENTS -> AlgoliaSubmissionType.COMMENTS
+    }
+
     private companion object {
-        const val DEFAULT_PAGE_SIZE = 200
+        const val DEFAULT_PAGE_SIZE = 100
     }
 }

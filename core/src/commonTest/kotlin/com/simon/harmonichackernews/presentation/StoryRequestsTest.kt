@@ -15,6 +15,7 @@ import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsListPage
 import com.simon.harmonichackernews.network.HackerNewsApi
@@ -658,7 +659,7 @@ class StoryRequestsTest {
     }
 
     private object UnusedAlgoliaRepository : AlgoliaRepository {
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage =
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
             error("Not used")
         override suspend fun search(url: String): List<Story> = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")

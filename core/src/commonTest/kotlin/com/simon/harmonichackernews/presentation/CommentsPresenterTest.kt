@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
+import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.CommentThreadRepository
@@ -222,7 +223,7 @@ class CommentsPresenterTest {
         val network = CompletableDeferred<String>()
         val algolia = object : AlgoliaRepository {
             override suspend fun getItemJson(id: Int): String = network.await()
-            override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Unused")
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
             override suspend fun search(url: String): List<Story> = error("Unused")
         }
         val source = RecordingHackerNewsRepository()
@@ -824,7 +825,7 @@ class CommentsPresenterTest {
             CommentsSessionState(),
             CommentThreadRepository(
                 algoliaRepository = object : AlgoliaRepository {
-                    override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage =
+                    override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
                         error("Not used")
 
                     override suspend fun search(url: String): List<Story> = error("Not used")
@@ -879,7 +880,7 @@ class CommentsPresenterTest {
             val networkResponse = CompletableDeferred<String>()
             var networkRequests = 0
             val source = object : AlgoliaRepository {
-                override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = error("Unused")
+                override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
                 override suspend fun search(url: String): List<Story> = error("Unused")
                 override suspend fun getItemJson(id: Int): String {
                     networkRequests++
@@ -1272,7 +1273,7 @@ class CommentsPresenterTest {
     ) : AlgoliaRepository {
         var itemRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage =
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
             error("Not used")
 
         override suspend fun search(url: String): List<Story> = error("Not used")

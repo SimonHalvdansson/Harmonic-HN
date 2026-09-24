@@ -83,6 +83,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
+import com.simon.harmonichackernews.utils.GroupedNumberFormatter
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
@@ -180,7 +182,9 @@ fun SubmissionsScreen(
                 userName = userName,
                 submissions = state.items,
                 selectedFilter = state.filter,
-                showFilter = state.hasUnfilteredItems,
+                showFilter = state.hasUnfilteredItems || state.loadedSuccessfully,
+                storyCount = state.storyCount,
+                commentCount = state.commentCount,
                 canLoadMore = state.canLoadMore,
                 loadedSuccessfully = state.loadedSuccessfully,
                 loading = state.loading,
@@ -239,6 +243,8 @@ private fun BoxScope.SubmissionsList(
     submissions: List<Story>,
     selectedFilter: SubmissionFilter,
     showFilter: Boolean,
+    storyCount: AlgoliaSubmissionCount?,
+    commentCount: AlgoliaSubmissionCount?,
     canLoadMore: Boolean,
     loadedSuccessfully: Boolean,
     loading: Boolean,
@@ -479,6 +485,8 @@ private fun BoxScope.SubmissionsList(
             userName = userName,
             selectedFilter = selectedFilter,
             showFilter = showFilter,
+            storyCount = storyCount,
+            commentCount = commentCount,
             compact = displaySettings.compactHeader,
             sideMargin = sideMargin,
             includeStatusBarInset = includeStatusBarInset,
@@ -493,12 +501,18 @@ private fun SubmissionsHeader(
     userName: String,
     selectedFilter: SubmissionFilter,
     showFilter: Boolean,
+    storyCount: AlgoliaSubmissionCount?,
+    commentCount: AlgoliaSubmissionCount?,
     compact: Boolean,
     sideMargin: androidx.compose.ui.unit.Dp,
     includeStatusBarInset: Boolean,
     reserveBackButtonSpace: Boolean,
     onFilterSelected: (SubmissionFilter) -> Unit,
 ) {
+    val summary = listOfNotNull(
+        formatSubmissionCount(storyCount, "story", "stories"),
+        formatSubmissionCount(commentCount, "comment", "comments"),
+    ).joinToString(" · ")
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -525,7 +539,7 @@ private fun SubmissionsHeader(
                     } else {
                         35.75.dp
                     },
-                    bottom = if (compact) 8.dp else 16.dp,
+                    bottom = if (showFilter && summary.isNotEmpty()) 4.dp else if (compact) 8.dp else 16.dp,
                 )
                 .semantics {
                     heading()
@@ -539,6 +553,17 @@ private fun SubmissionsHeader(
         )
 
         if (showFilter) {
+            if (summary.isNotEmpty()) {
+                Text(
+                    text = summary,
+                    modifier = Modifier.padding(bottom = if (compact) 12.dp else 16.dp),
+                    color = HarmonicTheme.colors.textSecondary,
+                    fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    style = legacyTextStyle,
+                )
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -573,6 +598,12 @@ private fun SubmissionsHeader(
         }
         Spacer(Modifier.height(24.dp))
     }
+}
+
+private fun formatSubmissionCount(count: AlgoliaSubmissionCount?, singular: String, plural: String): String? {
+    if (count == null || count.value <= 0) return null
+    val amount = (if (count.exact) "" else "≈") + GroupedNumberFormatter.format(count.value)
+    return "$amount ${if (count.value == 1) singular else plural}"
 }
 
 @Composable

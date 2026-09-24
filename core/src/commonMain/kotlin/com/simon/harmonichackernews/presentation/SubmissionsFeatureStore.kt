@@ -112,9 +112,9 @@ class SubmissionsFeatureStore internal constructor(
         }
     }
 
-    private fun refresh() = load(resetResultLimit = true)
+    private fun refresh() = load(refresh = true)
 
-    private fun loadMore() = load(resetResultLimit = false)
+    private fun loadMore() = load(refresh = false)
 
     private fun recordScrollPosition(
         firstVisibleStoryPosition: Int,
@@ -173,11 +173,11 @@ class SubmissionsFeatureStore internal constructor(
         scope.cancel()
     }
 
-    private fun load(resetResultLimit: Boolean) {
-        if (!resetResultLimit && (loadJob?.isActive == true || state.value.loading)) return
+    private fun load(refresh: Boolean) {
+        if (!refresh && (loadJob?.isActive == true || state.value.loading)) return
         loadJob?.cancel()
         val job = scope.launch {
-            if (resetResultLimit) store.refresh() else store.loadMore()
+            if (refresh) store.refresh() else store.loadMore()
         }
         loadJob = job
         job.invokeOnCompletion {

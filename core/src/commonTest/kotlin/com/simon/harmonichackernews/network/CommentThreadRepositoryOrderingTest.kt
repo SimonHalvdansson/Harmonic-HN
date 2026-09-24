@@ -12,7 +12,7 @@ class CommentThreadRepositoryOrderingTest {
     @Test
     fun seedlessAlgoliaLoadUsesOfficialTopLevelOrder() = runTest {
         val algolia = object : AlgoliaRepository {
-            override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage =
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
                 error("Not used")
 
             override suspend fun search(url: String): List<Story> = error("Not used")

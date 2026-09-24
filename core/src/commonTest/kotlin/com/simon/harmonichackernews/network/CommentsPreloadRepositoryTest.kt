@@ -84,7 +84,7 @@ class CommentsPreloadRepositoryTest {
         val response = CompletableDeferred<String>()
         val repository = CommentsPreloadRepository(
             algolia = object : AlgoliaRepository {
-                override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType) = AlgoliaSubmissionsPage(emptyList(), false)
+                override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor) = AlgoliaSubmissionsPage(emptyList())
                 override suspend fun search(url: String) = emptyList<Story>()
                 override suspend fun getItemJson(id: Int): String {
                     requestStarted.complete(Unit)
@@ -133,7 +133,7 @@ class CommentsPreloadRepositoryTest {
     ) : AlgoliaRepository {
         var itemRequests = 0
 
-        override suspend fun getSubmissions(userName: String, limit: Int, type: AlgoliaSubmissionType): AlgoliaSubmissionsPage = AlgoliaSubmissionsPage(emptyList(), false)
+        override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = AlgoliaSubmissionsPage(emptyList())
         override suspend fun search(url: String): List<Story> = emptyList()
 
         override suspend fun getItemJson(id: Int): String {
