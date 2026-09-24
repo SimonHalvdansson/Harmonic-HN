@@ -114,9 +114,6 @@ private fun ReferencePreviewCard(
             )
         },
         onOpen = { appComposition.links.open(currentUrl) },
-        onRetry = {
-            runtime.retry(state.originalUrl, state.fallbackTitle, state.resolvedTitle)
-        },
     )
 }
 

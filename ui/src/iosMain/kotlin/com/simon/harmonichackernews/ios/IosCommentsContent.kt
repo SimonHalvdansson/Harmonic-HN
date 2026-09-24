@@ -629,6 +629,5 @@ private fun IosReferencePreview(
             }
         },
         onOpen = { scene.links.open(currentUrl) },
-        onRetry = { runtime.retry(state.originalUrl, state.fallbackTitle, state.resolvedTitle) },
     )
 }

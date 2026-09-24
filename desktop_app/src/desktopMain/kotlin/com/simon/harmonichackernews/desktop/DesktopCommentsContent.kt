@@ -480,7 +480,6 @@ private fun DesktopReferencePreview(
             showFallback = runtimeState.showFallback,
             result = runtimeState.summary,
             error = runtimeState.error,
-            retrying = runtimeState.retrying,
         ),
         preferredFont = settings?.font ?: app.userSettings.story.font,
         commentTextSize = settings?.preferredTextSize ?: app.userSettings.comments.textSize,
@@ -512,6 +511,5 @@ private fun DesktopReferencePreview(
             }
         },
         onOpen = { scene.links.open(currentUrl) },
-        onRetry = { runtime.retry(state.originalUrl, state.fallbackTitle, state.resolvedTitle) },
     )
 }

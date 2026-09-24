@@ -31,11 +31,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,8 +52,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LookaheadScope
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -190,7 +186,6 @@ data class ReferenceSummaryUiState(
     val showFallback: Boolean = false,
     val result: LinkSummary? = null,
     val error: String? = null,
-    val retrying: Boolean = false,
 )
 
 fun referenceSummaryUiState(
@@ -205,7 +200,6 @@ fun referenceSummaryUiState(
         showFallback = runtime.showFallback,
         result = displayedSummary,
         error = runtime.error,
-        retrying = runtime.retrying,
     )
 }
 
@@ -237,7 +231,6 @@ fun ReferenceCardContent(
         modifier: Modifier,
     ) -> Unit,
     onOpen: () -> Unit,
-    onRetry: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val typography = rememberContentTypography(
@@ -309,7 +302,6 @@ fun ReferenceCardContent(
         bottomStart = imageBottomCornerRadius,
         bottomEnd = imageBottomCornerRadius,
     )
-    val retryable = summaryContent.error?.let(::isRetryableReferenceError) == true
     val offlineMessage = stringResource(Res.string.link_summary_offline_message)
     val genericErrorMessage = stringResource(Res.string.link_summary_error_message)
     val errorMessage = summaryContent.error?.let {
@@ -424,11 +416,8 @@ fun ReferenceCardContent(
                         summaryContent.error != null -> ReferenceErrorContent(
                             offline = offline,
                             message = errorMessage.orEmpty(),
-                            retryVisible = offline || retryable,
-                            retrying = summary.retrying,
                             fontFamily = typography.family,
                             errorTextSize = typography.commentTextSize - 1f,
-                            onRetry = onRetry,
                         )
                         else -> Spacer(Modifier.height(0.dp))
                     }
@@ -661,13 +650,9 @@ private fun ReferenceDescriptionShimmer() {
 private fun ReferenceErrorContent(
     offline: Boolean,
     message: String,
-    retryVisible: Boolean,
-    retrying: Boolean,
     fontFamily: FontFamily,
     errorTextSize: Float,
-    onRetry: () -> Unit,
 ) {
-    val retryingDescription = stringResource(Res.string.link_summary_retrying)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -694,43 +679,13 @@ private fun ReferenceErrorContent(
         )
         Text(
             text = message,
-            modifier = Modifier.padding(top = 6.dp),
+            modifier = Modifier.padding(top = 4.dp),
             color = HarmonicTheme.colors.mutedText,
             fontFamily = fontFamily,
             fontSize = errorTextSize.sp,
             lineHeight = (errorTextSize + 2f).sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        if (retryVisible) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .height(48.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (retrying) {
-                    HarmonicLoadingIndicator(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .semantics { contentDescription = retryingDescription },
-                    )
-                } else {
-                    OutlinedButton(onClick = onRetry, modifier = Modifier.height(48.dp)) {
-                        Icon(
-                            painterResource(Res.drawable.ic_refresh),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            stringResource(Res.string.link_summary_retry),
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -760,9 +715,6 @@ fun LinkPreviewShimmer(modifier: Modifier = Modifier) {
         ),
     )
 }
-
-private fun isRetryableReferenceError(message: String): Boolean =
-    !message.startsWith("This link contains ")
 
 private fun referenceErrorMessage(
     offline: Boolean,

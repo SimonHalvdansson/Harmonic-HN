@@ -46,12 +46,10 @@
     <string name="captcha_dialog_web_content_description">Hacker News CAPTCHA</string>
     <string name="captcha_dialog_webview_error">The CAPTCHA browser is unavailable. Check Android System WebView and try again.</string>
     <string name="link_summary_open_short">Open</string>
-    <string name="link_summary_retry">Try again</string>
-    <string name="link_summary_retrying">Trying…</string>
     <string name="link_summary_offline_title">You’re offline</string>
     <string name="link_summary_offline_message">Connect to the internet and try again.</string>
     <string name="link_summary_error_title">Preview unavailable</string>
-    <string name="link_summary_error_message">Harmonic couldn’t load a preview for this link. The website may be unavailable or may not allow previews.</string>
+    <string name="link_summary_error_message">This website may be unavailable or block previews.</string>
     <string name="link_summary_comments">Comments</string>
     <string name="link_summary_expand_image">Expand preview image</string>
     <string name="link_summary_collapse_image">Collapse preview image</string>
