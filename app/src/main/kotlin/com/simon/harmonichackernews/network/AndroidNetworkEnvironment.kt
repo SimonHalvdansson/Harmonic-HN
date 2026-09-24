@@ -4,7 +4,6 @@ import android.content.Context
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.cache.storage.CacheStorage
 import io.ktor.client.plugins.cache.storage.FileStorage
@@ -53,7 +52,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
     val graph: NetworkGraph by lazy {
         NetworkGraphFactory.create(NetworkGraphEnvironment(
             scope = networkScope,
-            engine = { CIO.create() },
+            engine = { createAndroidHttpEngine() },
             authenticatedClientProvider = authenticatedClientProvider,
             userAgent = userAgent,
             cacheMaintenance = this,
@@ -79,5 +78,5 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
 
     private fun createClient(
         configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {},
-    ): HttpClient = createHarmonicHttpClient(CIO.create(), userAgent, configure)
+    ): HttpClient = createHarmonicHttpClient(createAndroidHttpEngine(), userAgent, configure)
 }

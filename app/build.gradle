@@ -167,7 +167,7 @@ dependencies {
     implementation(libs.materialui)
 
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor3)
