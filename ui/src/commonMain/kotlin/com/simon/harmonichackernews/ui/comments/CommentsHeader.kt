@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -70,6 +72,8 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+
+internal const val CommentsHeaderRevealDurationMillis = 320
 
 /**
  * Platform-neutral comments header. The preview slot uses shared Coil and Harmonic palette UI;
@@ -159,11 +163,15 @@ fun CommentsHeader(
     } else {
         0.dp
     }
-    val titleTopPadding = (if (settings.showUpButton && !headerPreviewImageDisplayed) {
-        16.dp
-    } else {
-        0.dp
-    }) + backButtonTitleClearance
+    val titleTopPadding by animateDpAsState(
+        targetValue = (if (settings.showUpButton && !headerPreviewImageDisplayed) {
+            16.dp
+        } else {
+            0.dp
+        }) + backButtonTitleClearance,
+        animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
+        label = "comments title clearance",
+    )
     val shimmerTopPadding = titleTopPadding + if (settings.showUpButton) 8.dp else 0.dp
 
     Column(
@@ -209,8 +217,10 @@ fun CommentsHeader(
                         },
                     ),
                     transitionSpec = {
-                        (fadeIn(tween(220, delayMillis = 40)) togetherWith fadeOut(tween(180))).using(
-                            SizeTransform(clip = false) { _, _ -> tween(260) },
+                        (fadeIn(tween(240, delayMillis = 80)) togetherWith fadeOut(tween(120))).using(
+                            SizeTransform(clip = false) { _, _ ->
+                                tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing)
+                            },
                         )
                     },
                     label = "comments story header reveal",

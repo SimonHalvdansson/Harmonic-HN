@@ -427,6 +427,99 @@ class CommentsHeaderMotionTest {
         }
     }
 
+    @Test
+    fun uncachedLinkResolutionPreservesTheHeaderReveal() {
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot())
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = false,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        val loading = CommentsScreenState(story = story, displaySettings = settings)
+        controller.updateContent(loading)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        var headerCompositions = 0
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        CommentsScreen(
+                            controller, Modifier, false, pullToRefreshEnabled = true,
+                            showNavigationControls = false, animateComments = true, showScrollbar = false,
+                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            searchDialog = {}, actionOverlay = {},
+                            headerContent = {
+                                androidx.compose.runtime.DisposableEffect(Unit) {
+                                    headerCompositions++
+                                    onDispose { }
+                                }
+                                val height by animateDpAsState(
+                                    if (controller.commentsLoaded) 300.dp else 80.dp,
+                                    tween(300),
+                                )
+                                Column(Modifier.background(Color.White).testTag("loading-root")) {
+                                    Box(Modifier.fillMaxWidth().height(height).testTag("loading-header"))
+                                    CommentsHeaderStatus(controller, lastRefreshedText = null)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            fun headerHeight() = compose.onNodeWithTag("loading-header").fetchSemanticsNode().boundsInRoot.height
+            val before = headerHeight()
+            val indicatorCenter = compose.onNodeWithTag("comments-loading-indicator")
+                .fetchSemanticsNode().boundsInRoot.center
+            fun indicatorContrast(): Float {
+                val root = compose.onNodeWithTag("loading-root")
+                val origin = root.fetchSemanticsNode().boundsInRoot.topLeft
+                val center = indicatorCenter - origin
+                val pixels = root.captureToImage().toPixelMap()
+                val pixel = pixels[center.x.toInt(), center.y.toInt()]
+                return 1f - minOf(pixel.red, pixel.green, pixel.blue)
+            }
+            val initialContrast = indicatorContrast()
+            compose.runOnIdle {
+                controller.updateContent(loading.copy(
+                    commentsLoaded = true,
+                    integratedWebView = true,
+                    comments = (1..2).map { PortableCommentItem(CommentSnapshot(it), CommentPresentationSnapshot()) },
+                ))
+            }
+            repeat(4) {
+                compose.mainClock.advanceTimeByFrame()
+                val center = compose.onNodeWithTag("comments-loading-indicator")
+                    .fetchSemanticsNode().boundsInRoot.center
+                assertEquals("Fading indicator must not drift horizontally", indicatorCenter.x, center.x, 1f)
+                assertEquals("Fading indicator must not follow header expansion", indicatorCenter.y, center.y, 1f)
+            }
+            val fadingContrast = indicatorContrast()
+            assertTrue("Stationary indicator must visibly fade rather than get clipped: $fadingContrast / $initialContrast",
+                fadingContrast > initialContrast * 0.05f && fadingContrast < initialContrast * 0.95f)
+            compose.mainClock.advanceTimeBy(36)
+            val during = headerHeight()
+            compose.mainClock.advanceTimeBy(400)
+            val after = headerHeight()
+            assertEquals("Resolving a link must retain the composed header", 1, headerCompositions)
+            assertTrue("The reveal must survive enabling the integrated browser", during > before && during < after)
+            // A later settings change must preserve the same list as well.
+            compose.runOnIdle { controller.updateContent(controller.screenState.copy(integratedWebView = false)) }
+            compose.mainClock.advanceTimeByFrame()
+            assertEquals(1, headerCompositions)
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
+
     private val settings = CommentDisplaySettings(
         collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",

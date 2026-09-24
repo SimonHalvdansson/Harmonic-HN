@@ -224,6 +224,23 @@ fun CommentsScreen(
     )
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
+    // Let the loading header settle before the first comments become readable. Keep one
+    // screen-level reveal so later scrolling, refreshes and subtree changes never replay it.
+    val initialCommentsReveal = remember(controller.story.id) {
+        Animatable(
+            if (!controller.initialThreadCached && visibleComments.isEmpty() && !controller.commentsLoaded) 0f else 1f,
+        )
+    }
+    LaunchedEffect(visibleComments.isNotEmpty(), animateComments) {
+        if (!animateComments) {
+            initialCommentsReveal.snapTo(1f)
+        } else if (visibleComments.isNotEmpty() && initialCommentsReveal.value < 1f) {
+            initialCommentsReveal.animateTo(
+                1f,
+                tween(220, delayMillis = CommentsHeaderRevealDurationMillis),
+            )
+        }
+    }
     val animatedRows = rememberAnimatedCommentRows(visibleComments, listState, animateComments)
     val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
     PrefetchCommentContent(
@@ -442,6 +459,10 @@ fun CommentsScreen(
                     showActionsOnClick = settings.swapLongPressTap,
                     modifier = Modifier
                         .testTag("comment-row")
+                        .graphicsLayer {
+                            alpha = initialCommentsReveal.value
+                            translationY = 6.dp.toPx() * (1f - initialCommentsReveal.value)
+                        }
                         .commentsReadingWidth()
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .then(if (exiting) Modifier
@@ -517,31 +538,31 @@ fun CommentsScreen(
             }
         }
 
-        if (controller.integratedWebView || !pullToRefreshEnabled) {
+        // The story type is unknown on an uncached open. Keep the list at the same
+        // composition location when it becomes an integrated browser story, otherwise
+        // the header and row reveal animations are discarded with the old list.
+        PullToRefreshBox(
+            enabled = pullToRefreshEnabled && !controller.integratedWebView,
+            isRefreshing = controller.pullToRefreshInProgress &&
+                controller.commentsRefreshInProgress,
+            state = pullToRefreshState,
+            indicator = {
+                HarmonicPullToRefreshIndicator(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = statusBarInset),
+                    isRefreshing = controller.pullToRefreshInProgress &&
+                        controller.commentsRefreshInProgress,
+                    state = pullToRefreshState,
+                )
+            },
+            onRefresh = {
+                controller.beginPullToRefresh()
+                controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) {
             list()
-        } else {
-            PullToRefreshBox(
-                isRefreshing = controller.pullToRefreshInProgress &&
-                    controller.commentsRefreshInProgress,
-                state = pullToRefreshState,
-                indicator = {
-                    HarmonicPullToRefreshIndicator(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset(y = statusBarInset),
-                        isRefreshing = controller.pullToRefreshInProgress &&
-                            controller.commentsRefreshInProgress,
-                        state = pullToRefreshState,
-                    )
-                },
-                onRefresh = {
-                    controller.beginPullToRefresh()
-                    controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
-                },
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                list()
-            }
         }
 
         if (showNavigationControls) CommentNavigationControls(controller)

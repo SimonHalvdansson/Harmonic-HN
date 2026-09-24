@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
@@ -49,8 +52,14 @@ fun HeaderPreviewImage(
     var imageAspectRatio by remember(imageUrl) { mutableStateOf<Float?>(null) }
     AnimatedVisibility(
         visible = visible && !imageUrl.isNullOrBlank() && !failed,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
+        enter = fadeIn(tween(240, delayMillis = 80)) + expandVertically(
+            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(tween(120)) + shrinkVertically(
+            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
+            shrinkTowards = Alignment.Top,
+        ),
     ) {
         NetworkImage(
             url = imageUrl.orEmpty(),
