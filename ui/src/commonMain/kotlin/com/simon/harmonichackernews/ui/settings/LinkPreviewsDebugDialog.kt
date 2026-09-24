@@ -81,7 +81,7 @@ val DebugLinkPreviewSamples = listOf(
     DebugLinkPreviewSample(LinkPreviewType.STACK_EXCHANGE, 21113344, "Stack Exchange moderator resignations", "https://meta.stackexchange.com/questions/333965/firing-mods-and-forced-slippery-relicensing-is-stack-exchange-still-interested"),
     DebugLinkPreviewSample(LinkPreviewType.ARXIV, 42788451, "Tensor Product Attention Is All You Need", "https://arxiv.org/abs/2501.06425"),
     DebugLinkPreviewSample(LinkPreviewType.CROSSREF_ARTICLE, 49254351, "The Water Footprint of AI", "https://doi.org/10.1016/j.watres.2026.125866"),
-    DebugLinkPreviewSample(LinkPreviewType.WIKIPEDIA, 21699011, "Wikipedia Has Cancer", "https://en.wikipedia.org/wiki/User:Guy_Macon/Wikipedia_has_Cancer"),
+    DebugLinkPreviewSample(LinkPreviewType.WIKIPEDIA, 25796187, "Hacker News", "https://en.wikipedia.org/wiki/Hacker_News"),
     DebugLinkPreviewSample(LinkPreviewType.USGS_EARTHQUAKE, 49306577, "Magnitude 7.7 earthquake near Ende", "https://earthquake.usgs.gov/earthquakes/eventpage/us6000tkt2/executive"),
     DebugLinkPreviewSample(LinkPreviewType.MASTODON_POST, 49200439, "My phone thinks a run is a theft", "https://mastodon.gamedev.place/@rygorous/117047697255584965"),
     DebugLinkPreviewSample(LinkPreviewType.BLUESKY_POST, 49028406, "Microsoft deleted Nokia's ringtone archive", "https://bsky.app/profile/techprodbangers.bsky.social/post/3mr4askb6tk2i"),

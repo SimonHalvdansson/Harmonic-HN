@@ -54,6 +54,22 @@ class LinkPreviewRuntimeTest {
     }
 
     @Test
+    fun wikipediaTalkPageNeverEntersLoadingStateOrRequestsAPreview() = runTest {
+        val repository = RecordingRepository()
+        val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))
+
+        assertFalse(runtime.load(
+            "https://en.wikipedia.org/wiki/User_talk:Jimbo_Wales#Request_for_Comment:_SOPA_and_a_strike",
+            LinkPreviewPreferences(setOf(LinkPreviewType.WIKIPEDIA)),
+            alreadyLoaded = false,
+        ))
+        assertEquals(LinkPreviewRuntimeState(), runtime.state.value)
+        advanceUntilIdle()
+        assertEquals(null, repository.loadedUrl)
+        assertEquals(LinkPreviewRuntimeState(), runtime.state.value)
+    }
+
+    @Test
     fun selectsHuggingFaceModelProvider() = runTest {
         val repository = RecordingRepository()
         val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(repository))

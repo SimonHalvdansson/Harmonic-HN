@@ -18,8 +18,27 @@ internal object WikipediaLinkPreview {
         val segments = parsed.pathSegments.dropWhile(String::isEmpty)
         if (segments.firstOrNull() != "wiki") return null
         // Path segments are decoded once by the URL parser; preserve subpage slashes and pluses.
-        return segments.drop(1).joinToString("/").takeIf(String::isNotEmpty)
+        val title = segments.drop(1).joinToString("/").takeIf(String::isNotBlank) ?: return null
+        val namespace = title.trimStart(' ', '_', ':')
+            .substringBefore(':', missingDelimiterValue = "")
+            .replace(namespaceWhitespace, " ")
+            .trim()
+            .lowercase()
+        return title.takeUnless { namespace in nonArticleNamespaces }
     }
+
+    // English Wikipedia namespaces and their aliases. A colon alone does not imply a
+    // namespace: article titles such as "Star Trek: Voyager" must remain eligible.
+    // https://en.wikipedia.org/wiki/Wikipedia:Namespace
+    private val nonArticleNamespaces = setOf(
+        "talk", "user", "user talk", "wikipedia", "wikipedia talk",
+        "file", "file talk", "mediawiki", "mediawiki talk", "template", "template talk",
+        "help", "help talk", "category", "category talk", "portal", "portal talk",
+        "draft", "draft talk", "mos", "mos talk", "timedtext", "timedtext talk",
+        "module", "module talk", "event", "event talk", "special", "media",
+        "wp", "wt", "project", "project talk", "image", "image talk", "tm",
+    )
+    private val namespaceWhitespace = Regex("[\\s_]+")
 
     fun parseWikipedia(response: String): WikipediaInfo? {
         val json = JsonObject(response)

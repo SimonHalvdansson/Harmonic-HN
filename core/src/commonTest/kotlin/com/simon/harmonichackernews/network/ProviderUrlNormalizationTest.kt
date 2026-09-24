@@ -51,6 +51,39 @@ class ProviderUrlNormalizationTest {
     }
 
     @Test
+    fun wikipediaRejectsNonArticleNamespacesBeforeSelectingAProvider() {
+        for (path in listOf(
+            "User_talk:Jimbo_Wales#Request_for_Comment:_SOPA_and_a_strike",
+            "User:Guy_Macon/Wikipedia_has_Cancer",
+            "Talk:Hacker_News", "Wikipedia:About", "File:Example.jpg", "Media:Example.ogg",
+            "Special:Random", "Category:Computing", "Help:Contents", "Template:Infobox",
+            "Portal:Technology", "Draft:Example", "Module:Example", "MediaWiki:Common.css",
+            "MOS:Example", "TimedText:Example", "Event:Example",
+            "WP:About", "WT:About", "Project:About", "Project_talk:About",
+            "Image:Example.jpg", "Image_talk:Example.jpg", "TM:Infobox",
+            "uSeR%20TaLk%3AJimbo_Wales", "User__talk:Jimbo_Wales", ":User:Example",
+        )) {
+            val url = "https://en.wikipedia.org/wiki/$path"
+            assertNull(LinkPreviewUrls.wikipediaTitle(url), url)
+            assertFalse(LinkPreviewUrls.isWikipediaUrl(url), url)
+            assertNull(RichLinkPreviewUrls.type(url), url)
+        }
+    }
+
+    @Test
+    fun wikipediaStillAcceptsArticleTitlesContainingColonsAndNamespaceWords() {
+        for (title in listOf("Star_Trek:_Voyager", "2001:_A_Space_Odyssey", "Talk", "User", "Wikipedia")) {
+            val url = "https://en.wikipedia.org/wiki/$title"
+            assertEquals(title, LinkPreviewUrls.wikipediaTitle(url), url)
+            assertEquals(LinkPreviewType.WIKIPEDIA, RichLinkPreviewUrls.type(url), url)
+        }
+        assertEquals(
+            LinkPreviewType.WIKIPEDIA,
+            RichLinkPreviewUrls.type("https://en.wikipedia.org/wiki/Star_Trek%3A_Voyager"),
+        )
+    }
+
+    @Test
     fun npmVersionPathsDoNotBecomePartOfThePackageName() {
         assertEquals("react", PackageLinkPreview.packageTarget("https://www.npmjs.com/package/react/v/19.0.0")?.name)
         assertEquals("@types/react", PackageLinkPreview.packageTarget("https://www.npmjs.com/package/@types/react/v/19.0.0")?.name)
