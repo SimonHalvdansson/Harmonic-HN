@@ -49,7 +49,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -112,7 +112,9 @@ fun TransformOverlay(
     val transformProgress = remember(contentKey) { Animatable(0f) }
     var verticalSwipeOffset by remember(contentKey) { mutableFloatStateOf(0f) }
     var verticalSwipeSettleTarget by remember(contentKey) { mutableStateOf<Float?>(null) }
-    var rootBounds by remember(contentKey) { mutableStateOf(Rect.Zero) }
+    var rootCoordinates by remember(contentKey) { mutableStateOf<LayoutCoordinates?>(null) }
+    var rootSize by remember(contentKey) { mutableStateOf(IntSize.Zero) }
+    var sourceBoundsInOverlay by remember(contentKey, sourceBounds) { mutableStateOf<Rect?>(null) }
     var targetBounds by remember(contentKey) { mutableStateOf<Rect?>(null) }
     var dismissalFinished by remember(contentKey) { mutableStateOf(false) }
     var sourceHandoffComplete by remember(contentKey) { mutableStateOf(false) }
@@ -124,7 +126,7 @@ fun TransformOverlay(
     }
     val sourceSnapshotRequired = sourceSnapshot != null
     val sourceSnapshotReady = sourceSnapshotResolved
-    val targetReady = targetBounds != null && rootBounds.width > 0f && rootBounds.height > 0f &&
+    val targetReady = targetBounds != null && rootSize.width > 0 && rootSize.height > 0 &&
         sourceSnapshotReady
     val currentDismissRequestVersion by rememberUpdatedState(dismissRequestVersion)
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
@@ -190,7 +192,7 @@ fun TransformOverlay(
     val verticalSwipeVisualOffset = verticalSwipeOffset * progress
     val verticalSwipeProgress = verticalSwipeDismissProgress(
         offsetY = verticalSwipeVisualOffset,
-        viewportHeight = rootBounds.height,
+        viewportHeight = rootSize.height.toFloat(),
     )
     val verticalSwipeScale = 1f - 0.06f * verticalSwipeProgress
     // A committed predictive gesture is still at full strength when the close morph starts, then
@@ -204,12 +206,9 @@ fun TransformOverlay(
         with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
     val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
     val backScale = 1f - 0.1f * predictiveVisualProgress
-    val rootOffset = rootBounds.topLeft
-    val localTarget = targetBounds?.translate(-rootOffset.x, -rootOffset.y)
-    val localViewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
-    val localSource = sourceBounds
-        ?.translate(-rootOffset.x, -rootOffset.y)
-        ?.intersectionOrNull(localViewport)
+    val localTarget = targetBounds
+    val localViewport = Rect(0f, 0f, rootSize.width.toFloat(), rootSize.height.toFloat())
+    val localSource = sourceBoundsInOverlay?.intersectionOrNull(localViewport)
     val anchorSizePx = sourceAnchorSize?.let { with(density) { it.toPx() } }
     val transitionSource = when {
         localSource == null -> localTarget?.scaledAboutCenter(0.96f)
@@ -354,7 +353,7 @@ fun TransformOverlay(
 
                 val velocityY = velocityTracker.calculateVelocity().y
                 val dismissDistance = min(
-                    rootBounds.height * 0.18f,
+                    rootSize.height * 0.18f,
                     120.dp.toPx(),
                 )
                 val dismissVelocity = 1000.dp.toPx()
@@ -379,7 +378,18 @@ fun TransformOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .onGloballyPositioned { rootBounds = it.boundsInWindow() }
+            .onGloballyPositioned { coordinates ->
+                rootCoordinates = coordinates
+                rootSize = coordinates.size
+                // The source is a window-space snapshot taken when the preview opens. Capture
+                // it locally once so a retained screen's navigation transform moves it with us.
+                if (sourceBoundsInOverlay == null && sourceBounds != null) {
+                    sourceBoundsInOverlay = Rect(
+                        coordinates.windowToLocal(sourceBounds.topLeft),
+                        coordinates.windowToLocal(sourceBounds.bottomRight),
+                    )
+                }
+            }
             .then(verticalSwipeGesture),
     ) {
         Box(
@@ -468,7 +478,14 @@ fun TransformOverlay(
                     modifier = Modifier
                         .widthIn(max = maxWidth)
                         .fillMaxWidth()
-                        .onGloballyPositioned { targetBounds = it.boundsInWindow() }
+                        .onGloballyPositioned { coordinates ->
+                            // Window bounds include ancestor scale and clipping. Applying those
+                            // bounds inside the same transformed screen moves the card twice.
+                            targetBounds = rootCoordinates?.localBoundingBoxOf(
+                                coordinates,
+                                clipBounds = false,
+                            )
+                        }
                         .graphicsLayer {
                             val target = localTarget
                             val current = container

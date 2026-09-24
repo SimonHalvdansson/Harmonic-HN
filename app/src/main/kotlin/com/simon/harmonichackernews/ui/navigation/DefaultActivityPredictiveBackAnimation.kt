@@ -22,9 +22,11 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.CompositingStrategy
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.setOutline
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
@@ -96,7 +98,7 @@ internal class DefaultActivityPredictiveBackAnimation(
 
         return this
             .onPlaced { size = it.size.toSize() }
-            .graphicsLayer(
+            .predictiveBackSurface(
                 scaleX = scaleFactor,
                 scaleY = scaleFactor,
                 translationX = lerp(
@@ -106,8 +108,6 @@ internal class DefaultActivityPredictiveBackAnimation(
                 ),
                 translationY = density.exitOffsetY(height = size.height),
                 shape = shape,
-                clip = true,
-                compositingStrategy = CompositingStrategy.Offscreen,
             )
     }
 
@@ -119,15 +119,13 @@ internal class DefaultActivityPredictiveBackAnimation(
 
         return this
             .onPlaced { size = it.size.toSize() }
-            .graphicsLayer(
+            .predictiveBackSurface(
                 scaleX = scaleFactor,
                 scaleY = scaleFactor,
                 alpha = 1f - finishProgressAnimatable.value,
                 translationX = density.exitOffsetX(width = size.width),
                 translationY = density.exitOffsetY(height = size.height),
                 shape = shape,
-                clip = true,
-                compositingStrategy = CompositingStrategy.Offscreen,
             )
     }
 
@@ -212,6 +210,34 @@ internal class DefaultActivityPredictiveBackAnimation(
         const val RevealedContentScrimAlpha = 0.25f
         val GestureEdgeInset = 8.dp
         val BackGestureEasing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
+    }
+}
+
+/** Move the rendered surface without changing the coordinates used by its backdrop effects. */
+@Composable
+private fun Modifier.predictiveBackSurface(
+    scaleX: Float,
+    scaleY: Float,
+    translationX: Float,
+    translationY: Float,
+    shape: Shape,
+    alpha: Float = 1f,
+): Modifier {
+    val surface = rememberGraphicsLayer()
+    return drawWithContent {
+        // A layout graphicsLayer also transforms Haze's window-space source/effect positions.
+        // Record the complete page in its own coordinate space before moving it, as we do for
+        // forward activity navigation, so glass and blur remain part of the same stable surface.
+        surface.record { this@drawWithContent.drawContent() }
+        surface.scaleX = scaleX
+        surface.scaleY = scaleY
+        surface.translationX = translationX
+        surface.translationY = translationY
+        surface.alpha = alpha
+        surface.setOutline(shape.createOutline(size, layoutDirection, this))
+        surface.clip = true
+        surface.compositingStrategy = CompositingStrategy.Offscreen
+        drawLayer(surface)
     }
 }
 

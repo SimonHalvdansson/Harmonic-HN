@@ -377,6 +377,15 @@ fun SinglePaneNavigationScene(
                             alpha = if (replacesRetainedStoryRun && !retainedInStack) 0f else 1f
                         }
                         .then(
+                            if (layer.request.serial == predictivePreviousSerial) {
+                                // The back gesture reveals only the immediate predecessor. Its
+                                // shrinking surface must not expose older entries around its edges.
+                                Modifier.background(HarmonicTheme.colors.background)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .then(
                             if (layer.request.serial == currentStorySerial) {
                                 Modifier
                             } else {
