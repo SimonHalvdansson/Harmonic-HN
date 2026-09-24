@@ -121,6 +121,7 @@ class AndroidCommentsCoordinator(
     private var commentsContentInsetRight = 0
     private var webViewInsetLeft = 0
     private var webViewInsetRight = 0
+    private var showsUpNavigation = false
     private var extraSidePadding =
         (activity.resources.getDimensionPixelSize(R.dimen.extra_pane_padding) *
             appComposition.settings.snapshot().appearance.extraSidePadding.fraction).toInt()
@@ -787,7 +788,7 @@ class AndroidCommentsCoordinator(
         if (predictiveBackInsetsFrozen) return
         val upButtonInset = if (
             integratedWebview &&
-            !navigation.isAdaptiveTwoPane() &&
+            showsUpNavigation &&
             commentsStore.state.value.settings?.displaySettings?.showUpButton == true
         ) {
             AndroidDisplay.dpToPxInt(activity.resources, 64f)
@@ -849,10 +850,15 @@ class AndroidCommentsCoordinator(
         if (isActive) refreshPresentationCapabilities()
     }
 
-    fun setExtraSidePadding(paddingPx: Int) {
-        if (extraSidePadding == paddingPx) return
+    fun updatePaneLayout(showUpButton: Boolean, extraPaddingPx: Int) {
+        // A standalone story on a tablet still has up navigation. Device-level two-pane
+        // capability does not describe the scene currently hosting this coordinator.
+        val paddingPx = if (showUpButton) 0 else extraPaddingPx
+        if (extraSidePadding == paddingPx && showsUpNavigation == showUpButton) return
+        showsUpNavigation = showUpButton
         extraSidePadding = paddingPx
         setCommentsContentSideInsets(webViewInsetLeft, max(webViewInsetRight, extraSidePadding))
+        updateWebViewContainerPadding()
     }
 
     private fun setCommentsContentSideInsets(leftInset: Int, rightInset: Int) {

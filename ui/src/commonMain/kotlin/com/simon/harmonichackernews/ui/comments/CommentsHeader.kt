@@ -195,7 +195,7 @@ fun CommentsHeader(
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .commentsReadingWidth()
                     .padding(start = sideMarginStart, end = sideMarginEnd)
                     .padding(top = headerTopPadding),
             ) {
@@ -380,8 +380,10 @@ fun CommentsHeader(
                 .height(32.dp)
                 .background(fadeBrush),
         )
-        OpFilterBanner(controller)
-        CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
+        Column(Modifier.commentsReadingWidth()) {
+            OpFilterBanner(controller)
+            CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
+        }
     }
 }
 

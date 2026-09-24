@@ -442,6 +442,7 @@ fun CommentsScreen(
                     showActionsOnClick = settings.swapLongPressTap,
                     modifier = Modifier
                         .testTag("comment-row")
+                        .commentsReadingWidth()
                         .padding(start = contentInsetStart, end = contentInsetEnd)
                         .then(if (exiting) Modifier
                             .clearAndSetSemantics { }
@@ -672,7 +673,7 @@ private fun AlgoliaFallbackNotice() {
     }
     Box(
         modifier = Modifier
-            .fillMaxWidth()
+            .commentsReadingWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {

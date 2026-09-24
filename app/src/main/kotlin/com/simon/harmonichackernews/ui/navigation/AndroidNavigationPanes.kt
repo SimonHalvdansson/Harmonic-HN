@@ -116,7 +116,9 @@ internal fun CommentsPane(
     }
     val extraPadding = animatedExtraPanePadding()
     val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }
-    SideEffect { activeCoordinator.setExtraSidePadding(extraPaddingPx) }
+    SideEffect {
+        activeCoordinator.updatePaneLayout(showUpButton = showUpButton, extraPaddingPx = extraPaddingPx)
+    }
     SideEffect { controller.attachCommentsCoordinator(activeCoordinator) }
     DisposableEffect(controller, activeCoordinator, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
