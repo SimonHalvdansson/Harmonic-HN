@@ -301,16 +301,22 @@ private fun WelcomeStoryPreview(
     modifier: Modifier = Modifier,
 ) {
     val baseColor = HarmonicTheme.colors.contentCardBackground
+    val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val palette = rememberResourceTintPalette(Res.drawable.palette1)
     val targetExpressiveColor = remember(
         palette,
         paletteTintConfigKey,
         baseColor,
+        backgroundColor,
     ) {
         Color(
-            PreviewTintPolicy.calculateCardTint(
-                baseColor = baseColor.toArgb(),
-                palette = palette,
+            PreviewTintPolicy.ensureCardTintContrast(
+                tint = PreviewTintPolicy.calculateCardTint(
+                    baseColor = baseColor.toArgb(),
+                    palette = palette,
+                    modeOrConfigKey = paletteTintConfigKey,
+                ),
+                background = backgroundColor.toArgb(),
                 modeOrConfigKey = paletteTintConfigKey,
             ),
         )

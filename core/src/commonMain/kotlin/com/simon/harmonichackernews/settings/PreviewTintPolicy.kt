@@ -60,6 +60,43 @@ object PreviewTintPolicy {
     fun storedMode(modeOrConfigKey: String?): String =
         "${PaletteTintPreferences.normalizeConfigKey(modeOrConfigKey)}:$RESULT_VERSION"
 
+    /**
+     * Separates an opaque, already-blended card tint from its actual surrounding background.
+     * Apply at presentation time: the page background can differ from the cached tint's base.
+     * 1.2:1 is a subtle surface distinction, not a text-accessibility contrast requirement.
+     * Reduce the floor below default strength so zero strength still removes the tint.
+     */
+    fun ensureCardTintContrast(tint: Int, background: Int, modeOrConfigKey: String?): Int {
+        val strength = PaletteTintPreferences.strengthMultiplier(modeOrConfigKey).coerceAtMost(1f)
+        if (strength == 0f) return tint
+        val minimumContrast = 1.0 + 0.2 * strength
+        val backgroundLuminance = luminance(background)
+        fun contrast(color: Int): Double {
+            val foregroundLuminance = luminance(color)
+            return (max(foregroundLuminance, backgroundLuminance) + 0.05) /
+                (min(foregroundLuminance, backgroundLuminance) + 0.05)
+        }
+        if (contrast(tint) >= minimumContrast) return tint
+
+        // Lift dark-theme surfaces and darken light-theme surfaces. Blending toward a neutral
+        // endpoint retains the tint's hue; search for the smallest sufficient adjustment.
+        val endpoint = if (backgroundLuminance < 0.5) 0xffffffff.toInt() else 0xff000000.toInt()
+        var low = 0f
+        var high = 1f
+        var result = endpoint
+        repeat(12) {
+            val amount = (low + high) / 2f
+            val candidate = blendArgb(tint, endpoint, amount)
+            if (contrast(candidate) >= minimumContrast) {
+                high = amount
+                result = candidate
+            } else {
+                low = amount
+            }
+        }
+        return result
+    }
+
     private fun chooseSwatch(
         palette: PreviewTintPalette?,
         modeOrConfigKey: String?,

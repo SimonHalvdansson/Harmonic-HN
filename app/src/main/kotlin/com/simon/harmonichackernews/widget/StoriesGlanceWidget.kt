@@ -112,11 +112,13 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                             sample.getPixels(pixels, 0, 48, 0, 0, 48, 48)
                             HarmonicPaletteExtractor(pixels.size).extract(pixels).toPreviewTintPalette()
                         }
-                        fun tint(base: Color) = palette?.let {
-                            PreviewTintPolicy.calculateCardTint(base.toArgb(), it, app.userSettings.story.paletteTintConfigKey)
+                        fun tint(theme: HarmonicColors) = palette?.let {
+                            val config = app.userSettings.story.paletteTintConfigKey
+                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.contentCardBackground.toArgb(), it, config)
+                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.background.toArgb(), config)
                         }
-                        entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day.contentCardBackground),
-                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night.contentCardBackground))
+                        entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
+                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night))
                     }
                 }
             }
@@ -380,4 +382,3 @@ internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable)
             PendingIntent.getBroadcast(context, widgetId, retry, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }
 }
-
