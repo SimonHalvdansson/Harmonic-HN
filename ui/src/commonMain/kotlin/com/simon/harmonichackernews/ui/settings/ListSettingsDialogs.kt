@@ -483,6 +483,19 @@ fun UserTagDialog(
                 .heightIn(min = 64.dp)
                 .focusRequester(focusRequester),
             label = { Text("Tag") },
+            trailingIcon = {
+                if (tag.isNotEmpty()) {
+                    IconButton(onClick = {
+                        tag = ""
+                        focusRequester.requestFocus()
+                    }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_close),
+                            contentDescription = "Clear tag",
+                        )
+                    }
+                }
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { saveTag() }),
