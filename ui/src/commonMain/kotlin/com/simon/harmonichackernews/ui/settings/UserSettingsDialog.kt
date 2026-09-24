@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -33,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.unit.dp
@@ -41,6 +44,7 @@ import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import com.simon.harmonichackernews.ui.common.TextButton
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -251,22 +255,29 @@ private fun UserLoadedContent(
         }
 
         if (!ownProfile) {
-            UserTextAction(
-                label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
-                icon = Res.drawable.ic_sell,
-                onClick = onEditTag,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            UserTextAction(
-                label = if (blocked) "Unblock" else "Block",
-                icon = Res.drawable.ic_block,
-                onClick = { onToggleBlocked(user.id) },
-            )
-            UserTextAction(
-                label = "Report (email HN)",
-                icon = Res.drawable.ic_flag,
-                onClick = { onReport(user.id) },
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                UserIconAction(
+                    label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
+                    icon = Res.drawable.ic_sell,
+                    onClick = onEditTag,
+                    modifier = Modifier.weight(1f),
+                )
+                UserIconAction(
+                    label = if (blocked) "Unblock" else "Block",
+                    icon = Res.drawable.ic_block,
+                    onClick = { onToggleBlocked(user.id) },
+                    modifier = Modifier.weight(1f),
+                )
+                UserIconAction(
+                    label = "Report",
+                    icon = Res.drawable.ic_flag,
+                    onClick = { onReport(user.id) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -299,20 +310,30 @@ private fun UserOutlinedAction(
 }
 
 @Composable
-private fun UserTextAction(
+private fun UserIconAction(
     label: String,
     icon: DrawableResource,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SettingsDialogTextButton(onClick = onClick, modifier = modifier) {
-        Icon(painter = painterResource(icon), contentDescription = null)
-        Text(
-            text = label,
-            modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.contentPrimary,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-        )
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 72.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(painter = painterResource(icon), contentDescription = null)
+            Text(
+                text = label,
+                modifier = Modifier.padding(top = 4.dp),
+                color = HarmonicTheme.colors.contentPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
