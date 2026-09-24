@@ -166,12 +166,12 @@ internal fun Modifier.sharedHazeBackground(
                     else ChromaticAberrationMode.Simple,
                 )
                 // Haze 2's Regular optics mix sharp content into compact surfaces (depth < 1).
-                // Keep full diffusion with a 20% lighter size-aware blur and Regular refraction.
+                // Keep full diffusion with lighter compact-surface blur and Regular refraction.
                 if (glass[GlassSwitch.AdaptiveOptics]) {
                     optics(GlassDefaults.optics.copy(
                         depth = OpticalSizeValue.Fixed(1f),
                         blurRadius = OpticalSizeValue.Responsive(
-                            OpticalSizePoint(64.dp, 16.dp),
+                            OpticalSizePoint(64.dp, 12.dp),
                             OpticalSizePoint(176.dp, 19.2.dp),
                             OpticalSizePoint(220.dp, 20.dp),
                         ),

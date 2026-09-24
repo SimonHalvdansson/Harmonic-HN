@@ -236,6 +236,16 @@ private fun MainNavigation(
     val usesTwoPaneStoryScene = isTwoPane &&
         (storyRequest == null || storyParentDestination == MainDestination.STORIES ||
             submissionsInTwoPane)
+    // Keep the full-screen scene mounted until its retained story finishes exiting.
+    // Switching to the adaptive scaffold on pop would discard the surface and back button.
+    var retainSinglePaneStoryScene by remember { mutableStateOf(false) }
+    SideEffect {
+        if (!usesTwoPaneStoryScene && storyRequests.isNotEmpty()) {
+            retainSinglePaneStoryScene = true
+        }
+    }
+    val renderTwoPaneStoryScene = usesTwoPaneStoryScene &&
+        !(retainSinglePaneStoryScene && storyRequests.isEmpty() && !completedPredictivePop)
     val paneStatusBarColor = HarmonicTheme.colors.background
     val commentsController = controller.commentsComposeController
     val targetStatusBarColor = if (storyRequest != null && commentsController != null) {
@@ -495,7 +505,7 @@ private fun MainNavigation(
         ),
         editorPredictiveModifier = editorPredictiveBack.exitModifier,
         base = {
-            if (usesTwoPaneStoryScene) {
+            if (renderTwoPaneStoryScene) {
                 MainNavigationScene(
                     storyRequest = baseStoryRequest,
                     directive = directive,
@@ -525,6 +535,7 @@ private fun MainNavigation(
             } else {
                 SinglePaneNavigationScene(
                     storyRequests = storyRequests,
+                    onStoryLayersEmpty = { retainSinglePaneStoryScene = false },
                     completedPredictivePop = completedPredictivePop,
                     predictiveBackActive = activeBackAnimation != null,
                     showStoriesRoot = storyRequests.isEmpty() ||

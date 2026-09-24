@@ -198,6 +198,7 @@ fun SinglePaneNavigationScene(
     modifier: Modifier = Modifier,
     storiesPredictiveModifier: Modifier = Modifier,
     commentsPredictiveModifier: Modifier = Modifier,
+    onStoryLayersEmpty: () -> Unit = {},
 ) {
     val retainedStories = remember {
         mutableStateListOf<RetainedStoryLayer>().apply {
@@ -210,6 +211,9 @@ fun SinglePaneNavigationScene(
                 )
             }
         }
+    }
+    LaunchedEffect(retainedStories.isEmpty(), storyRequests.isEmpty()) {
+        if (retainedStories.isEmpty() && storyRequests.isEmpty()) onStoryLayersEmpty()
     }
     val requestedStorySerials = storyRequests.mapTo(mutableSetOf()) { it.serial }
     var retainedStoriesRoot by remember { mutableStateOf(showStoriesRoot) }
