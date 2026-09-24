@@ -624,7 +624,7 @@ private fun MainNavigation(
                             onDispose(coordinator::close)
                         }
                         val submissionsContent: @Composable () -> Unit = {
-                            val startInset = animatedExtraPanePadding(isTwoPane && !isFoldable)
+                            val startInset = animatedExtraPanePadding()
                             Box(Modifier.fillMaxSize().padding(start = startInset)) {
                                 AndroidSubmissionsScreen(
                                     userName = coordinator.userName,

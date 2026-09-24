@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -10,6 +12,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
@@ -42,6 +46,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -177,6 +183,20 @@ internal fun SplitPaneViewport(
                     },
             ) {
                 key(orientation) {
+                    var pressed by remember { mutableStateOf(false) }
+                    val active = pressed || dragging
+                    val handleWidth by animateDpAsState(
+                        if (active) 8.dp else 4.dp,
+                        tween(150, easing = FastOutSlowInEasing),
+                    )
+                    val handleHeight by animateDpAsState(
+                        if (active) 42.dp else 32.dp,
+                        tween(150, easing = FastOutSlowInEasing),
+                    )
+                    val handleColor by animateColorAsState(
+                        if (active) HarmonicTheme.colors.accent else HarmonicTheme.colors.textSecondary,
+                        tween(150, easing = FastOutSlowInEasing),
+                    )
                     // The visual grip is small; its 48dp touch target overlaps both sides of the gap.
                     Box(
                         modifier = Modifier
@@ -198,6 +218,20 @@ internal fun SplitPaneViewport(
                                 true
                             }
                             .focusable()
+                            .pointerInput(Unit) {
+                                awaitEachGesture {
+                                    // Observe touch-down before drag slop, without consuming the drag.
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    pressed = true
+                                    try {
+                                        do {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        } while (event.changes.any { it.pressed })
+                                    } finally {
+                                        pressed = false
+                                    }
+                                }
+                            }
                             .draggable(
                                 orientation = Orientation.Horizontal,
                                 reverseDirection = rtl,
@@ -216,8 +250,8 @@ internal fun SplitPaneViewport(
                         contentAlignment = Alignment.Center,
                     ) {
                         Box(
-                            Modifier.size(4.dp, 32.dp)
-                                .background(HarmonicTheme.colors.textSecondary, RoundedCornerShape(2.dp)),
+                            Modifier.size(handleWidth, handleHeight)
+                                .background(handleColor, RoundedCornerShape(percent = 50)),
                         )
                     }
                 }

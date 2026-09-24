@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.ThemeSelection
@@ -32,7 +34,7 @@ fun AndroidAppearanceSettingsScreen(
         labels = AppearanceRouteLabels(
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
             materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-            showExtraSidePadding = LocalConfiguration.current.smallestScreenWidthDp >= 720,
+            showExtraSidePadding = dimensionResource(R.dimen.extra_pane_padding) > 0.dp,
         ),
         showNavigation = showNavigation,
         onBack = onBack,

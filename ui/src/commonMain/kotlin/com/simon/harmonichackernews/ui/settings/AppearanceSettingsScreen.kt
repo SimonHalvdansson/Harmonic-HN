@@ -35,7 +35,7 @@ data class AppearanceSettingsUiState(
     val showSplitRatio: Boolean = false,
     val splitRatio: Float = 0.5f,
     val splitOrientation: SplitOrientation = SplitOrientation.Portrait,
-    val allowSplitAdjustment: Boolean = false,
+    val allowSplitAdjustment: Boolean = true,
     val showExtraSidePadding: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,

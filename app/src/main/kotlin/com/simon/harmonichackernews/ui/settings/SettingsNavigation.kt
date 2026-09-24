@@ -139,7 +139,7 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
-        tabletPaneHorizontalPadding = animatedExtraPanePadding(isTwoPane && !isFoldable),
+        tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,
         onSectionChanged = onSectionChanged,
         modifier = modifier,

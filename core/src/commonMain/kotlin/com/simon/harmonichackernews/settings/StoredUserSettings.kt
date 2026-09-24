@@ -341,7 +341,7 @@ class StoredUserSettings(
                 landscapeSplitRatio = SplitRatioPreferences.sanitize(
                     store.getFloat(UserPreferenceKeys.SPLIT_RATIO_LANDSCAPE, Float.NaN),
                 ),
-                allowSplitAdjustment = boolean(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT, false),
+                allowSplitAdjustment = boolean(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT, true),
                 surfaceEffectMode = SurfaceEffectMode.fromStored(
                     store.getString(SurfaceEffectMode.STORAGE_KEY),
                     defaultSurfaceEffectMode,

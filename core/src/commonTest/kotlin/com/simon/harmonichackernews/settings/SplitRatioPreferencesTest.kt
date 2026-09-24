@@ -9,22 +9,22 @@ import kotlin.test.assertTrue
 
 class SplitRatioPreferencesTest {
     @Test
-    fun splitCustomizationIsOptInAndSurvivesRepositoryRecreation() {
+    fun splitCustomizationDefaultsOnAndPreservesAnExplicitOptOut() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, emptyFlow())
         assertNull(repository.snapshot().appearance.portraitSplitRatio)
-        assertFalse(repository.snapshot().appearance.allowSplitAdjustment)
+        assertTrue(repository.snapshot().appearance.allowSplitAdjustment)
 
         repository.setSplitRatio(SplitOrientation.Portrait, 0.6f)
-        assertFalse(repository.snapshot().appearance.allowSplitAdjustment)
-        repository.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
+        assertTrue(repository.snapshot().appearance.allowSplitAdjustment)
+        repository.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, false)
         val restored = AppSettingsRepository(store, emptyFlow())
         assertEquals(0.6f, restored.snapshot().appearance.portraitSplitRatio)
-        assertTrue(restored.snapshot().appearance.allowSplitAdjustment)
-
-        restored.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, false)
-        assertEquals(0.6f, restored.snapshot().appearance.portraitSplitRatio)
         assertFalse(restored.snapshot().appearance.allowSplitAdjustment)
+
+        restored.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
+        assertEquals(0.6f, restored.snapshot().appearance.portraitSplitRatio)
+        assertTrue(restored.snapshot().appearance.allowSplitAdjustment)
     }
 
     @Test
