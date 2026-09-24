@@ -765,6 +765,7 @@ class AndroidCommentsCoordinator(
     private fun syncCommentsStatusBarProtection() {
         if (!isActive) return
         statusBars.refreshPaneColor()
+        webViewController?.setContainerBackgroundColor(statusBars.paneColor)
         updateCommentsStatusBarAppearance()
     }
 
@@ -847,6 +848,8 @@ class AndroidCommentsCoordinator(
     private fun requestConfiguredWebViewInitialization() = openingWork.requestConfiguredBrowser()
 
     fun onConfigurationChanged(newConfig: Configuration) {
+        webViewController?.updateErrorPageTheme()
+        syncCommentsStatusBarProtection()
         if (isActive) refreshPresentationCapabilities()
     }
 
@@ -903,6 +906,7 @@ class AndroidCommentsCoordinator(
     fun onResume() {
         if (destroyed) return
 
+        webViewController?.updateErrorPageTheme()
         commentsStore.onResume()
         syncCommentsStatusBarProtection()
         syncComposeState()

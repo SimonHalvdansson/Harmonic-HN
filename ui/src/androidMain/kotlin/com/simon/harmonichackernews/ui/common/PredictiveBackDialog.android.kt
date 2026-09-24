@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -61,9 +63,15 @@ internal actual fun PlatformDialogPredictiveBackHandler(
 internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) {
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
     val restingDimAmount = remember(dialogWindow) { dialogWindow.attributes.dimAmount }
+    val darkTheme = HarmonicTheme.isDark
 
     SideEffect {
         dialogWindow.setDimAmount(restingDimAmount * fraction.coerceIn(0f, 1f))
+        // Dialogs own a separate window and do not inherit the activity's live icon appearance.
+        WindowCompat.getInsetsController(dialogWindow, dialogWindow.decorView).apply {
+            isAppearanceLightStatusBars = !darkTheme
+            isAppearanceLightNavigationBars = !darkTheme
+        }
     }
     DisposableEffect(dialogWindow, restingDimAmount) {
         onDispose { dialogWindow.setDimAmount(restingDimAmount) }

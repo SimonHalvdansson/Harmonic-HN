@@ -508,13 +508,14 @@
         return [
             "<style id=\"harmonic-reader-style\">",
             theme.fontFaceCss,
-            "body[data-harmonic-reader='true']{margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;visibility:visible!important;opacity:1!important;}",
-            "#harmonic-reader-mode{box-sizing:border-box;max-width:760px;margin:0 auto;padding:32px 20px 96px!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
-            "#harmonic-reader-mode *{box-sizing:border-box;max-width:100%;}",
+            "html[data-harmonic-reader='true']{width:100%!important;min-width:0!important;overflow-x:hidden!important;}",
+            "body[data-harmonic-reader='true']{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:hidden!important;margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-mode{display:block!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:760px!important;margin:0 auto!important;padding:32px 20px 96px!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-mode *{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;}",
             "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
-            "#harmonic-reader-mode h1{font:700 " + titleFontSize + "px/1.15 " + theme.headingFontFamily + "!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
+            "#harmonic-reader-mode h1{overflow-wrap:anywhere!important;font:700 " + titleFontSize + "px/1.15 " + theme.headingFontFamily + "!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
             "#harmonic-reader-byline{font:500 " + bylineFontSize + "px/1.5 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
-            "#harmonic-reader-article,#harmonic-reader-article section,#harmonic-reader-article div,#harmonic-reader-article figure{background:transparent!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
+            "#harmonic-reader-article,#harmonic-reader-article section,#harmonic-reader-article div,#harmonic-reader-article figure{overflow-wrap:anywhere!important;background:transparent!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-article *{background:transparent!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;color:" + theme.textColor + "!important;}",
             "#harmonic-reader-article span,#harmonic-reader-article strong,#harmonic-reader-article em,#harmonic-reader-article small{color:inherit!important;}",
@@ -534,9 +535,9 @@
             "#harmonic-reader-article figure{margin:1.4em 0!important;}",
             "#harmonic-reader-article figcaption{font:" + captionFontSize + "px/1.45 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin-top:.5em!important;}",
             "#harmonic-reader-article blockquote{border-left:3px solid " + theme.linkColor + "!important;margin:1.3em 0!important;padding:.1em 0 .1em 1em!important;color:" + theme.textColor + "!important;}",
-            "#harmonic-reader-article pre{overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;color:" + theme.textColor + "!important;border-radius:4px!important;padding:14px!important;font-size:" + codeFontSize + "px!important;line-height:1.5!important;}",
+            "#harmonic-reader-article pre{white-space:pre!important;overflow-wrap:normal!important;overflow-x:auto!important;background:" + theme.codeBackgroundColor + "!important;color:" + theme.textColor + "!important;border-radius:4px!important;padding:14px!important;font-size:" + codeFontSize + "px!important;line-height:1.5!important;}",
             "#harmonic-reader-article code,#harmonic-reader-article pre *{font-family:ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace!important;font-size:.9em!important;background:transparent!important;color:" + theme.textColor + "!important;}",
-            "#harmonic-reader-article table{border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;background:transparent!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article table{overflow-wrap:normal!important;border-collapse:collapse!important;display:block!important;overflow-x:auto!important;margin:1.2em 0!important;background:transparent!important;color:" + theme.textColor + "!important;}",
             "#harmonic-reader-article thead,#harmonic-reader-article tbody,#harmonic-reader-article tfoot,#harmonic-reader-article tr{background:transparent!important;color:" + theme.textColor + "!important;}",
             "#harmonic-reader-article th,#harmonic-reader-article td{border:1px solid " + theme.dividerColor + "!important;padding:8px!important;background:transparent!important;color:" + theme.textColor + "!important;}",
             "</style>"
@@ -694,6 +695,7 @@
                     state.bodyNodes.appendChild(document.body.firstChild);
                 }
                 document.body.innerHTML = html;
+                document.documentElement.setAttribute("data-harmonic-reader", "true");
                 restoreAttributes(document.body, {"data-harmonic-reader": "true"});
                 document.title = title || originalTitle;
                 window.scrollTo(0, 0);

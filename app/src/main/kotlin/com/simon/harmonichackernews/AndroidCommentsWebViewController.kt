@@ -213,7 +213,20 @@ internal class AndroidCommentsWebViewController(
             ),
         )
         this.isBlockingAds = blockAds
+        updateErrorPageTheme()
         updateWebViewVisibility()
+    }
+
+    /** Update the already loaded error document; never reload its failed URL or WebView. */
+    fun updateErrorPageTheme() {
+        val currentWebView = webView ?: return
+        if (!isErrorPageUrl(currentWebView.url)) return
+        val context = hostGateway.context ?: return
+        val theme = if (AndroidActivityTheme.isDarkMode(context)) "dark" else "light"
+        currentWebView.evaluateJavascript(
+            "window.HarmonicErrorPage && window.HarmonicErrorPage.setTheme('$theme');",
+            null,
+        )
     }
 
     fun setIntegratedWebview(integratedWebview: Boolean) {
@@ -822,7 +835,11 @@ internal class AndroidCommentsWebViewController(
             finishWebViewLoadUi(currentWebView, webContentLoad.state.generation, false)
             clearWebViewHistoryOnNextFinish = !currentWebView.canGoBack()
             webContentSession.showError(failure)
-            loadUrl(WebContentPagePolicy.errorPageUrl(errorPageType, WEB_CONTENT_URLS))
+            val theme = if (AndroidActivityTheme.isDarkMode(currentWebView.context)) "dark" else "light"
+            // Apply the app theme before first paint, then keep it current through the live hook.
+            val errorUrl = Uri.parse(WebContentPagePolicy.errorPageUrl(errorPageType, WEB_CONTENT_URLS))
+                .buildUpon().appendQueryParameter("theme", theme).build().toString()
+            loadUrl(errorUrl)
         }
         if (failure.tryCachedArticle &&
             loadCachedArticleSnapshot(currentWebView, failure.failedUrl, ::showErrorPage)
@@ -1370,6 +1387,7 @@ internal class AndroidCommentsWebViewController(
             if (!isCurrentWebViewCallback(currentView) || currentView == null || cachedArticleJob?.isActive == true) {
                 return
             }
+            updateErrorPageTheme()
             val finishedGeneration = webContentLoad.state.generation
             lastPageFinishedGeneration = finishedGeneration
             finishWebViewLoadUi(currentView, finishedGeneration, true)

@@ -101,3 +101,57 @@ test('cancelling reader entry before its transition commits retains the original
         })), { original: true, reader: false, clicks: 1, opacity: '1' });
     } finally { await page.close(); }
 });
+
+for (const useReadability of [false, true]) {
+    test(`wide blocks scroll independently without widening the reader (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.setViewportSize({ width: 393, height: 852 });
+            // Author styles remain in the head when the reader replaces the body.
+            await page.addStyleTag({ content: `
+                body { display: grid; grid-template-columns: 1fr; min-width: 900px; }
+                #wide-grid { display: grid; grid-template-columns: 1fr; }
+                #wide-flex { display: flex; }
+                pre { white-space: pre-wrap; }
+            ` });
+            await page.evaluate(() => {
+                const article = document.querySelector('article');
+                article.insertAdjacentHTML('beforeend', `
+                    <section id="wide-grid"><div id="wide-flex"><div>
+                        <pre id="wide-code"><code>${'column_name = value; '.repeat(40)}</code></pre>
+                        <table id="wide-table"><tbody><tr>
+                            ${'<td>unbroken_column_value</td>'.repeat(12)}
+                        </tr></tbody></table>
+                    </div></div></section>`);
+            });
+            await enable(page);
+            for (const width of [393, 320, 852]) {
+                await page.setViewportSize({ width, height: 852 });
+                const dimensions = await page.evaluate(() => {
+                    const root = document.documentElement;
+                    const blocks = ['wide-code', 'wide-table'].map(id => {
+                        const block = document.getElementById(id);
+                        block.scrollLeft = 100;
+                        return { id, width: block.clientWidth, content: block.scrollWidth, left: block.scrollLeft };
+                    });
+                    window.scrollTo(100, 0);
+                    return {
+                        width: root.clientWidth, content: root.scrollWidth, left: window.scrollX,
+                        articleWidth: document.getElementById('harmonic-reader-article').getBoundingClientRect().width,
+                        blocks,
+                    };
+                });
+                assert.ok(dimensions.content <= dimensions.width, JSON.stringify(dimensions));
+                assert.equal(dimensions.left, 0);
+                assert.ok(dimensions.articleWidth <= width - 40, JSON.stringify(dimensions));
+                for (const block of dimensions.blocks) {
+                    assert.ok(block.content > block.width, `${block.id} should retain wide content`);
+                    assert.ok(block.left > 0, `${block.id} should scroll independently`);
+                }
+            }
+            await disable(page);
+            assert.equal(await page.locator('html').getAttribute('data-harmonic-reader'), null);
+            assert.equal(await page.evaluate(() => getComputedStyle(document.body).display), 'grid');
+        } finally { await page.close(); }
+    });
+}

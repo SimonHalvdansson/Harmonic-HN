@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -397,7 +398,7 @@ private fun StoryThemePreview(
             ) {
                 Button(
                     onClick = {},
-                    modifier = Modifier.height(40.dp),
+                    modifier = Modifier.heightIn(min = 40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = preview.colors.overlayButton,
                         contentColor = preview.colors.overlayButtonContent,

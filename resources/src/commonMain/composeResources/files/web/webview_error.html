@@ -17,11 +17,28 @@
           font-style: normal;
           font-weight: 700;
         }
+        :root {
+          color-scheme: light;
+          --page-background: #f5f5f5;
+          --page-foreground: #333;
+        }
+        :root[data-theme="dark"] {
+          color-scheme: dark;
+          --page-background: #121212;
+          --page-foreground: #e6e6e6;
+        }
+        @media (prefers-color-scheme: dark) {
+          :root:not([data-theme]) {
+            color-scheme: dark;
+            --page-background: #121212;
+            --page-foreground: #e6e6e6;
+          }
+        }
         body {
           margin: 0;
           font-family: 'Product Sans', sans-serif;
-          background: #f5f5f5;
-          color: #333;
+          background: var(--page-background);
+          color: var(--page-foreground);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -56,6 +73,18 @@
     </style>
     <script>
         (function() {
+          // Hosts can follow the app theme, independently of the browser's system theme.
+          // Changing the attribute updates every error variant without replacing the document.
+          window.HarmonicErrorPage = {
+            setTheme: function(theme) {
+              if (theme === "light" || theme === "dark") {
+                document.documentElement.setAttribute("data-theme", theme);
+              } else {
+                document.documentElement.removeAttribute("data-theme");
+              }
+            }
+          };
+          HarmonicErrorPage.setTheme(new URLSearchParams(window.location.search).get("theme"));
           var type = window.location.hash.replace("#", "");
           if (type !== "dns" && type !== "ssl" && type !== "generic") {
             type = "offline";
@@ -76,22 +105,22 @@
 <body>
 <div class="container">
     <section id="dns" class="error-page">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="currentColor"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
         <h1>Site address not found</h1>
         <p>Harmonic couldn't find this site's address. Check the domain name, your DNS settings, or try again later.</p>
     </section>
     <section id="offline" class="error-page">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="currentColor"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
         <h1>You're offline</h1>
         <p>Harmonic couldn't load the page. Check your internet connection.</p>
     </section>
     <section id="ssl" class="error-page">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 153-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Z"/></svg>
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="currentColor"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 153-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Z"/></svg>
         <h1>Security error</h1>
         <p>Harmonic couldn't establish a secure connection to this site.</p>
     </section>
     <section id="generic" class="error-page">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#333"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="currentColor"><path d="M792-56 686-160H260q-92 0-156-64T40-380q0-77 47.5-137T210-594q3-8 6-15.5t6-16.5L56-792l56-56 736 736-56 56ZM260-240h346L284-562q-2 11-3 21t-1 21h-20q-58 0-99 41t-41 99q0 58 41 99t99 41Zm185-161Zm419 191-58-56q17-14 25.5-32.5T840-340q0-42-29-71t-71-29h-60v-80q0-83-58.5-141.5T480-720q-27 0-52 6.5T380-693l-58-58q35-24 74.5-36.5T480-800q117 0 198.5 81.5T760-520q69 8 114.5 59.5T920-340q0 39-15 72.5T864-210ZM593-479Z"/></svg>
         <h1>Page unavailable</h1>
         <p>Harmonic couldn't load this page. Try again later.</p>
     </section>
