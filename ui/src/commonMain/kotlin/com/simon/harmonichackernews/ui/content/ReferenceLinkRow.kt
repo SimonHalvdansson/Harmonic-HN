@@ -154,7 +154,7 @@ internal fun ReferenceLinkRow(
                                     ),
                                 color = colors.mutedText,
                                 fontFamily = typography.family,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 fontSize = titleSize.sp,
                                 lineHeight = titleLineHeight.sp,
                             )
