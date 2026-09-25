@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.network
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
@@ -24,31 +27,36 @@ interface HackerNewsApi {
 class KtorHackerNewsApi(
     private val client: suspend () -> HttpClient,
     private val json: Json = Json { ignoreUnknownKeys = true },
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : HackerNewsApi {
-    constructor(client: HttpClient, json: Json = Json { ignoreUnknownKeys = true }) :
-        this({ client }, json)
-    override suspend fun getItem(id: Int): HackerNewsItemDto? {
+    constructor(
+        client: HttpClient,
+        json: Json = Json { ignoreUnknownKeys = true },
+        requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    ) : this({ client }, json, requestDispatcher)
+    override suspend fun getItem(id: Int): HackerNewsItemDto? = withContext(requestDispatcher) {
         require(id > 0) { "A positive Hacker News item ID is required" }
         val body = client().getTextOrThrow("$API_BASE/item/$id.json")
-        if (body.isBlank() || body.trim() == "null") return null
-        return decode(body)
+        if (body.isBlank() || body.trim() == "null") return@withContext null
+        return@withContext decode(body)
     }
 
-    override suspend fun getUser(username: String): HackerNewsUserDto? {
+    override suspend fun getUser(username: String): HackerNewsUserDto? = withContext(requestDispatcher) {
         val normalized = username.trim()
         require(normalized.isNotEmpty()) { "A Hacker News username is required" }
         val url = URLBuilder(API_BASE)
             .appendPathSegments("user", "$normalized.json")
             .buildString()
         val body = client().getTextOrThrow(url)
-        if (body.isBlank() || body.trim() == "null") return null
-        return decode(body)
+        if (body.isBlank() || body.trim() == "null") return@withContext null
+        return@withContext decode(body)
     }
 
-    override suspend fun getMaxItemId(): Int =
+    override suspend fun getMaxItemId(): Int = withContext(requestDispatcher) {
         client().getTextOrThrow("$API_BASE/maxitem.json").trim().toIntOrNull() ?: 0
+    }
 
-    override suspend fun getStoryIds(type: StoryType): List<Int> {
+    override suspend fun getStoryIds(type: StoryType): List<Int> = withContext(requestDispatcher) {
         val path = when (type) {
             StoryType.TOP_STORIES -> "top"
             StoryType.NEW_STORIES -> "new"
@@ -58,7 +66,7 @@ class KtorHackerNewsApi(
             StoryType.HN_JOBS -> "job"
             else -> throw IllegalArgumentException("$type has no official HN story-list endpoint")
         }
-        return decode(client().getTextOrThrow("$API_BASE/${path}stories.json"))
+        return@withContext decode(client().getTextOrThrow("$API_BASE/${path}stories.json"))
     }
 
     private inline fun <reified T> decode(body: String): T = try {
@@ -89,10 +97,13 @@ interface HackerNewsRepository {
     suspend fun getStoryIds(type: StoryType): List<Int>
 }
 
-class DefaultHackerNewsRepository(private val api: HackerNewsApi) : HackerNewsRepository {
-    override suspend fun getStory(id: Int): Story? = api.getItem(id)?.toStory()
+class DefaultHackerNewsRepository(
+    private val api: HackerNewsApi,
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+) : HackerNewsRepository {
+    override suspend fun getStory(id: Int): Story? = withContext(requestDispatcher) { api.getItem(id)?.toStory() }
 
-    override suspend fun getComment(id: Int): Comment? = api.getItem(id)?.toComment()
+    override suspend fun getComment(id: Int): Comment? = withContext(requestDispatcher) { api.getItem(id)?.toComment() }
 
     override suspend fun getStoryIds(type: StoryType): List<Int> = api.getStoryIds(type)
 }

@@ -4,11 +4,41 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.delay
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class CommentThreadRepositoryOrderingTest {
+    @Test
+    fun officialForestBoundsRequestsAndRetainsDepthFirstOrder() = runTest {
+        var active = 0
+        var peak = 0
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also {
+                it.id = id
+                it.kids = IntArray(16) { it + 1 }
+            }
+            override suspend fun getComment(id: Int): Comment {
+                active++
+                peak = maxOf(peak, active)
+                try { delay(if (id % 2 == 0) 150 else 50) } finally { active-- }
+                return Comment().also {
+                    it.id = id
+                    it.by = "author"
+                    it.kidsIds = if (id < 100) intArrayOf(id + 100) else intArrayOf()
+                }
+            }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
+        }
+        val result = assertIs<CommentThreadLoadResult.Official>(
+            OfficialCommentThreadLoader(repository).load(42, emptySet(), false),
+        )
+        assertEquals(8, peak)
+        assertEquals((1..16).flatMap { listOf(it, it + 100) }, result.comments.map { it.id })
+        assertEquals((1..16).flatMap { listOf(0, 1) }, result.comments.map { it.depth })
+    }
+
     @Test
     fun seedlessAlgoliaLoadUsesOfficialTopLevelOrder() = runTest {
         val algolia = object : AlgoliaRepository {

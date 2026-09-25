@@ -78,7 +78,7 @@ class StoryFeedRepositoryTest {
         dispatcher: CoroutineDispatcher,
     ) = StoryFeedRepository(
         hackerNewsRepository = hn,
-        webRepository = KtorHackerNewsWebRepository { error("Unexpected web request") },
+        webRepository = KtorHackerNewsWebRepository(client = { error("Unexpected web request") }),
         unslopRepository = UnslopRepository { error("Unexpected RSS request") },
         requestDispatcher = dispatcher,
     )

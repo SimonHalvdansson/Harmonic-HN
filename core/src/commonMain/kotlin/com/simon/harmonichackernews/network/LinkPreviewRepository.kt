@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.network
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.data.ArxivInfo
 import com.simon.harmonichackernews.data.GitLabInfo
 import com.simon.harmonichackernews.data.HuggingFaceModelInfo
@@ -29,16 +32,19 @@ interface LinkPreviewRepository {
 
 class KtorLinkPreviewRepository(
     private val client: suspend () -> HttpClient,
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : LinkPreviewRepository {
-    constructor(client: HttpClient) : this({ client })
-    override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData =
+    constructor(client: HttpClient, requestDispatcher: CoroutineDispatcher = Dispatchers.Default) :
+        this({ client }, requestDispatcher)
+    override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData = withContext(requestDispatcher) {
         LinkPreviewProviders.load(client(), type, url)
+    }
 
-    override suspend fun getArchiveUrl(url: String): String {
+    override suspend fun getArchiveUrl(url: String): String = withContext(requestDispatcher) {
         val endpoint = URLBuilder("https://archive.org/wayback/available").apply {
             parameters.append("url", url)
         }.buildString()
-        return LinkPreviewParsers.parseArchiveUrl(client().getTextOrThrow(endpoint))
+        return@withContext LinkPreviewParsers.parseArchiveUrl(client().getTextOrThrow(endpoint))
             ?: throw LinkPreviewException("No saved copy on archive.org found")
     }
 }

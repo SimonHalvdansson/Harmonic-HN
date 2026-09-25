@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 import io.ktor.client.plugins.cookies.CookiesStorage
@@ -18,12 +20,16 @@ import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.cancel
 import kotlinx.io.readByteArray
 
-/** Common transport policy; each platform supplies only its Ktor engine and optional storage. */
+/** Common transport policy; takes ownership of a fresh platform engine and optional storage. */
 fun createHarmonicHttpClient(
     engine: HttpClientEngine,
     userAgent: String,
     configure: HttpClientConfig<*>.() -> Unit = {},
-): HttpClient = HttpClient(engine) {
+): HttpClient = HttpClient(object : HttpClientEngineFactory<HttpClientEngineConfig> {
+    // HttpClient(engine) leaves engine ownership with the caller. Use the managed factory
+    // overload so closing/resetting a client also releases its engine (including config copies).
+    override fun create(block: HttpClientEngineConfig.() -> Unit): HttpClientEngine = engine
+}) {
     expectSuccess = false
     followRedirects = true
     install(HttpTimeout) {

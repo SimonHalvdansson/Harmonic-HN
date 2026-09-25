@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.network
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.dto.AlgoliaSearchResponseDto
 import com.simon.harmonichackernews.network.dto.toStory
@@ -42,15 +45,19 @@ interface AlgoliaRepository {
 class KtorAlgoliaRepository(
     private val client: suspend () -> HttpClient,
     private val json: Json = Json { ignoreUnknownKeys = true },
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : AlgoliaRepository {
-    constructor(client: HttpClient, json: Json = Json { ignoreUnknownKeys = true }) :
-        this({ client }, json)
+    constructor(
+        client: HttpClient,
+        json: Json = Json { ignoreUnknownKeys = true },
+        requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    ) : this({ client }, json, requestDispatcher)
     override suspend fun getSubmissions(
         userName: String,
         pageSize: Int,
         type: AlgoliaSubmissionType,
         cursor: AlgoliaSubmissionsCursor,
-    ): AlgoliaSubmissionsPage {
+    ): AlgoliaSubmissionsPage = withContext(requestDispatcher) {
         require(userName.isNotBlank()) { "A username is required" }
         require(pageSize in 0..1000) { "Page size must be between 0 and 1000" }
         require(cursor.page >= 0) { "Page must not be negative" }
@@ -68,7 +75,7 @@ class KtorAlgoliaRepository(
             }
         }.buildString()
         val response = searchResponse(url)
-        return AlgoliaSubmissionsPage(
+        return@withContext AlgoliaSubmissionsPage(
             items = response.hits.mapNotNull { it.toStory() },
             nextCursor = nextSubmissionsCursor(response, pageSize, cursor),
             // Date-window counts describe the remaining history, not the user's total.
@@ -105,8 +112,9 @@ class KtorAlgoliaRepository(
         return AlgoliaSubmissionsCursor(throughEpochSeconds = oldest)
     }
 
-    override suspend fun search(url: String): List<Story> =
+    override suspend fun search(url: String): List<Story> = withContext(requestDispatcher) {
         searchResponse(url).hits.mapNotNull { it.toStory() }
+    }
 
     private suspend fun searchResponse(url: String): AlgoliaSearchResponseDto {
         val body = client().getTextOrThrow(url)
@@ -119,7 +127,11 @@ class KtorAlgoliaRepository(
         }
     }
 
-    override suspend fun getItemJson(id: Int): String {
+    override suspend fun getItemJson(id: Int): String = withContext(requestDispatcher) {
+        requestItemJson(id)
+    }
+
+    private suspend fun requestItemJson(id: Int): String {
         require(id > 0) { "A positive Hacker News item ID is required" }
         val url = "$ALGOLIA_API/items/$id"
         var attempt = 0

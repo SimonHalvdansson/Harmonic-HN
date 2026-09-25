@@ -217,11 +217,12 @@ class KtorHttpClient(
      */
     suspend fun <T> executeStreaming(
         request: HttpRequest,
+        requestTimeoutMillis: Long = HttpTimeoutConfig.INFINITE_TIMEOUT_MS,
         block: suspend (HttpResponse) -> T,
     ): T = client().prepareRequest(request.url.toString()) {
         method = request.method
         timeout {
-            requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+            this.requestTimeoutMillis = requestTimeoutMillis
             socketTimeoutMillis = readTimeoutMillis
             connectTimeoutMillis = minOf(readTimeoutMillis, DEFAULT_CONNECT_TIMEOUT_MILLIS)
         }

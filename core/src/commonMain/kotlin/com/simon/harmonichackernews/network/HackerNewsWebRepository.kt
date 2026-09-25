@@ -7,6 +7,10 @@ import com.simon.harmonichackernews.utils.HackerNewsLinks
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
 data class HackerNewsListPage(
@@ -34,51 +38,55 @@ interface HackerNewsWebRepository {
 
 class KtorHackerNewsWebRepository(
     private val client: suspend () -> HttpClient,
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : HackerNewsWebRepository {
-    constructor(client: HttpClient) : this({ client })
+    constructor(client: HttpClient, requestDispatcher: CoroutineDispatcher = Dispatchers.Default) :
+        this({ client }, requestDispatcher)
     override suspend fun getStoryList(
         path: String,
         commentsPage: Boolean,
         day: String?,
-    ): HackerNewsListPage {
+    ): HackerNewsListPage = withContext(requestDispatcher) {
         require(path.isNotBlank()) { "A Hacker News path is required" }
         val url = URLBuilder(HackerNewsLinks.BASE_URL).apply {
             appendPathSegments(path)
             if (!day.isNullOrEmpty()) parameters.append("day", day)
         }.buildString()
-        return getStoryListPage(url, commentsPage)
+        getStoryListPage(url, commentsPage)
     }
 
     override suspend fun getStoryListPage(
         url: String,
         commentsPage: Boolean,
-    ): HackerNewsListPage = HackerNewsWebParser.parseStoryListPage(
-        client().getTextOrThrow(url),
-        commentsPage,
-    )
+    ): HackerNewsListPage = withContext(requestDispatcher) {
+        HackerNewsWebParser.parseStoryListPage(client().getTextOrThrow(url), commentsPage)
+    }
 
-    override suspend fun getListDirectory(): List<Story> =
+    override suspend fun getListDirectory(): List<Story> = withContext(requestDispatcher) {
         HackerNewsWebParser.parseListDirectory(
             client().getTextOrThrow(HackerNewsLinks.absolutePath("lists")),
         )
+    }
 
-    override suspend fun getUserItems(path: String, username: String): HackerNewsUserItems {
+    override suspend fun getUserItems(path: String, username: String): HackerNewsUserItems = withContext(requestDispatcher) {
         require(path.isNotBlank()) { "A Hacker News user-list path is required" }
         require(username.isNotBlank()) { "A Hacker News username is required" }
-        val itemIds = linkedSetOf<Int>()
-        val commentIds = linkedSetOf<Int>()
-        loadUserPages(path, username, comments = false, itemIds, commentIds)
-        loadUserPages(path, username, comments = true, itemIds, commentIds)
-        return HackerNewsUserItems(itemIds.toList(), commentIds.toList())
+        // Each pagination chain is sequential, but story and comment pages are independent.
+        val stories = async { loadUserPages(path, username, comments = false) }
+        val comments = async { loadUserPages(path, username, comments = true) }
+        HackerNewsUserItems(
+            itemIds = (stories.await().itemIds + comments.await().itemIds).distinct(),
+            commentIds = comments.await().commentIds,
+        )
     }
 
     private suspend fun loadUserPages(
         path: String,
         username: String,
         comments: Boolean,
-        itemIds: MutableSet<Int>,
-        commentIds: MutableSet<Int>,
-    ) {
+    ): HackerNewsUserItems {
+        val itemIds = linkedSetOf<Int>()
+        val commentIds = linkedSetOf<Int>()
         var nextUrl: String? = userItemsUrl(path, username, comments)
         var page = 0
         while (!nextUrl.isNullOrEmpty() && page < MAX_USER_ITEM_LIST_PAGES) {
@@ -91,6 +99,7 @@ class KtorHackerNewsWebRepository(
             if (comments) commentIds += parsed.commentIds
             nextUrl = parsed.nextPageUrl
         }
+        return HackerNewsUserItems(itemIds.toList(), commentIds.toList())
     }
 
     private fun userItemsUrl(path: String, username: String, comments: Boolean): String =

@@ -2,8 +2,12 @@ package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -42,12 +46,13 @@ interface CloudSummaryRepository {
 class KtorCloudSummaryRepository(
     private val client: KtorHttpClient,
     private val articleUserAgent: String,
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : CloudSummaryRepository {
-    override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> {
+    override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = withContext(requestDispatcher) {
         val requestBuilder = HttpRequest.Builder().url(joinUrl(baseUrl, "models"))
         if (apiKey.isNotBlank()) requestBuilder.header("Authorization", "Bearer $apiKey")
         val response = client.execute(requestBuilder.get().build())
-        return try {
+        try {
             val body = response.body.readText(MAX_MODEL_CATALOG_BYTES)
             if (!response.isSuccessful) throw CloudSummaryException(
                 "Could not load models (HTTP ${response.code})",
@@ -63,14 +68,14 @@ class KtorCloudSummaryRepository(
         }
     }
 
-    override suspend fun extractMainContent(url: String): String {
+    override suspend fun extractMainContent(url: String): String = withContext(requestDispatcher) {
         val request = HttpRequest.Builder()
             .url(url)
             .header("User-Agent", articleUserAgent)
             .get()
             .build()
         val response = client.newBuilder().readTimeoutMillis(10_000).build().execute(request)
-        return try {
+        try {
             if (!response.isSuccessful) {
                 throw CloudSummaryException("Article returned HTTP ${response.code}")
             }
@@ -83,7 +88,7 @@ class KtorCloudSummaryRepository(
     override fun summarize(
         config: CloudSummaryConfig,
         text: String?,
-    ): Flow<CloudSummaryEvent> = flow {
+    ): Flow<CloudSummaryEvent> = channelFlow {
         if (config.apiKey.isBlank()) throw CloudSummaryException("API Key missing")
         val model = AiSummaryProviders.getModelForRequest(config.baseUrl, config.model)
         if (model.isBlank()) {
@@ -91,7 +96,7 @@ class KtorCloudSummaryRepository(
                 "Model missing. Open AI summarization settings and choose a model.",
             )
         }
-        emit(CloudSummaryEvent.DebugInfo("$model · load —"))
+        send(CloudSummaryEvent.DebugInfo("$model · load —"))
 
         val anthropic = AiSummaryProviders.isAnthropicBaseUrl(config.baseUrl)
         val payload = buildPayload(
@@ -119,25 +124,31 @@ class KtorCloudSummaryRepository(
                 "application/json; charset=utf-8".toHttpMediaType(),
             ),
         ).build()
-        val response = client.newBuilder().readTimeoutMillis(120_000).build().execute(request)
         try {
-            if (!response.isSuccessful) {
-                val errorBody = response.body.readText(MAX_ERROR_BODY_BYTES)
-                throw CloudSummaryException(
-                    "API error: ${apiErrorMessage(errorBody, response.message)}",
-                )
-            }
-            if (config.streamResponses) {
-                readStream(response.body, anthropic) { summary ->
-                    emit(CloudSummaryEvent.Progress(summary))
-                }.also { emit(CloudSummaryEvent.Success(it)) }
-            } else {
-                val summary = parseNonStreamingResponse(
-                    response.body.readText(MAX_SUMMARY_RESPONSE_BYTES),
-                    anthropic,
-                )
-                if (summary.isBlank()) throw CloudSummaryException("API response error")
-                emit(CloudSummaryEvent.Success(summary))
+            // Keep the response open while consuming events. Buffered execute() waits for EOF
+            // before exposing the first token. A finite deadline still bounds provider requests.
+            client.newBuilder().readTimeoutMillis(120_000).build().executeStreaming(
+                request,
+                requestTimeoutMillis = 120_000,
+            ) { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body.readText(MAX_ERROR_BODY_BYTES)
+                    throw CloudSummaryException(
+                        "API error: ${apiErrorMessage(errorBody, response.message)}",
+                    )
+                }
+                if (config.streamResponses) {
+                    readStream(response.body, anthropic) { summary ->
+                        send(CloudSummaryEvent.Progress(summary))
+                    }.also { send(CloudSummaryEvent.Success(it)) }
+                } else {
+                    val summary = parseNonStreamingResponse(
+                        response.body.readText(MAX_SUMMARY_RESPONSE_BYTES),
+                        anthropic,
+                    )
+                    if (summary.isBlank()) throw CloudSummaryException("API response error")
+                    send(CloudSummaryEvent.Success(summary))
+                }
             }
         } catch (error: CancellationException) {
             throw error
@@ -145,10 +156,8 @@ class KtorCloudSummaryRepository(
             throw error
         } catch (error: Throwable) {
             throw CloudSummaryException("API error: ${error.readableMessage()}", error)
-        } finally {
-            response.close()
         }
-    }
+    }.flowOn(requestDispatcher)
 
     private suspend fun readStream(
         body: HttpResponseBody,

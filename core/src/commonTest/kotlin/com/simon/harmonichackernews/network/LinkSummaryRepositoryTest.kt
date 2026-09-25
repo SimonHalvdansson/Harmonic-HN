@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -293,9 +294,12 @@ class LinkSummaryRepositoryTest {
     ): HttpClient = HttpClient(MockEngine.create {
         this.dispatcher = dispatcher
         addHandler {
-            respond(responseBody, status = status, headers = headersOf(HttpHeaders.ContentType, contentType))
+            respond(responseBody, status = status, headers = headersOf(
+                HttpHeaders.ContentType to listOf(contentType),
+                HttpHeaders.CacheControl to listOf("public, max-age=3600"),
+            ))
         }
-    })
+    }) { install(HttpCache) }
 
     private class RecordingDispatcher(
         private val delegate: CoroutineDispatcher,

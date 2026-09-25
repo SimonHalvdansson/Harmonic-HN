@@ -6,6 +6,8 @@ import com.simon.harmonichackernews.data.Story
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
@@ -125,6 +127,9 @@ class CommentThreadRepository(
 class OfficialCommentThreadLoader(
     private val hackerNewsRepository: HackerNewsRepository,
 ) {
+    // Share the limit across branches and simultaneous loads; release each permit before
+    // descending so a wide tree cannot flood the transport or deadlock waiting for children.
+    private val requests = Semaphore(8)
     suspend fun load(
         storyId: Int,
         filteredUsers: Set<String>,
@@ -167,7 +172,7 @@ class OfficialCommentThreadLoader(
         filteredUsers: Set<String>,
     ): List<Comment> {
         val comment = try {
-            hackerNewsRepository.getComment(commentId)
+            requests.withPermit { hackerNewsRepository.getComment(commentId) }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {

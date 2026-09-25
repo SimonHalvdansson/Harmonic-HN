@@ -180,7 +180,12 @@ class KtorLinkSummaryRepository(
         }
 
     private suspend fun fetchText(url: String, accept: String): FetchedText =
-        client().prepareGet(url) { header(HttpHeaders.Accept, accept) }.execute { response ->
+        client().prepareGet(url) {
+            header(HttpHeaders.Accept, accept)
+            // These reads intentionally stop at headers or a metadata prefix. HttpCache would
+            // buffer the entire response first; preview results have their own persistent cache.
+            header(HttpHeaders.CacheControl, "no-store")
+        }.execute { response ->
             val channel = response.bodyAsChannel()
             try {
                 if (response.status.value !in 200..299) {

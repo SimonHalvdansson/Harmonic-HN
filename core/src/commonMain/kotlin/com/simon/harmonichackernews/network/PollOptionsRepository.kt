@@ -3,7 +3,10 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.data.PollOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 interface PollOptionsLoader {
     suspend fun findOptionIds(storyId: Int): IntArray
@@ -22,24 +25,32 @@ class PollOptionsRepository(
         PollOption().apply { id = optionId }
     }
 
-    override fun loadOptions(optionIds: IntArray): Flow<PollOption> = flow {
+    override fun loadOptions(optionIds: IntArray): Flow<PollOption> = channelFlow {
+        val requests = Semaphore(4)
         for (optionId in optionIds) {
-            val option = PollOption().apply { id = optionId }
-            try {
-                val item = api.getItem(optionId)
-                val normalizedText = JSONParser.preprocessHtml(item?.text)
-                if (item == null || normalizedText.isNullOrBlank()) {
-                    throw IllegalStateException("Poll option response was invalid")
-                }
-                option.points = item.score
-                option.text = normalizedText
-                option.loaded = true
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Throwable) {
-                option.loadFailed = true
+            launch {
+                val option = requests.withPermit { loadOption(optionId) }
+                send(option)
             }
-            emit(option)
         }
+    }
+
+    private suspend fun loadOption(optionId: Int): PollOption {
+        val option = PollOption().apply { id = optionId }
+        try {
+            val item = api.getItem(optionId)
+            val normalizedText = JSONParser.preprocessHtml(item?.text)
+            if (item == null || normalizedText.isNullOrBlank()) {
+                throw IllegalStateException("Poll option response was invalid")
+            }
+            option.points = item.score
+            option.text = normalizedText
+            option.loaded = true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            option.loadFailed = true
+        }
+        return option
     }
 }

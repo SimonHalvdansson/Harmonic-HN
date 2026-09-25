@@ -1,5 +1,9 @@
 package com.simon.harmonichackernews.network
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
@@ -80,6 +84,7 @@ interface AiModelCatalogRepository {
 
 class KtorAiModelCatalogRepository(
     private val client: KtorHttpClient,
+    private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : AiModelCatalogRepository {
     private val cache = mutableMapOf<String, List<AiModel>>()
     private val uptimeCache = mutableMapOf<String, Double?>()
@@ -88,9 +93,9 @@ class KtorAiModelCatalogRepository(
     override suspend fun fetchModels(
         provider: AiSummaryProviders.Provider,
         sort: AiModelCatalogSort,
-    ): List<AiModel> {
+    ): List<AiModel> = withContext(requestDispatcher) {
         val cacheKey = "${provider.id}:${sort.apiValue}"
-        cacheMutex.withLock { cache[cacheKey] }?.let { return it }
+        cacheMutex.withLock { cache[cacheKey] }?.let { return@withContext it }
 
         val url = MODELS_URL.toNetworkUrl().newBuilder()
             .addQueryParameter("output_modalities", "text")
@@ -113,13 +118,13 @@ class KtorAiModelCatalogRepository(
             throw AiModelCatalogException("No compatible text models found")
         }
         cacheMutex.withLock { cache[cacheKey] = models }
-        return models
+        return@withContext models
     }
 
     override suspend fun resolveModel(
         provider: AiSummaryProviders.Provider,
         enteredModelId: String?,
-    ): AiModel {
+    ): AiModel = withContext(requestDispatcher) {
         val openRouterId = AiSummaryProviders.toOpenRouterModelId(provider, enteredModelId)
         if (
             provider.catalogAuthor != null &&
@@ -128,7 +133,7 @@ class KtorAiModelCatalogRepository(
         ) {
             throw AiModelCatalogException("That OpenRouter ID belongs to a different provider")
         }
-        findCachedModel(openRouterId)?.let { return it }
+        findCachedModel(openRouterId)?.let { return@withContext it }
 
         val author = openRouterId.substringBefore('/', "")
         val modelName = openRouterId.substringAfter('/', "")
@@ -142,7 +147,7 @@ class KtorAiModelCatalogRepository(
         val body = requestBody(HttpRequest.Builder().url(url).get().build()) { code ->
             if (code == 404) "Price not found on OpenRouter" else "Price unavailable (HTTP $code)"
         }
-        return runCatching {
+        return@withContext runCatching {
             val data = json.parseToJsonElement(body).jsonObject["data"]?.jsonObject
                 ?: throw IllegalArgumentException("Missing price data")
             parseModel(data, provider)
@@ -152,15 +157,15 @@ class KtorAiModelCatalogRepository(
     override suspend fun fetchUptimeLastDay(
         provider: AiSummaryProviders.Provider,
         openRouterModelId: String,
-    ): Double? {
+    ): Double? = withContext(requestDispatcher) {
         val cacheKey = "${provider.id}:$openRouterModelId"
         cacheMutex.withLock {
-            if (uptimeCache.containsKey(cacheKey)) return uptimeCache[cacheKey]
+            if (uptimeCache.containsKey(cacheKey)) return@withContext uptimeCache[cacheKey]
         }
 
         val author = openRouterModelId.substringBefore('/', "")
         val modelName = openRouterModelId.substringAfter('/', "")
-        if (author.isEmpty() || modelName.isEmpty()) return null
+        if (author.isEmpty() || modelName.isEmpty()) return@withContext null
 
         val url = MODELS_URL.toNetworkUrl().newBuilder()
             .addPathSegment(author)
@@ -193,7 +198,7 @@ class KtorAiModelCatalogRepository(
         }.getOrElse { throw AiModelCatalogException("Uptime data could not be read", it) }
 
         cacheMutex.withLock { uptimeCache[cacheKey] = uptime }
-        return uptime
+        return@withContext uptime
     }
 
     private suspend fun requestBody(
@@ -202,6 +207,8 @@ class KtorAiModelCatalogRepository(
     ): String {
         val response = try {
             client.execute(request)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             throw AiModelCatalogException(
                 error.message?.trim()?.takeIf(String::isNotEmpty)?.let {

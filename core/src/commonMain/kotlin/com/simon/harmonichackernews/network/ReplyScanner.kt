@@ -2,6 +2,10 @@ package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlin.math.max
 import kotlin.time.Clock
 
@@ -63,39 +67,73 @@ class DefaultReplyScanner(
             ?: return ReplyScanResult(emptyList(), previousLastSeenItemId, userFound = false)
         if (user.submitted.isEmpty()) return ReplyScanResult(emptyList(), currentMaxItemId)
 
-        val replies = mutableListOf<HackerNewsReply>()
-        var highestProcessedReplyId = previousLastSeenItemId
-        for (parentId in user.submitted.take(maxSubmissionsPerCheck)) {
-            if (parentId <= 0) continue
-            val parent = api.getItem(parentId) ?: continue
-            if (isOlderThanReplyWindow(parent.time)) break
-            parent.kids.forEach { kidId ->
-                if (kidId <= previousLastSeenItemId) return@forEach
-                highestProcessedReplyId = max(highestProcessedReplyId, kidId)
-                parseReply(api.getItem(kidId), normalized, parentId)?.let(replies::add)
-            }
-        }
+        val scanned = loadRecentReplies(normalized, user.submitted, previousLastSeenItemId)
         return ReplyScanResult(
-            replies = replies,
-            lastSeenItemId = max(currentMaxItemId, highestProcessedReplyId),
+            replies = scanned.replies,
+            lastSeenItemId = max(currentMaxItemId, scanned.highestProcessedId),
         )
     }
 
     override suspend fun findLatestReply(username: String): LatestReplyResult {
         val normalized = normalizeUsername(username)
         val user = api.getUser(normalized) ?: return LatestReplyResult(null, false)
-        var latest: HackerNewsReply? = null
-        for (parentId in user.submitted.take(maxSubmissionsPerCheck)) {
-            if (parentId <= 0) continue
-            val parent = api.getItem(parentId) ?: continue
-            if (isOlderThanReplyWindow(parent.time)) break
-            parent.kids.forEach { kidId ->
-                if (kidId <= 0) return@forEach
-                val reply = parseReply(api.getItem(kidId), normalized, parentId)
-                if (reply != null && (latest?.id ?: Int.MIN_VALUE) < reply.id) latest = reply
+        val scanned = loadRecentReplies(normalized, user.submitted, minimumId = 0)
+        return LatestReplyResult(scanned.replies.maxByOrNull { it.id }, true)
+    }
+
+    private data class ScannedReplies(val replies: List<HackerNewsReply>, val highestProcessedId: Int)
+
+    private suspend fun loadRecentReplies(
+        username: String,
+        submitted: List<Int>,
+        minimumId: Int,
+    ): ScannedReplies = coroutineScope {
+        val replies = mutableListOf<HackerNewsReply>()
+        var highestProcessedId = minimumId
+        // Only prefetch a small batch: older submissions terminate the scan. Await in source
+        // order so concurrency cannot change the age cutoff, reply order, or checkpoint.
+        for (parentIds in submitted.take(maxSubmissionsPerCheck).filter { it > 0 }.chunked(MAX_REQUESTS)) {
+            val recent = loadRecentParents(parentIds)
+            val children = recent.flatMap { (parentId, parent) ->
+                parent?.kids.orEmpty().filter { it > minimumId }.map { it to parentId }
+            }
+            for (batch in children.chunked(MAX_REQUESTS)) {
+                val items = batch.map { (id, parentId) ->
+                    async { parseReply(api.getItem(id), username, parentId) }
+                }.awaitAll()
+                highestProcessedId = max(highestProcessedId, batch.maxOf { it.first })
+                replies += items.filterNotNull()
+            }
+            if (recent.size != parentIds.size) break
+        }
+        ScannedReplies(replies, highestProcessedId)
+    }
+
+    private suspend fun loadRecentParents(ids: List<Int>): List<Pair<Int, HackerNewsItemDto?>> = coroutineScope {
+        val pending = ids.map { id ->
+            async {
+                try {
+                    Result.success(id to api.getItem(id))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    // A speculative read beyond the age cutoff must not fail the scan.
+                    Result.failure(error)
+                }
             }
         }
-        return LatestReplyResult(latest, true)
+        try {
+            buildList {
+                for (request in pending) {
+                    val entry = request.await().getOrThrow()
+                    if (entry.second?.let { isOlderThanReplyWindow(it.time) } == true) break
+                    add(entry)
+                }
+            }
+        } finally {
+            // Do not wait for slow requests for submissions older than the cutoff.
+            pending.forEach { it.cancel() }
+        }
     }
 
     private fun parseReply(
@@ -119,6 +157,7 @@ class DefaultReplyScanner(
         epochSeconds > 0 && epochSeconds < clock.now().epochSeconds - REPLY_WINDOW_SECONDS
 
     private companion object {
+        const val MAX_REQUESTS = 4
         const val REPLY_WINDOW_SECONDS = 14L * 24L * 60L * 60L
     }
 }
