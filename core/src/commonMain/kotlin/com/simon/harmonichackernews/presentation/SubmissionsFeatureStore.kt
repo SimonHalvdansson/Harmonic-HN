@@ -95,7 +95,7 @@ class SubmissionsFeatureStore internal constructor(
             }
             SubmissionsIntent.Refresh -> refresh()
             SubmissionsIntent.Retry -> {
-                if (loadJob?.isActive != true && !state.value.loading) {
+                if (!state.value.loading) {
                     loadJob = scope.launch { store.retry() }
                 }
             }
@@ -174,8 +174,8 @@ class SubmissionsFeatureStore internal constructor(
     }
 
     private fun load(refresh: Boolean) {
-        if (!refresh && (loadJob?.isActive == true || state.value.loading)) return
-        loadJob?.cancel()
+        if (!refresh && state.value.loading) return
+        if (refresh) loadJob?.cancel()
         val job = scope.launch {
             if (refresh) store.refresh() else store.loadMore()
         }

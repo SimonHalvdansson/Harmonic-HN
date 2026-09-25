@@ -6,8 +6,10 @@ import com.simon.harmonichackernews.network.AlgoliaSubmissionType
 import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,8 @@ class SubmissionsListStore(
     private val mutableState = MutableStateFlow(SubmissionsUiState())
     val state: StateFlow<SubmissionsUiState> = mutableState.asStateFlow()
     private var requestSerial = 0
+    private var countGeneration = 0
+    private val countJobs = mutableMapOf<SubmissionFilter, Job>()
     private var failedLoad: Pair<AlgoliaSubmissionsCursor, Boolean>? = null
 
     init {
@@ -66,10 +70,20 @@ class SubmissionsListStore(
         if (mutableState.value.loading) return
         if (ranges[mutableState.value.filter] == null) {
             load(AlgoliaSubmissionsCursor(), refresh = false)
+        } else {
+            // A filter switch cancels old counts even when this category's rows are retained.
+            // Resume only missing metadata; there is no reason to reload its content.
+            startCounts(refresh = false) { category, count ->
+                counts[category] = count
+                publish()
+            }
         }
     }
 
-    suspend fun refresh() = load(AlgoliaSubmissionsCursor(), refresh = true)
+    suspend fun refresh() {
+        cancelLoad()
+        load(AlgoliaSubmissionsCursor(), refresh = true)
+    }
 
     suspend fun retry() {
         if (mutableState.value.loading) return
@@ -85,6 +99,13 @@ class SubmissionsListStore(
 
     fun cancelLoad() {
         requestSerial++
+        countGeneration++
+        countJobs.values.toList().forEach(Job::cancel)
+        countJobs.clear()
+        finishContentLoad()
+    }
+
+    private fun finishContentLoad() {
         mutableState.value = mutableState.value.copy(
             loading = false,
             showInitialLoading = false,
@@ -107,18 +128,17 @@ class SubmissionsListStore(
             refreshing = refresh && previousRange != null,
             loadingFailed = false,
         )
-        try {
-            val (loaded, fetchedCounts) = coroutineScope {
-                // Reuse the active category's normal response; fetch only metadata for
-                // other categories. Count failures must not prevent reading submissions.
-                val countRequests = listOf(SubmissionFilter.STORIES, SubmissionFilter.COMMENTS)
-                    .filter { it != filter && (refresh || it !in counts) }
-                    .associateWith { category ->
-                        async { loadCount(category) }
-                    }
-                val page = repository.getSubmissions(userName, pageSize, filter.apiType(), cursor)
-                page to countRequests.mapValues { (_, request) -> request.await() }
+        val fetchedCounts = mutableMapOf<SubmissionFilter, AlgoliaSubmissionCount>()
+        var contentPublished = false
+        startCounts(refresh) { category, count ->
+            fetchedCounts[category] = count
+            if (contentPublished) {
+                counts[category] = count
+                publish()
             }
+        }
+        try {
+            val loaded = repository.getSubmissions(userName, pageSize, filter.apiType(), cursor)
             currentCoroutineContext().ensureActive()
             if (serial != requestSerial) return
             // Commit only a successful refresh, preserving the previous snapshot on failure.
@@ -128,7 +148,7 @@ class SubmissionsListStore(
                 counts.clear()
             }
             fetchedCounts.forEach { (category, count) ->
-                if (count != null) counts[category] = count
+                counts[category] = count
             }
             loaded.totalCount?.let { counts[filter] = it }
             loaded.items.forEach { itemsById.getOrPut(it.id) { it } }
@@ -137,17 +157,46 @@ class SubmissionsListStore(
                 ids = (previousIds + loaded.items.map(Story::id)).distinct(),
                 nextCursor = loaded.nextCursor,
             )
+            contentPublished = true
             publish()
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
             // Retain the cursor and content so retry requests exactly the failed page.
             if (serial == requestSerial) {
+                countGeneration++
+                countJobs.values.toList().forEach(Job::cancel)
+                countJobs.clear()
                 failedLoad = cursor to refresh
                 mutableState.value = mutableState.value.copy(loadingFailed = true)
             }
         } finally {
-            if (serial == requestSerial) cancelLoad()
+            if (serial == requestSerial) finishContentLoad()
+        }
+    }
+
+    private suspend fun startCounts(
+        refresh: Boolean,
+        onCount: (SubmissionFilter, AlgoliaSubmissionCount) -> Unit,
+    ) {
+        val generation = countGeneration
+        val filter = mutableState.value.filter
+        // Children retain the feature's cancellation lifetime without delaying content/loading
+        // state. Pagination can proceed while these jobs are still running.
+        val requestScope = CoroutineScope(currentCoroutineContext())
+        for (category in listOf(SubmissionFilter.STORIES, SubmissionFilter.COMMENTS)) {
+            if (category == filter || (!refresh && category in counts) || countJobs[category]?.isActive == true) continue
+            lateinit var job: Job
+            job = requestScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val count = loadCount(category)
+                    if (generation == countGeneration && count != null) onCount(category, count)
+                } finally {
+                    if (countJobs[category] === job) countJobs.remove(category)
+                }
+            }
+            countJobs[category] = job
+            job.start()
         }
     }
 

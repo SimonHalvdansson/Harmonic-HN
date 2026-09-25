@@ -198,6 +198,7 @@ class CommentsFeatureBinding private constructor(
                 showWebsite = request.destination.showWebsite,
                 accountUser = store.state.value.accountUser,
                 savedItemState = store.savedItemState,
+                referencePreview = store.referencePreview,
                 listener = CommentsFeatureListener(store, callbacks),
             )
             return CommentsFeatureBinding(store, controller, restoreProgress, sessionState)

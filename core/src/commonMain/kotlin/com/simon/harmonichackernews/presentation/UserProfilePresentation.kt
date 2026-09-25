@@ -13,6 +13,10 @@ data class UserProfilePresentation(
 /** Converts the network DTO to locale-independent profile content for every UI host. */
 object UserProfilePresenter {
     fun present(user: HackerNewsUserDto, monthNames: List<String>): UserProfilePresentation {
+        return present(UserProfileData.from(user), monthNames)
+    }
+
+    fun present(user: UserProfileData, monthNames: List<String>): UserProfilePresentation {
         require(monthNames.size >= 12) { "Twelve localized month names are required" }
         val date = civilDateFromEpochSeconds(user.created)
         return UserProfilePresentation(
@@ -20,8 +24,8 @@ object UserProfilePresenter {
             meta = "${GroupedNumberFormatter.format(user.karma)} karma since " +
                 "${monthNames[date.month - 1]} ${date.day}, ${date.year}",
             // Keep the API's HTML so shared UI hosts can render links and formatting.
-            about = user.about.orEmpty().trim(),
-            hasSubmissions = user.submitted.isNotEmpty(),
+            about = user.about.trim(),
+            hasSubmissions = user.hasSubmissions,
         )
     }
 

@@ -13,6 +13,9 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.utils.referenceLinkFallbackLabel
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** Paragraph-sized gaps around a reference run, compact gaps between its individual links. */
 internal fun referenceBlockTopPadding(blocks: List<CollectedReferenceLinks.ContentBlock>, index: Int) = when {
@@ -45,12 +48,14 @@ fun rememberReferenceLinkLabel(link: CollectedReferenceLinks.ReferenceLink, reso
     var label by remember(url, link.resolvedTitle) { mutableStateOf(fallback) }
 
     LaunchedEffect(url) {
-        val summary = runCatching {
-            dependencies.previewResources.cachedLinkSummary(url) ?:
-            dependencies.network.linkSummaryRepository.load(url, fallback).also {
-                dependencies.previewResources.saveLinkSummary(url, it)
-            }
-        }.getOrNull()
+        val summary = try {
+            dependencies.previewResources.loadLinkSummary(url, fallback, resolvedSummary = link.resolvedSummary)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
+        currentCoroutineContext().ensureActive()
         val isSupportedSummary = when {
             LinkSummaryParser.hackerNewsItemId(url) != null ->
                 summary?.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE

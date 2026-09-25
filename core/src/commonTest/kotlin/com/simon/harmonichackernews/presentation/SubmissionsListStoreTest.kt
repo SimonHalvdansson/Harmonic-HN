@@ -24,6 +24,7 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository((500 downTo 1).map { item(it, comment = it > 200) })
         val store = SubmissionsListStore("simon", repository)
         store.ensureLoaded()
+        runCurrent()
         assertEquals((500 downTo 401).toList(), store.ids())
         assertEquals(AlgoliaSubmissionCount(200, true), store.state.value.storyCount)
         assertEquals(AlgoliaSubmissionCount(300, true), store.state.value.commentCount)
@@ -31,6 +32,7 @@ class SubmissionsListStoreTest {
         assertEquals(setOf(AlgoliaSubmissionType.STORIES, AlgoliaSubmissionType.COMMENTS),
             repository.requests.filter { it.pageSize == 0 }.map { it.type }.toSet())
         store.loadMore()
+        runCurrent()
         assertEquals((500 downTo 301).toList(), store.ids())
         assertEquals(Request(AlgoliaSubmissionType.BOTH, 100, AlgoliaSubmissionsCursor(page = 1)), repository.requests.last())
     }
@@ -40,24 +42,30 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository((12 downTo 1).map { item(it, comment = it % 2 == 1) })
         val store = SubmissionsListStore("simon", repository, pageSize = 4)
         store.ensureLoaded()
+        runCurrent()
         val originalBoth = store.ids()
         val sharedStory = store.state.value.items.first()
         store.selectFilter(SubmissionFilter.STORIES)
         store.ensureLoaded()
+        runCurrent()
         assertEquals(listOf(12, 10, 8, 6), store.ids())
         assertSame(sharedStory, store.state.value.items.first())
         store.loadMore()
+        runCurrent()
         assertEquals(listOf(12, 10, 8, 6, 4, 2), store.ids())
         assertFalse(store.state.value.canLoadMore)
         val requests = repository.requests.size
         store.selectFilter(SubmissionFilter.BOTH)
         store.ensureLoaded()
+        runCurrent()
         assertEquals(originalBoth, store.ids())
         assertEquals(requests, repository.requests.size)
         store.loadMore()
+        runCurrent()
         assertEquals((12 downTo 5).toList(), store.ids())
         store.selectFilter(SubmissionFilter.STORIES)
         store.ensureLoaded()
+        runCurrent()
         assertEquals(listOf(12, 10, 8, 6, 4, 2), store.ids())
     }
 
@@ -66,12 +74,14 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository(listOf(item(2), item(1, comment = true))).apply { fail = true }
         val store = SubmissionsListStore("simon", repository, pageSize = 4)
         store.ensureLoaded()
+        runCurrent()
         assertTrue(store.state.value.loadingFailed)
         assertFalse(store.state.value.loading)
         assertFalse(store.state.value.loadedSuccessfully)
         repository.fail = false
         repository.failCounts = true
         store.retry()
+        runCurrent()
         assertEquals(listOf(2, 1), store.ids())
         assertEquals(null, store.state.value.storyCount)
         assertTrue(store.state.value.loadedSuccessfully)
@@ -79,6 +89,7 @@ class SubmissionsListStoreTest {
         repository.failCounts = false
         store.selectFilter(SubmissionFilter.STORIES)
         store.ensureLoaded()
+        runCurrent()
         assertEquals(AlgoliaSubmissionCount(1, true), store.state.value.storyCount)
         assertEquals(AlgoliaSubmissionCount(1, true), store.state.value.commentCount)
     }
@@ -88,25 +99,31 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository((12 downTo 1).map { item(it, comment = it % 2 == 1) })
         val store = SubmissionsListStore("simon", repository, pageSize = 4)
         store.ensureLoaded()
+        runCurrent()
         store.selectFilter(SubmissionFilter.STORIES)
         store.ensureLoaded()
+        runCurrent()
         val previous = store.ids()
         repository.fail = true
         store.loadMore()
+        runCurrent()
         val failedRequest = repository.requests.last()
         assertEquals(previous, store.ids())
         assertTrue(store.state.value.canLoadMore)
         assertTrue(store.state.value.loadingFailed)
         repository.fail = false
         store.retry()
+        runCurrent()
         assertEquals(failedRequest, repository.requests.last())
         assertFalse(store.state.value.loadingFailed)
         repository.items = listOf(item(20), item(19, comment = true))
         store.refresh()
+        runCurrent()
         assertEquals(listOf(20), store.ids())
         assertEquals(AlgoliaSubmissionCount(1, true), store.state.value.commentCount)
         store.selectFilter(SubmissionFilter.BOTH)
         store.ensureLoaded()
+        runCurrent()
         assertEquals(listOf(20, 19), store.ids())
     }
 
@@ -115,13 +132,16 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository((5 downTo 1).map { item(it) })
         val store = SubmissionsListStore("simon", repository, pageSize = 4)
         store.ensureLoaded()
+        runCurrent()
         repository.fail = true
         store.refresh()
+        runCurrent()
         assertEquals(listOf(5, 4, 3, 2), store.ids())
         assertEquals(AlgoliaSubmissionCount(5, true), store.state.value.storyCount)
         assertTrue(store.state.value.canLoadMore)
         repository.fail = false
         store.retry()
+        runCurrent()
         assertEquals(listOf(5, 4, 3, 2), store.ids())
         assertFalse(store.state.value.loadingFailed)
     }
@@ -132,8 +152,10 @@ class SubmissionsListStoreTest {
             val repository = FakeRepository((12 downTo 1).map { item(it, comment = it % 2 == 1) })
             val store = SubmissionsListStore("simon", repository, pageSize = 4)
             store.ensureLoaded()
+            runCurrent()
             store.selectFilter(SubmissionFilter.COMMENTS)
             store.ensureLoaded()
+            runCurrent()
             store.selectFilter(SubmissionFilter.BOTH)
             val gate = CompletableDeferred<Unit>()
             repository.gate = gate
@@ -157,9 +179,11 @@ class SubmissionsListStoreTest {
             val repository = FakeRepository(items)
             val store = SubmissionsListStore("simon", repository, pageSize = 2)
             store.ensureLoaded()
+            runCurrent()
             for (filter in SubmissionFilter.entries) {
                 store.selectFilter(filter)
                 store.ensureLoaded()
+                runCurrent()
                 assertFalse(store.state.value.canLoadMore)
             }
             assertEquals(AlgoliaSubmissionCount(0, true), store.state.value.storyCount)
@@ -175,6 +199,7 @@ class SubmissionsListStoreTest {
         val repository = FakeRepository(listOf(item(3), item(2), item(1)))
         val store = SubmissionsListStore("simon", repository, pageSize = 2)
         store.ensureLoaded()
+        runCurrent()
         repository.gate = CompletableDeferred()
         val load = async { store.loadMore() }
         runCurrent()
@@ -187,6 +212,69 @@ class SubmissionsListStoreTest {
         assertFalse(store.state.value.canLoadMore)
     }
 
+    @Test
+    fun contentAndPaginationProceedWhileCountsAreOutstandingWithoutDuplicatingThem() = runTest {
+        val repository = FakeRepository((8 downTo 1).map { item(it, it % 2 == 1) })
+        repository.countGate = CompletableDeferred()
+        val store = SubmissionsListStore("simon", repository, pageSize = 2)
+        store.ensureLoaded()
+        runCurrent()
+        assertEquals(listOf(8, 7), store.ids())
+        assertFalse(store.state.value.loading)
+        assertFalse(store.state.value.showInitialLoading)
+        assertEquals(null, store.state.value.storyCount)
+        store.loadMore()
+        runCurrent()
+        assertEquals(listOf(8, 7, 6, 5), store.ids())
+        assertEquals(2, repository.requests.count { it.pageSize == 0 })
+        repository.countGate!!.complete(Unit)
+        runCurrent()
+        assertEquals(AlgoliaSubmissionCount(4, true), store.state.value.storyCount)
+        assertEquals(AlgoliaSubmissionCount(4, true), store.state.value.commentCount)
+        assertFalse(store.state.value.loading)
+    }
+
+    @Test
+    fun refreshAndFilterChangesRejectOldCountsEvenWhenCancellationIsIgnored() = runTest {
+        for (refresh in listOf(false, true)) {
+            val repository = FakeRepository((8 downTo 1).map { item(it, it % 2 == 1) })
+            val oldCounts = CompletableDeferred<Unit>()
+            repository.countGate = oldCounts
+            repository.ignoreCountCancellation = true
+            val store = SubmissionsListStore("simon", repository, pageSize = 2)
+            store.ensureLoaded(); runCurrent()
+            repository.items = listOf(item(20))
+            repository.countGate = null
+            if (refresh) store.refresh() else {
+                store.selectFilter(SubmissionFilter.STORIES)
+                store.ensureLoaded()
+            }
+            runCurrent()
+            assertEquals(listOf(20), store.ids())
+            oldCounts.complete(Unit); runCurrent()
+            assertEquals(AlgoliaSubmissionCount(1, true), store.state.value.storyCount)
+            assertEquals(AlgoliaSubmissionCount(0, true), store.state.value.commentCount)
+            assertFalse(store.state.value.loading)
+        }
+    }
+
+    @Test
+    fun switchingBackToRetainedRowsResumesMissingCountsWithoutReloadingPosts() = runTest {
+        val repository = FakeRepository((8 downTo 1).map { item(it, it % 2 == 1) })
+        repository.countGate = CompletableDeferred()
+        val store = SubmissionsListStore("simon", repository, pageSize = 2)
+        store.ensureLoaded(); runCurrent()
+        store.selectFilter(SubmissionFilter.STORIES)
+        store.ensureLoaded(); runCurrent()
+        store.selectFilter(SubmissionFilter.BOTH)
+        repository.countGate!!.complete(Unit)
+        store.ensureLoaded(); runCurrent()
+        assertEquals(listOf(8, 7), store.ids())
+        assertEquals(2, repository.requests.count { it.pageSize > 0 })
+        assertEquals(AlgoliaSubmissionCount(4, true), store.state.value.storyCount)
+        assertEquals(AlgoliaSubmissionCount(4, true), store.state.value.commentCount)
+    }
+
     private data class Request(val type: AlgoliaSubmissionType, val pageSize: Int, val cursor: AlgoliaSubmissionsCursor)
 
     private class FakeRepository(var items: List<Story>) : AlgoliaRepository {
@@ -194,11 +282,19 @@ class SubmissionsListStoreTest {
         var fail = false
         var failCounts = false
         var gate: CompletableDeferred<Unit>? = null
+        var countGate: CompletableDeferred<Unit>? = null
+        var ignoreCountCancellation = false
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
             requests += Request(type, pageSize, cursor)
+            val snapshot = items
+            val countWait = countGate
+            if (pageSize == 0 && countWait != null) {
+                if (ignoreCountCancellation) kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { countWait.await() }
+                else countWait.await()
+            }
             gate?.await()
             if (fail || (failCounts && pageSize == 0)) error("offline")
-            val filtered = items.filter {
+            val filtered = snapshot.filter {
                 when (type) {
                     AlgoliaSubmissionType.BOTH -> true
                     AlgoliaSubmissionType.STORIES -> !it.isComment

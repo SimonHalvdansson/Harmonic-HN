@@ -17,6 +17,7 @@ fun AndroidFiltersTagsSettingsScreen(
         showNavigation = showNavigation,
         onBack = onBack,
         onManageFrontpages = onManageFrontpages,
+        onProfileAccepted = { app.scene.userProfiles.open(it) },
         profileDialog = { userName, dismiss, onTagChanged ->
             AndroidUserSettingsDialog(
                 userName = userName,

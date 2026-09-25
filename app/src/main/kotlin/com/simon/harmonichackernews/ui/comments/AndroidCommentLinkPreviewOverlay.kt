@@ -12,14 +12,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
@@ -62,18 +61,9 @@ private fun ReferencePreviewCard(
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
     val appComposition = LocalHarmonicUiDependencies.current
-    val scope = rememberCoroutineScope()
-    val runtime = remember(state.originalUrl, appComposition, scope) {
-        appComposition.createReferenceLinkPreviewRuntime(scope)
-    }
+    val runtime = checkNotNull(controller.referencePreview)
     val runtimeState by runtime.state.collectAsState()
 
-    LaunchedEffect(runtime, state) {
-        runtime.load(state.originalUrl, state.fallbackTitle, state.resolvedTitle)
-    }
-    DisposableEffect(runtime) {
-        onDispose(runtime::dispose)
-    }
     LaunchedEffect(runtimeState.url) {
         runtimeState.url.takeIf { it.isNotBlank() && it != state.originalUrl }?.let {
             controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
@@ -150,7 +140,7 @@ private fun ReferencePreviewImage(
                         Res.string.link_summary_expand_image
                     },
                 ),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (loading) 0f else 1f },
                 contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                 onSuccess = { success ->
                     val image = success.result.image

@@ -276,7 +276,9 @@ fun ReferenceCardContent(
     } else {
         DomainNamePolicy.fromUrl(url) ?: url
     }
-    val imageUrl = result?.imageUrl?.takeIf(String::isNotBlank)
+    // Loading -> content: create the eventual painter now, behind the existing content fade.
+    // Retain the current image when replacing already visible content.
+    val imageUrl = (result ?: requestedSummaryContent.result)?.imageUrl?.takeIf(String::isNotBlank)
     val directImage = result?.contentType?.startsWith("image/", ignoreCase = true) == true
     val expandImageInitially = directImage ||
         result?.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE
@@ -501,7 +503,7 @@ private fun ReferenceImageHeader(
                         imageRatio,
                         onImageRatio,
                         onImageClick,
-                        Modifier.fillMaxSize(),
+                        Modifier.fillMaxSize().graphicsLayer { alpha = summaryContentAlpha },
                     )
                 }
             }

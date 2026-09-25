@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -65,6 +66,7 @@ class CommentsScreenController private constructor(
     initialScrollRestorationPending: Boolean,
     accountUser: String?,
     val listener: Listener,
+    val referencePreview: ReferenceLinkPreviewRuntime?,
 ) {
     var screenState by mutableStateOf(
         CommentsScreenState(
@@ -627,6 +629,7 @@ class CommentsScreenController private constructor(
             sourceCommentId = sourceCommentId.takeIf { it > 0 },
             headerReference = headerReference,
         )) return
+        referencePreview?.load(url, firstNotBlank(title, url), resolvedTitle, resolvedSummary = resolvedSummary)
         updateLinkPreviewSource(
             sourceBounds = sourceBounds,
             sourceIsReferenceRow = sourceIsReferenceRow,
@@ -651,6 +654,7 @@ class CommentsScreenController private constructor(
             description = description.orEmpty(),
             backgroundColor = backgroundColor,
         )) return
+        referencePreview?.dispose()
         val validImageAspectRatio = imageAspectRatio?.takeIf { it.isFinite() && it > 0f }
         updateLinkPreviewSource(
             sourceBounds = sourceBounds,
@@ -680,6 +684,7 @@ class CommentsScreenController private constructor(
     }
 
     fun requestDismissLinkPreview() {
+        referencePreview?.dispose()
         interactionStore.requestDismissLinkPreview()
         syncInteractionState()
     }
@@ -829,6 +834,7 @@ class CommentsScreenController private constructor(
             accountUser: String?,
             savedItemState: SavedItemStateReader,
             listener: Listener,
+            referencePreview: ReferenceLinkPreviewRuntime? = null,
         ): CommentsScreenController = CommentsScreenController(
             shouldSmoothScroll = shouldSmoothScroll,
             savedItemState = savedItemState,
@@ -838,6 +844,7 @@ class CommentsScreenController private constructor(
             initialScrollRestorationPending = initialScrollRestorationPending,
             accountUser = accountUser,
             listener = listener,
+            referencePreview = referencePreview,
         )
 
     }

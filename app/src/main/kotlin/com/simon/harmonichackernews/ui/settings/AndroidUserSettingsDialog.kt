@@ -9,7 +9,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -28,12 +27,12 @@ fun AndroidUserSettingsDialog(
     onTagChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val appComposition = LocalHarmonicUiDependencies.current
     val userTags = appComposition.userTags
     val monthNames = stringArrayResource(Res.array.months)
-    val session = remember(userName, monthNames, coroutineScope) {
-        appComposition.createUserProfileSession(coroutineScope, userName, monthNames)
+    val scene = appComposition.scene
+    val session = remember(scene, userName, monthNames) {
+        scene.userProfiles.open(userName).also { it.runtime.updateMonthNames(monthNames) }
     }
     val runtime = session.runtime
     val runtimeState by runtime.state.collectAsState()
@@ -67,7 +66,13 @@ fun AndroidUserSettingsDialog(
             }
         }
     }
-    DisposableEffect(session) { onDispose(session::dispose) }
+    DisposableEffect(session) {
+        onDispose {
+            if (scene.navigation.state.value.userRequest?.userName != userName) {
+                scene.userProfiles.release(session)
+            }
+        }
+    }
 
     val state = when (val loadState = runtimeState.loadState) {
         UserProfileLoadState.Loading -> UserDialogUiState.Loading
@@ -88,6 +93,7 @@ fun AndroidUserSettingsDialog(
             tag = currentTag,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
+            identityResolved = runtimeState.identityResolved,
             userAvatarsEnabled = settings.comments.userAvatarsEnabled,
             userAvatarOptions = settings.comments.userAvatarOptions,
             onDismiss = onDismiss,

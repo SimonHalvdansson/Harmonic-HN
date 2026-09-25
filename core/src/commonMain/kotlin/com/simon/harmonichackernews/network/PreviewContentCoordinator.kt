@@ -4,7 +4,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -14,6 +18,8 @@ data class PreviewContent(
     val summary: LinkSummary?,
     /** Whether an absent image is a parsed response rather than a transport/parser failure. */
     val imageResult: PreviewImageResult = PreviewImageResult.CONFIRMED,
+    val failure: Throwable? = null,
+    internal val generation: Long = 0,
 )
 
 enum class PreviewImageResult { CONFIRMED, TRANSIENT_FAILURE }
@@ -48,11 +54,11 @@ class PreviewContentCoordinator(
             } else {
                 summaries[pageUrl]?.let { summary ->
                     if (requireSummary) return@withLock Existing.Content(
-                        PreviewContent(summary.imageUrl.ifEmpty { images[pageUrl] }, summary)
+                        PreviewContent(summary.imageUrl.ifEmpty { images[pageUrl] }, summary, generation = latestRequestGenerations[pageUrl] ?: 0)
                     )
                 }
                 if (!requireSummary) {
-                    images[pageUrl]?.let { return@withLock Existing.Content(PreviewContent(it, null)) }
+                    images[pageUrl]?.let { return@withLock Existing.Content(PreviewContent(it, null, generation = latestRequestGenerations[pageUrl] ?: 0)) }
                     misses[pageUrl]?.let { cachedAt ->
                         val now = nowMillis()
                         if (now >= cachedAt && now - cachedAt <= missTtlMillis) {
@@ -61,67 +67,89 @@ class PreviewContentCoordinator(
                         misses.remove(pageUrl)
                     }
                 }
-                pending[pageUrl]?.let { return@withLock Existing.Pending(it) }
-            }
-            val request = scope.async {
-                try {
-                    val summary = fetch()
-                    PreviewContent(summary.imageUrl.ifEmpty { null }, summary)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Throwable) {
-                    PreviewContent(null, null, PreviewImageResult.TRANSIENT_FAILURE)
+                pending[pageUrl]?.let {
+                    it.consumers++
+                    return@withLock Existing.Pending(it)
                 }
             }
-            val pendingRequest = PendingRequest(request, ++nextRequestGeneration)
+            val generation = ++nextRequestGeneration
+            val request = scope.async(start = CoroutineStart.LAZY) {
+                try {
+                    val summary = fetch()
+                    currentCoroutineContext().ensureActive()
+                    PreviewContent(summary.imageUrl.ifEmpty { null }, summary, generation = generation)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    PreviewContent(null, null, PreviewImageResult.TRANSIENT_FAILURE, error, generation)
+                }
+            }
+            val pendingRequest = PendingRequest(request, generation, consumers = 1)
             pending[pageUrl] = pendingRequest
             latestRequestGenerations.remove(pageUrl)
-            latestRequestGenerations[pageUrl] = pendingRequest.generation
+            latestRequestGenerations[pageUrl] = generation
             while (latestRequestGenerations.size > maxImageEntries + maxMissEntries) {
                 latestRequestGenerations.remove(latestRequestGenerations.keys.first())
             }
-            request.invokeOnCompletion {
-                scope.launch {
-                    mutex.withLock {
-                        if (pending[pageUrl]?.request === request) pending.remove(pageUrl)
-                    }
-                }
-            }
+            request.start()
             Existing.Pending(pendingRequest)
         }
         if (existing is Existing.Content) return existing.value
 
         val pendingRequest = (existing as Existing.Pending).value
         val request = pendingRequest.request
-        val content = try {
-            request.await()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            PreviewContent(null, null, PreviewImageResult.TRANSIENT_FAILURE)
-        }
-        mutex.withLock {
-            if (pending[pageUrl]?.request === request) pending.remove(pageUrl)
-            if (latestRequestGenerations[pageUrl] != pendingRequest.generation) return@withLock
-            content.summary?.let {
-                if (summaries.size >= maxImageEntries) summaries.clear()
-                summaries[pageUrl] = it
-            }
-            if (content.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
-                // A timeout or parser exception is retryable and must not become a negative hit.
-            } else if (content.imageUrl.isNullOrEmpty()) {
-                misses.remove(pageUrl)
-                misses[pageUrl] = nowMillis()
-                while (misses.size > maxMissEntries) misses.remove(misses.keys.first())
-            } else {
-                if (images.size >= maxImageEntries) {
-                    images.clear()
-                    misses.clear()
+        try {
+            val content = request.await()
+            currentCoroutineContext().ensureActive()
+            mutex.withLock {
+                if (latestRequestGenerations[pageUrl] != pendingRequest.generation) return@withLock
+                content.summary?.let {
+                    if (summaries.size >= maxImageEntries) summaries.clear()
+                    summaries[pageUrl] = it
                 }
-                images[pageUrl] = content.imageUrl
+                if (content.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
+                    // A timeout or parser exception must remain retryable.
+                } else if (content.imageUrl.isNullOrEmpty()) {
+                    misses.remove(pageUrl)
+                    misses[pageUrl] = nowMillis()
+                    while (misses.size > maxMissEntries) misses.remove(misses.keys.first())
+                } else {
+                    if (images.size >= maxImageEntries) {
+                        images.clear()
+                        misses.clear()
+                    }
+                    images[pageUrl] = content.imageUrl
+                }
+            }
+            return content
+        } finally {
+            withContext(NonCancellable) {
+                mutex.withLock {
+                    pendingRequest.consumers--
+                    if (pendingRequest.consumers == 0) {
+                        if (pending[pageUrl] === pendingRequest) pending.remove(pageUrl)
+                        request.cancel()
+                    }
+                }
             }
         }
-        return content
+    }
+
+    /** Serializes persistence with refresh generations, including an older response finishing late. */
+    internal suspend fun persistIfCurrent(url: String, content: PreviewContent, persist: suspend () -> Unit) {
+        mutex.withLock {
+            if (content.generation != 0L && latestRequestGenerations[url] == content.generation) persist()
+        }
+    }
+
+    internal suspend fun clear(clearPersistent: suspend () -> Unit) {
+        mutex.withLock {
+            images.clear()
+            summaries.clear()
+            misses.clear()
+            latestRequestGenerations.clear()
+            clearPersistent()
+        }
     }
 
     private sealed interface Existing {
@@ -132,6 +160,7 @@ class PreviewContentCoordinator(
     private data class PendingRequest(
         val request: Deferred<PreviewContent>,
         val generation: Long,
+        var consumers: Int,
     )
 }
 

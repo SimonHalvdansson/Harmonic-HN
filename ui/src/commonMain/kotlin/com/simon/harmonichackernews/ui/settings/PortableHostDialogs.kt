@@ -8,7 +8,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -125,16 +124,7 @@ fun PortableUserProfileDialog(
     onDismiss: () -> Unit,
     onTagChanged: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val monthNames = remember {
-        listOf(
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December",
-        )
-    }
-    val session = remember(app, scope, userName) {
-        app.createUserProfileSession(scope, userName, monthNames)
-    }
+    val session = remember(scene, userName) { scene.userProfiles.open(userName) }
     val runtimeState by session.runtime.state.collectAsState()
     val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
@@ -157,7 +147,15 @@ fun PortableUserProfileDialog(
             }
         }
     }
-    DisposableEffect(session) { onDispose(session::dispose) }
+    DisposableEffect(session) {
+        onDispose {
+            // Navigation owns global dialogs across host recreation; local settings dialogs
+            // release their session when their composition leaves.
+            if (scene.navigation.state.value.userRequest?.userName != userName) {
+                scene.userProfiles.release(session)
+            }
+        }
+    }
 
     val state = when (val loadState = runtimeState.loadState) {
         UserProfileLoadState.Loading -> UserDialogUiState.Loading
@@ -178,6 +176,7 @@ fun PortableUserProfileDialog(
             tag = currentTag,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
+            identityResolved = runtimeState.identityResolved,
             userAvatarsEnabled = settings.comments.userAvatarsEnabled,
             userAvatarOptions = settings.comments.userAvatarOptions,
             onDismiss = onDismiss,

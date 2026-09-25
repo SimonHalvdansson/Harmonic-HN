@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
@@ -55,6 +56,7 @@ sealed interface CommentsIntent {
 class CommentsFeatureStore internal constructor(
     private val scope: CoroutineScope,
     private val runtime: CommentsFeatureRuntime,
+    val referencePreview: ReferenceLinkPreviewRuntime? = null,
 ) : FeatureStore<CommentsIntent, CommentsState, CommentsFeatureEffect> {
     private val mutableState = MutableStateFlow(snapshot())
     override val state: StateFlow<CommentsState> = mutableState.asStateFlow()
@@ -170,6 +172,7 @@ class CommentsFeatureStore internal constructor(
     override fun close() {
         if (closed) return
         closed = true
+        referencePreview?.dispose()
         jobs.forEach(Job::cancel)
         jobs.clear()
         runtime.dispose()

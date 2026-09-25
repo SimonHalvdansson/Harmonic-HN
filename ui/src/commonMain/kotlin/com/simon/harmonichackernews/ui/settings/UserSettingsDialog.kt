@@ -75,6 +75,7 @@ fun UserSettingsDialog(
     onToggleBlocked: (String) -> Unit,
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit = {},
+    identityResolved: Boolean = true,
     userAvatarsEnabled: Boolean = false,
     userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
 ) {
@@ -126,6 +127,7 @@ fun UserSettingsDialog(
                                 tag = tag,
                                 blocked = blocked,
                                 ownProfile = ownProfile,
+                                identityResolved = identityResolved,
                                 onOpenSubmissions = onOpenSubmissions,
                                 onEditTag = onEditTag,
                                 onToggleBlocked = onToggleBlocked,
@@ -206,6 +208,7 @@ private fun UserLoadedContent(
     tag: String,
     blocked: Boolean,
     ownProfile: Boolean,
+    identityResolved: Boolean,
     onOpenSubmissions: (String) -> Unit,
     onEditTag: () -> Unit,
     onToggleBlocked: (String) -> Unit,
@@ -254,7 +257,7 @@ private fun UserLoadedContent(
             )
         }
 
-        if (!ownProfile) {
+        if (identityResolved && !ownProfile) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),

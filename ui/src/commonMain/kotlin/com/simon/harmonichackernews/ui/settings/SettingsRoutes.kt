@@ -581,6 +581,7 @@ fun FiltersTagsSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
+    onProfileAccepted: (String) -> Unit = {},
     profileDialog: @Composable (
         userName: String,
         onDismiss: () -> Unit,
@@ -602,7 +603,7 @@ fun FiltersTagsSettingsRoute(
         onHideJobsChanged = presenter::setHideJobs,
         onAdditionalFrontpagesRequested = onManageFrontpages,
         onFilterRequested = { filterDialog = it },
-        onProfileRequested = { profileUser = it },
+        onProfileRequested = { onProfileAccepted(it); profileUser = it },
         onTagEditRequested = { tagDialogUser = it },
         onTagDeleteRequested = {
             presenter.setTag(it, "")

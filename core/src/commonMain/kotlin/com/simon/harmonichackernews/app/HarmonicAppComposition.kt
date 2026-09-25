@@ -28,7 +28,6 @@ import com.simon.harmonichackernews.platform.ConfiguredExternalLinkOpener
 import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.presentation.UserMessageStore
 import com.simon.harmonichackernews.presentation.UserProfileBlockPort
-import com.simon.harmonichackernews.presentation.UserProfileLoader
 import com.simon.harmonichackernews.presentation.UserProfileRuntime
 import com.simon.harmonichackernews.presentation.UserProfileSession
 import com.simon.harmonichackernews.presentation.WebContentService
@@ -194,7 +193,7 @@ class HarmonicAppComposition(
     ): UserProfileRuntime = UserProfileRuntime(
         username = username,
         monthNames = monthNames,
-        loader = UserProfileLoader(network.hackerNewsApi::getUser),
+        loader = network.userProfiles,
         accounts = platform.accounts,
         blocks = object : UserProfileBlockPort {
             override fun isBlocked(username: String): Boolean =
@@ -269,7 +268,6 @@ class HarmonicAppComposition(
         ReferenceLinkPreviewRuntime(
             scope = scope,
             previews = previewResources,
-            summaries = network.linkSummaryRepository,
             connectivity = platform.connectivity,
         )
 

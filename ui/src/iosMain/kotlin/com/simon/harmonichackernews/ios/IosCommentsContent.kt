@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -571,16 +572,9 @@ private fun IosReferencePreview(
     controller: CommentsScreenController,
     state: CommentLinkPreviewOverlayState.Reference,
 ) {
-    val scope = rememberCoroutineScope()
-    val runtime = remember(app, scope, state.originalUrl) {
-        app.createReferenceLinkPreviewRuntime(scope)
-    }
+    val runtime = checkNotNull(controller.referencePreview)
     val runtimeState by runtime.state.collectAsState()
 
-    LaunchedEffect(runtime, state) {
-        runtime.load(state.originalUrl, state.fallbackTitle, state.resolvedTitle)
-    }
-    DisposableEffect(runtime) { onDispose(runtime::dispose) }
     LaunchedEffect(runtimeState.url) {
         runtimeState.url.takeIf { it.isNotBlank() && it != state.originalUrl }?.let {
             controller.updateLinkPreviewVisibleUrl(state.originalUrl, it)
@@ -619,7 +613,7 @@ private fun IosReferencePreview(
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (loading) 0f else 1f },
                     contentScale = if (expanded) ContentScale.Fit else ContentScale.Crop,
                     onSuccess = { success ->
                         val size = success.painter.intrinsicSize

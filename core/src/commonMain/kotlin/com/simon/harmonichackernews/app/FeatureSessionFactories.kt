@@ -226,7 +226,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return CommentsFeatureStore(featureScope, runtime)
+    return CommentsFeatureStore(featureScope, runtime, createReferenceLinkPreviewRuntime(featureScope))
 }
 
 private fun CoroutineScope.childFeatureScope(): CoroutineScope = CoroutineScope(

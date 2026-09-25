@@ -102,6 +102,7 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
+            onProfileAccepted = { scene.userProfiles.open(it) },
             profileDialog = { userName, dismiss, onTagChanged ->
                 PortableUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
             },

@@ -120,6 +120,37 @@ class SubmissionsFeatureStoreTest {
     }
 
     @Test
+    fun paginationIsAcceptedWhileInitialCountsKeepTheirParentJobAlive() = runTest {
+        val counts = CompletableDeferred<Unit>()
+        var countRequests = 0
+        val pages = mutableListOf<Int>()
+        val repository = object : AlgoliaRepository {
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
+                if (pageSize == 0) { countRequests++; counts.await() }
+                else pages += cursor.page
+                return AlgoliaSubmissionsPage(
+                    if (pageSize == 0) emptyList() else listOf(story(cursor.page + 1)),
+                    if (pageSize > 0 && cursor.page == 0) AlgoliaSubmissionsCursor(page = 1) else null,
+                    AlgoliaSubmissionCount(2, true),
+                )
+            }
+            override suspend fun search(url: String): List<Story> = error("Unused")
+            override suspend fun getItemJson(id: Int): String = error("Unused")
+        }
+        val store = featureStore(backgroundScope, SubmissionsSessionState(SubmissionsListStore("alice", repository, 1)))
+        store.start(); runCurrent()
+        assertFalse(store.state.value.loading)
+        assertEquals(listOf(1), store.state.value.items.map(Story::id))
+        store.accept(SubmissionsIntent.LoadMore); runCurrent()
+        assertEquals(listOf(0, 1), pages)
+        assertEquals(listOf(1, 2), store.state.value.items.map(Story::id))
+        assertEquals(2, countRequests)
+        counts.complete(Unit); runCurrent()
+        assertEquals(AlgoliaSubmissionCount(2, true), store.state.value.commentCount)
+        store.close()
+    }
+
+    @Test
     fun storyLinkUsesIntegratedViewerOrExternalPlatformEffect() = runTest {
         val session = session()
         var integrated = true

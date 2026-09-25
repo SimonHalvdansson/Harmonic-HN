@@ -4,6 +4,9 @@ import com.simon.harmonichackernews.platform.ConnectivityService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +30,6 @@ data class ReferenceLinkPreviewState(
 class ReferenceLinkPreviewRuntime(
     private val scope: CoroutineScope,
     private val previews: StoryPreviewRepository,
-    private val summaries: LinkSummaryRepository,
     private val connectivity: ConnectivityService,
 ) {
     private val mutableState = MutableStateFlow(ReferenceLinkPreviewState())
@@ -39,29 +41,24 @@ class ReferenceLinkPreviewRuntime(
         fallbackTitle: String,
         resolvedTitle: String?,
         forceRefresh: Boolean = false,
+        resolvedSummary: LinkSummary? = null,
     ) {
         if (url.isBlank()) return
         loadJob?.cancel()
         val generation = mutableState.value.generation + 1
+        val known = resolvedSummary?.takeIf { !forceRefresh && StoryPreviewRepository.isValidSummary(url, it) }
         mutableState.value = ReferenceLinkPreviewState(
-            url = url,
-            loading = true,
+            url = known?.finalUrl?.takeIf(String::isNotBlank) ?: url,
+            summary = known,
+            loading = known == null,
             showFallback = !resolvedTitle.isNullOrBlank(),
             retrying = forceRefresh,
             generation = generation,
         )
-        loadJob = scope.launch {
+        loadJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
-                val cached = if (forceRefresh) null else previews.cachedLinkSummary(url)?.takeIf {
-                    (LinkSummaryParser.buildXkcdApiUrl(url) == null ||
-                        it.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE) &&
-                    (LinkSummaryParser.hackerNewsItemId(url) == null ||
-                        (it.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
-                            (LinkSummaryParser.isHackerNewsStory(it) || it.commentTextVersion >= 1)))
-                }
-                val result = cached ?: summaries.load(url, fallbackTitle).also {
-                    previews.saveLinkSummary(url, it)
-                }
+                val result = previews.loadLinkSummary(url, fallbackTitle, forceRefresh, known)
+                currentCoroutineContext().ensureActive()
                 publish(
                     generation,
                     ReferenceLinkPreviewState(
@@ -100,6 +97,7 @@ class ReferenceLinkPreviewRuntime(
     fun dispose() {
         loadJob?.cancel()
         loadJob = null
+        mutableState.value = mutableState.value.copy(generation = mutableState.value.generation + 1)
     }
 
     private fun publish(generation: Long, value: ReferenceLinkPreviewState) {

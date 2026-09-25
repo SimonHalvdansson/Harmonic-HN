@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.presentation.UserProfileRepository
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 
@@ -67,6 +68,9 @@ class NetworkGraph internal constructor(
     val httpClient: KtorHttpClient = KtorHttpClient(client)
 
     val hackerNewsApi: HackerNewsApi = KtorHackerNewsApi(client)
+    val userProfiles = UserProfileRepository(
+        hackerNewsApi, scope,
+    )
     val hackerNewsRepository: HackerNewsRepository = DefaultHackerNewsRepository(hackerNewsApi)
     val unslopRepository: UnslopRepository = UnslopRepository(client)
     val pollOptionsRepository: PollOptionsRepository = PollOptionsRepository(hackerNewsApi)

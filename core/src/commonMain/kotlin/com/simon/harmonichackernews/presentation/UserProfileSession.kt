@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -21,23 +22,31 @@ class UserProfileSession(
 ) {
     private val mutableEffects = MutableSharedFlow<UserProfileSessionEffect>(extraBufferCapacity = 8)
     private var loadJob: Job? = null
+    private var accountJob: Job? = null
+    private var started = false
+    private var disposed = false
     val effects: SharedFlow<UserProfileSessionEffect> = mutableEffects.asSharedFlow()
 
     fun start() {
-        loadJob?.cancel()
-        loadJob = scope.launch { runtime.load() }
+        if (started || disposed) return
+        started = true
+        accountJob = scope.launch(start = CoroutineStart.UNDISPATCHED) { runtime.observeAccount() }
+        loadJob = scope.launch(start = CoroutineStart.UNDISPATCHED) { runtime.load() }
     }
 
     fun retry() {
+        if (disposed) return
         loadJob?.cancel()
         loadJob = scope.launch { runtime.retry() }
     }
 
     fun openSubmissions(username: String) {
+        if (disposed) return
         mutableEffects.tryEmit(UserProfileSessionEffect.OpenSubmissions(username))
     }
 
     fun toggleBlocked() {
+        if (disposed) return
         runtime.toggleBlocked()?.let { result ->
             mutableEffects.tryEmit(UserProfileSessionEffect.Message(result.message))
             if (result.dismissProfile) mutableEffects.tryEmit(UserProfileSessionEffect.Dismiss)
@@ -45,8 +54,17 @@ class UserProfileSession(
     }
 
     fun report(username: String) {
-        mutableEffects.tryEmit(UserProfileSessionEffect.ComposeReportEmail(username))
+        if (disposed) return
+        if (runtime.canActOnProfile()) {
+            mutableEffects.tryEmit(UserProfileSessionEffect.ComposeReportEmail(username))
+        }
     }
 
-    fun dispose() = loadJob?.cancel()
+    fun dispose() {
+        if (disposed) return
+        disposed = true
+        runtime.cancelLoad()
+        loadJob?.cancel()
+        accountJob?.cancel()
+    }
 }

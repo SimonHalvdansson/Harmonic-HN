@@ -108,6 +108,7 @@ class StoryPreviewRepositoryTest {
         },
         store = store,
         imageFailures = failures,
+        dispatcher = scope.coroutineContext[kotlin.coroutines.ContinuationInterceptor] as kotlinx.coroutines.CoroutineDispatcher,
     )
 
     private companion object {

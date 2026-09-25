@@ -600,6 +600,7 @@ class AndroidCommentsCoordinator(
                 (scrollProgress.topCommentId != 0 || scrollProgress.topCommentOffset != 0),
             accountUser = commentsStore.state.value.accountUser,
             savedItemState = commentsStore.savedItemState,
+            referencePreview = commentsStore.referencePreview,
             listener = CommentsFeatureListener(commentsStore, platformCallbacks),
         )
         session.composeController = controller

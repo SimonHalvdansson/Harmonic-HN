@@ -92,6 +92,7 @@ class PreviewContentCache(
         if (store == null) return null
         val key = linkSummaryKey(normalizedUrl)
         val result = LinkSummaryCodec.decode(store.getString(key, null)) ?: return null
+        if (summaries.size >= maxSummaryEntries) summaries.clear()
         summaries[normalizedUrl] = result
         touch(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, key)
         return result

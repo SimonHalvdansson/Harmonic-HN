@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.app
 
+import com.simon.harmonichackernews.presentation.UserProfileDialogs
 import com.simon.harmonichackernews.navigation.CommentsOpeningRequests
 import com.simon.harmonichackernews.navigation.AppLaunchRouter
 import com.simon.harmonichackernews.navigation.AppLinkNavigator
@@ -22,7 +23,16 @@ class HarmonicSceneComposition internal constructor(
     val commentsOpeningRequests = CommentsOpeningRequests(app.commentsPreloads) {
         app.userSettings.reading.useAlgoliaApi
     }
-    val navigation = MainNavigationStore(beforePublish = commentsOpeningRequests::navigationChanged)
+    val userProfiles = UserProfileDialogs { scope, username ->
+        app.createUserProfileSession(scope, username, listOf(
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        ))
+    }
+    val navigation = MainNavigationStore(beforePublish = {
+        commentsOpeningRequests.navigationChanged(it)
+        userProfiles.navigationChanged(it)
+    })
     val launches = AppLaunchRouter(navigation)
     val links = AppLinkNavigator(
         navigation = navigation,
@@ -36,6 +46,7 @@ class HarmonicSceneComposition internal constructor(
         if (closed) return
         closed = true
         commentsOpeningRequests.close()
+        userProfiles.close()
         userMessages.close()
     }
 }

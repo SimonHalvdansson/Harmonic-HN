@@ -60,6 +60,18 @@ class PreviewContentCacheTest {
         assertFalse(store.contains(PreviewCachePolicy.PREVIEW_IMAGE_LOADED_PREFIX + "1"))
     }
 
+    @Test
+    fun loadingManyPersistedSummariesKeepsTheExistingMemoryBound() {
+        val store = TestKeyValueStore()
+        val writer = PreviewContentCache(stableHash = { it })
+        for (id in 1..3) writer.saveLinkSummary(store, "page$id", LinkSummary(title = "Title $id"))
+        val reader = PreviewContentCache(stableHash = { it }, maxSummaryEntries = 2)
+        for (id in 1..3) assertEquals("Title $id", reader.loadLinkSummary(store, "page$id")?.title)
+        store.remove(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "page1")
+        assertNull(reader.loadLinkSummary(store, "page1"))
+        assertEquals("Title 3", reader.loadLinkSummary(store, "page3")?.title)
+    }
+
     private fun cache(
         maxDiskEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
         negativeImageTtlMillis: Long = 6L * 60L * 60L * 1_000L,
