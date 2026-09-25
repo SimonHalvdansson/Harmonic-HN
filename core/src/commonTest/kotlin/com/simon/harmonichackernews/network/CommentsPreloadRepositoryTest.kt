@@ -90,7 +90,7 @@ class CommentsPreloadRepositoryTest {
         val repository = CommentsPreloadRepository(
             algolia = object : AlgoliaRepository {
                 override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor) = AlgoliaSubmissionsPage(emptyList())
-                override suspend fun search(url: String) = emptyList<Story>()
+                override suspend fun search(url: String) = AlgoliaSearchPage(emptyList(), 0, 0)
                 override suspend fun getItemJson(id: Int): String {
                     requestStarted.complete(Unit)
                     return response.await()
@@ -141,7 +141,7 @@ class CommentsPreloadRepositoryTest {
         var itemRequests = 0
 
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = AlgoliaSubmissionsPage(emptyList())
-        override suspend fun search(url: String): List<Story> = emptyList()
+        override suspend fun search(url: String): AlgoliaSearchPage = AlgoliaSearchPage(emptyList(), 0, 0)
 
         override suspend fun getItemJson(id: Int): String {
             itemRequests++

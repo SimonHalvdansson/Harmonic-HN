@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
 import com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore
@@ -293,7 +294,7 @@ class CommentsPresenterTest {
         val algolia = object : AlgoliaRepository {
             override suspend fun getItemJson(id: Int): String = network.await()
             override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
-            override suspend fun search(url: String): List<Story> = error("Unused")
+            override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
         }
         val source = RecordingHackerNewsRepository()
         val presenter = CommentsPresenter(
@@ -993,7 +994,7 @@ class CommentsPresenterTest {
                     override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
                         error("Not used")
 
-                    override suspend fun search(url: String): List<Story> = error("Not used")
+                    override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
 
                     override suspend fun getItemJson(id: Int): String =
                         throw HttpStatusException(503, "Unavailable", "https://hn.algolia.com")
@@ -1047,7 +1048,7 @@ class CommentsPresenterTest {
             var networkRequests = 0
             val source = object : AlgoliaRepository {
                 override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
-                override suspend fun search(url: String): List<Story> = error("Unused")
+                override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
                 override suspend fun getItemJson(id: Int): String {
                     networkRequests++
                     return networkResponse.await()
@@ -1453,7 +1454,7 @@ class CommentsPresenterTest {
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
             error("Not used")
 
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
 
         override suspend fun getItemJson(id: Int): String {
             itemRequests++

@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
+import com.simon.harmonichackernews.StorySearchController
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
@@ -23,63 +25,74 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertSame
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySearchStoreTest {
     @Test
-    fun paginationUsesUnfilteredCountAndKeepsResultsWhileLoadingMore() = runTest {
-        val more = CompletableDeferred<List<Story>>()
-        val limits = mutableListOf<Int>()
+    fun paginationUsesMetadataAndKeepsResultsWhileLoadingMore() = runTest {
+        val more = CompletableDeferred<AlgoliaSearchPage>()
+        val urls = mutableListOf<Url>()
         val store = store(backgroundScope, search = { url ->
-            val limit = Url(url).parameters["hitsPerPage"]!!.toInt()
-            limits += limit
-            if (limit == 200) (1..200).map(::story) else more.await()
+            urls += Url(url)
+            if (urls.size == 1) page(0, 2, 1, 2, 3) else more.await()
         }, filter = { it.id != 1 })
-
         store.search("Kotlin")
         runCurrent()
         assertEquals(listOf(1), store.state.value.stories.map(Story::id))
         assertTrue(store.state.value.canLoadMore)
-
         store.loadMore()
         store.loadMore()
         runCurrent()
         assertTrue(store.state.value.loadingMore)
         assertEquals(listOf(1), store.state.value.stories.map(Story::id))
-        assertEquals(listOf(200, 400), limits)
-
-        more.complete(listOf(story(1)))
+        assertEquals(listOf("200", "200"), urls.map { it.parameters["hitsPerPage"] })
+        assertEquals(listOf("0", "1"), urls.map { it.parameters["page"] })
+        more.complete(page(1, 2, 4))
         runCurrent()
         assertFalse(store.state.value.loading)
         assertFalse(store.state.value.loadingMore)
         assertFalse(store.state.value.canLoadMore)
         store.loadMore()
         runCurrent()
-        assertEquals(listOf(200, 400), limits)
+        assertEquals(2, urls.size)
     }
 
     @Test
-    fun loadMoreFailurePreservesResultsAndUsesSharedFailurePolicy() = runTest {
+    fun failureRetainsContentAndRetriesTheSamePageThroughEitherAction() = runTest {
+        val requested = mutableListOf<Int>()
+        var fail = true
         val store = store(backgroundScope, search = { url ->
-            if (Url(url).parameters["hitsPerPage"] == "200") (1..200).map(::story)
-            else throw HttpStatusException(429, "Too many requests", url)
+            val requestedPage = Url(url).parameters["page"]!!.toInt()
+            requested += requestedPage
+            if (requestedPage == 1 && fail) throw HttpStatusException(429, "Too many requests", url)
+            page(requestedPage, 3, requestedPage + 1)
         })
         store.search("Kotlin")
         runCurrent()
         val original = store.state.value.stories
-
         store.loadMore()
         runCurrent()
-
         assertEquals(original, store.state.value.stories)
         assertEquals(StoryLoadFailure.RATE_LIMITED, store.state.value.failure)
+        assertTrue(store.state.value.canLoadMore)
         assertFalse(store.state.value.loading)
-        assertFalse(store.state.value.loadingMore)
+        store.retry()
+        runCurrent()
+        fail = false
+        store.loadMore()
+        runCurrent()
+        assertEquals(listOf(0, 1, 1, 1), requested)
+        assertEquals(listOf(1, 2), store.state.value.stories.map(Story::id))
+        assertEquals(2, store.state.value.nextPage)
+        assertNull(store.state.value.failure)
     }
 
     @Test
     fun restoringStateRejectsAnOlderResponseEvenIfItDoesNotCooperateWithCancellation() = runTest {
-        lateinit var pending: Continuation<List<Story>>
+        lateinit var pending: Continuation<AlgoliaSearchPage>
         val store = store(backgroundScope, search = { suspendCoroutine { pending = it } })
         store.search("Old query")
         runCurrent()
@@ -88,7 +101,7 @@ class StorySearchStoreTest {
             mode = StorySearchMode.QUERY,
             query = "Restored query",
             stories = listOf(story(42)),
-            hitsPerPage = 200,
+            nextPage = 1,
             topStoriesStartTime = 0,
             options = StorySearchOptions(),
             canLoadMore = false,
@@ -97,7 +110,7 @@ class StorySearchStoreTest {
         val restored = store.state.value
         assertEquals("Restored query", restored.query)
         assertEquals(listOf(42), restored.stories.map(Story::id))
-        pending.resume(listOf(story(1)))
+        pending.resume(page(0, 2, 1))
         runCurrent()
 
         assertEquals(restored, store.state.value)
@@ -105,17 +118,17 @@ class StorySearchStoreTest {
 
     @Test
     fun startingANewQueryRejectsAnOlderResponse() = runTest {
-        lateinit var pending: Continuation<List<Story>>
+        lateinit var pending: Continuation<AlgoliaSearchPage>
         val store = store(backgroundScope, search = { url ->
             if (Url(url).parameters["query"] == "old") suspendCoroutine { pending = it }
-            else listOf(story(42))
+            else page(0, 1, 42)
         })
         store.search("old")
         runCurrent()
         store.search("new")
         runCurrent()
         val current = store.state.value
-        pending.resume(listOf(story(1)))
+        pending.resume(page(0, 2, 1))
         runCurrent()
 
         assertEquals(current, store.state.value)
@@ -200,30 +213,239 @@ class StorySearchStoreTest {
     }
 
     @Test
-    fun topStoriesKeepTheirTimeWindowWhenLoadingMore() = runTest {
+    fun topStoriesKeepTheirTimeWindowAndDeduplicateShiftingRanks() = runTest {
         val urls = mutableListOf<Url>()
+        val original = story(2)
         val store = store(backgroundScope, search = { url ->
             urls += Url(url)
-            (1..200).map(::story)
+            if (urls.size == 1) AlgoliaSearchPage(listOf(story(1), original), 0, 2)
+            else page(1, 2, 2, 3, 3)
         })
         store.loadTopStories(StoryType.LAST_WEEK, startTime = 123)
         runCurrent()
+        original.title = "Locally retained content"
         store.loadMore()
         runCurrent()
-
-        assertEquals(listOf("200", "400"), urls.map { it.parameters["hitsPerPage"] })
+        assertEquals(listOf("200", "200"), urls.map { it.parameters["hitsPerPage"] })
+        assertEquals(listOf("0", "1"), urls.map { it.parameters["page"] })
         assertEquals(listOf("created_at_i>123", "created_at_i>123"), urls.map { it.parameters["numericFilters"] })
+        assertEquals(listOf(1, 2, 3), store.state.value.stories.map(Story::id))
+        assertSame(original, store.state.value.stories[1])
+        assertEquals("Locally retained content", store.state.value.stories[1].title)
         assertEquals(StorySearchMode.TOP_STORIES, store.state.value.mode)
         assertEquals(123, store.state.value.topStoriesStartTime)
         assertFalse(store.state.value.canLoadMore)
     }
 
+    @Test
+    fun filteredEmptyAndDuplicateOnlyPagesDoNotPrematurelyEndPagination() = runTest {
+        val requested = mutableListOf<Int>()
+        val store = store(backgroundScope, search = { url ->
+            val n = Url(url).parameters["page"]!!.toInt()
+            requested += n
+            when (n) {
+                0 -> page(n, 5, 1, 2)
+                1 -> page(n, 5, 2, 3) // Entirely filtered.
+                2 -> page(n, 5) // No mapped stories, but more pages exist.
+                3 -> page(n, 5, 1) // Live rank shifted an already displayed ID.
+                else -> page(n, 5, 4)
+            }
+        }, filter = { it.id == 2 || it.id == 3 })
+        store.search("fixture")
+        runCurrent()
+        repeat(4) {
+            assertTrue(store.state.value.canLoadMore)
+            store.loadMore()
+            runCurrent()
+        }
+        assertEquals((0..4).toList(), requested)
+        assertEquals(listOf(1, 4), store.state.value.stories.map(Story::id))
+        assertFalse(store.state.value.canLoadMore)
+    }
+
+    @Test
+    fun refreshStartsAtZeroAndAcceptsUpdatedRankingAndContent() = runTest {
+        val requested = mutableListOf<Int>()
+        var refreshed = false
+        val store = store(backgroundScope, search = { url ->
+            val n = Url(url).parameters["page"]!!.toInt()
+            requested += n
+            if (refreshed) page(n, 2, 2, 1) else page(n, 2, n + 1)
+        })
+        store.search("fixture")
+        runCurrent()
+        store.loadMore()
+        runCurrent()
+        refreshed = true
+        store.search("fixture")
+        runCurrent()
+        assertEquals(listOf(0, 1, 0), requested)
+        assertEquals(listOf(2, 1), store.state.value.stories.map(Story::id))
+        assertEquals(1, store.state.value.nextPage)
+    }
+
+    @Test
+    fun refreshRejectsAnOutstandingPageWithoutAdvancingTheNewCursor() = runTest {
+        lateinit var pending: Continuation<AlgoliaSearchPage>
+        var refreshed = false
+        val store = store(backgroundScope, search = { url ->
+            if (Url(url).parameters["page"] == "1") suspendCoroutine { pending = it }
+            else if (refreshed) page(0, 3, 42) else page(0, 3, 1)
+        })
+        store.search("fixture")
+        runCurrent()
+        store.loadMore()
+        runCurrent()
+        refreshed = true
+        store.search("fixture")
+        runCurrent()
+        val current = store.state.value
+        pending.resume(page(1, 3, 2))
+        runCurrent()
+        assertEquals(current, store.state.value)
+        assertEquals(listOf(42), current.stories.map(Story::id))
+        assertEquals(1, current.nextPage)
+    }
+
+    @Test
+    fun localReadAndHiddenChangesApplyToRetainedRowsAndNewRows() = runTest {
+        val read = mutableSetOf<Int>()
+        val hidden = mutableSetOf<Int>()
+        val store = store(backgroundScope, search = { url ->
+            val n = Url(url).parameters["page"]!!.toInt()
+            if (n == 0) page(n, 2, 1, 2) else page(n, 2, 1, 2, 3, 4)
+        }, filter = { it.id in hidden }, read = { it in read }, hideRead = { true })
+        store.search("fixture")
+        runCurrent()
+        read += listOf(1, 3)
+        hidden += 2
+        store.loadMore()
+        runCurrent()
+        assertEquals(listOf(4), store.state.value.stories.map(Story::id))
+    }
+
+    @Test
+    fun newlyUnreadOrUnhiddenRecordsReturnInTheirOriginalOrderWithoutRedownloading() = runTest {
+        val read = mutableSetOf(1)
+        val hidden = mutableSetOf(2)
+        val requested = mutableListOf<Int>()
+        val store = store(backgroundScope, search = { url ->
+            val n = Url(url).parameters["page"]!!.toInt()
+            requested += n
+            if (n == 0) page(n, 2, 1, 2, 3) else page(n, 2, 4)
+        }, filter = { it.id in hidden }, read = { it in read }, hideRead = { true })
+        store.search("fixture")
+        runCurrent()
+        assertEquals(listOf(3), store.state.value.stories.map(Story::id))
+        read.clear()
+        hidden.clear()
+        store.loadMore()
+        runCurrent()
+        assertEquals(listOf(0, 1), requested)
+        assertEquals(listOf(1, 2, 3, 4), store.state.value.stories.map(Story::id))
+    }
+
+    @Test
+    fun searchOptionsFreezeTheDateBoundaryAcrossPagesAndRefreshResetsIt() = runTest {
+        var now = 1_700_000_000L
+        val controller = StorySearchController(object : Clock {
+            override fun now() = Instant.fromEpochSeconds(now)
+        })
+        val urls = mutableListOf<Url>()
+        val store = store(backgroundScope, controller = controller, search = { url ->
+            val parsed = Url(url)
+            urls += parsed
+            val n = parsed.parameters["page"]!!.toInt()
+            page(n, 3, n + 1)
+        })
+        store.selectSort(1)
+        store.selectDateRange(1)
+        store.selectMinimumPoints(2)
+        store.selectMinimumComments(3)
+        store.search("C++ & Kotlin")
+        runCurrent()
+        now += 3600
+        store.loadMore()
+        runCurrent()
+        assertEquals(urls[0].parameters["numericFilters"], urls[1].parameters["numericFilters"])
+        assertEquals("/api/v1/search_by_date", urls[1].encodedPath)
+        assertEquals("C++ & Kotlin", urls[1].parameters["query"])
+        assertEquals("min", urls[1].parameters["typoTolerance"])
+        assertTrue(urls[1].parameters["numericFilters"]!!.contains("points>=25,num_comments>=100"))
+        store.search("C++ & Kotlin")
+        runCurrent()
+        assertEquals("created_at_i>=${now - 86400},points>=25,num_comments>=100", urls.last().parameters["numericFilters"])
+    }
+
+    @Test
+    fun optionsAndFeedChangesRejectNonCooperativeOldPages() = runTest {
+        lateinit var pending: Continuation<AlgoliaSearchPage>
+        val store = store(backgroundScope, search = { url ->
+            if (Url(url).parameters["query"] == "old") suspendCoroutine { pending = it }
+            else page(0, 1, 42)
+        })
+        store.search("old")
+        runCurrent()
+        store.selectSort(1)
+        val canceled = store.state.value
+        pending.resume(page(0, 2, 1))
+        runCurrent()
+        assertEquals(canceled, store.state.value)
+        store.search("old")
+        runCurrent()
+        store.loadTopStories(StoryType.LAST_24_HOURS, startTime = 123)
+        runCurrent()
+        val top = store.state.value
+        pending.resume(page(0, 2, 1))
+        runCurrent()
+        assertEquals(top, store.state.value)
+        assertEquals(listOf(42), top.stories.map(Story::id))
+    }
+
+    @Test
+    fun cancelStopsTheActiveRequestAndPreventsFurtherPages() = runTest {
+        var canceled = false
+        val pending = CompletableDeferred<AlgoliaSearchPage>()
+        val store = store(backgroundScope, search = {
+            try { pending.await() } finally { canceled = true }
+        })
+        store.search("fixture")
+        runCurrent()
+        store.cancel(clearResults = true)
+        runCurrent()
+        assertTrue(canceled)
+        assertEquals(StorySearchMode.NONE, store.state.value.mode)
+        assertFalse(store.state.value.canLoadMore)
+        assertFalse(store.state.value.loading)
+    }
+
+    @Test
+    fun unexpectedResponsePageDoesNotAdvanceAndCanBeRetried() = runTest {
+        var response = page(4, 5, 1)
+        val store = store(backgroundScope, search = { response })
+        store.search("fixture")
+        runCurrent()
+        assertEquals(StoryLoadFailure.GENERAL, store.state.value.failure)
+        assertEquals(0, store.state.value.nextPage)
+        response = page(0, 1, 42)
+        store.retry()
+        runCurrent()
+        assertEquals(listOf(42), store.state.value.stories.map(Story::id))
+        assertNull(store.state.value.failure)
+    }
+
+    private fun page(page: Int, count: Int, vararg ids: Int) =
+        AlgoliaSearchPage(ids.map(::story), page, count)
+
     private fun store(
         scope: CoroutineScope,
-        search: suspend (String) -> List<Story> = { error("Unexpected Algolia request") },
+        search: suspend (String) -> AlgoliaSearchPage = { error("Unexpected Algolia request") },
         readIds: List<Int> = emptyList(),
         getStory: suspend (Int) -> Story? = { error("Unexpected story request") },
         filter: (Story) -> Boolean = { false },
+        read: (Int) -> Boolean = { false },
+        hideRead: () -> Boolean = { false },
+        controller: StorySearchController = StorySearchController(),
     ) = StorySearchStore(
         scope = scope,
         algoliaRepository = object : AlgoliaRepository {
@@ -237,9 +459,10 @@ class StorySearchStoreTest {
             override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
         },
         readStoryIds = { readIds },
-        isStoryRead = { false },
+        isStoryRead = read,
         shouldFilterStory = filter,
-        shouldHideReadStories = { false },
+        shouldHideReadStories = hideRead,
+        controller = controller,
     )
 
     private fun story(id: Int) = Story("Kotlin", id, true, false)

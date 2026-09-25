@@ -146,7 +146,7 @@ class HarmonicAppComposition(
                 StoryFeedResult.LinkDirectory(
                     network.algoliaRepository.search(
                         search.buildTopStoriesUrl(search.getCurrentTopStoriesStartTime(type), count),
-                    ),
+                    ).stories,
                 )
             } else {
                 StoryFeedRepository(

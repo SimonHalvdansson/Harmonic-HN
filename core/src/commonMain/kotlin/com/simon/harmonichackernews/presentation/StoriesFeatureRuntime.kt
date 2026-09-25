@@ -560,9 +560,9 @@ class StoriesFeatureRuntime(
         return true
     }
 
-    fun submitSearch(query: String, resetResultLimit: Boolean = true) {
+    fun submitSearch(query: String) {
         sessionState.lastSearch = query
-        searchOptions.search(query, resetResultLimit)
+        searchOptions.search(query)
     }
 
     fun selectSearchOption(option: StorySearchOption, index: Int) {
@@ -1594,7 +1594,8 @@ class StoriesFeatureRuntime(
     }
 
     private fun retrySearch() {
-        if (searching && sessionState.lastSearch.isNotBlank()) {
+        val hasSubmittedQuery = searchOptions.state.value.mode == StorySearchMode.QUERY
+        if (searching && (sessionState.lastSearch.isNotBlank() || hasSubmittedQuery)) {
             submitSearch(sessionState.lastSearch)
         }
     }

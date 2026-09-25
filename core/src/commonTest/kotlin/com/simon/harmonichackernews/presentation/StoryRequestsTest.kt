@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.SavedItemSnapshot
@@ -192,6 +193,38 @@ class StoryRequestsTest {
         runtime.loadVisibleStories()
         runCurrent()
         assertEquals(listOf(2, 1), requested)
+    }
+
+    @Test
+    fun optionChangesRestartASubmittedEmptyQueryButDoNotStartAnUnsubmittedSearch() = runTest {
+        val urls = mutableListOf<io.ktor.http.Url>()
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val repository = object : AlgoliaRepository by UnusedAlgoliaRepository {
+            override suspend fun search(url: String): AlgoliaSearchPage {
+                urls += io.ktor.http.Url(url)
+                return AlgoliaSearchPage(listOf(Story("Result", 42, true, false)), 0, 2)
+            }
+        }
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, algolia = repository),
+            QueuedCacheDispatcher(),
+        )
+        runtime.openSearch()
+        runtime.selectSearchOption(StorySearchOption.SORT, 1)
+        runCurrent()
+        assertTrue(urls.isEmpty())
+        runtime.submitSearch("")
+        runCurrent()
+        assertEquals("/api/v1/search_by_date", urls.single().encodedPath)
+        runtime.selectSearchOption(StorySearchOption.SORT, 0)
+        runCurrent()
+        assertEquals(2, urls.size)
+        assertEquals("/api/v1/search", urls.last().encodedPath)
+        assertEquals("", urls.last().parameters["query"])
+        assertEquals("0", urls.last().parameters["page"])
+        assertEquals(1, runtime.searchOptions.state.value.nextPage)
     }
 
     @Test
@@ -935,10 +968,11 @@ class StoryRequestsTest {
         feedLoader: StoryFeedLoader = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList())),
         api: HackerNewsApi = UnusedHackerNewsApi,
         userItemsLoader: HackerNewsUserItemsLoader = UnusedUserItemsLoader,
+        algolia: AlgoliaRepository = UnusedAlgoliaRepository,
     ) = StoryRequests(
         scope = scope,
         sessionState = session,
-        algoliaRepository = UnusedAlgoliaRepository,
+        algoliaRepository = algolia,
         hackerNewsRepository = UnusedHackerNewsRepository,
         hackerNewsApi = api,
         userItemsLoader = userItemsLoader,
@@ -1011,7 +1045,7 @@ class StoryRequestsTest {
     private object UnusedAlgoliaRepository : AlgoliaRepository {
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
             error("Not used")
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 

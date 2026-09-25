@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.cache
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
@@ -61,7 +62,7 @@ class StoryCacheUseCaseTest {
         },
         object : AlgoliaRepository {
             override suspend fun getItemJson(id: Int) = load(id)
-            override suspend fun search(url: String): List<Story> = error("Unused")
+            override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
             override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
         },
         object : StoryCacheSink {

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
@@ -134,7 +135,7 @@ class SubmissionsFeatureStoreTest {
                     AlgoliaSubmissionCount(2, true),
                 )
             }
-            override suspend fun search(url: String): List<Story> = error("Unused")
+            override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
             override suspend fun getItemJson(id: Int): String = error("Unused")
         }
         val store = featureStore(backgroundScope, SubmissionsSessionState(SubmissionsListStore("alice", repository, 1)))
@@ -234,7 +235,7 @@ class SubmissionsFeatureStoreTest {
             return page(items, pageSize, type, cursor)
         }
 
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 
@@ -248,7 +249,7 @@ class SubmissionsFeatureStoreTest {
             return page(response.await(), pageSize, type, cursor)
         }
 
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 
@@ -266,7 +267,7 @@ class SubmissionsFeatureStoreTest {
             }
         }
 
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 

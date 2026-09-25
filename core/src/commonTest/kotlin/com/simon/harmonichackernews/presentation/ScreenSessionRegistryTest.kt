@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
@@ -78,7 +79,7 @@ class ScreenSessionRegistryTest {
 
     private class FakeAlgoliaRepository : AlgoliaRepository {
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = AlgoliaSubmissionsPage(emptyList())
-        override suspend fun search(url: String): List<Story> = emptyList()
+        override suspend fun search(url: String): AlgoliaSearchPage = AlgoliaSearchPage(emptyList(), 0, 0)
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 }

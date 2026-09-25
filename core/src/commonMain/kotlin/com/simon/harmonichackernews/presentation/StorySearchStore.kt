@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
+import io.ktor.http.URLBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -37,7 +38,7 @@ data class StorySearchUiState(
     val query: String = "",
     val stories: List<Story> = emptyList(),
     val options: StorySearchOptions = StorySearchOptions(),
-    val hitsPerPage: Int = StorySearchController.ALGOLIA_HITS_INCREMENT,
+    val nextPage: Int = 0,
     val topStoriesStartTime: Int = 0,
     val loading: Boolean = false,
     val loadingMore: Boolean = false,
@@ -63,6 +64,8 @@ class StorySearchStore(
     private var request: Request? = null
     private var loadJob: Job? = null
     private var generation = 0L
+    // Keep filtered records too: read/hidden state can change before the next page arrives.
+    private var fetchedStories: List<Story> = emptyList()
     private val readStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
 
     val sortLabel: String get() = controller.sortLabel
@@ -73,18 +76,14 @@ class StorySearchStore(
     fun getTopStoriesStartTime(storyType: StoryType): Int =
         controller.getCurrentTopStoriesStartTime(storyType)
 
-    fun resetOptions() {
-        controller.resetOptions()
-        publish { copy(options = currentOptions()) }
-    }
+    fun resetOptions() = updateOption(controller::resetOptions)
 
-    fun restoreOptions(options: StorySearchOptions) {
+    fun restoreOptions(options: StorySearchOptions) = updateOption {
         controller.sortIndex = options.sortIndex.coerceIn(StorySearchController.sortLabels.indices)
         controller.dateRangeIndex = options.dateRangeIndex.coerceIn(StorySearchController.dateRangeLabels.indices)
         controller.minimumPointsIndex = options.minimumPointsIndex.coerceIn(StorySearchController.minimumPointsLabels.indices)
         controller.minimumCommentsIndex = options.minimumCommentsIndex.coerceIn(StorySearchController.minimumCommentsLabels.indices)
         if (controller.isOnlyRead != options.onlyRead) controller.toggleOnlyRead()
-        publish { copy(options = currentOptions()) }
     }
 
     fun selectSort(index: Int) = updateOption {
@@ -105,19 +104,24 @@ class StorySearchStore(
 
     fun toggleOnlyRead() = updateOption(controller::toggleOnlyRead)
 
-    fun search(query: String?, resetResultLimit: Boolean = true) {
-        request = Request.Query(query.orEmpty())
-        if (resetResultLimit) resetResultLimit()
+    fun search(query: String?) {
+        request = Request.Query(
+            query.orEmpty(),
+            controller.buildSearchUrl(query, StorySearchController.ALGOLIA_PAGE_SIZE),
+        )
+        resetPagination()
         execute(loadMore = false)
     }
 
     fun loadTopStories(
         storyType: StoryType,
         startTime: Int = controller.getCurrentTopStoriesStartTime(storyType),
-        resetResultLimit: Boolean = true,
     ) {
-        request = Request.TopStories(startTime)
-        if (resetResultLimit) resetResultLimit()
+        request = Request.TopStories(
+            startTime,
+            controller.buildTopStoriesUrl(startTime, StorySearchController.ALGOLIA_PAGE_SIZE),
+        )
+        resetPagination()
         execute(loadMore = false)
     }
 
@@ -127,12 +131,16 @@ class StorySearchStore(
     }
 
     fun retry() {
-        if (request != null) execute(loadMore = false)
+        if (request == null || state.value.loading) return
+        val retryPage = state.value.failure != null && state.value.nextPage > 0
+        if (!retryPage) resetPagination()
+        execute(loadMore = retryPage)
     }
 
     fun cancel(clearResults: Boolean = false) {
         cancelLoad()
         request = null
+        fetchedStories = emptyList()
         publish {
             copy(
                 mode = StorySearchMode.NONE,
@@ -150,7 +158,7 @@ class StorySearchStore(
         mode: StorySearchMode,
         query: String,
         stories: List<Story>,
-        hitsPerPage: Int,
+        nextPage: Int,
         topStoriesStartTime: Int,
         options: StorySearchOptions,
         canLoadMore: Boolean,
@@ -159,16 +167,23 @@ class StorySearchStore(
         cancelLoad()
         restoreOptions(options)
         request = when (mode) {
-            StorySearchMode.QUERY -> Request.Query(query)
-            StorySearchMode.TOP_STORIES -> Request.TopStories(topStoriesStartTime)
+            StorySearchMode.QUERY -> Request.Query(
+                query,
+                controller.buildSearchUrl(query, StorySearchController.ALGOLIA_PAGE_SIZE),
+            )
+            StorySearchMode.TOP_STORIES -> Request.TopStories(
+                topStoriesStartTime,
+                controller.buildTopStoriesUrl(topStoriesStartTime, StorySearchController.ALGOLIA_PAGE_SIZE),
+            )
             StorySearchMode.NONE -> null
         }
+        fetchedStories = stories.toList()
         publish {
             copy(
                 mode = mode,
                 query = query,
                 stories = stories,
-                hitsPerPage = hitsPerPage.coerceAtLeast(StorySearchController.ALGOLIA_HITS_INCREMENT),
+                nextPage = nextPage.coerceAtLeast(0),
                 topStoriesStartTime = topStoriesStartTime,
                 loading = false,
                 loadingMore = false,
@@ -189,14 +204,14 @@ class StorySearchStore(
         val activeRequest = request ?: return
         cancelLoad()
         val requestGeneration = generation
-        val hitsPerPage = state.value.hitsPerPage +
-            if (loadMore) StorySearchController.ALGOLIA_HITS_INCREMENT else 0
+        val page = if (loadMore) state.value.nextPage else 0
+        val retainedStories = if (loadMore) state.value.stories else emptyList()
+        val retainedFetchedStories = if (loadMore) fetchedStories else emptyList()
         publish {
             copy(
                 mode = activeRequest.mode,
                 query = activeRequest.query,
-                stories = if (loadMore) stories else emptyList(),
-                hitsPerPage = hitsPerPage,
+                stories = retainedStories,
                 topStoriesStartTime = activeRequest.topStoriesStartTime,
                 loading = true,
                 loadingMore = loadMore,
@@ -208,44 +223,57 @@ class StorySearchStore(
                 when {
                     activeRequest is Request.Query && controller.isOnlyRead ->
                         loadOnlyReadStories(activeRequest.query)
-                    else -> loadAlgoliaStories(activeRequest, hitsPerPage)
+                    else -> loadAlgoliaStories(activeRequest, page, retainedFetchedStories)
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 SearchResult(
                     stories = state.value.stories,
-                    canLoadMore = false,
+                    canLoadMore = loadMore,
+                    nextPage = page,
                     failure = StoryFeedRefreshPolicy.failureFor(error),
                 )
             }
             if (requestGeneration != generation) return@launch
             loadJob = null
+            result.fetchedStories?.let { fetchedStories = it }
             publish {
                 copy(
                     stories = result.stories,
                     loading = false,
                     loadingMore = false,
                     canLoadMore = result.canLoadMore,
+                    nextPage = result.nextPage,
                     failure = result.failure,
                 )
             }
         }
     }
 
-    private suspend fun loadAlgoliaStories(request: Request, hitsPerPage: Int): SearchResult {
-        val url = when (request) {
-            is Request.Query -> controller.buildSearchUrl(request.query, hitsPerPage)
-            is Request.TopStories -> controller.buildTopStoriesUrl(request.startTime, hitsPerPage)
-        }
-        val parsedStories = algoliaRepository.search(url)
-        val visibleStories = parsedStories.filter { story ->
+    private suspend fun loadAlgoliaStories(
+        request: Request,
+        page: Int,
+        retainedStories: List<Story>,
+    ): SearchResult {
+        // Freeze all search parameters (including relative date filters) for this pagination run.
+        val url = URLBuilder(request.url).apply { parameters["page"] = page.toString() }.buildString()
+        val response = algoliaRepository.search(url)
+        check(response.page == page) { "Algolia returned an unexpected page" }
+        // Keep the first occurrence and its existing presentation data. Live rankings can move
+        // IDs across page boundaries; refreshing starts a new ordering instead of moving old rows.
+        val ids = retainedStories.mapTo(mutableSetOf(), Story::id)
+        val additions = response.stories.filter { ids.add(it.id) }
+        val allStories = retainedStories + additions
+        val visibleStories = allStories.filter { story ->
             story.isRead = isStoryRead(story.id)
             !shouldFilterStory(story) && !(shouldHideReadStories() && story.isRead)
         }
         return SearchResult(
             stories = visibleStories,
-            canLoadMore = controller.canLoadMoreResults(parsedStories.size, hitsPerPage),
+            canLoadMore = response.nextPage != null,
+            nextPage = response.nextPage ?: (page + 1),
+            fetchedStories = allStories,
         )
     }
 
@@ -284,10 +312,11 @@ class StorySearchStore(
         )
     }
 
-    private fun resetResultLimit() {
+    private fun resetPagination() {
+        fetchedStories = emptyList()
         publish {
             copy(
-                hitsPerPage = StorySearchController.ALGOLIA_HITS_INCREMENT,
+                nextPage = 0,
                 loadingMore = false,
                 canLoadMore = false,
             )
@@ -295,8 +324,17 @@ class StorySearchStore(
     }
 
     private fun updateOption(block: () -> Unit) {
+        cancelLoad()
         block()
-        publish { copy(options = currentOptions()) }
+        request = null
+        publish {
+            copy(
+                options = currentOptions(),
+                loading = false,
+                loadingMore = false,
+                canLoadMore = false,
+            )
+        }
     }
 
     private fun currentOptions() = StorySearchOptions(
@@ -317,16 +355,17 @@ class StorySearchStore(
     }
 
     private sealed class Request {
+        abstract val url: String
         abstract val mode: StorySearchMode
         abstract val query: String
         abstract val topStoriesStartTime: Int
 
-        data class Query(override val query: String) : Request() {
+        data class Query(override val query: String, override val url: String) : Request() {
             override val mode = StorySearchMode.QUERY
             override val topStoriesStartTime = 0
         }
 
-        data class TopStories(val startTime: Int) : Request() {
+        data class TopStories(val startTime: Int, override val url: String) : Request() {
             override val mode = StorySearchMode.TOP_STORIES
             override val query = ""
             override val topStoriesStartTime = startTime
@@ -337,6 +376,8 @@ class StorySearchStore(
         val stories: List<Story>,
         val canLoadMore: Boolean,
         val failure: StoryLoadFailure? = null,
+        val nextPage: Int = 0,
+        val fetchedStories: List<Story>? = null,
     )
 
     private data class ReadStoryLoad(val story: Story?, val failed: Boolean)

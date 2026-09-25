@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
@@ -311,7 +312,7 @@ class SubmissionsListStoreTest {
                 totalCount = AlgoliaSubmissionCount(filtered.size, true),
             )
         }
-        override suspend fun search(url: String): List<Story> = error("Not used")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
         override suspend fun getItemJson(id: Int): String = error("Not used")
     }
 

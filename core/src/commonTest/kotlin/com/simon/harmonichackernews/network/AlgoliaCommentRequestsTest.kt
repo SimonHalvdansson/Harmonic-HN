@@ -162,7 +162,7 @@ class AlgoliaCommentRequestsTest {
     private fun source(item: suspend () -> String) = object : AlgoliaRepository {
         override suspend fun getItemJson(id: Int) = item()
         override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
-        override suspend fun search(url: String): List<Story> = error("Unused")
+        override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
     }
     private companion object {
         const val RESPONSE = """{"id":42,"title":"Story","children":[{"id":7,"author":"author","text":"Comment"}]}"""

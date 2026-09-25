@@ -53,15 +53,16 @@ class StorySearchController(
         }
     }
 
-    fun buildTopStoriesUrl(startTime: Int, hitsPerPage: Int): String {
+    fun buildTopStoriesUrl(startTime: Int, hitsPerPage: Int, page: Int = 0): String {
         return URLBuilder("https://hn.algolia.com/api/v1/search").apply {
             parameters.append("tags", "story")
             parameters.append("numericFilters", "created_at_i>$startTime")
             parameters.append("hitsPerPage", hitsPerPage.toString())
+            parameters.append("page", page.toString())
         }.buildString()
     }
 
-    fun buildSearchUrl(query: String?, hitsPerPage: Int): String {
+    fun buildSearchUrl(query: String?, hitsPerPage: Int, page: Int = 0): String {
         val endpoint = if (sortIndex == 0)
             "https://hn.algolia.com/api/v1/search"
         else
@@ -70,6 +71,7 @@ class StorySearchController(
             parameters.append("query", query.orEmpty())
             parameters.append("tags", "story")
             parameters.append("hitsPerPage", hitsPerPage.toString())
+            parameters.append("page", page.toString())
             parameters.append("typoTolerance", "min")
         }
 
@@ -95,10 +97,6 @@ class StorySearchController(
         }
 
         return builder.buildString()
-    }
-
-    fun canLoadMoreResults(rawParsedStoryCount: Int, hitsPerPage: Int): Boolean {
-        return rawParsedStoryCount >= hitsPerPage
     }
 
     fun normalizeQuery(query: String?): String {
@@ -154,7 +152,8 @@ class StorySearchController(
         get() = clock.now().epochSeconds
 
     companion object {
-        const val ALGOLIA_HITS_INCREMENT: Int = 200
+        // Keep the existing batch size while fetching each ranked page only once.
+        const val ALGOLIA_PAGE_SIZE: Int = 200
 
         val sortLabels: List<String> = listOf("Relevance", "Newest")
         val dateRangeLabels: List<String> =

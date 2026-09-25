@@ -30,6 +30,15 @@ data class AlgoliaSubmissionsPage(
     val canLoadMore: Boolean get() = nextCursor != null
 }
 
+/** Search ranking is page based; nbHits can exceed the number of accessible results. */
+data class AlgoliaSearchPage(
+    val stories: List<Story>,
+    val page: Int,
+    val pageCount: Int,
+) {
+    val nextPage: Int? get() = (page + 1).takeIf { it < pageCount }
+}
+
 interface AlgoliaRepository {
     /** Set [pageSize] to zero for totals without content. Reuse the returned cursor for older pages. */
     suspend fun getSubmissions(
@@ -38,7 +47,7 @@ interface AlgoliaRepository {
         type: AlgoliaSubmissionType = AlgoliaSubmissionType.BOTH,
         cursor: AlgoliaSubmissionsCursor = AlgoliaSubmissionsCursor(),
     ): AlgoliaSubmissionsPage
-    suspend fun search(url: String): List<Story>
+    suspend fun search(url: String): AlgoliaSearchPage
     suspend fun getItemJson(id: Int): String
 }
 
@@ -112,8 +121,13 @@ class KtorAlgoliaRepository(
         return AlgoliaSubmissionsCursor(throughEpochSeconds = oldest)
     }
 
-    override suspend fun search(url: String): List<Story> = withContext(requestDispatcher) {
-        searchResponse(url).hits.mapNotNull { it.toStory() }
+    override suspend fun search(url: String): AlgoliaSearchPage = withContext(requestDispatcher) {
+        val response = searchResponse(url)
+        AlgoliaSearchPage(
+            stories = response.hits.mapNotNull { it.toStory() },
+            page = response.page,
+            pageCount = response.nbPages,
+        )
     }
 
     private suspend fun searchResponse(url: String): AlgoliaSearchResponseDto {

@@ -45,7 +45,7 @@ class CommentThreadRepositoryOrderingTest {
             override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage =
                 error("Not used")
 
-            override suspend fun search(url: String): List<Story> = error("Not used")
+            override suspend fun search(url: String): AlgoliaSearchPage = error("Not used")
 
             override suspend fun getItemJson(id: Int): String =
                 """
