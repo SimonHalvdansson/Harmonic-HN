@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.settings.TestKeyValueStore
+import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,6 +9,49 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PreviewContentCacheTest {
+    @Test
+    fun imageHitsBatchOrderWritesAndInsertionPersistsExactRecency() {
+        val backing = TestKeyValueStore()
+        var orderWrites = 0
+        val store = object : KeyValueStore by backing {
+            override fun putString(key: String, value: String?) {
+                if (key == PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY) orderWrites++
+                backing.putString(key, value)
+            }
+        }
+        val cache = cache(maxDiskEntries = 100)
+        repeat(100) { cache.savePreviewImage(store, "$it", "https://example.com/$it.png") }
+        orderWrites = 0
+        repeat(64) { cache.loadPreviewImage(store, "$it") }
+        assertEquals(1, orderWrites)
+        assertEquals("63", PreviewCachePolicy.decodeOrder(backing.getString(PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY)).last())
+
+        cache.loadPreviewImage(store, "64")
+        cache.savePreviewImage(store, "100", "https://example.com/100.png")
+        assertFalse(cache.loadPreviewImage(store, "65", updateCacheOrder = false).loaded)
+        val restoredOrder = PreviewCachePolicy.decodeOrder(backing.getString(PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY))
+        assertEquals(listOf("64", "100"), restoredOrder.takeLast(2))
+        assertEquals(100, restoredOrder.size)
+    }
+
+    @Test
+    fun summaryEvictionRetainsRecentlyReadAndUpdatedEntries() {
+        val store = TestKeyValueStore()
+        val cache = PreviewContentCache(stableHash = { it }, maxSummaryEntries = 2)
+        cache.saveLinkSummary(store, "one", LinkSummary(title = "one"))
+        cache.saveLinkSummary(store, "two", LinkSummary(title = "two"))
+        assertEquals("one", cache.loadLinkSummary(store, "one")?.title)
+        cache.saveLinkSummary(store, "three", LinkSummary(title = "three"))
+        // Remove persistent content to distinguish an in-memory hit from a disk reload.
+        store.remove(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "one")
+        store.remove(PreviewCachePolicy.LINK_SUMMARY_PREFIX + "two")
+        assertEquals("one", cache.loadLinkSummary(store, "one")?.title)
+        assertNull(cache.loadLinkSummary(store, "two"))
+        cache.saveLinkSummary(store, "three", LinkSummary(title = "updated"))
+        assertEquals("one", cache.loadLinkSummary(store, "one")?.title)
+        assertEquals("updated", cache.loadLinkSummary(store, "three")?.title)
+    }
+
     @Test
     fun negativeImageHitsAndLruEvictionPersistAcrossCacheInstances() {
         val store = TestKeyValueStore()

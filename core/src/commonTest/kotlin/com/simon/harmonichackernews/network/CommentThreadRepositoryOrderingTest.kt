@@ -11,6 +11,48 @@ import kotlin.test.assertIs
 
 class CommentThreadRepositoryOrderingTest {
     @Test
+    fun officialForestSkipsFailedAndFilteredBranchesWithoutReorderingSiblings() = runTest {
+        val requested = mutableListOf<Int>()
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = intArrayOf(1, 2, 3, 4) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int): Comment? {
+                requested.add(id)
+                if (id == 2) error("Unavailable")
+                return Comment().also {
+                    it.id = id
+                    it.by = if (id == 3) "BLOCKED" else "reader"
+                    it.kidsIds = if (id < 5) intArrayOf(id + 10) else intArrayOf()
+                }
+            }
+        }
+        val result = assertIs<CommentThreadLoadResult.Official>(
+            OfficialCommentThreadLoader(repository).load(42, setOf("blocked"), true),
+        )
+        assertEquals(listOf(1, 11, 4, 14), result.comments.map { it.id })
+        assertEquals(listOf(0, 1, 0, 1), result.comments.map { it.depth })
+        assertEquals(setOf(1, 2, 3, 4, 11, 14), requested.toSet())
+        assertEquals(true, result.usedAsFallback)
+    }
+
+    @Test
+    fun officialDeepBranchFlattensInOrder() = runTest {
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = intArrayOf(1) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int) = Comment().also {
+                it.id = id; it.by = "reader"
+                it.kidsIds = if (id < 500) intArrayOf(id + 1) else intArrayOf()
+            }
+        }
+        val result = assertIs<CommentThreadLoadResult.Official>(
+            OfficialCommentThreadLoader(repository).load(42, emptySet(), false),
+        )
+        assertEquals((1..500).toList(), result.comments.map { it.id })
+        assertEquals((0..499).toList(), result.comments.map { it.depth })
+    }
+
+    @Test
     fun officialForestBoundsRequestsAndRetainsDepthFirstOrder() = runTest {
         var active = 0
         var peak = 0

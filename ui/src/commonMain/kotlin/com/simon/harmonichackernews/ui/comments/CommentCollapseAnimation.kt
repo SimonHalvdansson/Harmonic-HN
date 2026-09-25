@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -120,6 +121,7 @@ internal fun rememberAnimatedCommentRows(
     LaunchedEffect(plan) {
         if (plan.exitingIds.isNotEmpty()) progress.animateTo(0f, contentTween())
     }
-    return if (progress.value == 0f) AnimatedCommentRows(current, emptySet(), emptyMap()) { 0f }
+    val finished by remember(progress) { derivedStateOf { progress.value == 0f } }
+    return if (finished) AnimatedCommentRows(current, emptySet(), emptyMap()) { 0f }
     else AnimatedCommentRows(rows, plan.exitingIds, geometry) { progress.value }
 }

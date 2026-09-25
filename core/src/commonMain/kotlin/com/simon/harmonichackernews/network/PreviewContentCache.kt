@@ -23,8 +23,8 @@ class PreviewContentCache(
     private val negativeImageTtlMillis: Long = PreviewCachePolicy.NEGATIVE_IMAGE_TTL_MILLIS,
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
-    private val summaries = mutableMapOf<String, LinkSummary>()
-    private val cacheOrders = mutableMapOf<String, List<String>>()
+    private val summaries = linkedMapOf<String, LinkSummary>()
+    private val cacheOrders = mutableMapOf<String, CacheOrder>()
 
     fun loadPreviewImage(
         store: KeyValueStore?,
@@ -47,7 +47,8 @@ class PreviewContentCache(
 
     fun savePreviewImage(store: KeyValueStore?, entryId: String?, imageUrl: String?) {
         if (store == null || entryId.isNullOrEmpty()) return
-        val orderUpdate = orderUpdate(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY, entryId)
+        val order = readOrder(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY)
+        val evicted = order.touch(entryId, maxDiskEntries)
         store.update {
             putBoolean(previewImageLoadedKey(entryId), true)
             if (imageUrl.isNullOrEmpty()) {
@@ -57,43 +58,45 @@ class PreviewContentCache(
                 putString(previewImageUrlKey(entryId), imageUrl)
                 remove(previewImageMissTimeKey(entryId))
             }
-            orderUpdate.evicted.forEach { oldestId ->
+            evicted.forEach { oldestId ->
                 remove(previewImageUrlKey(oldestId))
                 remove(previewImageLoadedKey(oldestId))
                 remove(previewImageMissTimeKey(oldestId))
             }
             putString(
                 PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
-                PreviewCachePolicy.encodeOrder(orderUpdate.order),
+                order.encode(),
             )
         }
-        cacheOrders[PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY] = orderUpdate.order.toList()
+        order.pendingTouches = 0
     }
 
     fun invalidatePreviewImage(store: KeyValueStore?, entryId: String?) {
         if (store == null || entryId.isNullOrEmpty()) return
         val order = readOrder(store, PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY)
-            .filter { it != entryId }
+        order.remove(entryId)
         store.update {
             remove(previewImageUrlKey(entryId))
             remove(previewImageLoadedKey(entryId))
             remove(previewImageMissTimeKey(entryId))
             putString(
                 PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY,
-                PreviewCachePolicy.encodeOrder(order),
+                order.encode(),
             )
         }
-        cacheOrders[PreviewCachePolicy.PREVIEW_IMAGE_ORDER_KEY] = order
+        order.pendingTouches = 0
     }
 
     fun loadLinkSummary(store: KeyValueStore?, normalizedUrl: String?): LinkSummary? {
         if (normalizedUrl.isNullOrEmpty()) return null
-        summaries[normalizedUrl]?.let { return it }
+        summaries.remove(normalizedUrl)?.let {
+            summaries[normalizedUrl] = it
+            return it
+        }
         if (store == null) return null
         val key = linkSummaryKey(normalizedUrl)
         val result = LinkSummaryCodec.decode(store.getString(key, null)) ?: return null
-        if (summaries.size >= maxSummaryEntries) summaries.clear()
-        summaries[normalizedUrl] = result
+        rememberSummary(normalizedUrl, result)
         touch(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, key)
         return result
     }
@@ -104,15 +107,18 @@ class PreviewContentCache(
         summary: LinkSummary?,
     ) {
         if (normalizedUrl.isNullOrEmpty() || summary == null) return
-        if (summaries.size >= maxSummaryEntries) summaries.clear()
-        summaries[normalizedUrl] = summary
+        rememberSummary(normalizedUrl, summary)
         if (store == null) return
 
         val key = linkSummaryKey(normalizedUrl)
-        val orderUpdate = orderUpdate(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, key)
-        store.putString(key, LinkSummaryCodec.encode(summary))
-        orderUpdate.evicted.forEach(store::remove)
-        writeOrder(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, orderUpdate.order)
+        val order = readOrder(store, PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY)
+        val evicted = order.touch(key, maxDiskEntries)
+        store.update {
+            putString(key, LinkSummaryCodec.encode(summary))
+            evicted.forEach(::remove)
+            putString(PreviewCachePolicy.LINK_SUMMARY_ORDER_KEY, order.encode())
+        }
+        order.pendingTouches = 0
     }
 
     /** Clears process memory and invalidates cached order snapshots after platform storage cleanup. */
@@ -122,30 +128,57 @@ class PreviewContentCache(
     }
 
     private fun touch(store: KeyValueStore, orderKey: String, key: String) {
-        val update = orderUpdate(store, orderKey, key)
-        writeOrder(store, orderKey, update.order)
-    }
-
-    private fun orderUpdate(
-        store: KeyValueStore,
-        orderKey: String,
-        key: String,
-    ): PreviewCacheOrderUpdate = PreviewCachePolicy.touch(
-        readOrder(store, orderKey),
-        key,
-        maxDiskEntries,
-    )
-
-    private fun readOrder(store: KeyValueStore, orderKey: String): MutableList<String> {
-        cacheOrders[orderKey]?.let { return it.toMutableList() }
-        return PreviewCachePolicy.decodeOrder(store.getString(orderKey, "")).also {
-            cacheOrders[orderKey] = it.toList()
+        val order = readOrder(store, orderKey)
+        order.touch(key, maxDiskEntries)
+        // Exact recency is retained in memory. Persist at most once per batch of hits; every
+        // insertion/removal also persists it. Process death can lose only recent hit ordering,
+        // never cache content or the entry bound.
+        if (order.pendingTouches >= 64) {
+            store.putString(orderKey, order.encode())
+            order.pendingTouches = 0
         }
     }
 
-    private fun writeOrder(store: KeyValueStore, orderKey: String, order: List<String>) {
-        cacheOrders[orderKey] = order.toList()
-        store.putString(orderKey, PreviewCachePolicy.encodeOrder(order))
+    private fun readOrder(store: KeyValueStore, orderKey: String): CacheOrder =
+        cacheOrders.getOrPut(orderKey) {
+            CacheOrder(PreviewCachePolicy.decodeOrder(store.getString(orderKey, "")))
+        }
+
+    private fun rememberSummary(url: String, summary: LinkSummary) {
+        if (maxSummaryEntries <= 0) return
+        summaries.remove(url)
+        while (summaries.size >= maxSummaryEntries) summaries.remove(summaries.keys.first())
+        summaries[url] = summary
+    }
+
+    private class CacheOrder(keys: List<String>) {
+        private val entries = keys.toCollection(linkedSetOf())
+        private var newest: String? = keys.lastOrNull()
+        var pendingTouches = 0
+
+        fun touch(key: String, capacity: Int): List<String> {
+            if (newest == key && entries.size <= capacity) return emptyList()
+            entries.remove(key)
+            entries.add(key)
+            newest = key
+            pendingTouches++
+            if (entries.size <= capacity) return emptyList()
+            val evicted = mutableListOf<String>()
+            val iterator = entries.iterator()
+            while (entries.size > capacity.coerceAtLeast(0) && iterator.hasNext()) {
+                evicted.add(iterator.next())
+                iterator.remove()
+            }
+            if (entries.isEmpty()) newest = null
+            return evicted
+        }
+
+        fun remove(key: String) {
+            entries.remove(key)
+            if (newest == key) newest = entries.lastOrNull()
+        }
+
+        fun encode(): String = entries.joinToString(",")
     }
 
     private fun previewImageUrlKey(entryId: String): String =

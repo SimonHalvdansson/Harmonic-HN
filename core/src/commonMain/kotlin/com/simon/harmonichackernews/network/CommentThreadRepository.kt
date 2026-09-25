@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 
 /**
  * Selects the configured comments source and owns the transport-neutral Algolia-to-official-API
@@ -175,42 +176,53 @@ class OfficialCommentThreadLoader(
         topLevelIds: IntArray,
         filteredUsers: Set<String>,
     ): MutableList<Comment> = coroutineScope {
-        topLevelIds
+        val roots = topLevelIds
             .map { commentId -> async { loadCommentBranch(commentId, 0, filteredUsers) } }
             .awaitAll()
-            .flatten()
-            .toMutableList()
+        // Each branch retains only its direct children. Flatten once after loading so a deeply
+        // nested reply is not copied into every ancestor's intermediate list.
+        val pending = ArrayDeque<LoadedCommentBranch>()
+        for (index in roots.indices.reversed()) roots[index]?.let(pending::addLast)
+        val comments = mutableListOf<Comment>()
+        while (pending.isNotEmpty()) {
+            coroutineContext.ensureActive()
+            val branch = pending.removeLast()
+            comments.add(branch.comment)
+            for (index in branch.children.indices.reversed()) {
+                branch.children[index]?.let(pending::addLast)
+            }
+        }
+        comments
     }
 
     private suspend fun loadCommentBranch(
         commentId: Int,
         depth: Int,
         filteredUsers: Set<String>,
-    ): List<Comment> {
+    ): LoadedCommentBranch? {
         val comment = try {
             requests.withPermit { hackerNewsRepository.getComment(commentId) }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
             null
-        } ?: return emptyList()
+        } ?: return null
 
-        val author = comment.by ?: return emptyList()
-        if (author.lowercase() in filteredUsers) return emptyList()
+        val author = comment.by ?: return null
+        if (author.lowercase() in filteredUsers) return null
 
         comment.expanded = true
         comment.depth = depth
-        val descendants = coroutineScope {
-            (comment.kidsIds ?: intArrayOf())
+        val childIds = comment.kidsIds
+        val children = if (childIds == null || childIds.isEmpty()) emptyList() else coroutineScope {
+            childIds
                 .map { childId -> async { loadCommentBranch(childId, depth + 1, filteredUsers) } }
                 .awaitAll()
-                .flatten()
         }
-        return buildList(1 + descendants.size) {
-            add(comment)
-            addAll(descendants)
-        }
+        return LoadedCommentBranch(comment, children)
     }
+
+    private class LoadedCommentBranch(val comment: Comment, val children: List<LoadedCommentBranch?>)
 }
 
 enum class CommentThreadSource {
