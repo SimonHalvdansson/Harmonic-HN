@@ -155,6 +155,7 @@ class CommentsFeatureBinding private constructor(
                     userSettings = app.userSettings,
                     canLoadArticleTextOnDemand = canLoadArticleTextOnDemand,
                     performanceTrace = performanceTrace,
+                    openingRequest = scene.commentsOpeningRequests.requestFor(request.serial, request.storyId),
                 ),
             )
             store.start(

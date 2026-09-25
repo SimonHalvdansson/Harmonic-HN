@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.CommentThreadLoadResult
@@ -102,6 +103,7 @@ sealed interface CommentsAction {
         /** Optional host gate after background parsing and before cached UI state is published. */
         val beforeApplyCachedResponse: (suspend () -> Unit)? = null,
         val loadPreparedThread: (suspend () -> PreparedCommentThread?)? = null,
+        val openingRequest: AlgoliaCommentRequest? = null,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story, val forceRefresh: Boolean = false) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
@@ -449,11 +451,20 @@ class CommentsPresenter(
 
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
+        if (action.openingRequest?.isClosed == true) return
         thread.setSorting(action.sorting)
         val storyId = action.story.id
         val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
         publish(usingOfficialApiFallback = false)
+        // Only HTTP starts here. Cache reads, parsing and publication stay in their existing
+        // scheduled load job; a navigation lease may already have started the same transfer.
+        val request = if (action.useAlgolia) {
+            action.openingRequest ?: commentThreadRepository.acquireAlgoliaRequest(storyId)
+        } else {
+            action.openingRequest?.close()
+            null
+        }
         threadLoadJob = scope.launch {
             var topLevelCommentIds = knownTopLevelCommentIds
             val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
@@ -577,6 +588,7 @@ class CommentsPresenter(
                 filteredUsers = action.filteredUsers,
                 topLevelCommentIds = topLevelCommentIds,
                 cachedThread = cachedParsed?.cacheSummary?.preparedThread,
+                algoliaRequest = request,
                 onAlgoliaFallback = {
                     if (threadLoadSession.isCurrent(requestId, storyId)) {
                         publish(usingOfficialApiFallback = true)
@@ -645,6 +657,12 @@ class CommentsPresenter(
                         CommentsPresenterEffect.ThreadFailed(requestId, storyId, result),
                     )
                 }
+            }
+        }.also { job ->
+            val cancellation = request?.invokeOnClose { job.cancel() }
+            job.invokeOnCompletion {
+                cancellation?.dispose()
+                request?.close()
             }
         }
     }

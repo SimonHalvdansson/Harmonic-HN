@@ -4,6 +4,9 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,9 +27,22 @@ class CommentsPreloadRepository(
     private val nowMillis: () -> Long,
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
     private val maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
+    requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val mutex = Mutex()
-    private val entries = LinkedHashMap<PreloadKey, PreparedCommentsThread>()
+    private val entries = MutableStateFlow<Map<PreloadKey, PreparedCommentsThread>>(emptyMap())
+    private val requests = AlgoliaCommentRequests(algolia, requestDispatcher)
+
+    /** Ready preloads also supply immutable bytes when display order or filters have changed. */
+    fun acquireAlgoliaRequest(storyId: Int): AlgoliaCommentRequest {
+        val cutoff = nowMillis() - maxAgeMillis
+        val ready = entries.value.values.firstOrNull {
+            it is PreloadedCommentsThread && it.storyId == storyId && it.loadedAtMillis >= cutoff
+        } as? PreloadedCommentsThread
+        return ready?.let { AlgoliaCommentRequest.completed(storyId, it.response) }
+            ?: requests.acquire(storyId)
+    }
+
     private val inFlight = mutableMapOf<PreloadKey, CompletableDeferred<PreparedCommentsThread?>>()
 
     suspend fun preload(
@@ -41,18 +57,23 @@ class CommentsPreloadRepository(
             filteredUsers,
             CommentThreadSource.ALGOLIA,
         )
-        return prepare(key) {
-            val response = algolia.getItemJson(storyId)
-            val parsed = parser.parseForDisplay(response, key.topLevelCommentIds, key.filteredUsers)
-            PreloadedCommentsThread(
-                storyId = storyId,
-                topLevelCommentIds = key.topLevelCommentIds,
-                filteredUsers = key.filteredUsers,
-                response = response,
-                parsed = parsed,
-                loadedAtMillis = nowMillis(),
-            )
-        } as? PreloadedCommentsThread
+        val request = acquireAlgoliaRequest(storyId)
+        return try {
+            prepare(key) {
+                val response = request.await()
+                val parsed = parser.parseForDisplay(response, key.topLevelCommentIds, key.filteredUsers)
+                PreloadedCommentsThread(
+                    storyId = storyId,
+                    topLevelCommentIds = key.topLevelCommentIds,
+                    filteredUsers = key.filteredUsers,
+                    response = response,
+                    parsed = parsed,
+                    loadedAtMillis = nowMillis(),
+                )
+            } as? PreloadedCommentsThread
+        } finally {
+            request.close()
+        }
     }
 
     suspend fun preloadOfficial(
@@ -93,7 +114,7 @@ class CommentsPreloadRepository(
         var creator = false
         val deferred = mutex.withLock {
             removeExpiredLocked()
-            entries[key]?.let { return it }
+            entries.value[key]?.let { return it }
             inFlight[key] ?: CompletableDeferred<PreparedCommentsThread?>().also {
                 inFlight[key] = it
                 creator = true
@@ -113,7 +134,7 @@ class CommentsPreloadRepository(
                 mutex.withLock {
                     inFlight.remove(key)
                     if (loaded != null) {
-                        entries[key] = loaded
+                        entries.value = entries.value + (key to loaded)
                         trimLocked()
                     }
                 }
@@ -176,13 +197,16 @@ class CommentsPreloadRepository(
     ): PreparedCommentsThread? {
         val pending = mutex.withLock {
             removeExpiredLocked()
-            entries.remove(key)?.let { return it }
+            entries.value[key]?.let {
+                entries.value = entries.value - key
+                return it
+            }
             inFlight[key].takeIf { awaitInFlight }
         } ?: return null
         pending.await() ?: return null
         return mutex.withLock {
             removeExpiredLocked()
-            entries.remove(key)
+            entries.value[key]?.also { entries.value = entries.value - key }
         }
     }
 
@@ -217,24 +241,24 @@ class CommentsPreloadRepository(
     private suspend fun isPrepared(key: PreloadKey): Boolean {
         return mutex.withLock {
             removeExpiredLocked()
-            key in entries || key in inFlight
+            key in entries.value || key in inFlight
         }
     }
 
     suspend fun preparedCount(): Int = mutex.withLock {
         removeExpiredLocked()
-        entries.size
+        entries.value.size
     }
 
     private fun removeExpiredLocked() {
         val cutoff = nowMillis() - maxAgeMillis
-        entries.entries.removeAll { (_, value) -> value.loadedAtMillis < cutoff }
+        entries.value = entries.value.filterValues { it.loadedAtMillis >= cutoff }
     }
 
     private fun trimLocked() {
-        while (entries.size > maxEntries.coerceAtLeast(1)) {
-            val oldest = entries.minByOrNull { it.value.loadedAtMillis }?.key ?: return
-            entries.remove(oldest)
+        while (entries.value.size > maxEntries.coerceAtLeast(1)) {
+            val oldest = entries.value.minByOrNull { it.value.loadedAtMillis }?.key ?: return
+            entries.value = entries.value - oldest
         }
     }
 

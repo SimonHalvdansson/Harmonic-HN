@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.LinkSummary
@@ -100,6 +101,7 @@ class CommentsFeatureRuntime(
     private val loadCachedThread: suspend (Int) -> String? = { null },
     private val loadPreparedThread: (suspend (Int) -> PreparedCommentThread?)? = null,
     private val awaitInitialPresentation: suspend () -> Unit = {},
+    private var openingRequest: AlgoliaCommentRequest? = null,
     private val storeCachedThread: suspend (Int, String, AlgoliaStorySummary?) -> Unit = { _, _, _ -> },
     private val publishStoryUpdate: (Story) -> Unit = {},
     previewResourceService: StoryPreviewResourceService? = null,
@@ -377,6 +379,7 @@ class CommentsFeatureRuntime(
         loadCachedResponse: (suspend () -> String?)? = null,
         beforeApplyCachedResponse: (suspend () -> Unit)? = null,
         loadPreparedResponse: (suspend () -> PreparedCommentThread?)? = null,
+        initialRequest: AlgoliaCommentRequest? = null,
     ) {
         val story = story ?: return
         presenter.dispatch(CommentsAction.SetRefreshing(refreshing))
@@ -393,6 +396,7 @@ class CommentsFeatureRuntime(
                 loadPreviousResponse = loadCachedResponse,
                 beforeApplyCachedResponse = beforeApplyCachedResponse,
                 loadPreparedThread = loadPreparedResponse,
+                openingRequest = initialRequest,
             ),
         )
         presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = refreshing))
@@ -407,6 +411,7 @@ class CommentsFeatureRuntime(
             loadCachedResponse = { loadCachedThread(storyId) },
             beforeApplyCachedResponse = awaitInitialPresentation,
             loadPreparedResponse = loadPreparedThread?.let { load -> { load(storyId) } },
+            initialRequest = openingRequest.also { openingRequest = null },
         )
         platform(CommentsPlatformEffect.ReloadLinkPreviews)
     }
@@ -608,6 +613,8 @@ class CommentsFeatureRuntime(
     }
 
     fun dispose() {
+        openingRequest?.close()
+        openingRequest = null
         presenter.dispatch(CommentsAction.CancelThreadLoad)
         presenter.dispatch(CommentsAction.CancelPollOptionsLoad)
         presenter.dispatch(CommentsAction.CancelPollVote)

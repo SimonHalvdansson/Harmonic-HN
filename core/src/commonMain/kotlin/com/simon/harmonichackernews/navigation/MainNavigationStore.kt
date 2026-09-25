@@ -74,7 +74,11 @@ data class MainNavigationSnapshot(
 }
 
 /** Observable navigation bridge shared by Compose, SwiftUI and desktop hosts. */
-class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRestoration()) {
+class MainNavigationStore(
+    restored: MainNavigationRestoration = MainNavigationRestoration(),
+    // Retain opening requests before observers deactivate the source screen and its preloads.
+    private val beforePublish: (MainNavigationSnapshot) -> Unit = {},
+) {
     private var machine = MainNavigationState(restored)
     private val mutableState = MutableStateFlow(machine.snapshot())
 
@@ -140,7 +144,9 @@ class MainNavigationStore(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     private fun publish() {
-        mutableState.value = machine.snapshot()
+        val next = machine.snapshot()
+        beforePublish(next)
+        mutableState.value = next
     }
 }
 

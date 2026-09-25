@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.app
 
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.EditorType
+import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
@@ -86,6 +87,7 @@ data class CommentsFeatureHost(
     val canLoadArticleTextOnDemand: Boolean = false,
     val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
     val awaitInitialPresentation: suspend () -> Unit = {},
+    val openingRequest: AlgoliaCommentRequest? = null,
 )
 
 /**
@@ -218,6 +220,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
             withContext(Dispatchers.Default) { storyCache.loadStoryPayload(storyId) }
         },
         awaitInitialPresentation = host.awaitInitialPresentation,
+        openingRequest = host.openingRequest,
         storeCachedThread = storyCache::cacheParsedStory,
         publishStoryUpdate = storyUpdates::publish,
         previewResourceService = previewResources,

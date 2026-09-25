@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.app
 
+import com.simon.harmonichackernews.navigation.CommentsOpeningRequests
 import com.simon.harmonichackernews.navigation.AppLaunchRouter
 import com.simon.harmonichackernews.navigation.AppLinkNavigator
 import com.simon.harmonichackernews.navigation.MainNavigationStore
@@ -18,7 +19,10 @@ class HarmonicSceneComposition internal constructor(
     val userMessages: UserMessageStore,
 ) {
     val sessions = ScreenSessionRegistry()
-    val navigation = MainNavigationStore()
+    val commentsOpeningRequests = CommentsOpeningRequests(app.commentsPreloads) {
+        app.userSettings.reading.useAlgoliaApi
+    }
+    val navigation = MainNavigationStore(beforePublish = commentsOpeningRequests::navigationChanged)
     val launches = AppLaunchRouter(navigation)
     val links = AppLinkNavigator(
         navigation = navigation,
@@ -31,6 +35,7 @@ class HarmonicSceneComposition internal constructor(
     fun close() {
         if (closed) return
         closed = true
+        commentsOpeningRequests.close()
         userMessages.close()
     }
 }

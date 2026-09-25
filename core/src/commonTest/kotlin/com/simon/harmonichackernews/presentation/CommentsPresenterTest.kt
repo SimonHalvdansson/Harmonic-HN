@@ -59,6 +59,74 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun httpCompletesBeforeCacheReadAndPublicationWithoutPublishingFreshCommentsEarly() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val source = FakeAlgoliaRepository(sortingResponse.replace("Discussion", "Fresh"))
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+        val repository = CommentThreadRepository(source, UnusedHackerNewsRepository, parser,
+            requestDispatcher = dispatcher)
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(), repository,
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = dispatcher)
+        val cacheRead = CompletableDeferred<Unit>()
+        val cachePublication = CompletableDeferred<Unit>()
+        val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
+        backgroundScope.launch { presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it } }
+        val story = Story("Feed", 42, true, false).apply { kids = intArrayOf(2, 1) }
+        presenter.dispatch(CommentsAction.LoadThread(
+            story, true, emptySet(), "Default", false, null, true,
+            loadPreviousResponse = { cacheRead.await(); sortingResponse },
+            beforeApplyCachedResponse = { cachePublication.await() },
+        ))
+        runCurrent()
+        assertEquals(1, source.itemRequests)
+        assertTrue(effects.isEmpty())
+        cacheRead.complete(Unit)
+        runCurrent()
+        assertTrue(effects.isEmpty())
+        cachePublication.complete(Unit)
+        runCurrent()
+        assertEquals(listOf(false, true), effects.map { it.networkCompleted })
+        assertTrue(effects.first().restoreScroll)
+        assertEquals(listOf(0, 2, 1), presenter.thread.allComments.map { it.id })
+        assertEquals("Fresh", story.title)
+        assertEquals(1, source.itemRequests)
+    }
+
+    @Test
+    fun releasingOpeningAfterHttpCompletesCancelsPendingCachePublication() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val source = FakeAlgoliaRepository(sortingResponse)
+        val repository = CommentThreadRepository(source, UnusedHackerNewsRepository,
+            AlgoliaCommentsParser(parsingDispatcher = dispatcher), requestDispatcher = dispatcher)
+        val opening = repository.acquireAlgoliaRequest(42)
+        assertEquals(sortingResponse, opening.await())
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(), repository,
+            UnusedPollOptions, savedItemActions(), UnusedVotingService)
+        val publication = CompletableDeferred<Unit>()
+        val effects = mutableListOf<CommentsPresenterEffect>()
+        backgroundScope.launch { presenter.effects.collect { effects += it } }
+        val story = Story("Feed", 42, true, false).apply { kids = intArrayOf(1, 2) }
+        presenter.dispatch(CommentsAction.LoadThread(
+            story, true, emptySet(), "Default", false, sortingResponse, true,
+            beforeApplyCachedResponse = { publication.await() }, openingRequest = opening,
+        ))
+        runCurrent()
+        opening.close()
+        publication.complete(Unit)
+        runCurrent()
+        assertTrue(effects.isEmpty())
+        assertFalse(presenter.thread.hasLoadedComments)
+        assertEquals(1, source.itemRequests)
+        // A delayed destination callback cannot resurrect a navigation request already released.
+        presenter.dispatch(CommentsAction.LoadThread(
+            story, true, emptySet(), "Default", false, null, false, openingRequest = opening,
+        ))
+        runCurrent()
+        assertEquals(1, source.itemRequests)
+    }
+
+    @Test
     fun pollRefreshRetriesFailedOptionsAndUpdatesPreviouslyLoadedCounts() = runTest {
         var loads = 0
         val options = object : PollOptionsLoader {
@@ -76,7 +144,7 @@ class CommentsPresenterTest {
             }
         }
         val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
-            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
             options, savedItemActions(), UnusedVotingService)
         val story = Story("Poll: choose", 42, true, false).apply { pollOptionIds = intArrayOf(7) }
         presenter.dispatch(CommentsAction.LoadPollOptions(story))
@@ -112,7 +180,7 @@ class CommentsPresenterTest {
             }
             val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
                 CommentThreadRepository(algolia, official,
-                    AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))), UnusedPollOptions,
+                    AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler)), requestDispatcher = UnconfinedTestDispatcher(testScheduler)), UnusedPollOptions,
                 savedItemActions(), UnusedVotingService,
                 threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler))
             presenter.dispatch(CommentsAction.ResetThread(story, Comment(), "Default"))
@@ -137,7 +205,7 @@ class CommentsPresenterTest {
         val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
         val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
             CommentThreadRepository(algolia, UnusedHackerNewsRepository,
-                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))), UnusedPollOptions,
+                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler)), requestDispatcher = UnconfinedTestDispatcher(testScheduler)), UnusedPollOptions,
             savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler))
         presenter.dispatch(CommentsAction.ResetThread(story, Comment(), "Default"))
@@ -164,7 +232,7 @@ class CommentsPresenterTest {
         val session = CommentsSessionState()
         val presenter = CommentsPresenter(
             backgroundScope, session,
-            CommentThreadRepository(FakeAlgoliaRepository(response), UnusedHackerNewsRepository, parser),
+            CommentThreadRepository(FakeAlgoliaRepository(response), UnusedHackerNewsRepository, parser, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = dispatcher,
         )
@@ -228,7 +296,7 @@ class CommentsPresenterTest {
         }
         val source = RecordingHackerNewsRepository()
         val presenter = CommentsPresenter(
-            backgroundScope, CommentsSessionState(), CommentThreadRepository(algolia, source, parser),
+            backgroundScope, CommentsSessionState(), CommentThreadRepository(algolia, source, parser, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = dispatcher,
         )
@@ -268,7 +336,7 @@ class CommentsPresenterTest {
             val source = RecordingHackerNewsRepository()
             val presenter = CommentsPresenter(
                 backgroundScope, session,
-                CommentThreadRepository(FakeAlgoliaRepository(response), source, parser),
+                CommentThreadRepository(FakeAlgoliaRepository(response), source, parser, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
                 UnusedPollOptions, savedItemActions(), UnusedVotingService,
                 threadPreparationDispatcher = dispatcher,
             )
@@ -310,7 +378,7 @@ class CommentsPresenterTest {
         val session = CommentsSessionState()
         val presenter = CommentsPresenter(
             backgroundScope, session,
-            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
         )
         var summary: String? = """{"id":42,"title":"Cached","kids":[8,7]}"""
@@ -359,8 +427,7 @@ class CommentsPresenterTest {
             backgroundScope, CommentsSessionState(),
             CommentThreadRepository(
                 FakeAlgoliaRepository(response), source,
-                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler)),
-            ),
+                AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler)), requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
             UnusedPollOptions, savedItemActions(), UnusedVotingService,
             threadPreparationDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
@@ -399,6 +466,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -465,6 +533,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -534,6 +603,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -563,6 +633,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -603,6 +674,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -630,6 +702,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -664,6 +737,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -720,6 +794,7 @@ class CommentsPresenterTest {
             algoliaCommentsParser = AlgoliaCommentsParser(
                 parsingDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         val session = CommentsSessionState()
         val story = Story("Loading", 42, false, false)
@@ -782,6 +857,7 @@ class CommentsPresenterTest {
                 algoliaCommentsParser = AlgoliaCommentsParser(
                     parsingDispatcher = UnconfinedTestDispatcher(testScheduler),
                 ),
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -838,6 +914,7 @@ class CommentsPresenterTest {
                     override suspend fun getComment(id: Int): Comment? = error("Not used")
                     override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
                 },
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -888,12 +965,12 @@ class CommentsPresenterTest {
                 }
             }
             val parser = AlgoliaCommentsParser(parsingDispatcher = UnconfinedTestDispatcher(testScheduler))
-            val preloads = CommentsPreloadRepository(algolia = source, parser = parser, nowMillis = { 0L })
+            val preloads = CommentsPreloadRepository(algolia = source, parser = parser, nowMillis = { 0L }, requestDispatcher = UnconfinedTestDispatcher(testScheduler))
             backgroundScope.launch { preloads.preload(42, listOf(7)) }
             runCurrent()
             val presenter = CommentsPresenter(
                 backgroundScope, CommentsSessionState(),
-                CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads),
+                CommentThreadRepository(source, UnusedHackerNewsRepository, parser, preloads, requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
                 UnusedPollOptions, savedItemActions(), UnusedVotingService,
             )
             val effects = mutableListOf<CommentsPresenterEffect>()
@@ -949,6 +1026,7 @@ class CommentsPresenterTest {
             algolia = source,
             parser = parser,
             nowMillis = { 100L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         preloads.preload(42, listOf(7))
         val presenter = CommentsPresenter(
@@ -959,6 +1037,7 @@ class CommentsPresenterTest {
                 hackerNewsRepository = UnusedHackerNewsRepository,
                 algoliaCommentsParser = parser,
                 preloads = preloads,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -997,6 +1076,7 @@ class CommentsPresenterTest {
             algolia = source,
             official = OfficialCommentThreadLoader(official),
             nowMillis = { 100L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         preloads.preloadOfficial(42, listOf(7))
         val presenter = CommentsPresenter(
@@ -1006,6 +1086,7 @@ class CommentsPresenterTest {
                 algoliaRepository = source,
                 hackerNewsRepository = official,
                 preloads = preloads,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -1042,6 +1123,7 @@ class CommentsPresenterTest {
         val repository = CommentThreadRepository(
             algoliaRepository = FakeAlgoliaRepository("{}"),
             hackerNewsRepository = UnusedHackerNewsRepository,
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         val presenter = CommentsPresenter(
             backgroundScope,
@@ -1076,6 +1158,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(HackerNewsActionResult.Success()),
@@ -1109,6 +1192,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             actions,
@@ -1150,6 +1234,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             actions,
@@ -1182,6 +1267,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -1220,6 +1306,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),
@@ -1247,6 +1334,7 @@ class CommentsPresenterTest {
             CommentThreadRepository(
                 algoliaRepository = FakeAlgoliaRepository("{}"),
                 hackerNewsRepository = UnusedHackerNewsRepository,
+                requestDispatcher = UnconfinedTestDispatcher(testScheduler),
             ),
             UnusedPollOptions,
             savedItemActions(),

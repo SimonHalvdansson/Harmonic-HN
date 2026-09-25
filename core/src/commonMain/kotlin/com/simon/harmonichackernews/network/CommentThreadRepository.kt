@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -20,7 +22,13 @@ class CommentThreadRepository(
     private val hackerNewsRepository: HackerNewsRepository,
     private val algoliaCommentsParser: AlgoliaCommentsParser = AlgoliaCommentsParser(),
     private val preloads: CommentsPreloadRepository? = null,
+    requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    private val requests = AlgoliaCommentRequests(algoliaRepository, requestDispatcher)
+
+    fun acquireAlgoliaRequest(storyId: Int): AlgoliaCommentRequest =
+        preloads?.acquireAlgoliaRequest(storyId) ?: requests.acquire(storyId)
+
     private val officialLoader = OfficialCommentThreadLoader(hackerNewsRepository)
 
     suspend fun takePreloadedAlgolia(
@@ -52,6 +60,7 @@ class CommentThreadRepository(
         topLevelCommentIds: List<Int> = emptyList(),
         cachedThread: PreparedCommentThread? = null,
         onAlgoliaFallback: () -> Unit = {},
+        algoliaRequest: AlgoliaCommentRequest? = null,
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
@@ -61,7 +70,14 @@ class CommentThreadRepository(
 
         return try {
             coroutineScope {
-                val response = async { algoliaRepository.getItemJson(storyId) }
+                val response = async {
+                    if (algoliaRequest != null) {
+                        require(algoliaRequest.storyId == storyId)
+                        algoliaRequest.await()
+                    } else {
+                        algoliaRepository.getItemJson(storyId)
+                    }
+                }
                 val resolvedIds = if (topLevelCommentIds.isEmpty()) {
                     async { resolveTopLevelCommentIds(storyId, topLevelCommentIds) }
                 } else {

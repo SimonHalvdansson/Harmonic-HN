@@ -6,6 +6,8 @@ import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -15,6 +17,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPreloadRepositoryTest {
     @Test
     fun openingCanConsumePreloadBeforeHashingAndPersistenceFinish() = runTest {
@@ -31,6 +34,7 @@ class CommentsPreloadRepositoryTest {
                 stored = true
             },
             nowMillis = { 1_000L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         val preload = launch { repository.preload(42, listOf(7, 8)) }
         storeStarted.await()
@@ -59,6 +63,7 @@ class CommentsPreloadRepositoryTest {
                 stored += storyId to response
             },
             nowMillis = { 1_000L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
 
         val loaded = repository.preload(42, listOf(7, 8), setOf("blocked"))
@@ -92,6 +97,7 @@ class CommentsPreloadRepositoryTest {
                 }
             },
             nowMillis = { 1_000L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
 
         val preload = launch { repository.preload(42) }
@@ -109,6 +115,7 @@ class CommentsPreloadRepositoryTest {
             algolia = RecordingAlgoliaRepository(RESPONSE),
             official = OfficialCommentThreadLoader(official),
             nowMillis = { 1_000L },
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
 
         val loaded = repository.preloadOfficial(42, listOf(7))

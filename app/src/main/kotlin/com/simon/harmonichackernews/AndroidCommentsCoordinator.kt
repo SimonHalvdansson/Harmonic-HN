@@ -104,6 +104,7 @@ class AndroidCommentsCoordinator(
             userSettings = userSettings,
             canLoadArticleTextOnDemand = true,
             performanceTrace = performanceTrace,
+            openingRequest = navigation.scene.commentsOpeningRequests.requestFor(sessionKey, destination.storyId),
         ),
     )
     private var viewSession: CommentsViewSession? = null
