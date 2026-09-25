@@ -38,6 +38,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
@@ -340,10 +341,13 @@ class CommentsPresenterTest {
                 UnusedPollOptions, savedItemActions(), UnusedVotingService,
                 threadPreparationDispatcher = dispatcher,
             )
+            val headerReady = CompletableDeferred<Unit>()
+            val presentationReady = CompletableDeferred<Unit>()
             val runtime = CommentsFeatureRuntime(
                 backgroundScope, session, presenter,
-                hydrateCachedStory = { JSONParser.updateStoryWithCachedStorySummary(it, summary) },
-                loadCachedThread = { response },
+                loadCachedStoryHeader = { headerReady.await(); JSONParser.prepareCachedStoryHeader(summary, it) },
+                awaitInitialPresentation = { presentationReady.await() },
+                loadCachedThread = { presentationReady.await(); response },
                 nowMillis = { 0L },
             )
             val story = Story("Fresh Algolia title", 42, true, false).apply {
@@ -351,12 +355,6 @@ class CommentsPresenterTest {
                 score = 100
                 descendants = 3
             }
-            runtime.initialize(story, false, -1, "Default", restoring = false)
-            assertEquals(listOf(8, 7), story.kids?.toList())
-            assertEquals("Fresh Algolia title", story.title)
-            assertEquals(100, story.score)
-            assertEquals(3, story.descendants)
-
             val appliedOrders = mutableListOf<List<Int>>()
             backgroundScope.launch {
                 presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect {
@@ -364,12 +362,100 @@ class CommentsPresenterTest {
                 }
             }
             runCurrent()
+            runtime.initialize(story, false, -1, "Default", restoring = false)
+            assertEquals(initialKids?.toList(), story.kids?.toList())
             runtime.loadInitial(restoreScrollFromCache = false)
+            runCurrent()
+            assertFalse(presenter.state.value.loaded)
+            headerReady.complete(Unit)
+            runCurrent()
+            assertEquals(listOf(8, 7), story.kids?.toList())
+            assertEquals("Fresh Algolia title", story.title)
+            assertEquals(100, story.score)
+            assertEquals(3, story.descendants)
+            presentationReady.complete(Unit)
             runCurrent()
             assertTrue(presenter.state.value.loaded)
             assertTrue(appliedOrders.isNotEmpty())
             assertTrue(appliedOrders.all { it == listOf(8, 7) })
             assertEquals(0, source.storyRequests)
+        }
+    }
+
+    @Test
+    fun delayedHeaderRestoresOfflineLinkControlsWithoutBlockingInitialization() = runTest {
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(backgroundScope, session,
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService)
+        val ready = CompletableDeferred<Unit>()
+        var reads = 0
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter,
+            userSettings = com.simon.harmonichackernews.settings.StoredUserSettings(TestKeyValueStore(), flowOf()),
+            loadCachedStoryHeader = { id ->
+                reads++
+                ready.await()
+                JSONParser.prepareCachedStoryHeader(
+                    """{"id":42,"title":"Offline header","url":"https://example.com/article","kids":[8,7]}""", id)
+            }, nowMillis = { 0L })
+        runtime.updatePresentationCapabilities(CommentsPresentationCapabilities(false, false))
+        val story = Story().apply { id = 42 }
+        runtime.initialize(story, false, -1, "Default", restoring = false)
+        assertEquals(0, reads)
+        assertFalse(story.loaded)
+        assertFalse(runtime.canSwitchStoryView(42))
+        runCurrent()
+        assertEquals(1, reads)
+        assertFalse(story.loaded)
+        ready.complete(Unit)
+        runCurrent()
+        assertEquals("Offline header", story.title)
+        assertEquals("https://example.com/article", story.url)
+        assertTrue(story.loaded)
+        assertTrue(runtime.canSwitchStoryView(42))
+        assertEquals(listOf(8, 7), story.kids?.toList())
+    }
+
+    @Test
+    fun abandonedHeaderCannotOverwriteReopenedOrRefreshedStories() = runTest {
+        for (action in listOf("reopen", "refresh", "dispose")) {
+            val session = CommentsSessionState()
+            val dispatcher = UnconfinedTestDispatcher(testScheduler)
+            val presenter = CommentsPresenter(backgroundScope, session,
+                CommentThreadRepository(FakeAlgoliaRepository(sortingResponse), UnusedHackerNewsRepository,
+                    AlgoliaCommentsParser(parsingDispatcher = dispatcher), requestDispatcher = dispatcher),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = dispatcher)
+            val ready = CompletableDeferred<Unit>()
+            var cancelled = false
+            val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter,
+                loadCachedStoryHeader = { id ->
+                    try {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { ready.await() }
+                        JSONParser.prepareCachedStoryHeader("""{"id":42,"title":"Obsolete","kids":[9]}""", id)
+                    } finally {
+                        cancelled = !kotlinx.coroutines.currentCoroutineContext().isActive
+                    }
+                }, nowMillis = { 0L })
+            val old = Story("Initial", 42, false, false).apply { kids = intArrayOf(2, 1) }
+            runtime.initialize(old, false, -1, "Default", restoring = false)
+            runtime.loadInitial(false)
+            runCurrent()
+            val current = Story("Reopened", 42, true, false).apply { kids = intArrayOf(1, 2) }
+            when (action) {
+                "reopen" -> runtime.initialize(current, false, -1, "Default", restoring = false)
+                "refresh" -> runtime.retry()
+                else -> runtime.dispose()
+            }
+            runCurrent()
+            ready.complete(Unit)
+            runCurrent()
+            assertTrue(cancelled)
+            assertEquals(if (action == "refresh") "Discussion" else "Initial", old.title)
+            assertEquals("Reopened", current.title)
+            assertEquals(listOf(1, 2), current.kids?.toList())
+            assertFalse(runtime.story?.title == "Obsolete")
+            runtime.dispose()
         }
     }
 
@@ -385,9 +471,9 @@ class CommentsPresenterTest {
         var cacheReads = 0
         val runtime = CommentsFeatureRuntime(
             backgroundScope, session, presenter,
-            hydrateCachedStory = {
+            loadCachedStoryHeader = {
                 cacheReads++
-                JSONParser.updateStoryWithCachedStorySummary(it, summary)
+                JSONParser.prepareCachedStoryHeader(summary, it)
             },
             nowMillis = { 0L },
         )
@@ -398,6 +484,8 @@ class CommentsPresenterTest {
 
         val placeholder = Story().apply { id = 42 }
         runtime.initialize(placeholder, false, -1, "Default", restoring = false)
+        assertFalse(placeholder.loaded)
+        runCurrent()
         assertTrue(placeholder.loaded)
         assertEquals("Cached", placeholder.title)
         assertEquals(listOf(8, 7), placeholder.kids?.toList())
@@ -406,6 +494,7 @@ class CommentsPresenterTest {
             summary = unavailable
             val story = Story("Live", 42, true, false)
             runtime.initialize(story, false, -1, "Default", restoring = false)
+            runCurrent()
             assertEquals(null, story.kids)
             assertEquals("Live", story.title)
             assertTrue(story.loaded)

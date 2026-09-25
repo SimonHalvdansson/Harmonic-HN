@@ -160,7 +160,7 @@ class LinkSummaryRepositoryTest {
     fun metadataPrefixCompletesWithoutWaitingForTheRestOfTheResponse() = runTest {
         val responseBody = ByteChannel(autoFlush = true)
         val client = streamingClient(responseBody, StandardTestDispatcher(testScheduler))
-        val prefix = ByteArray(2 * 1024 * 1024) { ' '.code.toByte() }
+        val prefix = ByteArray(1024 * 1024) { ' '.code.toByte() }
         "<html><head><title>Bounded preview</title></head><body>".encodeToByteArray().copyInto(prefix)
         backgroundScope.launch {
             responseBody.writeFully(prefix)
@@ -285,6 +285,100 @@ class LinkSummaryRepositoryTest {
             client.close()
         }
     }
+
+    @Test
+    fun completeHeadStopsBeforeEofAndPreservesRedirectedRelativeImages() = runTest {
+        val body = ByteChannel(autoFlush = true)
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val client = HttpClient(MockEngine.create {
+            this.dispatcher = dispatcher
+            addHandler { request ->
+                if (request.url.encodedPath == "/redirect") respond(
+                    "", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/article/page"),
+                ) else respond(body, headers = headersOf(HttpHeaders.ContentType, "TeXt/HtMl"))
+            }
+        }) { install(HttpCache) }
+        val html = completeHead + "</head>"
+        backgroundScope.launch {
+            // Exercise split tags, comments, attributes and UTF-8 without ever sending a body/EOF.
+            for (byte in html.encodeToByteArray()) {
+                body.writeFully(byteArrayOf(byte))
+                yield()
+            }
+        }
+        try {
+            val result = withTimeout(5_000) {
+                KtorLinkSummaryRepository(client, parsingDispatcher = dispatcher)
+                    .load("https://example.com/redirect", "Fallback")
+            }
+            assertEquals(LinkSummaryParser.extract(html, "Fallback", "TeXt/HtMl",
+                "https://example.com/article/page"), result)
+            assertEquals("https://example.com/article/image.png", result.imageUrl)
+            assertEquals("æ漢😀 article", result.title)
+            assertTrue(body.isClosedForRead)
+        } finally {
+            body.cancel()
+            client.close()
+        }
+    }
+
+    @Test
+    fun previewQualityMatchesFullParsingForScriptStyleBodyAndMalformedFixtures() = runTest {
+        val prose = "This article explains the underlying system with useful examples and detailed context for readers."
+        val cases = listOf(
+            completeHead + "</head><body>Unneeded body</body></html>",
+            completeHead + "<script>var fake = '</head>';/*" + "x".repeat(120_000) +
+                "*/</script><style>/* </head> */</style></head><body>Text</body>",
+            // Description duplicates the title; keep reading through scripts to find the article.
+            completeHead.replace(previewDescription, "æ漢😀 article") +
+                "</head><body><script>" + "x".repeat(120_000) +
+                "</script><article><p>$prose</p></article></body>",
+            // Complete title/image/description does not mean we can discard a body byline/date.
+            "<html><head><title>Article</title><meta property=og:image content='/image.png'>" +
+                "<meta name=description content='$prose'></head><body>" +
+                "<a rel=author>Body author</a><time datetime='2026-01-01'>Today</time></body>",
+            "<html><head><title>Missing metadata</title></head><body><article><p>$prose</p></article>",
+            completeHead + "<template><head></head></template></head><body><p>Malformed page",
+            completeHead + "<script><!--<script></script></head></script>" +
+                "<meta property='og:title' content='Later real title'></head><body>Text",
+            completeHead.replace("<head>", "<head-custom>") + "</head-custom>" +
+                "<meta property='og:title' content='Later real title'><body>Text",
+            completeHead + "<script>/* unclosed script </head><body><p>Ambiguous HTML",
+            "<title>Implicit head</title><article><p>$prose</p>",
+        )
+        for (html in cases) {
+            val client = HttpClient(MockEngine {
+                respond(html, headers = headersOf(HttpHeaders.ContentType, "text/html"))
+            })
+            try {
+                assertEquals(LinkSummaryParser.extract(html, "Fallback", "text/html", "https://example.com/page"),
+                    KtorLinkSummaryRepository(client).load("https://example.com/page", "Fallback"))
+            } finally {
+                client.close()
+            }
+        }
+    }
+
+    @Test
+    fun providerJsonKeepsItsSeparateBudgetBeyondOneMiB() = runTest {
+        val json = "{\"padding\":\"${"x".repeat(1200 * 1024)}\",\"title\":\"Provider title\",\"author_name\":\"Author\"}"
+        val client = HttpClient(MockEngine {
+            respond(json, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+        })
+        try {
+            val result = KtorLinkSummaryRepository(client).load("https://youtu.be/dQw4w9WgXcQ")
+            assertEquals("Provider title", result.title)
+            assertEquals("Author", result.author)
+        } finally {
+            client.close()
+        }
+    }
+
+    private val previewDescription = "A meaningful description with practical examples and detailed context for readers of this article."
+    private val completeHead get() = "<html lang='en'><head><!-- fake </head> -->" +
+        "<title>æ漢😀 article</title><meta property='og:image' content='image.png'>" +
+        "<meta name='author' content='An Author'><meta name='date' content='2026-09-25'>" +
+        "<meta name='description' data-quoted='> </head>' content='$previewDescription'>"
 
     private fun streamingClient(
         responseBody: ByteChannel,

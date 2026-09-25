@@ -11,6 +11,40 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 
 class StoryCacheRepositoryTest {
     @Test
+    fun preparedHeaderHitsMissesAndLegacyRebuildsRetainOfflineInformation() {
+        val files = FakeFiles()
+        val repository = StoryCacheRepository(files, FakeMetadata())
+        assertNull(repository.loadStoryHeader(42))
+        assertEquals(0, files.readTextCount)
+        repository.storeStory(42, storyJson(42, "Offline title"), 1_000)
+        val hit = assertNotNull(repository.loadStoryHeader(42, rebuildIfMissing = false))
+        val target = Story().apply { id = 42 }
+        val reads = files.readTextCount
+        assertTrue(hit.applyTo(target))
+        assertEquals(reads, files.readTextCount) // Applying prepared data never returns to disk.
+        assertEquals("Offline title", target.title)
+        assertEquals("https://example.com/42", target.url)
+        assertTrue(target.isLink)
+        assertEquals("alice", target.by)
+        assertEquals(12, target.score)
+        files.remove(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json")
+        assertNull(repository.loadStoryHeader(42, rebuildIfMissing = false))
+        assertFalse(files.contains(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json"))
+        val rebuilt = assertNotNull(repository.loadStoryHeader(42))
+        assertEquals(42, rebuilt.storyId)
+        assertTrue(files.contains(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json"))
+        val offline = Story().apply { id = 42 }
+        assertTrue(rebuilt.applyTo(offline))
+        assertEquals(target.title, offline.title)
+        assertEquals(target.url, offline.url)
+        // A wrong-ID/corrupt summary is never offered to a comments opening.
+        files.write(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json", """{"id":99,"title":"Wrong"}""".encodeToByteArray())
+        assertNull(repository.loadStoryHeader(42))
+        files.write(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json", "broken".encodeToByteArray())
+        assertNull(repository.loadStoryHeader(42))
+    }
+
+    @Test
     fun parsedSummaryRetainsRankedIdsWithoutOverwritingLiveOrdering() = runTest {
         val files = FakeFiles()
         val metadata = FakeMetadata()

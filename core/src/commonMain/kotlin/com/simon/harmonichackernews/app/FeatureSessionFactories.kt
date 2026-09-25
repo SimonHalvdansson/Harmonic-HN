@@ -213,7 +213,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         localSummaryAvailable = { localSummaryCanAttempt },
         summaryRuntime = createStorySummaryRuntime(featureScope),
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
-        hydrateCachedStory = storyCache::hydrateStory,
+        loadCachedStoryHeader = storyCache::loadStoryHeader,
         isThreadCached = storyCache::hasStoryPayload,
         loadPreparedThread = storyCache::loadPreparedThread,
         loadCachedThread = { storyId ->

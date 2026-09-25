@@ -104,13 +104,31 @@ object JSONParser {
         return summary.toString()
     }
 
-    fun updateStoryWithCachedStorySummary(story: Story?, response: String?): Boolean {
-        if (story == null || response.isNullOrEmpty() || JSON_NULL_LITERAL == response) {
-            return false
-        }
-
-        try {
+    /** Decodes on the cache worker; applying its small header patch performs no file reads. */
+    fun prepareCachedStoryHeader(response: String?, fallbackId: Int): CachedStoryHeader? {
+        if (response.isNullOrEmpty() || response == JSON_NULL_LITERAL) return null
+        return try {
             val item = JSONObject(response)
+            val id = item.optInt("id", fallbackId)
+            if (id <= 0) null else CachedStoryHeader(
+                item, id, optStringOrNull(item, "text")?.let(::preprocessHtml),
+                item.optInt("descendants", countAlgoliaComments(item.optJSONArray("children"))),
+            )
+        } catch (_: JSONException) {
+            null
+        }
+    }
+
+    fun updateStoryWithCachedStorySummary(story: Story?, response: String?): Boolean =
+        story != null && prepareCachedStoryHeader(response, story.id)?.applyTo(story) == true
+
+    internal fun applyCachedStoryHeader(
+        story: Story,
+        item: JSONObject,
+        preparedText: String?,
+        descendants: Int,
+    ): Boolean {
+        try {
             val id = item.optInt("id", story.id)
             if (id <= 0) {
                 return false
@@ -128,9 +146,7 @@ object JSONParser {
             story.score = item.optInt("points", item.optInt("score", story.score))
             story.by = item.optString("author", item.optString("by", story.by))
             story.descendants = if (item.has("descendants"))
-                item.optInt("descendants", story.descendants)
-            else
-                countAlgoliaComments(item.optJSONArray("children"))
+                item.optInt("descendants", story.descendants) else descendants
 
             val type = item.optString("type", "")
             if ("comment" == type) {
@@ -155,10 +171,7 @@ object JSONParser {
                 story.isJob = "job" == type
             }
 
-            val text = optStringOrNull(item, "text")
-            if (text != null) {
-                updateStoryText(story, text)
-            }
+            if (optStringOrNull(item, "text") != null) story.text = preparedText
 
             applyPreviewImageSummaryFields(story, item)
             applyFaviconTintSummaryFields(story, item)
@@ -299,4 +312,19 @@ object JSONParser {
     }
 
     fun preprocessHtml(input: String?): String? = StoryTextProcessor.preprocessHtml(input)
+}
+
+/** An already-decoded cache header. Its JSON tree is private and never mutated after publication. */
+class CachedStoryHeader internal constructor(
+    private val item: JSONObject,
+    val storyId: Int,
+    private val preparedText: String?,
+    private val descendants: Int,
+) {
+    val topLevelCommentIds: List<Int> = item.optJSONArray("kids")?.let { ids ->
+        List(ids.length()) { ids.getInt(it) }
+    }.orEmpty()
+
+    fun applyTo(story: Story): Boolean =
+        JSONParser.applyCachedStoryHeader(story, item, preparedText, descendants)
 }

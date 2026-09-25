@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
+import com.simon.harmonichackernews.network.CachedStoryHeader
 import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.platform.Crc32
 import com.simon.harmonichackernews.platform.KotlinCrc32
@@ -257,6 +258,12 @@ class StoryCacheRepository(
         return files.write(StoryCacheKeys.PREPARED_NAMESPACE, "$storyId.bin", bytes)
     }
 
+    fun loadStoryHeader(storyId: Int, rebuildIfMissing: Boolean = true): CachedStoryHeader? {
+        if (!hasStoryPayload(storyId)) return null
+        return JSONParser.prepareCachedStoryHeader(loadOrCreateSummary(storyId, rebuildIfMissing), storyId)
+            ?.takeIf { it.storyId == storyId }
+    }
+
     fun hydrateStory(story: Story?): Boolean {
         story ?: return false
         if (story.id <= 0) return false
@@ -405,11 +412,12 @@ class StoryCacheRepository(
         }
     }
 
-    private fun loadOrCreateSummary(storyId: Int): String? {
+    private fun loadOrCreateSummary(storyId: Int, rebuildIfMissing: Boolean = true): String? {
         val key = StoryCacheKeys.storyFile(storyId)
         files.readText(StoryCacheKeys.SUMMARY_NAMESPACE, key)?.takeIf(String::isNotEmpty)?.let {
             return it
         }
+        if (!rebuildIfMissing) return null
         val payload = files.readText(StoryCacheKeys.FULL_NAMESPACE, key)
         val summary = JSONParser.compactAlgoliaStoryResponse(payload, storyId) ?: return null
         files.write(StoryCacheKeys.SUMMARY_NAMESPACE, key, summary.encodeToByteArray())

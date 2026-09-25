@@ -150,6 +150,7 @@ class KtorLinkSummaryRepository(
             val response = fetchText(
                 normalizedUrl,
                 "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                previewTitle = fallbackTitle.orEmpty(),
             )
             if (response.contentType.startsWith("image/", ignoreCase = true)) {
                 return@withContext LinkSummaryParser.directImage(
@@ -167,11 +168,8 @@ class KtorLinkSummaryRepository(
                     "This link contains ${response.contentType}, not a web page",
                 )
             }
-            val summary = LinkSummaryParser.extract(
-                response.body,
-                fallbackTitle,
-                response.contentType,
-                response.finalUrl,
+            val summary = response.summary ?: LinkSummaryParser.extract(
+                response.body, fallbackTitle, response.contentType, response.finalUrl,
             )
             val siteImage = SiteImageResolvers.resolve(response.finalUrl) { url ->
                 fetchText(url, "application/json").body
@@ -179,7 +177,11 @@ class KtorLinkSummaryRepository(
             if (siteImage != null) summary.copy(imageUrl = siteImage) else summary
         }
 
-    private suspend fun fetchText(url: String, accept: String): FetchedText =
+    private suspend fun fetchText(
+        url: String,
+        accept: String,
+        previewTitle: String? = null,
+    ): FetchedText =
         client().prepareGet(url) {
             header(HttpHeaders.Accept, accept)
             // These reads intentionally stop at headers or a metadata prefix. HttpCache would
@@ -202,14 +204,33 @@ class KtorLinkSummaryRepository(
                 } else {
                     val bytes = Buffer()
                     val chunk = ByteArray(8 * 1024)
-                    while (bytes.size < MAX_RESPONSE_BYTES) {
+                    // Provider JSON has its own budget. HTML (including arXiv) is capped at 1 MiB.
+                    val limit = if (accept == "application/json") MAX_PROVIDER_BYTES else MAX_HTML_BYTES
+                    val head = if (previewTitle != null &&
+                        (contentType.isEmpty() || contentType.contains("html", ignoreCase = true))
+                    ) HtmlPreviewHeadBoundary() else null
+                    while (bytes.size < limit) {
                         val read = channel.readAvailable(
                             chunk,
                             0,
-                            minOf(chunk.size, MAX_RESPONSE_BYTES - bytes.size.toInt()),
+                            minOf(chunk.size, limit - bytes.size.toInt()),
                         )
                         if (read == -1) break
-                        if (read > 0) bytes.write(chunk, 0, read)
+                        if (read > 0) {
+                            bytes.write(chunk, 0, read)
+                            val headEnd = head?.accept(chunk, read)
+                            if (headEnd != null) {
+                                val prefix = bytes.readByteArray()
+                                val summary = LinkSummaryParser.extractCompleteHead(
+                                    prefix.decodeToString(endIndex = headEnd),
+                                    previewTitle, contentType, finalUrl,
+                                )
+                                if (summary != null) {
+                                    return@execute FetchedText("", contentType, finalUrl, summary)
+                                }
+                                bytes.write(prefix)
+                            }
+                        }
                     }
                     bytes.readByteArray().decodeToString()
                 }
@@ -224,10 +245,12 @@ class KtorLinkSummaryRepository(
         val body: String,
         val contentType: String,
         val finalUrl: String,
+        val summary: LinkSummary? = null,
     )
 
     private companion object {
-        const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+        const val MAX_HTML_BYTES = 1024 * 1024
+        const val MAX_PROVIDER_BYTES = 2 * 1024 * 1024
     }
 }
 
@@ -355,7 +378,32 @@ object LinkSummaryParser {
         contentType: String?,
         finalUrl: String,
     ): LinkSummary {
+        return extract(Ksoup.parse(html, baseUri = finalUrl), fallbackTitle, contentType, finalUrl)
+    }
+
+    internal fun extractCompleteHead(
+        html: String,
+        fallbackTitle: String?,
+        contentType: String,
+        finalUrl: String,
+    ): LinkSummary? {
+        // A head boundary alone is insufficient: the body can supply a description, byline,
+        // date or image. Only skip it when the head already supplies every such field.
         val document = Ksoup.parse(html, baseUri = finalUrl)
+        val summary = extract(document, null, contentType, finalUrl)
+        return summary.takeIf {
+            it.title.isNotBlank() && it.imageUrl.isNotBlank() &&
+                it.author.isNotBlank() && it.publishedTime.isNotBlank() &&
+                HtmlDescriptionExtractor.isMeaningful(it.description, it.title, fallbackTitle)
+        }
+    }
+
+    private fun extract(
+        document: Document,
+        fallbackTitle: String?,
+        contentType: String?,
+        finalUrl: String,
+    ): LinkSummary {
         // CSS selection walks the document. Index the metadata once instead of repeating that
         // traversal for every OpenGraph, Twitter and article field.
         val metadata = MetadataIndex(document)

@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.ApiDecodingException
 import com.simon.harmonichackernews.network.CachedDownloadService
+import com.simon.harmonichackernews.network.CachedStoryHeader
 import com.simon.harmonichackernews.network.DownloadCachePolicy
 import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.network.HttpMediaType
@@ -107,6 +108,13 @@ class StoryCacheService(
                 null
             }
         }
+    }
+
+    /** Hits need no mutation lock; legacy rebuilds cannot overwrite a concurrent fresh write. */
+    suspend fun loadStoryHeader(storyId: Int): CachedStoryHeader? = withContext(Dispatchers.Default) {
+        if (!repository.hasStoryPayload(storyId)) return@withContext null
+        repository.loadStoryHeader(storyId, rebuildIfMissing = false)?.let { return@withContext it }
+        writeMutex.withLock { repository.loadStoryHeader(storyId) }
     }
 
     fun hydrateStory(story: Story?): Boolean =

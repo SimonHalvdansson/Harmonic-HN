@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.network.CachedStoryHeader
 import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.HackerNewsActionResult
@@ -34,6 +35,7 @@ import com.simon.harmonichackernews.summary.StorySummaryStatus
 import com.simon.harmonichackernews.summary.SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
@@ -96,7 +98,7 @@ class CommentsFeatureRuntime(
     private val localSummaryAvailable: () -> Boolean = { false },
     private val summaryRuntime: StorySummaryRuntime? = null,
     private val canLoadArticleTextOnDemand: Boolean = false,
-    private val hydrateCachedStory: (Story) -> Boolean = { false },
+    private val loadCachedStoryHeader: suspend (Int) -> CachedStoryHeader? = { null },
     private val isThreadCached: (Int) -> Boolean = { false },
     private val loadCachedThread: suspend (Int) -> String? = { null },
     private val loadPreparedThread: (suspend (Int) -> PreparedCommentThread?)? = null,
@@ -125,6 +127,10 @@ class CommentsFeatureRuntime(
 
     val headerPreviewResource: StoryPreviewResourceState?
         get() = story?.id?.let { previewResourceRuntime?.stateFor(it) }
+
+    private var headerLoadJob: Job? = null
+    private var initialLoadJob: Job? = null
+    private var headerGeneration = 0
 
     private var useAlgolia = true
     private var filteredUsers: Set<String> = emptySet()
@@ -177,6 +183,7 @@ class CommentsFeatureRuntime(
         restoring: Boolean,
         restoredSorting: String? = null,
     ) {
+        cancelPendingHeader()
         initialThreadCached = !sessionState.commentsLoaded && isThreadCached(initialStory.id)
         if (!restoring) {
             automaticSummaryRequested = false
@@ -381,6 +388,7 @@ class CommentsFeatureRuntime(
         loadPreparedResponse: (suspend () -> PreparedCommentThread?)? = null,
         initialRequest: AlgoliaCommentRequest? = null,
     ) {
+        cancelPendingHeader()
         val story = story ?: return
         presenter.dispatch(CommentsAction.SetRefreshing(refreshing))
         presenter.dispatch(CommentsAction.BeginThreadLoad(nowMillis()))
@@ -404,7 +412,25 @@ class CommentsFeatureRuntime(
     }
 
     fun loadInitial(restoreScrollFromCache: Boolean) {
-        val storyId = story?.id ?: return
+        // Preserve cached ranking before preparing the thread. The navigation request lease
+        // already owns the early HTTP transfer, which continues while this header is read.
+        val current = story ?: return
+        initialLoadJob?.cancel()
+        val pendingHeader = headerLoadJob
+        if (pendingHeader?.isActive != true) {
+            loadInitialAfterHeader(current.id, restoreScrollFromCache)
+            return
+        }
+        val generation = headerGeneration
+        initialLoadJob = scope.launch {
+            pendingHeader.join()
+            if (headerGeneration != generation || story !== current) return@launch
+            initialLoadJob = null
+            loadInitialAfterHeader(current.id, restoreScrollFromCache)
+        }
+    }
+
+    private fun loadInitialAfterHeader(storyId: Int, restoreScrollFromCache: Boolean) {
         load(
             cachedResponse = null,
             restoreScrollFromCache = restoreScrollFromCache,
@@ -426,17 +452,37 @@ class CommentsFeatureRuntime(
         preferred && story?.isLink == true
 
     private fun restoreCachedStoryInformation() {
-        val story = story?.takeIf { it.id > 0 } ?: return
-        if (!story.loaded) {
-            hydrateCachedStory(story)
-        } else if (story.kids?.isNotEmpty() != true) {
-            // Algolia feed stories are loaded but lack ranking. Restore only the missing IDs,
-            // keeping the feed's newer metadata instead of replacing it with the cached summary.
-            val cachedStory = Story().apply { id = story.id }
-            if (hydrateCachedStory(cachedStory)) {
-                cachedStory.kids?.takeIf { it.isNotEmpty() }?.let { story.kids = it.copyOf() }
+        val target = story?.takeIf { it.id > 0 } ?: return
+        if (target.loaded && target.kids?.isNotEmpty() == true) return
+        val generation = headerGeneration
+        headerLoadJob = scope.launch {
+            val header = try {
+                loadCachedStoryHeader(target.id)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                null // Cache failures cannot prevent a fresh load or leave the screen loading.
             }
+            if (headerGeneration != generation || story !== target || header?.storyId != target.id) return@launch
+            if (!target.loaded) {
+                header.applyTo(target)
+            } else if (target.kids?.isNotEmpty() != true && header.topLevelCommentIds.isNotEmpty()) {
+                // Loaded feed/search metadata is newer. Only fill its missing comment ordering.
+                target.kids = header.topLevelCommentIds.toIntArray()
+            }
+            thread.setStory(target)
+            reconcileSettings()
+            platform(CommentsPlatformEffect.ReloadLinkPreviews)
+            changed(refreshNavigation = true)
         }
+    }
+
+    private fun cancelPendingHeader() {
+        headerGeneration++
+        headerLoadJob?.cancel()
+        headerLoadJob = null
+        initialLoadJob?.cancel()
+        initialLoadJob = null
     }
 
     fun canSwitchStoryView(storyId: Int): Boolean =
@@ -613,6 +659,7 @@ class CommentsFeatureRuntime(
     }
 
     fun dispose() {
+        cancelPendingHeader()
         openingRequest?.close()
         openingRequest = null
         presenter.dispatch(CommentsAction.CancelThreadLoad)

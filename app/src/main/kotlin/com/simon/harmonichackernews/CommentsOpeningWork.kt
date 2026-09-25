@@ -18,6 +18,7 @@ internal class CommentsOpeningWork(
     private var preDraw: OneShotPreDrawListener? = null
     private val callbacks = mutableSetOf<Runnable>()
     private var firstDrawCompleted = false
+    private var configuredBrowserReady = false
     private var pendingVisibleBrowser = false
     private var pendingSummary = false
     private var closed = false
@@ -33,6 +34,7 @@ internal class CommentsOpeningWork(
                 loadComments()
                 val visible = showingWebsite() || pendingVisibleBrowser
                 post(delayMillis = if (visible) 0L else hiddenBrowserDelayMillis(), nextFrame = visible) {
+                    configuredBrowserReady = true
                     if (visible) requestVisibleBrowser() else requestConfiguredBrowser()
                     if (pendingSummary) {
                         pendingSummary = false
@@ -54,7 +56,9 @@ internal class CommentsOpeningWork(
     }
 
     fun requestConfiguredBrowser() {
-        if (!closed && integrated() && firstDrawCompleted) initializeConfiguredBrowser()
+        // A header restored from disk can enable integrated browsing after the first draw.
+        // It must still respect the hidden-browser delay protecting the opening animation.
+        if (!closed && integrated() && configuredBrowserReady) initializeConfiguredBrowser()
     }
 
     fun requestSummary() {
