@@ -24,6 +24,28 @@ import kotlin.test.assertFalse
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRowLoadOrchestratorTest {
     @Test
+    fun cachedContentArrivingDuringRetriesRemainsUsableWhenHttpFails() = runTest {
+        val reply = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val api = object : HackerNewsApi {
+            override suspend fun getItem(id: Int): HackerNewsItemDto? { reply.await(); error("Offline") }
+            override suspend fun getUser(username: String): HackerNewsUserDto? = error("Unused")
+            override suspend fun getMaxItemId(): Int = error("Unused")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+        }
+        val orchestrator = StoryRowLoadOrchestrator(backgroundScope, api, 30_000) { testScheduler.currentTime }
+        val story = Story("Loading", 1, false, false)
+        orchestrator.load(story, false)
+        runCurrent()
+        story.title = "Offline cache"
+        story.loaded = true
+        reply.complete(Unit)
+        runCurrent()
+        assertTrue(story.loaded)
+        assertFalse(story.loadingFailed)
+        assertEquals("Offline cache", story.title)
+    }
+
+    @Test
     fun failedMetadataRefreshKeepsLoadedContentAndCanRetryInTheNextGeneration() = runTest {
         var attempts = 0
         val api = object : HackerNewsApi {

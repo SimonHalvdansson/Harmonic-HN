@@ -166,9 +166,14 @@ internal fun StoriesList(
     }
 
     LaunchedEffect(listState, searchMode) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+        snapshotFlow {
+            val visible = listState.layoutInfo.visibleItemsInfo
+            (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
+        }
             .distinctUntilChanged()
-            .collect { last -> controller.listener.onVisibleStoryRange(last.coerceAtLeast(0)) }
+            .collect { (first, last) ->
+                controller.listener.onVisibleStoryRange(first.coerceAtLeast(0), last.coerceAtLeast(0))
+            }
     }
 
     LaunchedEffect(listState, stories, visibleCount, onVisibleStoriesChanged) {

@@ -490,7 +490,7 @@ class StoriesScreenControllerPreviewNavigationTest {
             tintColorArgb: Int,
             favicon: Boolean,
         ) = Unit
-        override fun onVisibleStoryRange(lastVisibleIndex: Int) = Unit
+        override fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int) = Unit
         override fun onStoryPreviewStopScroll() = Unit
         override fun onStoryPreviewVisibilityChanged(showing: Boolean) = Unit
         override fun onStoryPreviewNavigate(

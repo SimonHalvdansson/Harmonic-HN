@@ -96,8 +96,8 @@ class StoriesFeatureListener(
         )
     }
 
-    override fun onVisibleStoryRange(lastVisibleIndex: Int) {
-        store.accept(StoriesIntent.VisibleRange(lastVisibleIndex))
+    override fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int) {
+        store.accept(StoriesIntent.VisibleRange(lastVisibleIndex, firstVisibleIndex))
     }
 
     override fun onStoryPreviewStopScroll() = Unit

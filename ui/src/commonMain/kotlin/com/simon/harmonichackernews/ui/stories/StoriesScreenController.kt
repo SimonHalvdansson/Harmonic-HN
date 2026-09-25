@@ -697,7 +697,7 @@ class StoriesScreenController private constructor(
             tintColorArgb: Int,
             favicon: Boolean,
         )
-        fun onVisibleStoryRange(lastVisibleIndex: Int)
+        fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int)
         fun onStoryPreviewStopScroll()
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
         fun onStoryPreviewNavigate(

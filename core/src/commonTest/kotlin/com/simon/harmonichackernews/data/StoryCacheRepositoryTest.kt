@@ -28,7 +28,9 @@ class StoryCacheRepositoryTest {
         assertEquals("alice", target.by)
         assertEquals(12, target.score)
         files.remove(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json")
+        val beforeSummaryMiss = files.readTextCount
         assertNull(repository.loadStoryHeader(42, rebuildIfMissing = false))
+        assertEquals(beforeSummaryMiss + 1, files.readTextCount) // Only the summary, never full JSON.
         assertFalse(files.contains(StoryCacheKeys.SUMMARY_NAMESPACE, "42.json"))
         val rebuilt = assertNotNull(repository.loadStoryHeader(42))
         assertEquals(42, rebuilt.storyId)

@@ -111,9 +111,13 @@ class StoryCacheService(
     }
 
     /** Hits need no mutation lock; legacy rebuilds cannot overwrite a concurrent fresh write. */
-    suspend fun loadStoryHeader(storyId: Int): CachedStoryHeader? = withContext(Dispatchers.Default) {
+    suspend fun loadStoryHeader(
+        storyId: Int,
+        rebuildIfMissing: Boolean = true,
+    ): CachedStoryHeader? = withContext(Dispatchers.Default) {
         if (!repository.hasStoryPayload(storyId)) return@withContext null
         repository.loadStoryHeader(storyId, rebuildIfMissing = false)?.let { return@withContext it }
+        if (!rebuildIfMissing) return@withContext null
         writeMutex.withLock { repository.loadStoryHeader(storyId) }
     }
 

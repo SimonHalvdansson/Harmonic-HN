@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.network.CachedStoryHeader
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
@@ -79,6 +80,8 @@ data class StoryPreviewDeck(
     val openedStoryId: Int,
 )
 
+private const val INITIAL_CACHE_ROWS = 12
+
 /**
  * Lifecycle-independent stories-screen workflow.
  *
@@ -99,7 +102,7 @@ class StoriesFeatureRuntime(
     private val loadContentFilters: () -> ContentFilters,
     private val rootStoryResolver: CommentMasterResolver,
     private val nowMillis: () -> Long,
-    private val hydrateCachedStory: (Story) -> Boolean,
+    private val loadCachedStoryHeader: suspend (storyId: Int, rebuildIfMissing: Boolean) -> CachedStoryHeader?,
     private val loadCachedStories: () -> List<Story> = { emptyList() },
     private val hasCachedStories: () -> Boolean = { false },
     private val startStoryCache: (StoryCacheRequest) -> Unit = {},
@@ -145,6 +148,24 @@ class StoriesFeatureRuntime(
     private var alwaysOpenComments = false
     private var useIntegratedWebView = false
     private var activeLoadedThrough = -1
+    private var feedCache: FeedCachePreparation? = null
+    private val visibleRanges = mutableMapOf<StoryListStore, IntRange>()
+
+    // All bookkeeping and live rows are UI-owned. Only prepared headers cross dispatchers.
+    private class FeedCachePreparation(
+        val store: StoryListStore,
+        val type: StoryType,
+        val generation: Int,
+        val ids: Set<Int>,
+    ) {
+        val prepared = mutableSetOf<Int>()
+        val recover = mutableSetOf<Int>()
+        val recovered = mutableSetOf<Int>()
+        val protected = mutableSetOf<Int>()
+        var firstVisible = 0
+        var lastVisible: Int? = null
+    }
+
     private var storiesBeforeSearch = false
     private var loadPendingBeforeSearch = false
     private var userItemsInitialLoadInProgress = false
@@ -435,6 +456,7 @@ class StoriesFeatureRuntime(
     }
 
     fun selectType(target: StoryListTarget, type: StoryType) {
+        if (type != currentType) visibleRanges.remove(store(target))
         when (target) {
             StoryListTarget.MAIN -> sessionState.mainStoryType = type
             StoryListTarget.SEARCH -> sessionState.searchStoryType = type
@@ -633,11 +655,33 @@ class StoriesFeatureRuntime(
                 searchOptions.loadMore()
             }
         }
+        continueFeedCachePreparation()
         changed()
     }
 
-    fun loadVisibleStories(lastVisibleIndex: Int? = null) {
-        val target = lastVisibleIndex?.let { lastVisible ->
+    fun loadVisibleStories(lastVisibleIndex: Int? = null, firstVisibleIndex: Int = 0) {
+        // Retained feed rows can outlive this runtime or a search generation. Their IDs are
+        // already known; resume lazy cache preparation without enumerating the cache itself.
+        if (feedCache == null && activeStories.isNotEmpty() && !searching && !currentType.isAlgolia &&
+            !currentType.isBookmarks && !currentType.isUserItemList && !currentType.isHistory &&
+            !activeStore.state.value.showingCached && !activeStore.state.value.loading &&
+            !activeStore.state.value.refreshing
+        ) {
+            feedCache = FeedCachePreparation(
+                activeStore, currentType, requests.storyLoadGeneration,
+                activeStories.mapTo(mutableSetOf(), Story::id),
+            )
+        }
+        if (lastVisibleIndex != null) {
+            visibleRanges[activeStore] = firstVisibleIndex.coerceAtLeast(0)..lastVisibleIndex
+        }
+        feedCache?.let { cache ->
+            if (lastVisibleIndex != null) {
+                cache.firstVisible = firstVisibleIndex.coerceAtLeast(0)
+                cache.lastVisible = lastVisibleIndex
+            }
+        }
+        val target = (lastVisibleIndex ?: feedCache?.lastVisible)?.let { lastVisible ->
             StoryPaginationPolicy.scrolledLoadTargetIndex(
                 storyCount = activeStories.size,
                 lastVisibleIndex = lastVisible,
@@ -651,6 +695,7 @@ class StoriesFeatureRuntime(
         val generation = requests.storyLoadGeneration
         loadThrough(target, generation)
         retryUnsettledThrough(target, generation)
+        continueFeedCachePreparation()
     }
 
     fun selectStoryLink(story: Story) {
@@ -1057,7 +1102,15 @@ class StoriesFeatureRuntime(
         for (store in listOf(mainStore, searchStore)) {
             if (store.mergeStoryContent(update)) matched = true
         }
-        if (matched) emit(StoriesFeatureEffect.StoryChanged(update.id))
+        if (matched) {
+            feedCache?.protected?.add(update.id)
+            activeStories.firstOrNull { it.id == update.id }?.let { story ->
+                if (activeStories.indexOf(story) <= activeLoadedThrough) {
+                    loadStory(story, requests.storyLoadGeneration)
+                }
+            }
+            emit(StoriesFeatureEffect.StoryChanged(update.id))
+        }
         return matched
     }
 
@@ -1085,10 +1138,11 @@ class StoriesFeatureRuntime(
             is StoryRequestEvent.StoryRowLoadAttemptFailed -> if (
                 isCurrentRow(effect.story, effect.generation)
             ) {
-                if (effect.finalAttempt) activeStore.finishNextPageStory(
-                    effect.story.id,
-                    effect.generation,
-                )
+                if (effect.finalAttempt) {
+                    activeStore.finishNextPageStory(effect.story.id, effect.generation)
+                }
+                feedCache?.recover?.add(effect.story.id)
+                continueFeedCachePreparation()
                 changed(effect.story)
             }
             is StoryRequestEvent.UserItemsSynced -> applyUserItems(effect)
@@ -1108,7 +1162,8 @@ class StoriesFeatureRuntime(
                     is StoryFeedResult.Scraped -> result.page.itemIds
                     is StoryFeedResult.LinkDirectory -> emptyList()
                 }
-                prepareFeedCache(ids, storyType, generation) { cached ->
+                val commentIds = (result as? StoryFeedResult.Scraped)?.page?.commentIds.orEmpty().toSet()
+                prepareFeedCache(ids, storyType, generation, commentIds) { cached ->
                     refreshIndicatorShowing = false
                     rateLimited = false
                     val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
@@ -1138,7 +1193,9 @@ class StoriesFeatureRuntime(
             try {
                 val page = requests.loadNextScrapedPage(storyType, nextPageUrl)
                 if (!isCurrentFeed(storyType, generation)) return@launch
-                prepareFeedCache(page.itemIds, storyType, generation) { cached ->
+                prepareFeedCache(
+                    page.itemIds, storyType, generation, page.commentIds.toSet(), append = true,
+                ) { cached ->
                     val application = feedRuntime.applyNextScrapedPage(activeStore, storyType, page, cached)
                     if (application.loadVisibleStories) {
                         requests.invalidateLoadedStoryRows(application.loadedStories)
@@ -1161,24 +1218,136 @@ class StoriesFeatureRuntime(
         ids: List<Int>,
         type: StoryType,
         generation: Int,
+        commentIds: Set<Int>,
+        append: Boolean = false,
         apply: (Map<Int, Story>) -> Unit,
     ) {
         feedPreparationJob?.cancel()
         val target = activeStore
+        val previous = feedCache?.takeIf { append && isCurrentCache(it) }
         val existing = target.stories.mapTo(mutableSetOf(), Story::id)
-        val missing = ids.filterNot(existing::contains)
+        val existingLoaded = target.stories.filter(Story::loaded).mapTo(mutableSetOf(), Story::id)
+        val cache = FeedCachePreparation(
+            target, type, generation, if (append) existing + ids else ids.toSet(),
+        )
+        previous?.let {
+            cache.prepared.addAll(it.prepared)
+            cache.recover.addAll(it.recover)
+            cache.recovered.addAll(it.recovered)
+            cache.protected.addAll(it.protected)
+        }
+        feedCache = cache
+        visibleRanges[target]?.let {
+            cache.firstVisible = it.first
+            cache.lastVisible = it.last
+        }
+        val readIds = if (hideRead) historyStore.load().mapTo(mutableSetOf()) { it.id } else emptySet()
+        val candidates = ids.filterNot { (hideRead && it in readIds) || (append && it in existing) }
+        if (!append) {
+            cache.firstVisible = min(cache.firstVisible, (candidates.size - INITIAL_CACHE_ROWS).coerceAtLeast(0))
+        }
         feedPreparationJob = scope.launch {
-            // Only detached rows cross the dispatcher boundary. Live rows remain UI-owned.
-            val cached = withContext(cacheDispatcher) {
-                buildMap {
-                    for (id in missing) {
-                        coroutineContext.ensureActive()
-                        val story = Story("Loading...", id, false, false)
-                        if (hydrateCachedStory(story)) put(id, story)
+            val cached = mutableMapOf<Int, Story>()
+            var cursor = if (append) 0 else cache.firstVisible
+            var visible = 0
+            // Fill a screen plus a small buffer, continuing past cached rows hidden by filters.
+            while (cursor < candidates.size && visible < INITIAL_CACHE_ROWS) {
+                val batch = candidates.drop(cursor).take(INITIAL_CACHE_ROWS - visible)
+                cursor += batch.size
+                val prepared = readFeedCache(batch.filterNot(existing::contains), rebuild = false) { header ->
+                    Story("Loading...", header.storyId, false, false).takeIf(header::applyTo)
+                }
+                if (!isCurrentCache(cache)) return@launch
+                // Retained placeholders still need their summary attempt after reconciliation.
+                // Loaded live rows can refresh immediately without consulting an older cache.
+                cache.prepared.addAll(batch.filter { it !in existing || it in existingLoaded })
+                for (id in batch) {
+                    val story = prepared[id]
+                    if (story != null) {
+                        story.isRead = id in readIds
+                        story.isComment = id in commentIds
+                        cached[id] = story
                     }
+                    if (story == null || !requests.shouldHideStory(story, type)) visible++
                 }
             }
-            if (isCurrentFeed(type, generation) && activeStore === target) apply(cached)
+            if (!isCurrentCache(cache)) return@launch
+            apply(cached)
+            prepareApproachingRows(cache)
+        }
+    }
+
+    private suspend fun <T : Any> readFeedCache(
+        ids: List<Int>,
+        rebuild: Boolean,
+        prepare: (CachedStoryHeader) -> T?,
+    ): Map<Int, T> =
+        withContext(cacheDispatcher) {
+            buildMap {
+                for (id in ids) {
+                    coroutineContext.ensureActive()
+                    loadCachedStoryHeader(id, rebuild)?.let(prepare)?.let { put(id, it) }
+                }
+            }
+        }
+
+    private fun isCurrentCache(cache: FeedCachePreparation): Boolean =
+        feedCache === cache && activeStore === cache.store && isCurrentFeed(cache.type, cache.generation)
+
+    private fun continueFeedCachePreparation() {
+        val cache = feedCache ?: return
+        if (!isCurrentCache(cache) || feedPreparationJob?.isActive == true) return
+        feedPreparationJob = scope.launch { prepareApproachingRows(cache) }
+    }
+
+    private suspend fun prepareApproachingRows(cache: FeedCachePreparation) {
+        while (isCurrentCache(cache)) {
+            val viewportEnd = cache.lastVisible?.let {
+                StoryPaginationPolicy.scrolledLoadTargetIndex(activeStories.size, it, initialLoadCount())
+            } ?: StoryPaginationPolicy.visibleLoadTargetIndex(
+                activeStories.size, activeStore.state.value.paginationEnabled,
+                activeStore.state.value.visibleStoryCount,
+            )
+            val end = if (activeStore.state.value.paginationEnabled) {
+                max(viewportEnd, activeStore.state.value.visibleStoryCount.coerceAtMost(activeStories.size) - 1)
+            } else viewportEnd
+            // Recompute between batches so a scroll takes priority over earlier off-screen work.
+            val approaching = activeStories.drop(cache.firstVisible)
+                .take((end - cache.firstVisible + 1).coerceAtLeast(0))
+                .filter { it.id in cache.ids && !it.loaded && it.id !in cache.protected }
+            val summaries = approaching.filter { it.id !in cache.prepared }.take(INITIAL_CACHE_ROWS)
+            val rebuilding = summaries.isEmpty()
+            // Legacy recovery follows failed HTTP, one discussion at a time; online loads never
+            // need to parse a full discussion simply to draw a feed row.
+            val batch = if (!rebuilding) summaries else approaching.filter {
+                it.id in cache.recover && it.id !in cache.recovered
+            }.take(1)
+            if (batch.isEmpty()) return
+            val headers = readFeedCache(batch.map(Story::id), rebuild = rebuilding) { it }
+            if (!isCurrentCache(cache)) return
+            if (rebuilding) cache.recovered.addAll(batch.map(Story::id))
+            else cache.prepared.addAll(batch.map(Story::id))
+            var contentChanged = false
+            for (story in batch) {
+                if (story !in activeStories) continue
+                // Keep the feed's row classification, which can differ from older cached JSON.
+                val isComment = story.isComment
+                // A request or an external update may have won while the worker was preparing.
+                if (!story.loaded && story.id !in cache.protected && headers[story.id]?.applyTo(story) == true) {
+                    story.isComment = isComment
+                    if (requests.shouldHideStory(story, cache.type)) {
+                        removeStory(story, loadReplacement = true)
+                        continue
+                    }
+                    if (!rebuilding) requests.invalidateLoadedStoryRows(listOf(story))
+                    contentChanged = true
+                    prefetch(story)
+                }
+                if (!rebuilding && activeStories.indexOf(story) <= activeLoadedThrough) {
+                    loadStory(story, cache.generation)
+                }
+            }
+            if (contentChanged) changed()
         }
     }
 
@@ -1194,7 +1363,7 @@ class StoriesFeatureRuntime(
             return
         }
         if (requests.shouldHideStory(story, currentType)) {
-            removeStory(story)
+            removeStory(story, loadReplacement = true)
             return
         }
         prefetch(story)
@@ -1340,6 +1509,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun clearStore(store: StoryListStore, type: StoryType) {
+        visibleRanges.remove(store)
         store.clear()
         store.setPaginationEnabled(shouldUsePagination(type))
         store.setVisibleStoryCount(initialVisibleCount(store))
@@ -1349,7 +1519,7 @@ class StoriesFeatureRuntime(
 
     private fun loadThrough(targetIndex: Int, generation: Int) {
         if (!requests.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
-        var index = activeLoadedThrough + 1
+        var index = max(activeLoadedThrough + 1, feedCache?.firstVisible ?: 0)
         while (index <= targetIndex && index < activeStories.size) {
             activeLoadedThrough = index
             loadStory(activeStories[index], generation)
@@ -1361,7 +1531,7 @@ class StoriesFeatureRuntime(
         if (!requests.isCurrentStoryLoadGeneration(generation) || targetIndex < 0) return
         val capped = min(targetIndex, activeStories.lastIndex)
         if (capped < 0) return
-        for (index in 0..capped) {
+        for (index in (feedCache?.firstVisible ?: 0)..capped) {
             val story = activeStories[index]
             if (((!story.loaded && !story.loadingFailed) || requests.storyRowNeedsRefresh(story.id)) &&
                 !requests.isStoryRowLoadInProgress(story.id)
@@ -1377,6 +1547,13 @@ class StoriesFeatureRuntime(
             return
         }
         if (requests.isStoryRowLoadInProgress(story.id)) return
+        // Each new row gets one cheap summary attempt before its request. Rows outside the
+        // viewport buffer remain placeholders until approached, including after a large jump.
+        feedCache?.let { cache ->
+            if (isCurrentCache(cache) && story.id in cache.ids &&
+                story.id !in cache.prepared && story.id !in cache.protected
+            ) return
+        }
         requests.loadStoryRow(
                 story = story,
                 preserveTime = currentType.isHistory,
@@ -1452,6 +1629,7 @@ class StoriesFeatureRuntime(
         feedLoadJob?.cancel()
         nextScrapedPageJob?.cancel()
         feedPreparationJob?.cancel()
+        feedCache = null
     }
 
     private fun beginGeneration(): Int {

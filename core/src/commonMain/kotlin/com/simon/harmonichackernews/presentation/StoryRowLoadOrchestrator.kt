@@ -90,7 +90,6 @@ class StoryRowLoadOrchestrator(
         if (!session.isCurrent(requestGeneration) ||
             (story.loaded && !needsRefresh(story.id)) || isInProgress(story.id)
         ) return
-        val refreshing = story.loaded
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 for (attempt in 0 until MAX_ATTEMPTS) {
@@ -114,7 +113,7 @@ class StoryRowLoadOrchestrator(
                         if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
                         session.clearStory(story.id, startedAt)
                         if (!session.isCurrent(requestGeneration)) return@launch
-                        if (!refreshing) story.loadingFailed = true
+                        if (!story.loaded) story.loadingFailed = true
                         val finalAttempt = attempt == MAX_ATTEMPTS - 1
                         mutableEffects.emit(
                             StoryRowLoadEffect.AttemptFailed(

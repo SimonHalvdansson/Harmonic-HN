@@ -147,7 +147,7 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
         loadContentFilters = contentFilters::load,
         rootStoryResolver = CommentMasterResolver(network.hackerNewsRepository),
         nowMillis = nowMillis,
-        hydrateCachedStory = storyCache::hydrateStory,
+        loadCachedStoryHeader = storyCache::loadStoryHeader,
         loadCachedStories = storyCache::recentStories,
         hasCachedStories = storyCache::hasRecentStories,
         startStoryCache = { storyCacheRuntime.start(it) },
@@ -213,7 +213,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         localSummaryAvailable = { localSummaryCanAttempt },
         summaryRuntime = createStorySummaryRuntime(featureScope),
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
-        loadCachedStoryHeader = storyCache::loadStoryHeader,
+        loadCachedStoryHeader = { storyCache.loadStoryHeader(it) },
         isThreadCached = storyCache::hasStoryPayload,
         loadPreparedThread = storyCache::loadPreparedThread,
         loadCachedThread = { storyId ->

@@ -113,7 +113,7 @@ sealed interface StoriesIntent {
         val tintColorArgb: Int,
         val favicon: Boolean,
     ) : StoriesIntent
-    data class VisibleRange(val lastVisibleIndex: Int) : StoriesIntent
+    data class VisibleRange(val lastVisibleIndex: Int, val firstVisibleIndex: Int = 0) : StoriesIntent
     data class OpenPreviewStory(val storyId: Int, val showWebsite: Boolean) : StoriesIntent
     data class PreviewAction(val storyId: Int, val action: StoryPreviewActionKind) : StoriesIntent
 }
@@ -267,7 +267,7 @@ class StoriesFeatureStore internal constructor(
                 )
             }
             is StoriesIntent.VisibleRange -> {
-                runtime.loadVisibleStories(intent.lastVisibleIndex)
+                runtime.loadVisibleStories(intent.lastVisibleIndex, intent.firstVisibleIndex)
                 runtime.prefetchVisibleStoryResources(intent.lastVisibleIndex)
             }
             is StoriesIntent.OpenPreviewStory -> withActiveStory(intent.storyId) { story ->
