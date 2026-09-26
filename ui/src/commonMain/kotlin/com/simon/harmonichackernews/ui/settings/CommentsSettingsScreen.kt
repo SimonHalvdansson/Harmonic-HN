@@ -176,7 +176,7 @@ fun CommentsSettingsScreen(
         item {
             SettingsCategory("Header display") {
                 BooleanRow(
-                    "Show up button",
+                    "Back",
                     Res.drawable.ic_arrow_back,
                     state.showUpButton,
                     CommentsBooleanSetting.ShowUpButton,

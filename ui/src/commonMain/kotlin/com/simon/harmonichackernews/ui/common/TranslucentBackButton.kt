@@ -10,16 +10,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
@@ -29,7 +39,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /** A fixed, host-positioned back control shared by full-screen feature destinations. */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun TranslucentBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -56,39 +66,54 @@ fun TranslucentBackButton(
     val surfaceColor = colors.surfaceContainerHigh.copy(alpha = 0.5f)
     val glassEnabled = LocalHazeGlassEnabled.current
 
-    Surface(
-        onClick = onClick,
+    val tooltipState = rememberTooltipState()
+    val hapticFeedback = LocalHapticFeedback.current
+    LaunchedEffect(tooltipState.isVisible) {
+        if (tooltipState.isVisible) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Below,
+        ),
+        tooltip = { PlainTooltip { Text("Back") } },
+        state = tooltipState,
         modifier = modifier,
-        shape = shape,
-        color = androidx.compose.ui.graphics.Color.Transparent,
-        contentColor = colors.onSurface,
-        shadowElevation = if (glassEnabled) 2.dp else 8.dp,
-        interactionSource = interactionSource,
     ) {
-        Box(
-            modifier = Modifier
-                .sharedHazeBackground(hazeState, surfaceColor, shape)
-                .then(
-                    // Preserve the original back button's extra tint when glass is disabled.
-                    if (!glassEnabled && hazeState != null) {
-                        Modifier.background(surfaceColor)
-                    } else {
-                        Modifier
-                    },
-                ),
+        Surface(
+            onClick = onClick,
+            shape = shape,
+            color = androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = colors.onSurface,
+            shadowElevation = if (glassEnabled) 2.dp else 8.dp,
+            interactionSource = interactionSource,
         ) {
             Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .sharedHazeBackground(hazeState, surfaceColor, shape)
+                    .then(
+                        // Preserve the original back button's extra tint when glass is disabled.
+                        if (!glassEnabled && hazeState != null) {
+                            Modifier.background(surfaceColor)
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
-                Image(
-                    painter = painterResource(Res.drawable.ic_arrow_back),
-                    contentDescription = "Back",
-                    modifier = Modifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(colors.iconTint),
-                )
+                Box(
+                    modifier = Modifier.size(48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(Res.drawable.ic_arrow_back),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(20.dp),
+                        colorFilter = ColorFilter.tint(colors.iconTint),
+                    )
+                }
+                ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
             }
-            ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
         }
     }
 }
