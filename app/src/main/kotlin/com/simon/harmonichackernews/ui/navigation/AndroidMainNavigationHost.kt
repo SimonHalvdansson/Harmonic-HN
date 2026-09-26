@@ -546,9 +546,10 @@ private fun MainNavigation(
                     onStoryLayersEmpty = { retainSinglePaneStoryScene = false },
                     completedPredictivePop = completedPredictivePop,
                     predictiveBackActive = activeBackAnimation != null,
-                    showStoriesRoot = navigationSnapshot.currentDestination == MainDestination.STORIES ||
-                        (navigationSnapshot.currentDestination == MainDestination.STORY &&
-                            navigationSnapshot.storyStackParentDestination == MainDestination.STORIES),
+                    // Covering destinations still need the retained Stories surface for Back.
+                    // Only a story run rooted in another destination hides it.
+                    showStoriesRoot = storyRequests.isEmpty() ||
+                        navigationSnapshot.storyStackParentDestination == MainDestination.STORIES,
                     animateInitialStory = isTwoPane && storyRequest != null &&
                         storyParentDestination != MainDestination.STORIES,
                     storiesPredictiveModifier = if (
