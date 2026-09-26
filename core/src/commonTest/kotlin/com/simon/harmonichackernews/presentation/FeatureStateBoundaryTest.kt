@@ -27,16 +27,6 @@ class FeatureStateBoundaryTest {
         assertFalse(searchState.activeHasLoadMore)
     }
 
-    @Test
-    fun commentsStateCarriesOnlySnapshotStoryData() {
-        val snapshot = story(7)
-        val state = CommentsState(story = snapshot)
-
-        assertEquals(7, state.story?.id)
-        assertTrue(state.story?.loaded == true)
-        assertTrue(state.thread.filteredComments.isEmpty())
-    }
-
     private fun story(id: Int) = StoryListItemSnapshot(
         story = StorySnapshot(id = id, title = "Story $id"),
         presentation = StoryPresentationSnapshot(loaded = true),

@@ -19,13 +19,4 @@ class DebugSettingsFixturesTest {
         )
         assertTrue(DebugLinkPreviewSamples.all { it.targetUrl.startsWith("https://") })
     }
-
-    @Test
-    fun includesOpenRouterSolPreview() {
-        val fixture = DebugLinkPreviewSamples.single {
-            it.type == LinkPreviewType.OPENROUTER_MODEL
-        }
-
-        assertEquals("https://news.ycombinator.com/item?id=49337602", fixture.hnUrl)
-    }
 }

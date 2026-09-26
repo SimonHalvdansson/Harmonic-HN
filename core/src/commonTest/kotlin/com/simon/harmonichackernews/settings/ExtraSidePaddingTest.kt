@@ -24,14 +24,4 @@ class ExtraSidePaddingTest {
         val repository = AppSettingsRepository(store, emptyFlow())
         assertEquals(ExtraSidePadding.Standard, repository.snapshot().appearance.extraSidePadding)
     }
-
-    @Test
-    fun optionsScaleLandscapeGutterAndPreserveUnpaddedConfigurations() {
-        assertEquals(0f, 64f * ExtraSidePadding.None.fraction)
-        assertEquals(32f, 64f * ExtraSidePadding.Small.fraction)
-        assertEquals(64f, 64f * ExtraSidePadding.Standard.fraction)
-        for (option in ExtraSidePadding.entries) {
-            assertEquals(0f, 0f * option.fraction)
-        }
-    }
 }

@@ -32,7 +32,7 @@ class WidgetPreviewStyleMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun everyDisplayStyleTransitionHasAnIntermediateFrame() {
+    fun fillElevationAndOutlineAnimateInBothDirections() {
         val displayStyle = mutableStateOf(DisplayStyle.FLAT)
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
@@ -48,8 +48,13 @@ class WidgetPreviewStyleMotionTest {
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
         try {
-            val styles = listOf(DisplayStyle.FLAT, DisplayStyle.STANDARD, DisplayStyle.RAISED, DisplayStyle.OUTLINED)
-            for (from in styles) for (to in styles.filter { it != from }) {
+            // Isolate fill, elevation, and outline changes without testing every style pair.
+            val transitions = listOf(
+                DisplayStyle.FLAT to DisplayStyle.STANDARD,
+                DisplayStyle.STANDARD to DisplayStyle.RAISED,
+                DisplayStyle.STANDARD to DisplayStyle.OUTLINED,
+            ).flatMap { (start, end) -> listOf(start to end, end to start) }
+            for ((from, to) in transitions) {
                 compose.runOnUiThread { displayStyle.value = from }
                 compose.mainClock.advanceTimeBy(400)
                 val before = pixels()

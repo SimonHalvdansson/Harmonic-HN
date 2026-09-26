@@ -38,6 +38,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,7 +48,12 @@ import org.junit.runner.RunWith
 class CommentRenderingPerformanceTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    /** Opt in with instrumentation argument `profileCommentRendering=true`. */
     @Test fun coldCommentComposition() {
+        assumeTrue(
+            "CPU sampling is an opt-in profiling run",
+            InstrumentationRegistry.getArguments().getString("profileCommentRendering") == "true",
+        )
         val item = mutableStateOf(comment(1, "Initial comment"))
         val style = CommentRowStyle(DisplayStyle.FLAT, 14f, false, false, "none", false, "default", false)
         val app = (compose.activity.application as HarmonicApplication).composition
