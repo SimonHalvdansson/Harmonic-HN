@@ -2,7 +2,10 @@ package com.simon.harmonichackernews.network
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
@@ -47,7 +50,15 @@ class KtorHackerNewsApi(
         val url = URLBuilder(API_BASE)
             .appendPathSegments("user", "$normalized.json")
             .buildString()
-        val body = client().getTextOrThrow(url)
+        val body = try {
+            client().getTextOrThrow(url)
+        } catch (error: IOException) {
+            currentCoroutineContext().ensureActive()
+            if (error is HttpBodyLimitException) throw error
+            // Android disables transport retries to protect writes. This public GET is safe
+            // to repeat once when a pooled connection or response-body read fails.
+            client().getTextOrThrow(url)
+        }
         if (body.isBlank() || body.trim() == "null") return@withContext null
         return@withContext decode(body)
     }
