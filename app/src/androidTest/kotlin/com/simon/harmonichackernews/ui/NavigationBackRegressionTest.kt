@@ -1,6 +1,10 @@
 package com.simon.harmonichackernews.ui
 
 import androidx.activity.BackEventCompat
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.MainActivity
@@ -21,6 +25,241 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class NavigationBackRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun reopeningSubmissionsFromItsAuthorsPostRetainsTheParent() {
+        val navigation = compose.activity.navigationController
+        val original = navigation.navigationState.restoration()
+        val tablet = compose.activity.resources.configuration.smallestScreenWidthDp >= 600
+        try {
+            compose.runOnIdle {
+                navigation.navigationState.returnToStories()
+                navigation.dismissWelcomeDialog()
+                navigation.dismissChangelogDialog()
+                navigation.openSubmissions("starkparker")
+            }
+            compose.waitForIdle()
+            compose.runOnIdle { navigation.openSubmissionStory(StoryRoute(49777833).toDestination()) }
+            compose.waitForIdle()
+            val parent = requireNotNull(navigation.getCommentsCoordinator())
+            val parentRoot = parent.webViewRoot
+            val parentWidth = parentRoot.width
+            val parentStack = navigation.navigationState.state.value.destinationStack
+            for (userName in listOf("starkparker", "pg")) {
+                compose.runOnIdle { navigation.showUserDialog(userName, null) }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    navigation.dismissUserDialog()
+                    navigation.openSubmissions(userName)
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertTrue("The preceding post must keep its original surface", parentRoot.isAttachedToWindow)
+                    assertEquals(parentWidth, parentRoot.width)
+                    val dispatcher = compose.activity.onBackPressedDispatcher
+                    dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 500f, 0f, BackEventCompat.EDGE_LEFT))
+                    dispatcher.dispatchOnBackProgressed(BackEventCompat(400f, 500f, 0.8f, BackEventCompat.EDGE_LEFT))
+                }
+                compose.waitForIdle()
+                compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertEquals(MainDestination.SUBMISSIONS, navigation.navigationState.state.value.currentDestination)
+                    assertEquals(parentWidth, parentRoot.width)
+                }
+                if (tablet) {
+                    // Also update a retained nested scene, then cover it with a third visit.
+                    compose.runOnIdle { navigation.openSubmissionStory(StoryRoute(47938725).toDestination()) }
+                    compose.waitForIdle()
+                    val nestedRoot = requireNotNull(navigation.getCommentsCoordinator()).webViewRoot
+                    compose.runOnIdle { navigation.openSubmissions(userName) }
+                    compose.waitForIdle()
+                    compose.runOnIdle {
+                        assertTrue(parentRoot.isAttachedToWindow)
+                        assertTrue(nestedRoot.isAttachedToWindow)
+                        navigation.closeSubmissions()
+                    }
+                    compose.waitForIdle()
+                    compose.runOnIdle {
+                        assertSame(nestedRoot, navigation.getCommentsCoordinator()?.webViewRoot)
+                        navigation.closeStory()
+                    }
+                    compose.waitForIdle()
+                }
+                compose.runOnIdle {
+                    val dispatcher = compose.activity.onBackPressedDispatcher
+                    dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 500f, 0f, BackEventCompat.EDGE_LEFT))
+                    dispatcher.dispatchOnBackProgressed(BackEventCompat(400f, 500f, 0.8f, BackEventCompat.EDGE_LEFT))
+                    dispatcher.onBackPressed()
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertEquals(parentStack, navigation.navigationState.state.value.destinationStack)
+                    assertSame(parent, navigation.getCommentsCoordinator())
+                    assertEquals(parentWidth, parentRoot.width)
+                }
+            }
+        } finally {
+            compose.runOnIdle { navigation.navigationState.restore(original) }
+        }
+    }
+
+    @Test fun buttonBackAfterPredictivePopStillAnimates() {
+        val navigation = compose.activity.navigationController
+        val original = navigation.navigationState.restoration()
+        try {
+            for (reopenChild in listOf(false, true)) {
+                compose.runOnIdle {
+                    navigation.navigationState.returnToStories()
+                    navigation.dismissWelcomeDialog()
+                    navigation.dismissChangelogDialog()
+                    navigation.openSettings("debug")
+                    navigation.navigationState.openStory(StoryRoute(47938725))
+                }
+                compose.waitForIdle()
+                val parent = requireNotNull(navigation.getCommentsCoordinator()).webViewRoot
+                compose.runOnIdle {
+                    navigation.navigationState.openLinkedStory(StoryRoute(48352939).toDestination())
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    val dispatcher = compose.activity.onBackPressedDispatcher
+                    dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 500f, 0f, BackEventCompat.EDGE_LEFT))
+                    dispatcher.dispatchOnBackProgressed(BackEventCompat(400f, 500f, 0.8f, BackEventCompat.EDGE_LEFT))
+                    dispatcher.onBackPressed()
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertEquals(47938725, navigation.navigationState.state.value.storyRequest?.storyId)
+                }
+                if (reopenChild) {
+                    // Revisiting the same parent through a newly opened story must not reuse an
+                    // earlier gesture's completion either.
+                    compose.runOnIdle {
+                        navigation.navigationState.openLinkedStory(StoryRoute(48352939).toDestination())
+                    }
+                    compose.waitForIdle()
+                    val reopened = requireNotNull(navigation.getCommentsCoordinator()).webViewRoot
+                    compose.mainClock.autoAdvance = false
+                    compose.runOnUiThread { navigation.closeStory() }
+                    compose.mainClock.advanceTimeBy(64)
+                    compose.runOnUiThread {
+                        assertTrue("Revisiting the same parent must animate the new story's exit", reopened.isAttachedToWindow)
+                    }
+                    compose.mainClock.advanceTimeBy(600)
+                    compose.mainClock.autoAdvance = true
+                    compose.waitForIdle()
+                }
+                compose.mainClock.autoAdvance = false
+                compose.runOnUiThread { navigation.closeStory() }
+                compose.mainClock.advanceTimeBy(64)
+                compose.runOnUiThread {
+                    assertTrue("A completed child gesture must not skip the parent's button exit", parent.isAttachedToWindow)
+                }
+                compose.mainClock.advanceTimeBy(600)
+                compose.runOnUiThread { assertFalse(parent.isAttachedToWindow) }
+                compose.mainClock.autoAdvance = true
+                compose.waitForIdle()
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+            compose.runOnIdle { navigation.navigationState.restore(original) }
+        }
+    }
+
+    @Test fun submissionsKeepsTheDebugStoryInItsOriginalFullScreenSurface() {
+        val navigation = compose.activity.navigationController
+        val original = navigation.navigationState.restoration()
+        try {
+            compose.runOnIdle {
+                navigation.navigationState.returnToStories()
+                navigation.dismissWelcomeDialog()
+                navigation.dismissChangelogDialog()
+                navigation.openSettings("debug")
+                navigation.navigationState.openStory(StoryRoute(47938725))
+            }
+            compose.waitForIdle()
+            compose.runOnIdle { navigation.navigationState.openLinkedStory(StoryRoute(48352939).toDestination()) }
+            compose.waitForIdle()
+            val parent = requireNotNull(navigation.getCommentsCoordinator())
+            val root = parent.webViewRoot
+            val width = root.width
+            val height = root.height
+            compose.runOnIdle { navigation.openSubmissions("pg") }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertTrue("Submissions must retain its actual parent surface", root.isAttachedToWindow)
+                assertEquals("A full-screen parent must not turn into a Stories detail pane", width, root.width)
+                assertEquals(height, root.height)
+            }
+            compose.runOnIdle {
+                val dispatcher = compose.activity.onBackPressedDispatcher
+                dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 500f, 0f, BackEventCompat.EDGE_LEFT))
+                dispatcher.dispatchOnBackProgressed(BackEventCompat(400f, 500f, 0.8f, BackEventCompat.EDGE_LEFT))
+            }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertEquals(width, root.width)
+                compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled()
+            }
+            compose.waitForIdle()
+            compose.runOnIdle { assertEquals(MainDestination.SUBMISSIONS, navigation.navigationState.state.value.currentDestination) }
+            compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertSame(parent, navigation.getCommentsCoordinator())
+                assertEquals(width, root.width)
+            }
+        } finally {
+            compose.runOnIdle { navigation.navigationState.restore(original) }
+        }
+    }
+
+    @Test fun retainedStoryKeepsItsOwnStatusBarTintDuringChildBack() {
+        val navigation = compose.activity.navigationController
+        val original = navigation.navigationState.restoration()
+        try {
+            compose.runOnIdle {
+                navigation.navigationState.returnToStories()
+                navigation.dismissWelcomeDialog()
+                navigation.dismissChangelogDialog()
+                navigation.openSettings("debug")
+                navigation.navigationState.openStory(StoryRoute(47938725))
+            }
+            compose.waitForIdle()
+            val parent = requireNotNull(navigation.getCommentsCoordinator()?.composeUiController)
+            compose.runOnIdle { navigation.navigationState.openLinkedStory(StoryRoute(48352939).toDestination()) }
+            compose.waitForIdle()
+            val child = requireNotNull(navigation.getCommentsCoordinator()?.composeUiController)
+            compose.runOnIdle {
+                val dispatcher = compose.activity.onBackPressedDispatcher
+                dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 500f, 0f, BackEventCompat.EDGE_LEFT))
+                dispatcher.dispatchOnBackProgressed(BackEventCompat(400f, 500f, 0.8f, BackEventCompat.EDGE_LEFT))
+            }
+            compose.waitForIdle()
+            // Distinct deterministic colors make this a rendering assertion independent of
+            // downloaded preview images or the emulator's selected theme.
+            compose.runOnIdle {
+                parent.updateStatusBarHeaderColor(Color.Magenta)
+                parent.updateStatusBarHeaderCoverage(1f)
+                child.updateStatusBarHeaderColor(Color.Blue)
+                child.updateStatusBarHeaderCoverage(1f)
+            }
+            compose.waitForIdle()
+            val pixels = compose.onRoot().captureToImage().toPixelMap()
+            var parentTintPixels = 0
+            for (y in 0 until pixels.height / 5) {
+                for (x in pixels.width / 40 until pixels.width / 12) {
+                    val pixel = pixels[x, y]
+                    if (pixel.red > 0.5f && pixel.blue > 0.5f && pixel.green < 0.2f) parentTintPixels++
+                }
+            }
+            assertTrue("The revealed parent's status bar must keep its own tint", parentTintPixels > 50)
+            compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }
+            compose.waitForIdle()
+        } finally {
+            compose.runOnIdle { navigation.navigationState.restore(original) }
+        }
+    }
 
     @Test fun tabletUpRetainsStandaloneStoryUntilItsExitFinishes() {
         org.junit.Assume.assumeTrue(compose.activity.resources.configuration.smallestScreenWidthDp >= 600)

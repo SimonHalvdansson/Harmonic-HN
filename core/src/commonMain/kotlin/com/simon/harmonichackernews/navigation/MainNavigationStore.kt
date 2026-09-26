@@ -33,44 +33,40 @@ data class MainNavigationSnapshot(
         .indexOfLast { it.destination == destination }
         .let { destinationStack.getOrNull(it - 1)?.destination }
 
+    val storyStack: MainStoryStack
+        get() = mainStoryStack(destinationStack)
+
     /** Consecutive story entries ending at the most recently opened story. */
     val storyBackStack: List<MainStoryRequest>
-        get() {
-            val lastStoryIndex = destinationStack.indexOfLast { it is MainNavigationEntry.Story }
-            if (lastStoryIndex < 0) return emptyList()
-            var firstStoryIndex = lastStoryIndex
-            while (
-                firstStoryIndex > 0 &&
-                destinationStack[firstStoryIndex - 1] is MainNavigationEntry.Story
-            ) {
-                firstStoryIndex--
-            }
-            return destinationStack
-                .subList(firstStoryIndex, lastStoryIndex + 1)
-                .filterIsInstance<MainNavigationEntry.Story>()
-                .map { it.request }
-        }
+        get() = storyStack.requests
 
     val storyParentDestination: MainDestination?
-        get() = destinationStack
-            .indexOfLast { it is MainNavigationEntry.Story }
-            .let { storyIndex -> destinationStack.getOrNull(storyIndex - 1)?.destination }
+        get() = storyStack.immediateParent
 
-    /** Destination beneath the entire consecutive run of stories containing the current story. */
     val storyStackParentDestination: MainDestination?
-        get() {
-            var firstStoryIndex = destinationStack.indexOfLast {
-                it is MainNavigationEntry.Story
-            }
-            if (firstStoryIndex < 0) return null
-            while (
-                firstStoryIndex > 0 &&
-                destinationStack[firstStoryIndex - 1] is MainNavigationEntry.Story
-            ) {
-                firstStoryIndex--
-            }
-            return destinationStack.getOrNull(firstStoryIndex - 1)?.destination
-        }
+        get() = storyStack.parent
+
+}
+
+/** A story run and its origin, also usable for a retained stack beneath an overlay. */
+data class MainStoryStack(
+    val requests: List<MainStoryRequest>,
+    val parent: MainDestination?,
+) {
+    val immediateParent: MainDestination?
+        get() = if (requests.size > 1) MainDestination.STORY else parent
+}
+
+fun mainStoryStack(entries: List<MainNavigationEntry>): MainStoryStack {
+    val last = entries.indexOfLast { it is MainNavigationEntry.Story }
+    if (last < 0) return MainStoryStack(emptyList(), null)
+    var first = last
+    while (first > 0 && entries[first - 1] is MainNavigationEntry.Story) first--
+    return MainStoryStack(
+        requests = entries.subList(first, last + 1)
+            .filterIsInstance<MainNavigationEntry.Story>().map { it.request },
+        parent = entries.getOrNull(first - 1)?.destination,
+    )
 }
 
 /** Observable navigation bridge shared by Compose, SwiftUI and desktop hosts. */

@@ -1,6 +1,11 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.lerp
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -105,7 +110,6 @@ internal fun CommentsPane(
     request: MainStoryRequest,
     controller: AndroidMainNavigationController,
     showUpButton: Boolean,
-    statusBarColor: Color = Color.Transparent,
     statusBarHeight: Dp = 0.dp,
     drawStatusBarProtection: Boolean = false,
 ) {
@@ -136,6 +140,18 @@ internal fun CommentsPane(
         }
     }
     val commentsController = activeCoordinator.composeUiController
+    // Each retained destination owns its bar color, just like its header and scroll state.
+    // Reading the active controller here would repaint the parent with the child's tint.
+    val background = HarmonicTheme.colors.background
+    val statusBarColor by animateColorAsState(
+        targetValue = lerp(
+            background,
+            commentsController?.statusBarHeaderColor ?: background,
+            commentsController?.statusBarHeaderCoverage ?: 0f,
+        ),
+        animationSpec = tween(durationMillis = 90, easing = LinearEasing),
+        label = "story ${request.serial} status bar",
+    )
     CommentsHazeHost {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             AndroidView(

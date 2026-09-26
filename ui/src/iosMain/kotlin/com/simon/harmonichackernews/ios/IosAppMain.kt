@@ -66,6 +66,7 @@ import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
+import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
 import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
@@ -414,12 +415,10 @@ private fun IosAppContent(
                 )
             } else {
                 SinglePaneNavigationScene(
-                    storyRequests = navigation.storyBackStack,
+                    scene = mainNavigationScenePlan(navigation, isTwoPane = false),
                     completedPredictivePop = completedBackTarget == IosBackVisualTarget.Story,
                     predictiveBackActive = backInProgress &&
                         backVisualTarget == IosBackVisualTarget.Story,
-                    showStoriesRoot = navigation.storyBackStack.isEmpty() ||
-                        navigation.storyStackParentDestination == MainDestination.STORIES,
                     storiesPredictiveModifier = if (
                         backVisualTarget == IosBackVisualTarget.Story
                     ) incomingModifier else Modifier,

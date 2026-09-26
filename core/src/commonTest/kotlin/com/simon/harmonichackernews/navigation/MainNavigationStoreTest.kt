@@ -7,6 +7,26 @@ import kotlin.test.assertNull
 
 class MainNavigationStoreTest {
     @Test
+    fun retainedStoryStackKeepsItsRunAndOriginBeneathSubmissions() {
+        val store = MainNavigationStore()
+        store.openSettings("debug")
+        store.openStory(StoryRoute(1))
+        store.openLinkedStory(StoryRoute(2).toDestination())
+        val parent = store.state.value.storyStack
+        assertEquals(listOf(1, 2), parent.requests.map { it.storyId })
+        assertEquals(MainDestination.SETTINGS, parent.parent)
+        assertEquals(MainDestination.STORY, parent.immediateParent)
+        store.openSubmissions("reader")
+        store.openStory(StoryRoute(3))
+        val snapshot = store.state.value
+        assertEquals(MainDestination.SUBMISSIONS, snapshot.storyStack.parent)
+        assertEquals(listOf(3), snapshot.storyBackStack.map { it.storyId })
+        assertEquals(parent, mainStoryStack(snapshot.destinationStack.takeWhile {
+            it.destination != MainDestination.SUBMISSIONS
+        }))
+    }
+
+    @Test
     fun submissionsOpenedFromDebugUseTheirActualStackParent() {
         val store = MainNavigationStore()
         store.openSettings("debug")
