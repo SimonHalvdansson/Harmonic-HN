@@ -179,24 +179,31 @@ private fun UserLoadError(onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 36.dp),
+            .padding(top = 24.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = "Loading failed",
-            modifier = Modifier.padding(vertical = 24.dp),
-            color = HarmonicTheme.colors.contentPrimary,
+            modifier = Modifier.padding(bottom = 6.dp),
+            color = HarmonicTheme.colors.mutedText,
             fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
+            fontSize = 16.sp,
         )
-        OutlinedButton(onClick = onRetry, modifier = Modifier.height(48.dp)) {
-            Icon(painter = painterResource(Res.drawable.ic_refresh), contentDescription = null)
+        OutlinedButton(
+            onClick = onRetry,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_refresh),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
             Text(
                 text = "Retry",
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = 6.dp),
                 fontFamily = ProductSansFontFamily,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
             )
         }
     }
