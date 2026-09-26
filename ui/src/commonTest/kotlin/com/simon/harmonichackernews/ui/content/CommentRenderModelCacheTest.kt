@@ -1,6 +1,13 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.ui.text.AnnotatedString
+import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.presentation.PortableCommentItem
+import com.simon.harmonichackernews.presentation.PortableCommentThreadState
+import com.simon.harmonichackernews.presentation.PortableVisibleComment
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,6 +16,36 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentRenderModelCacheTest {
+    @Test
+    fun initialPreparationUsesRestoredViewportAndMatchesSynchronousRenderingInBothLinkModes() = runTest {
+        val comments = (1..30).map { id ->
+            Comment().apply {
+                this.id = id
+                text = "<p>Body $id <b>bold</b> <a href=\"https://example.com/$id\">link</a></p>"
+            }.let { PortableCommentItem(it.toSnapshot(), it.presentationSnapshot()) }
+        }
+        val thread = PortableCommentThreadState(visibleComments = comments.mapIndexed { index, item ->
+            PortableVisibleComment(index, item, 0)
+        })
+        for (collectLinks in listOf(false, true)) {
+            CommentRenderModelCache.clearForTest()
+            CommentHtmlTextCache.clearForTest()
+            prepareInitialCommentContent(thread, collectLinks, targetCommentId = 10)
+            assertEquals(8, CommentRenderModelCache.entryCountForTest())
+            assertEquals(null, CommentRenderModelCache.peek(1, comments[0].expandedAnchorText!!, collectLinks))
+            for (comment in comments.subList(9, 17)) {
+                val expected = CommentRenderModelCache.prepare(comment.expandedAnchorText, collectLinks)
+                val actual = CommentRenderModelCache.peek(comment.id, comment.expandedAnchorText!!, collectLinks)
+                assertEquals(expected.contentBlocks.map { it.bodyHtml }, actual?.contentBlocks?.map { it.bodyHtml })
+                assertEquals(expected.references?.links?.map { it.url }, actual?.references?.links?.map { it.url })
+                expected.contentBlocks.mapNotNull { it.bodyHtml }.forEach { html ->
+                    assertTrue(CommentHtmlTextCache.contains(html))
+                    assertEquals(prepareCommentHtml(html), CommentHtmlTextCache.get(html))
+                }
+            }
+        }
+    }
+
     @Test
     fun unchangedCommentReusesItsParsedRenderModel() {
         val first = CommentRenderModelCache.get(

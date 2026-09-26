@@ -156,6 +156,14 @@ class CommentsFeatureBinding private constructor(
                     canLoadArticleTextOnDemand = canLoadArticleTextOnDemand,
                     performanceTrace = performanceTrace,
                     openingRequest = scene.commentsOpeningRequests.requestFor(request.serial, request.storyId),
+                    prepareInitialContent = { thread ->
+                        com.simon.harmonichackernews.ui.content.prepareInitialCommentContent(
+                            thread,
+                            app.userSettings.comments.collectReferenceLinks,
+                            request.route.scrollToCommentId.takeIf { it > 0 }
+                                ?: sessionState.scrollProgress.topCommentId,
+                        )
+                    },
                 ),
             )
             store.start(

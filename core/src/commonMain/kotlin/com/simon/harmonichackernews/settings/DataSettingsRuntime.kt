@@ -4,6 +4,10 @@ import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,11 +39,18 @@ class DataSettingsRuntime(
     private val scope: CoroutineScope,
     private val service: DataSettingsService,
     private val today: () -> LocalCalendarDate,
+    private val storageDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    private val mutableState = MutableStateFlow(DataSettingsRuntimeState(service.snapshot()))
+    private var storageCounts = DataSettingsStorageCounts()
+    private var refreshJob: Job? = null
+    private val mutableState = MutableStateFlow(DataSettingsRuntimeState(service.snapshot(storageCounts)))
     private val mutableEffects = MutableSharedFlow<DataSettingsRuntimeEffect>(extraBufferCapacity = 8)
     val state: StateFlow<DataSettingsRuntimeState> = mutableState.asStateFlow()
     val effects: SharedFlow<DataSettingsRuntimeEffect> = mutableEffects.asSharedFlow()
+
+    init {
+        refresh()
+    }
 
     fun showDialog(dialog: DataSettingsDialogState?) = publish(dialog = dialog)
     fun dismissFavorites() = publish(favoriteIds = null)
@@ -119,7 +130,13 @@ class DataSettingsRuntime(
         mutableEffects.tryEmit(DataSettingsRuntimeEffect.OpenAppLinkSettings)
     }
 
-    fun refresh() = publish()
+    fun refresh() {
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
+            storageCounts = withContext(storageDispatcher) { service.storageCounts() }
+            publish()
+        }
+    }
 
     private fun emitMessage(message: String) {
         mutableEffects.tryEmit(DataSettingsRuntimeEffect.Message(message))
@@ -131,7 +148,7 @@ class DataSettingsRuntime(
         overwriteBookmarksOnImport: Boolean = state.value.overwriteBookmarksOnImport,
     ) {
         mutableState.value = DataSettingsRuntimeState(
-            snapshot = service.snapshot(),
+            snapshot = service.snapshot(storageCounts),
             dialog = dialog,
             favoriteIds = favoriteIds,
             overwriteBookmarksOnImport = overwriteBookmarksOnImport,

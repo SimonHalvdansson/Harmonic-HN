@@ -53,7 +53,10 @@ interface ObservableHackerNewsAccountRepository {
 data class HistoryStoreSnapshot(
     val histories: List<History> = emptyList(),
     val changeVersion: Long = 0L,
-)
+) {
+    // Constructed with the immutable list, so readers always see matching content and membership.
+    val ids: Set<Int> = histories.mapTo(HashSet(histories.size)) { it.id }
+}
 
 /** Suspend-friendly observable history storage for new shared feature code. */
 interface ObservableHistoryStore : HistoryStore {
@@ -106,7 +109,7 @@ class StoredHistoryStore(
         storageScope.launch { clearHistory() }
     }
 
-    override fun contains(id: Int): Boolean = historyState.value.histories.any { it.id == id }
+    override fun contains(id: Int): Boolean = id in historyState.value.ids
 
     override val size: Int
         get() = historyState.value.histories.size

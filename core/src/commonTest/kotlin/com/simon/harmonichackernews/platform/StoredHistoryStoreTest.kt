@@ -10,9 +10,39 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoredHistoryStoreTest {
+    @Test
+    fun membershipTracksInitializationEvictionRemovalAndClearAtomically() = runTest {
+        val history = StoredHistoryStore(
+            TestKeyValueStore(mapOf(StoredHistoryKeys.HISTORIES to
+                (1..10_000).joinToString("-") { "${it}q$it" })),
+            storageDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        try {
+            runCurrent()
+            val original = history.historyState.value
+            assertTrue(history.contains(1))
+            assertTrue(history.contains(10_000))
+            history.recordHistory(10_001, 10_001)
+            assertFalse(history.contains(1))
+            assertTrue(history.contains(10_001))
+            assertTrue(1 in original.ids)
+            assertFalse(10_001 in original.ids)
+            history.removeHistory(10_000)
+            assertFalse(history.contains(10_000))
+            assertEquals(history.load().map { it.id }.toSet(), history.historyState.value.ids)
+            history.clearHistory()
+            assertFalse(history.contains(10_001))
+            assertTrue(history.historyState.value.ids.isEmpty())
+        } finally {
+            history.close()
+        }
+    }
+
     @Test
     fun initializationIsDeferredAndPublishedFromStorageDispatcher() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)

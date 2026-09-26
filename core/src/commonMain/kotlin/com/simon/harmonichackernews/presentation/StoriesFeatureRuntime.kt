@@ -597,7 +597,7 @@ class StoriesFeatureRuntime(
             listIsEmpty = activeStories.isEmpty(),
         )
         if (plan.source == StoryFeedSource.SEARCH) {
-            submitSearch(sessionState.lastSearch)
+            searchOptions.search(sessionState.lastSearch, forceRefresh = true)
             return
         }
 

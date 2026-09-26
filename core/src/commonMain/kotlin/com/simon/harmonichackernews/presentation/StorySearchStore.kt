@@ -3,6 +3,10 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StorySnapshot
+import com.simon.harmonichackernews.data.applySnapshot
+import com.simon.harmonichackernews.data.toSnapshot
+import kotlin.time.Clock
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import io.ktor.http.URLBuilder
@@ -57,6 +61,7 @@ class StorySearchStore(
     private val shouldFilterStory: (Story) -> Boolean,
     private val shouldHideReadStories: () -> Boolean,
     private val controller: StorySearchController = StorySearchController(),
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val mutableState = MutableStateFlow(StorySearchUiState())
     val state: StateFlow<StorySearchUiState> = mutableState.asStateFlow()
@@ -67,6 +72,9 @@ class StorySearchStore(
     // Keep filtered records too: read/hidden state can change before the next page arrives.
     private var fetchedStories: List<Story> = emptyList()
     private val readStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
+    // Query/options changes reuse immutable metadata; never retain mutable result rows.
+    private val readMetadata = mutableMapOf<Int, CachedReadStory>()
+    private var readMetadataBytes = 0L
 
     val sortLabel: String get() = controller.sortLabel
     val dateRangeLabel: String get() = controller.dateRangeLabel
@@ -104,7 +112,8 @@ class StorySearchStore(
 
     fun toggleOnlyRead() = updateOption(controller::toggleOnlyRead)
 
-    fun search(query: String?) {
+    fun search(query: String?, forceRefresh: Boolean = false) {
+        if (forceRefresh) clearReadMetadata()
         request = Request.Query(
             query.orEmpty(),
             controller.buildSearchUrl(query, StorySearchController.ALGOLIA_PAGE_SIZE),
@@ -139,6 +148,7 @@ class StorySearchStore(
 
     fun cancel(clearResults: Boolean = false) {
         cancelLoad()
+        clearReadMetadata()
         request = null
         fetchedStories = emptyList()
         publish {
@@ -279,15 +289,32 @@ class StorySearchStore(
 
     private suspend fun loadOnlyReadStories(query: String): SearchResult = coroutineScope {
         val ids = readStoryIds()
+        val retainedIds = ids.toSet()
+        val now = nowMillis()
+        readMetadata.entries.removeAll { (id, cached) ->
+            val expired = id !in retainedIds || now < cached.loadedAt || now - cached.loadedAt >= READ_METADATA_TTL_MILLIS
+            if (expired) readMetadataBytes -= cached.estimatedBytes
+            expired
+        }
         if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
 
         val normalizedQuery = controller.normalizeQuery(query)
-        val outcomes = ids.map { id ->
+        val requestGeneration = generation
+        // Capture this query's hits: admitting new records may evict some of them from the cache.
+        val cachedForQuery = readMetadata.toMap()
+        val missing = ids.filter { it !in cachedForQuery }
+        val loaded = missing.map { id ->
             async {
                 readStoryRequests.withPermit {
                     try {
+                        val story = hackerNewsRepository.getStory(id)?.also { it.isRead = true }
+                        if (story != null && requestGeneration == generation) {
+                            rememberReadStory(id, CachedReadStory(
+                                story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle, nowMillis(),
+                            ))
+                        }
                         ReadStoryLoad(
-                            story = hackerNewsRepository.getStory(id)?.also { it.isRead = true },
+                            story = story,
                             failed = false,
                         )
                     } catch (error: CancellationException) {
@@ -298,6 +325,18 @@ class StorySearchStore(
                 }
             }
         }.awaitAll()
+        val byId = missing.zip(loaded).toMap()
+        val outcomes = ids.map { id ->
+            byId[id] ?: cachedForQuery[id]?.let {
+                ReadStoryLoad(Story().applySnapshot(it.story).apply {
+                    this.loaded = true
+                    isRead = true
+                    isLink = it.isLink
+                    pdfTitle = it.pdfTitle
+                    videoTitle = it.videoTitle
+                }, failed = false)
+            } ?: ReadStoryLoad(null, failed = false)
+        }
         val filter = StorySearchController.StoryFilter(shouldFilterStory)
         val stories = outcomes.mapNotNull(ReadStoryLoad::story)
             .filter { story ->
@@ -382,7 +421,38 @@ class StorySearchStore(
 
     private data class ReadStoryLoad(val story: Story?, val failed: Boolean)
 
+    private fun clearReadMetadata() {
+        readMetadata.clear()
+        readMetadataBytes = 0L
+    }
+
+    private fun rememberReadStory(id: Int, cached: CachedReadStory) {
+        if (cached.estimatedBytes > MAX_READ_METADATA_BYTES) return
+        readMetadata.remove(id)?.let { readMetadataBytes -= it.estimatedBytes }
+        while (readMetadataBytes + cached.estimatedBytes > MAX_READ_METADATA_BYTES && readMetadata.isNotEmpty()) {
+            val oldest = readMetadata.keys.first()
+            readMetadataBytes -= readMetadata.remove(oldest)!!.estimatedBytes
+        }
+        readMetadata[id] = cached
+        readMetadataBytes += cached.estimatedBytes
+    }
+
+    private data class CachedReadStory(
+        val story: StorySnapshot,
+        val isLink: Boolean,
+        val pdfTitle: String?,
+        val videoTitle: String?,
+        val loadedAt: Long,
+    ) {
+        val estimatedBytes = 512L + 2L * ((story.title?.length ?: 0) + (story.text?.length ?: 0) +
+            (story.url?.length ?: 0) + (story.author?.length ?: 0) +
+            (pdfTitle?.length ?: 0) + (videoTitle?.length ?: 0)) +
+            24L * (story.childIds.size + story.pollOptionIds.size)
+    }
+
     private companion object {
         const val MAX_CONCURRENT_HISTORY_REQUESTS = 8
+        const val READ_METADATA_TTL_MILLIS = 60_000L
+        const val MAX_READ_METADATA_BYTES = 8L * 1024 * 1024
     }
 }

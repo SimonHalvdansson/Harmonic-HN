@@ -28,7 +28,12 @@ class CommentsPreloadRepository(
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
     private val maxAgeMillis: Long = DEFAULT_MAX_AGE_MILLIS,
     requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val maxRetainedBytes: Long = DEFAULT_MAX_RETAINED_BYTES,
 ) {
+    init {
+        require(maxRetainedBytes >= 0) { "Preload memory budget cannot be negative" }
+    }
+
     private val mutex = Mutex()
     private val entries = MutableStateFlow<Map<PreloadKey, PreparedCommentsThread>>(emptyMap())
     private val requests = AlgoliaCommentRequests(algolia, requestDispatcher)
@@ -43,7 +48,11 @@ class CommentsPreloadRepository(
             ?: requests.acquire(storyId)
     }
 
-    private val inFlight = mutableMapOf<PreloadKey, CompletableDeferred<PreparedCommentsThread?>>()
+    private class PendingPreload {
+        val result = CompletableDeferred<PreparedCommentsThread?>()
+        var oversizedConsumed = false
+    }
+    private val inFlight = mutableMapOf<PreloadKey, PendingPreload>()
 
     suspend fun preload(
         storyId: Int,
@@ -115,7 +124,7 @@ class CommentsPreloadRepository(
         val deferred = mutex.withLock {
             removeExpiredLocked()
             entries.value[key]?.let { return it }
-            inFlight[key] ?: CompletableDeferred<PreparedCommentsThread?>().also {
+            inFlight[key] ?: PendingPreload().also {
                 inFlight[key] = it
                 creator = true
             }
@@ -133,12 +142,12 @@ class CommentsPreloadRepository(
             withContext(NonCancellable) {
                 mutex.withLock {
                     inFlight.remove(key)
-                    if (loaded != null) {
+                    if (loaded != null && loaded.estimatedRetainedBytes <= maxRetainedBytes) {
                         entries.value = entries.value + (key to loaded)
                         trimLocked()
                     }
                 }
-                deferred.complete(loaded)
+                deferred.result.complete(loaded)
                 // An opening screen may consume the prepared content immediately. Persistence
                 // completes even if leaving the feed cancels its preload job after publication.
                 if (loaded is PreloadedCommentsThread) {
@@ -153,7 +162,7 @@ class CommentsPreloadRepository(
             }
             cancellation?.let { throw it }
         }
-        return deferred.await()
+        return deferred.result.await()
     }
 
     /** Returns and removes a prepared thread, waiting only when that exact thread is in flight. */
@@ -203,10 +212,16 @@ class CommentsPreloadRepository(
             }
             inFlight[key].takeIf { awaitInFlight }
         } ?: return null
-        pending.await() ?: return null
+        val loaded = pending.result.await() ?: return null
         return mutex.withLock {
             removeExpiredLocked()
             entries.value[key]?.also { entries.value = entries.value - key }
+                // A currently opening screen can consume a large result once without retaining it
+                // in the application cache. The models are mutable, so never share that handoff.
+                ?: loaded.takeIf {
+                    it.estimatedRetainedBytes > maxRetainedBytes && !pending.oversizedConsumed &&
+                        it.loadedAtMillis >= nowMillis() - maxAgeMillis
+                }?.also { pending.oversizedConsumed = true }
         }
     }
 
@@ -256,8 +271,10 @@ class CommentsPreloadRepository(
     }
 
     private fun trimLocked() {
-        while (entries.value.size > maxEntries.coerceAtLeast(1)) {
+        var bytes = entries.value.values.sumOf { it.estimatedRetainedBytes }
+        while (entries.value.size > maxEntries.coerceAtLeast(1) || bytes > maxRetainedBytes) {
             val oldest = entries.value.minByOrNull { it.value.loadedAtMillis }?.key ?: return
+            bytes -= entries.value.getValue(oldest).estimatedRetainedBytes
             entries.value = entries.value - oldest
         }
     }
@@ -286,6 +303,7 @@ class CommentsPreloadRepository(
     private companion object {
         const val DEFAULT_MAX_ENTRIES = 24
         const val DEFAULT_MAX_AGE_MILLIS = 5 * 60 * 1_000L
+        const val DEFAULT_MAX_RETAINED_BYTES = 8L * 1024 * 1024
     }
 }
 
@@ -294,6 +312,8 @@ sealed interface PreparedCommentsThread {
     val topLevelCommentIds: List<Int>
     val filteredUsers: Set<String>
     val loadedAtMillis: Long
+    /** Estimated text/object weight, not an exact VM heap measurement. */
+    val estimatedRetainedBytes: Long
 }
 
 data class PreloadedCommentsThread(
@@ -303,7 +323,13 @@ data class PreloadedCommentsThread(
     val response: String,
     val parsed: AlgoliaCommentsResponse,
     override val loadedAtMillis: Long,
-) : PreparedCommentsThread
+) : PreparedCommentsThread {
+    override val estimatedRetainedBytes: Long = response.length * 2L +
+        parsed.comments.sumOf { it.retainedTextWeight() } +
+        (parsed.cacheSummary?.preparedThread?.comments?.sumOf {
+            128L + 2L * (it.html.length + (it.expandedHtml?.length ?: 0) + it.author.length)
+        } ?: 0L)
+}
 
 data class PreloadedOfficialCommentsThread(
     override val storyId: Int,
@@ -313,4 +339,14 @@ data class PreloadedOfficialCommentsThread(
     val comments: MutableList<Comment>,
     val usedAsFallback: Boolean,
     override val loadedAtMillis: Long,
-) : PreparedCommentsThread
+) : PreparedCommentsThread {
+    override val estimatedRetainedBytes: Long = 512L +
+        2L * (story.text?.length ?: 0) + comments.sumOf {
+            // Official comments have not expanded anchors yet. Budget room for that copy without
+            // invoking the lazy HTML parser on the preload caller just to estimate memory.
+            256L + 4L * (it.text?.length ?: 0) + 2L * (it.by?.length ?: 0)
+        }
+}
+
+private fun Comment.retainedTextWeight(): Long = 256L +
+    2L * ((text?.length ?: 0) + (expandedAnchorText?.length ?: 0) + (by?.length ?: 0))

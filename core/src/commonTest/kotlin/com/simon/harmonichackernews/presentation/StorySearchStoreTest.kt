@@ -32,6 +32,104 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySearchStoreTest {
     @Test
+    fun cancelledHistoryResponseCannotReplaceFreshMetadata() = runTest {
+        lateinit var oldResponse: Continuation<Story>
+        var calls = 0
+        val store = store(backgroundScope, readIds = listOf(1), getStory = {
+            calls++
+            if (calls == 1) suspendCoroutine { oldResponse = it }
+            else story(1).apply { title = "Fresh" }
+        })
+        store.toggleOnlyRead()
+        store.search("Old")
+        runCurrent()
+        store.search("Fresh", forceRefresh = true)
+        runCurrent()
+        oldResponse.resume(story(1).apply { title = "Old" })
+        runCurrent()
+        store.search("Fresh")
+        runCurrent()
+        assertEquals(2, calls)
+        assertEquals("Fresh", store.state.value.stories.single().title)
+    }
+
+    @Test
+    fun metadataEvictionNeverDropsResultsFromTheCurrentQuery() = runTest {
+        val ids = mutableListOf(1, 2)
+        var calls = 0
+        val store = store(backgroundScope, readIds = ids, getStory = { id ->
+            calls++
+            story(id).apply { text = "x".repeat(1_500_000) }
+        })
+        store.toggleOnlyRead()
+        store.search("")
+        runCurrent()
+        assertEquals(2, calls)
+        ids += 3
+        store.search("")
+        runCurrent()
+        assertEquals(3, calls)
+        assertEquals(listOf(1, 2, 3), store.state.value.stories.map(Story::id))
+        store.search("")
+        runCurrent()
+        assertEquals(4, calls)
+        assertEquals(listOf(1, 2, 3), store.state.value.stories.map(Story::id))
+    }
+
+    @Test
+    fun historyMetadataIsReusedWithoutSharingMutableRowsAndRefreshBypassesIt() = runTest {
+        var calls = 0
+        var now = 0L
+        val ids = mutableListOf(1, 2)
+        val store = store(backgroundScope, readIds = ids, nowMillis = { now }, getStory = { id ->
+            calls++
+            story(id).apply { isLink = true; pdfTitle = "Document $id" }
+        })
+        store.toggleOnlyRead()
+        store.search("")
+        runCurrent()
+        assertEquals(2, calls)
+        store.state.value.stories.first().title = "Mutated result"
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(2, calls)
+        assertEquals(listOf(1, 2), store.state.value.stories.map(Story::id))
+        assertTrue(store.state.value.stories.all { it.loaded && it.isRead && it.isLink })
+        assertEquals("Document 1", store.state.value.stories.first().pdfTitle)
+        ids.remove(1)
+        ids.add(3)
+        store.search("")
+        runCurrent()
+        assertEquals(3, calls)
+        assertEquals(listOf(2, 3), store.state.value.stories.map(Story::id))
+        store.search("", forceRefresh = true)
+        runCurrent()
+        assertEquals(5, calls)
+        now = 60_000L
+        store.search("")
+        runCurrent()
+        assertEquals(7, calls)
+    }
+
+    @Test
+    fun failedHistoryRequestsAreRetriedWhileSuccessfulMetadataIsReused() = runTest {
+        val requested = mutableListOf<Int>()
+        val store = store(backgroundScope, readIds = listOf(1, 2), getStory = { id ->
+            requested += id
+            if (id == 2 && requested.size == 2) error("Temporary failure")
+            story(id)
+        })
+        store.toggleOnlyRead()
+        store.search("")
+        runCurrent()
+        store.search("")
+        runCurrent()
+        assertEquals(listOf(1, 2, 2), requested)
+        assertEquals(listOf(1, 2), store.state.value.stories.map(Story::id))
+        assertNull(store.state.value.failure)
+    }
+
+    @Test
     fun paginationUsesMetadataAndKeepsResultsWhileLoadingMore() = runTest {
         val more = CompletableDeferred<AlgoliaSearchPage>()
         val urls = mutableListOf<Url>()
@@ -446,6 +544,7 @@ class StorySearchStoreTest {
         read: (Int) -> Boolean = { false },
         hideRead: () -> Boolean = { false },
         controller: StorySearchController = StorySearchController(),
+        nowMillis: () -> Long = { 0L },
     ) = StorySearchStore(
         scope = scope,
         algoliaRepository = object : AlgoliaRepository {
@@ -463,6 +562,7 @@ class StorySearchStoreTest {
         shouldFilterStory = filter,
         shouldHideReadStories = hideRead,
         controller = controller,
+        nowMillis = nowMillis,
     )
 
     private fun story(id: Int) = Story("Kotlin", id, true, false)

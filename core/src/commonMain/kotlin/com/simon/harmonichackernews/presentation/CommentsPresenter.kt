@@ -184,6 +184,7 @@ class CommentsPresenter(
     private val votingService: HackerNewsVotingService,
     private val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
     private val threadPreparationDispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
+    private val prepareInitialContent: suspend (PortableCommentThreadState) -> Unit = {},
 ) : Feature<CommentsAction, CommentsPresenterState, CommentsPresenterEffect> {
     val thread: CommentThreadStore = sessionState.commentThread
     private val search = CommentSearchSession(scope, thread, threadPreparationDispatcher)
@@ -801,6 +802,7 @@ class CommentsPresenter(
                 )
             }
         } else null
+        if (initialThread != null) prepareInitialContent(initialThread.state)
         if (!threadLoadSession.isCurrent(requestId, action.story.id)) return
         if (initialThread == null) {
             if (!applyPreparedUpdate(action, requestId, parsed.comments, preserveExisting = true)) return
@@ -839,6 +841,7 @@ class CommentsPresenter(
             val prepared = withContext(threadPreparationDispatcher) {
                 CommentThreadStore.prepareUpdate(input, story, comments, action.collapseTopLevel, preserveExisting)
             }
+            if (!thread.hasLoadedComments) prepareInitialContent(prepared.state)
             if (!threadLoadSession.isCurrent(requestId, action.story.id)) return false
             // Sort, filtering, expansion and search may change while the worker runs. Rebase on
             // that new immutable state instead of overwriting the user's latest interaction.

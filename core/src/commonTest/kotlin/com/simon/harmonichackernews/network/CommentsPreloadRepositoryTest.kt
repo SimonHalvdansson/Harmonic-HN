@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -15,10 +16,57 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPreloadRepositoryTest {
+    @Test
+    fun weightedBudgetEvictsOldestThreadBeforeEntryLimit() = runTest {
+        var now = 0L
+        val source = RecordingAlgoliaRepository(RESPONSE)
+        val sample = assertNotNull(CommentsPreloadRepository(source, nowMillis = { now }).preload(42))
+        val repository = CommentsPreloadRepository(
+            source, nowMillis = { now }, maxRetainedBytes = sample.estimatedRetainedBytes * 2,
+        )
+        for (id in 1..3) {
+            now++
+            repository.preload(id)
+        }
+        assertEquals(2, repository.preparedCount())
+        assertFalse(repository.isPrepared(1))
+        assertTrue(repository.isPrepared(2))
+        assertTrue(repository.isPrepared(3))
+    }
+
+    @Test
+    fun oversizedResultIsPersistedButOnlyHandedToOneWaitingScreen() = runTest {
+        val response = CompletableDeferred<String>()
+        val started = CompletableDeferred<Unit>()
+        var stored = false
+        val repository = CommentsPreloadRepository(
+            algolia = object : AlgoliaRepository by RecordingAlgoliaRepository(RESPONSE) {
+                override suspend fun getItemJson(id: Int): String {
+                    started.complete(Unit)
+                    return response.await()
+                }
+            },
+            storeResponse = { _, _, _ -> stored = true },
+            nowMillis = { 0L }, maxRetainedBytes = 1L,
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        val preload = async { repository.preload(42) }
+        started.await()
+        val first = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) { repository.takeOrAwait(42) }
+        val second = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) { repository.takeOrAwait(42) }
+        response.complete(RESPONSE)
+        assertNotNull(preload.await())
+        assertEquals(1, listOf(first.await(), second.await()).count { it != null })
+        assertTrue(stored)
+        assertEquals(0, repository.preparedCount())
+        assertNull(repository.takeOrAwait(42))
+    }
+
     @Test
     fun openingCanConsumePreloadBeforeHashingAndPersistenceFinish() = runTest {
         val storeStarted = CompletableDeferred<Unit>()

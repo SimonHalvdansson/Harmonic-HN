@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import com.fleeksoft.ksoup.Ksoup
 import androidx.compose.ui.text.AnnotatedString
 import com.simon.harmonichackernews.presentation.PortableCommentItem
+import com.simon.harmonichackernews.presentation.PortableCommentThreadState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -192,29 +193,57 @@ internal object CommentHtmlTextCache {
 
 /** Called from a UI coroutine. Only detached preparation runs on Default; installation stays here. */
 internal suspend fun prefetchCommentRenderModels(comments: List<PortableCommentItem>, collectLinks: Boolean) {
-    for (comment in comments) {
+    for (batch in comments.chunked(8)) {
         currentCoroutineContext().ensureActive()
-        val source = comment.expandedAnchorText.orEmpty()
-        val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
-        val model = cached ?: withContext(Dispatchers.Default) {
-            CommentRenderModelCache.prepare(source, collectLinks)
+        // Snapshot cache lookups on their owner. Workers receive immutable models and strings only.
+        val work = batch.mapNotNull { comment ->
+            val source = comment.expandedAnchorText.orEmpty()
+            val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
+            val missing = cached?.contentBlocks?.mapNotNull { it.bodyHtml }
+                ?.distinct()?.filterNot(CommentHtmlTextCache::contains)
+            if (cached != null && missing.isNullOrEmpty()) null
+            else RenderPreparation(comment.id, source, cached, missing)
         }
-        // Read the mutable caches on their owning UI thread, then pass only strings to the worker.
-        val missing = model.contentBlocks.mapNotNull { it.bodyHtml }
-            .distinct().filterNot(CommentHtmlTextCache::contains)
-        if (missing.isEmpty()) {
-            CommentRenderModelCache.install(comment.id, source, collectLinks, model)
-            continue
-        }
+        if (work.isEmpty()) continue
         val prepared = withContext(Dispatchers.Default) {
-            missing.associateWith { html ->
+            work.map { request ->
                 coroutineContext.ensureActive()
-                prepareCommentHtml(html)
+                val model = request.cached ?: CommentRenderModelCache.prepare(request.source, collectLinks)
+                val missing = request.missing ?: model.contentBlocks.mapNotNull { it.bodyHtml }.distinct()
+                Triple(request, model, missing.associateWith { html ->
+                    coroutineContext.ensureActive()
+                    prepareCommentHtml(html)
+                })
             }
         }
-        CommentRenderModelCache.install(comment.id, source, collectLinks, model)
-        prepared.forEach { (html, text) -> CommentHtmlTextCache.install(html, text) }
+        prepared.forEach { (request, model, texts) ->
+            CommentRenderModelCache.install(request.id, request.source, collectLinks, model)
+            texts.forEach { (html, text) -> CommentHtmlTextCache.install(html, text) }
+        }
     }
+}
+
+private data class RenderPreparation(
+    val id: Int,
+    val source: String,
+    val cached: CommentRenderModel?,
+    val missing: List<String>?,
+)
+
+/** Small first viewport only; do not delay presentation to render an entire discussion. */
+suspend fun prepareInitialCommentContent(
+    thread: PortableCommentThreadState,
+    collectLinks: Boolean,
+    targetCommentId: Int = 0,
+) {
+    val visible = thread.visibleComments
+    val start = visible.indexOfFirst { it.comment.id == targetCommentId }.coerceAtLeast(0)
+    var remainingChars = 32 * 1024
+    val initial = visible.subList(start, min(start + 8, visible.size)).map { it.comment }.takeWhile {
+        remainingChars -= it.expandedAnchorText.orEmpty().length
+        remainingChars >= 0
+    }
+    prefetchCommentRenderModels(initial, collectLinks)
 }
 
 @Composable

@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.network
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -346,9 +348,11 @@ class CachedDownloadService(
         nowMillis: Long,
         reuseExisting: Boolean = true,
         acceptsContentType: (HttpMediaType?) -> Boolean = { true },
+        mutationMutex: Mutex = storeMutex,
+        canCommit: () -> Boolean = { true },
     ): StoredDownload {
         require(url.isNotBlank()) { "A download URL is required" }
-        val cached = storeMutex.withLock {
+        val cached = mutationMutex.withLock {
             if (!store.prepare()) throw DownloadTransferException("$cacheLabel cache is unavailable")
             val existing = store.find(key)
             cleanupLocked(nowMillis, existing?.reference)
@@ -366,7 +370,7 @@ class CachedDownloadService(
         }
         if (cached != null) return cached
 
-        val sink = storeMutex.withLock { store.createTemporary(key) }
+        val sink = mutationMutex.withLock { store.createTemporary(key) }
         try {
             val receipt = transferEngine.transfer(
                 request = TransferRequest.accepting(url, accept),
@@ -376,7 +380,9 @@ class CachedDownloadService(
                     acceptsContentType = acceptsContentType,
                 ),
             )
-            return storeMutex.withLock {
+            return mutationMutex.withLock {
+                currentCoroutineContext().ensureActive()
+                if (!canCommit()) throw DownloadTransferException("$cacheLabel entry was removed during download")
                 val committed = store.commit(
                     temporaryReference = sink.reference,
                     key = key,
@@ -387,10 +393,10 @@ class CachedDownloadService(
                 committed
             }
         } catch (error: CancellationException) {
-            removeTemporaryIgnoringFailure(sink.reference)
+            removeTemporaryIgnoringFailure(sink.reference, mutationMutex)
             throw error
         } catch (error: Throwable) {
-            removeTemporaryIgnoringFailure(sink.reference)
+            removeTemporaryIgnoringFailure(sink.reference, mutationMutex)
             if (error !is DownloadTransferException) {
                 throw DownloadTransferException("$cacheLabel download failed", error)
             }
@@ -402,9 +408,9 @@ class CachedDownloadService(
         if (store.prepare()) cleanupLocked(nowMillis, protectedReference = null)
     }
 
-    private suspend fun removeTemporaryIgnoringFailure(reference: String) {
+    private suspend fun removeTemporaryIgnoringFailure(reference: String, mutationMutex: Mutex) {
         withContext(NonCancellable) {
-            runCatching { storeMutex.withLock { store.remove(reference) } }
+            runCatching { mutationMutex.withLock { store.remove(reference) } }
         }
     }
 

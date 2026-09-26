@@ -88,6 +88,7 @@ data class CommentsFeatureHost(
     val performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
     val awaitInitialPresentation: suspend () -> Unit = {},
     val openingRequest: AlgoliaCommentRequest? = null,
+    val prepareInitialContent: suspend (com.simon.harmonichackernews.presentation.PortableCommentThreadState) -> Unit = {},
 )
 
 /**
@@ -199,6 +200,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         hackerNewsUser,
         performanceTrace = host.performanceTrace,
         threadPreparationDispatcher = Dispatchers.Default,
+        prepareInitialContent = host.prepareInitialContent,
     )
     val runtime = CommentsFeatureRuntime(
         scope = featureScope,

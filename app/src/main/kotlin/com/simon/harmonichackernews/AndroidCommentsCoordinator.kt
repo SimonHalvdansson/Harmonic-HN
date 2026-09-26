@@ -105,6 +105,14 @@ class AndroidCommentsCoordinator(
             canLoadArticleTextOnDemand = true,
             performanceTrace = performanceTrace,
             openingRequest = navigation.scene.commentsOpeningRequests.requestFor(sessionKey, destination.storyId),
+            prepareInitialContent = { thread ->
+                com.simon.harmonichackernews.ui.content.prepareInitialCommentContent(
+                    thread,
+                    userSettings.comments.collectReferenceLinks,
+                    sessionState.scrollToCommentId.takeIf { it > 0 }
+                        ?: sessionState.scrollProgress.topCommentId,
+                )
+            },
         ),
     )
     private var viewSession: CommentsViewSession? = null

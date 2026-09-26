@@ -16,6 +16,11 @@ import com.simon.harmonichackernews.network.KtorHttpClient
 import com.simon.harmonichackernews.network.KtorTransferClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -25,6 +30,7 @@ class ArticleSnapshotService(
     httpClient: KtorHttpClient,
     store: DownloadStore?,
 ) {
+    private val mutationMutex = Mutex()
     private val downloads = store?.let {
         CachedDownloadService(
             client = KtorTransferClient(httpClient),
@@ -40,7 +46,13 @@ class ArticleSnapshotService(
 
     val supported: Boolean get() = downloads != null
 
-    suspend fun download(storyId: Int, articleUrl: String, nowMillis: Long): Boolean {
+    suspend fun download(
+        storyId: Int,
+        articleUrl: String,
+        nowMillis: Long,
+        mutations: Mutex = mutationMutex,
+        canCommit: () -> Boolean = { true },
+    ): Boolean {
         val service = downloads ?: return false
         if (storyId <= 0 || articleUrl.isBlank()) return false
         return try {
@@ -51,6 +63,8 @@ class ArticleSnapshotService(
                 nowMillis = nowMillis,
                 reuseExisting = false,
                 acceptsContentType = ::isHtml,
+                mutationMutex = mutations,
+                canCommit = canCommit,
             )
             true
         } catch (error: CancellationException) {
@@ -84,6 +98,10 @@ class StoryCacheService(
     private val nowMillis: () -> Long,
 ) : StoryCacheSink {
     private val writeMutex = Mutex()
+    private val articleRegistrationMutex = Mutex()
+    // Registration and removal use the gate; completion only uses writeMutex so deletion can join.
+    private val articleJobs = mutableMapOf<Job, Int>()
+    private val articleLocks = mutableMapOf<Int, Mutex>()
     private val commentsParser = AlgoliaCommentsParser()
 
     /** Missing, old-schema and corrupt entries rebuild from retained JSON, including offline. */
@@ -139,9 +157,22 @@ class StoryCacheService(
 
     fun itemCount(): Int = repository.cachedItemIds().size
 
-    suspend fun clear(): Int = writeMutex.withLock { repository.clear() }
+    suspend fun clear(): Int = removeWithArticles(null) { repository.clear() }
 
-    suspend fun remove(storyId: Int) = writeMutex.withLock { repository.remove(storyId) }
+    suspend fun remove(storyId: Int) = removeWithArticles(storyId) { repository.remove(storyId) }
+
+    private suspend fun <T> removeWithArticles(storyId: Int?, remove: () -> T): T =
+        withContext(Dispatchers.Default) {
+            articleRegistrationMutex.withLock {
+                val pending = writeMutex.withLock {
+                    articleJobs.filterValues { storyId == null || it == storyId }.keys.toList()
+                }
+                pending.forEach { it.cancel() }
+                pending.forEach { it.join() }
+                // All matching temporary files are closed before deleting, including on Windows.
+                writeMutex.withLock { remove() }
+            }
+        }
 
     suspend fun storeStory(id: Int, payload: String): Boolean = withContext(Dispatchers.Default) {
         // Background/offline downloads enter here without a parsed response. Prepare them eagerly
@@ -171,6 +202,30 @@ class StoryCacheService(
         Unit
     }
 
-    override suspend fun cacheArticle(id: Int, url: String): Boolean =
-        writeMutex.withLock { articleSnapshots.download(id, url, nowMillis()) }
+    override suspend fun cacheArticle(id: Int, url: String): Boolean = coroutineScope {
+        val job = currentCoroutineContext().job
+        val (articleLock, hadStory) = articleRegistrationMutex.withLock {
+            writeMutex.withLock {
+                articleJobs[job] = id
+                articleLocks.getOrPut(id) { Mutex() } to repository.hasStoryPayload(id)
+            }
+        }
+        try {
+            // Only storage preparation/commit share the cache lock, never the network transfer.
+            // Preserve request ordering for the same story while other stories download together.
+            articleLock.withLock {
+                articleSnapshots.download(id, url, nowMillis(), writeMutex) {
+                    // A size-limit eviction must not be undone by a late article response.
+                    !hadStory || repository.hasStoryPayload(id)
+                }
+            }
+        } finally {
+            withContext(NonCancellable) {
+                writeMutex.withLock {
+                    articleJobs.remove(job)
+                    if (id !in articleJobs.values) articleLocks.remove(id)
+                }
+            }
+        }
+    }
 }

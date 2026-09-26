@@ -33,6 +33,14 @@ data class DataSettingsCounts(
     val aiModelNames: List<String> = emptyList(),
 )
 
+/** Expensive storage totals are refreshed independently from dialog and preference state. */
+data class DataSettingsStorageCounts(
+    val posts: Int = 0,
+    val tints: Int = 0,
+    val modelBytes: Long? = null,
+    val modelNames: List<String> = emptyList(),
+)
+
 sealed interface BookmarkExportDecision {
     data object Empty : BookmarkExportDecision
     data object Ready : BookmarkExportDecision
@@ -85,15 +93,22 @@ class DataSettingsService(
     private val storyResourceTints: StoryResourceTintRepository,
     private val localModels: LocalModelService?,
 ) {
-    fun snapshot(): DataSettingsSnapshot = DataSettingsPolicy.snapshot(
+    fun storageCounts(): DataSettingsStorageCounts = DataSettingsStorageCounts(
+        posts = storyCache.itemCount(),
+        tints = storyResourceTints.count(),
+        modelBytes = localModels?.storedModelBytes(),
+        modelNames = localModels?.storedModelNames().orEmpty(),
+    )
+
+    fun snapshot(storage: DataSettingsStorageCounts = storageCounts()): DataSettingsSnapshot = DataSettingsPolicy.snapshot(
         settings = settings.snapshot(),
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount(),
             history = history?.size ?: 0,
-            postCache = storyCache.itemCount(),
-            tintCache = storyResourceTints.count(),
-            aiModelsBytes = localModels?.storedModelBytes(),
-            aiModelNames = localModels?.storedModelNames().orEmpty(),
+            postCache = storage.posts,
+            tintCache = storage.tints,
+            aiModelsBytes = storage.modelBytes,
+            aiModelNames = storage.modelNames,
         ),
         loggedIn = accounts.currentAccount != null,
     )

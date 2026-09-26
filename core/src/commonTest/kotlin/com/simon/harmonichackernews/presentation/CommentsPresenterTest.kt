@@ -63,6 +63,41 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun initialContentIsPreparedBeforePublicationButNotAgainOnRefresh() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val response = sortingResponse.replace("\"author\":", "\"parent_id\":42,\"author\":")
+        val repository = CommentThreadRepository(FakeAlgoliaRepository(response),
+            UnusedHackerNewsRepository, AlgoliaCommentsParser(parsingDispatcher = dispatcher),
+            requestDispatcher = dispatcher)
+        val ready = CompletableDeferred<Unit>()
+        var preparations = 0
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(), repository,
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = dispatcher,
+            prepareInitialContent = { thread ->
+                preparations++
+                assertTrue(thread.visibleComments.isNotEmpty())
+                ready.await()
+            })
+        val story = Story("Discussion", 42, true, false)
+        presenter.thread.reset(story)
+        val action = CommentsAction.LoadThread(story, true, emptySet(), "Default", false, null, false)
+        presenter.dispatch(action)
+        runCurrent()
+        assertEquals(1, preparations)
+        assertFalse(presenter.state.value.loaded)
+        assertNull(presenter.thread.findComment(1))
+        assertNull(presenter.thread.findComment(2))
+        ready.complete(Unit)
+        runCurrent()
+        assertTrue(presenter.state.value.loaded)
+        assertTrue(presenter.thread.allComments.isNotEmpty())
+        presenter.dispatch(action)
+        runCurrent()
+        assertEquals(1, preparations)
+    }
+
+    @Test
     fun refreshPreparationRebasesWhenExpansionAndSortChangeOnTheOwner() = runTest {
         val pending = ArrayDeque<Runnable>()
         val worker = object : CoroutineDispatcher() {
