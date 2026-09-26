@@ -15,6 +15,8 @@ import com.simon.harmonichackernews.ui.settings.SettingsPredictiveBackOverlay
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.HarmonicApplication
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -32,15 +34,14 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.simon.harmonichackernews.ui.navigation.rememberMainNavigationBackPreview
+import com.simon.harmonichackernews.ui.navigation.MainNavigationSurfaceKey
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.ui.navigation.DefaultActivityPredictiveBackAnimation
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
 import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
-import com.simon.harmonichackernews.ui.navigation.rememberMainNavigationPresentation
-import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
-import com.simon.harmonichackernews.ui.navigation.SubmissionsNavigationStack
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import org.junit.Assert.assertEquals
@@ -53,40 +54,62 @@ import org.junit.runner.RunWith
 class PredictiveBackSurfaceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun storyUpAnimatesToItsParentWhenAnOlderStoryRemainsUnderneath() {
-        val navigation = MainNavigationStore()
+    @Test fun adaptiveReflowNeverAttachesTheSameNativeStoryTwice() {
+        val navigation = MainNavigationStore().apply { openStory(StoryRoute(1)) }
+        var twoPane by mutableStateOf(false)
+        val nativeStories = mutableMapOf<Int, android.widget.FrameLayout>()
+        val mounts = mutableMapOf<Int, Int>()
         compose.setContent {
             val snapshot by navigation.state.collectAsState()
-            val presentation = rememberMainNavigationPresentation(snapshot, isTwoPane = false, false)
+            val plan = mainNavigationScenePlan(snapshot, twoPane)
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 HarmonicAppRoot(
-                    navigation = snapshot,
-                    transitionOffsetPx = 96,
-                    completedSettingsPredictiveBack = false,
-                    completedSubmissionsPredictiveBack = false,
-                    completedEditorPredictiveBack = false,
-                    storyExitInProgress = presentation.storyExitInProgress,
-                    modifier = Modifier.testTag("viewport"),
-                    base = {
-                        SinglePaneNavigationScene(
-                            scene = presentation.scene,
-                            completedPredictivePop = false,
-                            predictiveBackActive = false,
-                            onStoryLayersEmpty = presentation.onStoryLayersEmpty,
-                            stories = { Box(Modifier.fillMaxSize().background(Color.Green)) },
-                            comments = { request ->
-                                Box(Modifier.fillMaxSize().background(
-                                    if (request.storyId == 1) Color.Yellow else Color.Blue,
-                                ))
-                            },
+                    plan = plan,
+                    stories = { detail, paneComments -> if (detail != null) paneComments(detail) },
+                    comments = { request, _ ->
+                        DisposableEffect(request.serial) {
+                            mounts[request.serial] = (mounts[request.serial] ?: 0) + 1
+                            onDispose { }
+                        }
+                        androidx.compose.ui.viewinterop.AndroidView(
+                            factory = { nativeStories.getOrPut(request.serial) { android.widget.FrameLayout(it) } },
+                            modifier = Modifier.fillMaxSize(),
                         )
                     },
-                    settings = { Box(Modifier.fillMaxSize().background(Color.Magenta)) },
-                    submissions = { Box(Modifier.fillMaxSize().background(Color.Magenta)) },
+                    settings = {},
+                    submissions = { _, detail, paneComments -> if (detail != null) paneComments(detail) },
                     editor = {}, immersive = {}, foreground = {},
                 )
             }
+        }
+        compose.waitForIdle()
+        for (inSubmissions in listOf(false, true)) {
+            if (inSubmissions) {
+                compose.runOnIdle {
+                    navigation.openSubmissions("reader")
+                    navigation.openStory(StoryRoute(2))
+                }
+                compose.waitForIdle()
+            }
+            for (wide in listOf(true, false, true)) {
+                compose.runOnIdle { twoPane = wide }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertTrue(nativeStories.values.all { it.isAttachedToWindow })
+                    assertTrue("Reflow must retain screen-local state, not remount the story", mounts.values.all { it == 1 })
+                }
+            }
+        }
+    }
+
+    @Test fun storyUpAnimatesToItsParentWhenAnOlderStoryRemainsUnderneath() {
+        val navigation = MainNavigationStore()
+        compose.setContent {
+            TestRoot(navigation,
+                comments = { Fill(if (it.storyId == 1) Color.Yellow else Color.Blue) },
+                submissions = { _, _ -> Fill(Color.Magenta) },
+            )
         }
         for (fromSettings in listOf(false, true)) {
             compose.runOnIdle {
@@ -126,35 +149,9 @@ class PredictiveBackSurfaceRegressionTest {
     @Test fun secondSubmissionsOpenNeverExposesTheOlderStoriesLayout() {
         val navigation = MainNavigationStore().apply { openSubmissions("reader") }
         compose.setContent {
-            val snapshot by navigation.state.collectAsState()
-            val plan = mainNavigationScenePlan(snapshot, isTwoPane = true)
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                HarmonicAppRoot(
-                    navigation = snapshot,
-                    transitionOffsetPx = 96,
-                    completedSettingsPredictiveBack = false,
-                    completedSubmissionsPredictiveBack = false,
-                    completedEditorPredictiveBack = false,
-                    submissionsInTwoPane = true,
-                    modifier = Modifier.testTag("viewport"),
-                    base = { Box(Modifier.fillMaxSize().background(Color.Green)) },
-                    submissions = {
-                        SubmissionsNavigationStack(
-                            scenes = plan.submissionsScenes,
-                            predictiveBackActive = false,
-                            completedPredictiveBack = false,
-                            enterModifier = Modifier,
-                            exitModifier = Modifier,
-                        ) { scene ->
-                            Box(Modifier.fillMaxSize().background(
-                                if (scene.request.serial == 1) Color.Blue else Color.Red,
-                            ))
-                        }
-                    },
-                    settings = {}, editor = {}, immersive = {}, foreground = {},
-                )
-            }
+            TestRoot(navigation, twoPane = true,
+                submissions = { request, _ -> Fill(if (request.serial == 1) Color.Blue else Color.Red) },
+            )
         }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
@@ -186,39 +183,7 @@ class PredictiveBackSurfaceRegressionTest {
         val navigation = MainNavigationStore().apply { openSettings("debug") }
         val twoPane = compose.activity.resources.configuration.smallestScreenWidthDp >= 600
         compose.setContent {
-            val snapshot by navigation.state.collectAsState()
-            val presentation = rememberMainNavigationPresentation(snapshot, twoPane, false)
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                HarmonicAppRoot(
-                    navigation = snapshot,
-                    transitionOffsetPx = 96,
-                    completedSettingsPredictiveBack = false,
-                    completedSubmissionsPredictiveBack = false,
-                    completedEditorPredictiveBack = false,
-                    storyExitInProgress = presentation.storyExitInProgress,
-                    modifier = Modifier.testTag("viewport"),
-                    base = {
-                        val stories: @Composable () -> Unit = {
-                            Box(Modifier.fillMaxSize().background(Color.Green))
-                        }
-                        if (presentation.renderTwoPaneStoryScene) {
-                            stories()
-                        } else {
-                            SinglePaneNavigationScene(
-                                scene = presentation.scene,
-                                completedPredictivePop = false,
-                                predictiveBackActive = false,
-                                onStoryLayersEmpty = presentation.onStoryLayersEmpty,
-                                stories = stories,
-                                comments = { Box(Modifier.fillMaxSize().background(Color.Blue)) },
-                            )
-                        }
-                    },
-                    settings = { Box(Modifier.fillMaxSize().background(Color.Magenta)) },
-                    submissions = {}, editor = {}, immersive = {}, foreground = {},
-                )
-            }
+            TestRoot(navigation, twoPane = twoPane)
         }
         repeat(2) {
             compose.runOnIdle { navigation.openStory(StoryRoute(1)) }
@@ -249,37 +214,13 @@ class PredictiveBackSurfaceRegressionTest {
         var completed by mutableStateOf(false)
         var storiesMounts = 0
         compose.setContent {
-            val snapshot by navigation.state.collectAsState()
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                HarmonicAppRoot(
-                    navigation = snapshot,
-                    transitionOffsetPx = 96,
-                    completedSettingsPredictiveBack = completed,
-                    completedSubmissionsPredictiveBack = false,
-                    completedEditorPredictiveBack = false,
-                    modifier = Modifier.background(Color.White).testTag("viewport"),
-                    basePredictiveModifier = animation?.enterModifier ?: Modifier,
-                    settingsPredictiveModifier = animation?.exitModifier ?: Modifier,
-                    base = {
-                        SinglePaneNavigationScene(
-                            scene = mainNavigationScenePlan(snapshot, isTwoPane = false),
-                            completedPredictivePop = false,
-                            predictiveBackActive = false,
-                            stories = {
-                                DisposableEffect(Unit) {
-                                    storiesMounts++
-                                    onDispose { }
-                                }
-                                Box(Modifier.fillMaxSize().background(Color.Green))
-                            },
-                            comments = {},
-                        )
-                    },
-                    settings = { Box(Modifier.fillMaxSize().background(Color.Blue)) },
-                    submissions = {}, editor = {}, immersive = {}, foreground = {},
-                )
-            }
+            TestRoot(navigation, animation = animation, completed = completed,
+                stories = {
+                    DisposableEffect(Unit) { storiesMounts++; onDispose { } }
+                    Fill(Color.Green)
+                },
+                settings = { Fill(Color.Blue) },
+            )
         }
         compose.runOnIdle { navigation.openSettings(null) }
         compose.waitForIdle()
@@ -380,28 +321,9 @@ class PredictiveBackSurfaceRegressionTest {
         var animation by mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
         var completed by mutableStateOf(false)
         compose.setContent {
-            val snapshot by navigation.state.collectAsState()
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                HarmonicAppRoot(
-                    navigation = snapshot,
-                    transitionOffsetPx = 96,
-                    completedSettingsPredictiveBack = false,
-                    completedSubmissionsPredictiveBack = completed,
-                    completedEditorPredictiveBack = false,
-                    modifier = Modifier.background(Color.White).testTag("viewport"),
-                    basePredictiveModifier = animation?.enterModifier ?: Modifier,
-                    submissionsPredictiveModifier = animation?.exitModifier ?: Modifier,
-                    base = {
-                        if (snapshot.storyRequest != null) {
-                            Box(Modifier.fillMaxSize().background(Color.Yellow))
-                        }
-                    },
-                    settings = { Box(Modifier.fillMaxSize().background(Color.Magenta)) },
-                    submissions = { Box(Modifier.fillMaxSize().background(Color.Blue)) },
-                    editor = {}, immersive = {}, foreground = {},
-                )
-            }
+            TestRoot(navigation, animation = animation, completed = completed,
+                comments = { Fill(Color.Yellow) },
+            )
         }
         compose.waitForIdle()
         compose.runOnIdle { navigation.openSubmissions("reader") }
@@ -469,28 +391,15 @@ class PredictiveBackSurfaceRegressionTest {
             (1..2).forEach { openLinkedStory(StoryRoute(it).toDestination()) }
         }
         compose.setContent {
-            val snapshot by navigation.state.collectAsState()
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                Box(Modifier.fillMaxSize().testTag("viewport")) {
-                    SinglePaneNavigationScene(
-                        scene = mainNavigationScenePlan(snapshot, isTwoPane = false),
-                        completedPredictivePop = false,
-                        predictiveBackActive = animation != null,
-                        storiesPredictiveModifier = animation?.enterModifier ?: Modifier,
-                        commentsPredictiveModifier = animation?.exitModifier ?: Modifier,
-                        stories = { Box(Modifier.fillMaxSize().background(Color.Green)) },
-                        comments = { request ->
-                            val color = when (request.serial) {
-                                depth -> Color.Blue
-                                depth - 1 -> Color.Yellow
-                                else -> Color.Magenta
-                            }
-                            Box(Modifier.fillMaxSize().background(color))
-                        },
-                    )
-                }
-            }
+            TestRoot(navigation, animation = animation,
+                comments = { request ->
+                    Fill(when (request.serial) {
+                        depth -> Color.Blue
+                        depth - 1 -> Color.Yellow
+                        else -> Color.Magenta
+                    })
+                },
+            )
         }
         for (storyDepth in listOf(2, 3)) {
             compose.runOnIdle {
@@ -508,6 +417,39 @@ class PredictiveBackSurfaceRegressionTest {
                 countPixels { it.red > 0.5f && it.green > 0.5f && it.blue < 0.1f } > 1_000)
             compose.runOnIdle { animation = null }
             compose.waitForIdle()
+        }
+    }
+
+    @Composable
+    private fun Fill(color: Color) { Box(Modifier.fillMaxSize().background(color)) }
+
+    @Composable
+    private fun TestRoot(
+        navigation: MainNavigationStore,
+        twoPane: Boolean = false,
+        animation: DefaultActivityPredictiveBackAnimation? = null,
+        completed: Boolean = false,
+        stories: @Composable () -> Unit = { Fill(Color.Green) },
+        comments: @Composable (com.simon.harmonichackernews.navigation.MainStoryRequest) -> Unit = { Fill(Color.Blue) },
+        settings: @Composable () -> Unit = { Fill(Color.Magenta) },
+        submissions: @Composable (com.simon.harmonichackernews.navigation.MainSubmissionsRequest,
+            com.simon.harmonichackernews.navigation.MainStoryRequest?) -> Unit = { _, _ -> Fill(Color.Blue) },
+    ) {
+        val snapshot by navigation.state.collectAsState()
+        val plan = mainNavigationScenePlan(snapshot, twoPane)
+        val preview = rememberMainNavigationBackPreview(plan, animation,
+            animation?.enterModifier ?: Modifier, animation?.exitModifier ?: Modifier)
+        var lastSource by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
+        SideEffect { if (preview != null) lastSource = preview.source }
+        val palette = HarmonicThemeCatalog.resolve("light", false)
+        HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicAppRoot(
+                plan = plan, preview = preview,
+                completedPredictiveBack = if (completed) setOfNotNull(lastSource) else emptySet(),
+                modifier = Modifier.background(Color.White).testTag("viewport"),
+                stories = { _, _ -> stories() }, comments = { request, _ -> comments(request) }, settings = { settings() },
+                submissions = { request, detail, _ -> submissions(request, detail) }, editor = {}, immersive = {}, foreground = {},
+            )
         }
     }
 

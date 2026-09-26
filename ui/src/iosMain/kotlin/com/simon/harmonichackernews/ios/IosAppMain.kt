@@ -65,9 +65,11 @@ import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
+import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
 import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
-import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
+import com.simon.harmonichackernews.ui.navigation.rememberMainNavigationBackPreview
+import com.simon.harmonichackernews.ui.navigation.MainNavigationSurfaceKey
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
@@ -340,7 +342,6 @@ private fun IosAppContent(
 ) {
     val navigation by scene.navigation.state.collectAsState()
     val density = LocalDensity.current
-    val transitionOffsetPx = with(density) { 96.dp.roundToPx() }
     val isTabletDevice = isIosTabletWindow()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val mainDirective = remember(adaptiveInfo, isTabletDevice) {
@@ -353,124 +354,91 @@ private fun IosAppContent(
     val isTwoPane = mainDirective.maxHorizontalPartitions > 1
     val incomingModifier = if (backInProgress) Modifier.iosBackIncoming(backProgress) else Modifier
     val outgoingModifier = if (backInProgress) Modifier.iosBackOutgoing(backProgress) else Modifier
+    val plan = mainNavigationScenePlan(navigation, isTwoPane)
+    val preview = rememberMainNavigationBackPreview(
+        plan,
+        gesture = true.takeIf {
+            backInProgress &&
+                backVisualTarget != IosBackVisualTarget.None && !plan.storyUsesTwoPane
+        },
+        enterModifier = incomingModifier,
+        exitModifier = outgoingModifier,
+    )
+    var lastGestureSource by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
+    SideEffect { if (preview != null) lastGestureSource = preview.source }
+    val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, fullScreen ->
+        IosCommentsContent(
+            app = app, scene = scene, request = request,
+            isTablet = isTabletDevice, isTwoPane = !fullScreen, showUpButton = fullScreen,
+            onControllerChanged = onCommentsControllerChanged,
+        )
+    }
     HarmonicAppRoot(
-        navigation = navigation,
-        transitionOffsetPx = transitionOffsetPx,
-        completedSettingsPredictiveBack = completedBackTarget == IosBackVisualTarget.Settings,
-        completedSubmissionsPredictiveBack = completedBackTarget == IosBackVisualTarget.Submissions,
-        completedEditorPredictiveBack = completedBackTarget == IosBackVisualTarget.Editor,
-        basePredictiveModifier = if (
-            backVisualTarget == IosBackVisualTarget.Settings ||
-            backVisualTarget == IosBackVisualTarget.Submissions
-        ) incomingModifier else Modifier,
-        settingsPredictiveModifier = if (backVisualTarget == IosBackVisualTarget.Settings) {
-            outgoingModifier
-        } else {
-            Modifier
-        },
-        submissionsPredictiveModifier = if (backVisualTarget == IosBackVisualTarget.Submissions) {
-            outgoingModifier
-        } else {
-            Modifier
-        },
-        editorPredictiveModifier = if (backVisualTarget == IosBackVisualTarget.Editor) {
-            outgoingModifier
-        } else {
-            Modifier
-        },
+        plan = plan,
+        preview = preview,
+        completedPredictiveBack = if (completedBackTarget != IosBackVisualTarget.None) {
+            setOfNotNull(lastGestureSource)
+        } else emptySet(),
         linkPreview = commentsController
             ?.takeIf {
-                it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
+                navigation.currentDestination == MainDestination.STORY &&
+                    it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
             }
             ?.let { controller ->
                 { IosCommentLinkPreview(app, scene, controller) }
             },
-        base = {
+        stories = { detail, paneComments ->
+            val stories: @Composable () -> Unit = {
+                IosStoriesContent(
+                    app, scene,
+                    visible = navigation.currentDestination == MainDestination.STORIES ||
+                        (isTwoPane && navigation.currentDestination == MainDestination.STORY),
+                    onControllerChanged = onStoriesControllerChanged,
+                )
+            }
             if (isTwoPane) {
                 MainNavigationScene(
-                    storyRequest = navigation.storyRequest,
+                    storyRequest = detail,
                     directive = mainDirective,
                     paneProportion = 0.4f,
                     onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = {
-                        IosStoriesContent(
-                            app, scene,
-                            visible = navigation.currentDestination == MainDestination.STORIES ||
-                                (isTwoPane && navigation.currentDestination == MainDestination.STORY),
-                            onControllerChanged = onStoriesControllerChanged,
-                        )
-                    },
+                    stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
-                    comments = { request ->
-                        IosCommentsContent(
-                            app = app,
-                            scene = scene,
-                            request = request,
-                            isTablet = isTabletDevice,
-                            isTwoPane = isTwoPane,
-                            showUpButton = false,
-                            onControllerChanged = onCommentsControllerChanged,
-                        )
-                    },
+                    comments = paneComments,
                 )
             } else {
-                SinglePaneNavigationScene(
-                    scene = mainNavigationScenePlan(navigation, isTwoPane = false),
-                    completedPredictivePop = completedBackTarget == IosBackVisualTarget.Story,
-                    predictiveBackActive = backInProgress &&
-                        backVisualTarget == IosBackVisualTarget.Story,
-                    storiesPredictiveModifier = if (
-                        backVisualTarget == IosBackVisualTarget.Story
-                    ) incomingModifier else Modifier,
-                    commentsPredictiveModifier = if (
-                        backVisualTarget == IosBackVisualTarget.Story
-                    ) outgoingModifier else Modifier,
-                    stories = {
-                        IosStoriesContent(
-                            app, scene,
-                            visible = navigation.currentDestination == MainDestination.STORIES ||
-                                (isTwoPane && navigation.currentDestination == MainDestination.STORY),
-                            onControllerChanged = onStoriesControllerChanged,
-                        )
-                    },
-                    comments = { request ->
-                        IosCommentsContent(
-                            app = app,
-                            scene = scene,
-                            request = request,
-                            isTablet = isTabletDevice,
-                            isTwoPane = isTwoPane,
-                            showUpButton = true,
-                            onControllerChanged = onCommentsControllerChanged,
-                        )
-                    },
-                )
+                stories()
             }
         },
-        settings = {
+        comments = renderComments,
+        settings = { request ->
             IosSettingsShell(
                 app = app,
                 scene = scene,
                 onNavigationChanged = onSettingsNavigationChanged,
                 initialSection = SettingsSection.fromRoute(
-                    navigation.currentSettingsSectionRoute.orEmpty(),
+                    request.initialSectionRoute.orEmpty(),
                 ),
             )
         },
-        submissions = {
-            navigation.lastSubmissionsRequest?.let {
-                IosSubmissionsContent(app, scene, it)
+        submissions = { request, detail, paneComments ->
+            if (isTwoPane) {
+                MainNavigationScene(
+                    storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
+                    onBack = scene.navigation::detailRemovedFromBackStack,
+                    stories = { IosSubmissionsContent(app, scene, request) },
+                    emptyDetail = { EmptyCommentsScreen() },
+                    comments = paneComments,
+                )
+            } else {
+                IosSubmissionsContent(app, scene, request)
             }
         },
-        editor = {
-            navigation.lastEditorRequest?.let {
-                IosEditorContent(
-                    app = app,
-                    scene = scene,
-                    request = it,
-                    backRequestVersion = editorBackRequestVersion,
-                )
-            }
+        editor = { request ->
+            IosEditorContent(
+                app = app, scene = scene, request = request,
+                backRequestVersion = editorBackRequestVersion,
+            )
         },
         immersive = { CoulombGasScreen() },
         foreground = {

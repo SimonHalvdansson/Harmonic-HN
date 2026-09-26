@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -31,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -71,7 +69,6 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.navigation.MainDestination
-import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.settings.AppLaunchDialog
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.widget.refreshStoryWidgets
@@ -195,15 +192,7 @@ private fun MainNavigation(
     var activeBackAnimation by remember {
         mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     }
-    var completedStoryPopStack by remember {
-        mutableStateOf<List<MainNavigationEntry>?>(null)
-    }
-    // Completion belongs to this committed stack change, not every later story exit.
-    // A subsequent button/hardware pop changes the stack and gets its own exit animation.
-    val completedPredictivePop = completedStoryPopStack == navigationSnapshot.destinationStack
-    LaunchedEffect(navigationSnapshot.destinationStack) {
-        if (!completedPredictivePop) completedStoryPopStack = null
-    }
+    var completedStoryKey by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
 
     fun popMainBackStack() {
         if (controller.isExternalStoryEntry) {
@@ -215,14 +204,9 @@ private fun MainNavigation(
         }
     }
 
-    val storyParentDestination = navigationSnapshot.storyParentDestination
-    val presentation = rememberMainNavigationPresentation(
-        navigation = navigationSnapshot,
-        isTwoPane = isTwoPane,
-        completedStoryPredictiveBack = completedPredictivePop,
+    val scenePlan = mainNavigationScenePlan(
+        navigationSnapshot, isTwoPane, controller.externalStoryEntrySerial,
     )
-    val scenePlan = presentation.scene
-    val submissionsInTwoPane = scenePlan.submissionsInTwoPane
     val paneStatusBarColor = HarmonicTheme.colors.background
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
@@ -249,10 +233,8 @@ private fun MainNavigation(
         fun popGestureStoryIfStillCurrent(completedGesture: Boolean = false) {
             if (controller.navigationState.state.value.storyRequest?.serial == storySerialAtGestureStart) {
                 controller.detailRemovedFromBackStack()
-                completedStoryPopStack = if (completedGesture) {
-                    controller.navigationState.state.value.destinationStack
-                } else {
-                    null
+                if (completedGesture && storySerialAtGestureStart != null) {
+                    completedStoryKey = MainNavigationSurfaceKey(MainDestination.STORY, storySerialAtGestureStart)
                 }
             }
         }
@@ -359,7 +341,7 @@ private fun MainNavigation(
     }
 
     val settingsPredictiveBack = rememberDefaultActivityPredictiveBackState(
-        requestKey = settingsRequest?.serial,
+        requestKey = settingsRequest?.let { MainNavigationSurfaceKey(MainDestination.SETTINGS, it.serial) },
         enabled = navigationSnapshot.currentDestination == MainDestination.SETTINGS,
         completedFrameHoldCount = 3,
         onBack = ::closeSettings,
@@ -367,22 +349,16 @@ private fun MainNavigation(
 
     val submissionsRequest = navigationSnapshot.submissionsRequest
     val submissionsPredictiveBack = rememberDefaultActivityPredictiveBackState(
-        requestKey = submissionsRequest?.serial,
+        requestKey = submissionsRequest?.let { MainNavigationSurfaceKey(MainDestination.SUBMISSIONS, it.serial) },
         enabled = navigationSnapshot.currentDestination == MainDestination.SUBMISSIONS,
         onBack = controller::closeSubmissions,
     )
-    // Capture the owner at gesture start: a nested visit animates inside the Submissions
-    // stack, while the first visit animates against the underlying main destination.
-    val nestedSubmissionsGesture = remember(submissionsPredictiveBack.animation) {
-        submissionsInTwoPane && scenePlan.submissionsScenes.size > 1
-    }
-
     val editorRequest = navigationSnapshot.editorRequest
     var editorPredictiveBackEnabled by remember(editorRequest?.serial) {
         mutableStateOf(false)
     }
     val editorPredictiveBack = rememberDefaultActivityPredictiveBackState(
-        requestKey = editorRequest?.serial,
+        requestKey = editorRequest?.let { MainNavigationSurfaceKey(MainDestination.EDITOR, it.serial) },
         enabled = navigationSnapshot.currentDestination == MainDestination.EDITOR &&
             editorPredictiveBackEnabled,
         completedFrameHoldCount = 3,
@@ -423,286 +399,172 @@ private fun MainNavigation(
         }
     }
 
-    val settingsTransitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
-    fun parentBackModifier(destination: MainDestination): Modifier {
-        var modifier: Modifier = Modifier
-        if (navigationSnapshot.parentDestination(MainDestination.SETTINGS) == destination) {
-            modifier = modifier.then(settingsPredictiveBack.enterModifier)
-        }
-        if (!nestedSubmissionsGesture &&
-            navigationSnapshot.parentDestination(MainDestination.SUBMISSIONS) == destination
-        ) {
-            modifier = modifier.then(submissionsPredictiveBack.enterModifier)
-        }
-        if (navigationSnapshot.parentDestination(MainDestination.EDITOR) == destination) {
-            modifier = modifier.then(editorPredictiveBack.enterModifier)
-        }
-        return modifier
-    }
+    val gesture = activeBackAnimation ?: settingsPredictiveBack.animation ?:
+        submissionsPredictiveBack.animation ?: editorPredictiveBack.animation
+    val preview = rememberMainNavigationBackPreview(
+        scenePlan, gesture, gesture?.enterModifier ?: Modifier, gesture?.exitModifier ?: Modifier,
+    )
     HarmonicAppRoot(
-        navigation = navigationSnapshot,
-        transitionOffsetPx = settingsTransitionOffsetPx,
-        completedSettingsPredictiveBack = settingsPredictiveBack.completed,
-        completedSubmissionsPredictiveBack = submissionsPredictiveBack.completed,
-        completedEditorPredictiveBack = editorPredictiveBack.completed,
-        completedStoryPredictiveBack = completedPredictivePop,
-        storyExitInProgress = presentation.storyExitInProgress,
-        submissionsInTwoPane = submissionsInTwoPane,
+        plan = scenePlan,
+        preview = preview,
+        completedPredictiveBack = setOfNotNull(
+            completedStoryKey,
+            settingsPredictiveBack.completedRequestKey,
+            submissionsPredictiveBack.completedRequestKey,
+            editorPredictiveBack.completedRequestKey,
+        ),
         modifier = Modifier.background(HarmonicTheme.colors.background)
             .semantics { testTagsAsResourceId = true },
-        basePredictiveModifier = parentBackModifier(MainDestination.STORIES)
-            .then(parentBackModifier(MainDestination.STORY)),
-        settingsPredictiveModifier = settingsPredictiveBack.exitModifier
-            .then(parentBackModifier(MainDestination.SETTINGS))
-            .then(
-                if (storyParentDestination == MainDestination.SETTINGS) {
-                    activeBackAnimation?.enterModifier ?: Modifier
-                } else {
-                    Modifier
-                },
-            ),
-        submissionsPredictiveModifier = (if (nestedSubmissionsGesture) Modifier else submissionsPredictiveBack.exitModifier)
-            .then(parentBackModifier(MainDestination.SUBMISSIONS)).then(
-            if (!submissionsInTwoPane && storyParentDestination == MainDestination.SUBMISSIONS) {
-                activeBackAnimation?.enterModifier ?: Modifier
-            } else {
-                Modifier
-            },
-        ),
-        editorPredictiveModifier = editorPredictiveBack.exitModifier,
-        base = {
-            if (presentation.renderTwoPaneStoryScene) {
+        stories = { detail, paneComments ->
+            val stories: @Composable () -> Unit = {
+                StoriesPane(
+                    controller = controller,
+                    statusBarColor = paneStatusBarColor,
+                    statusBarHeight = statusBarHeight,
+                    drawStatusBarProtection = true,
+                )
+            }
+            if (isTwoPane) {
                 MainNavigationScene(
-                    storyRequest = scenePlan.baseStoryRequest,
+                    storyRequest = detail,
                     directive = directive,
                     paneProportion = paneProportion,
                     isFoldable = isFoldable,
                     onBack = ::popMainBackStack,
-                    stories = {
-                        StoriesPane(
-                            controller = controller,
-                            statusBarColor = paneStatusBarColor,
-                            statusBarHeight = statusBarHeight,
-                            drawStatusBarProtection = true,
-                        )
-                    },
+                    stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
-                    comments = { request ->
-                        CommentsPane(
-                            request = request,
-                            controller = controller,
-                            showUpButton = false,
-                            statusBarHeight = statusBarHeight,
-                            drawStatusBarProtection = true,
-                        )
-                    },
+                    comments = paneComments,
                 )
             } else {
-                SinglePaneNavigationScene(
-                    scene = scenePlan,
-                    onStoryLayersEmpty = presentation.onStoryLayersEmpty,
-                    completedPredictivePop = completedPredictivePop,
-                    predictiveBackActive = activeBackAnimation != null,
-                    storiesPredictiveModifier = if (
-                        storyParentDestination == MainDestination.STORIES ||
-                        storyParentDestination == MainDestination.STORY
-                    ) {
-                        activeBackAnimation?.enterModifier ?: Modifier
-                    } else {
-                        Modifier
-                    },
-                    commentsPredictiveModifier = activeBackAnimation?.exitModifier ?: Modifier,
-                    stories = {
-                        StoriesPane(
-                            controller = controller,
-                            statusBarColor = paneStatusBarColor,
-                            statusBarHeight = statusBarHeight,
-                            drawStatusBarProtection = true,
-                        )
-                    },
-                    comments = { request ->
-                        CommentsPane(
-                            request = request,
-                            controller = controller,
-                            showUpButton = true,
-                            statusBarHeight = statusBarHeight,
-                            drawStatusBarProtection = true,
-                        )
+                stories()
+            }
+        },
+        comments = { request, fullScreen ->
+            CommentsPane(
+                request = request,
+                controller = controller,
+                showUpButton = fullScreen,
+                statusBarHeight = statusBarHeight,
+                drawStatusBarProtection = true,
+            )
+        },
+        settings = { request ->
+            ProvideSettingsPlatformStyle(
+                style = SettingsPlatformStyle(
+                    topBarHeight = dimensionResource(
+                        R.dimen.compose_settings_toolbar_height,
+                    ),
+                    topBarNavigationHeight = dimensionResource(
+                        R.dimen.detail_toolbar_navigation_height,
+                    ),
+                    topBarNavigationInset = dimensionResource(
+                        R.dimen.detail_toolbar_navigation_inset,
+                    ),
+                    textStyle = TextStyle(
+                        platformStyle = PlatformTextStyle(
+                            includeFontPadding = true,
+                        ),
+                    ),
+                ),
+            ) {
+                SettingsShell(
+                    initialSection = controller
+                        .getInitialSettingsSectionRoute(request)
+                        ?.let(SettingsSection::fromRoute),
+                    onBackFromSettings = ::closeSettings,
+                    backHandlerEnabled = navigationSnapshot.currentDestination ==
+                        MainDestination.SETTINGS && settingsRequest?.serial == request.serial,
+                    onSectionChanged = controller::updateSettingsSection,
+                    onThemeChanged = {
+                        AndroidActivityTheme.setupTheme(activity)
+                        appearance.refreshSelection()
+                        refreshStoryWidgets(activity, reloadStories = false)
                     },
                 )
             }
         },
-        settings = {
-            if (
-                settingsRequest != null ||
-                !settingsPredictiveBack.completed
-            ) {
-                navigationSnapshot.lastSettingsRequest?.let { request ->
-                    key(request.serial) {
-                        ProvideSettingsPlatformStyle(
-                            style = SettingsPlatformStyle(
-                                topBarHeight = dimensionResource(
-                                    R.dimen.compose_settings_toolbar_height,
-                                ),
-                                topBarNavigationHeight = dimensionResource(
-                                    R.dimen.detail_toolbar_navigation_height,
-                                ),
-                                topBarNavigationInset = dimensionResource(
-                                    R.dimen.detail_toolbar_navigation_inset,
-                                ),
-                                textStyle = TextStyle(
-                                    platformStyle = PlatformTextStyle(
-                                        includeFontPadding = true,
-                                    ),
-                                ),
-                            ),
-                        ) {
-                            SettingsShell(
-                                initialSection = controller
-                                    .getInitialSettingsSectionRoute(request)
-                                    ?.let(SettingsSection::fromRoute),
-                                onBackFromSettings = ::closeSettings,
-                                backHandlerEnabled = navigationSnapshot.currentDestination ==
-                                    MainDestination.SETTINGS,
-                                onSectionChanged = controller::updateSettingsSection,
-                                onThemeChanged = {
-                                    AndroidActivityTheme.setupTheme(activity)
-                                    appearance.refreshSelection()
-                                    refreshStoryWidgets(activity, reloadStories = false)
-                                },
-                            )
-                        }
+        submissions = { request, detail, paneComments ->
+            key(request.serial) {
+                val coordinator = remember(request.serial) {
+                    AndroidSubmissionsCoordinator(
+                        activity = activity,
+                        sessionKey = request.serial,
+                        userName = request.userName,
+                        scene = controller.scene,
+                        navigator = AndroidSubmissionsCoordinator.Navigator { destination ->
+                            controller.openSubmissionStory(destination)
+                        },
+                    )
+                }
+                DisposableEffect(coordinator) {
+                    onDispose(coordinator::close)
+                }
+                val submissionsContent: @Composable () -> Unit = {
+                    val startInset = animatedExtraPanePadding()
+                    Box(Modifier.fillMaxSize().padding(start = startInset)) {
+                        AndroidSubmissionsScreen(
+                            userName = coordinator.userName,
+                            store = coordinator.store,
+                            displaySettings = coordinator.displaySettings,
+                            initialScrollRestoration = coordinator.initialScrollRestoration,
+                            onBack = controller::closeSubmissions,
+                        )
+                        StatusBarProtection(
+                            color = paneStatusBarColor,
+                            statusBarHeight = statusBarHeight,
+                        )
                     }
+                }
+                if (isTwoPane) {
+                    MainNavigationScene(
+                        storyRequest = detail,
+                        directive = directive,
+                        paneProportion = paneProportion,
+                        isFoldable = isFoldable,
+                        onBack = ::popMainBackStack,
+                        stories = submissionsContent,
+                        emptyDetail = { EmptyCommentsScreen() },
+                        modifier = Modifier.background(HarmonicTheme.colors.background),
+                        comments = paneComments,
+                    )
+                } else {
+                    submissionsContent()
                 }
             }
         },
-        submissions = {
-            val submissionsScene: @Composable (MainSubmissionsScene) -> Unit = { scene ->
-                val request = scene.request
-                key(request.serial) {
+        editor = { request ->
+            key(request.serial) {
+                Box(Modifier.fillMaxSize()) {
+                    val editorController = remember(request.serial) {
+                        EditorSubmissionState()
+                    }
                     val coordinator = remember(request.serial) {
-                        AndroidSubmissionsCoordinator(
-                            activity = activity,
-                            sessionKey = request.serial,
-                            userName = request.userName,
-                            scene = controller.scene,
-                            navigator = AndroidSubmissionsCoordinator.Navigator { destination ->
-                                controller.openSubmissionStory(destination)
-                            },
+                        AndroidEditorCoordinator(
+                            activity,
+                            request.destination,
+                            controller,
+                            controller::closeEditor,
                         )
                     }
                     DisposableEffect(coordinator) {
                         onDispose(coordinator::close)
                     }
-                    val submissionsContent: @Composable () -> Unit = {
-                        val startInset = animatedExtraPanePadding()
-                        Box(Modifier.fillMaxSize().padding(start = startInset)) {
-                            AndroidSubmissionsScreen(
-                                userName = coordinator.userName,
-                                store = coordinator.store,
-                                displaySettings = coordinator.displaySettings,
-                                initialScrollRestoration = coordinator.initialScrollRestoration,
-                                onBack = controller::closeSubmissions,
-                            )
-                            StatusBarProtection(
-                                color = paneStatusBarColor,
-                                statusBarHeight = statusBarHeight,
-                            )
-                        }
+                    SideEffect {
+                        coordinator.attachController(editorController)
                     }
-                    if (isTwoPane) {
-                        MainNavigationScene(
-                            storyRequest = scene.storyRequest,
-                            directive = directive,
-                            paneProportion = paneProportion,
-                            isFoldable = isFoldable,
-                            onBack = ::popMainBackStack,
-                            stories = submissionsContent,
-                            emptyDetail = { EmptyCommentsScreen() },
-                            modifier = Modifier.background(HarmonicTheme.colors.background),
-                            comments = { detail ->
-                                CommentsPane(
-                                    request = detail,
-                                    controller = controller,
-                                    showUpButton = false,
-                                    statusBarHeight = statusBarHeight,
-                                    drawStatusBarProtection = true,
-                                )
-                            },
-                        )
-                    } else {
-                        submissionsContent()
-                    }
-                }
-            }
-            if (isTwoPane) {
-                SubmissionsNavigationStack(
-                    scenes = scenePlan.submissionsScenes,
-                    predictiveBackActive = submissionsPredictiveBack.animation != null,
-                    completedPredictiveBack = submissionsPredictiveBack.completed,
-                    enterModifier = submissionsPredictiveBack.enterModifier,
-                    exitModifier = submissionsPredictiveBack.exitModifier,
-                    content = submissionsScene,
-                )
-            } else if (submissionsRequest != null || !submissionsPredictiveBack.completed) {
-                (submissionsRequest ?: navigationSnapshot.lastSubmissionsRequest)?.let { request ->
-                    submissionsScene(MainSubmissionsScene(request, null))
-                }
-            }
-        },
-        editor = {
-            if (editorRequest != null || !editorPredictiveBack.completed) {
-                navigationSnapshot.lastEditorRequest?.let { request ->
-                    key(request.serial) {
-                        Box(Modifier.fillMaxSize()) {
-                            // The editor is a modal sibling of the story navigation. Its opaque
-                            // surface is not itself a pointer target, so keep an explicit barrier
-                            // behind it to prevent taps in field gutters reaching the story layer.
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(Unit) {
-                                        awaitEachGesture {
-                                            do {
-                                                val event = awaitPointerEvent()
-                                                event.changes.forEach { it.consume() }
-                                            } while (event.changes.any { it.pressed })
-                                        }
-                                    },
-                            )
-
-                            val editorController = remember(request.serial) {
-                                EditorSubmissionState()
-                            }
-                            val coordinator = remember(request.serial) {
-                                AndroidEditorCoordinator(
-                                    activity,
-                                    request.destination,
-                                    controller,
-                                    controller::closeEditor,
-                                )
-                            }
-                            DisposableEffect(coordinator) {
-                                onDispose(coordinator::close)
-                            }
-                            SideEffect {
-                                coordinator.attachController(editorController)
-                            }
-                            ComposeEditorScreen(
-                                type = coordinator.type,
-                                parentText = coordinator.parentText,
-                                postTitle = coordinator.postTitle,
-                                user = coordinator.user,
-                                submitting = editorController.submitting,
-                                onPredictiveBackEnabledChanged = {
-                                    editorPredictiveBackEnabled = it
-                                },
-                                onClose = controller::closeEditor,
-                                onSubmit = coordinator::submit,
-                                onOpenLink = { uiDependencies.links.open(it) },
-                            )
-                        }
-                    }
+                    ComposeEditorScreen(
+                        type = coordinator.type,
+                        parentText = coordinator.parentText,
+                        postTitle = coordinator.postTitle,
+                        user = coordinator.user,
+                        submitting = editorController.submitting,
+                        onPredictiveBackEnabledChanged = {
+                            editorPredictiveBackEnabled = it
+                        },
+                        onClose = controller::closeEditor,
+                        onSubmit = coordinator::submit,
+                        onOpenLink = { uiDependencies.links.open(it) },
+                    )
                 }
             }
         },

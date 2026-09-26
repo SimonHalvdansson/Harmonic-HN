@@ -26,6 +26,48 @@ import org.junit.runner.RunWith
 class NavigationBackRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun externalLinkKeepsAFullScreenRootAndDelegatesFinalBackToAndroid() {
+        val activity = compose.activity
+        val navigation = activity.navigationController
+        compose.runOnIdle {
+            navigation.dismissWelcomeDialog()
+            navigation.dismissChangelogDialog()
+            // Exercise the production VIEW decoder without relaunching the ActivityScenario's
+            // singleTask activity into another task. Cross-app dispatch is verified on device.
+            com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter(navigation).route(
+                android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://news.ycombinator.com/item?id=47938725")),
+            )
+        }
+        compose.waitUntil(5_000) { navigation.isExternalStoryEntry }
+        compose.waitForIdle()
+        val original = requireNotNull(navigation.getCommentsCoordinator())
+        val root = original.webViewRoot
+        compose.runOnIdle {
+            assertTrue(navigation.isExternalStoryEntry)
+            assertTrue("External Comments must be full screen even on a tablet",
+                root.width > activity.window.decorView.width * 0.85f)
+            navigation.navigationState.openLinkedStory(StoryRoute(48352939).toDestination())
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertFalse(navigation.isExternalStoryEntry)
+            navigation.openSubmissions("pg")
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { navigation.closeSubmissions() }
+        compose.waitForIdle()
+        compose.runOnIdle { activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(navigation.isExternalStoryEntry)
+            assertSame(original, navigation.getCommentsCoordinator())
+            assertTrue(root.isAttachedToWindow)
+            assertFalse("Android must own Back at the external task boundary",
+                activity.onBackPressedDispatcher.hasEnabledCallbacks())
+        }
+    }
+
     @Test fun reopeningSubmissionsFromItsAuthorsPostRetainsTheParent() {
         val navigation = compose.activity.navigationController
         val original = navigation.navigationState.restoration()

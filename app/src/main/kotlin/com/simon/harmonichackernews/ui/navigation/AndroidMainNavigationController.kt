@@ -116,6 +116,8 @@ class AndroidMainNavigationController internal constructor(
         externalStorySerial = navigationState.state.value.storyRequest?.serial ?: -1
     }
 
+    internal val externalStoryEntrySerial: Int? get() = externalStorySerial.takeIf { it >= 0 }
+
     internal val isExternalStoryEntry: Boolean
         get() = navigationState.state.value.currentDestination == MainDestination.STORY &&
             navigationState.state.value.storyRequest?.serial == externalStorySerial

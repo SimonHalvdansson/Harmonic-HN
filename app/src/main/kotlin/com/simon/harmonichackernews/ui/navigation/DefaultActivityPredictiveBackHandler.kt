@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.navigation
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -27,14 +25,8 @@ import kotlinx.coroutines.withContext
 @Stable
 internal class DefaultActivityPredictiveBackState internal constructor() {
     internal var animation by mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
-    var completed by mutableStateOf(false)
+    var completedRequestKey: MainNavigationSurfaceKey? by mutableStateOf(null)
         internal set
-
-    val enterModifier: Modifier
-        get() = animation?.enterModifier ?: Modifier
-
-    val exitModifier: Modifier
-        get() = animation?.exitModifier ?: Modifier
 }
 
 /**
@@ -43,7 +35,7 @@ internal class DefaultActivityPredictiveBackState internal constructor() {
  */
 @Composable
 internal fun rememberDefaultActivityPredictiveBackState(
-    requestKey: Any?,
+    requestKey: MainNavigationSurfaceKey?,
     enabled: Boolean,
     completedFrameHoldCount: Int = 0,
     onBack: () -> Unit,
@@ -54,12 +46,9 @@ internal fun rememberDefaultActivityPredictiveBackState(
     val completion = LocalPredictiveBackCompletion.current
     val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
 
-    LaunchedEffect(requestKey) {
-        if (requestKey != null) state.completed = false
-    }
-
     PredictiveBackHandler(enabled = enabled) { events ->
         if (completion.handleFollowingBack(events, dispatcher)) return@PredictiveBackHandler
+        val gestureRequestKey = requestKey
         var gestureAnimation: DefaultActivityPredictiveBackAnimation? = null
         try {
             events.collect { event ->
@@ -82,7 +71,7 @@ internal fun rememberDefaultActivityPredictiveBackState(
                 animation = currentAnimation,
                 frameHoldCount = completedFrameHoldCount,
                 onCommit = {
-                    state.completed = true
+                    state.completedRequestKey = gestureRequestKey
                     currentOnBack()
                 },
                 onFinished = {

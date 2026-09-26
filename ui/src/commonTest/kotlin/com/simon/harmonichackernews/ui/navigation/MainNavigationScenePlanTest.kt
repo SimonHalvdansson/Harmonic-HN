@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import com.simon.harmonichackernews.navigation.MainDestination
+import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.StoryDestination
 import kotlin.test.Test
@@ -8,111 +10,126 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MainNavigationScenePlanTest {
+    @Test fun phoneSurfacesFollowTheEntireHistoryIncludingRepeatedScreenTypes() {
+        val navigation = nestedVisits()
+        val plan = mainNavigationScenePlan(navigation.state.value, false)
+        assertEquals(navigation.state.value.destinationStack, plan.surfaces.map { it.entry })
+        assertEquals(plan.surfaces.size, plan.surfaces.map { it.key }.toSet().size)
+        assertTrue(plan.surfaces.all { it.detail == null })
+    }
+
     @Test fun nestedSubmissionsNeverAssignsAStoryToTwoScenes() {
         for (secondUser in listOf("reader", "another-reader")) {
-            val navigation = MainNavigationStore()
-            navigation.openSettings("debug")
-            navigation.openStory(StoryDestination(1))
-            navigation.openSubmissions("reader")
-            navigation.openStory(StoryDestination(2))
-            val original = mainNavigationScenePlan(navigation.state.value, true)
-            navigation.openSubmissions(secondUser)
-            val nested = mainNavigationScenePlan(navigation.state.value, true)
-            assertEquals(original.fullScreenStories, nested.fullScreenStories)
-            assertEquals(listOf(2, null), nested.submissionsScenes.map { it.storyRequest?.storyId })
-            assertEquals(null, nested.submissionsStoryRequest)
-            navigation.openStory(StoryDestination(3))
+            val navigation = nestedVisits(secondUser)
+            val plan = mainNavigationScenePlan(navigation.state.value, true)
+            assertEquals(listOf(MainDestination.STORIES, MainDestination.SETTINGS, MainDestination.STORY,
+                MainDestination.SUBMISSIONS, MainDestination.SUBMISSIONS), plan.surfaces.map { it.entry.destination })
+            assertEquals(listOf(null, null, null, 2, 3), plan.surfaces.map { it.detail?.storyId })
+            assertEquals(1, (plan.surfaces[2].entry as MainNavigationEntry.Story).request.storyId)
+            assertEquals(3, renderedStorySerials(plan).toSet().size)
             navigation.openSubmissions("third-reader")
             val deeper = mainNavigationScenePlan(navigation.state.value, true)
-            assertEquals(listOf(2, 3, null), deeper.submissionsScenes.map { it.storyRequest?.storyId })
-            assertEquals(listOf(1), deeper.fullScreenStories.map { it.storyId })
+            assertEquals(plan.surfaces, deeper.surfaces.dropLast(1))
+            assertEquals(null, deeper.current.detail)
             navigation.closeSubmissions()
-            navigation.detailRemovedFromBackStack()
-            navigation.closeSubmissions()
-            assertEquals(original, mainNavigationScenePlan(navigation.state.value, true))
+            assertEquals(plan, mainNavigationScenePlan(navigation.state.value, true))
         }
     }
 
-    @Test fun coveringSettingsDoesNotHideItsStoriesParent() {
+    @Test fun coveringAnyScreenPreservesItsIdentityAndLayout() {
         for (tablet in listOf(false, true)) {
             val navigation = MainNavigationStore()
-            navigation.openSettings(null)
-            val plan = mainNavigationScenePlan(navigation.state.value, tablet)
-            assertTrue(plan.showsStoriesRoot)
-            assertEquals(tablet, plan.baseUsesTwoPane)
-            assertTrue(plan.fullScreenStories.isEmpty())
+            navigation.openStory(StoryDestination(1))
+            val parent = mainNavigationScenePlan(navigation.state.value, tablet)
+            navigation.openSettings("debug")
+            navigation.openStory(StoryDestination(2))
+            navigation.openSubmissions("reader")
+            val covered = mainNavigationScenePlan(navigation.state.value, tablet)
+            assertEquals(parent.surfaces, covered.surfaces.take(parent.surfaces.size))
+            assertEquals(MainDestination.SUBMISSIONS, covered.current.entry.destination)
+            assertEquals(MainDestination.STORY, covered.surfaces[covered.surfaces.lastIndex - 1].entry.destination)
         }
     }
 
-    @Test fun coveringDestinationsKeepTheStoryRunAndItsOrigin() {
-        val navigation = MainNavigationStore()
-        navigation.openStory(StoryDestination(1))
-        val parent = mainNavigationScenePlan(navigation.state.value, false)
-        navigation.openSettings(null)
-        assertEquals(parent, mainNavigationScenePlan(navigation.state.value, false))
-        navigation.openSubmissions("reader")
-        assertEquals(parent, mainNavigationScenePlan(navigation.state.value, false))
-    }
-
-    @Test fun debugStoryUsesAFullScreenSurfaceOnBothWindowSizes() {
+    @Test fun debugStoryIsFullScreenOnBothWindowSizes() {
         for (tablet in listOf(false, true)) {
             val navigation = MainNavigationStore()
             navigation.openSettings("debug")
             navigation.openStory(StoryDestination(2))
             val plan = mainNavigationScenePlan(navigation.state.value, tablet)
-            assertFalse(plan.showsStoriesRoot)
-            assertFalse(plan.baseUsesTwoPane)
-            assertEquals(listOf(2), plan.fullScreenStories.map { it.storyId })
-            assertEquals(tablet, plan.animateInitialStory)
+            assertFalse(plan.storyUsesTwoPane)
+            assertEquals(MainDestination.STORY, plan.current.entry.destination)
+            assertEquals(MainDestination.SETTINGS, plan.surfaces[plan.surfaces.lastIndex - 1].entry.destination)
         }
     }
 
-    @Test fun tabletPopDoesNotSubstituteAnOlderPaneStoryForTheExitingFullScreenStory() {
-        val navigation = MainNavigationStore()
-        navigation.openStory(StoryDestination(1))
-        navigation.openSettings("debug")
-        navigation.openStory(StoryDestination(2))
-        navigation.detailRemovedFromBackStack()
-        val plan = mainNavigationScenePlan(navigation.state.value, true)
-        assertTrue(plan.baseUsesTwoPane)
-        assertEquals(1, plan.baseStoryRequest?.storyId)
-        assertTrue(plan.fullScreenStories.isEmpty())
+    @Test fun poppingAStoryRevealsTheActualParentWithOlderStoriesStillRetained() {
+        for (tablet in listOf(false, true)) {
+            val navigation = MainNavigationStore()
+            navigation.openStory(StoryDestination(1))
+            navigation.openSettings("debug")
+            val parent = mainNavigationScenePlan(navigation.state.value, tablet)
+            navigation.openStory(StoryDestination(2))
+            val child = mainNavigationScenePlan(navigation.state.value, tablet)
+            assertEquals(parent.surfaces, child.surfaces.dropLast(1))
+            navigation.detailRemovedFromBackStack()
+            assertEquals(parent, mainNavigationScenePlan(navigation.state.value, tablet))
+        }
     }
 
-    @Test fun tabletSubmissionsKeepsItsOwnDetailAndTheUnderlyingMainDetail() {
+    @Test fun linkedStoryKeepsTheOriginalTabletDetailInItsOwnPane() {
         val navigation = MainNavigationStore()
         navigation.openStory(StoryDestination(1))
-        navigation.openSubmissions("reader")
-        navigation.openStory(StoryDestination(2))
-        val plan = mainNavigationScenePlan(navigation.state.value, true)
-        assertTrue(plan.submissionsInTwoPane)
-        assertTrue(plan.baseUsesTwoPane)
-        assertEquals(1, plan.baseStoryRequest?.storyId)
-        assertEquals(2, plan.submissionsStoryRequest?.storyId)
-        assertTrue(plan.fullScreenStories.isEmpty())
-    }
-    @Test fun tabletSubmissionsRetainsTheFullScreenDebugStoryRun() {
-        val navigation = MainNavigationStore()
-        navigation.openSettings("debug")
-        navigation.openStory(StoryDestination(1))
-        navigation.openLinkedStory(StoryDestination(2))
         val original = mainNavigationScenePlan(navigation.state.value, true)
-        navigation.openSubmissions("reader")
-        val covered = mainNavigationScenePlan(navigation.state.value, true)
-        assertFalse(covered.baseUsesTwoPane)
-        assertFalse(covered.showsStoriesRoot)
-        assertEquals(original.fullScreenStories, covered.fullScreenStories)
-        assertEquals(original.baseStoryRequest, covered.baseStoryRequest)
-
-        navigation.openStory(StoryDestination(3))
-        val withDetail = mainNavigationScenePlan(navigation.state.value, true)
-        assertFalse(withDetail.baseUsesTwoPane)
-        assertTrue(withDetail.storyUsesTwoPane)
-        assertEquals(original.fullScreenStories, withDetail.fullScreenStories)
-        assertEquals(3, withDetail.submissionsStoryRequest?.storyId)
+        assertTrue(original.storyUsesTwoPane)
+        navigation.openLinkedStory(StoryDestination(2))
+        val linked = mainNavigationScenePlan(navigation.state.value, true)
+        assertEquals(original.current, linked.surfaces.first())
+        assertFalse(linked.storyUsesTwoPane)
+        assertEquals(2, renderedStorySerials(linked).distinct().size)
         navigation.detailRemovedFromBackStack()
-        navigation.closeSubmissions()
         assertEquals(original, mainNavigationScenePlan(navigation.state.value, true))
     }
 
+    @Test fun externalStoryIsTheRootOnPhoneAndTabletIncludingNestedVisits() {
+        for (tablet in listOf(false, true)) {
+            val navigation = MainNavigationStore()
+            navigation.openStory(StoryDestination(1))
+            val external = requireNotNull(navigation.state.value.storyRequest)
+            val root = mainNavigationScenePlan(navigation.state.value, tablet, external.serial)
+            assertEquals(1, root.surfaces.size)
+            assertEquals(MainNavigationEntry.Story(external), root.current.entry)
+            assertFalse(root.storyUsesTwoPane)
+            navigation.openLinkedStory(StoryDestination(2))
+            navigation.openSubmissions("reader")
+            val nested = mainNavigationScenePlan(navigation.state.value, tablet, external.serial)
+            assertEquals(root.current, nested.surfaces.first())
+            assertTrue(nested.surfaces.none { it.entry == MainNavigationEntry.Stories })
+            navigation.closeSubmissions()
+            navigation.detailRemovedFromBackStack()
+            assertEquals(root, mainNavigationScenePlan(navigation.state.value, tablet, external.serial))
+        }
+    }
+
+    @Test fun restoringHistoryKeepsVisitKeysAndPaneOwnership() {
+        val navigation = nestedVisits()
+        val restored = MainNavigationStore(navigation.restoration())
+        for (tablet in listOf(false, true)) {
+            assertEquals(mainNavigationScenePlan(navigation.state.value, tablet),
+                mainNavigationScenePlan(restored.state.value, tablet))
+        }
+    }
+
+    private fun nestedVisits(secondUser: String = "reader") = MainNavigationStore().apply {
+        openSettings("debug")
+        openStory(StoryDestination(1))
+        openSubmissions("reader")
+        openStory(StoryDestination(2))
+        openSubmissions(secondUser)
+        openStory(StoryDestination(3))
+    }
+
+    private fun renderedStorySerials(plan: MainNavigationScenePlan) = plan.surfaces.mapNotNull {
+        (it.entry as? MainNavigationEntry.Story)?.request?.serial ?: it.detail?.serial
+    }
 }

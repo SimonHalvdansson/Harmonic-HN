@@ -1,91 +1,66 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.StoryDestination
 import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SubmissionsPaneLayersTest {
-    @Test
-    fun submissionsAboveDebugStoryKeepsSettingsBelowItsBackTarget() {
-        val navigation = MainNavigationStore().apply {
-            openSettings("debug")
-            openStory(StoryDestination(1))
-            openSubmissions("alice")
-        }
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
-        assertTrue(layers.settingsBehindStory)
-        assertTrue(layers.settingsSemanticsHidden)
-        assertFalse(layers.submissionsBehindStory)
-        assertTrue(layers.submissionsCoversBase)
-        navigation.closeSubmissions()
-        assertTrue(mainDestinationLayerState(navigation.state.value, false).settingsBehindStory)
-        navigation.detailRemovedFromBackStack()
-        assertFalse(mainDestinationLayerState(navigation.state.value, false).settingsBehindStory)
-    }
-
-    @Test
-    fun settingsAboveSubmissionsStoryKeepsSubmissionsBelowItsBackTarget() {
+    @Test fun settingsAboveSubmissionsStoryKeepsTheActualBackTarget() {
         val navigation = submissionsWithStory().apply { openSettings("debug") }
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
-        assertTrue(layers.submissionsBehindStory)
-        assertTrue(layers.submissionsSemanticsHidden)
-        assertFalse(layers.settingsBehindStory)
-        assertTrue(layers.settingsCoversBase)
+        for (tablet in listOf(false, true)) {
+            val plan = mainNavigationScenePlan(navigation.state.value, tablet)
+            assertEquals(MainDestination.SETTINGS, plan.current.entry.destination)
+            val parent = plan.surfaces[plan.surfaces.lastIndex - 1]
+            assertEquals(if (tablet) MainDestination.SUBMISSIONS else MainDestination.STORY, parent.entry.destination)
+            if (tablet) assertEquals(2, parent.detail?.storyId)
+        }
     }
 
-    @Test
-    fun submissionsOpenedDirectlyFromSettingsKeepsSettingsAboveAnOlderStory() {
+    @Test fun submissionsOpenedDirectlyFromSettingsKeepsSettingsAboveAnOlderStory() {
         val navigation = MainNavigationStore().apply {
             openStory(StoryDestination(1))
             openSettings("debug")
             openSubmissions("alice")
         }
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
-        assertFalse(layers.settingsBehindStory)
-        assertFalse(layers.submissionsBehindStory)
+        for (tablet in listOf(false, true)) {
+            val plan = mainNavigationScenePlan(navigation.state.value, tablet)
+            assertEquals(listOf(MainDestination.SETTINGS, MainDestination.SUBMISSIONS),
+                plan.surfaces.takeLast(2).map { it.entry.destination })
+        }
     }
 
-    @Test
-    fun phoneStoryStillCoversSubmissions() {
+    @Test fun phoneStoryCoversSubmissionsButTabletStorySharesItsSurface() {
         val navigation = submissionsWithStory()
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = false)
-        assertTrue(layers.submissionsBehindStory)
-        assertTrue(layers.submissionsSemanticsHidden)
-        assertFalse(layers.submissionsCoversBase)
+        val phone = mainNavigationScenePlan(navigation.state.value, false)
+        assertEquals(MainDestination.STORY, phone.current.entry.destination)
+        assertEquals(MainDestination.SUBMISSIONS, phone.surfaces[phone.surfaces.lastIndex - 1].entry.destination)
+        val tablet = mainNavigationScenePlan(navigation.state.value, true)
+        assertEquals(MainDestination.SUBMISSIONS, tablet.current.entry.destination)
+        assertEquals(2, tablet.current.detail?.storyId)
+        assertEquals(1, tablet.surfaces.first().detail?.storyId)
     }
 
-    @Test
-    fun twoPaneStoryKeepsSubmissionsInteractiveAndHidesMainFeed() {
+    @Test fun linkedStoryRemainsInSubmissionsDetailPaneAndPopsToPriorSelection() {
         val navigation = submissionsWithStory()
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = true)
-        assertTrue(layers.submissionsVisible)
-        assertTrue(layers.submissionsCoversBase)
-        assertTrue(layers.baseSemanticsHidden)
-        assertFalse(layers.submissionsBehindStory)
-        assertFalse(layers.submissionsSemanticsHidden)
-    }
-
-    @Test
-    fun linkedStoryRemainsInSubmissionsDetailPane() {
-        val navigation = submissionsWithStory()
+        val parent = mainNavigationScenePlan(navigation.state.value, true)
         navigation.openLinkedStory(StoryDestination(3))
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = true)
-        assertFalse(layers.submissionsBehindStory)
-        assertFalse(layers.submissionsSemanticsHidden)
-        assertTrue(layers.baseSemanticsHidden)
+        val linked = mainNavigationScenePlan(navigation.state.value, true)
+        assertEquals(parent.surfaces.map { it.key }, linked.surfaces.map { it.key })
+        assertEquals(3, linked.current.detail?.storyId)
+        navigation.detailRemovedFromBackStack()
+        assertEquals(parent, mainNavigationScenePlan(navigation.state.value, true))
     }
 
-    @Test
-    fun backFromDetailLeavesSubmissionsAboveUnderlyingStory() {
+    @Test fun backFromDetailLeavesSubmissionsAboveUnderlyingStory() {
         val navigation = submissionsWithStory()
         navigation.detailRemovedFromBackStack()
-        val layers = mainDestinationLayerState(navigation.state.value, submissionsInTwoPane = true)
-        assertTrue(layers.submissionsVisible)
-        assertTrue(layers.submissionsCoversBase)
-        assertFalse(layers.submissionsSemanticsHidden)
-        assertFalse(layers.submissionsBehindStory)
+        val plan = mainNavigationScenePlan(navigation.state.value, true)
+        assertEquals(MainDestination.SUBMISSIONS, plan.current.entry.destination)
+        assertNull(plan.current.detail)
+        assertEquals(1, plan.surfaces.first().detail?.storyId)
     }
 
     private fun submissionsWithStory() = MainNavigationStore().apply {

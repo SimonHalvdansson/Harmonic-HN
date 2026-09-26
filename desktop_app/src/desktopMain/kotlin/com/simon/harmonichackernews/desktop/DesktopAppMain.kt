@@ -62,9 +62,9 @@ import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
+import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
 import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
-import com.simon.harmonichackernews.ui.navigation.SinglePaneNavigationScene
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
@@ -327,7 +327,6 @@ private fun DesktopAppContent(
         destinationTransitionSettled &&
         !composeOverlayVisible &&
         overlayTransitionSettled
-    val transitionOffsetPx = with(LocalDensity.current) { 96.dp.roundToPx() }
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val mainDirective = remember(adaptiveInfo) {
         calculatePaneScaffoldDirective(adaptiveInfo).copy(
@@ -335,99 +334,74 @@ private fun DesktopAppContent(
         )
     }
     val isTwoPane = mainDirective.maxHorizontalPartitions > 1
+    val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, showNavigation ->
+        DesktopCommentsContent(
+            app = app, scene = scene, request = request,
+            showNavigation = showNavigation,
+            webViewForegroundAllowed = webViewForegroundAllowed,
+            onClose = scene.navigation::detailRemovedFromBackStack,
+            onControllerChanged = onCommentsControllerChanged,
+        )
+    }
     HarmonicAppRoot(
-        navigation = navigation,
-        transitionOffsetPx = transitionOffsetPx,
-        completedSettingsPredictiveBack = false,
-        completedSubmissionsPredictiveBack = false,
-        completedEditorPredictiveBack = false,
+        plan = mainNavigationScenePlan(navigation, isTwoPane),
         linkPreview = commentsController
             ?.takeIf {
-                it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
+                navigation.currentDestination == MainDestination.STORY &&
+                    it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
             }
             ?.let { controller ->
                 { DesktopCommentLinkPreview(app, scene, controller) }
             },
-        base = {
+        stories = { detail, paneComments ->
+            val stories: @Composable () -> Unit = {
+                DesktopStoriesContent(app, scene, isSplitLayout = isTwoPane,
+                    onControllerChanged = onStoriesControllerChanged)
+            }
             if (isTwoPane) {
                 MainNavigationScene(
-                    storyRequest = navigation.storyRequest,
+                    storyRequest = detail,
                     directive = mainDirective,
                     paneProportion = 0.4f,
                     onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = {
-                        DesktopStoriesContent(
-                            app,
-                            scene,
-                            isSplitLayout = true,
-                            onControllerChanged = onStoriesControllerChanged,
-                        )
-                    },
+                    stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
                     animateDetailVisibilityChanges = true,
-                    comments = { request ->
-                        DesktopCommentsContent(
-                            app = app,
-                            scene = scene,
-                            request = request,
-                            showNavigation = false,
-                            webViewForegroundAllowed = webViewForegroundAllowed,
-                            onClose = scene.navigation::detailRemovedFromBackStack,
-                            onControllerChanged = onCommentsControllerChanged,
-                        )
-                    },
+                    comments = paneComments,
                 )
             } else {
-                SinglePaneNavigationScene(
-                    scene = mainNavigationScenePlan(navigation, isTwoPane = false),
-                    completedPredictivePop = false,
-                    predictiveBackActive = false,
-                    stories = {
-                        DesktopStoriesContent(
-                            app,
-                            scene,
-                            isSplitLayout = false,
-                            onControllerChanged = onStoriesControllerChanged,
-                        )
-                    },
-                    comments = { request ->
-                        DesktopCommentsContent(
-                            app = app,
-                            scene = scene,
-                            request = request,
-                            showNavigation = true,
-                            webViewForegroundAllowed = webViewForegroundAllowed,
-                            onClose = scene.navigation::detailRemovedFromBackStack,
-                            onControllerChanged = onCommentsControllerChanged,
-                        )
-                    },
-                )
+                stories()
             }
         },
-        settings = {
+        comments = renderComments,
+        settings = { request ->
             DesktopSettingsShell(
                 app = app,
                 scene = scene,
                 onNavigationChanged = onSettingsNavigationChanged,
                 initialSection = SettingsSection.fromRoute(
-                    navigation.currentSettingsSectionRoute.orEmpty(),
+                    request.initialSectionRoute.orEmpty(),
                 ),
             )
         },
-        submissions = {
-            navigation.lastSubmissionsRequest?.let {
-                DesktopSubmissionsContent(app, scene, it)
+        submissions = { request, detail, paneComments ->
+            if (isTwoPane) {
+                MainNavigationScene(
+                    storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
+                    onBack = scene.navigation::detailRemovedFromBackStack,
+                    stories = { DesktopSubmissionsContent(app, scene, request) },
+                    emptyDetail = { EmptyCommentsScreen() },
+                    comments = paneComments,
+                )
+            } else {
+                DesktopSubmissionsContent(app, scene, request)
             }
         },
-        editor = {
-            navigation.lastEditorRequest?.let {
-                DesktopEditorContent(
-                    app = app,
-                    scene = scene,
-                    request = it,
-                    backRequestVersion = editorBackRequestVersion,
-                )
-            }
+        editor = { request ->
+            DesktopEditorContent(
+                app = app, scene = scene, request = request,
+                backRequestVersion = editorBackRequestVersion,
+            )
         },
         immersive = { CoulombGasScreen() },
         foreground = {
