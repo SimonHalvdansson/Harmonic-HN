@@ -28,6 +28,41 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubmissionsFeatureStoreTest {
     @Test
+    fun filterSwitchKeepsTheSparseCategoryRequestAndCloseCancelsIt() = runTest {
+        val items = (200 downTo 1).map { id -> story(id).also { it.isComment = id > 100 && id != 150 } }
+        val storiesReady = CompletableDeferred<Unit>()
+        var storyRequests = 0
+        var cancelled = false
+        val repository = object : AlgoliaRepository by FakeAlgoliaRepository(items) {
+            override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
+                if (pageSize > 0 && type == AlgoliaSubmissionType.STORIES) {
+                    storyRequests++
+                    try {
+                        storiesReady.await()
+                    } finally {
+                        cancelled = !storiesReady.isCompleted
+                    }
+                }
+                return page(items, pageSize, type, cursor)
+            }
+        }
+        val store = featureStore(backgroundScope, SubmissionsSessionState(SubmissionsListStore("alice", repository)))
+        store.start(); runCurrent()
+        assertEquals(1, storyRequests)
+        store.accept(SubmissionsIntent.SelectFilter(SubmissionFilter.STORIES)); runCurrent()
+        assertEquals(listOf(150), store.state.value.items.map(Story::id))
+        assertTrue(store.state.value.loading)
+        assertFalse(store.state.value.showInitialLoading)
+        store.accept(SubmissionsIntent.SelectFilter(SubmissionFilter.BOTH)); runCurrent()
+        store.accept(SubmissionsIntent.SelectFilter(SubmissionFilter.STORIES)); runCurrent()
+        assertEquals(1, storyRequests)
+        assertFalse(cancelled)
+        store.close(); runCurrent()
+        assertTrue(cancelled)
+        assertFalse(store.state.value.loading)
+    }
+
+    @Test
     fun initializeLoadsContentAndLaterRestoresScrollPosition() = runTest {
         val story = story(1)
         val session = SubmissionsSessionState(
@@ -128,7 +163,7 @@ class SubmissionsFeatureStoreTest {
         val repository = object : AlgoliaRepository {
             override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage {
                 if (pageSize == 0) { countRequests++; counts.await() }
-                else pages += cursor.page
+                else if (type == AlgoliaSubmissionType.BOTH) pages += cursor.page
                 return AlgoliaSubmissionsPage(
                     if (pageSize == 0) emptyList() else listOf(story(cursor.page + 1)),
                     if (pageSize > 0 && cursor.page == 0) AlgoliaSubmissionsCursor(page = 1) else null,

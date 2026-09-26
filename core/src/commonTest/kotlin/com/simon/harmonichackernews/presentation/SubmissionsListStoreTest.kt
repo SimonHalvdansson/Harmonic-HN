@@ -21,6 +21,103 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubmissionsListStoreTest {
     @Test
+    fun firstCategoryPagePreservesRowsAlreadyVisibleFromLongerAllHistory() = runTest {
+        val repository = FakeRepository((300 downTo 1).map { item(it) })
+        val store = SubmissionsListStore("simon", repository)
+        store.ensureLoaded(); runCurrent()
+        store.loadMore(); runCurrent()
+        store.selectFilter(SubmissionFilter.STORIES)
+        assertEquals(200, store.ids().size)
+        store.ensureLoaded(); runCurrent()
+        assertEquals((300 downTo 101).toList(), store.ids())
+        store.loadMore(); runCurrent()
+        assertEquals(200, store.ids().size)
+        store.loadMore(); runCurrent()
+        assertEquals((300 downTo 1).toList(), store.ids())
+    }
+
+    @Test
+    fun sparseFilterShowsCachedRowsAndKeepsPrefetchAcrossSwitches() = runTest {
+        val repository = FakeRepository((200 downTo 1).map { item(it, comment = it > 100 && it != 150) })
+        val store = SubmissionsListStore("simon", repository)
+        store.ensureLoaded(); runCurrent()
+        val sharedStory = store.state.value.items.single { !it.isComment }
+        repository.gate = CompletableDeferred()
+        store.prefetchSparseFilters(backgroundScope); runCurrent()
+        assertFalse(store.state.value.loading)
+        assertEquals(2, repository.requests.count { it.pageSize > 0 })
+        store.selectFilter(SubmissionFilter.STORIES)
+        store.ensureLoaded(); runCurrent()
+        assertEquals(listOf(150), store.ids())
+        assertTrue(store.state.value.loading)
+        assertTrue(store.state.value.canLoadMore)
+        assertFalse(store.state.value.showInitialLoading)
+        store.selectFilter(SubmissionFilter.COMMENTS)
+        assertEquals(99, store.state.value.items.size)
+        store.selectFilter(SubmissionFilter.STORIES)
+        store.ensureLoaded()
+        assertEquals(2, repository.requests.count { it.pageSize > 0 })
+        repository.gate!!.complete(Unit); runCurrent()
+        assertEquals(100, store.state.value.items.size)
+        assertSame(sharedStory, store.state.value.items.first())
+        assertFalse(store.state.value.loading)
+        store.loadMore(); runCurrent()
+        assertEquals(101, store.ids().distinct().size)
+        assertFalse(store.state.value.canLoadMore)
+    }
+
+    @Test
+    fun prefetchSkipsDenseCompleteAndKnownEmptyCategories() = runTest {
+        for (items in listOf(
+            (200 downTo 1).map { item(it, it % 2 == 0) },
+            (200 downTo 1).map { item(it, true) },
+            listOf(item(1)),
+        )) {
+            val repository = FakeRepository(items)
+            val store = SubmissionsListStore("simon", repository)
+            store.ensureLoaded(); runCurrent()
+            store.prefetchSparseFilters(backgroundScope); runCurrent()
+            assertEquals(1, repository.requests.count { it.pageSize > 0 })
+        }
+    }
+
+    @Test
+    fun failedPrefetchRetainsSeedRowsAndCanBeRetried() = runTest {
+        val repository = FakeRepository((200 downTo 1).map { item(it, it > 100 && it != 150) })
+        val store = SubmissionsListStore("simon", repository)
+        store.ensureLoaded(); runCurrent()
+        repository.gate = CompletableDeferred()
+        store.prefetchSparseFilters(backgroundScope); runCurrent()
+        store.selectFilter(SubmissionFilter.STORIES)
+        repository.fail = true
+        repository.gate!!.complete(Unit); runCurrent()
+        assertEquals(listOf(150), store.ids())
+        assertTrue(store.state.value.loadingFailed)
+        assertFalse(store.state.value.loading)
+        repository.fail = false
+        store.retry(); runCurrent()
+        assertEquals(100, store.ids().size)
+        assertFalse(store.state.value.loadingFailed)
+    }
+
+    @Test
+    fun refreshCancelsPrefetchAndRejectsItsOldSnapshot() = runTest {
+        val repository = FakeRepository((200 downTo 1).map { item(it, it > 100 && it != 150) })
+        val store = SubmissionsListStore("simon", repository)
+        store.ensureLoaded(); runCurrent()
+        val gate = CompletableDeferred<Unit>()
+        repository.gate = gate
+        store.prefetchSparseFilters(backgroundScope); runCurrent()
+        repository.gate = null
+        repository.items = listOf(item(300))
+        store.refresh(); runCurrent()
+        gate.complete(Unit); runCurrent()
+        store.selectFilter(SubmissionFilter.STORIES)
+        assertEquals(listOf(300), store.ids())
+        assertFalse(store.state.value.loading)
+    }
+
+    @Test
     fun initiallyLoadsAllDirectlyAndFetchesOnlyMetadataForCategoryTotals() = runTest {
         val repository = FakeRepository((500 downTo 1).map { item(it, comment = it > 200) })
         val store = SubmissionsListStore("simon", repository)
