@@ -52,6 +52,66 @@ class SubmissionsListStore(
     private var countGeneration = 0
     private val countJobs = mutableMapOf<SubmissionFilter, Job>()
     private var failedLoad: Pair<AlgoliaSubmissionsCursor, Boolean>? = null
+    private val prefetchJobs = mutableMapOf<SubmissionFilter, Job>()
+    private val prefetchAttempted = mutableSetOf<SubmissionFilter>()
+    private var prefetchGeneration = 0
+
+    /** Prefetch belongs to the feature lifetime, rather than the currently selected tab. */
+    fun prefetchSparseFilters(scope: CoroutineScope) {
+        val generation = prefetchGeneration
+        scope.launch {
+            if (generation != prefetchGeneration) return@launch
+            val all = ranges[SubmissionFilter.BOTH] ?: return@launch
+            if (all.nextCursor == null) return@launch
+            for (filter in listOf(SubmissionFilter.STORIES, SubmissionFilter.COMMENTS)) {
+                if (filter in ranges || filter in prefetchAttempted) continue
+                if (mutableState.value.filter == filter && mutableState.value.loading) continue
+                val cached = cachedItems(filter)
+                if (cached.size >= minOf(PREFETCH_MIN_ITEMS, pageSize)) continue
+                val count = counts[filter]
+                if (count?.exact == true && count.value <= cached.size) continue
+                prefetchAttempted += filter
+                lateinit var job: Job
+                job = scope.launch(start = CoroutineStart.LAZY) {
+                    try {
+                        val loaded = repository.getSubmissions(userName, pageSize, filter.apiType())
+                        currentCoroutineContext().ensureActive()
+                        if (generation != prefetchGeneration) return@launch
+                        loaded.items.forEach { itemsById.getOrPut(it.id) { it } }
+                        ranges[filter] = LoadedRange(
+                            initialCategoryIds(filter, loaded.items, loaded.canLoadMore),
+                            loaded.nextCursor,
+                        )
+                        loaded.totalCount?.let { counts[filter] = it }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        if (generation == prefetchGeneration && mutableState.value.filter == filter) {
+                            failedLoad = AlgoliaSubmissionsCursor() to false
+                            mutableState.value = mutableState.value.copy(loadingFailed = true)
+                        }
+                    } finally {
+                        if (prefetchJobs[filter] === job) {
+                            prefetchJobs.remove(filter)
+                            if (mutableState.value.filter == filter) finishContentLoad()
+                            publish()
+                        }
+                    }
+                }
+                prefetchJobs[filter] = job
+                publish()
+                job.start()
+            }
+        }
+    }
+
+    fun cancelPrefetch() {
+        prefetchGeneration++
+        val jobs = prefetchJobs.values.toList()
+        prefetchJobs.clear()
+        prefetchAttempted.clear()
+        jobs.forEach(Job::cancel)
+    }
 
     init {
         require(userName.isNotBlank()) { "A username is required" }
@@ -81,6 +141,7 @@ class SubmissionsListStore(
     }
 
     suspend fun refresh() {
+        cancelPrefetch()
         cancelLoad()
         load(AlgoliaSubmissionsCursor(), refresh = true)
     }
@@ -124,7 +185,7 @@ class SubmissionsListStore(
         failedLoad = null
         mutableState.value = mutableState.value.copy(
             loading = true,
-            showInitialLoading = previousRange == null,
+            showInitialLoading = previousRange == null && cachedItems(filter).isEmpty(),
             refreshing = refresh && previousRange != null,
             loadingFailed = false,
         )
@@ -154,7 +215,11 @@ class SubmissionsListStore(
             loaded.items.forEach { itemsById.getOrPut(it.id) { it } }
             val previousIds = if (refresh) emptyList() else previousRange?.ids.orEmpty()
             ranges[filter] = LoadedRange(
-                ids = (previousIds + loaded.items.map(Story::id)).distinct(),
+                ids = if (!refresh && previousRange == null) {
+                    initialCategoryIds(filter, loaded.items, loaded.canLoadMore)
+                } else {
+                    (previousIds + loaded.items.map(Story::id)).distinct()
+                },
                 nextCursor = loaded.nextCursor,
             )
             contentPublished = true
@@ -208,15 +273,46 @@ class SubmissionsListStore(
         null
     }
 
+    // All's contiguous newest-first prefix is safe to display while a category's own
+    // first page is fetched. Never use its cursor as a category pagination cursor.
+    private fun cachedItems(filter: SubmissionFilter): List<Story> =
+        ranges[SubmissionFilter.BOTH]?.ids.orEmpty().map(itemsById::getValue).filter {
+            when (filter) {
+                SubmissionFilter.BOTH -> true
+                SubmissionFilter.STORIES -> !it.isComment
+                SubmissionFilter.COMMENTS -> it.isComment
+            }
+        }
+
+    private fun initialCategoryIds(
+        filter: SubmissionFilter,
+        items: List<Story>,
+        canLoadMore: Boolean,
+    ): List<Int> {
+        // The response replaces its covered time range. Preserve only the older
+        // cached tail so a shorter first page cannot make visible rows disappear.
+        val oldest = items.minOfOrNull(Story::createdAtEpochSeconds)
+        val tail = if (canLoadMore && oldest != null) {
+            cachedItems(filter).filter { it.createdAtEpochSeconds <= oldest }
+        } else emptyList()
+        return (items + tail).distinctBy(Story::id)
+            .sortedByDescending(Story::createdAtEpochSeconds).map(Story::id)
+    }
+
     private fun publish() {
         val filter = mutableState.value.filter
         val range = ranges[filter]
+        val items = range?.ids?.map(itemsById::getValue) ?: cachedItems(filter)
+        val prefetching = filter in prefetchJobs
+        val loading = mutableState.value.loading || prefetching
         mutableState.value = mutableState.value.copy(
-            items = range?.ids.orEmpty().map(itemsById::getValue),
+            items = items,
             storyCount = counts[SubmissionFilter.STORIES],
             commentCount = counts[SubmissionFilter.COMMENTS],
             hasUnfilteredItems = itemsById.isNotEmpty(),
-            canLoadMore = range?.nextCursor != null,
+            canLoadMore = range?.nextCursor != null || (range == null && items.isNotEmpty()),
+            loading = loading,
+            showInitialLoading = loading && range == null && items.isEmpty(),
             loadedSuccessfully = range != null,
             emptyText = when (filter) {
                 SubmissionFilter.STORIES -> "No stories"
@@ -235,5 +331,6 @@ class SubmissionsListStore(
 
     private companion object {
         const val DEFAULT_PAGE_SIZE = 100
+        const val PREFETCH_MIN_ITEMS = 10
     }
 }

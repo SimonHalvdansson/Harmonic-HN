@@ -79,7 +79,7 @@ class SubmissionsFeatureStore internal constructor(
             null
         }
         initialRestoration = restoration
-        if (!state.value.loading) loadJob = scope.launch { store.ensureLoaded() }
+        if (!state.value.loading) loadJob = scope.launch { ensureLoaded() }
         return restoration
     }
 
@@ -90,13 +90,16 @@ class SubmissionsFeatureStore internal constructor(
                 if (state.value.filter != intent.filter) {
                     loadJob?.cancel()
                     store.selectFilter(intent.filter)
-                    loadJob = scope.launch { store.ensureLoaded() }
+                    loadJob = scope.launch { ensureLoaded() }
                 }
             }
             SubmissionsIntent.Refresh -> refresh()
             SubmissionsIntent.Retry -> {
                 if (!state.value.loading) {
-                    loadJob = scope.launch { store.retry() }
+                    loadJob = scope.launch {
+                        store.retry()
+                        store.prefetchSparseFilters(scope)
+                    }
                 }
             }
             SubmissionsIntent.LoadMore -> loadMore()
@@ -170,6 +173,7 @@ class SubmissionsFeatureStore internal constructor(
         loadJob?.cancel()
         loadJob = null
         store.cancelLoad()
+        store.cancelPrefetch()
         scope.cancel()
     }
 
@@ -178,6 +182,7 @@ class SubmissionsFeatureStore internal constructor(
         if (refresh) loadJob?.cancel()
         val job = scope.launch {
             if (refresh) store.refresh() else store.loadMore()
+            store.prefetchSparseFilters(scope)
         }
         loadJob = job
         job.invokeOnCompletion {
@@ -189,5 +194,10 @@ class SubmissionsFeatureStore internal constructor(
         mutableEffects.tryEmit(
             SubmissionsFeatureEffect.OpenStory(story.toDestination(showWebsite = showWebsite)),
         )
+    }
+
+    private suspend fun ensureLoaded() {
+        store.ensureLoaded()
+        store.prefetchSparseFilters(scope)
     }
 }

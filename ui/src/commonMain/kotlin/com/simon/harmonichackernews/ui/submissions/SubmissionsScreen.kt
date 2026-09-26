@@ -70,6 +70,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -264,6 +267,8 @@ private fun BoxScope.SubmissionsList(
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val sideMargin = 0.dp
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var scrollToTopJob by remember { mutableStateOf<Job?>(null) }
     var headerHeightPx by remember { mutableIntStateOf(0) }
     var headerOffsetPx by remember { mutableFloatStateOf(0f) }
     var headerRestored by remember { mutableStateOf(!initiallyCollapsed) }
@@ -491,7 +496,14 @@ private fun BoxScope.SubmissionsList(
             sideMargin = sideMargin,
             includeStatusBarInset = includeStatusBarInset,
             reserveBackButtonSpace = reserveBackButtonSpace,
-            onFilterSelected = { onIntent(SubmissionsIntent.SelectFilter(it)) },
+            onFilterSelected = { filter ->
+                scrollToTopJob?.cancel()
+                if (filter == selectedFilter) {
+                    scrollToTopJob = scope.launch { listState.animateScrollToItem(0) }
+                } else {
+                    onIntent(SubmissionsIntent.SelectFilter(filter))
+                }
+            },
         )
     }
 }
