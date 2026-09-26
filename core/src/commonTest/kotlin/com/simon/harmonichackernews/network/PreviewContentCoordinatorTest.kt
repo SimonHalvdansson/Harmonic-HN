@@ -9,6 +9,31 @@ import kotlin.test.assertEquals
 
 class PreviewContentCoordinatorTest {
     @Test
+    fun overflowEvictsOnlyLeastRecentlyUsedImagesAndSummaries() = runTest {
+        for (summary in listOf(false, true)) {
+            val coordinator = PreviewContentCoordinator(this, maxImageEntries = 3)
+            val loads = mutableListOf<String>()
+            suspend fun load(url: String) = coordinator.load(url, summary, false) {
+                loads += url
+                LinkSummary(description = url, imageUrl = "$url/image")
+            }
+            listOf("a", "b", "c", "a", "d", "a", "c", "d").forEach { load(it) }
+            assertEquals(listOf("a", "b", "c", "d"), loads)
+            load("b")
+            assertEquals(listOf("a", "b", "c", "d", "b"), loads)
+        }
+    }
+
+    @Test
+    fun positiveCacheOverflowDoesNotDiscardUnexpiredMisses() = runTest {
+        val coordinator = PreviewContentCoordinator(this, maxImageEntries = 1)
+        coordinator.load("miss", false, false) { LinkSummary() }
+        coordinator.load("a", false, false) { LinkSummary(imageUrl = "a/image") }
+        coordinator.load("b", false, false) { LinkSummary(imageUrl = "b/image") }
+        coordinator.load("miss", false, false) { error("Miss should survive unrelated eviction") }
+    }
+
+    @Test
     fun transientFailureDoesNotBecomeAnInMemoryMiss() = runTest {
         val coordinator = PreviewContentCoordinator(this)
         var attempts = 0

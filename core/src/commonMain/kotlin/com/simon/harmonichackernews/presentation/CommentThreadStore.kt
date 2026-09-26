@@ -10,6 +10,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.data.applySnapshot
 import com.simon.harmonichackernews.utils.CommentSorter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,15 @@ internal data class PreparedInitialCommentThread(
     val filteredComments: List<Comment>,
     val state: PortableCommentThreadState,
     val visibilityTopology: CommentThreadStore.CommentVisibilityTopology?,
+    val initialCommentIds: Set<Int>,
+    val searchIndex: Map<Int, SearchableCommentText> = emptyMap(),
+)
+
+internal data class CommentThreadPreparationInput(
+    val state: PortableCommentThreadState,
+    val initialCommentIds: Set<Int>?,
+    val hideDelayedComments: Boolean,
+    val searchIndex: Map<Int, SearchableCommentText>,
 )
 
 /** Canonical portable workflow for comment sorting, filtering, expansion and search. */
@@ -71,6 +81,9 @@ class CommentThreadStore {
     private val commentsById = mutableMapOf<Int, Comment>()
     private val searchableTextById = mutableMapOf<Int, SearchableCommentText>()
     private val portableItemsById = mutableMapOf<Int, PortableCommentItem>()
+    // Only populated on a detached preparation store. Compare content on the worker so the
+    // owner can publish unchanged rows by identity without repeating large text comparisons.
+    private var snapshotReuseCandidates: Map<Int, PortableCommentItem> = emptyMap()
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
@@ -146,6 +159,7 @@ class CommentThreadStore {
             filteredComments = prepared.filteredComments.toList(),
             state = prepared.state.value,
             visibilityTopology = prepared.visibilityTopology,
+            initialCommentIds = checkNotNull(prepared.initialCommentIds),
         )
     }
 
@@ -161,12 +175,13 @@ class CommentThreadStore {
         previousVisibilityTopology = null
         allComments.clear()
         allComments.addAll(prepared.allComments)
-        initialCommentIds = prepared.allComments.drop(1).mapTo(mutableSetOf()) { it.id }
+        initialCommentIds = prepared.initialCommentIds
         filteredComments.clear()
         filteredComments.addAll(prepared.filteredComments)
         commentsById.clear()
         allComments.forEach { comment -> commentsById[comment.id] = comment }
         searchableTextById.clear()
+        searchableTextById.putAll(prepared.searchIndex)
         portableItemsById.clear()
         prepared.state.allComments.forEach { item -> portableItemsById[item.id] = item }
         currentStory = story
@@ -179,6 +194,60 @@ class CommentThreadStore {
             story = story?.toSnapshot(),
             revision = mutableState.value.revision + 1,
         )
+    }
+
+    /** Capture on the store's owner; a worker receives no live mutable comments or maps. */
+    internal fun capturePreparationInput() = CommentThreadPreparationInput(
+        state.value, initialCommentIds, hideDelayedComments, searchableTextById.toMap(),
+    )
+
+    companion object {
+        internal fun prepareUpdate(
+            input: CommentThreadPreparationInput,
+            story: StorySnapshot,
+            parsedComments: List<Comment>,
+            collapseTopLevel: Boolean,
+            preserveExisting: Boolean,
+        ): PreparedInitialCommentThread {
+            val detachedStory = Story().applySnapshot(story)
+            val prepared = CommentThreadStore()
+            prepared.currentStory = detachedStory
+            prepared.initialCommentIds = input.initialCommentIds
+            prepared.hideDelayedComments = input.hideDelayedComments
+            prepared.mutableState.value = input.state
+            prepared.snapshotReuseCandidates = input.state.allComments.associateBy { it.id }
+            prepared.searchableTextById.putAll(input.searchIndex)
+            val retained = if (preserveExisting) input.state.allComments
+                else input.state.allComments.take(1)
+            retained.forEach { item ->
+                val comment = item.detachedComment()
+                prepared.allComments.add(comment)
+                prepared.commentsById[comment.id] = comment
+            }
+            // Incoming objects can also be retained by cache preparation. Sort and collapse only
+            // detached copies so retrying after a UI interaction cannot change that input.
+            val incoming = parsedComments.map { comment ->
+                PortableCommentItem(comment.toSnapshot(), comment.presentationSnapshot()).detachedComment()
+            }
+            prepared.replaceParsedComments(detachedStory, incoming, input.state.sorting, collapseTopLevel)
+            return PreparedInitialCommentThread(
+                prepared.allComments.toList(), prepared.filteredComments.toList(),
+                prepared.state.value, prepared.visibilityTopology,
+                checkNotNull(prepared.initialCommentIds), prepared.searchableTextById.toMap(),
+            )
+        }
+
+        private fun PortableCommentItem.detachedComment() = Comment().apply {
+            applySnapshot(comment)
+            restorePreparedText(comment.text.orEmpty(), comment.expandedAnchorText.orEmpty())
+            // Keep null text/expanded-text semantics for headers and deleted placeholders.
+            text = comment.text
+            expanded = presentation.expanded
+            depth = presentation.depth
+            children = presentation.childCount
+            totalReplies = presentation.totalReplies
+            sortOrder = presentation.sortOrder
+        }
     }
 
     fun appendLoadedComments(
@@ -212,8 +281,33 @@ class CommentThreadStore {
         val comment = commentsById[commentId] ?: return false
         comment.expanded = !comment.expanded
         portableItemsById.remove(commentId)
-        publish(rebuildVisibility = true)
+        if (commentsById.size != allComments.size) {
+            // Retain legacy mapping semantics for malformed threads containing duplicate IDs.
+            publish(rebuildVisibility = true)
+        } else {
+            val previous = state.value
+            val item = portableItem(comment)
+            val all = replaceExpandedItem(previous.allComments, item)
+            val filtered = replaceExpandedItem(previous.filteredComments, item)
+            mutableState.value = previous.copy(
+                story = currentStory?.toSnapshot(),
+                allComments = all,
+                filteredComments = filtered,
+                searchResults = replaceExpandedItem(previous.searchResults, item),
+                visibleComments = buildVisibleComments(filteredComments, filtered, previous.visibleComments),
+                revision = previous.revision + 1,
+            )
+        }
         return comment.expanded
+    }
+
+    private fun replaceExpandedItem(
+        previous: List<PortableCommentItem>,
+        item: PortableCommentItem,
+    ): List<PortableCommentItem> {
+        val index = previous.indexOfFirst { it.id == item.id }
+        if (index < 0) return previous
+        return previous.toMutableList().apply { this[index] = item }
     }
 
     fun expandParents(commentId: Int): Boolean {
@@ -389,7 +483,7 @@ class CommentThreadStore {
         val filteredSnapshots = snapshotList(filteredComments, previous.filteredComments)
         val searchSnapshots = snapshotIds(resultIds, previous.searchResults)
         val visibleSnapshots = if (rebuildVisibility) {
-            buildVisibleComments(filteredComments)
+            buildVisibleComments(filteredComments, filteredSnapshots, previous.visibleComments)
         } else {
             refreshVisibleSnapshots(previous.visibleComments)
         }
@@ -472,10 +566,11 @@ class CommentThreadStore {
 
     private fun portableItem(comment: Comment): PortableCommentItem =
         portableItemsById.getOrPut(comment.id) {
-            comment.toPortableItem().copy(
+            val item = comment.toPortableItem().copy(
                 isNew = comment !== allComments.firstOrNull() &&
                     initialCommentIds?.let { comment.id !in it } == true,
             )
+            snapshotReuseCandidates[comment.id]?.takeIf { it == item } ?: item
         }
 
     private fun Comment.toPortableItem(): PortableCommentItem = PortableCommentItem(
@@ -483,7 +578,11 @@ class CommentThreadStore {
         presentation = presentationSnapshot(),
     )
 
-    private fun buildVisibleComments(source: List<Comment>): List<PortableVisibleComment> {
+    private fun buildVisibleComments(
+        source: List<Comment>,
+        snapshots: List<PortableCommentItem>,
+        previous: List<PortableVisibleComment>,
+    ): List<PortableVisibleComment> {
         if (source.size <= 1) {
             visibilityTopology = null
             previousVisibilityTopology = null
@@ -503,30 +602,37 @@ class CommentThreadStore {
 
         // The flattened thread is in parent-before-child order. Cache each parent's visibility so
         // descendants do not repeatedly walk the same ancestor chain.
-        val visibilityById = HashMap<Int, Boolean>(source.size)
         val visibleByIndex = BooleanArray(source.size)
         var visibleCount = 0
         for (index in 1..<source.size) {
             val comment = source[index]
-            val parent = byId[comment.parent]
+            val parent = topology.parents[index]
             val visible = when {
                 comment.parent == -1 || parent == null -> true
                 !parent.expanded -> false
-                else -> visibilityById[parent.id] ?: isVisible(parent, byId)
+                else -> {
+                    val parentIndex = topology.parentIndexes[index]
+                    if (parentIndex in 1..<index) visibleByIndex[parentIndex]
+                    else isVisible(parent, byId)
+                }
             }
             visibleByIndex[index] = visible
-            visibilityById[comment.id] = visible
             if (visible) visibleCount++
         }
 
         val visibleComments = ArrayList<PortableVisibleComment>(visibleCount)
+        var previousIndex = 0
         for (index in 1..<source.size) {
             if (!visibleByIndex[index]) continue
-            visibleComments += PortableVisibleComment(
-                sourceIndex = index,
-                comment = portableItem(source[index]),
-                subtreeReplyCount = topology.subtreeEndExclusive[index] - index - 1,
-            )
+            while (previousIndex < previous.size && previous[previousIndex].sourceIndex < index) {
+                previousIndex++
+            }
+            val old = previous.getOrNull(previousIndex)
+            val item = snapshots[index]
+            val replies = topology.subtreeEndExclusive[index] - index - 1
+            visibleComments += if (old?.sourceIndex == index && old.comment === item &&
+                old.subtreeReplyCount == replies
+            ) old else PortableVisibleComment(index, item, replies)
         }
         return visibleComments
     }
@@ -535,15 +641,25 @@ class CommentThreadStore {
         private val comments = source.toList()
         private val ids = IntArray(source.size)
         private val depths = IntArray(source.size)
+        private val parentIds = IntArray(source.size)
         val byId = HashMap<Int, Comment>(source.size)
+        val parents: List<Comment?>
         val subtreeEndExclusive = IntArray(source.size) { source.size }
+        val parentIndexes = IntArray(source.size) { -1 }
 
         init {
             for (index in source.indices) {
                 val comment = source[index]
                 ids[index] = comment.id
                 depths[index] = comment.depth
+                parentIds[index] = comment.parent
                 byId[comment.id] = comment
+            }
+            parents = source.map { byId[it.parent] }
+            val precedingIndexes = HashMap<Int, Int>(source.size)
+            for (index in 1..<source.size) {
+                parentIndexes[index] = precedingIndexes[source[index].parent] ?: -1
+                precedingIndexes[source[index].id] = index
             }
             val openAncestors = IntArray(source.size)
             var openCount = 0
@@ -561,7 +677,7 @@ class CommentThreadStore {
             for (index in source.indices) {
                 val comment = source[index]
                 if (comment !== comments[index] || comment.id != ids[index] ||
-                    comment.depth != depths[index]
+                    comment.depth != depths[index] || comment.parent != parentIds[index]
                 ) return false
             }
             return true

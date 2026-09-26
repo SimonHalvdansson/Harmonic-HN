@@ -808,7 +808,7 @@ class StoriesFeatureRuntime(
     fun previewDeck(openedStoryId: Int, tintBaseColorArgb: Int): StoryPreviewDeck? {
         val stories = previewStories(openedStoryId)
         if (stories.isEmpty()) return null
-        stories.forEach { storyResources?.requestForDialog(it) }
+        storyResources?.openDialog(stories, openedStoryId)
         return StoryPreviewDeck(
             stories = stories.map { story ->
                 StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
@@ -820,6 +820,14 @@ class StoriesFeatureRuntime(
             openedStoryId = openedStoryId,
         )
     }
+
+    fun requestPreviewWindow(storyId: Int) = storyResources?.requestDialogWindow(storyId)
+
+    fun closePreview() = storyResources?.closeDialog()
+
+    fun reconcileStoryResources() = storyResources?.retainStories(
+        mainStore.state.value.items, searchStore.state.value.items,
+    )
 
     val previewPrefetchInitialLoadCount: Int
         get() = if (activeStore.state.value.paginationEnabled) {

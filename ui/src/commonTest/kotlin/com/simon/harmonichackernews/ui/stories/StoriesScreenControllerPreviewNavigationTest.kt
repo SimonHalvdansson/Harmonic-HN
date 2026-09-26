@@ -23,6 +23,28 @@ import kotlin.test.assertTrue
 
 class StoriesScreenControllerPreviewNavigationTest {
     @Test
+    fun settledPreviewPageRequestsItsOwnResourceWindow() {
+        val listener = TestListener(false)
+        val controller = controller(false, listener)
+        controller.onStoryPreviewPageSettled(1)
+        assertEquals(listOf(2), listener.previewPages)
+        controller.onStoryPreviewPageSettled(9)
+        assertEquals(listOf(2), listener.previewPages)
+    }
+
+    @Test
+    fun metadataUpdatesRetainGeometryButPublishTheFreshRow() {
+        val controller = controller(false)
+        val original = storySnapshot(1)
+        controller.updateContent(storiesState(mainStories = listOf(original)))
+        controller.updateStoryBounds(1, Rect(1f, 2f, 30f, 40f))
+        val updated = original.copy(story = original.story.copy(title = "Updated", score = 100))
+        controller.updateContent(storiesState(mainStories = listOf(updated)))
+        assertEquals(updated, controller.mainStories.single())
+        assertEquals(Rect(1f, 2f, 30f, 40f), controller.sourceBoundsForStory(1))
+    }
+
+    @Test
     fun frozenResumeHeaderStillAcceptsFreshFeedContent() {
         val controller = controller(destinationRemainsBesideStories = false)
         val stories = listOf(storySnapshot(3))
@@ -448,6 +470,8 @@ class StoriesScreenControllerPreviewNavigationTest {
         private val destinationRemainsBesideStories: Boolean,
     ) : StoriesScreenController.Listener {
         val refreshLoadingModes = mutableListOf<Boolean>()
+        val previewPages = mutableListOf<Int>()
+        override fun onStoryPreviewPageChanged(storyId: Int) { previewPages += storyId }
         override fun onTypeSelected(index: Int) = Unit
         override fun onOpenSearch() = Unit
         override fun onCloseSearch() = Unit

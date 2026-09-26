@@ -116,6 +116,8 @@ sealed interface StoriesIntent {
     data class VisibleRange(val lastVisibleIndex: Int, val firstVisibleIndex: Int = 0) : StoriesIntent
     data class OpenPreviewStory(val storyId: Int, val showWebsite: Boolean) : StoriesIntent
     data class PreviewAction(val storyId: Int, val action: StoryPreviewActionKind) : StoriesIntent
+    data class PreviewPage(val storyId: Int) : StoriesIntent
+    data object ClosePreview : StoriesIntent
 }
 
 /**
@@ -276,6 +278,8 @@ class StoriesFeatureStore internal constructor(
             is StoriesIntent.PreviewAction -> withActiveStory(intent.storyId) { story ->
                 runtime.handlePreviewAction(story, intent.action)
             }
+            is StoriesIntent.PreviewPage -> runtime.requestPreviewWindow(intent.storyId)
+            StoriesIntent.ClosePreview -> runtime.closePreview()
         }
         if (intent is StoriesIntent.OpenSearch) {
             runtime.refreshBookmarksIfNeeded(hostStarted)
@@ -304,6 +308,7 @@ class StoriesFeatureStore internal constructor(
     }
 
     private fun publish() {
+        runtime.reconcileStoryResources()
         mutableState.value = snapshot()
     }
 

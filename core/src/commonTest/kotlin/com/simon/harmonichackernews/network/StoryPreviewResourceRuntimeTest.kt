@@ -16,6 +16,36 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewResourceRuntimeTest {
     @Test
+    fun retentionCancelsObsoleteLoadsWithoutReintroducingTheirState() = runTest {
+        val release = CompletableDeferred<PreviewContent>()
+        var running = 0
+        var peak = 0
+        val started = mutableListOf<Int>()
+        val runtime = StoryPreviewResourceRuntime(backgroundScope, object : StoryPreviewResourceService {
+            override suspend fun readCached(request: StoryPreviewResourceRequest) =
+                CachedStoryPreviewResource(false, null, null)
+            override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent {
+                started += request.storyId
+                running++
+                peak = maxOf(peak, running)
+                try { return release.await() } finally { running-- }
+            }
+        })
+        (1..20).forEach { runtime.request(request(storyId = it)) }
+        runCurrent()
+        assertEquals(20, peak)
+        runtime.retainStories(setOf(20))
+        runCurrent()
+        assertEquals(setOf(20), runtime.states.value.keys)
+        assertEquals(1, running)
+        release.complete(PreviewContent("image", LinkSummary(description = "ready")))
+        runCurrent()
+        assertFalse(runtime.stateFor(20)!!.loading)
+        assertEquals(setOf(20), runtime.states.value.keys)
+        runtime.dispose()
+    }
+
+    @Test
     fun disposeCancelsAllPendingRequestsWithImmediateCompletionCallbacks() = runTest {
         val finish = CompletableDeferred<PreviewContent>()
         val cancelled = mutableListOf<Int>()

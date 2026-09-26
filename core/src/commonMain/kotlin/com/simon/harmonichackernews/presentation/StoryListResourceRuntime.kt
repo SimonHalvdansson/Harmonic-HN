@@ -41,6 +41,13 @@ class StoryListResourceRuntime(
     )
 
     private var resourceChangedListener: (() -> Unit)? = null
+    private var mainItems: List<StoryListItemSnapshot> = emptyList()
+    private var searchItems: List<StoryListItemSnapshot> = emptyList()
+    private var dialogStories: List<Story> = emptyList()
+    private var dialogWindowIds: Set<Int> = emptySet()
+    private val listRequestedIds = mutableSetOf<Int>()
+    private var retainedListsInitialized = false
+    private var retainedListIds: Set<Int> = emptySet()
 
     var settings: StoryDisplaySettings = settings
         private set
@@ -68,12 +75,64 @@ class StoryListResourceRuntime(
     fun request(story: Story?) {
         val previewEnabled = settings.previewImageMode != StoryPreviewMode.OFF
         if (!previewEnabled && !settings.showPreviewText) return
+        // A queued prefetch can outlive its feed. Do not repopulate state pruned on replacement.
+        if (retainedListsInitialized && story?.id !in retainedListIds) return
+        story?.let { listRequestedIds.add(it.id) }
         requestCompletePreview(story)
     }
 
     /** Dialog previews always include every enrichment, independently of list display settings. */
     fun requestForDialog(story: Story?) {
         requestCompletePreview(story)
+    }
+
+    fun openDialog(stories: List<Story>, selectedStoryId: Int) {
+        dialogStories = stories.toList()
+        requestDialogWindow(selectedStoryId)
+    }
+
+    fun requestDialogWindow(selectedStoryId: Int) {
+        val selected = dialogStories.indexOfFirst { it.id == selectedStoryId }
+        if (selected < 0) return
+        val window = listOfNotNull(dialogStories[selected], dialogStories.getOrNull(selected + 1),
+            dialogStories.getOrNull(selected - 1))
+        val ids = window.mapTo(mutableSetOf()) { it.id }
+        cancelDialogLoadsExcept(ids)
+        dialogWindowIds = ids
+        window.forEach(::requestForDialog)
+    }
+
+    fun closeDialog() {
+        cancelDialogLoadsExcept(emptySet())
+        dialogWindowIds = emptySet()
+        dialogStories = emptyList()
+        pruneResources()
+    }
+
+    private fun cancelDialogLoadsExcept(ids: Set<Int>) {
+        dialogWindowIds.forEach { id ->
+            if (id !in ids && id !in listRequestedIds) resourceRuntime.cancelLoad(id)
+        }
+    }
+
+    fun retainStories(main: List<StoryListItemSnapshot>, search: List<StoryListItemSnapshot>) {
+        val changed = !retainedListsInitialized || !sameStoryIds(mainItems, main) || !sameStoryIds(searchItems, search)
+        retainedListsInitialized = true
+        mainItems = main
+        searchItems = search
+        if (changed) {
+            pruneResources()
+        }
+    }
+
+    private fun pruneResources() {
+        val listIds = buildSet {
+            mainItems.forEach { add(it.id) }
+            searchItems.forEach { add(it.id) }
+        }
+        retainedListIds = listIds
+        listRequestedIds.retainAll(listIds)
+        resourceRuntime.retainStories(listIds + dialogStories.map { it.id })
     }
 
     private fun requestCompletePreview(story: Story?) {
@@ -233,6 +292,13 @@ class StoryListResourceRuntime(
 
     fun dispose() {
         resetPrefetches()
+        mainItems = emptyList()
+        searchItems = emptyList()
+        dialogStories = emptyList()
+        dialogWindowIds = emptySet()
+        listRequestedIds.clear()
+        retainedListIds = emptySet()
+        retainedListsInitialized = false
         resourceChangedListener = null
         resourceRuntime.dispose()
     }

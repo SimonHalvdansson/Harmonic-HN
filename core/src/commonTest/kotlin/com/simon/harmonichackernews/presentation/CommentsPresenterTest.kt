@@ -36,6 +36,8 @@ import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -60,6 +62,42 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
+    @Test
+    fun refreshPreparationRebasesWhenExpansionAndSortChangeOnTheOwner() = runTest {
+        val pending = ArrayDeque<Runnable>()
+        val worker = object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) { pending.addLast(block) }
+        }
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val repository = CommentThreadRepository(FakeAlgoliaRepository(sortingResponse),
+            UnusedHackerNewsRepository, AlgoliaCommentsParser(parsingDispatcher = dispatcher),
+            requestDispatcher = dispatcher)
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(), repository,
+            UnusedPollOptions, savedItemActions(), UnusedVotingService,
+            threadPreparationDispatcher = worker)
+        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
+        presenter.thread.reset(story)
+        presenter.thread.appendLoadedComments(story, listOf(Comment().apply {
+            id = 1; by = "author"; text = "Before"; expanded = true
+        }), "Default", false)
+        presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false, null, false))
+        runCurrent()
+        assertEquals(1, pending.size)
+        presenter.dispatch(CommentsAction.ToggleExpanded(1))
+        presenter.dispatch(CommentsAction.SetSorting("Newest first"))
+        pending.removeFirst().run()
+        runCurrent()
+        assertEquals("Before", presenter.thread.findComment(1)?.text)
+        assertEquals(1, pending.size, "Stale preparation should rebase, not overwrite an interaction")
+        pending.removeFirst().run()
+        runCurrent()
+        assertTrue(pending.isEmpty())
+        assertFalse(presenter.thread.findComment(1)!!.expanded)
+        assertEquals("Newest first", presenter.thread.state.value.sorting)
+        assertEquals(listOf(0, 2, 1), presenter.thread.state.value.allComments.map { it.id })
+        assertEquals(listOf(2), presenter.thread.state.value.allComments.filter { it.isNew }.map { it.id })
+    }
+
     @Test
     fun httpCompletesBeforeCacheReadAndPublicationWithoutPublishingFreshCommentsEarly() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)

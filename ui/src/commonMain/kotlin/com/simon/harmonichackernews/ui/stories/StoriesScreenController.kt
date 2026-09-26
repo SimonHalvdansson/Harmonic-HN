@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.presentation.StoriesInteractionStore
+import com.simon.harmonichackernews.presentation.sameStoryIds
 import com.simon.harmonichackernews.presentation.StoryPreviewDeck
 import com.simon.harmonichackernews.presentation.StorySearchOption
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
@@ -190,9 +191,11 @@ class StoriesScreenController private constructor(
         val previewActionStateChanged =
             previousContent.previewVoteLoadingIds != state.previewVoteLoadingIds ||
                 previousContent.previewFavoriteLoadingIds != state.previewFavoriteLoadingIds
+        val structureChanged = !sameStoryIds(mainStoriesState, state.mainList.items) ||
+            !sameStoryIds(searchStoriesState, state.searchList.items)
         mainStoriesState = state.mainList.items
         searchStoriesState = state.searchList.items
-        val currentStoryIds = if (listsChanged) {
+        val currentStoryIds = if (structureChanged) {
             buildSet<Int>(state.mainList.items.size + state.searchList.items.size) {
                 state.mainList.items.forEach { add(it.id) }
                 state.searchList.items.forEach { add(it.id) }
@@ -221,7 +224,7 @@ class StoriesScreenController private constructor(
         val hasRetainedStoryUiState = storyBounds.isNotEmpty() ||
             storyPreviewSourceGeometries.isNotEmpty() || storyRevisions.isNotEmpty() ||
             storyPagingAlphaStates.isNotEmpty()
-        if (listsChanged && hasRetainedStoryUiState) {
+        if (structureChanged && hasRetainedStoryUiState) {
             checkNotNull(currentStoryIds)
             storyRevisions.keys.retainAll(currentStoryIds)
             storyPagingAlphaStates.keys.retainAll(currentStoryIds)
@@ -245,7 +248,7 @@ class StoriesScreenController private constructor(
         next: Map<Int, StoryPreviewResourceState>,
         currentStoryIds: Set<Int>?,
     ) {
-        next.forEach { (storyId, resource) ->
+        if (next !== previewResourcesSnapshot) next.forEach { (storyId, resource) ->
             val terminalImageMiss = resource.imageUrl.isNullOrBlank() &&
                 !resource.loading &&
                 (resource.imageUrlResolved || resource.summaryResolved ||
@@ -254,7 +257,7 @@ class StoriesScreenController private constructor(
                 previewImageKnownAbsentIds += storyId
             }
         }
-        previewResourceStates.forEach { (storyId, state) ->
+        if (next !== previewResourcesSnapshot) previewResourceStates.forEach { (storyId, state) ->
             val resource = next[storyId]
             if (state.value != resource) state.value = resource
         }
@@ -570,6 +573,9 @@ class StoriesScreenController private constructor(
     fun onStoryPreviewPageSettled(page: Int) {
         interactionStore.settleStoryPreviewPage(page)
         syncInteractionState()
+        interactionStore.storyPreviewTarget(page)?.let {
+            listener.onStoryPreviewPageChanged(it.story.id)
+        }
     }
 
     fun onStoryPreviewNavigate(page: Int, showWebsite: Boolean) {
@@ -699,6 +705,7 @@ class StoriesScreenController private constructor(
         )
         fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int)
         fun onStoryPreviewStopScroll()
+        fun onStoryPreviewPageChanged(storyId: Int) = Unit
         fun onStoryPreviewVisibilityChanged(showing: Boolean)
         fun onStoryPreviewNavigate(
             story: StoryListItemSnapshot,

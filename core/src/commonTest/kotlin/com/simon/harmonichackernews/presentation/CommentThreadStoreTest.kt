@@ -11,10 +11,105 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import com.simon.harmonichackernews.data.toSnapshot
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentThreadStoreTest {
+    @Test
+    fun detachedRefreshReusesUnchangedContentWhileReplacingEditedComments() {
+        val story = story()
+        val store = CommentThreadStore().also {
+            it.reset(story)
+            it.appendLoadedComments(story, comments(), "Default", false)
+        }
+        val original = store.state.value
+        val unchanged = CommentThreadStore.prepareUpdate(store.capturePreparationInput(),
+            story.toSnapshot(), comments(), false, true)
+        assertSame(original.allComments, unchanged.state.allComments)
+        val edited = comments().also { it[1].text = "Edited" }
+        val changed = CommentThreadStore.prepareUpdate(store.capturePreparationInput(),
+            story.toSnapshot(), edited, false, true)
+        assertSame(original.allComments[1], changed.state.allComments[1])
+        assertSame(original.allComments[3], changed.state.allComments[3])
+        assertEquals("Edited", changed.state.allComments[2].text)
+        store.commitPreparedInitialComments(story, changed)
+        assertEquals("Edited", store.findComment(2)?.text)
+    }
+
+    @Test
+    fun expansionUpdatesMatchAFullRebuildAcrossSortingAndFilters() {
+        for (sorting in listOf("Default", "Newest first", "Reply count")) {
+            for (filtered in listOf(false, true)) {
+                val story = story().apply { by = "op" }
+                fun makeStore() = CommentThreadStore().also { store ->
+                    store.reset(story)
+                    store.appendLoadedComments(story, List(120) { index ->
+                        val offset = index % 6
+                        comment(index + 1, if (offset == 0) -1 else index,
+                            offset, if (index % 13 == 0) "[delayed]" else "Text $index").apply {
+                            expanded = true; by = if (index % 17 == 0) "op" else "reader"; time = index
+                        }
+                    }, sorting, false)
+                    if (filtered) { store.setHideDelayedComments(true); store.enableOpThreadFilter() }
+                }
+                val optimized = makeStore()
+                val full = makeStore()
+                val random = kotlin.random.Random(91)
+                repeat(100) {
+                    val id = random.nextInt(1, 121)
+                    optimized.toggleExpanded(id)
+                    full.findComment(id)!!.let { it.expanded = !it.expanded }
+                    full.notifyCommentsChanged()
+                    assertEquals(full.state.value.copy(revision = 0), optimized.state.value.copy(revision = 0),
+                        "sorting=$sorting filtered=$filtered id=$id")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun collapseReusesUnchangedVisibleRowsAndPreservesNestedExpansion() {
+        val store = CommentThreadStore().also { it.reset(story()) }
+        val source = comments().map { it.apply { expanded = true } } +
+            comment(4, -1, 0, "unaffected").apply { expanded = true }
+        store.appendLoadedComments(story(), source, "Default", false)
+        val before = store.state.value
+        store.toggleExpanded(2)
+        val collapsed = store.state.value
+        assertEquals(listOf(1, 2, 4), collapsed.visibleComments.map { it.comment.id })
+        assertSame(before.visibleComments[0], collapsed.visibleComments[0])
+        assertSame(before.visibleComments.last(), collapsed.visibleComments.last())
+        store.toggleExpanded(1)
+        store.toggleExpanded(1)
+        assertEquals(listOf(1, 2, 4), store.state.value.visibleComments.map { it.comment.id })
+        store.toggleExpanded(2)
+        assertEquals(listOf(1, 2, 3, 4), store.state.value.visibleComments.map { it.comment.id })
+    }
+
+    @Test
+    fun detachedRefreshMatchesLiveMergeWithoutMutatingEitherInput() {
+        val sourceStory = story().apply { by = "op" }
+        fun store() = CommentThreadStore().also {
+            it.reset(sourceStory)
+            it.appendLoadedComments(sourceStory, comments().map { c -> c.apply { expanded = true; by = "op" } }, "Default", false)
+            it.toggleExpanded(2)
+            it.setSorting("Newest first")
+            it.enableOpThreadFilter()
+        }
+        val detached = store()
+        val direct = store()
+        val input = detached.capturePreparationInput()
+        val arrivals = comments() + comment(4, -1, 0, "arrival")
+        val prepared = CommentThreadStore.prepareUpdate(input, sourceStory.toSnapshot(), arrivals, false, true)
+        assertSame(input.state, detached.state.value)
+        assertFalse(arrivals[1].expanded)
+        detached.commitPreparedInitialComments(sourceStory, prepared)
+        direct.replaceParsedComments(sourceStory, comments() + comment(4, -1, 0, "arrival"), "Newest first", false)
+        assertEquals(direct.state.value.copy(revision = 0), detached.state.value.copy(revision = 0))
+        assertEquals(setOf(4), detached.state.value.allComments.filter { it.isNew }.map { it.id }.toSet())
+    }
+
     @Test
     fun refreshMarksOnlyArrivalsAndRetainsMarkersThroughSortingCollapseAndRepeatedRefresh() {
         val store = CommentThreadStore()

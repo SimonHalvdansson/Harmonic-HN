@@ -101,8 +101,13 @@ class StoriesFeatureListener(
     }
 
     override fun onStoryPreviewStopScroll() = Unit
-    override fun onStoryPreviewVisibilityChanged(showing: Boolean) =
+    override fun onStoryPreviewVisibilityChanged(showing: Boolean) {
+        if (!showing) store.accept(StoriesIntent.ClosePreview)
         platform.onStoryPreviewVisibilityChanged(showing)
+    }
+
+    override fun onStoryPreviewPageChanged(storyId: Int) =
+        store.accept(StoriesIntent.PreviewPage(storyId))
 
     override fun onStoryPreviewNavigate(
         story: StoryListItemSnapshot,

@@ -79,13 +79,19 @@ class StoriesInteractionStore(
         lastSearch: String,
     ) {
         val enteringSearch = !state.searching && searching
-        this.mainStories = mainStories.toList()
-        this.searchStories = searchStories.toList()
-        val currentStoryIds = buildSet(mainStories.size + searchStories.size) {
-            mainStories.forEach { add(it.id) }
-            searchStories.forEach { add(it.id) }
+        val structureChanged = !sameStoryIds(this.mainStories, mainStories) ||
+            !sameStoryIds(this.searchStories, searchStories)
+        // Feature snapshots are immutable. Retain them; row metadata updates do not change
+        // membership and must not rebuild the geometry index or copy both feeds.
+        this.mainStories = mainStories
+        this.searchStories = searchStories
+        if (structureChanged && storyItemExtents.isNotEmpty()) {
+            val currentStoryIds = buildSet(mainStories.size + searchStories.size) {
+                mainStories.forEach { add(it.id) }
+                searchStories.forEach { add(it.id) }
+            }
+            storyItemExtents.keys.retainAll(currentStoryIds)
         }
-        storyItemExtents.keys.retainAll(currentStoryIds)
         state = state.copy(
             searching = searching,
             searchDraft = when {
@@ -398,4 +404,11 @@ class StoriesInteractionStore(
         }
         return if (count == 0) defaultStoryExtent.value else total / count
     }
+}
+
+/** Membership/order comparison that ignores metadata changes in immutable feed snapshots. */
+fun sameStoryIds(previous: List<StoryListItemSnapshot>, next: List<StoryListItemSnapshot>): Boolean {
+    if (previous === next) return true
+    if (previous.size != next.size) return false
+    return previous.indices.all { previous[it].id == next[it].id }
 }

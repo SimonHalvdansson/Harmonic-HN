@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 data class StoryPreviewResourceRequest(
     val storyId: Int,
@@ -145,6 +146,7 @@ class StoryPreviewResourceRuntime(
         val job = scope.launch {
             try {
                 val cached = service.readCached(effectiveRequest)
+                coroutineContext.ensureActive()
                 var next = (stateFor(effectiveRequest.storyId)
                     ?.takeIf { it.pageUrl == effectiveRequest.pageUrl }
                     ?: StoryPreviewResourceState(effectiveRequest.storyId, effectiveRequest.pageUrl))
@@ -153,6 +155,7 @@ class StoryPreviewResourceRuntime(
 
                 if (!next.satisfies(effectiveRequest)) {
                     val loaded = service.load(effectiveRequest)
+                    coroutineContext.ensureActive()
                     if (loaded.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
                         update(next.copy(loading = false, contentLoadFailed = true))
                         return@launch
@@ -170,6 +173,7 @@ class StoryPreviewResourceRuntime(
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Throwable) {
+                coroutineContext.ensureActive()
                 val failed = stateFor(effectiveRequest.storyId)
                     ?.takeIf { it.pageUrl == effectiveRequest.pageUrl }
                     ?: StoryPreviewResourceState(effectiveRequest.storyId, effectiveRequest.pageUrl)
@@ -254,6 +258,24 @@ class StoryPreviewResourceRuntime(
         jobs.remove(storyId)?.cancel()
         activeRequests.remove(storyId)
         if (storyId in mutableStates.value) mutableStates.value -= storyId
+    }
+
+    fun cancelLoad(storyId: Int) {
+        val job = jobs.remove(storyId) ?: return
+        activeRequests.remove(storyId)
+        job.cancel()
+        stateFor(storyId)?.let { update(it.copy(loading = false)) }
+    }
+
+    /** Prune one obsolete feed generation with a single publication, including queued requests. */
+    fun retainStories(storyIds: Set<Int>) {
+        val obsolete = (mutableStates.value.keys + jobs.keys).filter { it !in storyIds }
+        if (obsolete.isEmpty()) return
+        obsolete.forEach { id ->
+            activeRequests.remove(id)
+            jobs.remove(id)?.cancel()
+        }
+        mutableStates.value = mutableStates.value.filterKeys { it in storyIds }
     }
 
     fun dispose() {

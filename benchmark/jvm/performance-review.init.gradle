@@ -1,0 +1,18 @@
+// Export the complete desktop runtime for PerformanceReviewBenchmark without app dependencies.
+gradle.projectsEvaluated {
+    def ui = gradle.rootProject.project(':ui')
+    def core = gradle.rootProject.project(':core')
+    ui.tasks.register('performanceReviewClasspath') {
+        dependsOn ui.tasks.named('desktopJar')
+        doLast {
+            def main = ui.kotlin.targets.getByName('desktop').compilations.getByName('main')
+            def paths = [ui.tasks.named('desktopJar').get().archiveFile.get().asFile.absolutePath]
+            paths.addAll(main.runtimeDependencyFiles.files.collect { it.absolutePath })
+            ui.layout.buildDirectory.file('performance-review.classpath').get().asFile.text =
+                    paths.join(File.pathSeparator)
+            ui.layout.buildDirectory.file('json-access-benchmark-compiler.classpath').get().asFile.text =
+                    core.configurations.named('kotlinCompilerClasspath').get().files
+                            .collect { it.absolutePath }.join(File.pathSeparator)
+        }
+    }
+}

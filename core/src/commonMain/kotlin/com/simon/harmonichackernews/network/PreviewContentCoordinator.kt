@@ -33,8 +33,8 @@ class PreviewContentCoordinator(
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     private val mutex = Mutex()
-    private val images = mutableMapOf<String, String>()
-    private val summaries = mutableMapOf<String, LinkSummary>()
+    private val images = linkedMapOf<String, String>()
+    private val summaries = linkedMapOf<String, LinkSummary>()
     private val misses = linkedMapOf<String, Long>()
     private val pending = mutableMapOf<String, PendingRequest>()
     private val latestRequestGenerations = linkedMapOf<String, Long>()
@@ -53,12 +53,17 @@ class PreviewContentCoordinator(
                 misses.remove(pageUrl)
             } else {
                 summaries[pageUrl]?.let { summary ->
+                    summaries.remove(pageUrl)
+                    summaries[pageUrl] = summary
                     if (requireSummary) return@withLock Existing.Content(
                         PreviewContent(summary.imageUrl.ifEmpty { images[pageUrl] }, summary, generation = latestRequestGenerations[pageUrl] ?: 0)
                     )
                 }
                 if (!requireSummary) {
-                    images[pageUrl]?.let { return@withLock Existing.Content(PreviewContent(it, null, generation = latestRequestGenerations[pageUrl] ?: 0)) }
+                    images.remove(pageUrl)?.let {
+                        images[pageUrl] = it
+                        return@withLock Existing.Content(PreviewContent(it, null, generation = latestRequestGenerations[pageUrl] ?: 0))
+                    }
                     misses[pageUrl]?.let { cachedAt ->
                         val now = nowMillis()
                         if (now >= cachedAt && now - cachedAt <= missTtlMillis) {
@@ -104,8 +109,7 @@ class PreviewContentCoordinator(
             mutex.withLock {
                 if (latestRequestGenerations[pageUrl] != pendingRequest.generation) return@withLock
                 content.summary?.let {
-                    if (summaries.size >= maxImageEntries) summaries.clear()
-                    summaries[pageUrl] = it
+                    summaries.remember(pageUrl, it)
                 }
                 if (content.imageResult == PreviewImageResult.TRANSIENT_FAILURE) {
                     // A timeout or parser exception must remain retryable.
@@ -114,11 +118,8 @@ class PreviewContentCoordinator(
                     misses[pageUrl] = nowMillis()
                     while (misses.size > maxMissEntries) misses.remove(misses.keys.first())
                 } else {
-                    if (images.size >= maxImageEntries) {
-                        images.clear()
-                        misses.clear()
-                    }
-                    images[pageUrl] = content.imageUrl
+                    misses.remove(pageUrl)
+                    images.remember(pageUrl, content.imageUrl)
                 }
             }
             return content
@@ -133,6 +134,13 @@ class PreviewContentCoordinator(
                 }
             }
         }
+    }
+
+    private fun <T> MutableMap<String, T>.remember(url: String, value: T) {
+        if (maxImageEntries <= 0) return
+        remove(url)
+        while (size >= maxImageEntries) remove(keys.first())
+        put(url, value)
     }
 
     /** Serializes persistence with refresh generations, including an older response finishing late. */

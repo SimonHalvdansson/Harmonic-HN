@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
@@ -452,7 +453,7 @@ class CommentsPresenter(
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
         if (action.openingRequest?.isClosed == true) return
-        thread.setSorting(action.sorting)
+        if (thread.state.value.sorting != action.sorting) thread.setSorting(action.sorting)
         val storyId = action.story.id
         val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
@@ -688,12 +689,7 @@ class CommentsPresenter(
         usedAsFallback: Boolean,
     ) {
         CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, officialStory)
-        thread.appendLoadedComments(
-            action.story,
-            comments,
-            thread.state.value.sorting,
-            action.collapseTopLevel,
-        )
+        if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = false)) return
         publish(loaded = true, refreshing = false, failure = null)
         mutableEffects.emit(
             CommentsPresenterEffect.ThreadApplied(
@@ -807,12 +803,7 @@ class CommentsPresenter(
         } else null
         if (!threadLoadSession.isCurrent(requestId, action.story.id)) return
         if (initialThread == null) {
-            thread.replaceParsedComments(
-                action.story,
-                parsed.comments,
-                thread.state.value.sorting,
-                action.collapseTopLevel,
-            )
+            if (!applyPreparedUpdate(action, requestId, parsed.comments, preserveExisting = true)) return
         } else {
             thread.commitPreparedInitialComments(action.story, initialThread, thread.state.value.sorting)
         }
@@ -834,6 +825,28 @@ class CommentsPresenter(
                 headerChanged = headerChanged || broadcastStoryUpdate,
             ),
         )
+    }
+
+    private suspend fun applyPreparedUpdate(
+        action: CommentsAction.LoadThread,
+        requestId: Int,
+        comments: List<Comment>,
+        preserveExisting: Boolean,
+    ): Boolean {
+        while (threadLoadSession.isCurrent(requestId, action.story.id)) {
+            val input = thread.capturePreparationInput()
+            val story = action.story.toSnapshot()
+            val prepared = withContext(threadPreparationDispatcher) {
+                CommentThreadStore.prepareUpdate(input, story, comments, action.collapseTopLevel, preserveExisting)
+            }
+            if (!threadLoadSession.isCurrent(requestId, action.story.id)) return false
+            // Sort, filtering, expansion and search may change while the worker runs. Rebase on
+            // that new immutable state instead of overwriting the user's latest interaction.
+            if (thread.state.value !== input.state) continue
+            thread.commitPreparedInitialComments(action.story, prepared)
+            return true
+        }
+        return false
     }
 
     private fun publish(
