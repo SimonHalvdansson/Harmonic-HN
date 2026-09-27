@@ -588,7 +588,7 @@ private fun CommentRowLayout(
         val cappedStart = min(desiredStart, (constraints.maxWidth * 0.6f).roundToInt())
         val shadowPadding = if (cardStyle) 4.dp.roundToPx() else 0
         val startPadding = (cappedStart - shadowPadding).coerceAtLeast(0)
-        val endPadding = 16.dp.roundToPx()
+        val endPadding = 16.dp.roundToPx() - shadowPadding
         val topPaddingPx = topPadding.roundToPx()
         val bottomPaddingPx = bottomPadding.roundToPx()
         val contentWidth = (constraints.maxWidth - startPadding - endPadding).coerceAtLeast(0)
