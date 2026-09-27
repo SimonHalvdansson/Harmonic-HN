@@ -177,9 +177,10 @@ private fun ActivityNavigationViewportLayout(
                         return@destination
                     }
 
+                    // Refresh every frame, then reuse the recording for both the surface and edge.
                     destinationLayer.record { this@destination.drawContent() }
                     withTransform({ translate(left = offset) }) {
-                        this@destination.drawContent()
+                        drawLayer(destinationLayer)
                     }
                     val extensionWidth = abs(offset).coerceAtMost(size.width)
                     if (offset > 0f) {
