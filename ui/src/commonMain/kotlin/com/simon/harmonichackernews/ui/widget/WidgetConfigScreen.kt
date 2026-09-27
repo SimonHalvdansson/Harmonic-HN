@@ -185,6 +185,7 @@ fun WidgetConfigScreen(
 
 /** Shared with the Glance renderer, which can only use platform fonts. */
 object WidgetTypography {
+    const val INDEX_SIZE = 12f
     const val TITLE_SIZE = 14f
     const val HEADER_SIZE = 18f
     const val METADATA_SIZE = 11f

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="widget_preview_card">#FFFFFF</color>
+    <color name="widget_preview_metric">#EBFFFFFF</color>
 </resources>

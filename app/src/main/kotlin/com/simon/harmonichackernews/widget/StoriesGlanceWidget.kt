@@ -240,8 +240,9 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                         (if (hasImage) WidgetDimensions.mediumImageHeight else WidgetDimensions.mediumNoImageHeight) + 16.dp))
                     Column(GlanceModifier.fillMaxWidth().padding(start = 8.dp, top = 12.dp, bottom = 12.dp)) {
                         Row {
-                            if (preferences.showIndex && availableWidth >= 240) Text(text.index, GlanceModifier.width(WidgetDimensions.indexWidth),
-                                style = TextStyle(color = colors.textSecondary, fontSize = (WidgetTypography.TITLE_SIZE - 1).sp, fontFamily = fontFamily))
+                            // Glance rows top-align text; compensate for the smaller index font.
+                            if (preferences.showIndex && availableWidth >= 240) Text(text.index, GlanceModifier.width(WidgetDimensions.indexWidth).padding(top = 2.dp),
+                                style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.INDEX_SIZE.sp, fontFamily = fontFamily))
                             Column(GlanceModifier.defaultWeight()) {
                                 val title = if (snapshot.isComment) HtmlTextUtils.plainText(snapshot.text).take(220) else text.title
                                 Text(title, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.TITLE_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 4)
