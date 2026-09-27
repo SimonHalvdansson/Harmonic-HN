@@ -61,7 +61,7 @@ internal fun StoryTypeChips(
     }
     LazyRow(
         state = listState,
-        modifier = modifier.fillMaxWidth().selectableGroup(),
+        modifier = modifier.fillMaxWidth().headerChipEndScrim(listState).selectableGroup(),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

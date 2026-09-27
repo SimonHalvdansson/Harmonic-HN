@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -91,6 +92,7 @@ fun StorySearchHeader(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val chipListState = rememberLazyListState()
     val submission = remember(state.active) { SearchQuerySubmission(state.draft) }
     SideEffect { submission.synchronizeDraft(state.draft) }
     val colorScheme = MaterialTheme.colorScheme
@@ -166,7 +168,8 @@ fun StorySearchHeader(
                 .onFocusChanged { if (it.isFocused) submission.startEditing() },
         )
         LazyRow(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            state = chipListState,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).headerChipEndScrim(chipListState),
             contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
