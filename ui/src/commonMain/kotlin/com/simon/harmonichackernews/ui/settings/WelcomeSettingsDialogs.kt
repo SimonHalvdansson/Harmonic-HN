@@ -52,6 +52,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
@@ -303,24 +304,19 @@ private fun WelcomeStoryPreview(
     val baseColor = HarmonicTheme.colors.contentCardBackground
     val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val palette = rememberResourceTintPalette(Res.drawable.palette1)
-    val targetExpressiveColor = remember(
+    val rawTint = remember(
         palette,
         paletteTintConfigKey,
         baseColor,
-        backgroundColor,
     ) {
-        Color(
-            PreviewTintPolicy.ensureCardTintContrast(
-                tint = PreviewTintPolicy.calculateCardTint(
-                    baseColor = baseColor.toArgb(),
-                    palette = palette,
-                    modeOrConfigKey = paletteTintConfigKey,
-                ),
-                background = backgroundColor.toArgb(),
-                modeOrConfigKey = paletteTintConfigKey,
-            ),
+        PreviewTintPolicy.calculateCardTint(
+            baseColor = baseColor.toArgb(),
+            palette = palette,
+            modeOrConfigKey = paletteTintConfigKey,
         )
     }
+    val targetExpressiveColor = rememberStoryTintColor(rawTint, paletteTintConfigKey, backgroundColor)
+        ?: baseColor
     val expressiveColor by animateColorAsState(
         targetValue = targetExpressiveColor,
         animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),

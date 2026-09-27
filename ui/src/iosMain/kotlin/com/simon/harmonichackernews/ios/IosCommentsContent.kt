@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
 import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
@@ -68,6 +68,7 @@ import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsHeader
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.comments.rememberCommentsListState
 import com.simon.harmonichackernews.ui.comments.CommentsRoute
 import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
@@ -77,6 +78,8 @@ import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
+import platform.UIKit.UIDevice
+import platform.UIKit.UIUserInterfaceIdiomPhone
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -288,57 +291,70 @@ internal fun IosCommentsContent(
 
     val showFloatingUpButton = showUpButton &&
         host.controller.displaySettings?.showUpButton == true
+    val topInset = with(density) { contentInsets.getTop(this).toDp() }
+    // Duo's inner portrait display keeps status indicators on the right. Its tall top inset
+    // has room for Back on the left; ordinary iPhones must still clear their status bar.
+    val backInTopInset = isTablet &&
+        UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone && topInset >= 56.dp
+    val backTopPadding = if (backInTopInset) (topInset - 48.dp) / 2 else topInset + 4.dp
+    val listState = rememberCommentsListState()
     val accountState by app.platform.accounts.accountState.collectAsState()
     val comments: @Composable () -> Unit = {
-        Box(Modifier.fillMaxSize()) {
-            CommentsRoute(
-                controller = host.controller,
-                reserveUpButtonInset = showFloatingUpButton,
-                headerContent = { settings ->
-                    IosCommentsHeader(app, scene, host.controller, settings) {
-                        val browser = host.webView
-                        if (browser?.canGoBack() == true) browser.goBack()
-                        else if (isTwoPane) host.controller.requestExpandSheet()
-                        else scene.navigation.returnToStories()
-                    }
-                },
-                searchDialog = { settings ->
-                    CommentsSearchDialog(
-                        preparing = host.controller.searchPreparing,
-                        searchTerm = host.controller.searchQuery,
-                        visibleComments = host.controller.searchResults,
-                        settings = settings,
-                        storyAuthor = host.controller.story.by,
-                        accountUser = host.controller.accountUser,
-                        maxDialogHeight = 720.dp,
-                        onSearchTermChanged = host.controller.listener::onSearchQueryChanged,
-                        onDismiss = host.controller::dismissCommentSearch,
-                        onCommentSelected = host.controller::selectSearchResult,
-                        onOpenLink = { scene.links.open(it) },
-                        onLinkLongClick = { comment, url, title, bounds ->
-                            host.controller.showReferencePreview(
-                                url = url,
-                                title = title,
-                                sourceBounds = bounds,
-                                sourceCommentId = comment.id,
-                            )
-                        },
-                        onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
-                            host.controller.showReferencePreview(
-                                link = link,
-                                sourceBounds = bounds,
-                                sourceCommentId = comment.id,
-                                sourceContentLayer = sourceContentLayer,
-                            )
-                        },
-                        foreground = {
-                            IosCommentLinkPreview(app, scene, host.controller)
-                        },
-                    )
-                },
-                // iOS hosts this above the pane-level status-bar protection and up button.
-                actionOverlay = {},
-            )
+        // LazyListState keeps its lookahead history when movable content leaves the adaptive
+        // pane scaffold. Keep measuring in lookahead on both sides of that transition, otherwise
+        // subsequent ordinary measurements never update the retained scroll position.
+        LookaheadScope {
+            Box(Modifier.fillMaxSize()) {
+                CommentsRoute(
+                    controller = host.controller,
+                    reserveUpButtonInset = showFloatingUpButton && !backInTopInset,
+                    listState = listState,
+                    headerContent = { settings ->
+                        IosCommentsHeader(app, scene, host.controller, settings) {
+                            val browser = host.webView
+                            if (browser?.canGoBack() == true) browser.goBack()
+                            else if (isTwoPane) host.controller.requestExpandSheet()
+                            else scene.navigation.returnToStories()
+                        }
+                    },
+                    searchDialog = { settings ->
+                        CommentsSearchDialog(
+                            preparing = host.controller.searchPreparing,
+                            searchTerm = host.controller.searchQuery,
+                            visibleComments = host.controller.searchResults,
+                            settings = settings,
+                            storyAuthor = host.controller.story.by,
+                            accountUser = host.controller.accountUser,
+                            maxDialogHeight = 720.dp,
+                            onSearchTermChanged = host.controller.listener::onSearchQueryChanged,
+                            onDismiss = host.controller::dismissCommentSearch,
+                            onCommentSelected = host.controller::selectSearchResult,
+                            onOpenLink = { scene.links.open(it) },
+                            onLinkLongClick = { comment, url, title, bounds ->
+                                host.controller.showReferencePreview(
+                                    url = url,
+                                    title = title,
+                                    sourceBounds = bounds,
+                                    sourceCommentId = comment.id,
+                                )
+                            },
+                            onReferenceLongClick = { comment, link, bounds, sourceContentLayer ->
+                                host.controller.showReferencePreview(
+                                    link = link,
+                                    sourceBounds = bounds,
+                                    sourceCommentId = comment.id,
+                                    sourceContentLayer = sourceContentLayer,
+                                )
+                            },
+                            foreground = {
+                                IosCommentLinkPreview(app, scene, host.controller)
+                            },
+                        )
+                    },
+                    // iOS hosts this above the pane-level status-bar protection and up button.
+                    actionOverlay = {},
+                )
+            }
         }
     }
     val background = HarmonicTheme.colors.background
@@ -368,6 +384,8 @@ internal fun IosCommentsContent(
                     controller = host.controller,
                     webView = webView,
                     reserveUpButtonInset = showFloatingUpButton,
+                    backInTopInset = backInTopInset,
+                    listState = listState,
                     comments = comments,
                 )
             } else {
@@ -382,8 +400,7 @@ internal fun IosCommentsContent(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                        .statusBarsPadding()
-                        .padding(start = 16.dp, top = 4.dp)
+                        .padding(start = 16.dp, top = backTopPadding)
                         .zIndex(101f),
                 )
             }

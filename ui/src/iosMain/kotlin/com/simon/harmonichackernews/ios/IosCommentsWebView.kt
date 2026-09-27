@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ios
 
+import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,6 +22,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +31,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -38,6 +46,7 @@ import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
+import com.simon.harmonichackernews.ui.comments.canDragCommentsSheet
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
@@ -465,24 +474,72 @@ internal fun IosCommentsScaffold(
     controller: CommentsScreenController,
     webView: IosCommentsWebView,
     reserveUpButtonInset: Boolean,
+    backInTopInset: Boolean,
+    listState: LazyListState,
     comments: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val webViewTopInset = if (reserveUpButtonInset) {
-        WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+            if (backInTopInset) 0.dp else 64.dp
     } else {
         0.dp
     }
     val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
+    // Read the actual list state in gesture callbacks, not the asynchronously published
+    // controller flag. Rotation/restoration can temporarily leave that flag stale.
+    val canDragSheet = remember(controller, listState) {
+        {
+            canDragCommentsSheet(
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+                canScrollBackward = listState.canScrollBackward,
+                layoutReady = listState.layoutInfo.totalItemsCount > 0,
+                restoringScroll = controller.initialScrollRestorationPending,
+            )
+        }
+    }
+    val sheetDragEnabled by remember(canDragSheet) { derivedStateOf { canDragSheet() } }
+    val confirmSheetValue = remember(canDragSheet) {
+        { value: SheetValue -> value == SheetValue.Expanded || canDragSheet() }
+    }
+    val scrollBoundary = remember(canDragSheet) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset = if (source == NestedScrollSource.UserInput && available.y > 0f && !canDragSheet()) {
+                // Cover the interval before sheetSwipeEnabled recomposes at a changed boundary.
+                Offset(0f, available.y)
+            } else {
+                Offset.Zero
+            }
+        }
+    }
     val sheetState = rememberBottomSheetState(
         initialValue = if (controller.initialShowWebsite) {
             SheetValue.PartiallyExpanded
         } else {
             SheetValue.Expanded
         },
+        enabledValues = setOf(SheetValue.PartiallyExpanded, SheetValue.Expanded),
+        confirmValueChange = confirmSheetValue,
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+    LaunchedEffect(sheetState, listState) {
+        snapshotFlow {
+            val scrolled = listState.layoutInfo.totalItemsCount > 0 &&
+                (listState.firstVisibleItemIndex > 0 ||
+                    listState.firstVisibleItemScrollOffset > 0 || listState.canScrollBackward)
+            scrolled && (runCatching { sheetState.requireOffset() }.getOrNull() ?: 0f) > 0.5f
+        }.distinctUntilChanged().collect { invalidPosition ->
+            // A saved position may be restored during a window/fold transition. Keep comments
+            // fully expanded if that makes the list and the sheet disagree.
+            if (invalidPosition) sheetState.expand()
+        }
+    }
     LaunchedEffect(webView, controller.initialShowWebsite) {
         webView.visible = controller.initialShowWebsite
         if (controller.initialShowWebsite) webView.ensureLoaded()
@@ -531,7 +588,7 @@ internal fun IosCommentsScaffold(
             sheetContentColor = HarmonicTheme.colors.contentPrimary,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,
-            sheetSwipeEnabled = true,
+            sheetSwipeEnabled = sheetDragEnabled,
             containerColor = Color.Transparent,
             contentColor = HarmonicTheme.colors.contentPrimary,
             sheetContent = {
@@ -539,9 +596,14 @@ internal fun IosCommentsScaffold(
                     Modifier
                         .fillMaxWidth()
                         .height(fullHeight)
+                        .nestedScroll(scrollBoundary)
                         .background(HarmonicTheme.colors.background),
                 ) {
-                    comments()
+                    // The iOS rubber-band effect otherwise retains downward motion at the top
+                    // instead of consistently handing it to the containing sheet.
+                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                        comments()
+                    }
                 }
             },
         ) {

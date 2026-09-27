@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.ui.content.rememberCoilImagePaletteTint
 import com.simon.harmonichackernews.ui.content.rememberPreviewImagePaletteTint
 import com.simon.harmonichackernews.ui.content.storyRowModel
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 
 /** Resolve against the live theme without replacing the deck or resetting its pager/animations. */
 @Composable
@@ -55,7 +56,7 @@ internal fun rememberStoryPreviewCardColor(
             )
         }
     } else null
-    return Color(previewTint ?: faviconTint ?: baseArgb)
+    return rememberStoryTintColor(previewTint ?: faviconTint, settings.paletteTintMode) ?: baseColor
 }
 
 /** A paged preview must also refresh tints when its source list row is no longer composed. */

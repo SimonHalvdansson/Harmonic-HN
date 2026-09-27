@@ -41,6 +41,7 @@ import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -62,11 +63,10 @@ fun WidgetPreviewStoryRow(
     val palette = rememberResourceTintPalette(model.previewImageFallback ?: model.faviconFallback)
     val targetBackground = when {
         configuration.displayStyle == DisplayStyle.FLAT -> colors.background
-        configuration.tint && palette != null -> Color(PreviewTintPolicy.ensureCardTintContrast(
+        configuration.tint && palette != null -> rememberStoryTintColor(
             PreviewTintPolicy.calculateCardTint(colors.contentCardBackground.toArgb(), palette, paletteTintConfigKey),
-            colors.background.toArgb(),
             paletteTintConfigKey,
-        ))
+        ) ?: colors.contentCardBackground
         else -> colors.contentCardBackground
     }
     val background by animateColorAsState(targetBackground, tween(220), label = "Widget card tint")

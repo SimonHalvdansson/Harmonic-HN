@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -20,6 +21,7 @@ fun CommentsRoute(
     headerContent: @Composable (CommentDisplaySettings) -> Unit,
     searchDialog: @Composable (CommentDisplaySettings) -> Unit,
     actionOverlay: @Composable (CommentDisplaySettings) -> Unit,
+    listState: LazyListState = rememberCommentsListState(),
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
@@ -32,6 +34,7 @@ fun CommentsRoute(
     }
     CommentsScreen(
         controller = controller,
+        listState = listState,
         listModifier = listModifier,
         reserveUpButtonInset = reserveUpButtonInset,
         pullToRefreshEnabled = pullToRefreshEnabled,

@@ -69,6 +69,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -126,8 +127,9 @@ fun CommentsHeader(
         mutableStateOf(initialTint)
     }
     val normalBackground = colors.background
+    val correctedTint = rememberStoryTintColor(loadedTint, settings.paletteTintMode)
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
-        loadedTint?.let(::Color) ?: Color(tintBaseColor)
+        correctedTint ?: Color(tintBaseColor)
     } else {
         normalBackground
     }

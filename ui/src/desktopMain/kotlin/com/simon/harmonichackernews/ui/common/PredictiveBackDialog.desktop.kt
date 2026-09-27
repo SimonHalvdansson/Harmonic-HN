@@ -5,6 +5,9 @@ import androidx.compose.ui.window.DialogProperties
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = false
 
+@Composable
+internal actual fun PlatformDialogDimHost(content: @Composable () -> Unit) = content()
+
 internal actual fun platformDialogProperties(
     dismissOnBackPress: Boolean,
     dismissOnClickOutside: Boolean,

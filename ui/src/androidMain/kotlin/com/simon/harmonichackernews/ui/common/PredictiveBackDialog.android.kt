@@ -1,11 +1,17 @@
 package com.simon.harmonichackernews.ui.common
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.View
+import android.view.WindowManager
 import androidx.activity.BackEventCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -16,6 +22,13 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = true
+
+private val LocalDialogDimTarget = staticCompositionLocalOf<View?> { null }
+
+@Composable
+internal actual fun PlatformDialogDimHost(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalDialogDimTarget provides LocalView.current.rootView, content = content)
+}
 
 internal actual fun platformDialogProperties(
     dismissOnBackPress: Boolean,
@@ -63,17 +76,30 @@ internal actual fun PlatformDialogPredictiveBackHandler(
 internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) {
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
     val restingDimAmount = remember(dialogWindow) { dialogWindow.attributes.dimAmount }
+    val target = LocalDialogDimTarget.current ?: return
+    val dim = remember(target) { ColorDrawable(Color.BLACK) }
     val darkTheme = HarmonicTheme.isDark
 
     SideEffect {
-        dialogWindow.setDimAmount(restingDimAmount * fraction.coerceIn(0f, 1f))
+        // WindowManager's dim surface is absent from cross-activity predictive-back snapshots.
+        // Draw it in the underlying window so the snapshot and the resumed app match exactly.
+        dialogWindow.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        dim.alpha = (255 * restingDimAmount * fraction.coerceIn(0f, 1f)).toInt()
         // Dialogs own a separate window and do not inherit the activity's live icon appearance.
         WindowCompat.getInsetsController(dialogWindow, dialogWindow.decorView).apply {
             isAppearanceLightStatusBars = !darkTheme
             isAppearanceLightNavigationBars = !darkTheme
         }
     }
-    DisposableEffect(dialogWindow, restingDimAmount) {
-        onDispose { dialogWindow.setDimAmount(restingDimAmount) }
+    DisposableEffect(dialogWindow, target, dim) {
+        fun updateBounds() = dim.setBounds(0, 0, target.width, target.height)
+        val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBounds() }
+        updateBounds()
+        target.addOnLayoutChangeListener(listener)
+        target.overlay.add(dim)
+        onDispose {
+            target.overlay.remove(dim)
+            target.removeOnLayoutChangeListener(listener)
+        }
     }
 }

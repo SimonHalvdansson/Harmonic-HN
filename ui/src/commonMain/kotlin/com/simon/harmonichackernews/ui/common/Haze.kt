@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeSourceSelection
 import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.glass.GlassDefaults
 import dev.chrisbanes.haze.glass.GlassStyle
@@ -119,6 +120,7 @@ internal fun Modifier.sharedHazeBackground(
     blurRadius: Dp = 6.dp,
     glassAppearance: HazeGlassAppearance = HazeGlassAppearance.Subtle,
     effectAlpha: Float = 1f,
+    sourceSelection: HazeSourceSelection = HazeSourceSelection.Behind,
 ): Modifier {
     val preferences = LocalHazePreferences.current ?: SurfaceEffectPreferences()
     val glass = preferences.glass
@@ -128,7 +130,7 @@ internal fun Modifier.sharedHazeBackground(
         Modifier.background(surfaceColor)
     } else if (preferences.mode == SurfaceEffectMode.Glass) {
         Modifier.hazeGlass(
-            input = HazeInput.Sources(hazeState),
+            input = HazeInput.Sources(hazeState, selection = sourceSelection),
             style = GlassStyle.regular.then {
                 shape(shape)
                 backgroundColor(surfaceColor.copy(alpha = glass[GlassParameter.BackgroundOpacity]))
@@ -193,7 +195,7 @@ internal fun Modifier.sharedHazeBackground(
             surfaceColor.copy(alpha = surfaceColor.alpha * 0.78f)
         } else surfaceColor
         Modifier.hazeBlur(
-            input = HazeInput.Sources(hazeState),
+            input = HazeInput.Sources(hazeState, selection = sourceSelection),
             style = HazeBlurStyle {
                 alpha(effectAlpha)
                 blurRadius(blurRadius)

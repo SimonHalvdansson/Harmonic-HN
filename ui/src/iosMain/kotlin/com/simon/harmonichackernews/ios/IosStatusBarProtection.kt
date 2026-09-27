@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun IosStatusBarProtection(color: Color) {
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    if (statusBarHeight <= 0.dp) return
     Spacer(
         Modifier
             .fillMaxWidth()

@@ -88,62 +88,68 @@ fun PredictiveBackDialog(
         platformDialogPredictiveBackSupported
     val density = LocalDensity.current
 
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = platformDialogProperties(
-            dismissOnBackPress = properties.dismissOnBackPress && !predictiveBackEnabled,
-            dismissOnClickOutside = properties.dismissOnClickOutside,
-            usePlatformDefaultWidth = properties.usePlatformDefaultWidth,
-        ),
-    ) {
-        // This must live inside the Dialog composition so Android registers it with the dialog's
-        // OnBackPressedDispatcherOwner instead of the activity underneath.
-        PlatformDialogPredictiveBackHandler(
-            enabled = predictiveBackEnabled,
-            onProgress = { event ->
-                swipeDirection = event.swipeDirection
-                visualProgress.snapTo(dialogPredictiveBackGestureProgress(event.progress))
-            },
-            onCancelled = {
-                visualProgress.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = DialogPredictiveBackCancelDurationMillis,
-                        easing = FastOutSlowInEasing,
-                    ),
-                )
-            },
-            onCommitted = {
-                visualProgress.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = DialogPredictiveBackCommitDurationMillis,
-                        easing = FastOutSlowInEasing,
-                    ),
-                )
-                onDismissRequest()
-            },
-        )
-
-        val visuals = dialogPredictiveBackVisuals(
-            progress = visualProgress.value,
-            swipeDirection = swipeDirection,
-        )
-        PlatformDialogBackgroundDimAmount(visuals.backgroundDimAmountFraction)
-        Box(
-            modifier = Modifier.graphicsLayer {
-                scaleX = visuals.scale
-                scaleY = visuals.scale
-                alpha = visuals.alpha
-                translationX = with(density) { visuals.translationXDp.dp.toPx() }
-                translationY = with(density) { visuals.translationYDp.dp.toPx() }
-                transformOrigin = TransformOrigin.Center
-            },
+    PlatformDialogDimHost {
+        Dialog(
+            onDismissRequest = onDismissRequest,
+            properties = platformDialogProperties(
+                dismissOnBackPress = properties.dismissOnBackPress && !predictiveBackEnabled,
+                dismissOnClickOutside = properties.dismissOnClickOutside,
+                usePlatformDefaultWidth = properties.usePlatformDefaultWidth,
+            ),
         ) {
-            content()
+            // This must live inside the Dialog composition so Android registers it with the dialog's
+            // OnBackPressedDispatcherOwner instead of the activity underneath.
+            PlatformDialogPredictiveBackHandler(
+                enabled = predictiveBackEnabled,
+                onProgress = { event ->
+                    swipeDirection = event.swipeDirection
+                    visualProgress.snapTo(dialogPredictiveBackGestureProgress(event.progress))
+                },
+                onCancelled = {
+                    visualProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(
+                            durationMillis = DialogPredictiveBackCancelDurationMillis,
+                            easing = FastOutSlowInEasing,
+                        ),
+                    )
+                },
+                onCommitted = {
+                    visualProgress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(
+                            durationMillis = DialogPredictiveBackCommitDurationMillis,
+                            easing = FastOutSlowInEasing,
+                        ),
+                    )
+                    onDismissRequest()
+                },
+            )
+
+            val visuals = dialogPredictiveBackVisuals(
+                progress = visualProgress.value,
+                swipeDirection = swipeDirection,
+            )
+            PlatformDialogBackgroundDimAmount(visuals.backgroundDimAmountFraction)
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = visuals.scale
+                    scaleY = visuals.scale
+                    alpha = visuals.alpha
+                    translationX = with(density) { visuals.translationXDp.dp.toPx() }
+                    translationY = with(density) { visuals.translationYDp.dp.toPx() }
+                    transformOrigin = TransformOrigin.Center
+                },
+            ) {
+                content()
+            }
         }
     }
 }
+
+/** Captures the window beneath a dialog, including when another dialog opens it. */
+@Composable
+internal expect fun PlatformDialogDimHost(content: @Composable () -> Unit)
 
 internal expect val platformDialogPredictiveBackSupported: Boolean
 

@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 
 private const val ContentAnimationDuration = 220
 internal val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
@@ -167,11 +167,7 @@ internal fun rememberStoryRowPresentation(
     val previewTint = (model.previewImageTintArgb ?: extractedPreviewTint)
         .takeIf { previewAvailable }
     val rawTint = previewTint ?: model.faviconTintArgb ?: extractedFaviconTint
-    val tint = remember(rawTint, pageBackground, style.paletteTintConfigKey) {
-        rawTint?.let {
-            Color(PreviewTintPolicy.ensureCardTintContrast(it, pageBackground.toArgb(), style.paletteTintConfigKey))
-        }
-    }
+    val tint = rememberStoryTintColor(rawTint, style.paletteTintConfigKey, pageBackground)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.hasBackground -> colors.contentCardBackground

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,15 +28,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
+import dev.chrisbanes.haze.HazeSourceSelection
 
 /** A fixed, host-positioned back control shared by full-screen feature destinations. */
 @Composable
@@ -65,6 +78,7 @@ fun TranslucentBackButton(
     val hazeState = currentSharedHazeState()
     val surfaceColor = colors.surfaceContainerHigh.copy(alpha = 0.5f)
     val glassEnabled = LocalHazeGlassEnabled.current
+    val backdropSelection = remember { HazeSourceSelection.Behind.where { it.zIndex <= 0f } }
 
     val tooltipState = rememberTooltipState()
     val hapticFeedback = LocalHapticFeedback.current
@@ -83,38 +97,70 @@ fun TranslucentBackButton(
             tooltip = { PlainTooltip { Text("Back") } },
             state = tooltipState,
         ) {
-            Surface(
-                onClick = onClick,
-                shape = shape,
-                color = androidx.compose.ui.graphics.Color.Transparent,
-                contentColor = colors.onSurface,
-                shadowElevation = if (glassEnabled) 2.dp else 8.dp,
-                interactionSource = interactionSource,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .sharedHazeBackground(hazeState, surfaceColor, shape)
-                        .then(
-                            // Preserve the original back button's extra tint when glass is disabled.
-                            if (!glassEnabled && hazeState != null) {
-                                Modifier.background(surfaceColor)
-                            } else {
-                                Modifier
-                            },
-                        ),
+            Box {
+                // Native elevation shadows have a polygonal cutout which shows through transparent
+                // surfaces over the WebView. Draw a soft shadow strictly outside the button instead.
+                Spacer(
+                    Modifier.matchParentSize()
+                        .drawWithCache {
+                            val outline = Path().apply {
+                                addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache))
+                            }
+                            onDrawWithContent {
+                                clipPath(outline, ClipOp.Difference) { this@onDrawWithContent.drawContent() }
+                            }
+                        }
+                        .dropShadow(shape, Shadow(
+                            radius = if (glassEnabled) 2.dp else 8.dp,
+                            color = Color.Black.copy(alpha = 0.24f),
+                            offset = DpOffset(0.dp, 2.dp),
+                        )),
+                )
+                Surface(
+                    onClick = onClick,
+                    // Multiply only the control's pixels. A black overlay dims the already-dimmed
+                    // backdrop again through the translucent material. Keep the shadow outside
+                    // this offscreen layer so its bounds cannot clip the shadow during a modal.
+                    modifier = Modifier.graphicsLayer {
+                        val brightness = 1f - modalScrimAlpha.coerceIn(0f, 1f)
+                        colorFilter = if (brightness < 1f) {
+                            ColorFilter.tint(Color(brightness, brightness, brightness), BlendMode.Modulate)
+                        } else null
+                    },
+                    shape = shape,
+                    color = androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = colors.onSurface,
+                    shadowElevation = 0.dp,
+                    interactionSource = interactionSource,
                 ) {
                     Box(
-                        modifier = Modifier.size(48.dp),
-                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .sharedHazeBackground(
+                                hazeState, surfaceColor, shape,
+                                sourceSelection = backdropSelection,
+                            )
+                            .then(
+                                // Preserve the original back button's extra tint when glass is disabled.
+                                if (!glassEnabled && hazeState != null) {
+                                    Modifier.background(surfaceColor)
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     ) {
-                        Image(
-                            painter = painterResource(Res.drawable.ic_arrow_back),
-                            contentDescription = "Back",
-                            modifier = Modifier.size(20.dp),
-                            colorFilter = ColorFilter.tint(colors.iconTint),
-                        )
+                        Box(
+                            modifier = Modifier.size(48.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.ic_arrow_back),
+                                contentDescription = "Back",
+                                modifier = Modifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(colors.iconTint),
+                            )
+                        }
+                        ModalControlScrim(0f, shape, modalScrimActive)
                     }
-                    ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
                 }
             }
         }
