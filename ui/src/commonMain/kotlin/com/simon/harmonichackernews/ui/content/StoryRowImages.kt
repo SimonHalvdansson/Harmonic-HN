@@ -158,9 +158,9 @@ internal fun StoryFavicon(
                 tint = HarmonicTheme.colors.iconTint,
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(
-                        alpha = dimAlpha * if (failed) 1f else 1f - loadAlpha,
-                    ),
+                    .graphicsLayer {
+                        alpha = dimAlpha * if (failed) 1f else 1f - loadAlpha
+                    },
             )
             if (!failed) {
                 val request = rememberPaletteCompatibleImageRequest(model.faviconUrl)
@@ -169,7 +169,7 @@ internal fun StoryFavicon(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer(alpha = dimAlpha * loadAlpha),
+                        .graphicsLayer { alpha = dimAlpha * loadAlpha },
                     onSuccess = { success ->
                         loaded = true
                         loadedImage = success.result.image

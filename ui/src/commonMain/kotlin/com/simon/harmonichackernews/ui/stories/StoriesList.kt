@@ -61,7 +61,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -254,8 +253,8 @@ internal fun StoriesList(
                         ),
                     ) {
                         if (story.isComment) {
-                            val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
-                                controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                            val itemHeightModifier = Modifier.onSizeChanged { size ->
+                                controller.updateStoryItemHeight(story.id, size.height)
                             }
                             SavedCommentStoryRow(
                                 story = story,
@@ -271,8 +270,8 @@ internal fun StoriesList(
                                 modifier = itemHeightModifier,
                             )
                         } else if (!story.loaded && !story.loadingFailed) {
-                            val itemHeightModifier = Modifier.onGloballyPositioned { coordinates ->
-                                controller.updateStoryItemHeight(story.id, coordinates.size.height)
+                            val itemHeightModifier = Modifier.onSizeChanged { size ->
+                                controller.updateStoryItemHeight(story.id, size.height)
                             }
                             StoryLoadingItem(
                                 hasBackground = settings.hasBackground,

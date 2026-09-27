@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : BaseActivity() {
+open class MainActivity : BaseActivity() {
     internal lateinit var navigationController: AndroidMainNavigationController
         private set
     private lateinit var launchIntentRouter: MainLaunchIntentRouter
@@ -37,6 +37,7 @@ class MainActivity : BaseActivity() {
         }
         AndroidActivityTheme.setupTheme(this)
 
+        prepareScene()
         navigationController = install(this, savedInstanceState)
         launchIntentRouter = MainLaunchIntentRouter(navigationController)
         // A singleTask can be recreated with saved navigation state while also receiving a new
@@ -44,6 +45,9 @@ class MainActivity : BaseActivity() {
         // the newly requested destination wins.
         consumeLaunchIntent(getIntent())
     }
+
+    /** Benchmark hosts can seed a retained scene before the production feature store starts. */
+    protected open fun prepareScene() = Unit
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
