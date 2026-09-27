@@ -1,14 +1,9 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.PathEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -21,23 +16,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/** Shared motion for replacing content while the surrounding list/detail panes remain in place. */
-internal fun paneDetailSwitchTransition(): ContentTransform = ContentTransform(
-    targetContentEnter = scaleIn(
-        tween(PaneDetailTransitionDurationMillis, easing = paneNavigationEasing()),
-        initialScale = 0.85f,
-    ) + fadeIn(
-        tween(PaneDetailAlphaDurationMillis, PaneDetailAlphaDelayMillis, LinearEasing),
-    ),
-    initialContentExit = scaleOut(
-        tween(PaneDetailTransitionDurationMillis, easing = paneNavigationEasing()),
-        targetScale = 1.15f,
-    ) + fadeOut(
-        tween(PaneDetailAlphaDurationMillis, PaneDetailAlphaDelayMillis, LinearEasing),
-    ),
-    targetContentZIndex = 1f,
-)
 
 /**
  * Runs the detail-pane entrance without retaining the outgoing composition. This is important for

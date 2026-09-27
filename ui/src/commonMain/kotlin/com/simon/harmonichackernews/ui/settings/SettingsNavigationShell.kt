@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,7 +34,6 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionOffset
 import com.simon.harmonichackernews.ui.navigation.activityNavigationOpenContentTransform
 import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTransform
-import com.simon.harmonichackernews.ui.navigation.paneDetailSwitchTransition
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** The retained destination keeps its own navigation origin, including in two-pane layouts. */
@@ -156,7 +153,6 @@ fun SettingsNavigationShell(
                 directive = directive,
                 paneExpansionState = paneExpansionState,
             )
-            val detailPaneTransition = updateTransition(selectedSection, label = "Settings detail pane")
             val provider = entryProvider<NavKey> {
                 entry<SettingsListDestination>(
                     metadata = ListDetailSceneStrategy.listPane(
@@ -178,9 +174,7 @@ fun SettingsNavigationShell(
                     if (!animateDetailChanges) {
                         renderDetailWithOrigin(selectedSection, false, ::navigateBack, ::navigateTo)
                     } else {
-                        detailPaneTransition.AnimatedContent(
-                            transitionSpec = { paneDetailSwitchTransition() },
-                        ) { section ->
+                        SettingsDetailTransition(selectedSection) { section ->
                             renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
                         }
                     }

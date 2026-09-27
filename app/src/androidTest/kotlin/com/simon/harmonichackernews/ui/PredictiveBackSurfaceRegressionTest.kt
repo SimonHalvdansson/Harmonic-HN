@@ -4,7 +4,12 @@ import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.recalculateWindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -29,10 +34,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.IntSize
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.ui.navigation.rememberMainNavigationBackPreview
 import com.simon.harmonichackernews.ui.navigation.MainNavigationSurfaceKey
@@ -53,6 +60,57 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PredictiveBackSurfaceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun settingsTransitionsKeepPhoneContentWidth() = assertSettingsKeepsContentWidth(1)
+
+    @Test fun settingsTransitionsKeepSplitPaneContentWidths() = assertSettingsKeepsContentWidth(2)
+
+    private fun assertSettingsKeepsContentWidth(panes: Int) {
+        val navigation = MainNavigationStore()
+        val sizes = mutableMapOf<Int, IntSize>()
+        val lineCounts = mutableMapOf<Int, Int>()
+        var rootBounds = Rect.Zero
+        compose.setContent {
+            TestRoot(navigation, twoPane = panes == 2, stories = {
+                Row(Modifier.fillMaxSize().onGloballyPositioned { rootBounds = it.boundsInWindow() }) {
+                    repeat(panes) { index ->
+                        // Like StoriesList, resolve safe-area padding against each pane's bounds.
+                        // Even zero system insets must not become padding when the page moves.
+                        Box(Modifier.weight(1f).fillMaxSize().recalculateWindowInsets()) {
+                            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets(0, 0, 0, 0))
+                                .onSizeChanged { sizes[index] = it }) {
+                                Text("A story title that should retain exactly the same line breaks while Settings opens and closes.",
+                                    onTextLayout = { lineCounts[index] = it.lineCount })
+                            }
+                        }
+                    }
+                }
+            })
+        }
+        compose.waitForIdle()
+        val restingSizes = sizes.toMap()
+        val restingLineCounts = lineCounts.toMap()
+        val restingBounds = rootBounds
+        assertEquals(panes, restingSizes.size)
+        compose.mainClock.autoAdvance = false
+        try {
+            for (opening in listOf(true, false)) {
+                compose.runOnIdle {
+                    if (opening) navigation.openSettings(null) else navigation.closeSettings()
+                }
+                repeat(36) { frame ->
+                    compose.mainClock.advanceTimeByFrame()
+                    compose.runOnIdle {
+                        assertEquals("Retained pane widths changed (opening=$opening, frame=$frame)", restingSizes, sizes)
+                        assertEquals("Retained text rewrapped (opening=$opening, frame=$frame)", restingLineCounts, lineCounts)
+                        assertEquals("Rendering motion must not move layout coordinates", restingBounds, rootBounds)
+                    }
+                }
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+    }
 
     @Test fun adaptiveReflowNeverAttachesTheSameNativeStoryTwice() {
         val navigation = MainNavigationStore().apply { openStory(StoryRoute(1)) }
@@ -241,6 +299,65 @@ class PredictiveBackSurfaceRegressionTest {
         }
         assertEquals(1, storiesMounts)
         assertEquals(0, countPixels { it.blue > 0.5f && it.red < 0.1f && it.green < 0.1f })
+    }
+
+    @OptIn(ExperimentalMaterial3AdaptiveApi::class)
+    @Test fun settingsCategorySwitchKeepsPaneBoundsAndInsetsStable() {
+        val navigation = SettingsNavigationStore(initialSection = SettingsSection.Appearance, twoPane = true)
+        val bounds = mutableMapOf<SettingsSection, Rect>()
+        val sizes = mutableMapOf<SettingsSection, IntSize>()
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        val dependencies = HarmonicUiDependencies(app, scene)
+        compose.setContent {
+            DisposableEffect(scene) { onDispose { scene.close() } }
+            CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
+                    .copy(maxHorizontalPartitions = 2)
+                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    SettingsNavigationShell(
+                        navigation = navigation,
+                        directive = directive,
+                        isFoldable = true,
+                        tabletPaneHorizontalPadding = 0.dp,
+                        onBackFromSettings = {}, onSectionChanged = {},
+                        renderList = { _, _, _, _ -> Fill(Color.Green) },
+                        renderDetail = { section, _, _, _ ->
+                            Box(Modifier.fillMaxSize()
+                                .onGloballyPositioned { bounds[section] = it.boundsInWindow() }
+                                .recalculateWindowInsets()
+                                .windowInsetsPadding(WindowInsets(0, 100, 0, 0))
+                                .onSizeChanged { sizes[section] = it }
+                                .background(Color.Blue))
+                        },
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        val restingBounds = bounds.getValue(SettingsSection.Appearance)
+        val restingSize = sizes.getValue(SettingsSection.Appearance)
+        compose.mainClock.autoAdvance = false
+        try {
+            for (section in listOf(SettingsSection.Stories, SettingsSection.Comments, SettingsSection.Appearance)) {
+                compose.runOnIdle { navigation.navigateTo(section) }
+                repeat(24) {
+                    compose.mainClock.advanceTimeByFrame()
+                    compose.runOnIdle {
+                        bounds.forEach { (key, value) ->
+                            assertEquals("Category $key moved its layout coordinates", restingBounds, value)
+                        }
+                        sizes.forEach { (key, value) ->
+                            assertEquals("Category $key changed safe-area padding", restingSize, value)
+                        }
+                    }
+                }
+                compose.runOnIdle { assertTrue(bounds.containsKey(section)) }
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
     }
 
     @OptIn(ExperimentalMaterial3AdaptiveApi::class)

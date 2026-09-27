@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -121,8 +122,15 @@ internal fun <T, K : Any> ActivityNavigationStack(
             Modifier.fillMaxSize()
                 .drawWithContent { if (!rootCovered && (preview == null || rootIsPreviewParent)) drawContent() }
                 .then(if (rootIsPreviewParent) Modifier.background(background) else Modifier)
-                .graphicsLayer {
-                    translationX = if (preview == null && !completingPop) rootOffset else 0f
+                .drawWithContent {
+                    // Keep inset recalculation and backdrop sampling in the resting page's
+                    // coordinate space. A translated graphics layer makes safe-area padding
+                    // grow as the page moves offscreen, reflowing the retained content.
+                    withTransform({
+                        translate(left = if (preview == null && !completingPop) rootOffset else 0f)
+                    }) {
+                        this@drawWithContent.drawContent()
+                    }
                 }
                 .then(if (entries.isEmpty()) Modifier else Modifier.clearAndSetSemantics { }),
         ) {
