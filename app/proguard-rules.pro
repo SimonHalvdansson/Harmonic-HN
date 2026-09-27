@@ -39,6 +39,3 @@
 -keep class com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine {
     public <init>();
 }
-
-# JLatexMath
--dontwarn org.scilab.forge.jlatexmath.**
