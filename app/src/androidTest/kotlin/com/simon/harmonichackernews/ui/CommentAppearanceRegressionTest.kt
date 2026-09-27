@@ -1,10 +1,16 @@
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package com.simon.harmonichackernews.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
@@ -12,6 +18,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.HarmonicApplication
@@ -20,6 +27,9 @@ import com.simon.harmonichackernews.data.*
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.settings.*
 import com.simon.harmonichackernews.ui.comments.*
+import com.simon.harmonichackernews.ui.common.HazeHost
+import com.simon.harmonichackernews.ui.common.LocalHazePreferences
+import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
@@ -35,6 +45,115 @@ import kotlin.math.abs
 @RunWith(AndroidJUnit4::class)
 class CommentAppearanceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun headerMetadataWrapsWholeAuthorAndTimeGroups() {
+        val width = mutableStateOf(260.dp)
+        val story = StoryListItemSnapshot(
+            StorySnapshot(42, author = "fifaase", score = 997, descendantCount = 479,
+                createdAtEpochSeconds = (System.currentTimeMillis() / 1000 - 86400).toInt()),
+            StoryPresentationSnapshot(loaded = true, isLink = true),
+        )
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                Box(Modifier.width(width.value)) {
+                    CommentsHeaderMetadata(story, settings, textStyle = TextStyle.Default)
+                }
+            }
+        }
+        val author = compose.onNodeWithText("fifaase")
+        val originalHeight = author.fetchSemanticsNode().boundsInRoot.height
+        compose.runOnIdle { width.value = 230.dp }
+        val wrappedAuthor = author.fetchSemanticsNode().boundsInRoot
+        val score = compose.onNodeWithText("997").fetchSemanticsNode().boundsInRoot
+        assertTrue("Author moves to the next line", wrappedAuthor.top >= score.bottom)
+        assertEquals("Author stays on a single line", originalHeight, wrappedAuthor.height, 1f)
+        assertEquals("Author keeps its leading icon and gap", score.left, wrappedAuthor.left, 1f)
+        compose.runOnIdle { width.value = 165.dp }
+        val time = compose.onNodeWithText(story.timeFormatted).fetchSemanticsNode().boundsInRoot
+        val narrowScore = compose.onNodeWithText("997").fetchSemanticsNode().boundsInRoot
+        assertTrue("Time also moves as a group when needed", time.top >= narrowScore.bottom)
+        assertEquals(narrowScore.left, time.left, 1f)
+    }
+
+    @Test
+    fun upButtonRemainsAboveOverlappingModalContent() {
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            CompositionLocalProvider(LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Solid)) {
+                HarmonicTheme(palette.colors.copy(surfaceContainerHigh = Color.Blue, iconTint = Color.Blue), palette.colorScheme, palette.dark) {
+                    Box(Modifier.size(120.dp).testTag("layers")) {
+                        CommentsUpButton({}, Modifier.padding(16.dp).zIndex(101f), modalScrimAlpha = 0.32f)
+                        Box(Modifier.fillMaxSize().zIndex(100f).background(Color.Magenta))
+                    }
+                }
+            }
+        }
+        val root = compose.onNodeWithTag("layers").fetchSemanticsNode().boundsInRoot
+        val button = compose.onNodeWithContentDescription("Back").fetchSemanticsNode().boundsInRoot
+        val center = button.center - root.topLeft
+        val pixel = compose.onNodeWithTag("layers").captureToImage().toPixelMap()[center.x.toInt(), center.y.toInt()]
+        assertTrue("The modal must stay behind the dimmed blue button: $pixel", pixel.red < 0.05f && pixel.blue > 0.5f)
+    }
+
+    @Test
+    fun blurredCommentDialogDoesNotExposeSharpRailsNearItsEdge() {
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        controller.updateContent(CommentsScreenState(
+            story = story, commentsLoaded = true, initialThreadCached = true, displaySettings = settings,
+        ))
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(
+                    LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
+                    LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Frosted),
+                ) {
+                    HarmonicTheme(palette.colors.copy(background = Color.White), palette.colorScheme, palette.dark) {
+                        HazeHost {
+                            Box(Modifier.size(260.dp).testTag("blurred-rails")) {
+                                CommentsScreen(
+                                    controller, Modifier, false, pullToRefreshEnabled = false,
+                                    showNavigationControls = false, animateComments = false, showScrollbar = false,
+                                    smoothScroll = false, userTags = emptyMap(), onOpenLink = {},
+                                    headerContent = {
+                                        Canvas(Modifier.fillMaxWidth().height(260.dp)) {
+                                            for (x in listOf(20.dp, 110.dp)) {
+                                                drawRect(Color.Black, Offset(x.toPx(), 0f), Size(4.dp.toPx(), size.height))
+                                            }
+                                        }
+                                    }, searchDialog = {}, actionOverlay = {},
+                                )
+                                Box(Modifier.padding(12.dp).size(236.dp)
+                                    .sharedHazeDialogBackground(Color.White, RoundedCornerShape(28.dp)))
+                            }
+                        }
+                    }
+                }
+            }
+            compose.waitForIdle()
+            val pixels = compose.onNodeWithTag("blurred-rails").captureToImage().toPixelMap()
+            val density = compose.activity.resources.displayMetrics.density
+            for (railX in listOf(20, 110)) {
+                val y = pixels.height / 2
+                val edgeJump = ((railX - 2) * density).toInt().rangeTo(((railX + 6) * density).toInt())
+                    .maxOf { x -> abs(pixels[x + 1, y].red - pixels[x, y].red) }
+                assertTrue("Rail at ${railX}dp must be blurred across the dialog, edge jump=$edgeJump", edgeJump < 0.04f)
+            }
+        } finally { scene.close() }
+    }
 
     @Test
     fun previewNewCommentDotFadesQuicklyInBothDirections() {

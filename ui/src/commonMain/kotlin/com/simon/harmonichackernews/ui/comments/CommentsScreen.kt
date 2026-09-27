@@ -405,6 +405,9 @@ fun CommentsScreen(
             contentType = { if (settings.hasBackground) "comment-card" else "comment" },
             modifier = Modifier
                 .fillMaxSize()
+                // Capture an opaque backdrop as well as the rows. Blurring transparent gaps
+                // around depth rails otherwise lets the original sharp lines show through.
+                .commentsHazeSource(commentsHazeState)
                 .background(HarmonicTheme.colors.background)
                 // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
@@ -415,8 +418,7 @@ fun CommentsScreen(
                         scrollToCommentRequest?.animate != true
                     ) 0f else 1f
                 }
-                .then(listModifier)
-                .commentsHazeSource(commentsHazeState),
+                .then(listModifier),
             state = listState,
             contentPadding = PaddingValues(bottom = bottomPadding),
             headerKey = "header",

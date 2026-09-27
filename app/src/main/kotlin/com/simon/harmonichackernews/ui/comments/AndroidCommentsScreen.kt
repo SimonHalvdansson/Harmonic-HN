@@ -101,7 +101,8 @@ internal fun CommentsScaffold(
             sheetShape = RectangleShape,
             sheetContainerColor = HarmonicTheme.colors.background,
             sheetContentColor = HarmonicTheme.colors.contentPrimary,
-            sheetShadowElevation = 16.dp,
+            // Only cast a shadow as the sheet lowers to expose the article underneath.
+            sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
             sheetDragHandle = null,
             sheetSwipeEnabled = controller.integratedWebView,
             containerColor = Color.Transparent,

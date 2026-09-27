@@ -73,46 +73,49 @@ fun TranslucentBackButton(
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            TooltipAnchorPosition.Below,
-        ),
-        tooltip = { PlainTooltip { Text("Back") } },
-        state = tooltipState,
-        modifier = modifier,
-    ) {
-        Surface(
-            onClick = onClick,
-            shape = shape,
-            color = androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = colors.onSurface,
-            shadowElevation = if (glassEnabled) 2.dp else 8.dp,
-            interactionSource = interactionSource,
+    // TooltipBox applies its modifier to an inner anchor, below its own layout wrapper.
+    // Keep host positioning and z-order on the actual sibling of modal transition layers.
+    Box(modifier) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                TooltipAnchorPosition.Below,
+            ),
+            tooltip = { PlainTooltip { Text("Back") } },
+            state = tooltipState,
         ) {
-            Box(
-                modifier = Modifier
-                    .sharedHazeBackground(hazeState, surfaceColor, shape)
-                    .then(
-                        // Preserve the original back button's extra tint when glass is disabled.
-                        if (!glassEnabled && hazeState != null) {
-                            Modifier.background(surfaceColor)
-                        } else {
-                            Modifier
-                        },
-                    ),
+            Surface(
+                onClick = onClick,
+                shape = shape,
+                color = androidx.compose.ui.graphics.Color.Transparent,
+                contentColor = colors.onSurface,
+                shadowElevation = if (glassEnabled) 2.dp else 8.dp,
+                interactionSource = interactionSource,
             ) {
                 Box(
-                    modifier = Modifier.size(48.dp),
-                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .sharedHazeBackground(hazeState, surfaceColor, shape)
+                        .then(
+                            // Preserve the original back button's extra tint when glass is disabled.
+                            if (!glassEnabled && hazeState != null) {
+                                Modifier.background(surfaceColor)
+                            } else {
+                                Modifier
+                            },
+                        ),
                 ) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        modifier = Modifier.size(20.dp),
-                        colorFilter = ColorFilter.tint(colors.iconTint),
-                    )
+                    Box(
+                        modifier = Modifier.size(48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(Res.drawable.ic_arrow_back),
+                            contentDescription = "Back",
+                            modifier = Modifier.size(20.dp),
+                            colorFilter = ColorFilter.tint(colors.iconTint),
+                        )
+                    }
+                    ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
                 }
-                ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
             }
         }
     }

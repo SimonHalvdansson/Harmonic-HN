@@ -5,6 +5,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,12 +14,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -37,7 +36,6 @@ fun CommentsHeaderMetadata(
     textStyle: TextStyle,
 ) {
     if (!story.loaded) return
-    val colors = HarmonicTheme.colors
     val typography = rememberContentTypography(settings.font)
     Row(
         modifier = Modifier
@@ -45,12 +43,12 @@ fun CommentsHeaderMetadata(
             .padding(start = 17.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        FlowRow(
             modifier = Modifier
                 .weight(1f)
                 .padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (!story.isComment) {
                 HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography, textStyle)
@@ -97,6 +95,8 @@ private fun HeaderMetaItem(
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
             style = textStyle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
