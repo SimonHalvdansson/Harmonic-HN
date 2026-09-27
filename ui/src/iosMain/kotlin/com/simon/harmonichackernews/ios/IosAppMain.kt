@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -175,7 +176,9 @@ private fun IosApp(
     val palette = remember(selection) {
         HarmonicThemeCatalog.resolve(selection.theme, selection.dark, selection.accentPreset)
     }
-    SideEffect { appearance.setDarkAppearance(selection.dark) }
+    SideEffect {
+        appearance.setAppearance(selection.dark, palette.colors.background.toArgb())
+    }
     LaunchedEffect(bootstrap.app.launchState) {
         when (
             bootstrap.app.launchState.consumeLaunchDialog(

@@ -3,9 +3,9 @@ package com.simon.harmonichackernews.platform
 import com.simon.harmonichackernews.network.ReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.KeyValueStore
 
-/** Lets shared appearance state update the containing UIKit traits and status-bar foreground. */
+/** Keeps UIKit traits, status-bar foreground, and backing views aligned with the shared theme. */
 interface IosAppearanceController {
-    fun setDarkAppearance(dark: Boolean)
+    fun setAppearance(dark: Boolean, backgroundArgb: Int)
 }
 
 /**

@@ -95,17 +95,19 @@ final class IosFoundationModelsSummaryBridge: IosNativeSummaryBridge {
 final class IosAppearanceService: IosAppearanceController {
     private weak var root: HarmonicRootViewController?
     private var dark = false
+    private var backgroundArgb: Int32 = -1
 
     func attach(_ root: HarmonicRootViewController) {
         self.root = root
-        root.applyDarkAppearance(dark)
+        root.applyAppearance(dark: dark, backgroundArgb: backgroundArgb)
     }
 
-    func setDarkAppearance(dark: Bool) {
+    func setAppearance(dark: Bool, backgroundArgb: Int32) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.dark = dark
-            self.root?.applyDarkAppearance(dark)
+            self.backgroundArgb = backgroundArgb
+            self.root?.applyAppearance(dark: dark, backgroundArgb: backgroundArgb)
         }
     }
 }

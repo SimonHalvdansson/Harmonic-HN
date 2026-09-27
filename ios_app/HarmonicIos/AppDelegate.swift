@@ -135,6 +135,7 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = HarmonicWindow(windowScene: windowScene)
         window.onSystemAppearanceChanged = { [weak harmonic] in harmonic?.refreshAppearance() }
         window.rootViewController = root
+        window.backgroundColor = root.view.backgroundColor
         self.window = window
         window.makeKeyAndVisible()
 
@@ -211,11 +212,21 @@ final class HarmonicRootViewController: UIViewController {
         darkAppearance ? .lightContent : .darkContent
     }
 
-    func applyDarkAppearance(_ dark: Bool) {
+    func applyAppearance(dark: Bool, backgroundArgb: Int32) {
+        let argb = UInt32(bitPattern: backgroundArgb)
+        let background = UIColor(
+            red: CGFloat((argb >> 16) & 0xff) / 255,
+            green: CGFloat((argb >> 8) & 0xff) / 255,
+            blue: CGFloat(argb & 0xff) / 255,
+            alpha: CGFloat((argb >> 24) & 0xff) / 255
+        )
+        // Rotation can expose any of these layers while Compose resizes its surface.
+        view.backgroundColor = background
+        content.view.backgroundColor = background
+        view.window?.backgroundColor = background
         guard darkAppearance != dark || overrideUserInterfaceStyle == .unspecified else { return }
         darkAppearance = dark
         overrideUserInterfaceStyle = dark ? .dark : .light
-        view.backgroundColor = dark ? .black : .systemBackground
         setNeedsStatusBarAppearanceUpdate()
     }
 
