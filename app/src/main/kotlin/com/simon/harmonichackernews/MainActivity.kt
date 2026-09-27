@@ -119,6 +119,9 @@ class MainActivity : BaseActivity() {
 
     protected override fun onResume() {
         super.onResume()
+        // Reconcile retained UI with the current system mode after returning from the background,
+        // even if a configuration-change refresh was missed. Apply native colors before Compose.
+        refreshTheme()
         navigationController.onResume()
     }
 
@@ -165,9 +168,13 @@ class MainActivity : BaseActivity() {
 
     public override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        refreshTheme()
+        navigationController.onConfigurationChanged(newConfig)
+    }
+
+    private fun refreshTheme() {
         AndroidActivityTheme.setupTheme(this)
         harmonicAppComposition.appearance.refreshSelection()
-        navigationController.onConfigurationChanged(newConfig)
     }
 
     private companion object {
