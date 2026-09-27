@@ -62,11 +62,13 @@ fun TranslucentBackButton(
     val colors = HarmonicTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val pressProgress by animateFloatAsState(
+    // Read in composition so each frame supplies a new immutable shape. Shadow renderers cache
+    // by shape identity and can retain a stale outline if CornerSize reads animation state itself.
+    val pressProgress = animateFloatAsState(
         targetValue = if (pressed) 1f else 0f,
         animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         label = "back button shape",
-    )
+    ).value
     val pressedCorner = (ButtonDefaults.pressedShape as RoundedCornerShape).topStart
     // Share the Material button morph with the backdrop, shadow, ripple and modal scrim.
     val shape = RoundedCornerShape(object : CornerSize {
