@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.benchmark
 
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
+import androidx.benchmark.macro.ExperimentalMetricApi
+import androidx.benchmark.macro.TraceSectionMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -20,9 +22,18 @@ class ColdCommentRenderingBenchmark {
     @Before fun prepare() = prepareBenchmarkApp()
     @After fun finish() = finishBenchmarkApp()
 
-    @Test fun coldRenderMedium() = rule.measureRepeated(
+    @Test fun coldRenderMedium() = measure(fromStories = false)
+
+    /** Isolate the first Comments render from process/activity startup and its system animation. */
+    @Test fun coldRenderMediumFromStories() = measure(fromStories = true)
+
+    @OptIn(ExperimentalMetricApi::class)
+    private fun measure(fromStories: Boolean) = rule.measureRepeated(
         packageName = BenchmarkPackageName,
-        metrics = listOf(FrameTimingMetric()),
+        metrics = listOf(
+            FrameTimingMetric(),
+            TraceSectionMetric("CommentsOpen.contentReady", TraceSectionMetric.Mode.First),
+        ),
         compilationMode = CompilationMode.Full(),
         iterations = InstrumentationRegistry.getArguments().getString("comments.iterations")?.toInt() ?: 12,
         setupBlock = {
@@ -30,10 +41,14 @@ class ColdCommentRenderingBenchmark {
             startActivityAndWait()
             prepareDeterministicCommentsFixture(CommentsBenchmarkFixture.MEDIUM)
             killProcess()
+            if (fromStories) {
+                startActivityAndWait()
+                device.waitForIdle()
+            }
         },
         measureBlock = {
             openDeterministicCommentsFixture(CommentsBenchmarkFixture.MEDIUM)
-            check(device.wait(Until.hasObject(By.textContains("Holy cow, I'm a very casual gamer")), 10_000)) {
+            check(device.wait(Until.hasObject(By.textContains("It bothers me that so many of us developers")), 10_000)) {
                 "The cold discussion must render its actual body, not just row placeholders"
             }
             device.waitForIdle()

@@ -192,7 +192,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
                         ActivityNavigationTransitionViewport(
                             transition = transition,
                             transitionOffsetPx = offsetPx,
-                            baseTranslationX = if (preview == null && !skipExit) offset else 0f,
+                            baseTranslationX = { if (preview == null && !skipExit) offset else 0f },
                             skipExitAnimation = skipExit,
                             modifier = Modifier.fillMaxSize(),
                             contentModifier = backModifier,

@@ -98,7 +98,7 @@ internal fun activityNavigationPopContentTransform(
 internal fun ActivityNavigationTransitionViewport(
     transition: Transition<EnterExitState>,
     transitionOffsetPx: Int,
-    baseTranslationX: Float = 0f,
+    baseTranslationX: () -> Float = { 0f },
     skipExitAnimation: Boolean = false,
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
@@ -141,8 +141,8 @@ internal fun ActivityNavigationTransitionViewport(
     }
 
     ActivityNavigationViewportLayout(
-        translationX = baseTranslationX + transitionTranslationX,
-        alpha = transitionAlpha,
+        translationX = { baseTranslationX() + transitionTranslationX },
+        alpha = { transitionAlpha },
         modifier = modifier,
         contentModifier = contentModifier,
         content = content,
@@ -151,8 +151,8 @@ internal fun ActivityNavigationTransitionViewport(
 
 @Composable
 private fun ActivityNavigationViewportLayout(
-    translationX: Float,
-    alpha: Float,
+    translationX: () -> Float,
+    alpha: () -> Float,
     modifier: Modifier,
     contentModifier: Modifier,
     content: @Composable () -> Unit,
@@ -162,24 +162,27 @@ private fun ActivityNavigationViewportLayout(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
-                this.alpha = alpha
+                this.alpha = alpha()
             },
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .drawWithContent destination@{
-                    if (abs(translationX) < 0.01f) {
+                    // Translation changes drawing only; reading it here keeps the animation
+                    // from recomposing the viewport on every frame.
+                    val offset = translationX()
+                    if (abs(offset) < 0.01f) {
                         drawContent()
                         return@destination
                     }
 
                     destinationLayer.record { this@destination.drawContent() }
-                    withTransform({ translate(left = translationX) }) {
+                    withTransform({ translate(left = offset) }) {
                         this@destination.drawContent()
                     }
-                    val extensionWidth = abs(translationX).coerceAtMost(size.width)
-                    if (translationX > 0f) {
+                    val extensionWidth = abs(offset).coerceAtMost(size.width)
+                    if (offset > 0f) {
                         drawActivityNavigationEdge(
                             layer = destinationLayer,
                             extensionLeft = 0f,
