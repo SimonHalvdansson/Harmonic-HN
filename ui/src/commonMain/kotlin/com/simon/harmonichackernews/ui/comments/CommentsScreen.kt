@@ -572,7 +572,8 @@ fun CommentsScreen(
                 state = listState,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .padding(start = contentInsetStart, end = contentInsetEnd),
             )
         }
 
@@ -581,7 +582,7 @@ fun CommentsScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(
-                    end = 16.dp,
+                    end = contentInsetEnd + 16.dp,
                     bottom = navigationBottom + if (navigationVisible) 88.dp else 16.dp,
                 ),
             enter = fadeIn(),
@@ -656,6 +657,7 @@ fun BoxScope.CommentNavigationControls(
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
     val settings = controller.displaySettings ?: return
+    val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
@@ -663,7 +665,11 @@ fun BoxScope.CommentNavigationControls(
         visible = settings.showNavigationBar && controller.visibleComments.size > 1,
         modifier = modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = navigationBottom),
+            .padding(
+                start = with(density) { controller.contentInsetLeftPx.toDp() },
+                end = with(density) { controller.contentInsetRightPx.toDp() },
+                bottom = navigationBottom,
+            ),
         enter = fadeIn(),
         exit = fadeOut(),
     ) {

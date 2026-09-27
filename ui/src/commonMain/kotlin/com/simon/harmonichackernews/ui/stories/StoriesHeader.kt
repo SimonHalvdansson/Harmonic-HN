@@ -34,18 +34,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -77,7 +78,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -131,10 +131,6 @@ internal fun StoriesHeader(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
-    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
-    val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
-    val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     val settings = controller.displaySettings ?: return
@@ -142,8 +138,8 @@ internal fun StoriesHeader(
     val topSpacing = if (compact) 8.dp else 28.dp
     val bottomSpacing = if (compact) 4.dp else 8.dp
 
-    val sideStart = 16.dp + startInset + safeStart
-    val sideEnd = 16.dp + safeEnd
+    val sideStart = 16.dp + startInset
+    val sideEnd = 16.dp
     // Status content grows over rows retained by animateItem during their exit fade. Only the
     // controls need an opaque surface; extending it behind the spinner wipes those rows away.
     Column(modifier = modifier.fillMaxWidth().padding(bottom = bottomSpacing)) {
@@ -151,6 +147,8 @@ internal fun StoriesHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(HarmonicTheme.colors.background)
+                // Inset the viewport, so scrolling chips cannot pass beneath side system UI.
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(top = topInset + topSpacing),
         ) {
             if (searchMode) {

@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
+import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -35,6 +38,8 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -122,6 +127,12 @@ internal fun IosCommentsContent(
     onControllerChanged: (CommentsScreenController?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    var consumedInsets by remember { mutableStateOf<WindowInsets>(WindowInsets(0)) }
+    val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
+    val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
+    val contentInsetRight = contentInsets.getRight(density, layoutDirection)
     val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
     val openingProfile = remember(app, request.serial) {
         IosCommentsOpeningProfile.create(app.metadata.debug, request.storyId)
@@ -232,15 +243,15 @@ internal fun IosCommentsContent(
     LaunchedEffect(appearance, reading?.matchWebViewTheme, host, host.webView) {
         host.webView?.updateAppearance(appearance.dark, reading?.matchWebViewTheme == true)
     }
-    LaunchedEffect(featureState, host.controller) {
+    LaunchedEffect(featureState, host.controller, contentInsetLeft, contentInsetRight) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
                 readerModeAvailable = false,
                 readerModeEnabled = false,
                 topInsetPx = 0,
-                contentInsetLeftPx = 0,
-                contentInsetRightPx = 0,
+                contentInsetLeftPx = contentInsetLeft,
+                contentInsetRightPx = contentInsetRight,
             ),
         )
     }
@@ -343,7 +354,9 @@ internal fun IosCommentsContent(
             Modifier
                 .fillMaxSize()
                 .background(background)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                // Keep header tints and sheet surfaces edge-to-edge; inset their content instead.
+                .recalculateWindowInsets()
+                .onConsumedWindowInsetsChanged { consumedInsets = it }
                 .drawWithContent {
                     drawContent()
                     if (firstDraw.complete(Unit)) openingProfile?.event("firstDraw")
@@ -368,6 +381,7 @@ internal fun IosCommentsContent(
                     onClick = scene.navigation::detailRemovedFromBackStack,
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .statusBarsPadding()
                         .padding(start = 16.dp, top = 4.dp)
                         .zIndex(101f),

@@ -18,9 +18,8 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +27,9 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.recalculateWindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
@@ -63,7 +65,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -142,10 +143,6 @@ internal fun StoriesList(
         WindowInsets.safeDrawing.getTop(density).toDp()
     }
     val pullIndicatorRestingInset = (pullIndicatorTopInset - 32.dp).coerceAtLeast(0.dp)
-    val layoutDirection = LocalLayoutDirection.current
-    val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
-    val safeStart = safeDrawingPadding.calculateStartPadding(layoutDirection)
-    val safeEnd = safeDrawingPadding.calculateEndPadding(layoutDirection)
     val startInset = with(density) { controller.contentInsetStartPx.toDp() }
     // Keep one lazy list throughout header changes. Do not draw its initial zero-padding
     // measurement while the header size is being delivered to the next composition.
@@ -187,7 +184,8 @@ internal fun StoriesList(
     }
 
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
-        Box(Modifier.fillMaxSize()) {
+        // A list pane only needs the system insets that intersect its own bounds.
+        Box(Modifier.fillMaxSize().recalculateWindowInsets()) {
             LookaheadScope {
                 LazyContentList(
                     contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
@@ -198,15 +196,15 @@ internal fun StoriesList(
                     contentType = { story -> if (story.isComment) "comment" else "story" },
                     modifier = Modifier
                         .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .graphicsLayer {
                             val progress = tapToUpdateExitProgress()
                             alpha = if (headerHeight > 0.dp) 1f - progress else 0f
                             translationY = -tapToUpdateExitOffsetPx * progress
                         },
                     contentPadding = PaddingValues(
-                        start = startInset + safeStart,
+                        start = startInset,
                         top = headerHeight,
-                        end = safeEnd,
                         bottom = bottomPadding + if (controller.showRefreshPrompt) 88.dp else 8.dp,
                     ),
                     footerKey = "${if (searchMode) "search" else "main"}-load-more",

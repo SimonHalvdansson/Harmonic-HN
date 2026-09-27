@@ -305,7 +305,7 @@ fun AppearanceSettingsRoute(
         onSplitRatioChanged = {
             repository.setSplitRatio(
                 splitLayout.orientation,
-                SplitRatioPreferences.snapToCenter(it, splitLayout.isFoldable),
+                SplitRatioPreferences.snapToCenter(it, splitLayout.snapToCenter),
             )
         },
         onExtraSidePaddingChanged = repository::setExtraSidePadding,

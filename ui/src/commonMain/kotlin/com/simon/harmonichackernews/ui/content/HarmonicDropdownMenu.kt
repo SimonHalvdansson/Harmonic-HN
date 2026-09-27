@@ -9,7 +9,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +40,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -93,6 +98,16 @@ fun HarmonicDropdownMenu(
     ) { if (it) 1f else 0f }
 
     if (expandedState.currentState || expandedState.targetState || !expandedState.isIdle) {
+        // Read the host window outside Popup: iOS can initially measure a new popup layer
+        // without a height bound after switching foldable displays. The scrolling menu must
+        // always have a finite viewport, which also follows window and keyboard resizing.
+        val density = LocalDensity.current
+        val windowHeight = LocalWindowInfo.current.containerSize.height
+        val safeDrawing = WindowInsets.safeDrawing
+        val maxMenuHeight = with(density) {
+            (windowHeight - safeDrawing.getTop(this) - safeDrawing.getBottom(this))
+                .coerceAtLeast(1).toDp()
+        }
         val positionProvider = MenuDefaults.rememberDropdownMenuPopupPositionProvider(
             MenuAnchorPosition.Below,
         )
@@ -106,7 +121,8 @@ fun HarmonicDropdownMenu(
             // Measure the full menu throughout the reveal so popup placement, scrolling and
             // line wrapping remain stable. Only its rounded outline changes, including shadow.
             Surface(
-                modifier = Modifier.graphicsLayer { alpha = surfaceAlpha },
+                modifier = Modifier.heightIn(max = maxMenuHeight)
+                    .graphicsLayer { alpha = surfaceAlpha },
                 shape = MenuRevealShape(reveal, positionProvider.transformOrigin.pivotFractionY),
                 color = containerColor,
                 tonalElevation = 0.dp,

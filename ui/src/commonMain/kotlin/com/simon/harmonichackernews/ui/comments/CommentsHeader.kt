@@ -198,6 +198,7 @@ fun CommentsHeader(
                     },
                     onAction = controller.listener::onSheetAction,
                     onBrowserBack = onBrowserBack,
+                    modifier = Modifier.padding(start = sideMarginStart, end = sideMarginEnd),
                 )
             }
 
@@ -390,7 +391,7 @@ fun CommentsHeader(
                 .height(32.dp)
                 .background(fadeBrush),
         )
-        Column(Modifier.commentsReadingWidth()) {
+        Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
         }
@@ -406,13 +407,14 @@ private fun CommentsSheetControls(
     contentAlpha: Float,
     onAction: (CommentsSheetAction) -> Unit,
     onBrowserBack: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     val colors = HarmonicTheme.colors
     val collapsedProgress = progress.coerceIn(0f, 1f)
     val navigationBarClearance = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .padding(top = CommentsSheetHandleTopPadding, bottom = CommentsSheetHandleBottomPadding)

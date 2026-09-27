@@ -228,7 +228,7 @@ private fun IosApp(
         HarmonicUiDependencies(bootstrap.app, scene),
     ) {
         HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-            Surface(Modifier.fillMaxSize()) {
+            Surface(Modifier.fillMaxSize(), color = HarmonicTheme.colors.background) {
                 IosAppContent(
                     app = bootstrap.app,
                     scene = scene,
@@ -404,8 +404,9 @@ private fun IosAppContent(
                 MainNavigationScene(
                     storyRequest = detail,
                     directive = mainDirective,
-                    paneProportion = if (expandedPhone) 0.5f else 0.4f,
+                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
                     isFoldable = expandedPhone,
+                    snapToCenter = false,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
@@ -430,8 +431,9 @@ private fun IosAppContent(
             if (isTwoPane) {
                 MainNavigationScene(
                     storyRequest = detail, directive = mainDirective,
-                    paneProportion = if (expandedPhone) 0.5f else 0.4f,
+                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
                     isFoldable = expandedPhone,
+                    snapToCenter = false,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = { IosSubmissionsContent(app, scene, request) },
                     emptyDetail = { EmptyCommentsScreen() },
@@ -677,6 +679,8 @@ private fun IosSettingsShell(
             directive = directive,
             supportsTwoPane = supportsTwoPane,
             isFoldable = expandedPhone,
+            paneProportion = if (expandedPhone) 0.45f else 0.4f,
+            snapToCenter = false,
             tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },

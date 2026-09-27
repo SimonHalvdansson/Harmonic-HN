@@ -42,9 +42,12 @@ fun MainNavigationScene(
     animateDetailVisibilityChanges: Boolean = false,
     modifier: Modifier = Modifier,
     isFoldable: Boolean = false,
+    snapToCenter: Boolean = isFoldable,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
-    SplitPaneViewport(directive, paneProportion, modifier, isFoldable = isFoldable) { expansion ->
+    SplitPaneViewport(
+        directive, paneProportion, modifier, isFoldable = isFoldable, snapToCenter = snapToCenter,
+    ) { expansion ->
         val strategy = rememberListDetailSceneStrategy<NavKey>(
             directive = directive,
             paneExpansionState = expansion.takeIf { isTwoPane },

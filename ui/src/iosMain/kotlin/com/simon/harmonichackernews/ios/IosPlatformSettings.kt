@@ -33,6 +33,8 @@ import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_smartphone
 import platform.UIKit.UIDevice
 
 @Composable
@@ -62,6 +64,8 @@ internal fun IosSettingsDetail(
             "This iOS host uses the same Kotlin Multiplatform application logic and " +
             "Compose screens as the Android app, with iOS-native storage, links, and " +
             "keyboard/window behavior.",
+        debugPlatformLabel = "iOS version",
+        debugPlatformIcon = Res.drawable.ic_smartphone,
         debugPlatformVersion = UIDevice.currentDevice.systemName + " " +
             UIDevice.currentDevice.systemVersion,
         debugNotificationsMessage =

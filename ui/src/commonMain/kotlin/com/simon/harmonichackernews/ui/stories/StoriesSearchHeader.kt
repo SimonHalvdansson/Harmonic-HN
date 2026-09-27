@@ -31,6 +31,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
@@ -89,6 +91,8 @@ fun StorySearchHeader(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val submission = remember(state.active) { SearchQuerySubmission(state.draft) }
+    SideEffect { submission.synchronizeDraft(state.draft) }
     val colorScheme = MaterialTheme.colorScheme
     val searchContainerColor = if (colorScheme.surface.luminance() > 0.5f) {
         colorScheme.onSurface.copy(alpha = 0.04f).compositeOver(colorScheme.surfaceContainerHighest)
@@ -108,11 +112,16 @@ fun StorySearchHeader(
     Column {
         TextField(
             value = state.draft,
-            onValueChange = onDraftChanged,
+            onValueChange = { value ->
+                val correctedQuery = submission.updateDraft(value)
+                onDraftChanged(value)
+                correctedQuery?.let(onSearch)
+            },
             placeholder = { Text("Search posts") },
             leadingIcon = {
                 IconButton(
                     onClick = {
+                        submission.startEditing()
                         keyboard?.hide()
                         focusManager.clearFocus()
                         onClose()
@@ -124,6 +133,8 @@ fun StorySearchHeader(
             trailingIcon = {
                 IconButton(
                     onClick = {
+                        submission.startEditing()
+                        submission.updateDraft("")
                         onDraftChanged("")
                         focusRequester.requestFocus()
                         keyboard?.show()
@@ -135,7 +146,9 @@ fun StorySearchHeader(
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
-                onSearch(state.draft)
+                // IME text updates can arrive before recomposition or after this action when
+                // focus is cleared. Submit the current draft and follow any final correction.
+                onSearch(submission.submit())
                 keyboard?.hide()
                 focusManager.clearFocus()
             }),
@@ -149,7 +162,8 @@ fun StorySearchHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = sideStart, end = sideEnd)
-                .focusRequester(focusRequester),
+                .focusRequester(focusRequester)
+                .onFocusChanged { if (it.isFocused) submission.startEditing() },
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

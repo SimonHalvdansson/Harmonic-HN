@@ -3,6 +3,19 @@ import UIKit
 import WebKit
 import HarmonicKit
 
+private extension XCUIApplication {
+    func completeWelcomeIfNeeded() {
+        guard staticTexts["Welcome to Harmonic"].waitForExistence(timeout: 5) else { return }
+        let getStarted = buttons["Get started"]
+        // Short windows, including Duo's outer display, scroll the welcome content.
+        for _ in 0..<4 where !getStarted.isHittable {
+            swipeUp(velocity: .slow)
+        }
+        XCTAssertTrue(getStarted.waitForExistence(timeout: 5))
+        getStarted.tap()
+    }
+}
+
 final class HarmonicIosUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -40,10 +53,7 @@ final class HarmonicIosUITests: XCTestCase {
     }
 
     private func completeFirstRunIfNeeded() {
-        let getStarted = app.buttons["Get started"]
-        if getStarted.waitForExistence(timeout: 5) {
-            getStarted.tap()
-        }
+        app.completeWelcomeIfNeeded()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 15))
     }
 
@@ -172,10 +182,10 @@ final class HarmonicIosUITests: XCTestCase {
     private func openDebugSettings() {
         openSettings()
         let debug = app.buttons["Debug"]
-        for _ in 0..<4 where !debug.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !debug.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(debug.waitForExistence(timeout: 5))
         debug.tap()
-        XCTAssertTrue(app.buttons["Link post"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 5))
     }
 
     func testForegroundResumePreservesTapToUpdateAndNavigation() throws {
@@ -197,7 +207,7 @@ final class HarmonicIosUITests: XCTestCase {
     func testGithubPreviewLoadsInTheCommentsHeader() throws {
         openDebugSettings()
         let previews = app.buttons["Link previews"]
-        for _ in 0..<5 where !previews.isHittable { app.swipeUp() }
+        for _ in 0..<5 where !previews.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(previews.waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 1) // Let the list finish decelerating before tapping.
         previews.tap()
@@ -329,6 +339,10 @@ final class HarmonicIosUITests: XCTestCase {
         let articleLink = app.buttons["Article link"]
         XCTAssertTrue(articleLink.waitForExistence(timeout: 5))
         articleLink.tap()
+        // Presentation is asynchronous; wait for the native sheet before inspecting it.
+        let nativeCopy = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Copy")).firstMatch
+        XCTAssertTrue(nativeCopy.waitForExistence(timeout: 10))
 
         XCTAssertEqual(
             UIPasteboard.general.string,
@@ -507,7 +521,7 @@ final class HarmonicIosUITests: XCTestCase {
         for label in ["Link post", "Reference links post", "YouTube comment",
                       "Very long comment", "Poll", "Internal HN link"] {
             let sample = app.buttons[label]
-            for _ in 0..<5 where !sample.isHittable { app.swipeUp() }
+            for _ in 0..<5 where !sample.isHittable { app.swipeUp(velocity: .slow) }
             XCTAssertTrue(sample.waitForExistence(timeout: 5), label)
             Thread.sleep(forTimeInterval: 1) // A tap during a fling only stops the scroll.
             sample.tap()
@@ -584,8 +598,7 @@ final class HarmonicIosPresentationTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
-        let getStarted = app.buttons["Get started"]
-        if getStarted.waitForExistence(timeout: 3) { getStarted.tap() }
+        app.completeWelcomeIfNeeded()
         XCTAssertTrue(app.buttons["More options"].waitForExistence(timeout: 15))
     }
 
@@ -691,7 +704,7 @@ final class HarmonicIosSettingsTests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launch()
-        if app.buttons["Get started"].waitForExistence(timeout: 2) { app.buttons["Get started"].tap() }
+        app.completeWelcomeIfNeeded()
         XCTAssertTrue(app.buttons["More options"].waitForExistence(timeout: 15))
     }
     override func tearDownWithError() throws {

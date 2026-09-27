@@ -97,14 +97,16 @@ fun SettingsNavigationShell(
     completedPredictiveBack: Boolean = false,
     animateDetailChanges: Boolean = true,
     supportsTwoPane: Boolean = directive.maxHorizontalPartitions > 1,
+    paneProportion: Float = if (isFoldable) 0.5f else 0.4f,
+    snapToCenter: Boolean = isFoldable,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
-    val paneProportion = if (isFoldable) 0.5f else 0.4f
     SplitPaneViewport(
         directive = directive,
         defaultRatio = paneProportion,
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
+        snapToCenter = snapToCenter,
         modifier = modifier.fillMaxSize().background(HarmonicTheme.colors.background)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState ->

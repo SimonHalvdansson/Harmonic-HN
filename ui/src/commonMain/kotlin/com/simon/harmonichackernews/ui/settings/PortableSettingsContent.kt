@@ -32,6 +32,9 @@ import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_android
+import org.jetbrains.compose.resources.DrawableResource
 import kotlinx.coroutines.launch
 
 private const val OpenWithoutCacheStoryId = 49089500
@@ -52,6 +55,8 @@ fun PortableSettingsDetail(
     aiSettings: @Composable () -> Unit,
     dataSettings: @Composable () -> Unit,
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
+    debugPlatformLabel: String = "Android version",
+    debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
 ) {
     when (section) {
         SettingsSection.Appearance -> PortableAppearanceSettings(
@@ -114,6 +119,8 @@ fun PortableSettingsDetail(
             scene = scene,
             appIcon = appIcon,
             platformVersion = debugPlatformVersion,
+            platformLabel = debugPlatformLabel,
+            platformIcon = debugPlatformIcon,
             notificationsMessage = debugNotificationsMessage,
             showNavigation = singlePane,
             onBack = onBack,
@@ -411,6 +418,8 @@ private fun PortableDebugSettings(
     scene: HarmonicSceneComposition,
     appIcon: Painter,
     platformVersion: String,
+    platformLabel: String,
+    platformIcon: DrawableResource,
     notificationsMessage: String,
     showNavigation: Boolean,
     onBack: () -> Unit,
@@ -425,6 +434,8 @@ private fun PortableDebugSettings(
             appBuild = app.metadata.buildNumber,
             buildVersion = app.metadata.buildType,
             platformVersion = platformVersion,
+            platformLabel = platformLabel,
+            platformIcon = platformIcon,
         ),
         showNavigation = showNavigation,
         onBack = onBack,

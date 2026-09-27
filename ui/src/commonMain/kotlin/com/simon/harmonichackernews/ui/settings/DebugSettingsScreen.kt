@@ -53,6 +53,7 @@ data class DebugEnvironmentUiState(
     val buildVersion: String,
     val platformVersion: String,
     val platformLabel: String = "Android version",
+    val platformIcon: DrawableResource = Res.drawable.ic_android,
 )
 
 data class DebugLink(
@@ -275,7 +276,7 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = environment.platformLabel,
                     summary = environment.platformVersion,
-                    icon = Res.drawable.ic_android,
+                    icon = environment.platformIcon,
                     onClick = null,
                 )
             }

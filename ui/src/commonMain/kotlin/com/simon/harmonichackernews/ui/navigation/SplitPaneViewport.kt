@@ -72,6 +72,7 @@ internal data class SplitPaneLayout(
     val ratio: Float = 0.5f,
     val isFoldable: Boolean = false,
     val orientation: SplitOrientation = SplitOrientation.Portrait,
+    val snapToCenter: Boolean = isFoldable,
 )
 internal val LocalSplitPaneLayout = compositionLocalOf { SplitPaneLayout() }
 internal val LocalSplitPaneAnimationEnabled = compositionLocalOf { true }
@@ -85,6 +86,7 @@ internal fun SplitPaneViewport(
     modifier: Modifier = Modifier,
     supportsTwoPane: Boolean = directive.maxHorizontalPartitions > 1,
     isFoldable: Boolean = false,
+    snapToCenter: Boolean = isFoldable,
     content: @Composable (PaneExpansionState) -> Unit,
 ) {
     val repository = LocalHarmonicUiDependencies.current.settings
@@ -97,7 +99,7 @@ internal fun SplitPaneViewport(
     var rawRatio by remember(orientation) { mutableFloatStateOf(savedRatio) }
     var dragging by remember(orientation) { mutableStateOf(false) }
     LaunchedEffect(savedRatio, orientation) { rawRatio = savedRatio }
-    val ratio = SplitRatioPreferences.snapToCenter(rawRatio, isFoldable)
+    val ratio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
     // Ratios are fractions: the default 0.01 threshold would end a crease animation
     // while it was still visibly several pixels away from the target.
     val animatedRatio = remember(orientation) { Animatable(ratio, visibilityThreshold = 0.0001f) }
@@ -107,7 +109,7 @@ internal fun SplitPaneViewport(
     // Initialize before layout. Animation frames update the scaffold directly rather than
     // recomposing the navigation tree; the handle reads the same value during placement.
     SideEffect { expansion.setFirstPaneProportion(animatedRatio.value) }
-    val centered = isFoldable && ratio == 0.5f
+    val centered = snapToCenter && ratio == 0.5f
     var previouslyCentered by remember(orientation) { mutableStateOf(centered) }
     var previousRatio by remember(orientation) { mutableFloatStateOf(ratio) }
     var settlingAtCrease by remember(orientation) { mutableStateOf(false) }
@@ -159,13 +161,13 @@ internal fun SplitPaneViewport(
     fun updateRatio(value: Float, persist: Boolean) {
         rawRatio = SplitRatioPreferences.sanitize(value) ?: rawRatio
         if (persist) {
-            rawRatio = SplitRatioPreferences.snapToCenter(rawRatio, isFoldable)
+            rawRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
             repository.setSplitRatio(orientation, rawRatio)
         }
     }
 
     CompositionLocalProvider(
-        LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation),
+        LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation, snapToCenter),
     ) {
         Box(modifier.fillMaxSize().onSizeChanged { width = it.width }) {
             content(expansion)
