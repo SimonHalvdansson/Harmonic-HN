@@ -28,6 +28,23 @@
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Harmonic</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).HarmonicSceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
     <key>UILaunchScreen</key>
     <dict>
         <key>UIColorName</key>

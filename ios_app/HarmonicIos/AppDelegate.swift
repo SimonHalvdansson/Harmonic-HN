@@ -3,15 +3,56 @@ import HarmonicKit
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-    private var harmonic: IosHarmonicApplication?
-    private var services: IosNativeServices?
-    var window: UIWindow?
-
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         prepareUiTestStateIfNeeded()
+        return true
+    }
+
+    func applicationSignificantTimeChange(_ application: UIApplication) {
+        for scene in application.connectedScenes {
+            (scene.delegate as? HarmonicSceneDelegate)?.refreshAppearance()
+        }
+    }
+
+    private func prepareUiTestStateIfNeeded() {
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" else {
+            return
+        }
+        if let bundleIdentifier = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
+        }
+        [
+            "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY",
+            "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES",
+            "file_access_times",
+        ].forEach { suiteName in
+            UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        }
+#endif
+    }
+}
+
+/// Keep the same application and navigation graph as this window resizes or changes displays.
+final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    private var harmonic: IosHarmonicApplication?
+    private var services: IosNativeServices?
+    var window: UIWindow?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        if let window {
+            window.windowScene = windowScene
+            window.makeKeyAndVisible()
+            return
+        }
         let services = IosNativeServices()
 #if DEBUG
         let buildType = "debug"
@@ -62,9 +103,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
                     int: Int32((components.hour ?? 0) * 60 + (components.minute ?? 0))
                 )
             },
-            systemDark: { [weak self] in
+            systemDark: { [weak self, weak windowScene] in
                 let style = self?.window?.traitCollection.userInterfaceStyle
-                    ?? UIScreen.main.traitCollection.userInterfaceStyle
+                    ?? windowScene?.traitCollection.userInterfaceStyle
+                    ?? .light
                 return KotlinBoolean(bool: style == .dark)
             },
             filesDirectory: filesDirectory.path,
@@ -90,7 +132,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             content: harmonic.makeViewController()
         )
         services.appearance.attach(root)
-        let window = HarmonicWindow(frame: UIScreen.main.bounds)
+        let window = HarmonicWindow(windowScene: windowScene)
         window.onSystemAppearanceChanged = { [weak harmonic] in harmonic?.refreshAppearance() }
         window.rootViewController = root
         self.window = window
@@ -98,40 +140,26 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
         self.services = services
         self.harmonic = harmonic
-        return true
     }
 
-    private func prepareUiTestStateIfNeeded() {
-#if DEBUG
-        guard ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" else {
-            return
-        }
-        if let bundleIdentifier = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
-        }
-        [
-            "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY",
-            "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES",
-            "file_access_times",
-        ].forEach { suiteName in
-            UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
-        }
-#endif
-    }
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
+    func sceneDidBecomeActive(_ scene: UIScene) {
         harmonic?.setForeground(active: true)
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
+    func sceneWillResignActive(_ scene: UIScene) {
         harmonic?.setForeground(active: false)
     }
 
-    func applicationSignificantTimeChange(_ application: UIApplication) {
+    func refreshAppearance() {
         harmonic?.refreshAppearance()
     }
 
-    func applicationWillTerminate(_ application: UIApplication) {
+    func sceneDidDisconnect(_ scene: UIScene) {
+        // UIKit may reconnect this session. Retain its navigation and native browser state.
+        harmonic?.setForeground(active: false)
+    }
+
+    deinit {
         harmonic?.close()
     }
 }

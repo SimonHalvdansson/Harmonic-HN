@@ -83,6 +83,8 @@ import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import platform.UIKit.UIViewController
+import platform.UIKit.UIDevice
+import platform.UIKit.UIUserInterfaceIdiomPhone
 
 internal val LocalIosForeground = staticCompositionLocalOf { false }
 
@@ -342,13 +344,15 @@ private fun IosAppContent(
 ) {
     val navigation by scene.navigation.state.collectAsState()
     val density = LocalDensity.current
-    val isTabletDevice = isIosTabletWindow()
+    val supportsTwoPane = iosWindowSupportsTwoPane()
+    val expandedPhone = supportsTwoPane &&
+        UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val mainDirective = remember(adaptiveInfo, isTabletDevice) {
+    val mainDirective = remember(adaptiveInfo, supportsTwoPane, expandedPhone) {
         val directive = calculatePaneScaffoldDirective(adaptiveInfo)
         directive.copy(
-            maxHorizontalPartitions = if (isTabletDevice) directive.maxHorizontalPartitions else 1,
-            horizontalPartitionSpacerSize = 16.dp,
+            maxHorizontalPartitions = if (supportsTwoPane) directive.maxHorizontalPartitions else 1,
+            horizontalPartitionSpacerSize = if (expandedPhone) 12.dp else 16.dp,
         )
     }
     val isTwoPane = mainDirective.maxHorizontalPartitions > 1
@@ -369,7 +373,7 @@ private fun IosAppContent(
     val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, fullScreen ->
         IosCommentsContent(
             app = app, scene = scene, request = request,
-            isTablet = isTabletDevice, isTwoPane = !fullScreen, showUpButton = fullScreen,
+            isTablet = supportsTwoPane, isTwoPane = !fullScreen, showUpButton = fullScreen,
             onControllerChanged = onCommentsControllerChanged,
         )
     }
@@ -400,7 +404,8 @@ private fun IosAppContent(
                 MainNavigationScene(
                     storyRequest = detail,
                     directive = mainDirective,
-                    paneProportion = 0.4f,
+                    paneProportion = if (expandedPhone) 0.5f else 0.4f,
+                    isFoldable = expandedPhone,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
@@ -424,7 +429,9 @@ private fun IosAppContent(
         submissions = { request, detail, paneComments ->
             if (isTwoPane) {
                 MainNavigationScene(
-                    storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
+                    storyRequest = detail, directive = mainDirective,
+                    paneProportion = if (expandedPhone) 0.5f else 0.4f,
+                    isFoldable = expandedPhone,
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = { IosSubmissionsContent(app, scene, request) },
                     emptyDetail = { EmptyCommentsScreen() },
@@ -637,11 +644,14 @@ private fun IosSettingsShell(
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
-    val isTabletDevice = isIosTabletWindow()
-    val directive = remember(adaptiveInfo, isTabletDevice) {
+    val supportsTwoPane = iosWindowSupportsTwoPane()
+    val expandedPhone = supportsTwoPane &&
+        UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone
+    val directive = remember(adaptiveInfo, supportsTwoPane, expandedPhone) {
         val calculated = calculatePaneScaffoldDirective(adaptiveInfo)
         calculated.copy(
-            maxHorizontalPartitions = if (isTabletDevice) calculated.maxHorizontalPartitions else 1,
+            maxHorizontalPartitions = if (supportsTwoPane) calculated.maxHorizontalPartitions else 1,
+            horizontalPartitionSpacerSize = if (expandedPhone) 12.dp else 16.dp,
         )
     }
     val isTwoPane = directive.maxHorizontalPartitions > 1
@@ -665,9 +675,9 @@ private fun IosSettingsShell(
         SettingsNavigationShell(
             navigation = navigation,
             directive = directive,
-            supportsTwoPane = isTabletDevice,
-            isFoldable = false,
-            tabletPaneHorizontalPadding = if (isTwoPane) 24.dp else 0.dp,
+            supportsTwoPane = supportsTwoPane,
+            isFoldable = expandedPhone,
+            tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
             animateDetailChanges = false,
@@ -695,9 +705,9 @@ private fun IosSettingsShell(
     }
 }
 
-/** A wide phone in landscape still needs a single reading/settings pane. */
+/** Follow the current window across displays; a short landscape phone stays single-pane. */
 @Composable
-private fun isIosTabletWindow(): Boolean {
+private fun iosWindowSupportsTwoPane(): Boolean {
     val size = LocalWindowInfo.current.containerSize
     return with(LocalDensity.current) { minOf(size.width, size.height).toDp() >= 600.dp }
 }

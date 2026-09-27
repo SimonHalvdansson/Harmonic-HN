@@ -25,7 +25,7 @@ final class HarmonicIosUITests: XCTestCase {
 
     private var firstCommentsButton: XCUIElement {
         app.buttons.matching(
-            NSPredicate(format: "label MATCHES %@", "^[0-9]+$")
+            NSPredicate(format: "label MATCHES %@", "^(Open comments, )?([0-9]+ points, )?[0-9]+ comments?$")
         ).firstMatch
     }
 
@@ -33,6 +33,10 @@ final class HarmonicIosUITests: XCTestCase {
         app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Open article")
         ).firstMatch
+    }
+
+    private var tapToUpdate: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap to update")).firstMatch
     }
 
     private func completeFirstRunIfNeeded() {
@@ -71,6 +75,14 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.tap()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 10))
+    }
+
+    private func closeSettings() {
+        for _ in 0..<3 {
+            if storyListHeader.waitForExistence(timeout: 1) { return }
+            app.buttons["Navigate up"].firstMatch.tap()
+        }
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
     }
 
     private func keepScreenshot(_ name: String) {
@@ -123,6 +135,7 @@ final class HarmonicIosUITests: XCTestCase {
 
     func testBrowserBackReturnsToStoriesOrCommentsPane() throws {
         openFirstComments()
+        let usesTwoPanes = storyListHeader.isHittable
         articleHeader.tap()
         XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 15))
         // The browser back button is in the bottom bar, to the left of refresh.
@@ -131,7 +144,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertLessThan(browserBack.frame.midX, refresh.frame.midX)
         browserBack.tap()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if usesTwoPanes {
             XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
         } else {
             XCTAssertFalse(articleHeader.waitForExistence(timeout: 2))
@@ -170,21 +183,24 @@ final class HarmonicIosUITests: XCTestCase {
         let always = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Always show tap to refresh")).firstMatch
         always.tap()
         keepScreenshot("Tap-to-refresh debug preference enabled")
-        app.buttons["Navigate up"].tap()
-        app.buttons["Navigate up"].tap()
-        XCTAssertTrue(app.buttons["Tap to update"].waitForExistence(timeout: 10))
+        closeSettings()
+        XCTAssertTrue(tapToUpdate.waitForExistence(timeout: 10))
         XCUIDevice.shared.press(.home)
         app.activate()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Tap to update"].waitForExistence(timeout: 10))
-        app.buttons["Tap to update"].tap()
+        XCTAssertTrue(tapToUpdate.waitForExistence(timeout: 10))
+        tapToUpdate.tap()
         XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 15))
         keepScreenshot("Resumed stories")
     }
 
     func testGithubPreviewLoadsInTheCommentsHeader() throws {
         openDebugSettings()
-        app.buttons["Link previews"].tap()
+        let previews = app.buttons["Link previews"]
+        for _ in 0..<5 where !previews.isHittable { app.swipeUp() }
+        XCTAssertTrue(previews.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1) // Let the list finish decelerating before tapping.
+        previews.tap()
         let sample = app.descendants(matching: .any).matching(identifier: "Show HN: Ctxdiff").firstMatch
         XCTAssertTrue(sample.waitForExistence(timeout: 15))
         sample.tap()
@@ -242,7 +258,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Search"].exists)
         XCTAssertTrue(app.buttons["More options"].exists)
         XCTAssertTrue(
-            app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+$")).firstMatch.exists,
+            app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^(Open comments, )?([0-9]+ points, )?[0-9]+ comments?$")).firstMatch.exists,
             "A loaded story should expose its comments button"
         )
         keepScreenshot("Top Stories")
@@ -304,6 +320,8 @@ final class HarmonicIosUITests: XCTestCase {
 
     func testShareDoesNotWriteToClipboard() throws {
         openFirstComments()
+        let originalClipboard = UIPasteboard.general.items
+        defer { UIPasteboard.general.items = originalClipboard }
         let sentinel = "harmonic-share-sentinel-\(UUID().uuidString)"
         UIPasteboard.general.string = sentinel
 
@@ -346,8 +364,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Preload websites, Always")
         ).firstMatch.waitForExistence(timeout: 5))
-        app.buttons["Navigate up"].tap()
-        app.buttons["Navigate up"].tap()
+        closeSettings()
         openFirstComments()
         XCTAssertTrue(articleHeader.exists)
         articleHeader.tap()
@@ -419,7 +436,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 15))
         app.buttons["Search"].tap()
 
-        XCTAssertTrue(app.buttons["Close search"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Clear search"].waitForExistence(timeout: 5))
         keepScreenshot("Story Search")
 
         edgeSwipeBack()
@@ -454,17 +471,99 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(themeRow.waitForExistence(timeout: 10))
         themeRow.tap()
 
-        let darkTheme = app.staticTexts["Dark"]
+        let darkTheme = app.staticTexts["Dark"].firstMatch
         XCTAssertTrue(darkTheme.waitForExistence(timeout: 5))
         darkTheme.tap()
-        XCTAssertTrue(themeRow.waitForExistence(timeout: 10))
         keepScreenshot("Dark Theme Status Bar")
 
-        themeRow.tap()
-        let automaticTheme = app.staticTexts["Material You (auto)"]
+        // Appearance mode is now a nested screen with Light/System/Dark segments.
+        let automaticTheme = app.staticTexts["System"].firstMatch
         XCTAssertTrue(automaticTheme.waitForExistence(timeout: 5))
         automaticTheme.tap()
+        app.buttons["Navigate up"].firstMatch.tap()
         XCTAssertTrue(themeRow.waitForExistence(timeout: 10))
+    }
+
+    func testSearchQueryOpensResultsAndKeepsQueryOnBack() throws {
+        app.buttons["Search"].tap()
+        let search = app.textViews["Search posts"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("Kotlin\n")
+        XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 30))
+        keepScreenshot("Search results for Kotlin")
+        firstCommentsButton.tap()
+        XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 15))
+        app.buttons["Back"].firstMatch.tap()
+        // The placeholder stops being the accessibility label once the field has a value.
+        let restoredSearch = app.textViews.matching(NSPredicate(format: "value == %@", "Kotlin")).firstMatch
+        XCTAssertTrue(restoredSearch.waitForExistence(timeout: 10))
+        app.buttons["Back"].firstMatch.tap()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+    }
+
+    func testSampleContentNavigationWithoutAccountActions() throws {
+        openDebugSettings()
+        for label in ["Link post", "Reference links post", "YouTube comment",
+                      "Very long comment", "Poll", "Internal HN link"] {
+            let sample = app.buttons[label]
+            for _ in 0..<5 where !sample.isHittable { app.swipeUp() }
+            XCTAssertTrue(sample.waitForExistence(timeout: 5), label)
+            Thread.sleep(forTimeInterval: 1) // A tap during a fling only stops the scroll.
+            sample.tap()
+            XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 20), label)
+            keepScreenshot("Sample content - " + label)
+            app.swipeUp()
+            keepScreenshot("Scrolled sample - " + label)
+            app.buttons["Back"].firstMatch.tap()
+            XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 10))
+        }
+    }
+
+    func testOpenHistoricalStoryByIdKeepsNavigation() throws {
+        openDebugSettings()
+        let itemId = app.textViews["HN ID"]
+        for _ in 0..<4 where !itemId.isHittable { app.swipeDown() }
+        XCTAssertTrue(itemId.waitForExistence(timeout: 5))
+        itemId.tap()
+        itemId.typeText("1")
+        let openItem = app.buttons["Open HN ID"]
+        if UIDevice.current.userInterfaceIdiom == .pad && !openItem.isHittable {
+            // The numeric keypad is a popover on iPad. An outside tap dismisses it.
+            openItem.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        openItem.tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        XCTAssertTrue(articleHeader.label.contains("Y Combinator"))
+        articleHeader.tap()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 15))
+        // Historical HN links also exercise HTTP URLs and native browser error handling.
+        Thread.sleep(forTimeInterval: 3)
+        keepScreenshot("Historical HTTP article")
+        app.buttons["Show comments"].tap()
+        app.buttons["Back"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 10))
+    }
+
+    func testArticleSurvivesRotationAndForegroundResume() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        openFirstComments()
+        let title = articleHeader.label
+        articleHeader.tap()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 15))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 4) // Allow simulator rotation and the native browser to settle.
+        keepScreenshot("Article after expanding landscape")
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(app.buttons["Show comments"].waitForExistence(timeout: 10))
+        app.buttons["Show comments"].tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        XCTAssertEqual(articleHeader.label, title)
+        keepScreenshot("Same comments after resize and resume")
     }
 
     func testHomeScreenIconExists() throws {
@@ -536,7 +635,7 @@ final class HarmonicIosPresentationTests: XCTestCase {
 
     private func checkSubmissionsScrolling(storyIndex: Int) {
         let comments = app.buttons.matching(
-            NSPredicate(format: "label MATCHES %@", "^[0-9]+$")
+            NSPredicate(format: "label MATCHES %@", "^(Open comments, )?([0-9]+ points, )?[0-9]+ comments?$")
         ).element(boundBy: storyIndex)
         XCTAssertTrue(comments.waitForExistence(timeout: 15))
         comments.tap()
@@ -605,6 +704,11 @@ final class HarmonicIosSettingsTests: XCTestCase {
         }
     }
     private func dismissFiles() {
+        let cancel = app.buttons["Cancel"].firstMatch
+        if cancel.waitForExistence(timeout: 2) {
+            cancel.tap()
+            return
+        }
         let top = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.09))
         let bottom = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
         top.press(forDuration: 0.1, thenDragTo: bottom)
@@ -663,7 +767,6 @@ final class HarmonicIosSettingsTests: XCTestCase {
         }
     }
     func testBookmarkFilesCancellationPreservesBookmarks() throws {
-        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "Exercises the iPhone Files sheet")
         debugLink()
         try XCTSkipIf(app.buttons["Remove bookmark"].exists, "Preserve an existing fixture bookmark")
         restoreFixture = true
