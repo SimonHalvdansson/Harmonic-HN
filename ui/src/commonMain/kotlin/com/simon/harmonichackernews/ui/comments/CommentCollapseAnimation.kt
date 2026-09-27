@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.collection.MutableIntObjectMap
+import androidx.collection.MutableIntSet
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -26,12 +28,24 @@ internal fun commentCollapsePlan(
     current: List<PortableVisibleComment>,
     visibleIds: Set<Int>,
 ): CommentCollapsePlan {
-    val currentIds = current.mapTo(hashSetOf()) { it.comment.id }
-    val collapsedIds = current.filter { !it.comment.expanded }.mapTo(hashSetOf()) { it.comment.id }
+    if (previous === current || visibleIds.isEmpty()) return CommentCollapsePlan(current)
+    val currentIds = MutableIntSet(current.size)
+    val collapsedIds = MutableIntSet()
+    current.forEach { row ->
+        currentIds += row.comment.id
+        if (!row.comment.expanded) collapsedIds += row.comment.id
+    }
     val exitingIds = hashSetOf<Int>()
     val groups = mutableListOf<MutableList<Int>>()
+    val exitsAfter = MutableIntObjectMap<MutableList<PortableVisibleComment>>()
+    var precedingId = 0
+    var hasPreceding = false
     var collapsedDepth: Int? = null
     previous.forEach { row ->
+        if (row.comment.id in currentIds) {
+            precedingId = row.comment.id
+            hasPreceding = true
+        }
         if (collapsedDepth != null && row.comment.depth <= collapsedDepth!!) collapsedDepth = null
         if (row.comment.id in collapsedIds && row.comment.expanded && collapsedDepth == null) {
             collapsedDepth = row.comment.depth
@@ -39,19 +53,12 @@ internal fun commentCollapsePlan(
         } else if (collapsedDepth != null && row.comment.id !in currentIds && row.comment.id in visibleIds) {
             exitingIds += row.comment.id
             groups.last() += row.comment.id
+            if (hasPreceding) exitsAfter.getOrPut(precedingId) { mutableListOf() }.add(row)
         }
     }
     if (exitingIds.isEmpty()) return CommentCollapsePlan(current)
-    val exitsAfter = mutableMapOf<Int, MutableList<PortableVisibleComment>>()
-    var precedingId: Int? = null
-    previous.forEach { row ->
-        if (row.comment.id in currentIds) precedingId = row.comment.id
-        if (row.comment.id in exitingIds) precedingId?.let {
-            exitsAfter.getOrPut(it) { mutableListOf() }.add(row)
-        }
-    }
     return CommentCollapsePlan(
-        buildList {
+        buildList(current.size + exitingIds.size) {
             current.forEach { row ->
                 add(row)
                 exitsAfter[row.comment.id]?.let(::addAll)
@@ -87,6 +94,30 @@ internal data class AnimatedCommentRows(
     val exitProgress: () -> Float,
 )
 
+/** Compare immutable row snapshots without allocating a boxed triple for every comment. */
+internal class CommentTreeStructure(
+    private val rows: List<PortableVisibleComment>,
+    private val idsOnly: Boolean = false,
+) {
+    fun isNotEmpty(): Boolean = rows.isNotEmpty()
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is CommentTreeStructure || idsOnly != other.idsOnly || rows.size != other.rows.size) return false
+        return rows.indices.all { index ->
+            val before = rows[index].comment
+            val after = other.rows[index].comment
+            before.id == after.id && (idsOnly ||
+                (before.depth == after.depth && before.expanded == after.expanded))
+        }
+    }
+
+    override fun hashCode(): Int = rows.fold(1) { hash, row ->
+        if (idsOnly) 31 * hash + row.comment.id
+        else 31 * (31 * (31 * hash + row.comment.id) + row.comment.depth) + row.comment.expanded.hashCode()
+    }
+}
+
 @Composable
 internal fun rememberAnimatedCommentRows(
     current: List<PortableVisibleComment>,
@@ -97,9 +128,9 @@ internal fun rememberAnimatedCommentRows(
     // Metadata refreshes must not discard retained children or restart their animation.
     // Only changes to the visible tree begin a new transition.
     val structure = remember(current) {
-        current.map { Triple(it.comment.id, it.comment.depth, it.comment.expanded) }
+        CommentTreeStructure(current)
     }
-    val (plan, geometry) = remember(structure, enabled) {
+    val (plan, geometry, plannedCurrent) = remember(structure, enabled) {
         val heights = listState.layoutInfo.visibleItemsInfo.mapNotNull {
             (it.key as? Int)?.let { id -> id to it.size }
         }.toMap()
@@ -108,11 +139,13 @@ internal fun rememberAnimatedCommentRows(
             current,
             heights.keys,
         ) else CommentCollapsePlan(current)
-        plan to plan.rowGeometry(heights)
+        Triple(plan, plan.rowGeometry(heights), current)
     }
     SideEffect { previous = current }
     val rows = remember(plan, current) {
-        if (plan.exitingIds.isEmpty()) current else {
+        if (plan.exitingIds.isEmpty()) current
+        else if (current === plannedCurrent) plan.rows
+        else {
             val updated = current.associateBy { it.comment.id }
             plan.rows.map { updated[it.comment.id] ?: it }
         }

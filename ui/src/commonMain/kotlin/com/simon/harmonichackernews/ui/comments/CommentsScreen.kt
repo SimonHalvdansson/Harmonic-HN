@@ -115,7 +115,7 @@ private fun rememberCommentPlacementAnimation(
     visibleComments: List<PortableVisibleComment>,
     enabled: Boolean,
 ): Boolean {
-    val visibleIds = remember(visibleComments) { visibleComments.map { it.comment.id } }
+    val visibleIds = remember(visibleComments) { CommentTreeStructure(visibleComments, idsOnly = true) }
     var previousIds by remember { mutableStateOf(visibleIds) }
     var animating by remember { mutableStateOf(false) }
     val visibilityChanged = previousIds != visibleIds && previousIds.isNotEmpty() && visibleIds.isNotEmpty()
@@ -274,6 +274,7 @@ fun CommentsScreen(
     }
 
     LaunchedEffect(listState, visibleComments, animatedRows.exitingIds) {
+        var previousHeaderCoverage: Float? = null
         snapshotFlow {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 0 }
             val coverage = if (header == null || topInsetPx <= 0) {
@@ -291,8 +292,11 @@ fun CommentsScreen(
         }.distinctUntilChanged().collect { (_, _, coverage) ->
             // During collapse, lazy indices also contain retained exiting children.
             if (animatedRows.exitingIds.isEmpty()) controller.updateScrollPosition(listState, visibleComments)
-            controller.updateStatusBarHeaderCoverage(coverage)
-            controller.listener.onHeaderCoverageChanged(coverage)
+            if (previousHeaderCoverage != coverage) {
+                previousHeaderCoverage = coverage
+                controller.updateStatusBarHeaderCoverage(coverage)
+                controller.listener.onHeaderCoverageChanged(coverage)
+            }
         }
     }
 

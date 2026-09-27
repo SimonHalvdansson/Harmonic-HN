@@ -22,6 +22,7 @@ class CommentInteractionBenchmark {
     @Test fun toggleComment10() = toggle(10)
     @Test fun toggleComment500() = toggle(500)
     @Test fun toggleFilteredComment500() = toggle(500, filtered = true)
+    @Test fun toggleComment4000() = toggle(4_000)
 
     private fun toggle(count: Int, filtered: Boolean = false) {
         val store = CommentThreadStore().also {

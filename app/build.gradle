@@ -206,6 +206,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugLLMImplementation(libs.androidx.compose.ui.test.manifest)
+    benchmarkImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 baselineProfile {

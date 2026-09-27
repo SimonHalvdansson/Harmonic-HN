@@ -188,7 +188,7 @@ internal fun CommentMeta(
                 "+${subtreeReplyCount ?: 0}",
                 modifier = Modifier
                     .padding(start = if (isNew) 6.dp else 0.dp)
-                    .graphicsLayer(alpha = hiddenReplyCountAlpha)
+                    .graphicsLayer { alpha = hiddenReplyCountAlpha }
                     .clip(RoundedCornerShape(7.dp))
                     .background(colors.commentCountIndicator)
                     .padding(horizontal = 5.dp, vertical = 1.dp)

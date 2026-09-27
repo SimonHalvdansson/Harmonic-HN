@@ -108,6 +108,8 @@ internal fun MacrobenchmarkScope.scrollStoryList(repetitions: Int = 4) {
 /** Seeds the fixed JSON through the app's real cache, verifies production parsing, then returns. */
 internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
+    firstCommentAuthor: String? = null,
+    returnToStories: Boolean = true,
 ) {
     // A warm launch resumes the previous iteration's Comments screen. Close it before seeding:
     // otherwise the old title/rows can satisfy the waits while the asynchronous cache write is
@@ -123,8 +125,10 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     check(device.wait(Until.hasObject(By.text(fixture.title)), 30_000)) {
         "The ${fixture.intentValue} deterministic Comments fixture did not parse and render"
     }
+    firstCommentAuthor?.let { revealFixtureComment(it) }
     awaitLoadedComments(fixture)
     device.waitForIdle()
+    if (!returnToStories) return
     device.pressBack()
     check(device.wait(Until.gone(By.text(fixture.title)), 10_000)) {
         "The ${fixture.intentValue} deterministic Comments fixture did not close"
@@ -146,6 +150,18 @@ internal fun MacrobenchmarkScope.openDeterministicCommentsFixture(
     SystemClock.sleep(550)
     awaitLoadedComments(fixture)
     device.waitForIdle()
+}
+
+/** Tall story bodies can initially push every comment below the phone's viewport. */
+private fun MacrobenchmarkScope.revealFixtureComment(author: String) {
+    repeat(4) {
+        val target = device.findObject(By.text(author))
+        if (target != null && target.visibleBounds.centerY() < device.displayHeight * 0.45f) return
+        device.swipe(device.displayWidth / 2, (device.displayHeight * 0.91f).toInt(),
+            device.displayWidth / 2, (device.displayHeight * 0.56f).toInt(), 200)
+        device.waitForIdle()
+    }
+    check(device.hasObject(By.text(author))) { "The fixture's first comment must remain visible" }
 }
 
 private fun MacrobenchmarkScope.awaitLoadedComments(fixture: CommentsBenchmarkFixture) {

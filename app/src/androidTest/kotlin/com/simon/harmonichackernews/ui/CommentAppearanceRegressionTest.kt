@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.*
@@ -41,6 +43,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.math.abs
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class CommentAppearanceRegressionTest {
@@ -525,6 +528,139 @@ class CommentAppearanceRegressionTest {
         compose.waitUntil(5_000) { !controller.isCommentActionOverlayShowing() }
         compose.onNodeWithText("Body 1").assertDoesNotExist()
     }
+    /** Also exports clock-matched frames when commentComparisonDir is supplied to instrumentation. */
+    @Test
+    fun nestedCollapsePreservesMotionContentAndScrollAcrossDisplayStyles() {
+        val store = CommentThreadStore()
+        val story = Story().apply { id = 100 }
+        store.reset(story)
+        store.replaceParsedComments(story, (1..40).map { id ->
+            Comment().apply {
+                this.id = id
+                by = "reader$id"
+                text = "Body $id with <b>formatted text</b>.<p>A second paragraph."
+                depth = when (id) { 1 -> 0; 2 -> 1; 3 -> 2; 4 -> 1; else -> 0 }
+                parent = when (id) { 2, 4 -> 1; 3 -> 2; else -> -1 }
+                expanded = true
+            }
+        }, "Default", false)
+        val storySnapshot = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+        lateinit var controller: CommentsScreenController
+        fun publish() = controller.updateContent(controller.screenState.copy(
+            comments = store.state.value.allComments,
+            visibleComments = store.state.value.visibleComments,
+        ))
+        controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = storySnapshot, initialThreadCached = true,
+            showWebsite = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = object : NoOpListener() {
+                override fun onToggleComment(comment: PortableCommentItem, position: Int) {
+                    store.toggleExpanded(comment.id)
+                    publish()
+                }
+            },
+        )
+        controller.updateContent(CommentsScreenState(
+            story = storySnapshot, commentsLoaded = true, initialThreadCached = true,
+            displaySettings = settings, comments = store.state.value.allComments,
+            visibleComments = store.state.value.visibleComments,
+        ))
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(
+                    LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
+                    LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Solid),
+                ) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        Box(Modifier.fillMaxWidth().height(600.dp).testTag("comparison-thread")) {
+                            CommentsScreen(
+                                controller, Modifier, false, pullToRefreshEnabled = false,
+                                showNavigationControls = false, animateComments = true, showScrollbar = true,
+                                smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                                headerContent = {}, searchDialog = {}, actionOverlay = {},
+                            )
+                        }
+                    }
+                }
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            fun toggle(author: String) {
+                // Invoke the accessible action directly: Android ripple time is independent of
+                // the Compose test clock and would make before/after frame captures nondeterministic.
+                compose.onNodeWithText(author).performSemanticsAction(
+                    androidx.compose.ui.semantics.SemanticsActions.OnClick,
+                ) { it() }
+            }
+            for (display in DisplayStyle.entries) for (collapseBody in listOf(false, true)) {
+                val label = "${display.name}-$collapseBody"
+                compose.runOnIdle {
+                    store.restoreCollapsedComments(emptySet())
+                    publish()
+                    controller.updateContent(controller.screenState.copy(displaySettings = settings.copy(
+                        displayStyle = display, collapseParent = collapseBody,
+                        continuousDepthIndicators = true, roundedDepthIndicators = true,
+                        showTopLevelDepthIndicator = true, showDividers = true,
+                    )))
+                    controller.scrollToComment(0, 0, false)
+                }
+                compose.mainClock.advanceTimeBy(1_000)
+                captureComparisonFrame("$label-expanded")
+                toggle("reader2")
+                compose.mainClock.advanceTimeBy(400)
+                compose.onNodeWithText("reader3").assertDoesNotExist()
+                captureComparisonFrame("$label-nested")
+                toggle("reader1")
+                compose.mainClock.advanceTimeBy(64)
+                captureComparisonFrame("$label-collapse64")
+                compose.mainClock.advanceTimeBy(64)
+                captureComparisonFrame("$label-collapse128")
+                compose.mainClock.advanceTimeBy(400)
+                compose.onNodeWithText("reader2").assertDoesNotExist()
+                captureComparisonFrame("$label-collapsed")
+                toggle("reader1")
+                compose.mainClock.advanceTimeBy(64)
+                captureComparisonFrame("$label-expand64")
+                compose.mainClock.advanceTimeBy(400)
+                compose.onNodeWithText("reader2").assertExists()
+                compose.onNodeWithText("reader3").assertDoesNotExist()
+                captureComparisonFrame("$label-restored-nested")
+                // Reverse an in-flight collapse, then verify the nested state survives again.
+                toggle("reader1")
+                compose.mainClock.advanceTimeBy(64)
+                toggle("reader1")
+                compose.mainClock.advanceTimeBy(600)
+                compose.onNodeWithText("reader2").assertExists()
+                compose.onNodeWithText("reader3").assertDoesNotExist()
+                compose.onNode(hasScrollToIndexAction()).performScrollToIndex(12)
+                compose.mainClock.advanceTimeBy(400)
+                captureComparisonFrame("$label-scrolled")
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+            scene.close()
+        }
+    }
+
+    private fun captureComparisonFrame(name: String) {
+        val label = InstrumentationRegistry.getArguments().getString("commentComparisonDir") ?: return
+        val directory = File(compose.activity.getExternalFilesDir(null), "comment-comparison/$label").apply { mkdirs() }
+        val node = compose.onNodeWithTag("comparison-thread")
+        node.captureToImage().asAndroidBitmap().let { bitmap ->
+            File(directory, "$name.png").outputStream().use {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+        }
+        File(directory, "$name.txt").writeText(node.printToString(maxDepth = 20))
+    }
+
     private val settings = CommentDisplaySettings(
         collapseParent = false, showFavicons = false, showHeaderPreviewImage = false,
         tintHeader = false, showUpButton = false, paletteTintMode = "default",
@@ -536,7 +672,7 @@ class CommentAppearanceRegressionTest {
         canProvideSummary = false, showAdditionalSummaryInfo = false, enableSummaryBoldFormatting = true,
     )
 
-    private class NoOpListener : CommentsScreenController.Listener {
+    private open class NoOpListener : CommentsScreenController.Listener {
         override fun onToggleComment(comment: PortableCommentItem, position: Int) = Unit
         override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) = Unit
         override fun onCommentActionOverlayVisibilityChanged(showing: Boolean) = Unit

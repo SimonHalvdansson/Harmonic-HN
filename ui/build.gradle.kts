@@ -40,6 +40,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.androidx.collection)
             api(project(":core"))
             api(project(":resources"))
             implementation(libs.compose.multiplatform.runtime)
