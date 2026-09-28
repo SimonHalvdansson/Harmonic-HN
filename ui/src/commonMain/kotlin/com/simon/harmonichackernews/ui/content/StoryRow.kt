@@ -660,13 +660,13 @@ private fun StoryMainContent(
     }
     val titleStartPadding = if (animateChanges) {
         val animatedTitleStartPadding by animateDpAsState(
-            targetValue = if (style.showIndex) 1.dp else 11.dp,
+            targetValue = if (style.showIndex) 0.dp else 11.dp,
             animationSpec = contentTween(),
             label = "story title start padding",
         )
         animatedTitleStartPadding
     } else if (style.showIndex) {
-        1.dp
+        0.dp
     } else {
         11.dp
     }

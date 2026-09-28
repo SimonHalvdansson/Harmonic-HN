@@ -169,3 +169,7 @@ internal expect fun PlatformDialogPredictiveBackHandler(
 
 @Composable
 internal expect fun PlatformDialogBackgroundDimAmount(fraction: Float)
+
+/** Container transforms own their motion; a native window animation would move the source twice. */
+@Composable
+internal expect fun PlatformDisableDialogWindowAnimations()

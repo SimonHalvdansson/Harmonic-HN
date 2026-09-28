@@ -103,3 +103,9 @@ internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) {
         }
     }
 }
+
+@Composable
+internal actual fun PlatformDisableDialogWindowAnimations() {
+    val window = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
+    SideEffect { window.setWindowAnimations(0) }
+}

@@ -28,3 +28,6 @@ internal actual fun PlatformDialogPredictiveBackHandler(
 
 @Composable
 internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) = Unit
+
+@Composable
+internal actual fun PlatformDisableDialogWindowAnimations() = Unit

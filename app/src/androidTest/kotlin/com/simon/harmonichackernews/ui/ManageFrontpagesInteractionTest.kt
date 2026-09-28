@@ -9,6 +9,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasScrollAction
@@ -245,6 +248,7 @@ class ManageFrontpagesInteractionTest {
             compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("About ${type.label}"))
             compose.onNodeWithContentDescription("About ${type.label}").performTouchInput { click() }
             compose.onNodeWithText(explanation).assertIsDisplayed()
+            compose.onNode(hasText(type.label) and hasAnyAncestor(isDialog())).assertIsDisplayed()
             compose.onNodeWithText("OK").performClick()
             compose.runOnIdle { assertEquals(before, repository.snapshot().story) }
         }
@@ -261,6 +265,23 @@ class ManageFrontpagesInteractionTest {
         compose.runOnIdle {
             assertEquals(initial + StoryType.CLASSIC, frontpages.value)
             assertEquals(StoryType.TOP_STORIES, default.value)
+        }
+    }
+
+    @Test
+    fun infoDialogCanReturnToItsSourceWithBackAndOpenAgain() {
+        showScreen()
+        repeat(2) {
+            compose.onNodeWithContentDescription("About Classic").performTouchInput { click() }
+            compose.onNode(hasText("Classic") and hasAnyAncestor(isDialog())).assertIsDisplayed()
+            androidx.test.espresso.Espresso.pressBack()
+            compose.waitForIdle()
+            compose.onNode(isDialog()).assertDoesNotExist()
+            compose.onNodeWithContentDescription("Add Classic").assertIsDisplayed()
+            compose.runOnIdle {
+                assertEquals(initial, frontpages.value)
+                assertEquals(StoryType.TOP_STORIES, default.value)
+            }
         }
     }
 

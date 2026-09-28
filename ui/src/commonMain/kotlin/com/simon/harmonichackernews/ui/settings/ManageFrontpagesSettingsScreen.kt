@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -18,8 +19,8 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,13 +33,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material3.LocalRippleConfiguration
-import androidx.compose.material3.RippleConfiguration
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -57,11 +58,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -79,21 +85,22 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
-import com.simon.harmonichackernews.ui.stories.menuIcon
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
-import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
+import com.simon.harmonichackernews.ui.stories.menuIcon
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
-import kotlinx.coroutines.delay
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ManageFrontpagesSettingsRoute(
@@ -150,7 +157,8 @@ fun ManageFrontpagesSettingsScreen(
     onAdd: (StoryType) -> Unit,
     focusFrontpage: StoryType? = null,
 ) {
-    var infoFrontpage by rememberSaveable { mutableStateOf<StoryType?>(null) }
+    var infoFrontpage by remember { mutableStateOf<FrontpageInfoSource?>(null) }
+    var infoSourceCovered by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val hazeState = rememberHazeState()
     val resetButtonShape = RoundedCornerShape(16.dp)
@@ -159,8 +167,7 @@ fun ManageFrontpagesSettingsScreen(
     var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val selectedBackground = frontpageSelectionColor(
         pageBackground = HarmonicTheme.colors.background,
-        cardBackground = itemBackgroundColor(),
-        accent = MaterialTheme.colorScheme.primary,
+        selectedContainer = MaterialTheme.colorScheme.secondaryContainer,
     )
     // Persisting a drop must not replace the state that is still animating that drop.
     val reorder = remember(listState) { FrontpageReorderState(frontpages, listState) }
@@ -200,7 +207,7 @@ fun ManageFrontpagesSettingsScreen(
     val drop = reorder.drop
     LaunchedEffect(drop) {
         if (drop != null) {
-            drop.progress.animateTo(1f, tween(260, easing = FastOutSlowInEasing))
+            drop.progress.animateTo(1f, tween(200, easing = FastOutSlowInEasing))
             reorder.completeDrop(drop)
         }
     }
@@ -223,82 +230,102 @@ fun ManageFrontpagesSettingsScreen(
             }
         }
     }
-    CompositionLocalProvider(
-        LocalRippleConfiguration provides RippleConfiguration(
-            color = if (HarmonicTheme.isDark) Color.White else Color.Unspecified,
-            rippleAlpha = RippleAlpha(draggedAlpha = 0.024f, focusedAlpha = 0.018f, hoveredAlpha = 0.009f, pressedAlpha = 0.015f),
-        ),
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            SettingsPage(
-                modifier = Modifier.sharedHazeSource(hazeState),
-                title = stringResource(Res.string.settings_section_frontpages),
-                showNavigation = true,
-                onBack = onBack,
-                listState = listState,
-                extraBottomPadding = resetButtonHeight + 16.dp,
-                contentVersion = reorder.items.hashCode() + defaultLabel.hashCode(),
-            ) {
-                item(key = "frontpage-help") {
-                    Text(
-                        text = "Drag to reorder",
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                        color = HarmonicTheme.colors.textSecondary,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
+    Box(Modifier.fillMaxSize()) {
+        SettingsPage(
+            modifier = Modifier.sharedHazeSource(hazeState),
+            title = stringResource(Res.string.settings_section_frontpages),
+            showNavigation = true,
+            onBack = onBack,
+            listState = listState,
+            extraBottomPadding = resetButtonHeight + 16.dp,
+            contentVersion = reorder.items.hashCode() + defaultLabel.hashCode(),
+        ) {
+            item(key = "frontpage-help") {
+                Text(
+                    text = "Drag to reorder",
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    color = HarmonicTheme.colors.textSecondary,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                )
+            }
+            itemsIndexed(reorder.items, key = { _, type -> type.name }) { index, type ->
+                val lifted = reorder.draggedType == type || drop?.type == type
+                val elevation by animateDpAsState(
+                    if (lifted) 6.dp else 0.dp,
+                    animationSpec = tween(160),
+                    label = "frontpage lift",
+                )
+                var sourceBounds by remember { mutableStateOf<Rect?>(null) }
+                var sourceLayer by remember { mutableStateOf<GraphicsLayer?>(null) }
+                val selected = type.label == defaultLabel
+                val accent = MaterialTheme.colorScheme.primary
+                val selectedContent = MaterialTheme.colorScheme.onSecondaryContainer
+                val textColor = if (selected) selectedContent else HarmonicTheme.colors.textPrimary
+                val iconColor = if (selected) selectedContent else HarmonicTheme.colors.iconTint
+                val borderColor = accent.copy(alpha = maxOf(
+                    if (selected) 0.35f else 0f,
+                    if (type == focusFrontpage) 0.8f * focusPulse.value else 0f,
+                ))
+                val background by animateColorAsState(
+                    targetValue = if (selected) {
+                        selectedBackground
+                    } else {
+                        itemBackgroundColor()
+                    },
+                    animationSpec = tween(160),
+                    label = "default frontpage background",
+                )
+                fun moveBy(delta: Int) {
+                    onOrderChanged(reorder.items.toMutableList().apply {
+                        add(index + delta, removeAt(index))
+                    })
                 }
-                itemsIndexed(reorder.items, key = { _, type -> type.name }) { index, type ->
-                    val lifted = reorder.draggedType == type || drop?.type == type
-                    val selected = type.label == defaultLabel
-                    val accent = MaterialTheme.colorScheme.primary
-                    val background by animateColorAsState(
-                        targetValue = if (selected) {
-                            selectedBackground
-                        } else {
-                            itemBackgroundColor()
-                        },
-                        animationSpec = tween(160),
-                        label = "default frontpage background",
-                    )
-                    fun moveBy(delta: Int) {
-                        onOrderChanged(reorder.items.toMutableList().apply {
-                            add(index + delta, removeAt(index))
-                        })
+                val actions = buildList {
+                    if (index > 0) add(CustomAccessibilityAction("Move up") { moveBy(-1); true })
+                    if (index < reorder.items.lastIndex) {
+                        add(CustomAccessibilityAction("Move down") { moveBy(1); true })
                     }
-                    val actions = buildList {
-                        if (index > 0) add(CustomAccessibilityAction("Move up") { moveBy(-1); true })
-                        if (index < reorder.items.lastIndex) {
-                            add(CustomAccessibilityAction("Move down") { moveBy(1); true })
-                        }
-                        if (type in StoryType.additionalFrontpages) {
-                            add(CustomAccessibilityAction("Remove frontpage") { onRemove(type); true })
-                        }
+                    if (type in StoryType.additionalFrontpages) {
+                        add(CustomAccessibilityAction("Remove frontpage") { onRemove(type); true })
                     }
-                    Row(
-                        modifier = Modifier
-                            .zIndex(if (lifted) 1f else 0f)
-                            .animateItem(placementSpec = if (lifted) null else spring(stiffness = 400f))
-                            .graphicsLayer { translationY = reorder.translationFor(type) }
-                            .padding(horizontal = 16.dp, vertical = 2.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(focusedBackground(type, background))
-                            .border(
-                                width = 1.dp,
-                                color = accent.copy(alpha = maxOf(
-                                    if (selected) 0.35f else 0f,
-                                    if (type == focusFrontpage) 0.8f * focusPulse.value else 0f,
-                                )),
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 52.dp)
-                            .padding(end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                }
+                Row(
+                    modifier = Modifier
+                        .zIndex(if (lifted) 1f else 0f)
+                        .animateItem(placementSpec = if (lifted) null else spring(stiffness = 400f))
+                        .graphicsLayer { translationY = reorder.translationFor(type) }
+                        .padding(horizontal = 16.dp, vertical = 2.dp)
+                        .onGloballyPositioned { sourceBounds = it.boundsInWindow() }
+                        .drawWithContent {
+                            if (!infoSourceCovered || infoFrontpage?.type != type) drawContent()
+                        }
+                        .shadow(elevation, RoundedCornerShape(12.dp), clip = false)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(focusedBackground(type, background))
+                        .border(
+                            width = 1.dp,
+                            color = borderColor,
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 52.dp)
+                        .captureSharedTransformSourceContent { sourceLayer = it }
+                        .padding(end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Only the name/icon area selects the default. The drag and remove controls
+                    // are siblings, so a short tap on the handle cannot bubble into selection.
+                    CompositionLocalProvider(
+                        LocalRippleConfiguration provides RippleConfiguration(
+                            color = if (HarmonicTheme.isDark) Color.White else Color.Unspecified,
+                            rippleAlpha = RippleAlpha(
+                                draggedAlpha = 0.08f, focusedAlpha = 0.06f,
+                                hoveredAlpha = 0.02f, pressedAlpha = 0.06f,
+                            ),
+                        ),
                     ) {
-                        // Only the name/icon area selects the default. The drag and remove controls
-                        // are siblings, so a short tap on the handle cannot bubble into selection.
                         Row(
                             modifier = Modifier.weight(1f)
                                 .defaultMinSize(minHeight = 52.dp)
@@ -311,13 +338,13 @@ fun ManageFrontpagesSettingsScreen(
                                 painterResource(type.menuIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = HarmonicTheme.colors.iconTint,
+                                tint = iconColor,
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = type.label,
                                 modifier = Modifier.weight(1f, fill = false),
-                                color = HarmonicTheme.colors.textPrimary,
+                                color = textColor,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 16.sp,
                                 lineHeight = 20.sp,
@@ -329,9 +356,9 @@ fun ManageFrontpagesSettingsScreen(
                                 Text(
                                     text = "DEFAULT",
                                     modifier = Modifier
-                                        .background(accent.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
+                                        .background(selectedContent.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
                                         .padding(horizontal = 6.dp, vertical = 3.dp),
-                                    color = accent,
+                                    color = selectedContent,
                                     fontFamily = ProductSansFontFamily,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 9.sp,
@@ -341,130 +368,159 @@ fun ManageFrontpagesSettingsScreen(
                                 )
                             }
                         }
-                        if (type in StoryType.additionalFrontpages) {
-                            IconButton(onClick = { onRemove(type) }) {
-                                Icon(
-                                    painterResource(Res.drawable.ic_close),
-                                    contentDescription = "Remove ${type.label}",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = HarmonicTheme.colors.iconTint,
-                                )
-                            }
-                            FrontpageInfoButton(type, onClick = { infoFrontpage = type })
-                        }
-                        Box(
-                            modifier = Modifier.size(48.dp).pointerInput(reorder, type) {
-                                detectDragGestures(
-                                    onDragStart = { reorder.start(type) },
-                                    onDragEnd = { reorder.finish(); currentOnOrderChanged(reorder.items) },
-                                    onDragCancel = reorder::cancel,
-                                    onDrag = { change, amount -> change.consume(); reorder.move(amount.y) },
-                                )
-                            },
-                            contentAlignment = Alignment.Center,
-                        ) {
+                    }
+                    if (type in StoryType.additionalFrontpages) {
+                        IconButton(onClick = { onRemove(type) }) {
                             Icon(
-                                painterResource(Res.drawable.ic_drag_handle),
-                                contentDescription = "Drag to reorder ${type.label}",
-                                tint = HarmonicTheme.colors.iconTint,
+                                painterResource(Res.drawable.ic_close),
+                                contentDescription = "Remove ${type.label}",
+                                modifier = Modifier.size(20.dp),
+                                tint = iconColor,
                             )
                         }
+                        FrontpageInfoButton(
+                            type,
+                            tint = iconColor,
+                            isTransformSource = infoFrontpage?.type == type,
+                        ) {
+                            infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
+                        }
                     }
-                }
-                if (available.isNotEmpty()) {
-                    item(key = "add-frontpages-heading") {
-                        Text(
-                            text = "Add frontpage",
-                            modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
-                                .semantics { heading() },
-                            color = HarmonicTheme.colors.textSecondary,
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
+                    Box(
+                        modifier = Modifier.size(48.dp).pointerInput(reorder, type) {
+                            detectDragGestures(
+                                onDragStart = { reorder.start(type) },
+                                onDragEnd = { reorder.finish(); currentOnOrderChanged(reorder.items) },
+                                onDragCancel = reorder::cancel,
+                                onDrag = { change, amount -> change.consume(); reorder.move(amount.y) },
+                            )
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_drag_handle),
+                            contentDescription = "Drag to reorder ${type.label}",
+                            tint = iconColor,
                         )
                     }
-                    items(available, key = { "add-${it.name}" }) { type ->
-                        Row(
-                            modifier = Modifier.animateItem()
-                                .padding(horizontal = 16.dp, vertical = 2.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(focusedBackground(type, itemBackgroundColor()))
-                                .border(
-                                    1.dp,
-                                    focusAccent.copy(alpha = if (type == focusFrontpage) 0.8f * focusPulse.value else 0f),
-                                    RoundedCornerShape(12.dp),
-                                )
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 52.dp)
-                                .clickable(role = Role.Button, onClick = { onAdd(type) })
-                                .semantics { contentDescription = "Add ${type.label}" }
-                                .padding(start = 16.dp, end = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                }
+            }
+            if (available.isNotEmpty()) {
+                item(key = "add-frontpages-heading") {
+                    Text(
+                        text = "Add frontpage",
+                        modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
+                            .semantics { heading() },
+                        color = HarmonicTheme.colors.textSecondary,
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                    )
+                }
+                items(available, key = { "add-${it.name}" }) { type ->
+                    var sourceBounds by remember { mutableStateOf<Rect?>(null) }
+                    var sourceLayer by remember { mutableStateOf<GraphicsLayer?>(null) }
+                    val background = focusedBackground(type, itemBackgroundColor())
+                    val borderColor = focusAccent.copy(
+                        alpha = if (type == focusFrontpage) 0.8f * focusPulse.value else 0f,
+                    )
+                    Row(
+                        modifier = Modifier.animateItem()
+                            .padding(horizontal = 16.dp, vertical = 2.dp)
+                            .onGloballyPositioned { sourceBounds = it.boundsInWindow() }
+                            .drawWithContent {
+                                if (!infoSourceCovered || infoFrontpage?.type != type) drawContent()
+                            }
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(background)
+                            .border(
+                                1.dp,
+                                borderColor,
+                                RoundedCornerShape(12.dp),
+                            )
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 52.dp)
+                            .captureSharedTransformSourceContent { sourceLayer = it }
+                            .clickable(role = Role.Button, onClick = { onAdd(type) })
+                            .semantics { contentDescription = "Add ${type.label}" }
+                            .padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painterResource(type.menuIcon),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = HarmonicTheme.colors.iconTint,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = type.label,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                            color = HarmonicTheme.colors.textPrimary,
+                            fontFamily = ProductSansFontFamily,
+                            fontSize = 16.sp,
+                            lineHeight = 20.sp,
+                        )
+                        FrontpageInfoButton(
+                            type,
+                            isTransformSource = infoFrontpage?.type == type,
                         ) {
+                            infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
+                        }
+                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                             Icon(
-                                painterResource(type.menuIcon),
+                                painterResource(Res.drawable.ic_add),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = HarmonicTheme.colors.iconTint,
+                                tint = MaterialTheme.colorScheme.primary,
                             )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = type.label,
-                                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                                color = HarmonicTheme.colors.textPrimary,
-                                fontFamily = ProductSansFontFamily,
-                                fontSize = 16.sp,
-                                lineHeight = 20.sp,
-                            )
-                            FrontpageInfoButton(type, onClick = { infoFrontpage = type })
-                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painterResource(Res.drawable.ic_add),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
                         }
                     }
                 }
             }
-            ExtendedFloatingActionButton(
-                onClick = {
-                    onReset()
-                    scope.launch { listState.animateScrollToItem(0) }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                    )
-                    .padding(16.dp)
-                    .widthIn(min = 140.dp)
-                    .onSizeChanged { resetButtonHeight = with(density) { it.height.toDp() } }
-                    .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, resetButtonShape, clip = false)
-                    .sharedHazeBackground(
-                        glassAppearance = HazeGlassAppearance.FloatingButton,
-                        hazeState = hazeState,
-                        surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
-                        shape = resetButtonShape,
-                    )
-                    .semantics { contentDescription = "Reset frontpage order and default" },
-                shape = resetButtonShape,
-                containerColor = Color.Transparent,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 0.dp,
-                    pressedElevation = 0.dp,
-                    focusedElevation = 0.dp,
-                    hoveredElevation = 0.dp,
-                ),
-                contentColor = HarmonicTheme.colors.overlayButtonContent,
-                icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
-                text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
-            )
         }
+        ExtendedFloatingActionButton(
+            onClick = {
+                onReset()
+                scope.launch { listState.animateScrollToItem(0) }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                )
+                .padding(16.dp)
+                .widthIn(min = 140.dp)
+                .onSizeChanged { resetButtonHeight = with(density) { it.height.toDp() } }
+                .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, resetButtonShape, clip = false)
+                .sharedHazeBackground(
+                    glassAppearance = HazeGlassAppearance.FloatingButton,
+                    hazeState = hazeState,
+                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    shape = resetButtonShape,
+                )
+                .semantics { contentDescription = "Reset frontpage order and default" },
+            shape = resetButtonShape,
+            containerColor = Color.Transparent,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = 0.dp,
+            ),
+            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
+            text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+        )
     }
-    infoFrontpage?.let { type ->
-        FrontpageInfoDialog(type, onDismiss = { infoFrontpage = null })
+    infoFrontpage?.let { source ->
+        FrontpageInfoDialog(
+            source = source,
+            onSourceReadyToCover = { infoSourceCovered = true },
+            onDismiss = {
+                infoSourceCovered = false
+                infoFrontpage = null
+            },
+        )
     }
 }
 
