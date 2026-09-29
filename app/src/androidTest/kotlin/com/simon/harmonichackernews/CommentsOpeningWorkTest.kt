@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.simon.harmonichackernews.ui.navigation.PaneDetailTransitionDurationMillis
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
@@ -29,7 +30,7 @@ class CommentsOpeningWorkTest {
                 (activity.window.decorView as ViewGroup).addView(view, ViewGroup.LayoutParams(1, 1))
                 work = CommentsOpeningWork(
                     integrated = { integrated }, showingWebsite = { false },
-                    hiddenBrowserDelayMillis = { 200L },
+                    hiddenBrowserDelayMillis = { PaneDetailTransitionDurationMillis.toLong() },
                     loadComments = {
                         // The same request made when asynchronous cached metadata enables links.
                         integrated = true
@@ -48,7 +49,35 @@ class CommentsOpeningWorkTest {
             try {
                 assertTrue(initialized.await(5, TimeUnit.SECONDS))
                 assertTrue("Hidden browser started during the protected opening interval",
-                    browserAt.get() - headerAt.get() >= 200L)
+                    browserAt.get() - headerAt.get() >= PaneDetailTransitionDurationMillis)
+            } finally {
+                scenario.onActivity { work.close(); (view.parent as? ViewGroup)?.removeView(view) }
+            }
+        }
+    }
+
+    @Test
+    fun openingWebsiteDuringAnimationBypassesHiddenBrowserDelay() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val initialized = CountDownLatch(1)
+            lateinit var work: CommentsOpeningWork
+            lateinit var view: View
+            scenario.onActivity { activity ->
+                view = View(activity)
+                (activity.window.decorView as ViewGroup).addView(view, ViewGroup.LayoutParams(1, 1))
+                work = CommentsOpeningWork(
+                    integrated = { true }, showingWebsite = { false },
+                    hiddenBrowserDelayMillis = { 10_000L },
+                    loadComments = { work.requestVisibleBrowser() },
+                    initializeVisibleBrowser = { initialized.countDown() },
+                    initializeConfiguredBrowser = {},
+                    startSummary = {},
+                )
+                work.schedule(view)
+            }
+            try {
+                assertTrue("Visible website must not wait for the hidden-browser delay",
+                    initialized.await(3, TimeUnit.SECONDS))
             } finally {
                 scenario.onActivity { work.close(); (view.parent as? ViewGroup)?.removeView(view) }
             }

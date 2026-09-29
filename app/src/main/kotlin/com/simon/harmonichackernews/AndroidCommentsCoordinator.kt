@@ -3,6 +3,7 @@ package com.simon.harmonichackernews
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -47,6 +48,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureListener
 import com.simon.harmonichackernews.ui.comments.CommentsScreenStateFactory
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
+import com.simon.harmonichackernews.ui.navigation.PaneDetailTransitionDurationMillis
 import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationController
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.utils.AndroidDisplay
@@ -152,7 +154,15 @@ class AndroidCommentsCoordinator(
         integrated = { integratedWebview },
         showingWebsite = { showWebsite },
         hiddenBrowserDelayMillis = {
-            if (navigation.isAdaptiveTwoPane()) 0L else ActivityNavigationTransitionDurationMillis.toLong()
+            val duration = if (navigation.isAdaptiveTwoPane()) {
+                PaneDetailTransitionDurationMillis
+            } else {
+                ActivityNavigationTransitionDurationMillis
+            }
+            val animationScale = Settings.Global.getFloat(
+                activity.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
+            )
+            (duration * animationScale.coerceAtLeast(1f)).toLong()
         },
         loadComments = { if (!commentsLoaded) loadInitialStoryAndComments(restoreScrollFromCache) },
         initializeVisibleBrowser = { webViewController?.initializeForVisibleWebsite() },
@@ -286,6 +296,10 @@ class AndroidCommentsCoordinator(
                     } else {
                         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
                     }
+                }
+
+                override fun onWebViewInitialized() {
+                    refreshPresentationCapabilities()
                 }
 
                 override fun syncOnBackPressedCallbackEnabledState() {
@@ -899,6 +913,8 @@ class AndroidCommentsCoordinator(
     }
 
     private fun shouldShowInvertAction(): Boolean {
+        // Even a feature query can synchronously initialize Chromium before the opening delay.
+        if (webViewController?.hasWebView() != true) return false
         return WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)
                 || WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)
     }

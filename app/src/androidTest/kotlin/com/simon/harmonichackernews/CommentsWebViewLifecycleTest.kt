@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.webkit.WebSettings
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import androidx.core.view.children
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
@@ -31,6 +32,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,6 +51,55 @@ import org.junit.runner.RunWith
 /** Real WebView and HTTP transfers, isolated from the user's pages, files and account. */
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
+    @Test
+    fun concurrentRequestsWaitForStartupAndCreateOnlyOneWebView() {
+        val startup = CompletableDeferred<Unit>()
+        val calls = AtomicInteger()
+        fixture(awaitStartup = false, startWebView = { calls.incrementAndGet(); startup.await() }).use { browser ->
+            onMain {
+                browser.controller.initializeForVisibleWebsite()
+                browser.controller.initializeForVisibleWebsite()
+                assertFalse(browser.controller.hasWebView())
+                assertEquals(0, browser.host.webViewContainer.children.count { it is WebView })
+            }
+            assertEquals(1, calls.get())
+            startup.complete(Unit)
+            browser.awaitStartup()
+            onMain { assertEquals(1, browser.host.webViewContainer.children.count { it is WebView }) }
+        }
+    }
+
+    @Test
+    fun leavingWhileStartupIsPendingDoesNotAttachAWebView() {
+        val startup = CompletableDeferred<Unit>()
+        fixture(awaitStartup = false, startWebView = { startup.await() }).use { browser ->
+            onMain { browser.controller.destroy() }
+            startup.complete(Unit)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            onMain {
+                assertFalse(browser.controller.hasWebView())
+                assertEquals(0, browser.host.webViewContainer.children.count { it is WebView })
+            }
+        }
+    }
+
+    @Test
+    fun startupFailureCompletesQueuedSummaryWithoutCreatingWebView() {
+        val startup = CompletableDeferred<Unit>()
+        val summary = CountDownLatch(1)
+        fixture(awaitStartup = false, startWebView = { startup.await() }).use { browser ->
+            onMain {
+                browser.controller.requestSummary { text ->
+                    assertEquals(null, text)
+                    summary.countDown()
+                }
+            }
+            startup.completeExceptionally(IllegalStateException("Test provider unavailable"))
+            assertTrue(summary.await(5, TimeUnit.SECONDS))
+            onMain { assertFalse(browser.controller.hasWebView()) }
+        }
+    }
+
     @Test
     fun readerModeLoadsResourcesAndRestoresTheOriginalPage() {
         fixture(readerMode = true).use { browser ->
@@ -168,12 +219,15 @@ class CommentsWebViewLifecycleTest {
                     scenario.onActivity { activity ->
                         browser.host.root.setBackgroundColor(Color.WHITE)
                         (activity.window.decorView as ViewGroup).addView(browser.host.root,
-                            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT))
+                            // Keep both PDF pages taller than the viewport on large tablets too.
+                            ViewGroup.LayoutParams(480, 800))
                         browser.host.root.bringToFront()
                         browser.webView.loadUrl(server.url("/document.pdf"))
                     }
                     awaitJavascript(browser.webView, paintedPage(1))
+                    awaitJavascript(browser.webView,
+                        "document.getElementById('viewerContainer').scrollHeight > " +
+                            "document.getElementById('viewerContainer').clientHeight")
                     swipeUp(browser.webView)
                     awaitJavascript(browser.webView,
                         "document.getElementById('viewerContainer').scrollTop > 100")
@@ -386,9 +440,20 @@ class CommentsWebViewLifecycleTest {
         blockAds: Boolean = false,
         coveredByComments: Boolean = false,
         readerMode: Boolean = false,
-    ): BrowserFixture = onMain { BrowserFixture(blockAds, coveredByComments, readerMode) }
+        awaitStartup: Boolean = true,
+        startWebView: suspend (Context) -> Unit = ::awaitAndroidWebViewStartup,
+    ): BrowserFixture = onMain {
+        BrowserFixture(blockAds, coveredByComments, readerMode, startWebView)
+    }.also { if (awaitStartup) it.awaitStartup() }
 
     private fun swipeUp(view: View) {
+        // A warm WebView can paint before ActivityScenario's window receives input focus.
+        val focusDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (!onMain { view.hasWindowFocus() }) {
+            if (System.nanoTime() >= focusDeadline) throw AssertionError("Browser window has no input focus")
+            Thread.sleep(25)
+        }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         val bounds = onMain {
             val location = IntArray(2)
             view.getLocationOnScreen(location)
@@ -415,7 +480,9 @@ class CommentsWebViewLifecycleTest {
             if (evaluate(view, condition) == "true") return
             Thread.sleep(50)
         }
-        val status = evaluate(view, "document.documentElement.dataset.pdfState + ': ' + document.body.innerText")
+        val status = evaluate(view, "JSON.stringify({state: document.documentElement.dataset.pdfState, " +
+            "scroll: (() => { const v = document.getElementById('viewerContainer'); " +
+            "return v && [v.scrollTop, v.scrollHeight, v.clientHeight]; })(), text: document.body.innerText})")
         throw AssertionError("Page condition did not become true: $condition; status=$status")
     }
 
@@ -441,7 +508,12 @@ class CommentsWebViewLifecycleTest {
         return result.get()
     }
 
-    private class BrowserFixture(blockAds: Boolean, coveredByComments: Boolean, readerMode: Boolean) : Closeable {
+    private class BrowserFixture(
+        blockAds: Boolean,
+        coveredByComments: Boolean,
+        readerMode: Boolean,
+        startWebView: suspend (Context) -> Unit,
+    ) : Closeable {
         private val context = ContextThemeWrapper(
             InstrumentationRegistry.getInstrumentation().targetContext,
             R.style.AppThemeMaterialFixedLight,
@@ -487,6 +559,7 @@ class CommentsWebViewLifecycleTest {
                 nowMillis = System::currentTimeMillis,
             ),
             coroutineScope = scope,
+            startWebView = startWebView,
             callbacks = object : AndroidCommentsWebViewController.Callbacks {
                 override fun openExternalLink(url: String) { externalUrl = url }
                 override fun showMessage(message: String?, duration: UserMessageDuration) = Unit
@@ -502,7 +575,16 @@ class CommentsWebViewLifecycleTest {
             configure(false, true, reading, reading.blockAds)
             initialize()
         }
-        val webView: WebView = host.webViewContainer.findViewById(R.id.comments_webview)
+        val webView: WebView get() = host.webViewContainer.findViewById(R.id.comments_webview)
+
+        fun awaitStartup() {
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
+            while (!onMain { controller.hasWebView() }) {
+                if (System.nanoTime() >= deadline) throw AssertionError("WebView did not start")
+                Thread.sleep(25)
+            }
+            onMain { resize(480, 800) }
+        }
 
         init {
             // Give the offscreen browser a real viewport so PDF.js schedules visible pages.

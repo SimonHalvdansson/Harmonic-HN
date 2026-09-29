@@ -78,6 +78,6 @@ private fun paneNavigationEasing() = PathEasing(
     },
 )
 
-private const val PaneDetailTransitionDurationMillis = 300
+const val PaneDetailTransitionDurationMillis = 300
 private const val PaneDetailAlphaDelayMillis = 50
 private const val PaneDetailAlphaDurationMillis = 50

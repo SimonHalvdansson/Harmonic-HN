@@ -103,10 +103,13 @@ internal class AndroidCommentsWebViewController(
     private val storyCache: StoryCacheService,
     private val pdfDownloads: PdfDownloadService,
     private val coroutineScope: CoroutineScope,
-    private val callbacks: Callbacks
+    private val callbacks: Callbacks,
+    private val startWebView: suspend (Context) -> Unit = ::awaitAndroidWebViewStartup,
 ) {
 
     internal interface Callbacks {
+        fun onWebViewInitialized() = Unit
+
         fun openExternalLink(url: String)
 
         fun showMessage(
@@ -162,6 +165,8 @@ internal class AndroidCommentsWebViewController(
         private set
     private var startedLoading = false
     private var initializedWebView = false
+    private var startupJob: Job? = null
+    private val startupCallbacks = mutableListOf<(Boolean) -> Unit>()
     private val showingErrorPage: Boolean
         get() = webContentSession.state.page == EmbeddedWebContentPage.ERROR
     private val showingCachedArticlePage: Boolean
@@ -268,10 +273,11 @@ internal class AndroidCommentsWebViewController(
     }
 
     fun initializeForVisibleWebsite() {
-        initialize()
-        if (webView != null && !startedLoading) {
-            startedLoading = true
-            loadUrl(story?.url)
+        initialize { ready ->
+            if (ready && !startedLoading) {
+                startedLoading = true
+                loadUrl(story?.url)
+            }
         }
     }
 
@@ -281,11 +287,7 @@ internal class AndroidCommentsWebViewController(
         val shouldStartLoading = showWebsite || shouldPreloadStoryUrl(context) ||
             linkPreviewController.shouldInitializeWebViewForPreview(context)
         if (!shouldStartLoading) return
-        initialize()
-        if (webView != null && !startedLoading) {
-            startedLoading = true
-            loadUrl(story?.url)
-        }
+        initializeForVisibleWebsite()
     }
 
     fun hasWebView(): Boolean {
@@ -433,7 +435,8 @@ internal class AndroidCommentsWebViewController(
             return
         }
         if (webView == null) {
-            initialize()
+            initialize { ready -> if (ready) toggleReaderMode() }
+            return
         }
         hostGateway.context ?: return
         val currentWebView = webView ?: return
@@ -628,17 +631,46 @@ internal class AndroidCommentsWebViewController(
         }
     }
 
-    @SuppressLint("RequiresFeature", "SetJavaScriptEnabled")
-    fun initialize() {
+    fun initialize(onReady: (Boolean) -> Unit = {}) {
         if (initializedWebView) {
+            onReady(true)
             return
         }
-
         val context = hostGateway.context
-        if (context == null || !hostGateway.isAttached) {
+        if (context == null || !hostGateway.isAttached || webViewContainer == null) {
+            onReady(false)
             return
         }
+        startupCallbacks += onReady
+        if (startupJob != null) return
+        val job = coroutineScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
+            val ready = try {
+                startWebView(context.applicationContext)
+                ensureActive()
+                if (hostGateway.isAttached && webViewContainer != null) initializeStartedWebView()
+                initializedWebView
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e("MY_APP_TAG", "The embedded browser failed to start", error)
+                callbacks.showMessage(
+                    "Embedded browser unavailable. Check Android System WebView and try again",
+                )
+                false
+            }
+            startupJob = null
+            val pending = startupCallbacks.toList()
+            startupCallbacks.clear()
+            if (ready) callbacks.onWebViewInitialized()
+            pending.forEach { it(ready) }
+        }
+        startupJob = job
+        job.start()
+    }
 
+    @SuppressLint("RequiresFeature", "SetJavaScriptEnabled")
+    private fun initializeStartedWebView() {
+        val context = hostGateway.context ?: return
         val currentWebView = orInflateWebView ?: return
         webView = currentWebView
         initializedWebView = true
@@ -872,10 +904,10 @@ internal class AndroidCommentsWebViewController(
     private fun loadUrl(url: String?, pdfFilePath: String? = null) {
         var targetUrl = url
         var targetPdfFilePath = pdfFilePath
-        var context = hostGateway.context
+        val context = hostGateway.context
         if (webView == null && integratedWebview) {
-            initialize()
-            context = hostGateway.context
+            initialize { ready -> if (ready) loadUrl(url, pdfFilePath) }
+            return
         }
         val targetWebView = webView ?: return
         if (context == null || !hostGateway.isAttached || targetUrl.isNullOrEmpty()) return
@@ -1065,8 +1097,13 @@ internal class AndroidCommentsWebViewController(
     }
 
     fun requestSummary(callback: PageTextCallback) {
-        if (webView == null) initialize()
-        if (webView == null || !startedLoading) {
+        if (webView == null) {
+            initialize { ready ->
+                if (ready) requestSummary(callback) else callback.onResult(null)
+            }
+            return
+        }
+        if (!startedLoading) {
             startedLoading = true
             loadUrl(story?.url)
         }
@@ -1197,7 +1234,15 @@ internal class AndroidCommentsWebViewController(
         destroy(false)
     }
 
+    private fun cancelStartup() {
+        startupJob?.cancel()
+        startupJob = null
+        startupCallbacks.clear()
+    }
+
     private fun destroy(rendererProcessGone: Boolean) {
+        cancelStartup()
+        initializedWebView = false
         readerApplyRequest++
         readerApplyJob?.cancel()
         readerAvailabilityJob?.cancel()
@@ -1256,19 +1301,7 @@ internal class AndroidCommentsWebViewController(
 
         destroy()
 
-        try {
-            val recreatedWebView = WebView(context).apply {
-                id = R.id.comments_webview
-            }
-            webView = recreatedWebView
-            webViewPaused = false
-            attachWebView(recreatedWebView)
-            initialize()
-        } catch (e: RuntimeException) {
-            webView = null
-            initializedWebView = false
-            Log.e("MY_APP_TAG", "Failed to recreate WebView", e)
-        }
+        initialize()
     }
 
     fun onDestroyView(rootView: View?) {
@@ -1279,6 +1312,8 @@ internal class AndroidCommentsWebViewController(
     }
 
     fun clearViewReferences() {
+        cancelStartup()
+        initializedWebView = false
         cancelCachedArticleLoad()
         cancelPdfDownload()
         pdfWebViewSession.release(webView, removeJavascriptInterface = true)
