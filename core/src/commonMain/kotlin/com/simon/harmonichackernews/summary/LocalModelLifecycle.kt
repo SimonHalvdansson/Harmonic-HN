@@ -1,5 +1,11 @@
 package com.simon.harmonichackernews.summary
 
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+
 data class LocalModelDeviceCapabilities(
     val supportsDownloadableModels: Boolean,
     val supportsLiteRtModels: Boolean,
@@ -81,6 +87,7 @@ class LocalModelLifecycle(
     private val transfers: LocalModelTransferScheduler,
     private val capabilities: LocalModelDeviceCapabilities,
     private val storageBufferBytes: Long = DEFAULT_STORAGE_BUFFER_BYTES,
+    private val storageDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val selectedModel: LocalModelDefinition
         get() = model(stateStore.selectedModelId)
@@ -93,18 +100,18 @@ class LocalModelLifecycle(
 
     fun isSupported(model: LocalModelDefinition): Boolean = unsupportedReason(model) == null
 
-    fun isDownloaded(model: LocalModelDefinition): Boolean =
-        model.downloadable && storage.snapshot(model).finalFileBytes == model.sizeBytes
+    suspend fun isDownloaded(model: LocalModelDefinition): Boolean =
+        model.downloadable && withContext(storageDispatcher) { storage.snapshot(model).finalFileBytes == model.sizeBytes }
 
-    fun select(modelId: String?): Boolean {
+    suspend fun select(modelId: String?): Boolean {
         val candidate = model(modelId)
         return stateStore.select(candidate.id, isSupported(candidate), isDownloaded(candidate))
     }
 
     fun clearSelection() = stateStore.clearSelection()
 
-    fun status(model: LocalModelDefinition): LocalModelTransferStatus {
-        val snapshot = storage.snapshot(model)
+    suspend fun status(model: LocalModelDefinition): LocalModelTransferStatus {
+        val snapshot = withContext(storageDispatcher) { storage.snapshot(model) }
         return stateStore.resolveStatus(
             modelId = model.id,
             finalFileBytes = snapshot.finalFileBytes,
@@ -113,14 +120,14 @@ class LocalModelLifecycle(
         )
     }
 
-    fun requestDownload(modelId: String?): LocalModelDownloadResult {
+    suspend fun requestDownload(modelId: String?): LocalModelDownloadResult {
         val candidate = model(modelId)
         if (!candidate.downloadable) return LocalModelDownloadResult.BuiltIn
         unsupportedReason(candidate)?.let { return LocalModelDownloadResult.Unsupported(it) }
         if (isDownloaded(candidate)) return LocalModelDownloadResult.AlreadyDownloaded
         if (transfers.isActive(candidate.id)) return LocalModelDownloadResult.AlreadyActive
 
-        val prepared = storage.prepareDownload(candidate)
+        val prepared = withContext(storageDispatcher) { storage.prepareDownload(candidate) }
         if (prepared is LocalModelStoragePreparation.Failed) {
             return LocalModelDownloadResult.StorageFailure(prepared.message)
         }
@@ -134,22 +141,25 @@ class LocalModelLifecycle(
         return LocalModelDownloadResult.Started
     }
 
-    fun cancel(modelId: String?, onCancelled: () -> Unit = {}) {
+    suspend fun cancel(modelId: String?, onCancelled: () -> Unit = {}) {
         val candidate = model(modelId)
-        transfers.cancel(candidate.id) {
-            storage.remove(candidate, includeFinalFile = false)
-            onCancelled()
+        suspendCancellableCoroutine { continuation ->
+            transfers.cancel(candidate.id) {
+                if (continuation.isActive) continuation.resume(Unit)
+            }
         }
+        withContext(storageDispatcher) { storage.remove(candidate, includeFinalFile = false) }
+        onCancelled()
     }
 
-    fun remove(modelId: String?, onChanged: () -> Unit = {}) {
+    suspend fun remove(modelId: String?, onChanged: () -> Unit = {}) {
         val candidate = model(modelId)
         if (!candidate.downloadable) return
         if (transfers.isActive(candidate.id)) {
             cancel(candidate.id, onChanged)
             return
         }
-        storage.remove(candidate, includeFinalFile = true)
+        withContext(storageDispatcher) { storage.remove(candidate, includeFinalFile = true) }
         if (candidate.id == selectedModel.id) clearSelection()
         onChanged()
     }

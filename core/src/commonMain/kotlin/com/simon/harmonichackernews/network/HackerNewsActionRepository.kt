@@ -8,6 +8,9 @@ import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 typealias HackerNewsCredentials = HackerNewsAccount
 
@@ -135,7 +138,68 @@ interface HackerNewsActionRepository {
     ): HackerNewsActionResult
 }
 
+/** Body decoding and HTML parsing always run on a worker, including for UI callers. */
 class KtorHackerNewsActionRepository(
+    client: KtorHttpClient,
+    cookieClient: KtorHttpClient,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+) : HackerNewsActionRepository {
+    private val delegate = CallerContextHackerNewsActionRepository(client, cookieClient)
+    override suspend fun login(credentials: HackerNewsCredentials): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.login(credentials) }
+
+    override suspend fun continueLoginWithCaptcha(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.continueLoginWithCaptcha(challenge, captchaResponse) }
+
+    override suspend fun vote(
+        credentials: HackerNewsCredentials,
+        itemId: String,
+        direction: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.vote(credentials, itemId, direction) }
+
+    override suspend fun comment(
+        credentials: HackerNewsCredentials,
+        itemId: String,
+        text: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.comment(credentials, itemId, text) }
+
+    override suspend fun submit(
+        credentials: HackerNewsCredentials,
+        title: String,
+        text: String,
+        url: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.submit(credentials, title, text, url) }
+
+    override suspend fun submitAfterLoginCaptcha(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        title: String,
+        text: String,
+        url: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.submitAfterLoginCaptcha(challenge, captchaResponse, title, text, url) }
+
+    override suspend fun continueCaptchaAction(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.continueCaptchaAction(challenge, captchaResponse) }
+
+    override suspend fun setFavorite(
+        credentials: HackerNewsCredentials,
+        itemId: Int,
+        favorite: Boolean,
+    ): HackerNewsActionResult =
+        withContext(dispatcher) { delegate.setFavorite(credentials, itemId, favorite) }
+}
+
+private class CallerContextHackerNewsActionRepository(
     private val client: KtorHttpClient,
     private val cookieClient: KtorHttpClient,
 ) : HackerNewsActionRepository {

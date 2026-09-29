@@ -51,7 +51,6 @@ class FileLocalModelStorage(
         return LocalModelStorageSnapshot(
             finalFileBytes = finalMetadata?.takeIf { it.isRegularFile }?.size,
             partialFileBytes = partialMetadata?.takeIf { it.isRegularFile }?.size ?: 0L,
-            usableSpaceBytes = usableSpaceBytes(),
         )
     }
 
@@ -62,7 +61,7 @@ class FileLocalModelStorage(
             fileSystem.delete(LocalModelFilePolicy.completedPath(root, model), mustExist = false)
             fileSystem.createDirectories(root)
             check(fileSystem.metadataOrNull(root)?.isDirectory == true)
-            LocalModelStoragePreparation.Ready(snapshot(model))
+            LocalModelStoragePreparation.Ready(snapshot(model).copy(usableSpaceBytes = usableSpaceBytes()))
         }.getOrElse {
             LocalModelStoragePreparation.Failed("Could not create or update local model storage.")
         }

@@ -6,6 +6,13 @@ import kotlin.test.assertNull
 
 class BookmarkImportPolicyTest {
     @Test
+    fun malformedSegmentsCannotCauseRepeatedScansOfTheRemainingDocument() {
+        val input = "bad-".repeat(131_072) + "42q123"
+        val result = BookmarkImportPolicy.apply(input, emptyList(), overwrite = true)
+        assertEquals(listOf(TimestampedItem(42, 123)), result?.items)
+    }
+
+    @Test
     fun overwriteDeduplicatesIdsAndKeepsTheirNewestTimestamp() {
         val result = requireNotNull(
             BookmarkImportPolicy.apply(

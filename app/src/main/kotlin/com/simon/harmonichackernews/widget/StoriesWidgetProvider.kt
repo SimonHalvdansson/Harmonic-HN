@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.work.WorkManager
-import com.simon.harmonichackernews.harmonicAppComposition
 
 /** Keep the provider component name so existing home-screen widgets migrate in place. */
 class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
@@ -32,10 +30,7 @@ class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         super.onDeleted(context, appWidgetIds)
         appWidgetIds.forEach { id ->
-            WorkManager.getInstance(context).cancelUniqueWork(WidgetRefreshWorker.workName(id))
-            WorkManager.getInstance(context).cancelUniqueWork(WidgetRefreshWorker.resizeWorkName(id))
-            context.harmonicAppComposition.widgets.clear(id)
-            WidgetRefreshWorker.imageDirectory(context, id).deleteRecursively()
+            WidgetCleanupWorker.enqueue(context, id)
         }
     }
 }

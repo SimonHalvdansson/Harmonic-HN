@@ -48,6 +48,7 @@ import javax.swing.JOptionPane
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun rememberDesktopAppIconPainter(): Painter = remember {
@@ -162,17 +163,19 @@ private fun DesktopAiSettings(
                     onOpen = { path -> openModelFolder(path)?.let(showMessage) },
                     onChoose = { currentPath ->
                         chooseModelFolder(currentPath)?.let { selected ->
-                            val previousPath = localModels.storageDirectoryPath
-                            localModels.changeStorageDirectory(selected.absolutePath)
-                                ?.let(showMessage)
-                                ?: run {
-                                    refresh++
-                                    if (previousPath != selected.absolutePath) {
-                                        showMessage(
-                                            "Model folder changed. Existing model files were not moved.",
-                                        )
+                            scope.launch {
+                                val previousPath = localModels.storageDirectoryPath
+                                localModels.changeStorageDirectory(selected.absolutePath)
+                                    ?.let(showMessage)
+                                    ?: run {
+                                        refresh++
+                                        if (previousPath != selected.absolutePath) {
+                                            showMessage(
+                                                "Model folder changed. Existing model files were not moved.",
+                                            )
+                                        }
                                     }
-                                }
+                            }
                         }
                     },
                 )

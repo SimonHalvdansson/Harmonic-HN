@@ -50,6 +50,39 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
     @Test
+    fun readerModeLoadsResourcesAndRestoresTheOriginalPage() {
+        fixture(readerMode = true).use { browser ->
+            val paragraphs = (1..20).joinToString("") {
+                "<p>A substantial article paragraph about testing reading experiences. " +
+                    "It contains enough prose, punctuation, and detail for article extraction. " +
+                    "The original page should remain available when reader mode is closed.</p>"
+            }
+            onMain {
+                browser.controller.initializeForVisibleWebsite()
+                browser.webView.loadDataWithBaseURL(
+                    "https://example.invalid/reader-test",
+                    "<html><head><title>Reader regression</title></head><body>" +
+                        "<nav id='original-navigation'>Original navigation</nav>" +
+                        "<article><h1>Reader regression</h1>$paragraphs</article></body></html>",
+                    "text/html", "UTF-8", null,
+                )
+            }
+            awaitTitle(browser.webView, "Reader regression")
+            onMain { browser.controller.toggleReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
+            onMain { assertTrue(browser.controller.isReaderModeEnabled()) }
+            onMain { browser.controller.disableReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('original-navigation') !== null")
+            onMain { assertFalse(browser.controller.isReaderModeEnabled()) }
+            // Repeated enables use the shared asset cache and still restore the source page.
+            onMain { browser.controller.toggleReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
+            onMain { browser.controller.disableReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('original-navigation') !== null")
+        }
+    }
+
+    @Test
     fun coveredPageStopsAnimatingAndResumesWithoutReloading() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             fixture().use { browser ->
@@ -352,7 +385,8 @@ class CommentsWebViewLifecycleTest {
     private fun fixture(
         blockAds: Boolean = false,
         coveredByComments: Boolean = false,
-    ): BrowserFixture = onMain { BrowserFixture(blockAds, coveredByComments) }
+        readerMode: Boolean = false,
+    ): BrowserFixture = onMain { BrowserFixture(blockAds, coveredByComments, readerMode) }
 
     private fun swipeUp(view: View) {
         val bounds = onMain {
@@ -407,7 +441,7 @@ class CommentsWebViewLifecycleTest {
         return result.get()
     }
 
-    private class BrowserFixture(blockAds: Boolean, coveredByComments: Boolean) : Closeable {
+    private class BrowserFixture(blockAds: Boolean, coveredByComments: Boolean, readerMode: Boolean) : Closeable {
         private val context = ContextThemeWrapper(
             InstrumentationRegistry.getInstrumentation().targetContext,
             R.style.AppThemeMaterialFixedLight,
@@ -417,7 +451,8 @@ class CommentsWebViewLifecycleTest {
             integratedWebView = true,
             preloadWebViewMode = WebViewPreloadMode.NEVER,
             matchWebViewTheme = false,
-            readerModeEnabled = false,
+            readerModeEnabled = readerMode,
+            readerModeDefault = false,
             blockAds = blockAds,
             redirectNitter = false,
             archiveRedirectDomains = emptyList(),

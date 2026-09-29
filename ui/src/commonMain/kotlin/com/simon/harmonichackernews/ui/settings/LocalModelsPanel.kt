@@ -70,6 +70,8 @@ import com.simon.harmonichackernews.summary.formatDecimalBytes
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 data class LocalModelRowUiState(
     val model: LocalModelDefinition,
@@ -88,6 +90,7 @@ fun LocalModelsRoute(
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
 ) {
+    val actionScope = rememberCoroutineScope()
     val rows = models.map { definition ->
         LocalModelRowUiState(
             model = definition,
@@ -117,20 +120,24 @@ fun LocalModelsRoute(
             )
         },
         onModelSelected = { modelId ->
-            localModels.select(modelId)
-            onChanged()
+            actionScope.launch {
+                localModels.select(modelId)
+                onChanged()
+            }
         },
         onAction = { modelId, action ->
-            when (action) {
-                LocalModelPresentationAction.CANCEL_DOWNLOAD -> localModels.cancel(modelId)
-                LocalModelPresentationAction.DELETE_MODEL -> localModels.remove(modelId)
-                LocalModelPresentationAction.DOWNLOAD_MODEL -> {
-                    localModels.requestRuntimeAndModelDownload(modelId)
-                        ?.takeIf(String::isNotBlank)
-                        ?.let(onMessage)
+            actionScope.launch {
+                when (action) {
+                    LocalModelPresentationAction.CANCEL_DOWNLOAD -> localModels.cancel(modelId)
+                    LocalModelPresentationAction.DELETE_MODEL -> localModels.remove(modelId)
+                    LocalModelPresentationAction.DOWNLOAD_MODEL -> {
+                        localModels.requestRuntimeAndModelDownload(modelId)
+                            ?.takeIf(String::isNotBlank)
+                            ?.let(onMessage)
+                    }
                 }
+                onChanged()
             }
-            onChanged()
         },
     )
 }

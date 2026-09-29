@@ -27,6 +27,13 @@ import java.lang.ref.WeakReference
 import java.util.EnumMap
 import java.util.HashSet
 import java.util.concurrent.CopyOnWriteArraySet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Installs Play-delivered local-AI runtimes before their model download starts.  */
 internal class LocalAiRuntimeManager(
@@ -58,7 +65,9 @@ internal class LocalAiRuntimeManager(
     private val requestGenerations = mutableMapOf<LocalModelRuntime, Int>()
     private val deferredInstallStates = mutableMapOf<Int, SplitInstallSessionState>()
     private var initialized = false
-    private var modelDownloadStarter: ((String) -> String?)? = null
+    private var modelDownloadStarter: (suspend (String) -> String?)? = null
+    private val handoffScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val handoffJobs = mutableMapOf<LocalModelRuntime, Job>()
 
     private val INSTALL_LISTENER: SplitInstallStateUpdatedListener =
         SplitInstallStateUpdatedListener { installState: SplitInstallSessionState ->
@@ -103,6 +112,7 @@ internal class LocalAiRuntimeManager(
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
     internal fun close() {
+        handoffScope.cancel()
         application?.unregisterActivityLifecycleCallbacks(this)
         application = null
         installManager?.unregisterListener(INSTALL_LISTENER)
@@ -274,6 +284,7 @@ internal class LocalAiRuntimeManager(
         val current = getStatus(context, runtime)
         synchronized(LOCK) { requestGenerations[runtime] = (requestGenerations[runtime] ?: 0) + 1 }
         deferredInstallStates.clear()
+        synchronized(LOCK) { handoffJobs.remove(runtime) }?.cancel()
         clearPendingModel(runtime)
         cancelSession(current.sessionId)
         setStatus(
@@ -520,24 +531,40 @@ internal class LocalAiRuntimeManager(
         }
         // No starter yet means initialization has not finished; retain the pending model.
         val starter = modelDownloadStarter ?: return
-        val error = starter(modelId)
-        clearPendingModel(runtime)
-        if (!error.isNullOrEmpty()) {
-            setStatus(
-                status(
-                    runtime,
-                    LocalRuntimeInstallState.INSTALLED,
-                    0L,
-                    0L,
-                    "",
-                    modelId,
-                    0,
-                    modelDownloadError = error,
-                )
-            )
-        } else {
-            setStatus(status(runtime, LocalRuntimeInstallState.INSTALLED, 0L, 0L, "", "", 0))
+        val job = synchronized(LOCK) {
+            if (runtime in handoffJobs) return
+            val generation = requestGenerations[runtime]
+            handoffScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val error = starter(modelId)
+                    if (synchronized(LOCK) { requestGenerations[runtime] != generation } ||
+                        getPendingModel(runtime) != modelId
+                    ) return@launch
+                    clearPendingModel(runtime)
+                    if (!error.isNullOrEmpty()) {
+                        setStatus(
+                            status(
+                                runtime,
+                                LocalRuntimeInstallState.INSTALLED,
+                                0L,
+                                0L,
+                                "",
+                                modelId,
+                                0,
+                                modelDownloadError = error,
+                            )
+                        )
+                    } else {
+                        setStatus(status(runtime, LocalRuntimeInstallState.INSTALLED, 0L, 0L, "", "", 0))
+                    }
+                } finally {
+                    synchronized(LOCK) {
+                        if (handoffJobs[runtime] === coroutineContext[Job]) handoffJobs.remove(runtime)
+                    }
+                }
+            }.also { handoffJobs[runtime] = it }
         }
+        job.start()
     }
 
     private fun failInstall(
@@ -720,7 +747,7 @@ internal class LocalAiRuntimeManager(
         fun onRuntimeStatusChanged()
     }
 
-    internal fun setModelDownloadStarter(starter: (String) -> String?) {
+    internal fun setModelDownloadStarter(starter: suspend (String) -> String?) {
         modelDownloadStarter = starter
         if (initialized) resumeInstalledPendingDownloads()
     }
@@ -747,7 +774,7 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
         override fun isInstalled(runtime: LocalModelRuntime): Boolean =
             manager.isRuntimeInstalled(context, runtime)
 
-        override fun request(model: LocalModelDefinition): String? =
+        override suspend fun request(model: LocalModelDefinition): String? =
             manager.requestRuntimeAndModelDownload(context, model)
 
         override fun cancel(runtime: LocalModelRuntime) =
@@ -760,7 +787,7 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
             manager.addStatusListener(context, created)
         }
 
-        override fun setModelDownloadStarter(starter: (String) -> String?) =
+        override fun setModelDownloadStarter(starter: suspend (String) -> String?) =
             manager.setModelDownloadStarter(starter)
 
         override fun clearModelDownloadError(modelId: String) = manager.clearModelDownloadError(modelId)

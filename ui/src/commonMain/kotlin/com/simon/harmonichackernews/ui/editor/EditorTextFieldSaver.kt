@@ -36,6 +36,9 @@ internal fun editorTextFieldSaver(
     var persistedText: String? = null
     return Saver(
         save = { value ->
+            // Buffered storage may have reported a disk failure after accepting the last save.
+            // Let it retry unchanged text without rewriting successful synchronous saves.
+            if (value.text == persistedText) storage.stage(field, value.text)
             if (value.text.length <= MAX_INLINE_EDITOR_FIELD_CHARS) {
                 with(TextFieldValue.Saver) { save(value) }
             } else if (value.text == persistedText || storage.write(field, value.text)) {

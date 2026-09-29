@@ -75,6 +75,7 @@ class EditorDraftRestorationTest {
         assertSmallSavedState()
         backgroundAndRecreate()
 
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag(COMMENT).fetchSemanticsNodes().isNotEmpty() }
         assertField(COMMENT, text, selection)
         assertEquals(originalFiles, draftFiles())
         discardEditor()
@@ -91,11 +92,11 @@ class EditorDraftRestorationTest {
         assertField(COMMENT, text, selection)
 
         assertSmallSavedState()
-        assertEquals(1, (draftFiles() - originalFiles).size)
+        compose.waitUntil(10_000) { (draftFiles() - originalFiles).size == 1 }
         backgroundAndRecreate()
 
         assertField(COMMENT, text, selection)
-        assertEquals(1, (draftFiles() - originalFiles).size)
+        compose.waitUntil(10_000) { (draftFiles() - originalFiles).size == 1 }
         discardEditor()
         compose.waitUntil(10_000) { draftFiles() == originalFiles }
     }
@@ -117,7 +118,7 @@ class EditorDraftRestorationTest {
         assertFieldText("compose_editor_title", title)
         assertFieldText("compose_editor_url", url)
         assertFieldText("compose_editor_text", text)
-        assertEquals(1, (draftFiles() - originalFiles).size)
+        compose.waitUntil(10_000) { (draftFiles() - originalFiles).size == 1 }
         discardEditor()
         compose.waitUntil(10_000) { draftFiles() == originalFiles }
     }
@@ -154,6 +155,9 @@ class EditorDraftRestorationTest {
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("compose_editor_container").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     private fun assertField(tag: String, text: String, selection: TextRange) {

@@ -40,6 +40,7 @@ internal fun createAndroidLocalModelService(context: Context): LocalModelService
     val transfers = AndroidLocalModelTransferScheduler(appContext)
     return LocalModelService(
         preferences = AndroidKeyValueStore.defaults(appContext),
+        storageDispatcher = kotlinx.coroutines.Dispatchers.IO,
         storage = files,
         transfers = transfers,
         runtimeDelivery = createAndroidLocalRuntimeDelivery(appContext),

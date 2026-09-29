@@ -3,6 +3,10 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.presentation.UserProfileRepository
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.withContext
 
 /**
  * Supplies the cookie-enabled transport used for authenticated Hacker News requests.
@@ -25,18 +29,18 @@ fun interface NetworkCacheMaintenance {
 }
 
 /**
- * Simple resettable provider for platform shells that do not need extra synchronization.
+ * Resettable provider whose lazy construction and disposal are safe across worker threads.
  */
 class ResettableAuthenticatedHttpClientProvider(
     private val factory: () -> HttpClient,
 ) : AuthenticatedHttpClientProvider {
-    private var activeClient: HttpClient? = null
+    private fun newTransport() = NetworkTransport(Dispatchers.Default, factory)
+    private val transport = MutableStateFlow(newTransport())
 
-    override fun get(): HttpClient = activeClient ?: factory().also { activeClient = it }
+    override fun get(): HttpClient = transport.value.get()
 
     override fun reset() {
-        activeClient?.close()
-        activeClient = null
+        transport.getAndUpdate { newTransport() }.close()
     }
 }
 
@@ -91,10 +95,10 @@ class NetworkGraph internal constructor(
         KtorHackerNewsWebRepository(client)
 
     val httpClientWithCookies: KtorHttpClient
-        get() = KtorHttpClient(authenticatedClientProvider.get())
+        get() = KtorHttpClient(client = { withContext(Dispatchers.Default) { authenticatedClientProvider.get() } })
 
     val authenticatedHackerNewsWebRepository: HackerNewsWebRepository
-        get() = KtorHackerNewsWebRepository(authenticatedClientProvider.get())
+        get() = KtorHackerNewsWebRepository(client = { withContext(Dispatchers.Default) { authenticatedClientProvider.get() } })
 
     val hackerNewsActionRepository: HackerNewsActionRepository
         get() = KtorHackerNewsActionRepository(httpClient, httpClientWithCookies)

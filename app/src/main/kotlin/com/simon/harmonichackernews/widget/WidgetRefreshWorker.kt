@@ -52,6 +52,10 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
     override suspend fun doWork(): Result {
         val widgetId = inputData.getInt(WIDGET_ID, -1)
         if (widgetId < 0) return Result.failure()
+        return withWidgetStorage(widgetId) { refresh(widgetId) }
+    }
+
+    private suspend fun refresh(widgetId: Int): Result {
         val context = applicationContext
         if (AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId) == null) return Result.success()
         val app = context.harmonicAppComposition

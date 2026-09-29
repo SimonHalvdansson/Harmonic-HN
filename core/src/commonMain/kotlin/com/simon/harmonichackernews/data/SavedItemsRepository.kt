@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 enum class SavedItemSource {
     BOOKMARKS,
@@ -179,6 +180,41 @@ class SavedItemsRepository(
         writeItems(source, items)
         publish(source)
     }
+
+    /** Keep merging atomic while moving unbounded parsing, sorting and serialization off the UI. */
+    suspend fun importBookmarksAtomic(content: String, overwrite: Boolean): BookmarkImportResult? =
+        mutationMutex.withLock {
+            val current = itemCache[ItemCacheKey(SavedItemSource.BOOKMARKS, false, null)]
+            val persisted = if (current == null && !overwrite) store.getString(SavedItemKeys.BOOKMARKS) else null
+            val prepared = withContext(Dispatchers.Default) {
+                val result = BookmarkImportPolicy.apply(
+                    content, current ?: SavedItemCodec.decode(persisted), overwrite,
+                ) ?: return@withContext null
+                PreparedBookmarkImport(
+                    result,
+                    SavedItemCodec.encode(result.items),
+                    result.items.sortedByDescending(TimestampedItem::created),
+                    result.items.mapTo(mutableSetOf(), TimestampedItem::id),
+                    result.items.sortedByDescending(TimestampedItem::id).map(TimestampedItem::id),
+                )
+            } ?: return@withLock null
+            val source = SavedItemSource.BOOKMARKS
+            store.putString(itemKey(source, null), prepared.encoded)
+            itemCache[ItemCacheKey(source, false, null)] = prepared.result.items
+            itemCache[ItemCacheKey(source, true, null)] = prepared.sorted
+            itemIdsCache[SourceAccount(source, null)] = prepared.ids
+            advanceSourceEpoch(source, isComment = false)
+            mutableChanges.tryEmit(SavedItemsChange(source, prepared.descendingIds, emptySet()))
+            prepared.result
+        }
+
+    private data class PreparedBookmarkImport(
+        val result: BookmarkImportResult,
+        val encoded: String,
+        val sorted: List<TimestampedItem>,
+        val ids: Set<Int>,
+        val descendingIds: List<Int>,
+    )
 
     suspend fun saveItemsAtomic(source: SavedItemSource, items: List<TimestampedItem>) =
         mutationMutex.withLock {

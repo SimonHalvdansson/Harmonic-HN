@@ -152,7 +152,10 @@ internal class AndroidCommentsWebViewController(
     private val webContentDriver = AndroidWebContentDriver()
     private val webContentSession = EmbeddedWebContentSession(webContentRuntime, webContentDriver)
     private val webContentController = webContentSession.controller
-    private val readerModeResources = AndroidReaderModeResources()
+    private var readerApplyJob: Job? = null
+    private var readerApplyRequest = 0
+    private var readerAvailabilityJob: Job? = null
+    private val readerModeResources = AndroidReaderModeResources
     private val pdfWebViewSession = AndroidPdfWebViewSession()
     private val readerModeFeatureEnabled: Boolean get() = webContentSession.readerState.featureEnabled
     var isBlockingAds: Boolean = true
@@ -482,37 +485,43 @@ internal class AndroidCommentsWebViewController(
         val targetWebView = webView ?: return
         if (!hostGateway.isAttached) return
 
-        val script = readerModeResources.script(context)
-        if (TextUtils.isEmpty(script)) {
-            applyReaderModeChange(webContentSession.setReaderUnavailableNow())
-            if (showFeedback) {
-                callbacks.showMessage(WebContentCopy.READER_UNAVAILABLE)
-            }
-            return
-        }
-
         val generation = webContentLoad.state.generation
-        webContentController.evaluateReaderMode(
-            script = script.orEmpty(),
-            theme = readerModeResources.theme(context, readingPreferences),
-            enabled = enable,
-        ) { status ->
-            val callbackContext = hostGateway.context
-            if (callbackContext == null || targetWebView !== webView || generation != webContentLoad.state.generation || !hostGateway.isAttached) {
-                return@evaluateReaderMode
+        readerApplyJob?.cancel()
+        val request = ++readerApplyRequest
+        readerApplyJob = coroutineScope.launch {
+            val script = readerModeResources.script(context)
+            val theme = readerModeResources.theme(context, readingPreferences)
+            if (targetWebView !== webView || generation != webContentLoad.state.generation || !hostGateway.isAttached) return@launch
+            if (TextUtils.isEmpty(script)) {
+                applyReaderModeChange(webContentSession.setReaderUnavailableNow())
+                if (showFeedback) {
+                    callbacks.showMessage(WebContentCopy.READER_UNAVAILABLE)
+                }
+                return@launch
             }
 
-            val result = webContentSession.applyReaderModeEvaluation(
-                status = status,
-                generation = generation,
-                nowMillis = SystemClock.uptimeMillis(),
-                showFeedback = showFeedback,
-            )
-            applyReaderModeChange(result.change)
-            result.delayedUnavailableMillis?.let {
-                scheduleDelayedReaderModeUnavailable(generation, it)
+            webContentController.evaluateReaderMode(
+                script = script.orEmpty(),
+                theme = theme,
+                enabled = enable,
+            ) { status ->
+                val callbackContext = hostGateway.context
+                if (callbackContext == null || request != readerApplyRequest || targetWebView !== webView || generation != webContentLoad.state.generation || !hostGateway.isAttached) {
+                    return@evaluateReaderMode
+                }
+
+                val result = webContentSession.applyReaderModeEvaluation(
+                    status = status,
+                    generation = generation,
+                    nowMillis = SystemClock.uptimeMillis(),
+                    showFeedback = showFeedback,
+                )
+                applyReaderModeChange(result.change)
+                result.delayedUnavailableMillis?.let {
+                    scheduleDelayedReaderModeUnavailable(generation, it)
+                }
+                result.message?.let { callbacks.showMessage(it) }
             }
-            result.message?.let { callbacks.showMessage(it) }
         }
     }
 
@@ -523,28 +532,32 @@ internal class AndroidCommentsWebViewController(
             return
         }
 
-        val script = readerModeResources.script(checkNotNull(context))
-        if (TextUtils.isEmpty(script)) {
-            applyReaderModeChange(webContentSession.setReaderUnavailableNow())
-            return
-        }
+        readerAvailabilityJob?.cancel()
+        readerAvailabilityJob = coroutineScope.launch {
+            val script = readerModeResources.script(checkNotNull(context))
+            if (!canCheckReaderModeAvailability(view, generation, hostGateway.context)) return@launch
+            if (TextUtils.isEmpty(script)) {
+                applyReaderModeChange(webContentSession.setReaderUnavailableNow())
+                return@launch
+            }
 
-        webContentController.evaluateReaderModeAvailability(script.orEmpty()) { available ->
-            val callbackContext = hostGateway.context
-            if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
-                return@evaluateReaderModeAvailability
-            }
-            val result = webContentSession.applyReaderAvailability(
-                available = available,
-                generation = generation,
-                nowMillis = SystemClock.uptimeMillis(),
-            )
-            applyReaderModeChange(result.change)
-            result.delayedUnavailableMillis?.let {
-                scheduleDelayedReaderModeUnavailable(generation, it)
-            }
-            if (result.scheduleRecheck) {
-                scheduleReaderModeAvailabilityRecheck(view, generation)
+            webContentController.evaluateReaderModeAvailability(script.orEmpty()) { available ->
+                val callbackContext = hostGateway.context
+                if (!canCheckReaderModeAvailability(view, generation, callbackContext)) {
+                    return@evaluateReaderModeAvailability
+                }
+                val result = webContentSession.applyReaderAvailability(
+                    available = available,
+                    generation = generation,
+                    nowMillis = SystemClock.uptimeMillis(),
+                )
+                applyReaderModeChange(result.change)
+                result.delayedUnavailableMillis?.let {
+                    scheduleDelayedReaderModeUnavailable(generation, it)
+                }
+                if (result.scheduleRecheck) {
+                    scheduleReaderModeAvailabilityRecheck(view, generation)
+                }
             }
         }
     }
@@ -1185,6 +1198,9 @@ internal class AndroidCommentsWebViewController(
     }
 
     private fun destroy(rendererProcessGone: Boolean) {
+        readerApplyRequest++
+        readerApplyJob?.cancel()
+        readerAvailabilityJob?.cancel()
         cancelCachedArticleLoad()
         cancelPdfDownload()
         downloadedPdfUrl = null

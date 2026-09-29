@@ -7,10 +7,14 @@ import androidx.preference.PreferenceManager
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /** Android adapter that preserves the app's existing SharedPreferences storage. */
 class AndroidKeyValueStore private constructor(
     private val preferences: SharedPreferences,
+    private val queued: QueuedPreferenceWrites? = null,
 ) : KeyValueStore {
     val changes: Flow<Unit>
         get() = callbackFlow {
@@ -21,58 +25,89 @@ class AndroidKeyValueStore private constructor(
             awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
         }
     override fun clear() {
-        preferences.edit { clear() }
+        if (queued != null) queued.update(emptyMap(), clear = true)
+        else preferences.edit { clear() }
     }
 
-    override fun contains(key: String): Boolean = preferences.contains(key)
+    override fun contains(key: String): Boolean =
+        queued?.read<Any?>(key, null) { if (preferences.contains(key)) true else null } != null
+            || (queued == null && preferences.contains(key))
 
-    override fun keys(): Set<String> = preferences.all.keys
+    override fun keys(): Set<String> = queued?.keys() ?: preferences.all.keys
 
     override fun remove(key: String) {
-        preferences.edit { remove(key) }
+        if (queued != null) queued.update(mapOf(key to null))
+        else preferences.edit { remove(key) }
     }
 
     override fun getString(key: String, default: String?): String? =
-        preferences.getString(key, default)
+        if (queued != null) queued.read(key, default) { preferences.getString(key, default) }
+        else preferences.getString(key, default)
 
     override fun putString(key: String, value: String?) {
-        preferences.edit { putString(key, value) }
+        if (queued != null) queued.update(mapOf(key to value))
+        else preferences.edit { putString(key, value) }
     }
 
     override fun getBoolean(key: String, default: Boolean): Boolean =
-        preferences.getBoolean(key, default)
+        if (queued != null) queued.read(key, default) { preferences.getBoolean(key, default) }
+        else preferences.getBoolean(key, default)
 
     override fun putBoolean(key: String, value: Boolean) {
-        preferences.edit { putBoolean(key, value) }
+        if (queued != null) queued.update(mapOf(key to value))
+        else preferences.edit { putBoolean(key, value) }
     }
 
-    override fun getInt(key: String, default: Int): Int = preferences.getInt(key, default)
+    override fun getInt(key: String, default: Int): Int = queued?.read(key, default) { preferences.getInt(key, default) }
+            ?: preferences.getInt(key, default)
 
     override fun putInt(key: String, value: Int) {
-        preferences.edit { putInt(key, value) }
+        if (queued != null) queued.update(mapOf(key to value))
+        else preferences.edit { putInt(key, value) }
     }
 
-    override fun getLong(key: String, default: Long): Long = preferences.getLong(key, default)
+    override fun getLong(key: String, default: Long): Long = queued?.read(key, default) { preferences.getLong(key, default) }
+            ?: preferences.getLong(key, default)
 
     override fun putLong(key: String, value: Long) {
-        preferences.edit { putLong(key, value) }
+        if (queued != null) queued.update(mapOf(key to value))
+        else preferences.edit { putLong(key, value) }
     }
 
     override fun getFloat(key: String, default: Float): Float =
-        preferences.getFloat(key, default)
+        if (queued != null) queued.read(key, default) { preferences.getFloat(key, default) }
+        else preferences.getFloat(key, default)
 
     override fun putFloat(key: String, value: Float) {
-        preferences.edit { putFloat(key, value) }
+        if (queued != null) queued.update(mapOf(key to value))
+        else preferences.edit { putFloat(key, value) }
     }
 
     override fun getStringSet(key: String): Set<String> =
-        preferences.getStringSet(key, emptySet())?.toSet().orEmpty()
+        if (queued != null) queued.read(key, emptySet()) {
+            preferences.getStringSet(key, emptySet())?.toSet().orEmpty()
+        } else preferences.getStringSet(key, emptySet())?.toSet().orEmpty()
 
     override fun putStringSet(key: String, value: Set<String>?) {
-        preferences.edit { putStringSet(key, value?.toSet()) }
+        if (queued != null) queued.update(mapOf(key to value?.toSet()))
+        else preferences.edit { putStringSet(key, value?.toSet()) }
     }
 
     override fun update(block: KeyValueStore.Editor.() -> Unit) {
+        if (queued != null) {
+            val values = linkedMapOf<String, Any?>()
+            block(object : KeyValueStore.Editor {
+                override fun remove(key: String) { values[key] = null }
+                override fun putString(key: String, value: String?) { values[key] = value }
+                override fun putBoolean(key: String, value: Boolean) { values[key] = value }
+                override fun putInt(key: String, value: Int) { values[key] = value }
+                override fun putLong(key: String, value: Long) { values[key] = value }
+                override fun putFloat(key: String, value: Float) { values[key] = value }
+                override fun putStringSet(key: String, value: Set<String>?) { values[key] = value?.toSet() }
+            })
+            queued.update(values)
+            return
+        }
         preferences.edit {
             val sharedPreferencesEditor = this
             block(object : KeyValueStore.Editor {
@@ -108,19 +143,23 @@ class AndroidKeyValueStore private constructor(
     }
 
     companion object {
-        fun global(context: Context): AndroidKeyValueStore = AndroidKeyValueStore(
-            context.applicationContext.getSharedPreferences(
-                AppLaunchPreferenceKeys.STORE_NAME,
-                Context.MODE_PRIVATE,
-            ),
-        )
+        private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val contentStores = mutableMapOf<String, AndroidKeyValueStore>()
+
+        fun global(context: Context): AndroidKeyValueStore = named(context, AppLaunchPreferenceKeys.STORE_NAME)
 
         fun defaults(context: Context): AndroidKeyValueStore = AndroidKeyValueStore(
             PreferenceManager.getDefaultSharedPreferences(context.applicationContext),
         )
 
-        fun named(context: Context, name: String): AndroidKeyValueStore = AndroidKeyValueStore(
-            context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE),
-        )
+        fun named(context: Context, name: String): AndroidKeyValueStore {
+            val key = context.applicationContext.packageName + ":" + name
+            return synchronized(contentStores) {
+                contentStores.getOrPut(key) {
+                    val preferences = context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+                    AndroidKeyValueStore(preferences, QueuedPreferenceWrites(preferences, persistenceScope))
+                }
+            }
+        }
     }
 }

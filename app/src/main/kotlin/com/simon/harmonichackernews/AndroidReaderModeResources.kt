@@ -16,13 +16,22 @@ import com.simon.harmonichackernews.ui.theme.harmonicColors
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** Loads and caches the Android assets used by the portable reader-mode controller. */
-internal class AndroidReaderModeResources {
+internal object AndroidReaderModeResources {
+    private val assetMutex = Mutex()
     private var cachedScript: String? = null
     private val cachedFontEncodings = mutableMapOf<ReaderModeFontResource, String>()
 
-    fun script(context: Context): String? {
+    suspend fun script(context: Context): String? = withContext(Dispatchers.IO) {
+        assetMutex.withLock { loadScript(context.applicationContext) }
+    }
+
+    private fun loadScript(context: Context): String? {
         cachedScript?.let { return it }
         return try {
             ReaderModeSourceAssembler.script(
@@ -35,14 +44,18 @@ internal class AndroidReaderModeResources {
         }
     }
 
-    fun theme(context: Context, preferences: ReadingPreferences): ReaderModeTheme =
-        ReaderModeThemeFactory.create(
+    suspend fun theme(context: Context, preferences: ReadingPreferences): ReaderModeTheme {
+        val fontData = withContext(Dispatchers.IO) {
+            assetMutex.withLock { fontData(context.applicationContext, preferences.readerModeFont.storedValue) }
+        }
+        return ReaderModeThemeFactory.create(
             colors = harmonicColors(context),
             light = AndroidActivityTheme.isLightMode(context),
             font = preferences.readerModeFont.storedValue,
             fontSizePx = preferences.readerModeFontSize,
-            fontData = fontData(context, preferences.readerModeFont.storedValue),
+            fontData = fontData,
         )
+    }
 
     private fun fontData(context: Context, font: String?): ReaderModeFontData? {
         val resources = ReaderModeFontResourcePolicy.resolve(font)
@@ -105,20 +118,18 @@ internal class AndroidReaderModeResources {
     private fun readAssetFile(context: Context, asset: String): String =
         context.assets.open(asset).bufferedReader(Charsets.UTF_8).use { it.readText() }
 
-    private companion object {
-        const val TAG = "ReaderModeResources"
-        const val ANDROID_ASSET_URI_PREFIX = "file:///android_asset/"
-        val READABILITY_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READABILITY_SCRIPT)
-        val READER_MODE_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READER_MODE_SCRIPT)
+    private const val TAG = "ReaderModeResources"
+    private const val ANDROID_ASSET_URI_PREFIX = "file:///android_asset/"
+    private val READABILITY_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READABILITY_SCRIPT)
+    private val READER_MODE_SCRIPT_ASSET = sharedWebAsset(WebContentAssets.READER_MODE_SCRIPT)
 
-        fun sharedWebAsset(path: String): String = sharedResourceAsset("files/web/$path")
+    private fun sharedWebAsset(path: String): String = sharedResourceAsset("files/web/$path")
 
-        fun sharedResourceAsset(path: String): String {
-            val uri = Res.getUri(path)
-            check(uri.startsWith(ANDROID_ASSET_URI_PREFIX)) {
-                "Expected an Android asset URI for shared resource $path, got $uri"
-            }
-            return uri.removePrefix(ANDROID_ASSET_URI_PREFIX)
+    private fun sharedResourceAsset(path: String): String {
+        val uri = Res.getUri(path)
+        check(uri.startsWith(ANDROID_ASSET_URI_PREFIX)) {
+            "Expected an Android asset URI for shared resource $path, got $uri"
         }
+        return uri.removePrefix(ANDROID_ASSET_URI_PREFIX)
     }
 }

@@ -12,10 +12,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
+import com.simon.harmonichackernews.data.FileEditorDraftStorage
+import kotlinx.io.files.Path
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
 class HarmonicApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
     private val localAiSupport: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
+    private val draftScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val editorDrafts = mutableMapOf<String, BufferedEditorDraftStorage>()
+
+    internal fun editorDraft(id: String): BufferedEditorDraftStorage =
+        editorDrafts.getOrPut(id) {
+            BufferedEditorDraftStorage(
+                FileEditorDraftStorage(
+                    Path(noBackupFilesDir.absolutePath, "editor-drafts", id),
+                ),
+                draftScope,
+                inlineLimit = 8 * 1024,
+                dispatcher = Dispatchers.IO,
+            )
+        }
+
+    internal fun discardEditorDraft(id: String) {
+        editorDrafts.remove(id)?.clear()
+    }
+
     private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var deferredServicesStarted = false
     internal val composition by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {

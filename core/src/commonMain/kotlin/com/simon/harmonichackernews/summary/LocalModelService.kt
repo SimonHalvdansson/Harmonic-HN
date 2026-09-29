@@ -6,16 +6,25 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** Platform delivery boundary for optional local-inference runtimes. */
 interface LocalModelRuntimeDelivery {
     val included: Boolean
     fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus
     fun isInstalled(runtime: LocalModelRuntime): Boolean
-    fun request(model: LocalModelDefinition): String?
+    suspend fun request(model: LocalModelDefinition): String?
     fun cancel(runtime: LocalModelRuntime)
     fun setObserver(observer: () -> Unit)
-    fun setModelDownloadStarter(starter: (String) -> String?)
+    fun setModelDownloadStarter(starter: suspend (String) -> String?)
     fun clearModelDownloadError(modelId: String) = Unit
     fun engineClassName(runtime: LocalModelRuntime): String?
     fun runtimeLabel(runtime: LocalModelRuntime): String
@@ -35,6 +44,8 @@ class LocalModelService(
     private val models: List<LocalModelDefinition> = LocalModelCatalog.models,
     selectionKey: String = SELECTED_MODEL_KEY,
     private val storageLocation: LocalModelStorageLocation? = null,
+    private val storageDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) {
     private val stateStore = LocalModelStateStore(
         models = models,
@@ -48,11 +59,18 @@ class LocalModelService(
         storage = storage,
         transfers = transfers,
         capabilities = capabilities,
+        storageDispatcher = storageDispatcher,
     )
     private val mutableState = MutableStateFlow(
         LocalModelManagerState(selectedModelId = lifecycle.selectedModel.id),
     )
     private var monitoringTransfers = false
+    private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
+    private val refreshMutex = Mutex()
+    private val operationMutex = Mutex()
+    private val refreshJob = scope.launch {
+        for (ignored in refreshRequests) refreshState()
+    }
 
     val state: StateFlow<LocalModelManagerState>
         get() {
@@ -89,14 +107,16 @@ class LocalModelService(
             null -> ""
         }
 
-    fun isDownloaded(model: LocalModelDefinition): Boolean = lifecycle.isDownloaded(model)
+    fun isDownloaded(model: LocalModelDefinition): Boolean =
+        cachedState.value.statuses[model.id]?.state == LocalModelTransferState.DOWNLOADED
 
     fun installedPath(model: LocalModelDefinition = selectedModel): String =
         lifecycle.installedPath(model)
 
     fun status(model: LocalModelDefinition): LocalModelTransferStatus {
         ensureTransferMonitoring()
-        return lifecycle.status(model)
+        return cachedState.value.statuses[model.id]
+            ?: LocalModelTransferStatus(LocalModelTransferState.NOT_DOWNLOADED)
     }
 
     fun runtimeStatus(runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
@@ -111,8 +131,8 @@ class LocalModelService(
     fun runtimeLabel(runtime: LocalModelRuntime): String =
         runtimeDelivery.runtimeLabel(runtime)
 
-    fun select(modelId: String?): Boolean = lifecycle.select(modelId).also { selected ->
-        if (selected) refresh()
+    suspend fun select(modelId: String?): Boolean = operationMutex.withLock {
+        lifecycle.select(modelId).also { selected -> if (selected) refresh() }
     }
 
     fun clearSelection() {
@@ -120,7 +140,7 @@ class LocalModelService(
         refresh()
     }
 
-    fun requestRuntimeAndModelDownload(modelId: String?): String? {
+    suspend fun requestRuntimeAndModelDownload(modelId: String?): String? {
         ensureTransferMonitoring()
         val model = model(modelId)
         if (!model.downloadable) return "${model.displayName} is system managed."
@@ -142,7 +162,7 @@ class LocalModelService(
         else runtimeDelivery.request(model)
     }
 
-    fun requestModelDownload(modelId: String?): String? {
+    suspend fun requestModelDownload(modelId: String?): String? = operationMutex.withLock {
         ensureTransferMonitoring()
         val model = model(modelId)
         val message = when (val result = lifecycle.requestDownload(model.id)) {
@@ -159,10 +179,10 @@ class LocalModelService(
         }
         if (message == null) runtimeDelivery.clearModelDownloadError(model.id)
         refresh()
-        return message
+        message
     }
 
-    fun cancel(modelId: String?) {
+    suspend fun cancel(modelId: String?) = operationMutex.withLock {
         ensureTransferMonitoring()
         val model = model(modelId)
         val runtime = runtimeStatus(model.runtime)
@@ -174,7 +194,7 @@ class LocalModelService(
         }
     }
 
-    fun remove(modelId: String?) {
+    suspend fun remove(modelId: String?) = operationMutex.withLock {
         ensureTransferMonitoring()
         lifecycle.remove(modelId, ::refresh)
     }
@@ -192,10 +212,11 @@ class LocalModelService(
         .map(LocalModelDefinition::displayName)
         .toList()
 
-    suspend fun clearStoredModels(): Boolean {
+    suspend fun clearStoredModels(): Boolean = operationMutex.withLock {
         ensureTransferMonitoring()
-        models.map(LocalModelDefinition::runtime).distinct().forEach { runtime ->
-            if (runtimeDelivery.status(runtime).active) runtimeDelivery.cancel(runtime)
+        models.filter(LocalModelDefinition::downloadable).map(LocalModelDefinition::runtime).distinct().forEach { runtime ->
+            // Cancel a pending model handoff too, even if its runtime has just finished installing.
+            runtimeDelivery.cancel(runtime)
         }
         models.filter(LocalModelDefinition::downloadable).forEach { model ->
             suspendCancellableCoroutine { continuation ->
@@ -204,33 +225,35 @@ class LocalModelService(
                 }
             }
         }
-        val cleared = storage.clearStoredModels()
+        val cleared = withContext(storageDispatcher) { storage.clearStoredModels() }
         if (cleared) lifecycle.clearSelection()
         transfers.reset()
         refresh()
-        return cleared
+        cleared
     }
 
-    fun changeStorageDirectory(path: String): String? {
+    suspend fun changeStorageDirectory(path: String): String? = operationMutex.withLock {
         ensureTransferMonitoring()
-        if (isDownloadActive) return "Wait for the current model download to finish."
+        if (models.any { transfers.isActive(it.id) }) {
+            return@withLock "Wait for the current model download to finish."
+        }
         val location = storageLocation
-            ?: return "Choosing a model folder is not supported on this platform."
-        val error = location.changeDirectory(path)
+            ?: return@withLock "Choosing a model folder is not supported on this platform."
+        val error = withContext(storageDispatcher) { location.changeDirectory(path) }
         if (error == null) {
             transfers.reset()
-            selectFirstReadyOrClear()
+            firstReadyDownloadableModel()?.let { lifecycle.select(it.id) } ?: lifecycle.clearSelection()
             refresh()
         }
-        return error
+        error
     }
 
-    fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
-        model.downloadable && isSupported(model) && isDownloaded(model) &&
+    suspend fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
+        model.downloadable && isSupported(model) && lifecycle.isDownloaded(model) &&
             isRuntimeInstalled(model.runtime)
     }
 
-    fun selectFirstReadyOrClear() {
+    suspend fun selectFirstReadyOrClear() {
         firstReadyDownloadableModel()?.let { select(it.id) } ?: clearSelection()
     }
 
@@ -261,32 +284,39 @@ class LocalModelService(
         )
     }
 
-    /** Fills the application-scoped model cache; call from a background dispatcher. */
-    fun preload() = refreshState()
+    /** Fills the application-scoped model cache, dispatching file inspection to the storage worker. */
+    suspend fun preload() = refreshState()
 
     /** Registers platform observers after [preload] so screen entry never performs the first scan. */
     fun startMonitoring() = ensureTransferMonitoring()
 
     fun refresh() {
+        mutableState.value = mutableState.value.copy(selectedModelId = selectedModel.id)
         ensureTransferMonitoring()
-        refreshState()
+        refreshRequests.trySend(Unit)
+    }
+
+    fun close() {
+        refreshRequests.close()
+        refreshJob.cancel()
     }
 
     private fun ensureTransferMonitoring() {
         if (monitoringTransfers) return
         monitoringTransfers = true
         var registeringObservers = true
-        val observer = { if (!registeringObservers) refreshState() }
+        val observer = { if (!registeringObservers) refreshRequests.trySend(Unit); Unit }
         transfers.setObserver(observer)
         runtimeDelivery.setObserver(observer)
         registeringObservers = false
-        if (mutableState.value.statuses.size < models.size) refreshState()
+        if (mutableState.value.statuses.size < models.size) refreshRequests.trySend(Unit)
     }
 
-    private fun refreshState() {
+    private suspend fun refreshState() = refreshMutex.withLock {
+        val statuses = models.associate { it.id to lifecycle.status(it) }
         mutableState.value = LocalModelManagerState(
             selectedModelId = selectedModel.id,
-            statuses = models.associate { it.id to lifecycle.status(it) },
+            statuses = statuses,
             runtimeStatuses = models
                 .map(LocalModelDefinition::runtime)
                 .distinct()

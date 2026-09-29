@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.settings
 
 import com.simon.harmonichackernews.cache.StoryCacheService
-import com.simon.harmonichackernews.data.BookmarkImportPolicy
 import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
@@ -11,6 +10,8 @@ import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountReposito
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class DataSettingsSnapshot(
     val bookmarksEnabled: Boolean,
@@ -125,12 +126,8 @@ class DataSettingsService(
         ?.let(SavedItemCodec::encode)
 
     suspend fun importBookmarks(content: String, overwrite: Boolean): BookmarkImportResult {
-        val result = BookmarkImportPolicy.apply(
-            content = content,
-            current = savedItems.loadItems(SavedItemSource.BOOKMARKS),
-            overwrite = overwrite,
-        ) ?: return BookmarkImportResult.Empty
-        savedItems.saveItemsAtomic(SavedItemSource.BOOKMARKS, result.items)
+        val result = savedItems.importBookmarksAtomic(content, overwrite)
+            ?: return BookmarkImportResult.Empty
         return BookmarkImportResult.Imported(result.importedCount, overwrite)
     }
 
@@ -152,7 +149,7 @@ class DataSettingsService(
 
     suspend fun clearAiModels(): String {
         val models = localModels ?: return "AI model storage is not available"
-        val bytes = models.storedModelBytes()
+        val bytes = withContext(Dispatchers.Default) { models.storedModelBytes() }
         return if (models.clearStoredModels()) {
             if (bytes > 0L) "Cleared ${formatDecimalBytes(bytes)} of AI models"
             else "No AI models to clear"

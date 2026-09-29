@@ -18,6 +18,26 @@ import kotlin.test.assertIs
 
 class NetworkRequestDispatchTest {
     @Test
+    fun authenticatedActionCanReachTransportWhileUiDispatcherIsOccupied() = runTest {
+        val worker = QueuedDispatcher()
+        var reachedTransport = false
+        val client = KtorHttpClient(client = {
+            assertEquals(worker, currentCoroutineContext()[ContinuationInterceptor])
+            reachedTransport = true
+            throw TransportReached()
+        })
+        val repository = KtorHackerNewsActionRepository(client, client, worker)
+        val result = async(start = CoroutineStart.UNDISPATCHED) {
+            runCatching { repository.login(HackerNewsCredentials("test", "test")) }
+        }
+        assertFalse(reachedTransport)
+        worker.runPending()
+        assertEquals(true, reachedTransport)
+        assertFalse(result.isCompleted)
+        assertIs<TransportReached>(result.await().exceptionOrNull())
+    }
+
+    @Test
     fun repositoriesReachTransportWithoutWaitingForUiDispatcher() = runTest {
         val worker = QueuedDispatcher()
         var reachedTransport = 0

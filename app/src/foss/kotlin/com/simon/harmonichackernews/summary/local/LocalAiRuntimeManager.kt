@@ -21,14 +21,14 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
 
         override fun isInstalled(runtime: LocalModelRuntime): Boolean = false
 
-        override fun request(model: LocalModelDefinition): String =
+        override suspend fun request(model: LocalModelDefinition): String =
             unavailableMessage
 
         override fun cancel(runtime: LocalModelRuntime) = Unit
 
         override fun setObserver(observer: () -> Unit) = observer()
 
-        override fun setModelDownloadStarter(starter: (String) -> String?) = Unit
+        override fun setModelDownloadStarter(starter: suspend (String) -> String?) = Unit
 
         override fun engineClassName(runtime: LocalModelRuntime): String? = null
 

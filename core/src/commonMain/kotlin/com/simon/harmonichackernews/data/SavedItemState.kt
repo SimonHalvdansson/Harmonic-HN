@@ -33,10 +33,19 @@ object SavedItemCodec {
             val segmentEnd = value.indexOf('-', segmentStart).let {
                 if (it < 0) value.length else it
             }
-            val separator = value.indexOf('q', segmentStart)
-            if (separator in (segmentStart + 1)..<segmentEnd &&
-                value.indexOf('q', separator + 1).let { it < 0 || it >= segmentEnd }
-            ) {
+            // Search only this segment. Searching the remaining document for each malformed
+            // segment made imports without a 'q' separator quadratic in the document size.
+            var separator = -1
+            for (index in segmentStart until segmentEnd) {
+                if (value[index] == 'q') {
+                    if (separator >= 0) {
+                        separator = -1
+                        break
+                    }
+                    separator = index
+                }
+            }
+            if (separator > segmentStart) {
                 val id = parseInt(value, segmentStart, separator)
                 val created = parseLong(value, separator + 1, segmentEnd)
                 if (id != null && created != null) items += TimestampedItem(id, created)

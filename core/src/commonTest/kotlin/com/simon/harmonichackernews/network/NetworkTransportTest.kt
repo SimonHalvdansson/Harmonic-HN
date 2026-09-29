@@ -24,6 +24,10 @@ class NetworkTransportTest {
             engine = { creations++; MockEngine { respond("42") } },
             transportDispatcher = StandardTestDispatcher(testScheduler),
         ))
+        graph.httpClientWithCookies
+        graph.authenticatedHackerNewsWebRepository
+        graph.hackerNewsSession.actions
+        assertEquals(0, creations)
         graph.close()
         assertEquals(0, creations)
         assertFailsWith<IllegalStateException> { graph.hackerNewsApi.getMaxItemId() }

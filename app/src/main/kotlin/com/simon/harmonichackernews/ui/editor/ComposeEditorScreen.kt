@@ -14,11 +14,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.simon.harmonichackernews.data.FileEditorDraftStorage
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import java.util.UUID
-import kotlinx.io.files.Path
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.simon.harmonichackernews.HarmonicApplication
 
 /** Android lifecycle/back-dispatch adapter around the platform-neutral editor screen. */
 @Composable
@@ -37,14 +43,17 @@ internal fun ComposeEditorScreen(
     val activity = LocalActivity.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val draftId = rememberSaveable { UUID.randomUUID().toString() }
-    val draftStorage = remember(draftId) {
-        FileEditorDraftStorage(Path(context.noBackupFilesDir.absolutePath, "editor-drafts", draftId))
+    val application = context.applicationContext as HarmonicApplication
+    val draftStorage = remember(draftId) { application.editorDraft(draftId) }
+    val restored by produceState(false, draftStorage) {
+        draftStorage.awaitRestored()
+        value = true
     }
     DisposableEffect(draftStorage, lifecycle, activity) {
         onDispose {
             // Keep recovery files when Android destroys the activity; delete on editor dismissal.
             if (lifecycle.currentState != Lifecycle.State.DESTROYED || activity?.isFinishing == true) {
-                draftStorage.clear()
+                application.discardEditorDraft(draftId)
             }
         }
     }
@@ -59,6 +68,18 @@ internal fun ComposeEditorScreen(
                 Toast.makeText(context.applicationContext, message, Toast.LENGTH_LONG).show()
             }
         }
+    }
+    LaunchedEffect(draftStorage) {
+        draftStorage.failures.collect { failures ->
+            if (failures > 0) reportDraftFailure(EditorDraftStorageFailure.SAVE)
+        }
+    }
+    // Keep the saveable field registrations absent until overflow text is in memory.
+    if (!restored) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
     }
     var backRequestVersion by rememberSaveable { mutableIntStateOf(0) }
     var predictiveBackEnabled by rememberSaveable { mutableStateOf(false) }

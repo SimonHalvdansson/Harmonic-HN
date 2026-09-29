@@ -8,10 +8,13 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalModelServiceTest {
     @Test
-    fun successfulDirectRetryClearsHandoffErrorAndMakesDownloadedModelSelectable() {
+    fun successfulDirectRetryClearsHandoffErrorAndMakesDownloadedModelSelectable() = runTest {
         var runtimeStatus = LocalRuntimeInstallStatus(
             state = LocalRuntimeInstallState.INSTALLED,
             runtime = DownloadableModel.runtime,
@@ -25,7 +28,7 @@ class LocalModelServiceTest {
         val delivery = object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
             override fun isInstalled(runtime: LocalModelRuntime) = true
             override fun status(runtime: LocalModelRuntime) = runtimeStatus.copy(runtime = runtime)
-            override fun request(model: LocalModelDefinition): String? {
+            override suspend fun request(model: LocalModelDefinition): String? {
                 runtimeRequests++
                 return null
             }
@@ -45,7 +48,10 @@ class LocalModelServiceTest {
         val service = LocalModelService(
             TestKeyValueStore(), storage, transfers, delivery,
             LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
+        service.preload()
         val failed = service.presentation(DownloadableModel, true, false)
         assertTrue(failed.summary.endsWith("Not enough storage"))
         assertFalse(failed.selectable)
@@ -61,6 +67,7 @@ class LocalModelServiceTest {
         downloaded = true
         service.refresh()
         assertTrue(service.select(DownloadableModel.id))
+        service.preload()
         val complete = service.presentation(DownloadableModel, true, false)
         assertTrue(complete.selectable)
         assertTrue(complete.selected)
@@ -68,7 +75,7 @@ class LocalModelServiceTest {
     }
 
     @Test
-    fun transferMonitoringStartsWhenTransferStateIsRequested() {
+    fun transferMonitoringStartsWhenTransferStateIsRequested() = runTest {
         val transfers = RecordingTransfers()
         val runtimeDelivery = RecordingRuntimeDelivery()
         val service = LocalModelService(
@@ -81,6 +88,8 @@ class LocalModelServiceTest {
                 supportsLiteRtModels = true,
             ),
             models = listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
 
         assertEquals(BuiltInModel, service.selectedModel)
@@ -90,6 +99,7 @@ class LocalModelServiceTest {
 
         service.state.value
         service.state.value
+        runCurrent()
 
         assertEquals(1, transfers.observerRegistrations)
         assertEquals(2, transfers.workReads)
@@ -97,7 +107,7 @@ class LocalModelServiceTest {
     }
 
     @Test
-    fun preloadFillsCacheWithoutRegisteringPlatformObservers() {
+    fun preloadFillsCacheWithoutRegisteringPlatformObservers() = runTest {
         val transfers = RecordingTransfers()
         val runtimeDelivery = RecordingRuntimeDelivery()
         val service = LocalModelService(
@@ -110,6 +120,8 @@ class LocalModelServiceTest {
                 supportsLiteRtModels = true,
             ),
             models = listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
 
         assertTrue(service.cachedState.value.statuses.isEmpty())
@@ -145,7 +157,7 @@ class LocalModelServiceTest {
     }
 
     @Test
-    fun changingStorageDirectoryRefreshesStorageAndClearsUnavailableSelection() {
+    fun changingStorageDirectoryRefreshesStorageAndClearsUnavailableSelection() = runTest {
         val transfers = RecordingTransfers()
         val location = RecordingStorageLocation("old")
         val service = LocalModelService(
@@ -159,6 +171,8 @@ class LocalModelServiceTest {
             ),
             models = listOf(BuiltInModel, DownloadableModel),
             storageLocation = location,
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
 
         assertTrue(service.select(DownloadableModel.id))
@@ -185,6 +199,8 @@ class LocalModelServiceTest {
                 supportsLiteRtModels = true,
             ),
             models = listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
 
         assertTrue(service.select(DownloadableModel.id))
@@ -200,7 +216,7 @@ class LocalModelServiceTest {
     }
 
     @Test
-    fun storedModelNamesIncludesPartialDownloads() {
+    fun storedModelNamesIncludesPartialDownloads() = runTest {
         val service = LocalModelService(
             preferences = TestKeyValueStore(),
             storage = object : LocalModelStorage by EmptyStorage {
@@ -215,6 +231,8 @@ class LocalModelServiceTest {
                 supportsLiteRtModels = true,
             ),
             models = listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
         )
 
         assertEquals(listOf(DownloadableModel.displayName), service.storedModelNames())
@@ -268,7 +286,7 @@ class LocalModelServiceTest {
 
         override fun isInstalled(runtime: LocalModelRuntime) = false
 
-        override fun request(model: LocalModelDefinition): String? = null
+        override suspend fun request(model: LocalModelDefinition): String? = null
 
         override fun cancel(runtime: LocalModelRuntime) = Unit
 
@@ -277,7 +295,7 @@ class LocalModelServiceTest {
             if (invokeObserverOnRegistration) observer()
         }
 
-        override fun setModelDownloadStarter(starter: (String) -> String?) = Unit
+        override fun setModelDownloadStarter(starter: suspend (String) -> String?) = Unit
 
         override fun engineClassName(runtime: LocalModelRuntime): String? = null
 

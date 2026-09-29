@@ -18,6 +18,23 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun importingIntoColdRepositoryRetainsConcurrentBookmarkChangesAndRefreshesCaches() = runTest {
+        val store = TestKeyValueStore(mapOf(SavedItemKeys.BOOKMARKS to "1q10"))
+        val repository = SavedItemsRepository(store)
+        val imported = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.importBookmarksAtomic("2q20", overwrite = false)
+        }
+        val bookmarked = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.setMembershipAtomic(SavedItemSource.BOOKMARKS, 3, true, 30)
+        }
+        assertEquals(1, imported.await()?.importedCount)
+        assertTrue(bookmarked.await())
+        assertEquals(listOf(3, 2, 1), repository.loadItems(SavedItemSource.BOOKMARKS, true).map { it.id })
+        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 2))
+        assertEquals(repository.loadItems(SavedItemSource.BOOKMARKS), SavedItemsRepository(store).loadItems(SavedItemSource.BOOKMARKS))
+    }
+
+    @Test
     fun codecEncodingPreservesOrderDuplicatesSeparatorsAndNumericLimits() {
         assertEquals("", SavedItemCodec.encode(emptyList()))
         assertEquals("42q100", SavedItemCodec.encode(listOf(TimestampedItem(42, 100))))

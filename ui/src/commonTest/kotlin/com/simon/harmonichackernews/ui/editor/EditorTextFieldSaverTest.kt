@@ -5,6 +5,11 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.simon.harmonichackernews.platform.EditorDraftField
 import com.simon.harmonichackernews.platform.EditorDraftStorage
+import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -12,6 +17,26 @@ import kotlin.test.assertTrue
 
 class EditorTextFieldSaverTest {
     private val scope = SaverScope { true }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun unchangedBufferedDraftRetriesAFailedDiskWriteOnTheNextStateSave() = runTest {
+        val files = MemoryStorage().apply { writable = false }
+        val storage = BufferedEditorDraftStorage(
+            files, backgroundScope, MAX_INLINE_EDITOR_FIELD_CHARS, StandardTestDispatcher(testScheduler),
+        )
+        storage.awaitRestored()
+        val saver = editorTextFieldSaver(EditorDraftField.COMMENT, storage)
+        val value = TextFieldValue("a".repeat(MAX_INLINE_EDITOR_FIELD_CHARS + 1))
+        val saved = requireNotNull(with(saver) { scope.save(value) })
+        runCurrent()
+        assertEquals(1, storage.failures.value)
+        assertNull(files.read(EditorDraftField.COMMENT))
+        files.writable = true
+        assertEquals(saved, with(saver) { scope.save(value) })
+        runCurrent()
+        assertEquals(value.text, files.read(EditorDraftField.COMMENT))
+    }
 
     @Test
     fun ordinaryDraftsKeepTheOriginalSaverFormatWithoutStorageAccess() {

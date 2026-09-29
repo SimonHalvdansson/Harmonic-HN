@@ -157,6 +157,12 @@ fun EditorScreen(
     ) {
         mutableStateOf(TextFieldValue())
     }
+    SideEffect {
+        draftStorage?.stage(EditorDraftField.TITLE, title.text)
+        draftStorage?.stage(EditorDraftField.URL, url.text)
+        draftStorage?.stage(EditorDraftField.TEXT, text.text)
+        draftStorage?.stage(EditorDraftField.COMMENT, comment.text)
+    }
     var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
     var discardConfirmed by rememberSaveable { mutableStateOf(false) }

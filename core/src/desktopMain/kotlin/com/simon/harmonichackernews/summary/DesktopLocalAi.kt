@@ -129,6 +129,7 @@ class DesktopLocalAiEnvironment private constructor(
     private val transferClient: HttpClient,
 ) : AutoCloseable {
     override fun close() {
+        models.close()
         scope.cancel()
         transferClient.close()
     }
@@ -172,7 +173,7 @@ class DesktopLocalAiEnvironment private constructor(
                         liteRtUnsupportedReason = LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE,
                     ),
                     storageLocation = storageLocation,
-                )
+                ).also { it.refresh() }
                 DesktopLocalAiEnvironment(
                     models = models,
                     summary = DesktopLocalSummaryEngine(
@@ -311,7 +312,7 @@ private class DesktopLocalRuntimeDelivery(
     private val nativeLibrary: DesktopLlamaNativeLibrary,
 ) : LocalModelRuntimeDelivery {
     private var observer: () -> Unit = {}
-    private var downloadStarter: (String) -> String? = { "Model downloads are not ready." }
+    private var downloadStarter: suspend (String) -> String? = { "Model downloads are not ready." }
 
     override val included: Boolean = true
 
@@ -342,7 +343,7 @@ private class DesktopLocalRuntimeDelivery(
     override fun isInstalled(runtime: LocalModelRuntime): Boolean =
         runtime == LocalModelRuntime.LLAMA_CPP && nativeLibrary.availability().isSuccess
 
-    override fun request(model: LocalModelDefinition): String? =
+    override suspend fun request(model: LocalModelDefinition): String? =
         if (model.runtime == LocalModelRuntime.LLAMA_CPP && isInstalled(model.runtime)) {
             downloadStarter(model.id)
         } else {
@@ -356,7 +357,7 @@ private class DesktopLocalRuntimeDelivery(
         observer()
     }
 
-    override fun setModelDownloadStarter(starter: (String) -> String?) {
+    override fun setModelDownloadStarter(starter: suspend (String) -> String?) {
         downloadStarter = starter
     }
 
@@ -386,6 +387,7 @@ private class DesktopLocalSummaryEngine(
                 statusMessage = "Local AI requires a 64-bit Windows, macOS, or Linux build",
             )
         }
+        models.preload()
         return inference.availability().fold(
             onSuccess = {
                 LocalSummaryAvailability(

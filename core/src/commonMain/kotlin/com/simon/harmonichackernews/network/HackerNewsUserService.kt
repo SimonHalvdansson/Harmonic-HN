@@ -4,6 +4,8 @@ import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountReposito
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 interface HackerNewsAuthenticatedSession {
     val actions: HackerNewsActionRepository
@@ -39,7 +41,7 @@ class HackerNewsUserService(
 
     suspend fun login(): HackerNewsActionResult = cookieSessionMutex.withLock {
         val account = readCredentials() ?: return@withLock missingCredentials()
-        session.reset()
+        withContext(Dispatchers.Default) { session.reset() }
         safeAction("Login failed", account) { session.actions.login(account) }
     }
 
@@ -63,7 +65,7 @@ class HackerNewsUserService(
     suspend fun submit(title: String, text: String, url: String): HackerNewsActionResult =
         cookieSessionMutex.withLock {
             val account = readCredentials() ?: return@withLock missingCredentials()
-            session.reset()
+            withContext(Dispatchers.Default) { session.reset() }
             safeAction("Couldn't connect to HN", account) {
                 session.actions.submit(account, title, text, url)
             }
@@ -80,7 +82,7 @@ class HackerNewsUserService(
     ): HackerNewsActionResult = cookieSessionMutex.withLock {
         val account = readCredentials() ?: return@withLock missingCredentials()
         if (account.username != username || !isAccountCurrent()) return@withLock accountChanged()
-        session.reset()
+        withContext(Dispatchers.Default) { session.reset() }
         safeAction("Couldn't update favorite", account) {
             session.actions.setFavorite(account, itemId, favorite)
         }
@@ -127,7 +129,7 @@ class HackerNewsUserService(
             "Save your Hacker News login before syncing $path.",
         )
         if (loginRequired) {
-            session.reset()
+            withContext(Dispatchers.Default) { session.reset() }
             when (val login = sanitize(session.actions.login(account), account)) {
                 is HackerNewsActionResult.Success -> Unit
                 is HackerNewsActionResult.Failure ->
