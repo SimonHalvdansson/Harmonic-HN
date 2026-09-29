@@ -689,6 +689,10 @@ internal class AndroidCommentsWebViewController(
             cacheMode = WebSettings.LOAD_DEFAULT
         }
 
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOWNLOAD_FAVICONS_ENABLED)) {
+            WebSettingsCompat.setDownloadFaviconsEnabled(currentWebView.settings, false)
+        }
+
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(currentWebView, true)
