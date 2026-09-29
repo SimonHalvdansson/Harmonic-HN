@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +62,7 @@ private fun ReferencePreviewCard(
 ) {
     val appComposition = LocalHarmonicUiDependencies.current
     val runtime = checkNotNull(controller.referencePreview)
-    val runtimeState by runtime.state.collectAsState()
+    val runtimeState by runtime.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(runtimeState.url) {
         runtimeState.url.takeIf { it.isNotBlank() && it != state.originalUrl }?.let {

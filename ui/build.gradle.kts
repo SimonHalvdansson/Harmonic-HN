@@ -44,6 +44,7 @@ kotlin {
             api(project(":core"))
             api(project(":resources"))
             implementation(libs.compose.multiplatform.runtime)
+            implementation(libs.compose.multiplatform.lifecycle.runtime.compose)
             implementation(libs.compose.multiplatform.ui)
             implementation(libs.compose.multiplatform.foundation)
             implementation(libs.compose.multiplatform.animation)

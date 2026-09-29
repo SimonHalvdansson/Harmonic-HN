@@ -7,9 +7,9 @@ import kotlin.test.assertNull
 class CommentsScrollbarPolicyTest {
     @Test
     fun equalHeightRowsFillTheTrackAtStartMiddleAndEnd() {
-        val top = commentsScrollbarMetrics(100, 0, 0f, 19, 1f, false, true)!!
-        val middle = commentsScrollbarMetrics(100, 40, 0f, 59, 1f, true, true)!!
-        val bottom = commentsScrollbarMetrics(100, 80, 0f, 99, 1f, true, false)!!
+        val top = commentsScrollbarMetrics(0, 10_000, 2_000, false, true)!!
+        val middle = commentsScrollbarMetrics(4_000, 10_000, 2_000, true, true)!!
+        val bottom = commentsScrollbarMetrics(8_000, 10_000, 2_000, true, false)!!
         assertEquals(0.2f, middle.visibleFraction)
         assertEquals(0f, top.scrollPosition)
         assertEquals(0.5f, middle.scrollPosition)
@@ -17,16 +17,25 @@ class CommentsScrollbarPolicyTest {
     }
 
     @Test
-    fun partialVariableHeightRowsStillReachBothEnds() {
-        assertEquals(0f, commentsScrollbarMetrics(8, 0, 0f, 2, 0.3f, false, true)!!.scrollPosition)
-        assertEquals(1f, commentsScrollbarMetrics(8, 6, 0.7f, 7, 1f, true, false)!!.scrollPosition)
+    fun inaccurateEstimatesStillReachBothEnds() {
+        assertEquals(0f, commentsScrollbarMetrics(50, 8_000, 2_300, false, true)!!.scrollPosition)
+        assertEquals(1f, commentsScrollbarMetrics(6_700, 8_000, 1_000, true, false)!!.scrollPosition)
     }
 
     @Test
     fun oneTallCommentStillHasAScrollbarButContentThatFitsDoesNot() {
-        val single = commentsScrollbarMetrics(1, 0, 0.75f, 0, 1f, true, false)!!
+        val single = commentsScrollbarMetrics(3_000, 4_000, 1_000, true, false)!!
         assertEquals(0.25f, single.visibleFraction)
         assertEquals(1f, single.scrollPosition)
-        assertNull(commentsScrollbarMetrics(1, 0, 0f, 0, 1f, false, false))
+        assertNull(commentsScrollbarMetrics(0, 1_000, 1_000, false, false))
+    }
+
+    @Test
+    fun unknownAndEmptyMeasurementsAreHiddenAndOffsetsAreClamped() {
+        assertNull(commentsScrollbarMetrics(Int.MAX_VALUE, 4_000, 1_000, true, true))
+        assertNull(commentsScrollbarMetrics(0, Int.MAX_VALUE, 1_000, false, true))
+        assertNull(commentsScrollbarMetrics(0, 0, 0, false, true))
+        assertEquals(0f, commentsScrollbarMetrics(-20, 4_000, 1_000, true, true)!!.scrollPosition)
+        assertEquals(1f, commentsScrollbarMetrics(5_000, 4_000, 1_000, true, true)!!.scrollPosition)
     }
 }

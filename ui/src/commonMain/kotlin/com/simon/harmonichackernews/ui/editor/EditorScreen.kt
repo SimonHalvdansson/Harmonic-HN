@@ -37,7 +37,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.ScrollableTextDecorations
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -90,7 +91,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -137,31 +137,31 @@ fun EditorScreen(
     onDraftStorageFailure: (EditorDraftStorageFailure) -> Unit = {},
 ) {
     val titleMaxLength = EditorPolicy.TITLE_MAX_LENGTH
-    var title by rememberSaveable(
-        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.TITLE, draftStorage, onDraftStorageFailure),
+    val title = rememberSaveable(
+        saver = rememberEditorTextFieldSaver(EditorDraftField.TITLE, draftStorage, onDraftStorageFailure),
     ) {
-        mutableStateOf(TextFieldValue())
+        TextFieldState()
     }
-    var url by rememberSaveable(
-        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.URL, draftStorage, onDraftStorageFailure),
+    val url = rememberSaveable(
+        saver = rememberEditorTextFieldSaver(EditorDraftField.URL, draftStorage, onDraftStorageFailure),
     ) {
-        mutableStateOf(TextFieldValue())
+        TextFieldState()
     }
-    var text by rememberSaveable(
-        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.TEXT, draftStorage, onDraftStorageFailure),
+    val text = rememberSaveable(
+        saver = rememberEditorTextFieldSaver(EditorDraftField.TEXT, draftStorage, onDraftStorageFailure),
     ) {
-        mutableStateOf(TextFieldValue())
+        TextFieldState()
     }
-    var comment by rememberSaveable(
-        stateSaver = rememberEditorTextFieldSaver(EditorDraftField.COMMENT, draftStorage, onDraftStorageFailure),
+    val comment = rememberSaveable(
+        saver = rememberEditorTextFieldSaver(EditorDraftField.COMMENT, draftStorage, onDraftStorageFailure),
     ) {
-        mutableStateOf(TextFieldValue())
+        TextFieldState()
     }
     SideEffect {
-        draftStorage?.stage(EditorDraftField.TITLE, title.text)
-        draftStorage?.stage(EditorDraftField.URL, url.text)
-        draftStorage?.stage(EditorDraftField.TEXT, text.text)
-        draftStorage?.stage(EditorDraftField.COMMENT, comment.text)
+        draftStorage?.stage(EditorDraftField.TITLE, title.text.toString())
+        draftStorage?.stage(EditorDraftField.URL, url.text.toString())
+        draftStorage?.stage(EditorDraftField.TEXT, text.text.toString())
+        draftStorage?.stage(EditorDraftField.COMMENT, comment.text.toString())
     }
     var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
@@ -175,7 +175,7 @@ fun EditorScreen(
     }
 
     val isPost = type == EditorType.POST
-    val submission = EditorSubmission(title.text, url.text, text.text, comment.text)
+    val submission = EditorSubmission(title.text.toString(), url.text.toString(), text.text.toString(), comment.text.toString())
     val validation = submission.validate(type, titleMaxLength)
     val titleTooLong = validation.titleTooLong
     val canSubmit = validation.canSubmit
@@ -209,12 +209,10 @@ fun EditorScreen(
                 focusedPostField == PostEditorField.Text,
             submitting = submitting,
             onItalic = {
-                if (isPost) text = applyItalicFormatting(text)
-                else comment = applyItalicFormatting(comment)
+                applyItalicFormatting(if (isPost) text else comment)
             },
             onCode = {
-                if (isPost) text = applyCodeBlockFormatting(text)
-                else comment = applyCodeBlockFormatting(comment)
+                applyCodeBlockFormatting(if (isPost) text else comment)
             },
             onInformation = { dialog = EditorDialog.Information },
             onSubmit = {
@@ -275,11 +273,8 @@ fun EditorScreen(
                     KeepImeOpenDuringFieldHandoff {
                         PostFields(
                             title = title,
-                            onTitleChange = { title = it },
                             url = url,
-                            onUrlChange = { url = it },
                             text = text,
-                            onTextChange = { text = it },
                             onFieldFocusChange = { field, isFocused ->
                                 if (isFocused) {
                                     focusedPostField = field
@@ -303,8 +298,7 @@ fun EditorScreen(
                             )
                         }
                         CommentField(
-                            value = comment,
-                            onValueChange = { comment = it },
+                            state = comment,
                             reply = type == EditorType.COMMENT_REPLY,
                             compact = compactToolbar,
                             modifier = Modifier.weight(1f),
@@ -540,26 +534,21 @@ private fun OriginalCommentText(
 
 @Composable
 private fun PostFields(
-    title: TextFieldValue,
-    onTitleChange: (TextFieldValue) -> Unit,
-    url: TextFieldValue,
-    onUrlChange: (TextFieldValue) -> Unit,
-    text: TextFieldValue,
-    onTextChange: (TextFieldValue) -> Unit,
+    title: TextFieldState,
+    url: TextFieldState,
+    text: TextFieldState,
     onFieldFocusChange: (PostEditorField, Boolean) -> Unit,
     titleMaxLength: Int,
     titleTooLong: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
-    val nextField = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) })
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // Preserve the roomy form's field sizes; scroll the whole form when it no longer fits.
         val textHeight = (maxHeight - 182.dp).coerceAtLeast(144.dp)
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             OutlinedTextField(
-                value = title,
-                onValueChange = onTitleChange,
+                state = title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp)
@@ -586,13 +575,12 @@ private fun PostFields(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Next,
                 ),
-                keyboardActions = nextField,
-                singleLine = true,
+                onKeyboardAction = { focusManager.moveFocus(FocusDirection.Next) },
+                lineLimits = TextFieldLineLimits.SingleLine,
                 shape = editorFieldShape,
             )
             OutlinedTextField(
-                value = url,
-                onValueChange = onUrlChange,
+                state = url,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, top = 16.dp, end = 16.dp)
@@ -605,13 +593,12 @@ private fun PostFields(
                     keyboardType = KeyboardType.Uri,
                     imeAction = ImeAction.Next,
                 ),
-                keyboardActions = nextField,
-                singleLine = true,
+                onKeyboardAction = { focusManager.moveFocus(FocusDirection.Next) },
+                lineLimits = TextFieldLineLimits.SingleLine,
                 shape = editorFieldShape,
             )
             OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
+                state = text,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(textHeight + 16.dp)
@@ -631,15 +618,13 @@ private fun PostFields(
 
 @Composable
 private fun CommentField(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
+    state: TextFieldState,
     reply: Boolean,
     compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
+        state = state,
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = if (compact) 0.dp else if (reply) 4.dp else 8.dp, end = 16.dp)
@@ -842,20 +827,20 @@ private fun SubmitButton(
     }
 }
 
-private fun applyItalicFormatting(value: TextFieldValue): TextFieldValue {
-    val edit = formatEditorItalic(value.text, value.selection.start, value.selection.end)
-    return value.copy(
-        text = edit.text,
-        selection = TextRange(edit.selectionStart, edit.selectionEnd),
-    )
+internal fun applyItalicFormatting(state: TextFieldState) {
+    state.edit {
+        val formatted = formatEditorItalic(toString(), selection.start, selection.end)
+        replace(0, length, formatted.text)
+        selection = TextRange(formatted.selectionStart, formatted.selectionEnd)
+    }
 }
 
-private fun applyCodeBlockFormatting(value: TextFieldValue): TextFieldValue {
-    val edit = formatEditorCodeBlock(value.text, value.selection.start, value.selection.end)
-    return value.copy(
-        text = edit.text,
-        selection = TextRange(edit.selectionStart, edit.selectionEnd),
-    )
+internal fun applyCodeBlockFormatting(state: TextFieldState) {
+    state.edit {
+        val formatted = formatEditorCodeBlock(toString(), selection.start, selection.end)
+        replace(0, length, formatted.text)
+        selection = TextRange(formatted.selectionStart, formatted.selectionEnd)
+    }
 }
 
 private fun informationMessage(isPost: Boolean): String = buildString {

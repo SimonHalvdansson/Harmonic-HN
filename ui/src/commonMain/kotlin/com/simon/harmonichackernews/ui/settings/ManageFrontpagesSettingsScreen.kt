@@ -44,7 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,7 +109,7 @@ fun ManageFrontpagesSettingsRoute(
     focusFrontpage: StoryType? = if (LocalSettingsParentSection.current == SettingsSection.FiltersTags) StoryType.UNSLOP else null,
     hasAccount: Boolean = false,
 ) {
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
     val frontpages = StoryTypeMenuPolicy.availableTypes(
         story.additionalFrontpages, hasAccount, story.frontpageOrder, settings.general.bookmarksEnabled,

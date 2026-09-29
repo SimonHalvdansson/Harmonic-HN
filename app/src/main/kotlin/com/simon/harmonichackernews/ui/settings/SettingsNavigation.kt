@@ -11,7 +11,7 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +44,7 @@ fun SettingsShell(
 ) {
     val context = LocalContext.current
     val dependencies = LocalHarmonicUiDependencies.current
-    val settingsAccountState by dependencies.platform.accounts.accountState.collectAsState()
+    val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
@@ -64,7 +64,7 @@ fun SettingsShell(
     }
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val navigation = rememberSettingsNavigationStore(initialSection, isTwoPane)
-    val navigationState by navigation.state.collectAsState()
+    val navigationState by navigation.state.collectAsStateWithLifecycle()
     val backAnimationScope = rememberCoroutineScope()
     val backCompletion = LocalPredictiveBackCompletion.current
     val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher

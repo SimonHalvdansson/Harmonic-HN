@@ -36,7 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var animateReset by remember { mutableStateOf(false) }
     val glass = settings.debug.glass
     val displayedParameters = GlassParameter.entries.associateWith { parameter ->

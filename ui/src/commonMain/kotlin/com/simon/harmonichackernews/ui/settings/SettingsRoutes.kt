@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +54,7 @@ fun DataSettingsRoute(
     onAction: (DataSettingsAction) -> Unit,
     contentVersion: Int = 0,
 ) {
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     DataSettingsScreen(
         state = DataSettingsPolicy.snapshot(
             settings = settings,
@@ -105,7 +105,7 @@ fun AiSummarySettingsRoute(
         onDismiss: () -> Unit,
     ) -> Unit,
 ) {
-    val persistedSettings by repository.updates.collectAsState(initial = repository.snapshot())
+    val persistedSettings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
 
     // The page outlives its provider dialog. Changing providers cancels the old lookup,
@@ -217,7 +217,7 @@ fun DebugSettingsRoute(
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
     onWidgetDebugInfoChanged: () -> Unit = {},
 ) {
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
     DebugSettingsScreen(
         showNavigation = showNavigation,
@@ -274,7 +274,7 @@ fun AppearanceSettingsRoute(
 ) {
     var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val splitLayout = LocalSplitPaneLayout.current
     AppearanceSettingsScreen(
         state = presenter.state(
@@ -323,7 +323,7 @@ fun PaletteTintSettingsRoute(
     onBack: () -> Unit,
 ) {
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val config = settings.story.paletteTintConfigKey
     PaletteTintSettingsScreen(
         initialMode = PaletteTintPreferences.sanitizeMode(config),
@@ -359,7 +359,7 @@ fun ThemeSettingsRoute(
 ) {
     var dialog by rememberSaveable { mutableStateOf<ThemeSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
 
     fun applyThemeChange(block: () -> Set<SettingsPlatformEffect>) {
         if (SettingsPlatformEffect.ThemeChanged in block()) onThemeChanged()
@@ -410,7 +410,7 @@ fun StoriesSettingsRoute(
     var refresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
     val presenter = remember(repository) { StoriesSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
     val state = presenter.state(settings, previewModel, faviconIcon)
     StoriesSettingsScreen(
@@ -467,7 +467,7 @@ fun CommentsSettingsRoute(
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val state = presenter.state(settings)
     CommentsSettingsScreen(
         state = state,
@@ -520,7 +520,7 @@ fun WebLinksSettingsRoute(
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(repository) { WebLinksSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
     WebLinksSettingsScreen(
         state = presenter.state(reading.readerModeFont.label, settings),
@@ -591,7 +591,7 @@ fun FiltersTagsSettingsRoute(
     val presenter = remember(settings, filters, userTags) {
         FiltersTagsSettingsPresenter(settings, filters, userTags)
     }
-    val snapshot by settings.updates.collectAsState(initial = settings.snapshot())
+    val snapshot by settings.updates.collectAsStateWithLifecycle(initialValue = settings.snapshot())
     var refresh by remember { mutableIntStateOf(0) }
     var filterDialog by rememberSaveable { mutableStateOf<ContentFilterDialog?>(null) }
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }

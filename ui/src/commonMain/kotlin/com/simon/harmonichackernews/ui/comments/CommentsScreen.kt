@@ -733,40 +733,17 @@ private fun AlgoliaFallbackNotice() {
 
 @Composable
 private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifier) {
-    val metrics by remember(state) {
-        derivedStateOf {
-            val layoutInfo = state.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo
-            val totalItems = layoutInfo.totalItemsCount
-            if (totalItems <= 0 || visibleItems.isEmpty()) {
-                return@derivedStateOf null
-            }
-
-            val first = visibleItems.first()
-            val last = visibleItems.last()
-            val firstFraction = if (first.size == 0) 0f else {
-                ((layoutInfo.viewportStartOffset - first.offset).toFloat() / first.size)
-                    .coerceIn(0f, 1f)
-            }
-            val lastFraction = if (last.size == 0) 1f else {
-                ((layoutInfo.viewportEndOffset - last.offset).toFloat() / last.size)
-                    .coerceIn(0f, 1f)
-            }
-            commentsScrollbarMetrics(
-                totalItems = totalItems,
-                firstIndex = first.index,
-                firstFraction = firstFraction,
-                lastIndex = last.index,
-                lastFraction = lastFraction,
-                canScrollBackward = state.canScrollBackward,
-                canScrollForward = state.canScrollForward,
-            )
-        }
-    }
-    val currentMetrics = metrics ?: return
+    val indicator = state.scrollIndicatorState ?: return
     val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
     val density = LocalDensity.current
     Canvas(modifier = modifier) {
+        val currentMetrics = commentsScrollbarMetrics(
+            scrollOffset = indicator.scrollOffset,
+            contentSize = indicator.contentSize,
+            viewportSize = indicator.viewportSize,
+            canScrollBackward = state.canScrollBackward,
+            canScrollForward = state.canScrollForward,
+        ) ?: return@Canvas
         val widthPx = with(density) { 3.dp.toPx() }
         val endPaddingPx = with(density) { 1.dp.toPx() }
         val minimumHeightPx = with(density) { 24.dp.toPx() }

@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -19,7 +19,7 @@ fun AddBookmarksToFavoritesDialog(
 ) {
     val app = LocalHarmonicUiDependencies.current
     val accounts = app.platform.accounts
-    val accountState by accounts.accountState.collectAsState()
+    val accountState by accounts.accountState.collectAsStateWithLifecycle()
     val addFavorites = remember(app) {
         AddBookmarksToFavoritesUseCase(
             favorites = app.hackerNewsUser,

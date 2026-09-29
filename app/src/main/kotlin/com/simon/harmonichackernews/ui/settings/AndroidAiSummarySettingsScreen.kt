@@ -3,7 +3,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -28,13 +28,13 @@ fun AndroidAiSummarySettingsScreen(
     }
     // The application preloads this cache off the main thread. Reading it here must not scan
     // model files or query dynamic-feature state while the settings navigation is animating.
-    val localModelState by localModels.cachedState.collectAsState()
+    val localModelState by localModels.cachedState.collectAsStateWithLifecycle()
     var localRefresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val settingsRuntime = remember(appComposition, scope) {
         appComposition.createLocalSummarySettingsRuntime(scope)
     }
-    val availabilityState by settingsRuntime.state.collectAsState()
+    val availabilityState by settingsRuntime.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(settingsRuntime, localModelState, localRefresh) {
         settingsRuntime.resolve()

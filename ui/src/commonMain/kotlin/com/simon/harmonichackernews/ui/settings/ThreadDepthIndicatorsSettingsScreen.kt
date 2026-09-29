@@ -10,7 +10,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,7 +38,7 @@ fun ThreadDepthIndicatorsSettingsRoute(
     onBack: () -> Unit,
 ) {
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     ThreadDepthIndicatorsSettingsScreen(
         state = presenter.state(settings),
         onEnabledChanged = repository::setCommentDepthIndicatorsEnabled,

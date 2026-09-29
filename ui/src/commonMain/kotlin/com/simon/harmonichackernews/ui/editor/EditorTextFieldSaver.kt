@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.editor
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -20,29 +21,31 @@ internal fun rememberEditorTextFieldSaver(
     field: EditorDraftField,
     storage: EditorDraftStorage?,
     onFailure: (EditorDraftStorageFailure) -> Unit,
-): Saver<TextFieldValue, out Any> {
+): Saver<TextFieldState, Any> {
     val currentFailure = rememberUpdatedState(onFailure)
     return remember(field, storage) {
-        if (storage == null) TextFieldValue.Saver
-        else editorTextFieldSaver(field, storage) { currentFailure.value(it) }
+        editorTextFieldSaver(field, storage) { currentFailure.value(it) }
     }
 }
 
 internal fun editorTextFieldSaver(
     field: EditorDraftField,
-    storage: EditorDraftStorage,
+    storage: EditorDraftStorage?,
     onFailure: (EditorDraftStorageFailure) -> Unit = {},
-): Saver<TextFieldValue, Any> {
+): Saver<TextFieldState, Any> {
     var persistedText: String? = null
     return Saver(
         save = { value ->
+            val text = value.text.toString()
             // Buffered storage may have reported a disk failure after accepting the last save.
             // Let it retry unchanged text without rewriting successful synchronous saves.
-            if (value.text == persistedText) storage.stage(field, value.text)
-            if (value.text.length <= MAX_INLINE_EDITOR_FIELD_CHARS) {
-                with(TextFieldValue.Saver) { save(value) }
-            } else if (value.text == persistedText || storage.write(field, value.text)) {
-                persistedText = value.text
+            if (text == persistedText) storage?.stage(field, text)
+            if (storage == null || text.length <= MAX_INLINE_EDITOR_FIELD_CHARS) {
+                // Keep the existing draft format. Undo history is intentionally session-local:
+                // saving it could put large deleted/replaced text back into Android's Bundle.
+                with(TextFieldValue.Saver) { save(TextFieldValue(text, value.selection)) }
+            } else if (text == persistedText || storage.write(field, text)) {
+                persistedText = text
                 listOf(FILE_MARKER, value.selection.start, value.selection.end)
             } else {
                 // Never fall back to putting the oversized text into the Bundle.
@@ -52,15 +55,15 @@ internal fun editorTextFieldSaver(
         },
         restore = { saved ->
             if ((saved as? List<*>)?.firstOrNull() == FILE_MARKER) {
-                storage.read(field)?.let { text ->
+                storage?.read(field)?.let { text ->
                     persistedText = text
-                    TextFieldValue(text, TextRange(saved[1] as Int, saved[2] as Int))
+                    TextFieldState(text, TextRange(saved[1] as Int, saved[2] as Int))
                 } ?: run {
                     onFailure(EditorDraftStorageFailure.RESTORE)
                     null
                 }
             } else {
-                TextFieldValue.Saver.restore(saved)
+                TextFieldValue.Saver.restore(saved)?.let { TextFieldState(it.text, it.selection) }
             }
         },
     )

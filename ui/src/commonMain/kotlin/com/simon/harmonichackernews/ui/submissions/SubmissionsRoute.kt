@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.submissions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -33,7 +33,7 @@ fun SubmissionsRoute(
     pullToRefreshEnabled: Boolean = true,
     onOpenLink: (String) -> Unit,
 ) {
-    val state by store.state.collectAsState()
+    val state by store.state.collectAsStateWithLifecycle()
     val onIntent = remember(store) { { intent: SubmissionsIntent -> store.accept(intent) } }
     val scope = rememberCoroutineScope()
     val previewResources = remember(scope, previewService, tintStore) {
@@ -45,7 +45,7 @@ fun SubmissionsRoute(
         )
     }
     SideEffect { previewResources.updateSettings(displaySettings) }
-    val states by previewResources.statesFlow.collectAsState()
+    val states by previewResources.statesFlow.collectAsStateWithLifecycle()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
     val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
     key(store) {

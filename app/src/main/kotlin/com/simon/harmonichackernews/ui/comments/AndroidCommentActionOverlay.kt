@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -16,7 +16,7 @@ internal fun AndroidCommentActionOverlay(
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
-    val accountState by dependencies.platform.accounts.accountState.collectAsState()
+    val accountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     CommentActionOverlay(
         controller = controller,
         settings = settings,

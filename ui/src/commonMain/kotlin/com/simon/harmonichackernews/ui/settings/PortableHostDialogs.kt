@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -125,8 +125,8 @@ fun PortableUserProfileDialog(
     onTagChanged: () -> Unit,
 ) {
     val session = remember(scene, userName) { scene.userProfiles.open(userName) }
-    val runtimeState by session.runtime.state.collectAsState()
-    val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
+    val runtimeState by session.runtime.state.collectAsStateWithLifecycle()
+    val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(app.userTags.tagFor(userName)) }
 

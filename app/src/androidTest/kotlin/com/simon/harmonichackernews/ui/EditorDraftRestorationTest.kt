@@ -12,6 +12,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInputSelection
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -78,6 +81,32 @@ class EditorDraftRestorationTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag(COMMENT).fetchSemanticsNodes().isNotEmpty() }
         assertField(COMMENT, text, selection)
         assertEquals(originalFiles, draftFiles())
+        discardEditor()
+    }
+
+    @Test
+    fun formattingCanBeUndoneAndRedoneWithTheKeyboard() {
+        openEditor(EditorType.COMMENT_REPLY)
+        val text = "A useful reply"
+        val field = compose.onNodeWithTag(COMMENT)
+        field.performTextReplacement(text)
+        field.performTextInputSelection(TextRange(2, 8))
+        compose.onNodeWithContentDescription("Italic").performClick()
+        assertFieldText(COMMENT, "A *useful* reply")
+        field.performKeyInput {
+            keyDown(Key.CtrlLeft)
+            pressKey(Key.Z)
+            keyUp(Key.CtrlLeft)
+        }
+        assertField(COMMENT, text, TextRange(2, 8))
+        field.performKeyInput {
+            keyDown(Key.CtrlLeft)
+            keyDown(Key.ShiftLeft)
+            pressKey(Key.Z)
+            keyUp(Key.ShiftLeft)
+            keyUp(Key.CtrlLeft)
+        }
+        assertFieldText(COMMENT, "A *useful* reply")
         discardEditor()
     }
 

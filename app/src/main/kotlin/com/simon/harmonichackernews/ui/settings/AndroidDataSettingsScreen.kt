@@ -9,7 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,7 +53,7 @@ fun AndroidDataSettingsScreen(
                 .localDate(kotlin.time.Clock.System.now().toEpochMilliseconds())
         }
     }
-    val runtimeState by runtime.state.collectAsState()
+    val runtimeState by runtime.state.collectAsStateWithLifecycle()
     val pendingExport = remember { PendingTextExport() }
     DisposableEffect(pendingExport) {
         onDispose(pendingExport::clear)

@@ -14,6 +14,9 @@ import coil3.annotation.InternalCoilApi
 import coil3.decode.DataSource
 import coil3.disk.DiskCache
 import coil3.network.CacheNetworkResponse
+import coil3.network.ConcurrentRequestStrategy
+import coil3.network.DeDupeConcurrentRequestStrategy
+import coil3.fetch.FetchResult
 import coil3.network.NetworkClient
 import coil3.network.NetworkFetcher
 import coil3.network.NetworkHeaders
@@ -29,8 +32,15 @@ import coil3.request.allowPartialImage
 import coil3.toBitmap
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import okio.Buffer
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
@@ -42,6 +52,64 @@ import org.junit.runner.RunWith
 @SdkSuppress(minSdkVersion = 29)
 @OptIn(ExperimentalCoilApi::class, InternalCoilApi::class)
 class IncompleteImageRetryTest {
+    @Test
+    fun concurrentImagesShareOneDownloadWhenAWaitingRowLeavesComposition() = runBlocking(Dispatchers.IO) {
+        withTimeout(10_000) {
+            fixture { cache, client, _ ->
+                val responseReady = CompletableDeferred<Unit>()
+                client.beforeResponse = { responseReady.await() }
+                val strategy = ObservedRequestStrategy()
+                val loader = loader(cache, client, strategy)
+                try {
+                    coroutineScope {
+                        val first = async { loader.execute(request()) }
+                        strategy.entered.receive()
+                        client.started.receive()
+                        val canceled = async { loader.execute(request()) }
+                        strategy.entered.receive()
+                        val other = async { loader.execute(request()) }
+                        strategy.entered.receive()
+                        canceled.cancelAndJoin()
+                        responseReady.complete(Unit)
+                        assertTrue(first.await() is SuccessResult)
+                        assertTrue(other.await() is SuccessResult)
+                        assertEquals(1, client.requests)
+                    }
+                } finally {
+                    loader.shutdown()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun waitingImageRecoversWhenTheOriginalDownloadIsCanceled() = runBlocking(Dispatchers.IO) {
+        withTimeout(10_000) {
+            fixture { cache, client, _ ->
+                val responseReady = CompletableDeferred<Unit>()
+                client.beforeResponse = { responseReady.await() }
+                val strategy = ObservedRequestStrategy()
+                val loader = loader(cache, client, strategy)
+                try {
+                    coroutineScope {
+                        val first = async { loader.execute(request()) }
+                        strategy.entered.receive()
+                        client.started.receive()
+                        val other = async { loader.execute(request()) }
+                        strategy.entered.receive()
+                        first.cancelAndJoin()
+                        responseReady.complete(Unit)
+                        assertTrue(other.await() is SuccessResult)
+                        assertEquals(2, client.requests)
+                        assertEquals(DataSource.DISK, (loader.execute(request()) as SuccessResult).dataSource)
+                    }
+                } finally {
+                    loader.shutdown()
+                }
+            }
+        }
+    }
+
     @Test
     fun truncatedCachedPngIsReplacedAndThenLoadsFromDisk() = runBlocking(Dispatchers.IO) {
         fixture { cache, client, fullPng ->
@@ -109,14 +177,18 @@ class IncompleteImageRetryTest {
 
     private fun request() = ImageRequest.Builder(context).data(imageUrl).build()
 
-    private fun loader(cache: DiskCache, client: NetworkClient) = ImageLoader.Builder(context)
+    private fun loader(
+        cache: DiskCache,
+        client: NetworkClient,
+        strategy: ConcurrentRequestStrategy = DeDupeConcurrentRequestStrategy(),
+    ) = ImageLoader.Builder(context)
         .allowHardware(false)
         .allowPartialImage(false)
         .memoryCache(null)
         .diskCache(cache)
         .components {
             add(IncompleteImageRetryInterceptor())
-            add(NetworkFetcher.Factory(networkClient = { client }))
+            add(NetworkFetcher.Factory(networkClient = { client }, concurrentRequestStrategy = { strategy }))
         }
         .build()
 
@@ -157,13 +229,27 @@ class IncompleteImageRetryTest {
 
     private class ImageClient(var bytes: ByteArray) : NetworkClient {
         private val advertisedSize = bytes.size
-        var requests = 0
+        private val requestCount = AtomicInteger()
+        val requests get() = requestCount.get()
+        val started = Channel<Unit>(Channel.UNLIMITED)
+        var beforeResponse: suspend () -> Unit = {}
         override suspend fun <T> executeRequest(
             request: NetworkRequest,
             block: suspend (NetworkResponse) -> T,
         ): T {
-            requests++
+            requestCount.incrementAndGet()
+            started.trySend(Unit)
+            beforeResponse()
             return block(response(bytes, advertisedSize))
+        }
+    }
+
+    private class ObservedRequestStrategy : ConcurrentRequestStrategy {
+        val entered = Channel<Unit>(Channel.UNLIMITED)
+        private val delegate = DeDupeConcurrentRequestStrategy()
+        override suspend fun apply(key: String, block: suspend () -> FetchResult): FetchResult {
+            entered.send(Unit)
+            return delegate.apply(key, block)
         }
     }
 

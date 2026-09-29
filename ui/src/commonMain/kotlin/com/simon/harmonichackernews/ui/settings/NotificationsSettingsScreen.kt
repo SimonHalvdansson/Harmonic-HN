@@ -9,7 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +48,7 @@ fun NotificationsSettingsRoute(
     onRequestPermission: (onResult: (Boolean) -> Unit) -> Unit = { it(true) },
     onOpenSystemSettings: (() -> Unit)? = null,
 ) {
-    val accountState by accounts.accountState.collectAsState()
+    val accountState by accounts.accountState.collectAsStateWithLifecycle()
     val username = accountState.accountOrNull?.username
     if (username == null) {
         LaunchedEffect(accountState) {
@@ -59,7 +59,7 @@ fun NotificationsSettingsRoute(
     // Leaving the account cancels setup/check requests and ignores stale permission callbacks.
     key(username) {
         val runtime = remember(notifications) { NotificationsSettingsRuntime(username, notifications) }
-        val state by runtime.state.collectAsState()
+        val state by runtime.state.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
         var requestingPermission by remember { mutableStateOf(false) }
         LaunchedEffect(runtime, refreshVersion) { runtime.refresh() }

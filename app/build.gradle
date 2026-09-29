@@ -151,6 +151,7 @@ dependencies {
     implementation(project(":ui"))
 
     implementation(libs.bundles.androidx.lifecycle)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)

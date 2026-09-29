@@ -16,7 +16,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -107,8 +107,8 @@ object AndroidMainNavigationHost {
             id = R.id.main_navigation_compose
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                val themeSelection by appComposition.appearance.selections.collectAsState(
-                    initial = appComposition.appearance.selection(),
+                val themeSelection by appComposition.appearance.selections.collectAsStateWithLifecycle(
+                    initialValue = appComposition.appearance.selection(),
                 )
                 ProvideHarmonicUiDependencies(
                     HarmonicUiDependencies(appComposition, scene),
@@ -139,7 +139,7 @@ private fun MainNavigation(
     activity: MainActivity,
     controller: AndroidMainNavigationController,
 ) {
-    val navigationSnapshot by controller.navigationState.state.collectAsState()
+    val navigationSnapshot by controller.navigationState.state.collectAsStateWithLifecycle()
     val backCompletion = LocalPredictiveBackCompletion.current
     // Include asynchronous feed population in launcher time-to-full-display. Other
     // destinations have their own loading lifecycle and must not wait for the hidden feed.

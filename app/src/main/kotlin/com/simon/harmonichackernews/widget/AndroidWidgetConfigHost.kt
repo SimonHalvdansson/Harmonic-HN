@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.widget
 
 import androidx.activity.ComponentActivity
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
@@ -45,7 +45,7 @@ object AndroidWidgetConfigHost {
                     headlineFamilyName?.let(::widgetPreviewFontFamily)
                 }
                 val appearance = app.appearance
-                val selection by appearance.selections.collectAsState(initial = appearance.selection())
+                val selection by appearance.selections.collectAsStateWithLifecycle(initialValue = appearance.selection())
                 CompositionLocalProvider(LocalWidgetTextStyle provides TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))) {
                     ProvideHarmonicUiDependencies(dependencies) {
                         HarmonicTheme(selection = selection) {

@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,7 +82,7 @@ fun PortableSettingsDetail(
             onNavigate(SettingsSection.Frontpages, true)
         }
         SettingsSection.Frontpages -> {
-            val accountState by app.platform.accounts.accountState.collectAsState()
+            val accountState by app.platform.accounts.accountState.collectAsStateWithLifecycle()
             ManageFrontpagesSettingsRoute(app.settings, onBack, hasAccount = accountState.accountOrNull != null)
         }
         SettingsSection.Comments -> CommentsSettingsRoute(
@@ -157,7 +157,7 @@ private fun PortableWebLinksSettings(
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(app.settings) { WebLinksSettingsPresenter(app.settings) }
-    val settings by app.settings.updates.collectAsState(initial = app.settings.snapshot())
+    val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
     val reading = settings.reading
 
     WebLinksSettingsScreen(

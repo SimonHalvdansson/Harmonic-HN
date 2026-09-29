@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalResources
@@ -24,7 +24,7 @@ internal fun AndroidStoryPreviewOverlay(
         StoryDisplaySettings.from(dependencies.userSettings.story)
     }
     val displaySettings = controller.displaySettings ?: fallbackSettings
-    val accountState by dependencies.platform.accounts.accountState.collectAsState()
+    val accountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val hasAccount = accountState.accountOrNull != null
     val userSettings = dependencies.userSettings
     val bookmarksEnabled = userSettings.general.bookmarksEnabled

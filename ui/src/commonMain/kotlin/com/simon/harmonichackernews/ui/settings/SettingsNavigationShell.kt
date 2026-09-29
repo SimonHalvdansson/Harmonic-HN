@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,7 +107,7 @@ fun SettingsNavigationShell(
         modifier = modifier.fillMaxSize().background(HarmonicTheme.colors.background)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState ->
-        val navigationState by navigation.state.collectAsState()
+        val navigationState by navigation.state.collectAsStateWithLifecycle()
         val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
             { section, singlePane, onBack, onNavigate ->
                 val parent = navigationState.detailStack

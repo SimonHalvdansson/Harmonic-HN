@@ -6,6 +6,9 @@ import androidx.annotation.MainThread
 import androidx.work.Configuration
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.network.DeDupeConcurrentRequestStrategy
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.allowPartialImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,9 +52,13 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         localAiSupport.install(this)
     }
 
+    @OptIn(ExperimentalCoilApi::class)
     override fun newImageLoader(context: Context): ImageLoader = ImageLoader.Builder(context)
         .allowPartialImage(false)
-        .components { add(IncompleteImageRetryInterceptor()) }
+        .components {
+            add(IncompleteImageRetryInterceptor())
+            add(KtorNetworkFetcherFactory(concurrentRequestStrategy = { DeDupeConcurrentRequestStrategy() }))
+        }
         .build()
 
     /** Called after the initial UI is drawn; background-only launches don't need AI warm-up. */

@@ -22,7 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +64,7 @@ private val avatarPreviewNames = listOf(
 
 @Composable
 fun UserAvatarSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
-    val settings by repository.updates.collectAsState(initial = repository.snapshot())
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
     UserAvatarSettingsScreen(
         enabled = settings.comments.userAvatarsEnabled,

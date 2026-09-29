@@ -29,7 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -91,7 +91,7 @@ internal fun SplitPaneViewport(
 ) {
     val repository = LocalHarmonicUiDependencies.current.settings
     val initialSettings = remember(repository) { repository.snapshot() }
-    val settings by repository.updates.collectAsState(initial = initialSettings)
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = initialSettings)
     val windowSize = LocalWindowInfo.current.containerSize
     val orientation = SplitOrientation.forWindow(windowSize.width, windowSize.height)
     val savedRatio = settings.appearance.splitRatio(orientation) ?: defaultRatio

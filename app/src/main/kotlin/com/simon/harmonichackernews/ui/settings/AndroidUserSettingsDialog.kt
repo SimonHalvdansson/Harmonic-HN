@@ -5,7 +5,7 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,9 +35,9 @@ fun AndroidUserSettingsDialog(
         scene.userProfiles.open(userName).also { it.runtime.updateMonthNames(monthNames) }
     }
     val runtime = session.runtime
-    val runtimeState by runtime.state.collectAsState()
-    val settings by appComposition.settings.updates.collectAsState(
-        initial = appComposition.settings.snapshot(),
+    val runtimeState by runtime.state.collectAsStateWithLifecycle()
+    val settings by appComposition.settings.updates.collectAsStateWithLifecycle(
+        initialValue = appComposition.settings.snapshot(),
     )
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }

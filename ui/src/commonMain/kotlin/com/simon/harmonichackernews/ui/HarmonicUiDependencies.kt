@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -106,7 +106,7 @@ fun ProvideHarmonicUiDependencies(
         dependencies.settings.updates.map {
             SurfaceEffectPreferences(it.appearance.surfaceEffectMode, it.debug.glass)
         }.distinctUntilChanged()
-    }.collectAsState(initial = SurfaceEffectPreferences(
+    }.collectAsStateWithLifecycle(initialValue = SurfaceEffectPreferences(
         dependencies.userSettings.appearance.surfaceEffectMode,
         dependencies.userSettings.debug.glass,
     ))
