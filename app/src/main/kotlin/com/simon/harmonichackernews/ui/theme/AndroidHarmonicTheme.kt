@@ -3,11 +3,15 @@
 package com.simon.harmonichackernews.ui.theme
 
 import android.content.Context
+import android.content.res.Configuration
 import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import androidx.annotation.AttrRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.appcompat.R as AppCompatR
@@ -15,6 +19,7 @@ import com.google.android.material.R as MaterialR
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.settings.ThemeSelection
+import com.simon.harmonichackernews.utils.AndroidActivityTheme
 
 @Composable
 fun HarmonicTheme(
@@ -23,12 +28,32 @@ fun HarmonicTheme(
 ) {
     val context = LocalContext.current
     val activeSelection = selection ?: context.harmonicAppComposition.appearance.selection()
-    val palette = harmonicThemePalette(context, activeSelection)
+    val configuration = LocalConfiguration.current
+    val palette = remember(context, configuration, activeSelection) {
+        harmonicThemePalette(context, activeSelection)
+    }
     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark, content)
 }
 
-/** Resolve the same Android attributes for the app and isolated settings previews. */
+/** Resolve Android attributes and color roles from the same immutable selection. */
 fun harmonicThemePalette(context: Context, activeSelection: ThemeSelection): HarmonicThemePalette {
+    // The Activity theme is mutable and may lag the appearance flow during configuration changes.
+    // Use an isolated context so a new selection cannot be combined with the previous theme's colors.
+    val configuration = Configuration(context.resources.configuration).apply {
+        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+            if (activeSelection.dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+    }
+    val themedContext = ContextThemeWrapper(
+        context.createConfigurationContext(configuration),
+        AndroidActivityTheme.themeResource(activeSelection.theme, activeSelection.dark),
+    )
+    return resolveAndroidThemePalette(themedContext, activeSelection)
+}
+
+private fun resolveAndroidThemePalette(
+    context: Context,
+    activeSelection: ThemeSelection,
+): HarmonicThemePalette {
     val canonical = HarmonicThemeCatalog.resolve(
         theme = activeSelection.theme,
         systemDark = activeSelection.dark,
@@ -86,17 +111,10 @@ fun harmonicThemePalette(context: Context, activeSelection: ThemeSelection): Har
     )
 }
 
-fun harmonicColors(context: Context): HarmonicColors {
-    val selection = context.harmonicAppComposition.appearance.selection()
-    val canonical = HarmonicThemeCatalog.resolve(
-        theme = selection.theme,
-        systemDark = selection.dark,
-    )
-    return ThemeAccentCatalog.apply(
-        canonical.copy(colors = harmonicColors(context, canonical)),
-        selection.accentPreset,
-    ).colors
-}
+fun harmonicColors(context: Context): HarmonicColors = harmonicThemePalette(
+    context,
+    context.harmonicAppComposition.appearance.selection(),
+).colors
 
 private fun harmonicColors(
     context: Context,
