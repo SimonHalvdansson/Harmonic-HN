@@ -16,6 +16,13 @@ data class StoryPreviewOverlayState(
     val stories: List<StoryListItemSnapshot>,
     val cardBackgrounds: List<ArgbColor>,
     val initialPage: Int,
+    val sessionId: Int,
+)
+
+data class StoryPreviewRemovalRequest(
+    val serial: Int,
+    val remainingStoryIds: Set<Int>,
+    val targetStoryId: Int,
 )
 
 data class StoryPreviewTarget(val story: StoryListItemSnapshot)
@@ -33,6 +40,7 @@ data class StoriesInteractionState(
     val scrollRequest: StoryScrollRequest? = null,
     val storyPagingAlphas: Map<Int, Float> = emptyMap(),
     val storyPreviewOverlay: StoryPreviewOverlayState? = null,
+    val storyPreviewRemovalRequest: StoryPreviewRemovalRequest? = null,
     val storyPreviewDismissRequestVersion: Int = 0,
     val storyPreviewBackGesture: BackGesture = BackGesture(),
     val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest? = null,
@@ -105,6 +113,64 @@ class StoriesInteractionStore(
                 state.suppressSearchAutoFocus
             },
         )
+        if (structureChanged) reconcileStoryPreviewContent()
+    }
+
+    private fun reconcileStoryPreviewContent() {
+        val overlay = state.storyPreviewOverlay ?: return
+        if (state.storyPreviewDismissRequestVersion != 0) return
+        val availableIds = (if (state.searching) searchStories else mainStories)
+            .mapTo(mutableSetOf()) { it.id }
+        val remainingIds = overlay.stories.mapNotNullTo(linkedSetOf()) {
+            it.id.takeIf(availableIds::contains)
+        }
+        if (remainingIds.size == overlay.stories.size) {
+            // An optimistic favorite removal can be rolled back before paging finishes.
+            state = state.copy(storyPreviewRemovalRequest = null)
+            return
+        }
+        if (remainingIds.isEmpty()) {
+            state = state.copy(storyPreviewRemovalRequest = null)
+            requestDismissStoryPreview()
+            return
+        }
+        if (state.storyPreviewRemovalRequest?.remainingStoryIds == remainingIds) return
+        val currentPage = overlay.stories.indexOfFirst { it.id == state.visibleStoryPreviewId }
+            .takeIf { it >= 0 } ?: overlay.initialPage
+        val target = overlay.stories.drop(currentPage).firstOrNull { it.id in remainingIds }
+            ?: overlay.stories.take(currentPage).last { it.id in remainingIds }
+        state = state.copy(
+            storyPreviewRemovalRequest = StoryPreviewRemovalRequest(
+                serial = ++requestSerial,
+                remainingStoryIds = remainingIds,
+                targetStoryId = target.id,
+            ),
+        )
+    }
+
+    /** Keep the outgoing card until the renderer has paged to a surviving story. */
+    fun completeStoryPreviewRemoval(request: StoryPreviewRemovalRequest): Int? {
+        if (state.storyPreviewRemovalRequest != request) return null
+        val overlay = state.storyPreviewOverlay ?: return null
+        val indices = overlay.stories.indices.filter {
+            overlay.stories[it].id in request.remainingStoryIds
+        }
+        val stories = indices.map(overlay.stories::get)
+        val page = stories.indexOfFirst { it.id == request.targetStoryId }
+        if (page < 0) return null
+        state = state.copy(
+            storyPreviewOverlay = overlay.copy(
+                stories = stories,
+                cardBackgrounds = indices.map(overlay.cardBackgrounds::get),
+                initialPage = page,
+            ),
+            storyPreviewRemovalRequest = null,
+            visibleStoryPreviewId = request.targetStoryId,
+            suppressedStoryIds = setOf(request.targetStoryId),
+            storyPagingAlphas = emptyMap(),
+            scrollRequest = null,
+        )
+        return page
     }
 
     fun updateSearchDraft(value: String) {
@@ -218,12 +284,14 @@ class StoriesInteractionStore(
         val initialPage = stories.indexOfFirst { it.id == openedStoryId }.takeIf { it >= 0 } ?: 0
         state = state.copy(
             storyPreviewDismissRequestVersion = 0,
+            storyPreviewRemovalRequest = null,
             storyPreviewBackGesture = BackGesture(),
             storyPreviewPredictiveBackSettleRequest = null,
             storyPreviewOverlay = StoryPreviewOverlayState(
                 stories = stories.toList(),
                 cardBackgrounds = cardBackgrounds.toList(),
                 initialPage = initialPage,
+                sessionId = ++requestSerial,
             ),
             visibleStoryPreviewId = stories[initialPage].id,
             suppressedStoryIds = setOf(stories[initialPage].id),
@@ -235,13 +303,17 @@ class StoriesInteractionStore(
         if (state.storyPreviewOverlay == null || state.storyPreviewDismissRequestVersion != 0) {
             return
         }
-        state = state.copy(storyPreviewDismissRequestVersion = ++requestSerial)
+        state = state.copy(
+            storyPreviewDismissRequestVersion = ++requestSerial,
+            storyPreviewRemovalRequest = null,
+        )
     }
 
     fun completeStoryPreviewDismiss(): Boolean {
         if (state.storyPreviewOverlay == null) return false
         state = state.copy(
             storyPreviewOverlay = null,
+            storyPreviewRemovalRequest = null,
             storyPreviewDismissRequestVersion = 0,
             storyPreviewBackGesture = BackGesture(),
             storyPreviewPredictiveBackSettleRequest = null,
@@ -327,6 +399,9 @@ class StoriesInteractionStore(
     }
 
     fun beginStoryPreviewAction(page: Int, action: StoryPreviewActionKind): StoryPreviewTarget? {
+        if (state.storyPreviewRemovalRequest != null || state.storyPreviewDismissRequestVersion != 0) {
+            return null
+        }
         val target = storyPreviewTarget(page) ?: return null
         state = when (action) {
             StoryPreviewActionKind.Vote -> {

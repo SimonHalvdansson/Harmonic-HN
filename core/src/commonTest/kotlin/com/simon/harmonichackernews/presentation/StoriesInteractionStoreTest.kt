@@ -175,6 +175,109 @@ class StoriesInteractionStoreTest {
         assertTrue(store.updateStoryItemHeight(1, 96))
     }
 
+    @Test
+    fun removingVisibleStoryPagesForwardBeforePruningTheDeck() {
+        val store = previewStore(openedId = 2)
+        val original = requireNotNull(store.state.storyPreviewOverlay)
+
+        store.updateContent(listOf(story(1), story(3)), emptyList(), false, "")
+
+        val request = requireNotNull(store.state.storyPreviewRemovalRequest)
+        assertEquals(3, request.targetStoryId)
+        assertEquals(original, store.state.storyPreviewOverlay)
+        assertNull(store.beginStoryPreviewAction(1, StoryPreviewActionKind.Bookmark))
+        assertEquals(1, store.completeStoryPreviewRemoval(request))
+        val updated = requireNotNull(store.state.storyPreviewOverlay)
+        assertEquals(listOf(1, 3), updated.stories.map { it.id })
+        assertEquals(listOf(10, 30), updated.cardBackgrounds.map { it.value })
+        assertEquals(original.sessionId, updated.sessionId)
+        assertEquals(3, store.state.visibleStoryPreviewId)
+        assertNull(store.state.storyPreviewRemovalRequest)
+        assertEquals(0, store.state.storyPreviewDismissRequestVersion)
+    }
+
+    @Test
+    fun removingFinalPageMovesToPreviousSurvivingStory() {
+        val store = previewStore(openedId = 3)
+
+        store.updateContent(listOf(story(1), story(2)), emptyList(), false, "")
+
+        val request = requireNotNull(store.state.storyPreviewRemovalRequest)
+        assertEquals(2, request.targetStoryId)
+        assertEquals(1, store.completeStoryPreviewRemoval(request))
+        assertEquals(2, store.state.visibleStoryPreviewId)
+    }
+
+    @Test
+    fun removingEarlierPagePreservesVisibleStoryAndCorrectsItsIndex() {
+        val store = previewStore(openedId = 3)
+
+        store.updateContent(listOf(story(2), story(3)), emptyList(), false, "")
+
+        val request = requireNotNull(store.state.storyPreviewRemovalRequest)
+        assertEquals(3, request.targetStoryId)
+        assertEquals(1, store.completeStoryPreviewRemoval(request))
+        assertEquals(3, store.state.visibleStoryPreviewId)
+    }
+
+    @Test
+    fun removingLastStoryRequestsDismissalWhileRetainingItsCardForAnimation() {
+        val store = store()
+        store.updateContent(listOf(story(1)), emptyList(), false, "")
+        store.showStoryPreview(listOf(story(1)), listOf(10), 1)
+
+        store.updateContent(emptyList(), emptyList(), false, "")
+
+        assertTrue(store.state.storyPreviewDismissRequestVersion > 0)
+        assertEquals(listOf(1), store.state.storyPreviewOverlay?.stories?.map { it.id })
+        assertNull(store.state.storyPreviewRemovalRequest)
+        store.completeStoryPreviewDismiss()
+        assertNull(store.state.storyPreviewOverlay)
+    }
+
+    @Test
+    fun optimisticRemovalRollbackInvalidatesPendingDeckChange() {
+        val store = previewStore(openedId = 2)
+        store.updateContent(listOf(story(1), story(3)), emptyList(), false, "")
+        val request = requireNotNull(store.state.storyPreviewRemovalRequest)
+
+        store.updateContent(listOf(story(1), story(2), story(3)), emptyList(), false, "")
+
+        assertNull(store.state.storyPreviewRemovalRequest)
+        assertNull(store.completeStoryPreviewRemoval(request))
+        assertEquals(listOf(1, 2, 3), store.state.storyPreviewOverlay?.stories?.map { it.id })
+    }
+
+    @Test
+    fun unchangedFeedMembershipDoesNotPageAfterBookmarkOrFavoriteToggle() {
+        val store = previewStore(openedId = 2)
+
+        store.updateContent(listOf(story(1), story(2), story(3)), emptyList(), false, "")
+
+        assertNull(store.state.storyPreviewRemovalRequest)
+        assertEquals(0, store.state.storyPreviewDismissRequestVersion)
+        assertEquals(2, store.state.visibleStoryPreviewId)
+    }
+
+    @Test
+    fun dismissalDuringRemovalInvalidatesThePendingPageChange() {
+        val store = previewStore(openedId = 2)
+        store.updateContent(listOf(story(1), story(3)), emptyList(), false, "")
+        val request = requireNotNull(store.state.storyPreviewRemovalRequest)
+
+        store.requestDismissStoryPreview()
+
+        assertNull(store.state.storyPreviewRemovalRequest)
+        assertNull(store.completeStoryPreviewRemoval(request))
+        assertTrue(store.state.storyPreviewDismissRequestVersion > 0)
+    }
+
+    private fun previewStore(openedId: Int) = store().apply {
+        val stories = listOf(story(1), story(2), story(3))
+        updateContent(stories, emptyList(), false, "")
+        showStoryPreview(stories, listOf(10, 20, 30), openedId)
+    }
+
     private fun store(defaultHeight: Int = 100) = StoriesInteractionStore(defaultHeight)
 
     private fun story(id: Int) = StoryListItemSnapshot(

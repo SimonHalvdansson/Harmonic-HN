@@ -25,6 +25,7 @@ import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
 import com.simon.harmonichackernews.presentation.StoryPredictiveBackSettleRequest
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.presentation.StoryPreviewOverlayState
+import com.simon.harmonichackernews.presentation.StoryPreviewRemovalRequest
 import com.simon.harmonichackernews.presentation.StoryScrollRequest
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryCachePreferences
@@ -145,6 +146,8 @@ class StoriesScreenController private constructor(
     val storyPagingAlphas: Map<Int, Float> get() = interactionState.storyPagingAlphas
     val storyPreviewOverlay: StoryPreviewOverlayState?
         get() = interactionState.storyPreviewOverlay
+    val storyPreviewRemovalRequest: StoryPreviewRemovalRequest?
+        get() = interactionState.storyPreviewRemovalRequest
     val storyPreviewDismissRequest: Int
         get() = interactionState.storyPreviewDismissRequestVersion
     val storyPreviewPredictiveBackProgress: Float
@@ -471,6 +474,14 @@ class StoriesScreenController private constructor(
     fun requestDismissStoryPreview() {
         interactionStore.requestDismissStoryPreview()
         syncInteractionState()
+    }
+
+    fun completeStoryPreviewRemoval(request: StoryPreviewRemovalRequest): Int? {
+        val page = interactionStore.completeStoryPreviewRemoval(request) ?: return null
+        resetStoryPagingAlphaStates()
+        syncInteractionState()
+        listener.onStoryPreviewPageChanged(request.targetStoryId)
+        return page
     }
 
     fun completeStoryPreviewDismiss() {

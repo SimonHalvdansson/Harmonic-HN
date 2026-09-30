@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
@@ -55,6 +55,9 @@ import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -132,10 +135,7 @@ fun StoryPreviewOverlay(
 ) {
     val state = controller.storyPreviewOverlay ?: return
     val density = LocalDensity.current
-    val pagerState = rememberPagerState(
-        initialPage = state.initialPage,
-        pageCount = { state.stories.size },
-    )
+    val pagerState = rememberStoryPreviewPagerState(state, controller.visibleStoryPreviewId)
     val pagerFlingBehavior = PagerDefaults.flingBehavior(
         state = pagerState,
         // Keep the pager's own velocity/settling strategy as the single source of truth. A short
@@ -143,49 +143,50 @@ fun StoryPreviewOverlay(
         // the built-in fling velocity commits them.
         snapPositionalThreshold = PreviewPagerSnapPositionalThreshold,
     )
-    val currentStory = state.stories[pagerState.currentPage]
+    val currentStory = state.stories.getOrNull(pagerState.currentPage)
+        ?: state.stories[state.initialPage]
     val currentCardColor = rememberStoryPreviewCardColor(controller, currentStory)
     val pagerSettlingScope = rememberCoroutineScope()
-    var isPointerPressed by remember(state) { mutableStateOf(false) }
-    var pagerRepairJob by remember(state) { mutableStateOf<Job?>(null) }
-    var scrollWheelGestureReady by remember(state) { mutableStateOf(true) }
-    var scrollWheelResetJob by remember(state) { mutableStateOf<Job?>(null) }
-    val transformProgress = remember(state) { Animatable(0f) }
-    val predictiveProgressAnimation = remember(state) { Animatable(0f) }
-    var overlayActive by remember(state) { mutableStateOf(false) }
-    var hideTargetContent by remember(state) { mutableStateOf(true) }
-    var drawOverlayShadows by remember(state) { mutableStateOf(false) }
-    var openingStarted by remember(state) { mutableStateOf(false) }
-    var openingCompleted by remember(state) { mutableStateOf(false) }
-    var openingDecision by remember(state) {
+    var isPointerPressed by remember(state.sessionId) { mutableStateOf(false) }
+    var pagerRepairJob by remember(state.sessionId) { mutableStateOf<Job?>(null) }
+    var scrollWheelGestureReady by remember(state.sessionId) { mutableStateOf(true) }
+    var scrollWheelResetJob by remember(state.sessionId) { mutableStateOf<Job?>(null) }
+    val transformProgress = remember(state.sessionId) { Animatable(0f) }
+    val dismissOpacity = remember(state.sessionId) { Animatable(1f) }
+    val predictiveProgressAnimation = remember(state.sessionId) { Animatable(0f) }
+    var overlayActive by remember(state.sessionId) { mutableStateOf(false) }
+    var hideTargetContent by remember(state.sessionId) { mutableStateOf(true) }
+    var drawOverlayShadows by remember(state.sessionId) { mutableStateOf(false) }
+    var openingStarted by remember(state.sessionId) { mutableStateOf(false) }
+    var openingCompleted by remember(state.sessionId) { mutableStateOf(false) }
+    var openingDecision by remember(state.sessionId) {
         mutableStateOf<StoryPreviewOpeningDecision?>(null)
     }
-    var closingStarted by remember(state) { mutableStateOf(false) }
-    var rootOffset by remember(state) { mutableStateOf(Offset.Zero) }
-    var targetBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
-    var targetImageBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
-    var targetTitleBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
-    var targetSummaryBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
-    var targetMetaBounds by remember(state, currentStory.id) { mutableStateOf<Rect?>(null) }
-    var targetSupplementaryBounds by remember(state, currentStory.id) {
+    var rootOffset by remember(state.sessionId) { mutableStateOf(Offset.Zero) }
+    var targetBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetImageBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetTitleBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetSummaryBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetMetaBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetSupplementaryBounds by remember(state.sessionId, currentStory.id) {
         mutableStateOf<Rect?>(null)
     }
-    var targetCommentsButtonBounds by remember(state, currentStory.id) {
+    var targetCommentsButtonBounds by remember(state.sessionId, currentStory.id) {
         mutableStateOf<Rect?>(null)
     }
-    var targetImageLayer by remember(state, currentStory.id) {
+    var targetImageLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
-    var targetTitleLayer by remember(state, currentStory.id) {
+    var targetTitleLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
-    var targetSummaryLayer by remember(state, currentStory.id) {
+    var targetSummaryLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
-    var targetMetaLayer by remember(state, currentStory.id) {
+    var targetMetaLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
-    var targetSupplementaryLayer by remember(state, currentStory.id) {
+    var targetSupplementaryLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
     val dismissRequest = controller.storyPreviewDismissRequest
@@ -225,8 +226,10 @@ fun StoryPreviewOverlay(
     val sourceMetaSnapshot = sourceMetaCapture.image
     val sourceIndexSnapshot = sourceIndexCapture.image
     val sourceCommentsSnapshot = sourceCommentsCapture.image
-    var lastPagerPosition by remember(state) { mutableFloatStateOf(state.initialPage.toFloat()) }
-    var pendingListScroll by remember(state) { mutableFloatStateOf(0f) }
+    var lastPagerPosition by remember(state.sessionId) {
+        mutableFloatStateOf(pagerState.currentPage.toFloat())
+    }
+    var pendingListScroll by remember(state.sessionId) { mutableFloatStateOf(0f) }
     fun sourceSnapshotReady(bounds: Rect?, capture: GraphicsLayerSnapshot): Boolean =
         bounds == null || capture.isCurrent(snapshotRefreshKey)
     fun sourceSnapshotUnavailable(bounds: Rect?, capture: GraphicsLayerSnapshot): Boolean =
@@ -327,21 +330,27 @@ fun StoryPreviewOverlay(
         openingCompleted = true
         overlayActive = false
     }
-    LaunchedEffect(
-        dismissRequest,
-        snapshotsReadyForTransition,
-        snapshotsUnavailableForTransition,
-    ) {
+    val dismissTransitionReady by rememberUpdatedState(
+        when {
+            snapshotsUnavailableForTransition -> false
+            snapshotsReadyForTransition -> true
+            else -> null
+        },
+    )
+    LaunchedEffect(state.sessionId, dismissRequest) {
         if (dismissRequest == 0) return@LaunchedEffect
-        if (closingStarted) return@LaunchedEffect
-        if (snapshotsUnavailableForTransition) {
-            closingStarted = true
+        // Decide once, then finish closing even if a late image or favorite rollback changes the
+        // available source layers. Restarting this effect on readiness changes cancels the exit.
+        val canTransform = withTimeoutOrNull(DismissFallbackDelayMillis) {
+            snapshotFlow { dismissTransitionReady }.filterNotNull().first()
+        } ?: false
+        if (!canTransform) {
             controller.setStoryPreviewSourceCovered(false)
+            // A removed last bookmark/favorite has no list row to transform back into.
+            dismissOpacity.animateTo(0f, tween(180))
             controller.completeStoryPreviewDismiss()
             return@LaunchedEffect
         }
-        if (!snapshotsReadyForTransition) return@LaunchedEffect
-        closingStarted = true
         // Put the overlay over the still-live dialog first, then hide the live dialog beneath it.
         overlayActive = true
         withFrameNanos { }
@@ -359,20 +368,6 @@ fun StoryPreviewOverlay(
         withFrameNanos { }
         controller.completeStoryPreviewDismiss()
     }
-    // A navigation or resize can invalidate a transition layer after the dialog has opened. A
-    // dismiss must never remain pending forever in that state: pending dismissals disable paging
-    // and ignore subsequent dismiss requests, effectively trapping the user behind the overlay.
-    LaunchedEffect(dismissRequest) {
-        if (dismissRequest == 0) return@LaunchedEffect
-        delay(DismissFallbackDelayMillis)
-        if (
-            controller.storyPreviewDismissRequest == dismissRequest &&
-            !closingStarted
-        ) {
-            controller.setStoryPreviewSourceCovered(false)
-            controller.completeStoryPreviewDismiss()
-        }
-    }
     LaunchedEffect(controller.storyPreviewPredictiveBackProgress, predictiveSettleRequest) {
         if (predictiveSettleRequest == null) {
             predictiveProgressAnimation.snapTo(
@@ -388,7 +383,23 @@ fun StoryPreviewOverlay(
         )
         controller.finishStoryPreviewPredictiveBackSettle(request)
     }
-    LaunchedEffect(pagerState, state) {
+    val removalRequest = controller.storyPreviewRemovalRequest
+    LaunchedEffect(removalRequest) {
+        val request = removalRequest ?: return@LaunchedEffect
+        val targetPage = state.stories.indexOfFirst { it.id == request.targetStoryId }
+        if (targetPage < 0) return@LaunchedEffect
+        pagerRepairJob?.cancel()
+        pagerState.animateScrollToPage(
+            targetPage,
+            animationSpec = tween(TransformDurationMillis, easing = FastOutSlowInEasing),
+        )
+        val page = controller.completeStoryPreviewRemoval(request) ?: return@LaunchedEffect
+        // Change the deck and its index together, keeping the newly visible story stationary.
+        lastPagerPosition = page.toFloat()
+        pendingListScroll = 0f
+        pagerState.requestScrollToPage(page)
+    }
+    LaunchedEffect(pagerState, state, removalRequest) {
         snapshotFlow {
             (pagerState.currentPage + pagerState.currentPageOffsetFraction)
                 .coerceIn(0f, (state.stories.size - 1).coerceAtLeast(0).toFloat())
@@ -399,7 +410,7 @@ fun StoryPreviewOverlay(
             controller.onStoryPreviewPagePosition(lower, upper, offset)
 
             val delta = position - lastPagerPosition
-            if (delta != 0f && state.stories.size > 1) {
+            if (delta != 0f && state.stories.size > 1 && removalRequest == null) {
                 var cursor = lastPagerPosition
                 if (position > lastPagerPosition) {
                     while (cursor < position) {
@@ -473,7 +484,8 @@ fun StoryPreviewOverlay(
     val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } *
         predictiveEased
     val scrimAlpha = 0.32f * progress * (1f - 0.55f * predictiveEased)
-    SideEffect { onScrimAlphaChanged(scrimAlpha) }
+    val visibleScrimAlpha = scrimAlpha * dismissOpacity.value
+    SideEffect { onScrimAlphaChanged(visibleScrimAlpha) }
     fun transformTargetBounds(bounds: Rect?): Rect? {
         val container = targetBounds ?: return bounds
         return bounds?.let {
@@ -581,6 +593,7 @@ fun StoryPreviewOverlay(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { rootOffset = it.boundsInWindow().topLeft }
+            .graphicsLayer { alpha = dismissOpacity.value }
             .background(Color.Black.copy(alpha = scrimAlpha))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -622,7 +635,7 @@ fun StoryPreviewOverlay(
                             if (
                                 !scrollWheelGestureReady ||
                                 progress < 0.999f ||
-                                dismissRequest != 0
+                                dismissRequest != 0 || removalRequest != null
                             ) {
                                 return@storyPreviewScrollWheelPaging
                             }
@@ -641,8 +654,8 @@ fun StoryPreviewOverlay(
                     },
                 ),
             beyondViewportPageCount = 2,
-            userScrollEnabled = progress >= 0.999f && dismissRequest == 0,
-            key = { page -> "${state.stories[page].id}:$page" },
+            userScrollEnabled = progress >= 0.999f && dismissRequest == 0 && removalRequest == null,
+            key = { page -> state.stories[page].id },
         ) { page ->
             Box(
                 modifier = Modifier
