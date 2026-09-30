@@ -31,6 +31,22 @@ class CommentThreadRepository(
         preloads?.acquireAlgoliaRequest(storyId) ?: requests.acquire(storyId)
 
     private val officialLoader = OfficialCommentThreadLoader(hackerNewsRepository)
+    private val missingTopLevelComments = MissingTopLevelComments(
+        hackerNewsRepository, algoliaCommentsParser, requestDispatcher,
+    )
+
+    /** Shared by fresh loads and both ready/in-flight preloads when a discussion is opened. */
+    suspend fun reconcileMissingTopLevelComments(
+        result: CommentThreadLoadResult.Algolia,
+        topLevelCommentIds: List<Int>,
+        filteredUsers: Set<String>,
+        onPending: suspend () -> Unit = {},
+    ): CommentThreadLoadResult.Algolia = missingTopLevelComments.reconcile(
+        result,
+        topLevelCommentIds.ifEmpty { result.parsed.cacheSummary?.topLevelCommentIds.orEmpty() },
+        filteredUsers,
+        onPending,
+    )
 
     suspend fun takePreloadedAlgolia(
         storyId: Int,

@@ -480,13 +480,18 @@ class CommentsPresenter(
                 null
             }
             preloadedAlgolia?.let { prepared ->
+                val original = CommentThreadLoadResult.Algolia(prepared.response, prepared.parsed)
+                var partialApplied = false
+                val reconciled = reconcileAlgoliaThread(action, requestId, original, topLevelCommentIds) {
+                    partialApplied = true
+                }
                 if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
                     action = action,
                     requestId = requestId,
-                    parsed = prepared.parsed,
+                    parsed = reconciled.parsed,
                     networkCompleted = true,
-                    responseToCache = null,
-                    restoreScroll = action.restoreScrollFromCache,
+                    responseToCache = reconciled.response.takeIf { reconciled !== original },
+                    restoreScroll = action.restoreScrollFromCache && !partialApplied,
                     broadcastStoryUpdate = true,
                 )
                 return@launch
@@ -538,6 +543,8 @@ class CommentsPresenter(
             }
             cachedParsed?.let parsed@ { parsed ->
                 if (!threadLoadSession.isCurrent(requestId, storyId)) return@parsed
+                // An empty cache is provisional when HN already supplied comment IDs.
+                if (parsed.comments.isEmpty() && topLevelCommentIds.isNotEmpty()) return@parsed
                 val prepared = if (!thread.hasLoadedComments) {
                     val headerChanged = parsed.updateStoryInformation(
                         action.story,
@@ -600,19 +607,20 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
+                    val reconciled = reconcileAlgoliaThread(action, requestId, result, topLevelCommentIds)
                     // A joined preload may publish before its cache hash is ready. Only a screen
                     // with an existing prepared cache needs to complete that comparison now.
-                    val pending = result.parsed.cacheSummary?.preparedThread
+                    val pending = reconciled.parsed.cacheSummary?.preparedThread
                     val parsed = if (cachedPrepared != null && pending?.sourceDigest == "") {
                         withContext(threadPreparationDispatcher) {
-                            result.parsed.copy(cacheSummary = pending.withSourceDigest(result.response).cacheSummary())
+                            reconciled.parsed.copy(cacheSummary = pending.withSourceDigest(reconciled.response).cacheSummary())
                         }
-                    } else result.parsed
+                    } else reconciled.parsed
                     if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
                     val sameResponse = if (cachedPrepared != null) {
                         cachedPrepared.sourceDigest == parsed.cacheSummary?.preparedThread?.sourceDigest
-                    } else previousResponse == result.response
-                    if (cachedParsed == null || !sameResponse ||
+                    } else previousResponse == reconciled.response
+                    if (!thread.hasLoadedComments || cachedParsed == null || !sameResponse ||
                         (topLevelCommentIds.isEmpty() &&
                             !parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
                     ) {
@@ -621,7 +629,7 @@ class CommentsPresenter(
                             requestId = requestId,
                             parsed = parsed,
                             networkCompleted = true,
-                            responseToCache = result.response,
+                            responseToCache = reconciled.response,
                             restoreScroll = false,
                             broadcastStoryUpdate = true,
                         )
@@ -666,6 +674,25 @@ class CommentsPresenter(
                 cancellation?.dispose()
                 request?.close()
             }
+        }
+    }
+
+    private suspend fun reconcileAlgoliaThread(
+        action: CommentsAction.LoadThread,
+        requestId: Int,
+        result: CommentThreadLoadResult.Algolia,
+        topLevelCommentIds: List<Int>,
+        onPartialApplied: () -> Unit = {},
+    ): CommentThreadLoadResult.Algolia = commentThreadRepository.reconcileMissingTopLevelComments(
+        result, topLevelCommentIds, action.filteredUsers,
+    ) {
+        if (threadLoadSession.isCurrent(requestId, action.story.id) && result.parsed.comments.isNotEmpty()) {
+            applyAlgoliaThread(
+                action, requestId, result.parsed, networkCompleted = false,
+                responseToCache = null, restoreScroll = action.restoreScrollFromCache,
+                broadcastStoryUpdate = false,
+            )
+            onPartialApplied()
         }
     }
 

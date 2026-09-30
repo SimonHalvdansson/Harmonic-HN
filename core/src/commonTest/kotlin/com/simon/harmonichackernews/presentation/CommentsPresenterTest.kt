@@ -64,6 +64,122 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun unsuccessfulRecoveryCompletesAnUnchangedEmptyCacheWithoutStayingLoading() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val response = """{"id":42,"title":"Discussion","type":"story","children":[]}"""
+        val official = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int): Story? = error("Unused")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int): Comment? = null
+        }
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(FakeAlgoliaRepository(response), official,
+                AlgoliaCommentsParser(parsingDispatcher = dispatcher), requestDispatcher = dispatcher),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher)
+        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(7); descendants = 1 }
+        presenter.thread.reset(story)
+        presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false, response, false))
+        runCurrent()
+        assertTrue(presenter.state.value.loaded)
+        assertNull(presenter.state.value.failure)
+        assertEquals(0, story.descendants)
+        assertNull(presenter.thread.findComment(7))
+    }
+
+    @Test
+    fun missingRootRecoveryHandlesFreshReadyAndPendingPreloadsAndEmptyCaches() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        for (path in listOf("fresh", "ready", "pending", "raw-cache", "prepared-cache")) {
+            val response = """{"id":42,"title":"Discussion","type":"story","children":[]}"""
+            val network = CompletableDeferred<String>()
+            val recovered = CompletableDeferred<Comment>()
+            var requests = 0
+            val source = object : AlgoliaRepository {
+                override suspend fun getItemJson(id: Int) = network.await()
+                override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
+                override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
+            }
+            val official = object : HackerNewsRepository {
+                override suspend fun getStory(id: Int): Story? = error("Known kids need no story fetch")
+                override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+                override suspend fun getComment(id: Int): Comment {
+                    requests++
+                    assertEquals(7, id)
+                    return recovered.await()
+                }
+            }
+            val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+            val preloads = CommentsPreloadRepository(source, parser = parser, nowMillis = { 0L }, requestDispatcher = dispatcher)
+            if (path != "pending") network.complete(response)
+            if (path == "ready" || path == "pending") {
+                backgroundScope.launch(dispatcher) { preloads.preload(42, listOf(7)) }
+            }
+            val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+                CommentThreadRepository(source, official, parser, preloads, requestDispatcher = dispatcher),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = dispatcher)
+            val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
+            backgroundScope.launch(dispatcher) {
+                presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it }
+            }
+            val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(7); descendants = 1 }
+            presenter.thread.reset(story)
+            presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false,
+                previousResponse = response.takeIf { path == "raw-cache" }, restoreScrollFromCache = true,
+                loadPreparedThread = { if (path == "prepared-cache") parser.prepare(response, listOf(7)) else null }))
+            runCurrent()
+            network.complete(response)
+            runCurrent()
+            assertEquals(1, requests, path)
+            assertFalse(presenter.state.value.loaded, "Empty discussion must remain loading: $path")
+            assertTrue(effects.none { it.networkCompleted }, path)
+            assertEquals(1, story.descendants, "Do not broadcast a premature zero: $path")
+            recovered.complete(Comment().apply { id = 7; parent = 42; by = "reader"; text = "Recovered" })
+            runCurrent()
+            assertTrue(presenter.state.value.loaded, path)
+            assertEquals("Recovered", presenter.thread.findComment(7)?.text, path)
+            assertEquals(1, story.descendants, path)
+            val saved = assertNotNull(effects.last().responseToCache, path)
+            assertEquals(listOf(7), parser.prepare(saved, listOf(7)).restore().comments.map { it.id }, path)
+        }
+    }
+
+    @Test
+    fun existingAlgoliaCommentsAppearWhileMissingRootIsLoading() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val recovered = CompletableDeferred<Comment>()
+        val source = FakeAlgoliaRepository(sortingResponse)
+        val official = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int): Story? = error("Unused")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int) = recovered.await()
+        }
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+        val preloads = CommentsPreloadRepository(source, parser = parser, nowMillis = { 0L }, requestDispatcher = dispatcher)
+        preloads.preload(42, listOf(3, 1, 2))
+        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+            CommentThreadRepository(source, official, parser, preloads, requestDispatcher = dispatcher),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher)
+        val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
+        backgroundScope.launch(dispatcher) {
+            presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it }
+        }
+        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(3, 1, 2) }
+        presenter.thread.reset(story)
+        presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false, null, true))
+        runCurrent()
+        assertTrue(presenter.state.value.loaded)
+        assertNotNull(presenter.thread.findComment(1))
+        assertNull(presenter.thread.findComment(3))
+        presenter.dispatch(CommentsAction.ToggleExpanded(1))
+        recovered.complete(Comment().apply { id = 3; parent = 42; by = "reader"; text = "Recovered" })
+        runCurrent()
+        assertEquals(listOf(0, 3, 1, 2), presenter.thread.allComments.map { it.id })
+        assertFalse(presenter.thread.findComment(1)!!.expanded)
+        assertEquals(listOf(true, false), effects.map { it.restoreScroll }, "Recovery must not restore scroll twice")
+    }
+
+    @Test
     fun initialContentIsPreparedBeforePublicationButNotAgainOnRefresh() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val response = sortingResponse.replace("\"author\":", "\"parent_id\":42,\"author\":")
