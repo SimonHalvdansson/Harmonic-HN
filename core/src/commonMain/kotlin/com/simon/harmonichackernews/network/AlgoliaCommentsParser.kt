@@ -93,6 +93,28 @@ data class AlgoliaCommentsResponse(
 }
 
 /**
+ * A display already owned by this load's comments screen. Reuse is deliberately scoped to the
+ * same neutral content, ranking and filters; never share these mutable comments across screens.
+ */
+class AlgoliaCommentsDisplayReuse(
+    private val parsed: AlgoliaCommentsResponse,
+    topLevelCommentIds: List<Int>,
+    filteredUsers: Set<String>,
+) {
+    private val prepared = parsed.cacheSummary?.preparedThread
+    private val ranking = topLevelCommentIds.toList()
+    private val filters = filteredUsers.toSet()
+
+    internal fun matching(
+        content: PreparedCommentThread,
+        topLevelCommentIds: List<Int>,
+        filteredUsers: Set<String>,
+    ): AlgoliaCommentsResponse? = parsed.takeIf {
+        content === prepared && ranking == topLevelCommentIds && filters == filteredUsers
+    }
+}
+
+/**
  * Parses and prepares Algolia's nested comment response without Android types.
  * The returned shared comments are flattened in display order for direct screen consumption.
  */
@@ -111,9 +133,10 @@ class AlgoliaCommentsParser(
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
         cachedThread: PreparedCommentThread? = null,
+        reuseDisplay: AlgoliaCommentsDisplayReuse? = null,
     ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
         if (cachedThread?.isCompatible() == true) {
-            parsePrepared(response, topLevelCommentIds, filteredUsers, cachedThread)
+            parsePrepared(response, topLevelCommentIds, filteredUsers, cachedThread, reuseDisplay)
         } else {
             prepareDecoded(response, "", topLevelCommentIds, coroutineContext)
                 .restoreContent(topLevelCommentIds, filteredUsers)
@@ -125,8 +148,13 @@ class AlgoliaCommentsParser(
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
         cachedThread: PreparedCommentThread? = null,
+        reuseDisplay: AlgoliaCommentsDisplayReuse? = null,
     ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
-        prepare(response, topLevelCommentIds, cachedThread).restore(topLevelCommentIds, filteredUsers)
+        val prepared = prepare(response, topLevelCommentIds, cachedThread)
+        // prepare() returns the same object only after checking schema, source hash and ranking.
+        // An unchanged screen load can then skip allocating a second mutable comment forest.
+        reuseDisplay?.matching(prepared, topLevelCommentIds, filteredUsers)
+            ?: prepared.restore(topLevelCommentIds, filteredUsers)
     }
 
     /** Prepare neutral content once; user filters are applied only when restoring presentation. */

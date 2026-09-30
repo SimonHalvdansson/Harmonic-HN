@@ -80,6 +80,7 @@ class CommentThreadRepository(
         cachedThread: PreparedCommentThread? = null,
         onAlgoliaFallback: () -> Unit = {},
         algoliaRequest: AlgoliaCommentRequest? = null,
+        reuseDisplay: AlgoliaCommentsDisplayReuse? = null,
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
@@ -106,7 +107,9 @@ class CommentThreadRepository(
                 val orderedIds = resolvedIds?.await() ?: topLevelCommentIds
                 CommentThreadLoadResult.Algolia(
                     responseText,
-                    parseAlgolia(responseText, orderedIds, filteredUsers, cachedThread),
+                    algoliaCommentsParser.parseForDisplay(
+                        responseText, orderedIds, filteredUsers, cachedThread, reuseDisplay,
+                    ),
                 )
             }
         } catch (error: CancellationException) {

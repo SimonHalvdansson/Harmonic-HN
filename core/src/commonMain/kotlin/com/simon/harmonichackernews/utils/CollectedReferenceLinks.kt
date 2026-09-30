@@ -229,7 +229,7 @@ object CollectedReferenceLinks {
     }
 
     private fun parseReferenceNode(node: Node): List<ReferenceLink> = when (node) {
-        is Element -> if (isReferenceContainerTag(node)) parseReferenceFragment(node.html()) else emptyList()
+        is Element -> if (isReferenceContainerTag(node)) parseReferenceElement(node) else emptyList()
         is TextNode -> parseBareReferenceText(node.getWholeText())
         else -> emptyList()
     }
@@ -237,7 +237,7 @@ object CollectedReferenceLinks {
     private fun parseUnnumberedLinkNode(node: Node): List<ReferenceLink> = when (node) {
         is Element -> when {
             isAnchorTag(node) -> listOfNotNull(parseUnnumberedAnchor(node))
-            isReferenceContainerTag(node) -> parseUnnumberedLinkFragment(node.html())
+            isReferenceContainerTag(node) -> parseUnnumberedLinkElement(node)
             else -> emptyList()
         }
         is TextNode -> parseUnnumberedLinkText(node.getWholeText())
@@ -250,22 +250,20 @@ object CollectedReferenceLinks {
     private fun isAnchorTag(element: Element): Boolean =
         element.tagName().equals("a", ignoreCase = true) && element.hasAttr("href")
 
-    private fun parseReferenceFragment(html: String?): List<ReferenceLink> {
-        val fragment = Ksoup.parseBodyFragment(html.orEmpty())
-        fragment.outputSettings().prettyPrint(false)
-        val text = normalizeReferenceWhitespace(fragment.body().text())
+    private fun parseReferenceElement(element: Element): List<ReferenceLink> {
+        // These nodes already belong to the normalized comment DOM. Serializing and parsing
+        // their children again duplicates the same HTML work for every candidate paragraph.
+        val text = normalizeReferenceWhitespace(element.text())
         if (!startsWithReferenceMarker(text)) return emptyList()
-        val anchors = fragment.select("a[href]").toList()
+        val anchors = element.select("a[href]").toList()
         return if (anchors.isNotEmpty()) parseAnchoredReferenceText(text, anchors)
         else parseBareReferenceText(text)
     }
 
-    private fun parseUnnumberedLinkFragment(html: String?): List<ReferenceLink> {
-        val fragment = Ksoup.parseBodyFragment(html.orEmpty())
-        fragment.outputSettings().prettyPrint(false)
-        val text = normalizeReferenceWhitespace(fragment.body().text())
+    private fun parseUnnumberedLinkElement(element: Element): List<ReferenceLink> {
+        val text = normalizeReferenceWhitespace(element.text())
         if (text.isEmpty() || startsWithReferenceMarker(text)) return emptyList()
-        val anchors = fragment.select("a[href]").toList()
+        val anchors = element.select("a[href]").toList()
         return if (anchors.isNotEmpty()) parseUnnumberedAnchoredLinkText(text, anchors)
         else parseUnnumberedLinkText(text)
     }

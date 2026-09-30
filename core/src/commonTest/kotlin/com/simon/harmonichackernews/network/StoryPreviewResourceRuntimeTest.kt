@@ -16,6 +16,34 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewResourceRuntimeTest {
     @Test
+    fun previouslyPublishedMapsKeepTheirContentAndOrderAfterUpdatesAndRemoval() = runTest {
+        val runtime = StoryPreviewResourceRuntime(backgroundScope, object : StoryPreviewResourceService {
+            override suspend fun readCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource = error("Unused")
+            override suspend fun load(request: StoryPreviewResourceRequest): PreviewContent = error("Unused")
+        })
+        val tint = StoryResourceTintState("icon", 0, "default", 1)
+        for (id in listOf(9, 2, 17)) {
+            runtime.recordTint(id, "page$id", StoryResourceTintKind.FAVICON, tint)
+        }
+        val original = runtime.states.value
+        runtime.recordTint(2, "page2", StoryResourceTintKind.FAVICON, tint.copy(tintColorArgb = 2))
+        val updated = runtime.states.value
+        assertEquals(1, original.getValue(2).faviconTint?.tintColorArgb)
+        assertEquals(2, updated.getValue(2).faviconTint?.tintColorArgb)
+        assertEquals(listOf(9, 2, 17), updated.keys.toList())
+        assertSame(original.getValue(9), updated.getValue(9))
+
+        runtime.remove(2)
+        runtime.retainStories(setOf(17))
+        assertEquals(listOf(17), runtime.states.value.keys.toList())
+        assertEquals(listOf(9, 2, 17), original.keys.toList())
+        assertEquals(listOf(9, 2, 17), updated.keys.toList())
+        runtime.dispose()
+        assertTrue(runtime.states.value.isEmpty())
+        assertEquals(3, original.size)
+    }
+
+    @Test
     fun retentionCancelsObsoleteLoadsWithoutReintroducingTheirState() = runTest {
         val release = CompletableDeferred<PreviewContent>()
         var running = 0

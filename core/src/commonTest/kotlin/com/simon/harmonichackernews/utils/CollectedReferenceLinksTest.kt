@@ -7,6 +7,21 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun normalizedContainersKeepEntitiesNestedFormattingAndUnclosedParagraphs() {
+        for (tag in listOf("p", "div", "span", "li")) {
+            val result = CollectedReferenceLinks.parse(
+                "<$tag>[1] <a href='https://example.com/?a=1&amp;b=2'><b>A &amp; B</b></a></$tag>" +
+                    "<p>[2]&nbsp;<a href='https://example.org/'><i>Other</i> source</a>" +
+                    "<p>[3] This explanatory footnote stays in the body.",
+            )
+            assertEquals(listOf("https://example.com/?a=1&b=2", "https://example.org/"), result.links.map { it.url })
+            assertEquals(listOf("A & B", "Other source"), result.links.map { it.label })
+            assertEquals(listOf(true, true, false), result.contentBlocks.map { it.isLink() })
+            assertTrue(result.bodyHtml.contains("[3] This explanatory footnote"))
+        }
+    }
+
+    @Test
     fun numberedLinksBeforeAProseFootnoteAreCollectedInPlace() {
         // HN emits unclosed paragraphs; [3] is an explanatory footnote, not a URL.
         val html = "See the poster [1] and video [2]." +

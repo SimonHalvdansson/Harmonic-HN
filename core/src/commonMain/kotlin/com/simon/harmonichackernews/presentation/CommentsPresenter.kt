@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.network.AlgoliaCommentsDisplayReuse
+
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
 import com.simon.harmonichackernews.data.Story
@@ -597,6 +599,11 @@ class CommentsPresenter(
                 filteredUsers = action.filteredUsers,
                 topLevelCommentIds = topLevelCommentIds,
                 cachedThread = cachedParsed?.cacheSummary?.preparedThread,
+                reuseDisplay = cachedParsed?.let {
+                    AlgoliaCommentsDisplayReuse(
+                        it, topLevelCommentIds, action.filteredUsers,
+                    )
+                },
                 algoliaRequest = request,
                 onAlgoliaFallback = {
                     if (threadLoadSession.isCurrent(requestId, storyId)) {

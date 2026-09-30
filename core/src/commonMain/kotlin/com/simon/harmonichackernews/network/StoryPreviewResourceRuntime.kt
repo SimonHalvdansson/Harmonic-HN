@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
 
 data class StoryPreviewResourceRequest(
     val storyId: Int,
@@ -93,7 +95,8 @@ class StoryPreviewResourceRuntime(
     private val scope: CoroutineScope,
     private val service: StoryPreviewResourceService,
 ) {
-    private val mutableStates = MutableStateFlow<Map<Int, StoryPreviewResourceState>>(emptyMap())
+    // Preserve insertion order and immutable snapshots while sharing untouched map storage.
+    private val mutableStates = MutableStateFlow<PersistentMap<Int, StoryPreviewResourceState>>(persistentMapOf())
     val states: StateFlow<Map<Int, StoryPreviewResourceState>> = mutableStates.asStateFlow()
 
     private val jobs = mutableMapOf<Int, Job>()
@@ -257,7 +260,7 @@ class StoryPreviewResourceRuntime(
     fun remove(storyId: Int) {
         jobs.remove(storyId)?.cancel()
         activeRequests.remove(storyId)
-        if (storyId in mutableStates.value) mutableStates.value -= storyId
+        if (storyId in mutableStates.value) mutableStates.value = mutableStates.value.removing(storyId)
     }
 
     fun cancelLoad(storyId: Int) {
@@ -275,7 +278,9 @@ class StoryPreviewResourceRuntime(
             activeRequests.remove(id)
             jobs.remove(id)?.cancel()
         }
-        mutableStates.value = mutableStates.value.filterKeys { it in storyIds }
+        mutableStates.value = mutableStates.value.builder().apply {
+            keys.retainAll(storyIds)
+        }.build()
     }
 
     fun dispose() {
@@ -285,7 +290,7 @@ class StoryPreviewResourceRuntime(
         jobs.clear()
         activeRequests.clear()
         pendingJobs.forEach { it.cancel() }
-        mutableStates.value = emptyMap()
+        mutableStates.value = persistentMapOf()
     }
 
     private fun StoryPreviewResourceState.satisfies(
@@ -327,7 +332,7 @@ class StoryPreviewResourceRuntime(
     private fun update(state: StoryPreviewResourceState) {
         val currentStates = mutableStates.value
         if (currentStates[state.storyId] == state) return
-        mutableStates.value = currentStates + (state.storyId to state)
+        mutableStates.value = currentStates.putting(state.storyId, state)
     }
 
     private fun StoryPreviewResourceState.withImageFailure(): StoryPreviewResourceState {

@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.cache.ArticleSnapshotService
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 import com.simon.harmonichackernews.network.AlgoliaCommentsResponse
+import com.simon.harmonichackernews.network.AlgoliaCommentsDisplayReuse
 import com.simon.harmonichackernews.network.KtorHttpClient
 import com.simon.harmonichackernews.network.StableHash
 import com.simon.harmonichackernews.platform.Crc32
@@ -100,6 +101,43 @@ class PreparedCommentThreadTest {
         val reopened = parser.parsePrepared(raw, listOf(8, 7), cachedThread = prepared)
         assertEquals(listOf(8, 7, 9), reopened.comments.map { it.id })
         assertNotEquals("Changed on screen", reopened.comments.first { it.id == 7 }.text)
+    }
+
+    @Test fun displayReuseRequiresTheSameContentRankingAndFiltersAndIsOptIn() = runTest {
+        val ranking = listOf(8, 7)
+        val filters = setOf("child")
+        val prepared = parser.prepare(raw, ranking)
+        val displayed = prepared.restore(ranking, filters)
+        val reuse = AlgoliaCommentsDisplayReuse(displayed, ranking, filters)
+        displayed.comments.first().expanded = false
+        assertSame(displayed, parser.parseForDisplay(raw, ranking, filters, prepared, reuse))
+
+        val otherScreen = parser.parseForDisplay(raw, ranking, filters, prepared)
+        assertNotSame(displayed, otherScreen)
+        assertTrue(otherScreen.comments.first().expanded)
+
+        val reordered = parser.parseForDisplay(raw, listOf(7, 8), filters, prepared, reuse)
+        assertNotSame(displayed, reordered)
+        assertEquals(listOf(7, 8), reordered.comments.map { it.id })
+
+        val unfiltered = parser.parseForDisplay(raw, ranking, emptySet(), prepared, reuse)
+        assertNotSame(displayed, unfiltered)
+        assertEquals(listOf(8, 7, 9), unfiltered.comments.map { it.id })
+
+        val updated = parser.parseForDisplay(raw.replace("Hello", "Updated"), ranking, filters, prepared, reuse)
+        assertNotSame(displayed, updated)
+        assertTrue(updated.comments.first { it.id == 7 }.text.orEmpty().contains("Updated"))
+    }
+
+    @Test fun displayReuseRejectsAnIncompatiblePreparedCache() = runTest {
+        val prepared = parser.prepare(raw, listOf(8, 7))
+        val displayed = prepared.restore()
+        val incompatible = prepared.copy(textPreparationVersion = -1)
+        val staleDisplay = displayed.copy(cacheSummary = incompatible.cacheSummary())
+        val reuse = AlgoliaCommentsDisplayReuse(staleDisplay, listOf(8, 7), emptySet())
+        val result = parser.parseForDisplay(raw, listOf(8, 7), emptySet(), incompatible, reuse)
+        assertNotSame(staleDisplay, result)
+        assertEquals(displayed.comments.map { it.toSnapshot() }, result.comments.map { it.toSnapshot() })
     }
 
     @Test fun changedResponseAndIncompatibleCachesAreParsedAgain() = runTest {
