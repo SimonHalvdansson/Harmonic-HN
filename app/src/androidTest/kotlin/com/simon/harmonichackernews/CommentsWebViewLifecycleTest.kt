@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.platform.FileAccessTimeStore
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import java.io.Closeable
 import java.io.File
@@ -109,6 +110,7 @@ class CommentsWebViewLifecycleTest {
                     "The original page should remain available when reader mode is closed.</p>"
             }
             onMain {
+                browser.setReaderFont(AppFont.JETBRAINS_MONO, 16)
                 browser.controller.initializeForVisibleWebsite()
                 browser.webView.loadDataWithBaseURL(
                     "https://example.invalid/reader-test",
@@ -122,14 +124,37 @@ class CommentsWebViewLifecycleTest {
             onMain { browser.controller.toggleReaderMode() }
             awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
             onMain { assertTrue(browser.controller.isReaderModeEnabled()) }
+            awaitJavascript(browser.webView, "__harmonicReaderModeTheme.fontFaceCss.length > 0")
+            evaluate(browser.webView, "window.firstReaderFont = __harmonicReaderModeTheme.fontFaceCss; true")
             onMain { browser.controller.disableReaderMode() }
             awaitJavascript(browser.webView, "document.getElementById('original-navigation') !== null")
             onMain { assertFalse(browser.controller.isReaderModeEnabled()) }
-            // Repeated enables use the shared asset cache and still restore the source page.
-            onMain { browser.controller.toggleReaderMode() }
+            // A compact update keeps the real bundled font and applies the new size.
+            onMain {
+                browser.setReaderFont(AppFont.JETBRAINS_MONO, 24)
+                browser.controller.toggleReaderMode()
+            }
             awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
+            awaitJavascript(browser.webView, "__harmonicReaderModeTheme.fontFaceCss === firstReaderFont && " +
+                "__harmonicReaderModeTheme.fontSizePx === 24")
             onMain { browser.controller.disableReaderMode() }
             awaitJavascript(browser.webView, "document.getElementById('original-navigation') !== null")
+            // Changing font invalidates the installation; device default removes the font bytes.
+            for (font in listOf(AppFont.GEORGIA, AppFont.DEVICE_DEFAULT)) {
+                onMain {
+                    browser.setReaderFont(font, 22)
+                    browser.controller.toggleReaderMode()
+                }
+                awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
+                awaitJavascript(browser.webView, if (font == AppFont.DEVICE_DEFAULT) {
+                    "__harmonicReaderModeTheme.fontFaceCss === ''"
+                } else {
+                    "__harmonicReaderModeTheme.fontFaceCss.length > 0 && " +
+                        "__harmonicReaderModeTheme.fontFaceCss !== firstReaderFont"
+                })
+                onMain { browser.controller.disableReaderMode() }
+                awaitJavascript(browser.webView, "document.getElementById('original-navigation') !== null")
+            }
         }
     }
 
@@ -519,7 +544,7 @@ class CommentsWebViewLifecycleTest {
             R.style.AppThemeMaterialFixedLight,
         )
         private val app = context.harmonicAppComposition
-        private val reading = app.userSettings.reading.copy(
+        private var reading = app.userSettings.reading.copy(
             integratedWebView = true,
             preloadWebViewMode = WebViewPreloadMode.NEVER,
             matchWebViewTheme = false,
@@ -576,6 +601,11 @@ class CommentsWebViewLifecycleTest {
             initialize()
         }
         val webView: WebView get() = host.webViewContainer.findViewById(R.id.comments_webview)
+
+        fun setReaderFont(font: AppFont, size: Int) {
+            reading = reading.copy(readerModeFont = font, readerModeFontSize = size)
+            controller.configure(false, true, reading, reading.blockAds)
+        }
 
         fun awaitStartup() {
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)

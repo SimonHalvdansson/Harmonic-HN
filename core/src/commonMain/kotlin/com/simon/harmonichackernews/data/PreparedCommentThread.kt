@@ -121,41 +121,6 @@ data class PreparedCommentThread(
         const val SCHEMA_VERSION = 1
         // Bump whenever normalization, deleted-parent handling, or expanded-link HTML changes.
         const val TEXT_PREPARATION_VERSION = 1
-
-        internal suspend fun fromParsed(
-            sourceDigest: String,
-            parsed: AlgoliaCommentsResponse,
-            rankedIds: List<Int>,
-        ): PreparedCommentThread {
-            val source = parsed.comments
-            val ends = IntArray(source.size) { source.size }
-            val ancestors = IntArray(source.size)
-            var count = 0
-            for (index in source.indices) {
-                while (count > 0 && source[ancestors[count - 1]].depth >= source[index].depth) {
-                    ends[ancestors[--count]] = index
-                }
-                ancestors[count++] = index
-            }
-            val records = source.mapIndexed { index, comment ->
-                currentCoroutineContext().ensureActive()
-                val html = comment.text.orEmpty()
-                PreparedCommentRecord(
-                    comment.id, comment.parent, comment.by.orEmpty(), comment.time,
-                    html, comment.expandedAnchorText?.takeUnless { it == html },
-                    comment.depth, comment.children, ends[index],
-                )
-            }
-            return PreparedCommentThread(
-                SCHEMA_VERSION, TEXT_PREPARATION_VERSION, sourceDigest,
-                PreparedCommentStory(
-                    parsed.id, parsed.title, parsed.points, parsed.createdAtEpochSeconds,
-                    parsed.type, parsed.author, parsed.storyId, parsed.parentId,
-                    parsed.storyTitle, parsed.url, parsed.text,
-                ),
-                records, requireNotNull(parsed.cacheSummary).encode(parsed.id), rankedIds.toList(),
-            )
-        }
     }
 }
 

@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.data.CommentsScrollProgress
 import com.simon.harmonichackernews.network.AlgoliaRepository
+import com.simon.harmonichackernews.navigation.MainNavigationEntry
+import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
 
 /**
  * Retains platform-neutral screen sessions independently of any platform lifecycle holder.
@@ -20,7 +22,7 @@ class ScreenSessionRegistry(
     val stories = StoriesSessionState()
 
     private var commentsKey: Int? = null
-    private var commentsState = CommentsSessionState()
+    private var commentsState: CommentsSessionState? = null
     private val commentsScrollProgresses = mutableMapOf<Int, CommentsScrollProgress>()
 
     private var submissionsKey: Int? = null
@@ -28,12 +30,35 @@ class ScreenSessionRegistry(
     private var submissionsState: SubmissionsSessionState? = null
 
     fun commentsStateFor(key: Int, storyId: Int): CommentsSessionState {
-        if (commentsKey != key) {
+        if (commentsKey != key || commentsState == null) {
             commentsKey = key
             val scrollProgress = commentScrollProgressFor(storyId)
             commentsState = CommentsSessionState(scrollProgress)
         }
-        return commentsState
+        return checkNotNull(commentsState)
+    }
+
+    /**
+     * Drop only the registry's ownership when an entry is permanently removed. Its outgoing UI
+     * still owns the session until the exit finishes; entries covered by another screen and
+     * activity recreation keep their state. Small per-story scroll/collapse records stay intact.
+     */
+    fun navigationChanged(navigation: MainNavigationSnapshot) {
+        if (navigation.destinationStack.none {
+                it is MainNavigationEntry.Story && it.request.serial == commentsKey
+            }
+        ) {
+            commentsKey = null
+            commentsState = null
+        }
+        if (navigation.destinationStack.none {
+                it is MainNavigationEntry.Submissions && it.request.serial == submissionsKey
+            }
+        ) {
+            submissionsKey = null
+            submissionsUserName = null
+            submissionsState = null
+        }
     }
 
     fun submissionsStateFor(

@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 10) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 11) {
         return;
     }
 
@@ -7,6 +7,13 @@
     var THEME_KEY = "__harmonicReaderModeTheme";
     var TRANSITION_KEY = "__harmonicReaderModeTransition";
     var MIN_ARTICLE_TEXT_LENGTH = 250;
+    // Availability is often checked immediately before enabling. Retain only a small extraction
+    // briefly, never a clone of the whole source document, and invalidate on any source mutation.
+    var MAX_CACHED_ARTICLE_CHARS = 256 * 1024;
+    var ARTICLE_CACHE_TTL_MS = 30000;
+    var articleCache = null;
+    var articleCacheObserver = null;
+    var articleCacheTimer = null;
     var TRANSITION_DURATION_MS = 180;
     var TRANSITION_FALLBACK_MS = TRANSITION_DURATION_MS + 320;
     var TRANSITION_TRANSLATE_Y = "12px";
@@ -242,6 +249,47 @@
             siteName: "",
             publishedTime: ""
         };
+    }
+
+    function clearArticleCache() {
+        articleCache = null;
+        if (articleCacheObserver) articleCacheObserver.disconnect();
+        articleCacheObserver = null;
+        if (articleCacheTimer !== null) clearTimeout(articleCacheTimer);
+        articleCacheTimer = null;
+    }
+
+    function preparedArticle(consume) {
+        // takeRecords covers mutations made earlier in this same JavaScript task, before the
+        // observer callback has had a chance to run. URL changes can happen without DOM changes.
+        if (articleCache && (Date.now() >= articleCache.expiresAt ||
+                articleCache.url !== location.href || articleCache.baseURI !== document.baseURI ||
+                articleCache.hasReadability !== (typeof Readability === "function") ||
+                articleCacheObserver.takeRecords().length > 0)) {
+            clearArticleCache();
+        }
+        if (articleCache) {
+            var retained = articleCache.article;
+            if (consume) clearArticleCache();
+            return retained;
+        }
+        var extracted = extractArticle();
+        if (!consume && typeof MutationObserver === "function" &&
+                (!extracted || extracted.root.outerHTML.length <= MAX_CACHED_ARTICLE_CHARS)) {
+            articleCache = {
+                article: extracted,
+                url: location.href,
+                baseURI: document.baseURI,
+                hasReadability: typeof Readability === "function",
+                expiresAt: Date.now() + ARTICLE_CACHE_TTL_MS
+            };
+            articleCacheObserver = new MutationObserver(clearArticleCache);
+            articleCacheObserver.observe(document, {
+                subtree: true, childList: true, characterData: true, attributes: true
+            });
+            articleCacheTimer = setTimeout(clearArticleCache, ARTICLE_CACHE_TTL_MS);
+        }
+        return extracted;
     }
 
     function absolutizeUrl(value) {
@@ -512,9 +560,21 @@
         };
     }
 
-    function setTheme(theme) {
+    var installedFontToken = null;
+
+    function setTheme(theme, fontToken) {
         window[THEME_KEY] = theme || {};
+        installedFontToken = fontToken || null;
         return "theme_set";
+    }
+
+    // A compact native update omits only the already-installed font bytes. Normal setTheme
+    // remains a complete replacement, including when switching back to the device font.
+    function updateTheme(theme, fontToken) {
+        if (!fontToken || fontToken !== installedFontToken || !window[THEME_KEY]) return false;
+        theme.fontFaceCss = window[THEME_KEY].fontFaceCss;
+        setTheme(theme, fontToken);
+        return true;
     }
 
     function readerStyles() {
@@ -755,7 +815,7 @@
                 return "unavailable";
             }
 
-            var extractedArticle = extractArticle();
+            var extractedArticle = preparedArticle(true);
             if (!extractedArticle) {
                 return "no_article";
             }
@@ -850,15 +910,16 @@
 
     function isAvailable() {
         try {
-            return document.body && extractArticle() ? "available" : "unavailable";
+            return document.body && preparedArticle(false) ? "available" : "unavailable";
         } catch (e) {
             return "unavailable";
         }
     }
 
     window.HarmonicReaderMode = {
-        version: 10,
+        version: 11,
         setTheme: setTheme,
+        updateTheme: updateTheme,
         isAvailable: isAvailable,
         enable: enable,
         disable: disable

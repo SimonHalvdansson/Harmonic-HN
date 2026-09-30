@@ -18,9 +18,22 @@ data class ReaderModeTheme(
 
 /** Shared reader-mode JavaScript protocol and theme serialization. */
 object ReaderModeScriptProtocol {
-    fun applyCommand(script: String, theme: ReaderModeTheme, enabled: Boolean): String =
-        script + "\nHarmonicReaderMode.setTheme(${themeJson(theme)});" +
+    fun applyCommand(
+        script: String,
+        theme: ReaderModeTheme,
+        enabled: Boolean,
+        fontToken: String? = null,
+    ): String =
+        script + "\nHarmonicReaderMode.setTheme(${themeJson(theme)},${fontToken?.let(::json) ?: "null"});" +
             "\nHarmonicReaderMode.${if (enabled) "enable" else "disable"}();"
+
+    /** The page confirms its installation; a document replacement requests a full retry. */
+    internal fun updateCommand(theme: ReaderModeTheme, enabled: Boolean, fontToken: String): String =
+        "(function(){if(!window.HarmonicReaderMode||!HarmonicReaderMode.updateTheme||" +
+            "!HarmonicReaderMode.updateTheme(${themeJson(theme, includeFont = false)},${json(fontToken)}))" +
+            "return 'needs_install';return HarmonicReaderMode.${if (enabled) "enable" else "disable"}();})()"
+
+    internal fun needsInstallation(result: String?): Boolean = normalize(result) == "needs_install"
 
     fun availabilityCommand(script: String): String =
         script + "\nHarmonicReaderMode.isAvailable();"
@@ -42,7 +55,7 @@ object ReaderModeScriptProtocol {
         else -> "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     }
 
-    private fun themeJson(theme: ReaderModeTheme): String {
+    private fun themeJson(theme: ReaderModeTheme, includeFont: Boolean = true): String {
         val fallback = fontFamily(theme.font)
         val family = if (theme.fontFaceCss.isBlank()) fallback else "'HarmonicReaderFont', $fallback"
         return buildString {
@@ -54,7 +67,7 @@ object ReaderModeScriptProtocol {
             append(",\"linkColor\":").append(json(theme.linkColor))
             append(",\"dividerColor\":").append(json(theme.dividerColor))
             append(",\"codeBackgroundColor\":").append(json(theme.codeBackgroundColor))
-            append(",\"fontFaceCss\":").append(json(theme.fontFaceCss))
+            if (includeFont) append(",\"fontFaceCss\":").append(json(theme.fontFaceCss))
             append(",\"fontFamily\":").append(json(family))
             append(",\"headingFontFamily\":").append(json(family))
             append(",\"fontSizePx\":").append(theme.fontSizePx).append('}')
@@ -78,4 +91,3 @@ object ReaderModeScriptProtocol {
         append('"')
     }
 }
-

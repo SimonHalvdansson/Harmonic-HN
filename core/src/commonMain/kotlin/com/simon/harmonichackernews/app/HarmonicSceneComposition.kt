@@ -30,6 +30,7 @@ class HarmonicSceneComposition internal constructor(
         ))
     }
     val navigation = MainNavigationStore(beforePublish = {
+        sessions.navigationChanged(it)
         commentsOpeningRequests.navigationChanged(it)
         userProfiles.navigationChanged(it)
     })

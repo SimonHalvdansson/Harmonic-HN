@@ -26,7 +26,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -72,7 +71,7 @@ class LinkPreviewRippleTest {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default,
                     openLink = { openedLink = it }, downloadPdf = {}, openCustomTab = {},
-                    plainText = { it }, annotatedHtml = { text, _, _ -> AnnotatedString(text) },
+                    plainText = { it },
                 )) {
                     Column(Modifier.fillMaxWidth().background(Color.White).testTag("preview-fixture").padding(vertical = 24.dp)) {
                         Text("Link press feedback · UI fixture", Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
@@ -132,7 +131,7 @@ class LinkPreviewRippleTest {
             HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default, openLink = {}, downloadPdf = {}, openCustomTab = {},
-                    plainText = { it }, annotatedHtml = { text, _, _ -> AnnotatedString(text) },
+                    plainText = { it },
                 )) {
                     Column(Modifier.fillMaxWidth().background(Color.Magenta).testTag("favicon")) {
                         HeaderLinkInfo(story, settings.copy(showFavicons = true))
@@ -172,7 +171,6 @@ class LinkPreviewRippleTest {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default, openLink = { openedLink = it },
                     downloadPdf = {}, openCustomTab = {}, plainText = { it },
-                    annotatedHtml = { text, _, _ -> AnnotatedString(text) },
                 )) {
                     LinkPreviewContent(story, 0, settings)
                 }

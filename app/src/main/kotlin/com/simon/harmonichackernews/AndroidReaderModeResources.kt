@@ -26,6 +26,7 @@ internal object AndroidReaderModeResources {
     private val assetMutex = Mutex()
     private var cachedScript: String? = null
     private val cachedFontEncodings = mutableMapOf<ReaderModeFontResource, String>()
+    private var cachedFontData: ReaderModeFontData? = null
 
     suspend fun script(context: Context): String? = withContext(Dispatchers.IO) {
         assetMutex.withLock { loadScript(context.applicationContext) }
@@ -62,11 +63,19 @@ internal object AndroidReaderModeResources {
         // Bundled fonts are immutable. Retain only the selected pair and share an encoding when
         // regular and bold resolve to the same asset, while retrying any unsuccessful reads.
         cachedFontEncodings.keys.removeAll { it != resources?.regular && it != resources?.bold }
-        if (resources == null) return null
+        if (resources == null) {
+            cachedFontData = null
+            return null
+        }
         val regular = cachedFontBase64(context, resources.regular)
         val bold = cachedFontBase64(context, resources.bold)
-        if (regular.isEmpty() || bold.isEmpty()) return null
-        return ReaderModeFontData(regular, bold)
+        if (regular.isEmpty() || bold.isEmpty()) {
+            cachedFontData = null
+            return null
+        }
+        return cachedFontData?.takeIf {
+            it.regularBase64 == regular && it.boldBase64 == bold
+        } ?: ReaderModeFontData(regular, bold).also { cachedFontData = it }
     }
 
     private fun cachedFontBase64(context: Context, resource: ReaderModeFontResource): String {

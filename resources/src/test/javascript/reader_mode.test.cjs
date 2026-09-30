@@ -55,6 +55,119 @@ async function disable(page) {
     await page.waitForTimeout(600);
 }
 
+async function countDocumentClones(page) {
+    await page.evaluate(() => {
+        window.documentClones = 0;
+        const original = Document.prototype.cloneNode;
+        Document.prototype.cloneNode = function(deep) {
+            documentClones++;
+            return original.call(this, deep);
+        };
+    });
+}
+
+test('availability reuses its extraction on enable without changing article output', async () => {
+    const page = await article(true);
+    try {
+        await countDocumentClones(page);
+        assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'available');
+        assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'available');
+        await enable(page);
+        assert.equal(await page.evaluate(() => documentClones), 1);
+        assert.match(await page.locator('#harmonic-reader-article').textContent(), /substantive article sentence/);
+        const cachedHtml = await page.locator('#harmonic-reader-article').innerHTML();
+        await disable(page);
+        await enable(page);
+        assert.equal(await page.evaluate(() => documentClones), 2, 'restored document gets a fresh extraction');
+        assert.equal(await page.locator('#harmonic-reader-article').innerHTML(), cachedHtml);
+    } finally { await page.close(); }
+});
+
+for (const sameTask of [false, true]) {
+    test(`source changes invalidate extracted content (${sameTask ? 'before' : 'after'} observer delivery)`, async () => {
+        const page = await article(true);
+        try {
+            await countDocumentClones(page);
+            await page.evaluate(() => HarmonicReaderMode.isAvailable());
+            await page.evaluate(sameTask => {
+                document.querySelector('article p').textContent += ' Updated source text.';
+                if (sameTask) HarmonicReaderMode.enable();
+            }, sameTask);
+            if (!sameTask) await enable(page);
+            else await page.waitForSelector('#harmonic-reader-article');
+            assert.match(await page.locator('#harmonic-reader-article').textContent(), /Updated source text/);
+            assert.equal(await page.evaluate(() => documentClones), 2);
+        } finally { await page.close(); }
+    });
+}
+
+for (const change of ['url', 'base', 'expired', 'attributes']) {
+    test(`reader extraction cache invalidates on ${change}`, async () => {
+        const page = await article(true);
+        try {
+            await countDocumentClones(page);
+            await page.evaluate(() => HarmonicReaderMode.isAvailable());
+            assert.equal(await page.evaluate(change => {
+                if (change === 'url') history.replaceState(null, '', 'https://reader.test/different-article');
+                if (change === 'base') document.querySelector('base').href = 'https://new-base.test/';
+                if (change === 'attributes') document.querySelector('article').setAttribute('class', 'new-content');
+                if (change === 'expired') {
+                    const now = Date.now();
+                    Date.now = () => now + 31000;
+                }
+                return HarmonicReaderMode.isAvailable();
+            }, change), 'available');
+            assert.equal(await page.evaluate(() => documentClones), 2);
+        } finally { await page.close(); }
+    });
+}
+
+test('unavailable results invalidate when the page receives article content', async () => {
+    const page = await article(true);
+    try {
+        const result = await page.evaluate(() => {
+            const original = document.body.innerHTML;
+            document.body.innerHTML = '<p>Loading</p>';
+            const empty = HarmonicReaderMode.isAvailable();
+            document.body.innerHTML = original;
+            return [empty, HarmonicReaderMode.isAvailable()];
+        });
+        assert.deepEqual(result, ['unavailable', 'available']);
+    } finally { await page.close(); }
+});
+
+test('oversized articles are extracted correctly without retaining a cached DOM', async () => {
+    const page = await article(true);
+    try {
+        await page.evaluate(() => {
+            document.querySelector('article p').textContent = 'Large article sentence with details. '.repeat(10000);
+        });
+        await countDocumentClones(page);
+        await page.evaluate(() => HarmonicReaderMode.isAvailable());
+        await page.evaluate(() => HarmonicReaderMode.isAvailable());
+        assert.equal(await page.evaluate(() => documentClones), 2);
+    } finally { await page.close(); }
+});
+
+test('compact theme updates retain installed fonts and reject stale or missing installations', async () => {
+    const page = await article(true);
+    try {
+        assert.deepEqual(await page.evaluate(() => {
+            const api = HarmonicReaderMode;
+            const missing = api.updateTheme({fontSizePx: 24}, 'one');
+            api.setTheme({fontFaceCss: 'FONT_CSS', fontSizePx: 16}, 'one');
+            const accepted = api.updateTheme({fontSizePx: 24}, 'one');
+            const retained = window.__harmonicReaderModeTheme;
+            const stale = api.updateTheme({fontSizePx: 40}, 'two');
+            api.setTheme({fontFaceCss: '', fontSizePx: 18}, 'two');
+            return {missing, accepted, retained, stale, deviceFont: window.__harmonicReaderModeTheme.fontFaceCss};
+        }), {
+            missing: false, accepted: true, retained: {fontSizePx: 24, fontFaceCss: 'FONT_CSS'},
+            stale: false, deviceFont: '',
+        });
+    } finally { await page.close(); }
+});
+
 function contrast(foreground, background) {
     const luminance = rgb => rgb.map(value => {
         const channel = value / 255;

@@ -2,6 +2,9 @@ package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.PreparedCommentThread
+import com.simon.harmonichackernews.data.PreparedCommentRecord
+import com.simon.harmonichackernews.data.PreparedCommentStory
+import com.simon.harmonichackernews.data.expandShortenedAnchorText
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlin.coroutines.CoroutineContext
@@ -112,7 +115,7 @@ class AlgoliaCommentsParser(
         if (cachedThread?.isCompatible() == true) {
             parsePrepared(response, topLevelCommentIds, filteredUsers, cachedThread)
         } else {
-            PreparedCommentThread.fromParsed("", parse(response), topLevelCommentIds)
+            prepareDecoded(response, "", topLevelCommentIds, coroutineContext)
                 .restoreContent(topLevelCommentIds, filteredUsers)
         }
     }
@@ -140,7 +143,63 @@ class AlgoliaCommentsParser(
             else cachedThread.copy(rankedIds = topLevelCommentIds.toList())
         }
         // Keep canonical Algolia root order, allowing later live rankings to reorder whole subtrees.
-        PreparedCommentThread.fromParsed(sourceDigest, parse(response), topLevelCommentIds)
+        prepareDecoded(response, sourceDigest, topLevelCommentIds, coroutineContext)
+    }
+
+    /** Decode neutral records directly; mutable comments are allocated only for display. */
+    private fun prepareDecoded(
+        response: String,
+        digest: String,
+        rankedIds: List<Int>,
+        context: CoroutineContext,
+    ): PreparedCommentThread {
+        val (item, payload) = decode(response)
+        val descendants = item.children.sumOf { 1 + it.descendants }
+        val records = ArrayList<PreparedCommentRecord?>(descendants)
+        for (node in item.children) appendPreparedComment(node, 0, context, records)
+        return PreparedCommentThread(
+            schemaVersion = PreparedCommentThread.SCHEMA_VERSION,
+            textPreparationVersion = PreparedCommentThread.TEXT_PREPARATION_VERSION,
+            sourceDigest = digest,
+            story = PreparedCommentStory(
+                payload.id, payload.title, payload.points, payload.createdAt, payload.type,
+                payload.author, payload.storyId, payload.parentId, payload.storyTitle,
+                payload.url, payload.text,
+            ),
+            comments = records.requireNoNulls(),
+            summaryJson = AlgoliaStorySummary(item.metadata, descendants).encode(payload.id),
+            rankedIds = rankedIds.toList(),
+        )
+    }
+
+    private fun appendPreparedComment(
+        payload: AlgoliaCommentPayload,
+        depth: Int,
+        context: CoroutineContext,
+        records: MutableList<PreparedCommentRecord?>,
+    ) {
+        context.ensureActive()
+        val rawText = payload.text.trim()
+        if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return
+        val index = records.size
+        // Reserve preorder position, then construct the immutable record once its subtree ends.
+        records.add(null)
+        val children = if (payload.children.size > 1) {
+            payload.children.sortedByDescending { it.children.size }
+        } else payload.children
+        for (child in children) appendPreparedComment(child, depth + 1, context, records)
+        val html = StoryTextProcessor.preprocessHtml(rawText).orEmpty()
+        records[index] = PreparedCommentRecord(
+            id = payload.id,
+            parentId = payload.parentId,
+            author = payload.author.trim(),
+            createdAtEpochSeconds = payload.createdAt,
+            html = html,
+            expandedHtml = expandShortenedAnchorText(html)?.takeUnless { it == html },
+            depth = depth,
+            childCount = payload.children.size,
+            subtreeEndExclusive = records.size,
+        )
     }
 
     // Algolia emits integer IDs/timestamps. Decode them directly, defaulting null to zero.
@@ -163,18 +222,7 @@ class AlgoliaCommentsParser(
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
     ): AlgoliaCommentsResponse = withContext(parsingDispatcher) {
-        val (item, payload) = try {
-            val item = try {
-                fastJson.decodeFromString(itemSerializer, response.orEmpty())
-            } catch (_: IllegalArgumentException) {
-                flexibleJson.decodeFromString(itemSerializer, response.orEmpty())
-            }
-            item to json.decodeFromJsonElement<AlgoliaCommentsPayload>(item.metadata.toJsonElement())
-        } catch (error: SerializationException) {
-            throw ApiDecodingException("Invalid Algolia comments JSON", error)
-        } catch (error: IllegalArgumentException) {
-            throw ApiDecodingException("Invalid Algolia comments JSON", error)
-        }
+        val (item, payload) = decode(response)
 
         val normalizedFilteredUsers = buildSet(filteredUsers.size) {
             for (user in filteredUsers) {
@@ -212,6 +260,19 @@ class AlgoliaCommentsParser(
             id = payload.id,
             cacheSummary = AlgoliaStorySummary(item.metadata, descendants, topLevelCommentIds.toList()),
         )
+    }
+
+    private fun decode(response: String?): Pair<AlgoliaItem<List<AlgoliaCommentPayload>>, AlgoliaCommentsPayload> = try {
+        val item = try {
+            fastJson.decodeFromString(itemSerializer, response.orEmpty())
+        } catch (_: IllegalArgumentException) {
+            flexibleJson.decodeFromString(itemSerializer, response.orEmpty())
+        }
+        item to json.decodeFromJsonElement<AlgoliaCommentsPayload>(item.metadata.toJsonElement())
+    } catch (error: SerializationException) {
+        throw ApiDecodingException("Invalid Algolia comments JSON", error)
+    } catch (error: IllegalArgumentException) {
+        throw ApiDecodingException("Invalid Algolia comments JSON", error)
     }
 
     private fun appendComment(

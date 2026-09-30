@@ -10,6 +10,9 @@ class WebContentController(
     private val runtime: WebContentRuntime,
     private val driver: WebContentDriver,
 ) {
+    private var readerInstallation: ReaderInstallation? = null
+    private var readerRequest = 0L
+    private var fontTokenSerial = 0L
     val driverState: StateFlow<WebContentDriverState> get() = driver.state
     val loadState: WebContentLoadState get() = runtime.load.state
     val readerState: ReaderModeState get() = runtime.reader.state
@@ -38,10 +41,37 @@ class WebContentController(
         enabled: Boolean,
         onResult: (ReaderModeScriptStatus) -> Unit,
     ) {
-        driver.evaluateJavaScript(ReaderModeScriptProtocol.applyCommand(script, theme, enabled)) {
-            val status = ReaderModeScriptProtocol.parseStatus(it)
-            onResult(status)
+        val request = ++readerRequest
+        val generation = loadState.generation
+        val existing = readerInstallation?.takeIf {
+            it.generation == generation && it.script == script && it.fontFaceCss == theme.fontFaceCss
         }
+        val installation = existing ?: ReaderInstallation(
+            generation, script, theme.fontFaceCss, "font-${++fontTokenSerial}",
+        )
+        fun evaluate(install: Boolean) {
+            if (install) readerInstallation = null
+            val command = if (install) {
+                ReaderModeScriptProtocol.applyCommand(script, theme, enabled, installation.fontToken)
+            } else {
+                ReaderModeScriptProtocol.updateCommand(theme, enabled, installation.fontToken)
+            }
+            driver.evaluateJavaScript(command) { result ->
+                val current = request == readerRequest && generation == loadState.generation
+                if (!install && current && ReaderModeScriptProtocol.needsInstallation(result)) {
+                    // Covers same-URL reloads and document replacements even if a native host
+                    // hasn't delivered its navigation callback yet. Retry only this latest action.
+                    evaluate(install = true)
+                } else {
+                    val status = ReaderModeScriptProtocol.parseStatus(result)
+                    if (current && status != ReaderModeScriptStatus.FAILED) {
+                        readerInstallation = installation
+                    }
+                    onResult(status)
+                }
+            }
+        }
+        evaluate(install = existing == null)
     }
 
     fun evaluateReaderModeAvailability(script: String, onResult: (Boolean) -> Unit) {
@@ -50,4 +80,11 @@ class WebContentController(
             onResult(available)
         }
     }
+
+    private data class ReaderInstallation(
+        val generation: Int,
+        val script: String,
+        val fontFaceCss: String,
+        val fontToken: String,
+    )
 }

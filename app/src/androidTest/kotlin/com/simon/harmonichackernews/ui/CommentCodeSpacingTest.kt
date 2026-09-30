@@ -1,10 +1,10 @@
 package com.simon.harmonichackernews.ui
 
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.network.StoryTextProcessor
-import com.simon.harmonichackernews.presentation.CommentTextPolicy
+import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,7 +29,9 @@ class CommentCodeSpacingTest {
         assertEquals("  command\n\nNext", render("<pre><code>  command</code></pre>Next"))
     }
 
-    private fun render(html: String): String = AnnotatedString.fromHtml(
-        CommentTextPolicy.preserveLegacyParagraphSpacing(StoryTextProcessor.preprocessHtml(html)!!),
+    private fun render(html: String): String = htmlAnnotatedString(
+        StoryTextProcessor.preprocessHtml(html)!!,
+        Color.Blue,
+        LinkInteractionListener {},
     ).text.replace('\u00a0', ' ')
 }

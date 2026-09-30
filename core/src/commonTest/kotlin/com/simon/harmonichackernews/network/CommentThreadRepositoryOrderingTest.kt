@@ -5,11 +5,79 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class CommentThreadRepositoryOrderingTest {
+    @Test
+    fun cancelledTransportCancelsTheCoordinatorInsteadOfLeavingItWaiting() = runTest {
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = intArrayOf(1) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int): Comment = throw CancellationException("Request cancelled")
+        }
+        assertFailsWith<CancellationException> {
+            OfficialCommentThreadLoader(repository).load(42, emptySet(), false)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun wideForestKeepsOnlyFixedWorkersAndCancellationReleasesEveryRequest() = runTest {
+        var active = 0
+        var requested = 0
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = IntArray(2000) { it + 1 } }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int): Comment? {
+                active++
+                requested++
+                try { awaitCancellation() } finally { active-- }
+            }
+        }
+        val loading = async { OfficialCommentThreadLoader(repository).load(42, emptySet(), false) }
+        runCurrent()
+        fun descendants(job: Job): Int = job.children.sumOf { 1 + descendants(it) }
+        assertEquals(8, active)
+        assertTrue(descendants(loading) <= 10, "Queued IDs must not retain their own coroutines")
+        loading.cancelAndJoin()
+        assertEquals(0, active)
+        assertEquals(8, requested)
+    }
+
+    @Test
+    fun simultaneousForestsShareTheRequestLimit() = runTest {
+        var active = 0
+        var peak = 0
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = IntArray(16) { it + 1 } }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int): Comment {
+                active++
+                peak = maxOf(peak, active)
+                try { delay(10) } finally { active-- }
+                return Comment().also { it.id = id; it.by = "reader" }
+            }
+        }
+        val loader = OfficialCommentThreadLoader(repository)
+        val first = async { loader.load(42, emptySet(), false) }
+        val second = async { loader.load(43, emptySet(), false) }
+        assertEquals((1..16).toList(), assertIs<CommentThreadLoadResult.Official>(first.await()).comments.map { it.id })
+        assertEquals((1..16).toList(), assertIs<CommentThreadLoadResult.Official>(second.await()).comments.map { it.id })
+        assertEquals(8, peak)
+        assertEquals(0, active)
+    }
+
     @Test
     fun officialForestSkipsFailedAndFilteredBranchesWithoutReorderingSiblings() = runTest {
         val requested = mutableListOf<Int>()

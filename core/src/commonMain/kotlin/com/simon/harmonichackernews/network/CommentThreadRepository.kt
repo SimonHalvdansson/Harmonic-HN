@@ -8,11 +8,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 
 /**
  * Selects the configured comments source and owns the transport-neutral Algolia-to-official-API
@@ -162,7 +164,7 @@ class OfficialCommentThreadLoader(
 ) {
     // Share the limit across branches and simultaneous loads; release each permit before
     // descending so a wide tree cannot flood the transport or deadlock waiting for children.
-    private val requests = Semaphore(8)
+    private val requests = Semaphore(WORKER_COUNT)
     suspend fun load(
         storyId: Int,
         filteredUsers: Set<String>,
@@ -192,9 +194,54 @@ class OfficialCommentThreadLoader(
         topLevelIds: IntArray,
         filteredUsers: Set<String>,
     ): MutableList<Comment> = coroutineScope {
-        val roots = topLevelIds
-            .map { commentId -> async { loadCommentBranch(commentId, 0, filteredUsers) } }
-            .awaitAll()
+        if (topLevelIds.isEmpty()) return@coroutineScope mutableListOf()
+        val roots = MutableList<LoadedCommentBranch?>(topLevelIds.size) { null }
+        val work = Channel<CommentWork>(Channel.UNLIMITED)
+        val completed = Channel<CompletedComment>(WORKER_COUNT)
+        // Only these workers suspend in the transport. The coordinator owns the tree and queue,
+        // so wide/deep discussions don't create a coroutine and awaitAll list for every branch.
+        val workers = List(WORKER_COUNT) {
+            launch {
+                for (next in work) {
+                    val comment = try {
+                        requests.withPermit { hackerNewsRepository.getComment(next.id) }
+                    } catch (error: CancellationException) {
+                        // A transport may cancel its own request while the parent is still active.
+                        // Propagate that cancellation rather than leave the coordinator waiting.
+                        this@coroutineScope.cancel(error)
+                        throw error
+                    } catch (_: Exception) {
+                        null
+                    }
+                    completed.send(CompletedComment(next, comment))
+                }
+            }
+        }
+        try {
+            topLevelIds.forEachIndexed { index, id ->
+                work.send(CommentWork(id, 0, roots, index))
+            }
+            var remaining = topLevelIds.size
+            while (remaining > 0) {
+                val (next, comment) = completed.receive()
+                remaining--
+                val author = comment?.by ?: continue
+                if (author.lowercase() in filteredUsers) continue
+                comment.expanded = true
+                comment.depth = next.depth
+                val childIds = comment.kidsIds
+                val children = MutableList<LoadedCommentBranch?>(childIds?.size ?: 0) { null }
+                next.destination[next.index] = LoadedCommentBranch(comment, children)
+                childIds?.forEachIndexed { index, id ->
+                    work.send(CommentWork(id, next.depth + 1, children, index))
+                    remaining++
+                }
+            }
+        } finally {
+            work.close()
+            workers.forEach { it.cancel() }
+            completed.cancel()
+        }
         // Each branch retains only its direct children. Flatten once after loading so a deeply
         // nested reply is not copied into every ancestor's intermediate list.
         val pending = ArrayDeque<LoadedCommentBranch>()
@@ -211,34 +258,20 @@ class OfficialCommentThreadLoader(
         comments
     }
 
-    private suspend fun loadCommentBranch(
-        commentId: Int,
-        depth: Int,
-        filteredUsers: Set<String>,
-    ): LoadedCommentBranch? {
-        val comment = try {
-            requests.withPermit { hackerNewsRepository.getComment(commentId) }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            null
-        } ?: return null
-
-        val author = comment.by ?: return null
-        if (author.lowercase() in filteredUsers) return null
-
-        comment.expanded = true
-        comment.depth = depth
-        val childIds = comment.kidsIds
-        val children = if (childIds == null || childIds.isEmpty()) emptyList() else coroutineScope {
-            childIds
-                .map { childId -> async { loadCommentBranch(childId, depth + 1, filteredUsers) } }
-                .awaitAll()
-        }
-        return LoadedCommentBranch(comment, children)
-    }
-
     private class LoadedCommentBranch(val comment: Comment, val children: List<LoadedCommentBranch?>)
+
+    private class CommentWork(
+        val id: Int,
+        val depth: Int,
+        val destination: MutableList<LoadedCommentBranch?>,
+        val index: Int,
+    )
+
+    private data class CompletedComment(val work: CommentWork, val comment: Comment?)
+
+    private companion object {
+        const val WORKER_COUNT = 8
+    }
 }
 
 enum class CommentThreadSource {

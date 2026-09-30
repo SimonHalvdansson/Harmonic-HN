@@ -23,6 +23,28 @@ class PreparedCommentThreadTest {
         {"id":10,"parent_id":42,"text":" null ","children":[{"id":11,"text":"Hidden below deleted parent"}]}
     ]}"""
 
+    @Test fun directRecordsKeepPermissiveScalarsDeletedBranchesAndDuplicateIds() = runTest {
+        for (text in listOf("null", "123", "true", "{}", "\"<p>Text &amp; more</p>\"")) {
+            for (author in listOf("null", "123", "false", "\" reader \"")) {
+                val response = """{"id":42,"title":17,"children":[
+                    {"id":1,"text":$text,"author":$author,"children":[
+                        {"id":1,"parent_id":1,"author":"child","text":"Nested duplicate ID"}]},
+                    {"id":2,"text":"null","children":[{"id":3,"text":"Hidden"}]},
+                    {"text":"Missing ID is allowed","author":"reader"}
+                ]}"""
+                val prepared = parser.prepare(response)
+                val decoded = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(prepared)))
+                for (filter in listOf(emptySet(), setOf(" READER "))) {
+                    val expected = parser.parse(response, listOf(0, 1), filter)
+                    val actual = decoded.restore(listOf(0, 1), filter)
+                    assertEquals(expected.comments.map { it.toSnapshot() }, actual.comments.map { it.toSnapshot() })
+                    assertEquals(expected.comments.map { it.presentationSnapshot() }, actual.comments.map { it.presentationSnapshot() })
+                    assertEquals(expected.cacheSummary!!.encode(42), actual.cacheSummary!!.encode(42))
+                }
+            }
+        }
+    }
+
     @Test fun firstDisplayDefersDigestAndPersistenceKeepsNeutralContent() = runTest {
         val displayParser = AlgoliaCommentsParser(sourceDigest = { error("First display must not hash") })
         val displayed = displayParser.parseForDisplay(raw, listOf(8, 7), setOf("alice"))
