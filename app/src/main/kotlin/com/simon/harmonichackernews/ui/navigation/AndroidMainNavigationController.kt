@@ -426,9 +426,22 @@ class AndroidMainNavigationController internal constructor(
     }
 
     internal fun updateCommentsHostDestination(destination: MainDestination) {
+        val state = navigationState.state.value
+        val retainedSerials = state.storyBackStack.mapTo(mutableSetOf()) { it.serial }
+        // A hidden tablet detail can leave composition while still in the back stack. If a
+        // later selection removes that history, it will never receive another onDispose.
+        // Keep composed exits alive until their animation releases the last UI reference.
+        val discarded = commentsCoordinatorCache.values.filter {
+            it.sessionKey !in retainedSerials &&
+                (commentsCoordinatorReferences[it.sessionKey] ?: 0) == 0
+        }
+        discarded.forEach {
+            commentsCoordinatorCache.remove(it.sessionKey)
+            it.onDestroy()
+        }
         // A retained pane may be revealed without recomposing CommentsPane. Resolve the host
         // from the stack here instead of relying on that pane's attachment SideEffect to run.
-        val active = navigationState.state.value.storyRequest?.serial
+        val active = state.storyRequest?.serial
             ?.let(commentsCoordinatorCache::get)
         commentsCoordinator?.takeIf { it !== active }?.setHostActive(false)
         commentsCoordinator = active

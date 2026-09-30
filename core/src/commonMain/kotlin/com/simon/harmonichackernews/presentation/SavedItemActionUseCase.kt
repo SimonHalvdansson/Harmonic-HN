@@ -98,7 +98,7 @@ class SavedItemActionUseCase(
         SavedItemSource.BOOKMARKS,
         itemId,
         nowMillis(),
-    ).currentPresent
+    ).also { repository.releaseMutationToken(it.token) }.currentPresent
 
     fun beginVote(
         itemId: Int,
@@ -277,7 +277,13 @@ class SavedItemActionUseCase(
         onPending = onPending,
     )
 
-    suspend fun execute(action: PendingSavedItemAction): SavedItemActionOutcome {
+    suspend fun execute(action: PendingSavedItemAction): SavedItemActionOutcome = try {
+        executePending(action)
+    } finally {
+        action.mutationToken?.let { repository.releaseMutationToken(it) }
+    }
+
+    private suspend fun executePending(action: PendingSavedItemAction): SavedItemActionOutcome {
         try {
             currentCoroutineContext().ensureActive()
         } catch (error: CancellationException) {
@@ -341,7 +347,11 @@ class SavedItemActionUseCase(
     }
 
     suspend fun cancel(action: PendingSavedItemAction) {
-        rollbackIgnoringFailure(action)
+        try {
+            rollbackIgnoringFailure(action)
+        } finally {
+            action.mutationToken?.let { repository.releaseMutationToken(it) }
+        }
     }
 
     private suspend fun executeSerialized(

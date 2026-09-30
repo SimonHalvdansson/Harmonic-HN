@@ -18,6 +18,45 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun settledMembershipWritesDoNotRetainPerItemRevisions() = runTest {
+        val repository = SavedItemsRepository(TestKeyValueStore())
+        repeat(10_000) { id ->
+            repository.setMembershipAtomic(SavedItemSource.BOOKMARKS, id, true, 1)
+            repository.setMembershipAtomic(SavedItemSource.BOOKMARKS, id, false, 1)
+            repository.setCommentMembershipAtomic(SavedItemSource.UPVOTED, id, false)
+        }
+        assertTrue(repository.loadItems(SavedItemSource.BOOKMARKS).isEmpty())
+        assertEquals(0, repository.pendingMutationCount)
+    }
+
+    @Test
+    fun releasedRevisionCannotMatchOrReleaseANewActionForTheSameItem() = runTest {
+        val repository = SavedItemsRepository(TestKeyValueStore())
+        val old = repository.toggleMembershipAtomic(SavedItemSource.FAVORITES, 42, 1).token
+        repository.releaseMutationToken(old)
+        val current = repository.toggleMembershipAtomic(SavedItemSource.FAVORITES, 42, 2).token
+        repository.releaseMutationToken(old)
+        assertEquals(1, repository.pendingMutationCount)
+        assertFalse(repository.restoreMembershipIfCurrentAtomic(old, false, false, 3))
+        assertFalse(repository.reconcileMembershipIfNoNewerMutationAtomic(old, true, 3))
+        assertFalse(repository.contains(SavedItemSource.FAVORITES, 42))
+        assertTrue(repository.restoreMembershipIfCurrentAtomic(current, true, false, 3))
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 42))
+        assertEquals(0, repository.pendingMutationCount)
+    }
+
+    @Test
+    fun directWriteInvalidatesPendingRollbackWithoutRetainingAReplacementRevision() = runTest {
+        val repository = SavedItemsRepository(TestKeyValueStore())
+        val pending = repository.toggleMembershipAtomic(SavedItemSource.FAVORITES, 42, 1).token
+        repository.setMembershipAtomic(SavedItemSource.FAVORITES, 42, true, 2)
+        assertEquals(0, repository.pendingMutationCount)
+        assertFalse(repository.restoreMembershipIfCurrentAtomic(pending, false, false, 3))
+        assertFalse(repository.reconcileMembershipIfNoNewerMutationAtomic(pending, false, 3))
+        assertTrue(repository.contains(SavedItemSource.FAVORITES, 42))
+    }
+
+    @Test
     fun importingIntoColdRepositoryRetainsConcurrentBookmarkChangesAndRefreshesCaches() = runTest {
         val store = TestKeyValueStore(mapOf(SavedItemKeys.BOOKMARKS to "1q10"))
         val repository = SavedItemsRepository(store)

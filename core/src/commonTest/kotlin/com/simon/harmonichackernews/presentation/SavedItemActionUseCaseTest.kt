@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -41,6 +42,64 @@ class SavedItemActionUseCaseTest {
             favoriteResult
         },
     )
+
+    @Test
+    fun bookmarkTogglesAndSettledRemoteActionsReleaseTheirRevisions() = runTest {
+        repeat(1_000) { id ->
+            assertTrue(actions.toggleBookmarkAtomic(id))
+            assertFalse(actions.toggleBookmarkAtomic(id))
+            actions.toggleVoteAndExecuteAtomic(id, isComment = id % 2 == 0)
+            actions.toggleFavoriteAndExecuteAtomic(id, isComment = id % 2 == 0)
+            assertEquals(0, repository.pendingMutationCount)
+        }
+    }
+
+    @Test
+    fun allRemoteOutcomesAndExplicitCancellationReleaseTheirRevisions() = runTest {
+        val results = listOf(
+            HackerNewsActionResult.Success(),
+            HackerNewsActionResult.Failure("Rejected"),
+            HackerNewsActionResult.Failure("Unknown", reason = HackerNewsActionFailureReason.INDETERMINATE),
+            HackerNewsActionResult.Captcha(HackerNewsCaptchaChallenge(
+                actionUrl = "https://news.ycombinator.com/favorite",
+                siteKey = "test", formFields = emptyList(), useCookies = false,
+            )),
+        )
+        results.forEachIndexed { id, result ->
+            favoriteResult = result
+            actions.toggleFavoriteAndExecuteAtomic(id)
+            assertEquals(0, repository.pendingMutationCount)
+        }
+        val cancelled = actions.beginFavoriteAtomic(99)
+        assertEquals(1, repository.pendingMutationCount)
+        actions.cancel(cancelled)
+        assertEquals(0, repository.pendingMutationCount)
+        assertFailsWith<IllegalStateException> {
+            actions.toggleFavoriteAndExecuteAtomic(100, onPending = { error("UI callback failed") })
+        }
+        assertEquals(0, repository.pendingMutationCount)
+    }
+
+    @Test
+    fun unrelatedChurnDoesNotEvictAnInFlightActionsRollbackProtection() = runTest {
+        val response = CompletableDeferred<HackerNewsActionResult>()
+        val delayedActions = SavedItemActionUseCase(repository, { 1 },
+            voteRequest = { _, _ -> response.await() },
+            favoriteRequest = { _, _ -> HackerNewsActionResult.Success() },
+        )
+        val running = async { delayedActions.updateVoteAndExecuteAtomic(42, false, "up") }
+        runCurrent()
+        repeat(1_000) { id ->
+            actions.toggleBookmarkAtomic(id)
+            actions.toggleBookmarkAtomic(id)
+            actions.toggleFavoriteAndExecuteAtomic(id)
+        }
+        assertEquals(1, repository.pendingMutationCount)
+        response.complete(HackerNewsActionResult.Failure("Rejected"))
+        assertIs<SavedItemActionOutcome.Failure>(running.await())
+        assertFalse(actions.isUpvoted(42, false))
+        assertEquals(0, repository.pendingMutationCount)
+    }
 
     @Test
     fun lateVoteAndFavoriteResultsSettleOnlyTheirOriginalAccount() = runTest {
@@ -233,6 +292,7 @@ class SavedItemActionUseCaseTest {
         request.join()
 
         assertTrue(cancellableActions.isUpvoted(404, false))
+        assertEquals(0, repository.pendingMutationCount)
     }
 
     @Test
@@ -248,6 +308,7 @@ class SavedItemActionUseCaseTest {
         assertIs<SavedItemActionOutcome.Failure>(failingActions.execute(pending))
 
         assertFalse(failingActions.isFavorited(405))
+        assertEquals(0, repository.pendingMutationCount)
     }
 
     @Test

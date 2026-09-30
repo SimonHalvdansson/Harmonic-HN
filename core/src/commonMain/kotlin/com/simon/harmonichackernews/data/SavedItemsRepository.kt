@@ -86,7 +86,11 @@ class SavedItemsRepository(
     private val itemIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
     private val commentIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
     private val sourceEpochs = mutableMapOf<SourceKind, Long>()
+    // Only unsettled optimistic mutations need a revision. Globally unique stamps prevent an
+    // old token from matching a new action after the previous entry has been released.
     private val itemMutationRevisions = mutableMapOf<MembershipKey, Long>()
+    private var nextItemMutationRevision = 0L
+    internal val pendingMutationCount: Int get() = itemMutationRevisions.size
     private val actionLocksGuard = Mutex()
     private val actionLocks = mutableMapOf<MembershipKey, ActionLock>()
     private var accountName: (() -> String?)? = null
@@ -255,7 +259,7 @@ class SavedItemsRepository(
         createdAtMillis: Long,
     ): Boolean = mutationMutex.withLock {
         setMembership(source, id, present, createdAtMillis).also {
-            advanceItemRevision(source, id, isComment = false)
+            itemMutationRevisions.remove(MembershipKey(source, id, scopeFor(source)))
         }
     }
 
@@ -320,7 +324,7 @@ class SavedItemsRepository(
         present: Boolean,
     ): Boolean = mutationMutex.withLock {
         setCommentMembership(source, id, present).also {
-            advanceItemRevision(source, id, isComment = true)
+            itemMutationRevisions.remove(MembershipKey(source, id, scopeFor(source)))
         }
     }
 
@@ -459,7 +463,7 @@ class SavedItemsRepository(
                 token.source, token.itemId, previousItemPresent, createdAtMillis, token.accountName,
             )
         }
-        advanceItemRevision(token.source, token.itemId, token.isComment, token.accountName)
+        itemMutationRevisions.remove(MembershipKey(token.source, token.itemId, token.accountName))
         true
     }
 
@@ -486,8 +490,17 @@ class SavedItemsRepository(
                 token.source, token.itemId, present, createdAtMillis, token.accountName,
             )
         }
-        advanceItemRevision(token.source, token.itemId, token.isComment, token.accountName)
+        itemMutationRevisions.remove(MembershipKey(token.source, token.itemId, token.accountName))
         true
+    }
+
+    /** Release after execution/cancellation, or immediately when no remote settlement is needed. */
+    suspend fun releaseMutationToken(token: SavedItemMutationToken) = withContext(NonCancellable) {
+        mutationMutex.withLock {
+            val key = MembershipKey(token.source, token.itemId, token.accountName)
+            if (itemMutationRevisions[key] == token.itemRevision) itemMutationRevisions.remove(key)
+            Unit
+        }
     }
 
     private fun publish(source: SavedItemSource, account: String? = scopeFor(source)) {
@@ -619,7 +632,7 @@ class SavedItemsRepository(
         account: String? = scopeFor(source),
     ): SavedItemMutationToken {
         val key = MembershipKey(source, itemId, account)
-        val revision = (itemMutationRevisions[key] ?: 0L) + 1L
+        val revision = ++nextItemMutationRevision
         itemMutationRevisions[key] = revision
         return SavedItemMutationToken(
             source = source,
