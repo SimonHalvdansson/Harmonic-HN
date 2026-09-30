@@ -73,7 +73,7 @@ class CommentHtmlTest {
         val expanded = Comment().apply { text = processed }.expandedAnchorText!!
         for (html in listOf(processed, expanded)) {
             val rendered = prepareCommentHtml(html)
-            val text = rendered.text.replace('\u00a0', ' ')
+            val text = rendered.text
             assertEquals(
                 "This should work:\n\n  command\n    option\n\nThen open:\n\n  another command\n\nThat's running.",
                 text.substringAfter("\n\n"),
@@ -81,6 +81,30 @@ class CommentHtmlTest {
             assertEquals(2, rendered.spanStyles.count { it.item.fontFamily == FontFamily.Monospace })
             assertEquals(2, rendered.spanStyles.count { it.item.fontSize == 0.8.em })
         }
+    }
+
+    @Test
+    fun convertedCodeRestoresBreakableSpacesAndPreservesAuthoredWhitespace() {
+        val code = "    Set up Clop to optimise any PNG that I drop in my website assets folder\n\n" +
+            "    Get Crank to start Time Machine backups immediately when I connect my HDD\n" +
+            "    aligned  columns    stay\n"
+        val raw = "<pre><code>$code</code></pre>"
+        val processed = StoryTextProcessor.preprocessHtml(raw)!!
+        val expanded = Comment().apply { text = processed }.expandedAnchorText!!
+
+        for (html in listOf(raw, processed, expanded)) {
+            val rendered = prepareCommentHtml(html)
+            assertEquals(code, rendered.text)
+            assertTrue(rendered.spanStyles.any {
+                it.item.fontFamily == FontFamily.Monospace &&
+                    rendered.text.substring(it.start, it.end) == code
+            })
+        }
+    }
+
+    @Test
+    fun proseKeepsIntentionalNonBreakingSpaces() {
+        assertEquals("10\u00a0km", prepareCommentHtml("10&nbsp;km").text)
     }
 
     @Test

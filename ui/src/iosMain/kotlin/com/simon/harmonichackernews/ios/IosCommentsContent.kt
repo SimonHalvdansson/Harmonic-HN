@@ -75,7 +75,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
-import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import platform.UIKit.UIDevice
@@ -495,15 +494,13 @@ private fun IosCommentsHeader(
             formatTime = app.platform.timeFormatting::time,
         )
     }
-    val linkColor = colors.link
-    val previewPlatform = remember(scene, linkColor) {
+    val previewPlatform = remember(scene) {
         CommentsPreviewPlatform(
             textStyle = TextStyle.Default,
             openLink = { it?.let(scene.links::open) },
             downloadPdf = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
             openCustomTab = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
             plainText = HtmlTextUtils::plainText,
-            annotatedHtml = { html, _, listener -> htmlAnnotatedString(html, linkColor, listener) },
         )
     }
 

@@ -26,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -145,7 +144,6 @@ fun LinkPreviewsDebugScreen(
             downloadPdf = { it?.let(onOpenLink) },
             openCustomTab = { it?.let(onOpenLink) },
             plainText = HtmlTextUtils::plainText,
-            annotatedHtml = { html, _, _ -> AnnotatedString(html) },
         )
     }
     CommentsPreviewPlatformProvider(previewPlatform) {

@@ -81,6 +81,9 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                 var text = node.getWholeText()
                 if (convertedCode) {
                     text = text.filterNot { it == ' ' || it == '\n' || it == '\r' }
+                        // Compose preserves ordinary spaces, so restore word-wrap opportunities
+                        // after removing whitespace introduced by HTML serialization.
+                        .replace('\u00a0', ' ')
                 } else if (!preformatted) {
                     text = text.replace(htmlWhitespace, " ")
                     if (length == 0 || trailingLineBreaks > 0) text = text.trimStart(' ')

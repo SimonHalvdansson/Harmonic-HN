@@ -29,11 +29,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +43,7 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.ReferenceLinkRow
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.content.trimmedCommentText
+import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.referenceBlockTopPadding
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -166,11 +164,6 @@ private fun HeaderStoryTextBlock(
     val platform = LocalCommentsPreviewPlatform.current
     val colors = HarmonicTheme.colors
     val hapticFeedback = LocalHapticFeedback.current
-    val linkStyles = remember(colors.link) {
-        TextLinkStyles(
-            style = SpanStyle(colors.link, textDecoration = TextDecoration.Underline),
-        )
-    }
     val linkGestureState = remember(bodyHtml) { AnnotatedLinkGestureState() }
     val linkListener = remember(platform.openLink, linkGestureState) {
         LinkInteractionListener { link ->
@@ -181,8 +174,8 @@ private fun HeaderStoryTextBlock(
             }
         }
     }
-    val annotated = remember(bodyHtml, linkStyles, linkListener, trimParagraphEdges) {
-        platform.annotatedHtml(bodyHtml, linkStyles, linkListener).let {
+    val annotated = remember(bodyHtml, colors.link, linkListener, trimParagraphEdges) {
+        htmlAnnotatedString(bodyHtml, colors.link, linkListener).let {
             if (trimParagraphEdges) it.trimmedCommentText() else it
         }
     }

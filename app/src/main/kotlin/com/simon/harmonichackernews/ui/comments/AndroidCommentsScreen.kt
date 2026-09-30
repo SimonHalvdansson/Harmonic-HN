@@ -26,17 +26,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
-import com.simon.harmonichackernews.presentation.CommentTextPolicy
 import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
@@ -211,7 +206,6 @@ private fun AndroidCommentsHeader(
             downloadPdf = { url -> AndroidPdfOpener.open(context, url) },
             openCustomTab = { url -> dependencies.links.open(url) },
             plainText = HtmlTextUtils::plainText,
-            annotatedHtml = ::htmlToAnnotated,
         )
     }
     CommentsHeader(
@@ -272,20 +266,6 @@ private fun AndroidCommentsHeader(
             },
         )
     }
-}
-
-private fun htmlToAnnotated(
-    html: String,
-    linkStyles: TextLinkStyles,
-    listener: LinkInteractionListener,
-): AnnotatedString = runCatching {
-    AnnotatedString.fromHtml(
-        CommentTextPolicy.preserveLegacyParagraphSpacing(html),
-        linkStyles,
-        listener,
-    )
-}.getOrElse {
-    AnnotatedString(HtmlTextUtils.plainText(html))
 }
 
 private val legacyTextStyle = TextStyle(

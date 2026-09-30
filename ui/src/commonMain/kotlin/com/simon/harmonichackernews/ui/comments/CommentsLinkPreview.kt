@@ -40,9 +40,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import org.jetbrains.compose.resources.painterResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkInteractionListener
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +63,6 @@ data class CommentsPreviewPlatform(
     val downloadPdf: (String?) -> Unit,
     val openCustomTab: (String?) -> Unit,
     val plainText: (String) -> String,
-    val annotatedHtml: (String, TextLinkStyles, LinkInteractionListener) -> AnnotatedString,
 )
 
 val LocalCommentsPreviewPlatform = staticCompositionLocalOf<CommentsPreviewPlatform> {
