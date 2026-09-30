@@ -158,13 +158,14 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                     )
                 }
                 if (error != null) {
-                    Text(if (entries.isEmpty()) error else "Showing saved stories · $error",
+                    Text(if (entries.isEmpty()) "Couldn’t refresh stories. Tap refresh to try again."
+                        else "Couldn’t refresh. Showing saved stories.",
                         GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
                         style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.METADATA_SIZE.sp, fontFamily = fontFamily),
                         maxLines = 4)
                 }
                 if (settings.debug.showWidgetDebugInfo) {
-                    Text("Widget $widgetId · ${state[WidgetState.debug].orEmpty()}",
+                    Text("Widget $widgetId · ${if (error != null) "Refresh failed: $error" else state[WidgetState.debug].orEmpty()}",
                         GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp),
                         style = TextStyle(color = colors.textSecondary, fontSize = 10.sp, fontFamily = fontFamily), maxLines = 2)
                 }

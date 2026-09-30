@@ -143,7 +143,8 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     val cause = result.cause
                     HarmonicLog.debug("Widget refresh failed widgetId=$widgetId feed=${configuration.storyType}: $cause")
                     updateAppWidgetState(context, glanceId) { state ->
-                        state[WidgetState.error] = "${configuration.storyType.label}: ${widgetFailureDescription(cause)}"
+                        state[WidgetState.error] = widgetFailureDescription(cause)
+                        state.remove(WidgetState.debug)
                         state[WidgetState.refreshing] = false
                     }
                     StoriesGlanceWidget().update(context, glanceId)
@@ -156,7 +157,8 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
         } catch (error: Exception) {
             HarmonicLog.debug("Widget refresh failed widgetId=$widgetId: $error")
             updateAppWidgetState(context, glanceId) {
-                it[WidgetState.error] = "${configuration.storyType.label}: ${widgetFailureDescription(error)}"
+                it[WidgetState.error] = widgetFailureDescription(error)
+                it.remove(WidgetState.debug)
             }
             return Result.failure()
         } finally {

@@ -19,6 +19,10 @@ import io.ktor.http.Url
 import io.ktor.utils.io.readRemaining
 import io.ktor.utils.io.cancel
 import kotlinx.io.readByteArray
+import kotlinx.io.IOException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.delay
 
 /** Common transport policy; takes ownership of a fresh platform engine and optional storage. */
 fun createHarmonicHttpClient(
@@ -77,8 +81,20 @@ private fun Url.defaultCookiePath(): String {
     return requestPath.substringBeforeLast('/').ifEmpty { "/" }
 }
 
-/** Canonical buffered GET path for application repositories. */
-internal suspend fun HttpClient.getTextOrThrow(url: String): String {
+/**
+ * Buffered read-only content requests. Never use this for action URLs, even if they use GET.
+ * Retry one transport/read failure; keep generic transport retries disabled to protect writes.
+ */
+internal suspend fun HttpClient.getTextOrThrow(url: String): String = try {
+    getTextOnceOrThrow(url)
+} catch (error: IOException) {
+    currentCoroutineContext().ensureActive()
+    if (error is HttpBodyLimitException) throw error
+    delay(250)
+    getTextOnceOrThrow(url)
+}
+
+private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {
     return prepareGet(url).execute { response ->
         val channel = response.bodyAsChannel()
         try {
