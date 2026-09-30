@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -22,6 +23,8 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+
+private const val FILE_PICKER_UNAVAILABLE = "No system file picker is available."
 
 internal class PendingTextExport {
     private var content: String? = null
@@ -97,10 +100,20 @@ fun AndroidDataSettingsScreen(
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
                     pendingExport.replace(effect.content)
-                    exportLauncher.launch(effect.filename)
+                    try {
+                        exportLauncher.launch(effect.filename)
+                    } catch (_: ActivityNotFoundException) {
+                        pendingExport.clear()
+                        appComposition.userMessages.show(FILE_PICKER_UNAVAILABLE)
+                    }
                 }
-                DataSettingsRuntimeEffect.OpenImportDocument ->
-                    importLauncher.launch(arrayOf("text/plain"))
+                DataSettingsRuntimeEffect.OpenImportDocument -> {
+                    try {
+                        importLauncher.launch(arrayOf("text/plain"))
+                    } catch (_: ActivityNotFoundException) {
+                        appComposition.userMessages.show(FILE_PICKER_UNAVAILABLE)
+                    }
+                }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings -> {
                     Toast.makeText(
                         context,
