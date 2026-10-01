@@ -1,0 +1,24 @@
+name: Cache desktop native library
+description: Reuse the local AI library only for identical native sources, build settings, and hosted toolchains.
+runs:
+  using: composite
+  steps:
+    - name: Identify hosted native toolchain
+      id: toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        # The hosted image version identifies its CMake, compiler, linker, and system SDK.
+        test -n "${ImageOS:-}"
+        test -n "${ImageVersion:-}"
+        echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+    - name: Cache compiled desktop library
+      id: native
+      uses: actions/cache@v5
+      with:
+        path: desktop_app/build/desktopLocalAi/output
+        key: desktop-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.image }}-${{ hashFiles('local_ai_runtime/src/main/cpp/**', 'desktop_app/build.gradle.kts', '.github/actions/cache-desktop-native/action.yml') }}
+    - name: Use exactly matching native library
+      if: steps.native.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "ORG_GRADLE_PROJECT_harmonicDesktopLocalAiPrebuilt=${GITHUB_WORKSPACE}/desktop_app/build/desktopLocalAi/output" >> "$GITHUB_ENV"

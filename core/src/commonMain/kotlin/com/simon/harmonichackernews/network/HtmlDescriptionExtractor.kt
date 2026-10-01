@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.network
 import kotlin.math.min
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.select.Selector
 
 /** Conservative fallback extraction for pages whose description metadata is not useful.  */
 object HtmlDescriptionExtractor {
@@ -10,6 +11,8 @@ object HtmlDescriptionExtractor {
     private const val MIN_LETTER_CHARS = 20
     private const val MIN_LATIN_WORDS = 5
     private const val MAX_CANDIDATE_CHARS = 600
+    private val paragraphs = Selector.evaluatorOf("p")
+    private val anchors = Selector.evaluatorOf("a")
     private val LEADING_TITLE_SEPARATOR_PATTERN = Regex("^[|:–—\\-\\s]+")
     private val GITHUB_CONTRIBUTION_PATTERN = Regex(
         "(?i)\\.?\\s*Contribute to .+ development by creating an account on GitHub\\.?$",
@@ -45,45 +48,61 @@ object HtmlDescriptionExtractor {
         fallbackTitle: String?
     ): String {
         val cleanedMetadata = clean(metadataDescription)
-        if (isMeaningful(cleanedMetadata, pageTitle, fallbackTitle)) {
+        val normalizedTitle = normalizeComparable(pageTitle)
+        val normalizedFallback = normalizeComparable(fallbackTitle)
+        if (isMeaningfulCleaned(cleanedMetadata, normalizedTitle, normalizedFallback)) {
             return cleanedMetadata
         }
 
-        val extracted = extract(document, pageTitle, fallbackTitle)
+        val extracted = extract(document, pageTitle, normalizedTitle, normalizedFallback)
         return if (extracted.isEmpty()) cleanedMetadata else extracted
     }
 
     fun isMeaningful(value: String?, pageTitle: String?, fallbackTitle: String?): Boolean {
-        val cleaned = clean(value)
+        return isMeaningfulCleaned(clean(value), normalizeComparable(pageTitle), normalizeComparable(fallbackTitle))
+    }
+
+    private fun isMeaningfulCleaned(
+        cleaned: String,
+        normalizedTitle: String,
+        normalizedFallback: String,
+    ): Boolean {
         val qualityText = withoutProviderBoilerplate(cleaned)
-        if (cleaned.length < MIN_DESCRIPTION_CHARS || countLetters(cleaned) < MIN_LETTER_CHARS
+        val letterCount = countLetters(cleaned)
+        if (cleaned.length < MIN_DESCRIPTION_CHARS || letterCount < MIN_LETTER_CHARS
             || BOILERPLATE_PATTERN.containsMatchIn(cleaned)
             || MARKUP_OR_STYLE_PATTERN.containsMatchIn(cleaned)
-            || duplicatesTitle(qualityText, pageTitle)
-            || duplicatesTitle(qualityText, fallbackTitle)
         ) {
             return false
         }
 
-        val letterCount = countLetters(cleaned)
+        val normalizedValue = normalizeComparable(qualityText)
+        if (duplicatesTitle(normalizedValue, normalizedTitle) ||
+            duplicatesTitle(normalizedValue, normalizedFallback)
+        ) return false
         val latinLetterCount = countLatinLetters(cleaned)
         return latinLetterCount * 2 < letterCount || countWords(cleaned) >= MIN_LATIN_WORDS
     }
 
-    private fun extract(document: Document, pageTitle: String?, fallbackTitle: String?): String {
+    private fun extract(
+        document: Document,
+        pageTitle: String?,
+        normalizedTitle: String,
+        normalizedFallback: String,
+    ): String {
         var bestParagraph: Element? = null
         var bestText = ""
         var bestScore = Int.MIN_VALUE
         var paragraphIndex = 0
         val excludedCache = mutableMapOf<Element, Boolean>()
         val containerScoreCache = mutableMapOf<Element, Int>()
-        for (paragraph in document.select("p")) {
+        for (paragraph in document.select(paragraphs)) {
             val text = clean(paragraph.text())
             if (!isUsableParagraph(
                     paragraph,
                     text,
-                    pageTitle,
-                    fallbackTitle,
+                    normalizedTitle,
+                    normalizedFallback,
                     excludedCache,
                 )
             ) {
@@ -108,7 +127,7 @@ object HtmlDescriptionExtractor {
                 continue
             }
             val text = withoutLeadingTitle(clean(container.text()), pageTitle)
-            if (isMeaningful(text, pageTitle, fallbackTitle)) {
+            if (isMeaningfulCleaned(text, normalizedTitle, normalizedFallback)) {
                 return truncate(text)
             }
         }
@@ -118,18 +137,18 @@ object HtmlDescriptionExtractor {
     private fun isUsableParagraph(
         paragraph: Element,
         text: String,
-        pageTitle: String?,
-        fallbackTitle: String?,
+        normalizedTitle: String,
+        normalizedFallback: String,
         excludedCache: MutableMap<Element, Boolean>,
     ): Boolean {
-        if (!isMeaningful(text, pageTitle, fallbackTitle) ||
+        if (!isMeaningfulCleaned(text, normalizedTitle, normalizedFallback) ||
             isExcluded(paragraph, excludedCache)
         ) {
             return false
         }
 
         var linkedChars = 0
-        for (link in paragraph.select("a")) {
+        for (link in paragraph.select(anchors)) {
             linkedChars += clean(link.text()).length
         }
         return linkedChars <= text.length * 0.35f
@@ -193,9 +212,7 @@ object HtmlDescriptionExtractor {
         return score
     }
 
-    private fun duplicatesTitle(value: String?, pageTitle: String?): Boolean {
-        val normalizedValue = normalizeComparable(value)
-        val normalizedTitle = normalizeComparable(pageTitle)
+    private fun duplicatesTitle(normalizedValue: String, normalizedTitle: String): Boolean {
         return !normalizedTitle.isEmpty()
                 && (normalizedValue == normalizedTitle
                 || normalizedValue.startsWith(normalizedTitle)
@@ -270,6 +287,22 @@ object HtmlDescriptionExtractor {
 
     private fun clean(value: String?): String {
         if (value.isNullOrEmpty()) return ""
+        // DOM text and metadata are usually already normalized. Keep their original string.
+        var previousSpace = true
+        var needsCleaning = value.last() == ' '
+        for (character in value) {
+            if (character == ' ') {
+                if (previousSpace) needsCleaning = true
+                previousSpace = true
+            } else {
+                if (character == '\u00a0' ||
+                    (character !in '!'..'~' && character.isWhitespace())
+                ) needsCleaning = true
+                previousSpace = false
+            }
+            if (needsCleaning) break
+        }
+        if (!needsCleaning) return value
         val result = StringBuilder(value.length)
         var pendingSpace = false
         for (source in value) {

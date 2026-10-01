@@ -4,15 +4,105 @@ import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalModelServiceTest {
+    @Test
+    fun failedRefreshRetainsCompleteSnapshotAndWorkerRecoversFromStorageOrRuntimeFailure() = runTest {
+        for (failStorage in listOf(true, false)) {
+            var fail = false
+            var downloaded = false
+            val storage = object : LocalModelStorage by EmptyStorage {
+                override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot {
+                    if (fail && failStorage) throw IllegalStateException("Storage unavailable")
+                    return LocalModelStorageSnapshot(
+                        finalFileBytes = model.sizeBytes.takeIf { model.downloadable && downloaded },
+                    )
+                }
+            }
+            val delivery = object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
+                override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
+                    if (fail && !failStorage) throw IllegalStateException("Runtime unavailable")
+                    return LocalRuntimeInstallStatus(LocalRuntimeInstallState.INSTALLED, runtime = runtime)
+                }
+            }
+            val service = LocalModelService(
+                TestKeyValueStore(), storage, RecordingTransfers(), delivery,
+                LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+                scope = backgroundScope,
+                storageDispatcher = StandardTestDispatcher(testScheduler),
+            )
+            service.preload()
+            val previous = service.cachedState.value
+            assertFalse(service.isDownloaded(DownloadableModel))
+
+            downloaded = true
+            fail = true
+            service.refresh()
+            runCurrent()
+            assertEquals(previous, service.cachedState.value)
+
+            fail = false
+            service.refresh()
+            runCurrent()
+            assertTrue(service.isDownloaded(DownloadableModel))
+            service.close()
+        }
+    }
+
+    @Test
+    fun failedInitialPreloadCanRecoverOnNextRefresh() = runTest {
+        var fail = true
+        val service = LocalModelService(
+            TestKeyValueStore(),
+            object : LocalModelStorage by EmptyStorage {
+                override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot {
+                    if (fail) throw IllegalStateException("Storage unavailable")
+                    return LocalModelStorageSnapshot()
+                }
+            },
+            RecordingTransfers(), RecordingRuntimeDelivery(),
+            LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        service.preload()
+        assertTrue(service.cachedState.value.statuses.isEmpty())
+
+        fail = false
+        service.refresh()
+        runCurrent()
+        assertEquals(2, service.cachedState.value.statuses.size)
+        assertEquals(2, service.cachedState.value.runtimeStatuses.size)
+    }
+
+    @Test
+    fun preloadPropagatesCancellation() = runTest {
+        val service = LocalModelService(
+            TestKeyValueStore(),
+            object : LocalModelStorage by EmptyStorage {
+                override fun snapshot(model: LocalModelDefinition): LocalModelStorageSnapshot =
+                    throw CancellationException("Storage inspection cancelled")
+            },
+            RecordingTransfers(), RecordingRuntimeDelivery(),
+            LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertFailsWith<CancellationException> { service.preload() }
+        assertTrue(service.cachedState.value.statuses.isEmpty())
+    }
+
     @Test
     fun successfulDirectRetryClearsHandoffErrorAndMakesDownloadedModelSelectable() = runTest {
         var runtimeStatus = LocalRuntimeInstallStatus(

@@ -108,6 +108,19 @@ If a substantive change touches UI, resources, manifests, or other Android confi
 
 Use `assembleDebug` for the normal edit/verify loop when the change warrants compilation, and add `lintDebug` when the change justifies the extra time. Skip both for minor presentation-only edits where inspection of the diff is sufficient.
 
+Test verification notes:
+- `assembleDebug` does not compile or run unit tests, so missing imports or API changes in test
+  sources can go unnoticed locally. When editing tests or APIs they use, run the affected test
+  tasks with the bundled JBR above. `.github/workflows/push.yml` lists the CI checks.
+- For `core` or `ui` common tests, run both `:<module>:desktopTest` and
+  `:<module>:testAndroidHostTest`; a desktop pass does not verify Android compilation or runtime
+  behavior. For Android app unit tests, run `:app:testDebugUnitTest`. Use `--tests` to focus on
+  affected classes when appropriate; Gradle still compiles the task's test sources.
+- Android host tests run on a plain JVM with stub Android APIs. Tests that create a Compose
+  composition can fail with errors such as `android.util.Log not mocked`. Put tests requiring
+  the desktop Compose runtime in `ui/src/desktopTest`, or use an Android-capable test environment
+  for Android runtime coverage; keep portable logic tests in `commonTest`.
+
 ## Device Verification
 
 Do not start, stop, install to, or control an Android device or emulator unless the user explicitly asks for device/emulator interaction or verification. A build or code-review request alone does not authorize device use.

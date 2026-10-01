@@ -4,6 +4,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.fleeksoft.ksoup.select.Selector
 
 /** Extracts standalone and trailing reference links without any platform URL or HTML APIs. */
 object CollectedReferenceLinks {
@@ -20,6 +21,7 @@ object CollectedReferenceLinks {
         RegexOption.IGNORE_CASE,
     )
     private val whitespacePattern = Regex("\\s+")
+    private val anchorsWithHref = Selector.evaluatorOf("a[href]")
 
     fun parse(inputHtml: String?): Result {
         if (inputHtml.isNullOrEmpty()) return Result.empty(inputHtml)
@@ -33,17 +35,17 @@ object CollectedReferenceLinks {
         val nodes = body.childNodes().toList()
         if (nodes.isEmpty()) return Result.empty(inputHtml)
 
-        val nodesToRemove = mutableListOf<Node>()
-        val collectedNodes = mutableListOf<CollectedNode>()
+        // Every child has a unique position in this detached DOM. Indexing avoids repeatedly
+        // scanning reference/removal lists, without relying on Node equality or hashing.
+        val nodesToRemove = BooleanArray(nodes.size)
+        val collectedNodes = arrayOfNulls<CollectedNode>(nodes.size)
         collectStandaloneAnchorRuns(nodes, collectedNodes, nodesToRemove)
         collectStandaloneLinkNodes(nodes, collectedNodes, nodesToRemove)
         collectTrailingReferenceNodes(nodes, collectedNodes, nodesToRemove)
-        if (collectedNodes.isEmpty()) return Result.empty(inputHtml)
-
-        collectedNodes.sortBy(CollectedNode::index)
+        if (collectedNodes.all { it == null }) return Result.empty(inputHtml)
         val contentBlocks = buildContentBlocks(nodes, collectedNodes, nodesToRemove)
-        val links = collectedNodes.flatMap(CollectedNode::links)
-        nodesToRemove.forEach(Node::remove)
+        val links = collectedNodes.filterNotNull().flatMap(CollectedNode::links)
+        nodes.forEachIndexed { index, node -> if (nodesToRemove[index]) node.remove() }
         return Result(body.html().trim(), links, contentBlocks)
     }
 
@@ -55,11 +57,11 @@ object CollectedReferenceLinks {
 
     private fun collectStandaloneLinkNodes(
         nodes: List<Node>,
-        collectedNodes: MutableList<CollectedNode>,
-        nodesToRemove: MutableList<Node>,
+        collectedNodes: Array<CollectedNode?>,
+        nodesToRemove: BooleanArray,
     ) {
         nodes.forEachIndexed { index, node ->
-            if (nodesToRemove.any { it === node }) return@forEachIndexed
+            if (nodesToRemove[index]) return@forEachIndexed
             if (isIgnorable(node)) return@forEachIndexed
             // A prose footnote after a numbered link must not prevent collecting that link.
             // Both parsers require the entire standalone node to consist of references.
@@ -67,15 +69,15 @@ object CollectedReferenceLinks {
             if (parsedLinks.isEmpty() || !hasStandaloneLineBoundaries(nodes, index, node)) {
                 return@forEachIndexed
             }
-            collectedNodes += CollectedNode(index, node, parsedLinks)
-            addNodeToRemove(nodesToRemove, node)
+            collectedNodes[index] = CollectedNode(parsedLinks)
+            nodesToRemove[index] = true
         }
     }
 
     private fun collectStandaloneAnchorRuns(
         nodes: List<Node>,
-        collectedNodes: MutableList<CollectedNode>,
-        nodesToRemove: MutableList<Node>,
+        collectedNodes: Array<CollectedNode?>,
+        nodesToRemove: BooleanArray,
     ) {
         var start = 0
         while (start < nodes.size) {
@@ -108,8 +110,8 @@ object CollectedReferenceLinks {
                 links.size > 1 &&
                 hasLineBoundaryAfter(nodes, end)
             ) {
-                collectedNodes += CollectedNode(start, nodes[start], links)
-                for (nodeIndex in start..end) addNodeToRemove(nodesToRemove, nodes[nodeIndex])
+                collectedNodes[start] = CollectedNode(links)
+                for (nodeIndex in start..end) nodesToRemove[nodeIndex] = true
                 start = end + 1
             } else {
                 start++
@@ -124,37 +126,33 @@ object CollectedReferenceLinks {
 
     private fun collectTrailingReferenceNodes(
         nodes: List<Node>,
-        collectedNodes: MutableList<CollectedNode>,
-        nodesToRemove: MutableList<Node>,
+        collectedNodes: Array<CollectedNode?>,
+        nodesToRemove: BooleanArray,
     ) {
-        val trailingIgnorableNodes = mutableListOf<Node>()
+        val trailingIgnorableNodes = mutableListOf<Int>()
         for (index in nodes.indices.reversed()) {
             val node = nodes[index]
-            if (collectedNodes.any { it.node === node }) {
+            if (collectedNodes[index] != null) {
                 addNodesToRemove(nodesToRemove, trailingIgnorableNodes)
                 trailingIgnorableNodes.clear()
                 continue
             }
             if (isIgnorable(node)) {
-                trailingIgnorableNodes += node
+                trailingIgnorableNodes += index
                 continue
             }
 
             val parsedLinks = parseReferenceNode(node)
             if (parsedLinks.isEmpty()) break
-            collectedNodes += CollectedNode(index, node, parsedLinks)
-            addNodeToRemove(nodesToRemove, node)
+            collectedNodes[index] = CollectedNode(parsedLinks)
+            nodesToRemove[index] = true
             addNodesToRemove(nodesToRemove, trailingIgnorableNodes)
             trailingIgnorableNodes.clear()
         }
     }
 
-    private fun addNodesToRemove(target: MutableList<Node>, nodes: List<Node>) {
-        nodes.forEach { addNodeToRemove(target, it) }
-    }
-
-    private fun addNodeToRemove(target: MutableList<Node>, node: Node) {
-        if (target.none { it === node }) target += node
+    private fun addNodesToRemove(target: BooleanArray, indices: List<Int>) {
+        indices.forEach { target[it] = true }
     }
 
     private fun hasStandaloneLineBoundaries(nodes: List<Node>, index: Int, node: Node): Boolean {
@@ -194,7 +192,10 @@ object CollectedReferenceLinks {
         node is Element && isBlockLineBoundaryElement(node)
 
     private fun isBlockLineBoundaryElement(element: Element): Boolean =
-        element.tagName().lowercase() in setOf("p", "div", "li")
+        when (element.tagName().lowercase()) {
+            "p", "div", "li" -> true
+            else -> false
+        }
 
     private fun startsWithLineBreak(text: String): Boolean =
         text.firstOrNull() == '\n' || text.firstOrNull() == '\r'
@@ -204,16 +205,16 @@ object CollectedReferenceLinks {
 
     private fun buildContentBlocks(
         nodes: List<Node>,
-        collectedNodes: List<CollectedNode>,
-        nodesToRemove: List<Node>,
+        collectedNodes: Array<CollectedNode?>,
+        nodesToRemove: BooleanArray,
     ): List<ContentBlock> = buildList {
         val html = StringBuilder()
-        nodes.forEach { node ->
-            val collectedNode = collectedNodes.firstOrNull { it.node === node }
+        nodes.forEachIndexed { index, node ->
+            val collectedNode = collectedNodes[index]
             if (collectedNode != null) {
                 flushTextBlock(html, this)
                 collectedNode.links.forEach { add(ContentBlock.link(it)) }
-            } else if (nodesToRemove.none { it === node }) {
+            } else if (!nodesToRemove[index]) {
                 html.append(node.outerHtml())
             }
         }
@@ -245,7 +246,10 @@ object CollectedReferenceLinks {
     }
 
     private fun isReferenceContainerTag(element: Element): Boolean =
-        element.tagName().lowercase() in setOf("p", "div", "span", "li")
+        when (element.tagName().lowercase()) {
+            "p", "div", "span", "li" -> true
+            else -> false
+        }
 
     private fun isAnchorTag(element: Element): Boolean =
         element.tagName().equals("a", ignoreCase = true) && element.hasAttr("href")
@@ -255,7 +259,7 @@ object CollectedReferenceLinks {
         // their children again duplicates the same HTML work for every candidate paragraph.
         val text = normalizeReferenceWhitespace(element.text())
         if (!startsWithReferenceMarker(text)) return emptyList()
-        val anchors = element.select("a[href]").toList()
+        val anchors = element.select(anchorsWithHref)
         return if (anchors.isNotEmpty()) parseAnchoredReferenceText(text, anchors)
         else parseBareReferenceText(text)
     }
@@ -263,7 +267,7 @@ object CollectedReferenceLinks {
     private fun parseUnnumberedLinkElement(element: Element): List<ReferenceLink> {
         val text = normalizeReferenceWhitespace(element.text())
         if (text.isEmpty() || startsWithReferenceMarker(text)) return emptyList()
-        val anchors = element.select("a[href]").toList()
+        val anchors = element.select(anchorsWithHref)
         return if (anchors.isNotEmpty()) parseUnnumberedAnchoredLinkText(text, anchors)
         else parseUnnumberedLinkText(text)
     }
@@ -383,7 +387,7 @@ object CollectedReferenceLinks {
     private fun startsWithReferenceMarker(text: String): Boolean = referenceMarkerAt(text, 0) != null
 
     private fun referenceMarkerAt(text: String, position: Int): MatchResult? =
-        referenceMarkerPattern.find(text, position)?.takeIf { it.range.first == position }
+        referenceMarkerPattern.matchAt(text, position)
 
     private fun referenceNumber(marker: MatchResult): String? =
         marker.groups[1]?.value ?: marker.groups[2]?.value
@@ -460,8 +464,6 @@ object CollectedReferenceLinks {
     }
 
     private data class CollectedNode(
-        val index: Int,
-        val node: Node,
         val links: List<ReferenceLink>,
     )
 

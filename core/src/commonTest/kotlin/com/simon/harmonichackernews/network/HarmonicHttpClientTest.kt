@@ -7,6 +7,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteChannel
 import kotlinx.io.IOException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
@@ -41,6 +42,25 @@ class HarmonicHttpClientTest {
         val client = HttpClient(MockEngine {
             if (++attempts == 1) {
                 respond(ByteReadChannel("partial").apply { cancel(IOException("truncated body")) })
+            } else {
+                respond("complete")
+            }
+        })
+        try {
+            assertEquals("complete", client.getTextOrThrow("https://example.com/feed"))
+            assertEquals(2, attempts)
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun readOnlyRequestRetriesAlreadyFailedResponseBody() = runTest {
+        var attempts = 0
+        val client = HttpClient(MockEngine {
+            if (++attempts == 1) {
+                // Unlike a buffered source, this is already closed for reads before consumption.
+                respond(ByteChannel().apply { cancel(IOException("truncated body")) })
             } else {
                 respond("complete")
             }

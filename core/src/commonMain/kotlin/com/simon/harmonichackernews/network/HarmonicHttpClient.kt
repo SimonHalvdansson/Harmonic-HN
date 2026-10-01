@@ -103,6 +103,8 @@ private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {
                 throw HttpBodyLimitException(DEFAULT_MAX_BUFFERED_BODY_BYTES, declaredLength)
             }
             val bytes = channel.readRemaining(DEFAULT_MAX_BUFFERED_BODY_BYTES + 1L).readByteArray()
+            // Ktor's bounded read can finish without throwing an already-closed channel's error.
+            channel.closedCause?.let { throw it }
             if (bytes.size > DEFAULT_MAX_BUFFERED_BODY_BYTES) {
                 throw HttpBodyLimitException(DEFAULT_MAX_BUFFERED_BODY_BYTES, bytes.size.toLong())
             }

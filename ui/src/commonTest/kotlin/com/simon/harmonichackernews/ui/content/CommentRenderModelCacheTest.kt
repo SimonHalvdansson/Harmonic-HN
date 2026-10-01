@@ -7,15 +7,71 @@ import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.PortableCommentThreadState
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentRenderModelCacheTest {
+    @Test
+    fun failedPrefetchDoesNotBlockOtherCommentsOrCacheAPartialResultAndCanRetry() = runTest {
+        CommentRenderModelCache.clearForTest()
+        CommentHtmlTextCache.clearForTest()
+        val comments = commentsForPrefetch(10)
+        val failed = comments[1]
+        val failedHtml = failed.expandedAnchorText!!
+
+        prefetchCommentRenderModels(comments, collectLinks = false) { html ->
+            if (html == failedHtml) throw IllegalArgumentException("Cannot prepare comment")
+            prepareCommentHtml(html)
+        }
+
+        assertEquals(9, CommentRenderModelCache.entryCountForTest())
+        assertEquals(null, CommentRenderModelCache.peek(failed.id, failedHtml, false))
+        assertFalse(CommentHtmlTextCache.contains(failedHtml))
+        comments.filterNot { it.id == failed.id }.forEach { comment ->
+            assertTrue(CommentHtmlTextCache.contains(comment.expandedAnchorText!!))
+        }
+
+        prefetchCommentRenderModels(comments, collectLinks = false)
+
+        assertEquals(10, CommentRenderModelCache.entryCountForTest())
+        assertEquals(prepareCommentHtml(failedHtml), CommentHtmlTextCache.get(failedHtml))
+    }
+
+    @Test
+    fun prefetchPropagatesCancellationWithoutInstallingPartialResults() = runTest {
+        CommentRenderModelCache.clearForTest()
+        CommentHtmlTextCache.clearForTest()
+        val comments = commentsForPrefetch(3)
+        val cancellation = CancellationException("Prefetch cancelled")
+        var prepared = 0
+
+        val thrown = assertFailsWith<CancellationException> {
+            prefetchCommentRenderModels(comments, collectLinks = false) { html ->
+                if (++prepared == 2) throw cancellation
+                prepareCommentHtml(html)
+            }
+        }
+
+        assertEquals(cancellation.message, thrown.message)
+        assertEquals(2, prepared)
+        assertEquals(0, CommentRenderModelCache.entryCountForTest())
+        assertEquals(0, CommentHtmlTextCache.entryCountForTest())
+    }
+
+    private fun commentsForPrefetch(count: Int): List<PortableCommentItem> = (1..count).map { id ->
+        Comment().apply {
+            this.id = id
+            text = "<p>Prefetch body $id</p>"
+        }.let { PortableCommentItem(it.toSnapshot(), it.presentationSnapshot()) }
+    }
+
     @Test
     fun initialPreparationUsesRestoredViewportAndMatchesSynchronousRenderingInBothLinkModes() = runTest {
         val comments = (1..30).map { id ->

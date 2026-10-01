@@ -10,6 +10,49 @@ import kotlin.test.assertTrue
 
 class StoryListStoreTest {
     @Test
+    fun largeFeedUpdatesKeepEarlierSnapshotsStableAcrossEditsAndReplacement() {
+        val store = StoryListStore()
+        store.replace((1..500).map(::story))
+        val original = store.state.value.items
+        for (id in listOf(1, 32, 33, 256, 500)) {
+            assertTrue(store.updateStory(id) { title = "Updated $id" })
+        }
+        val updated = store.state.value.items
+        assertTrue(sameStoryIds(original, updated))
+        assertTrue(sameStoryIds(original.toList(), updated))
+        assertEquals(updated.toList(), updated)
+        assertEquals(updated, updated.toList())
+        assertEquals(updated.toList().hashCode(), updated.hashCode())
+        val equivalent = StoryListStore().also { it.replace(store.stories) }.state.value.items
+        assertEquals(updated, equivalent)
+        assertTrue(sameStoryIds(updated, equivalent))
+        assertEquals((1..500).map { "Story $it" }, original.map { it.title })
+        assertEquals("Updated 33", updated[32].title)
+        assertSame(original[100], updated[100])
+        store.removeAt(0)
+        store.insertAt(0, story(501))
+        assertFalse(sameStoryIds(updated, store.state.value.items))
+        assertEquals(1, updated.first().id)
+        assertEquals(501, store.state.value.items.first().id)
+        store.replace(listOf(story(600)))
+        assertEquals(500, updated.size)
+        assertEquals(500, updated.last().id)
+    }
+
+    @Test
+    fun changingAnIdOrReorderingCannotReuseTheOldMembership() {
+        val store = StoryListStore().apply { replace(listOf(story(1), story(2))) }
+        val original = store.state.value.items
+        store.updateStory(1) { id = 3 }
+        assertFalse(sameStoryIds(original, store.state.value.items))
+        val changed = store.state.value.items
+        store.mutateStories { reverse() }
+        assertFalse(sameStoryIds(changed, store.state.value.items))
+        assertEquals(listOf(1, 2), original.map { it.id })
+        assertEquals(listOf(2, 3), store.state.value.items.map { it.id })
+    }
+
+    @Test
     fun cachedLabelFollowsRetainedContentUntilSuccessfulReplacement() {
         val store = StoryListStore()
         store.replace(listOf(story(1)), showingCached = true)

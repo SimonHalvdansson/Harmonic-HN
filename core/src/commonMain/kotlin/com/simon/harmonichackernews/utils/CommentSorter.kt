@@ -57,7 +57,9 @@ object CommentSorter {
         comparator: Comparator<Comment>,
     ) {
         commentsWithChildren.sortWith(comparator)
-        commentsWithChildren.forEach { sortCommentsRecursive(it.childComments, comparator) }
+        commentsWithChildren.forEach {
+            if (it.childCommentsOrEmpty.isNotEmpty()) sortCommentsRecursive(it.childComments, comparator)
+        }
     }
 
     private fun buildCommentTree(comments: List<Comment>): MutableList<Comment> {
@@ -65,7 +67,7 @@ object CommentSorter {
         val parentsByDepth = mutableListOf<Comment>()
         for (index in 1..<comments.size) {
             val comment = comments[index]
-            comment.childComments = mutableListOf()
+            comment.resetChildComments()
             val depth = max(0, comment.depth)
             while (parentsByDepth.size > depth) parentsByDepth.removeAt(parentsByDepth.lastIndex)
             if (depth == 0 || parentsByDepth.isEmpty()) {
@@ -81,7 +83,7 @@ object CommentSorter {
     private fun flattenComments(comments: List<Comment>, destination: MutableList<Comment>) {
         comments.forEach { comment ->
             destination.add(comment)
-            flattenComments(comment.childComments, destination)
+            flattenComments(comment.childCommentsOrEmpty, destination)
         }
     }
 
@@ -90,7 +92,7 @@ object CommentSorter {
     }
 
     private fun updateTotalReplies(comment: Comment): Int {
-        val count = comment.childComments.sumOf { child -> 1 + updateTotalReplies(child) }
+        val count = comment.childCommentsOrEmpty.sumOf { child -> 1 + updateTotalReplies(child) }
         comment.totalReplies = count
         return count
     }

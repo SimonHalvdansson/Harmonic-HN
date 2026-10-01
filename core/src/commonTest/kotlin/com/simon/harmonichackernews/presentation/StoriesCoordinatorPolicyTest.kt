@@ -8,6 +8,18 @@ import com.simon.harmonichackernews.data.Story
 
 class StoriesCoordinatorPolicyTest {
     @Test
+    fun frontPageDateLabelTracksSelectionsAcrossMonthAndYearBoundaries() {
+        val state = FrontPageDayState(-1L, 1_704_153_600_000L)
+        assertEquals("2024-01-01", state.requestParameter)
+        assertTrue(state.shift(-1))
+        assertEquals("2023-12-31", state.requestParameter)
+        assertFalse(state.select(state.selectedMillis + 12_345L))
+        assertEquals("2023-12-31", state.requestParameter)
+        assertTrue(state.select(Long.MAX_VALUE))
+        assertEquals("2024-01-01", state.requestParameter)
+    }
+
+    @Test
     fun frontPageDateDefaultsToYesterdayAndFormatsUtc() {
         val state = FrontPageDayState(
             restoredMillis = -1L,

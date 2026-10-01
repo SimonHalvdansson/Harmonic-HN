@@ -85,10 +85,12 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                         // after removing whitespace introduced by HTML serialization.
                         .replace('\u00a0', ' ')
                 } else if (!preformatted) {
-                    text = text.replace(htmlWhitespace, " ")
+                    text = collapseHtmlWhitespace(text)
                     if (length == 0 || trailingLineBreaks > 0) text = text.trimStart(' ')
                     val nextTag = (node.nextSibling() as? Element)?.normalName()
-                    if (nextTag in setOf("p", "br", "pre", "div")) text = text.trimEnd(' ')
+                    if (nextTag == "p" || nextTag == "br" || nextTag == "pre" || nextTag == "div") {
+                        text = text.trimEnd(' ')
+                    }
                 }
                 if (pendingCodeBoundary) {
                     text = text.trimStart()
@@ -136,15 +138,54 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
     }
 }
 
-private val htmlWhitespace = Regex("[ \\t\\r\\n\\u000c]+")
+/** Same five HTML whitespace characters as the renderer's original regex, including form feed. */
+private fun Char.isCollapsibleHtmlWhitespace(): Boolean =
+    this == ' ' || this == '\t' || this == '\r' || this == '\n' || this == '\u000c'
+
+private fun collapseHtmlWhitespace(text: String): String {
+    var previousSpace = false
+    var needsCollapse = false
+    for (character in text) {
+        if (character.isCollapsibleHtmlWhitespace()) {
+            if (character != ' ' || previousSpace) {
+                needsCollapse = true
+                break
+            }
+            previousSpace = true
+        } else previousSpace = false
+    }
+    if (!needsCollapse) return text
+    return buildString(text.length) {
+        var inWhitespace = false
+        for (character in text) {
+            if (character.isCollapsibleHtmlWhitespace()) {
+                if (!inWhitespace) append(' ')
+                inWhitespace = true
+            } else {
+                append(character)
+                inWhitespace = false
+            }
+        }
+    }
+}
+
+// SpanStyle is immutable. All comments can share these style values without sharing ranges.
+private object CommentHtmlStyles {
+    val bold = SpanStyle(fontWeight = FontWeight.Bold)
+    val italic = SpanStyle(fontStyle = FontStyle.Italic)
+    val underline = SpanStyle(textDecoration = TextDecoration.Underline)
+    val strike = SpanStyle(textDecoration = TextDecoration.LineThrough)
+    val code = SpanStyle(fontFamily = FontFamily.Monospace)
+    val small = SpanStyle(fontSize = 0.8.em)
+}
 
 private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
-    "b", "strong" -> SpanStyle(fontWeight = FontWeight.Bold)
-    "i", "em" -> SpanStyle(fontStyle = FontStyle.Italic)
-    "u" -> SpanStyle(textDecoration = TextDecoration.Underline)
-    "s", "strike", "del" -> SpanStyle(textDecoration = TextDecoration.LineThrough)
-    "pre", "code", "tt" -> SpanStyle(fontFamily = FontFamily.Monospace)
-    "small" -> SpanStyle(fontSize = 0.8.em)
+    "b", "strong" -> CommentHtmlStyles.bold
+    "i", "em" -> CommentHtmlStyles.italic
+    "u" -> CommentHtmlStyles.underline
+    "s", "strike", "del" -> CommentHtmlStyles.strike
+    "pre", "code", "tt" -> CommentHtmlStyles.code
+    "small" -> CommentHtmlStyles.small
     else -> null
 }
 

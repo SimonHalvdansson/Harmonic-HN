@@ -435,7 +435,7 @@ class StoryListStore(
             items = when {
                 !refreshItems -> current.items
                 changedStory != null -> snapshotsWithChangedStory(current.items, changedStory)
-                else -> stories.map { story -> story.toListItemSnapshot() }
+                else -> StoryListItems(stories.map { story -> story.toListItemSnapshot() })
             },
             visibleStoryCount = visibleStoryCount,
             loadedThroughIndex = loadedThroughIndex,
@@ -459,7 +459,10 @@ class StoryListStore(
         if (currentItems.size != stories.size || changedIndex !in currentItems.indices ||
             currentItems[changedIndex].id != changedStory.id
         ) {
-            return stories.map { story -> story.toListItemSnapshot() }
+            return StoryListItems(stories.map { story -> story.toListItemSnapshot() })
+        }
+        if (currentItems is StoryListItems) {
+            return currentItems.updated(changedIndex, changedStory.toListItemSnapshot())
         }
         return currentItems.toMutableList().apply {
             this[changedIndex] = changedStory.toListItemSnapshot()
@@ -471,5 +474,30 @@ class StoryListStore(
 
     companion object {
         const val DEFAULT_PAGE_SIZE = 30
+    }
+}
+
+/** Owns a freshly built list. Metadata-only copies keep the same immutable ID order. */
+internal class StoryListItems private constructor(
+    private val items: List<StoryListItemSnapshot>,
+    private val idOrder: Any,
+) : AbstractList<StoryListItemSnapshot>(), RandomAccess {
+    constructor(items: List<StoryListItemSnapshot>) : this(items, Any())
+
+    override val size: Int get() = items.size
+    override fun get(index: Int): StoryListItemSnapshot = items[index]
+    override fun iterator(): Iterator<StoryListItemSnapshot> = items.iterator()
+    override fun equals(other: Any?): Boolean = when {
+        this === other -> true
+        other is StoryListItems -> items == other.items
+        else -> super.equals(other)
+    }
+    override fun hashCode(): Int = items.hashCode()
+
+    fun hasSameIdOrder(other: StoryListItems): Boolean = idOrder === other.idOrder
+
+    fun updated(index: Int, item: StoryListItemSnapshot): StoryListItems {
+        check(items[index].id == item.id)
+        return StoryListItems(items.toMutableList().apply { this[index] = item }, idOrder)
     }
 }

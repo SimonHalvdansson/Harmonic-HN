@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+// Uses a real Compose composition; Android host tests only provide stub Android APIs.
 class StoryPreviewPagerRestorationTest {
     @Test
     fun shorterDeckRestoresByStoryIdInsteadOfSavedOutOfBoundsPage() =

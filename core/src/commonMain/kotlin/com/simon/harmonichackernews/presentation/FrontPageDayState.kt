@@ -20,8 +20,9 @@ class FrontPageDayState(
         ?: latestMillis
         private set
 
-    val requestParameter: String
-        get() = formatEpochDay(selectedMillis / MILLIS_PER_DAY)
+    // Included in every Stories snapshot, even when the historic feed is not selected.
+    var requestParameter: String = formatEpochDay(selectedMillis / MILLIS_PER_DAY)
+        private set
 
     fun shift(days: Int): Boolean = select(selectedMillis + days * MILLIS_PER_DAY)
 
@@ -29,6 +30,7 @@ class FrontPageDayState(
         val next = startOfUtcDay(millis).coerceIn(earliestMillis, latestMillis)
         if (next == selectedMillis) return false
         selectedMillis = next
+        requestParameter = formatEpochDay(next / MILLIS_PER_DAY)
         return true
     }
 

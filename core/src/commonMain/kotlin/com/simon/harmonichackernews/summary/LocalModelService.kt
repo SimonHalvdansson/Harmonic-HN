@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -313,15 +314,22 @@ class LocalModelService(
     }
 
     private suspend fun refreshState() = refreshMutex.withLock {
-        val statuses = models.associate { it.id to lifecycle.status(it) }
-        mutableState.value = LocalModelManagerState(
-            selectedModelId = selectedModel.id,
-            statuses = statuses,
-            runtimeStatuses = models
-                .map(LocalModelDefinition::runtime)
-                .distinct()
-                .associateWith(runtimeDelivery::status),
-        )
+        try {
+            val statuses = models.associate { it.id to lifecycle.status(it) }
+            mutableState.value = LocalModelManagerState(
+                selectedModelId = selectedModel.id,
+                statuses = statuses,
+                runtimeStatuses = models
+                    .map(LocalModelDefinition::runtime)
+                    .distinct()
+                    .associateWith(runtimeDelivery::status),
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Keep the last complete snapshot when storage or runtime inspection fails.
+            // Both preload and the refresh worker can retry on the next request.
+        }
     }
 
     companion object {

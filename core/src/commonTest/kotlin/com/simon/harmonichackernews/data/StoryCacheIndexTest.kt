@@ -7,6 +7,16 @@ import kotlin.test.assertTrue
 
 class StoryCacheIndexTest {
     @Test
+    fun singleEvictionUsesIdToBreakTimestampTiesIncludingTheIncomingEntry() {
+        val entries = linkedSetOf("9-100", "7-100", "8-200")
+        assertEquals(listOf(7), StoryCacheIndex.record(entries, 10, 300, 3).evictedStoryIds)
+        assertEquals(listOf(5), StoryCacheIndex.record(entries, 5, 100, 3).evictedStoryIds)
+        assertEquals(listOf(1), StoryCacheIndex.record(emptySet(), 1, 0, 0).evictedStoryIds)
+        assertEquals(listOf(7, 9, 8, 10),
+            StoryCacheIndex.record(entries, 10, 300, -1).evictedStoryIds)
+    }
+
+    @Test
     fun recordKeepsFirstIdPositionAndLastTimestampWhileNormalizingValidEntries() {
         val entries = linkedSetOf("3-100", "+1-+200", "broken", "3-300", "02-0400")
         val result = StoryCacheIndex.record(entries, 1, 500, maximumEntries = 3)

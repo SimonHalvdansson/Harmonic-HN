@@ -49,15 +49,31 @@ object StoryTextProcessor {
     private fun linkify(input: String): String {
         // Both supported URL schemes share this prefix; ordinary text needs only one scan.
         if (!input.contains("http")) return input
-        val output = StringBuilder(input.length)
-        var endOfPreviousAnchor = 0
-        anchorPattern.findAll(input).forEach { anchor ->
-            output.append(linkifySegment(input.substring(endOfPreviousAnchor, anchor.range.first)))
-            output.append(input, anchor.range.first, anchor.range.last + 1)
-            endOfPreviousAnchor = anchor.range.last + 1
+        val anchors = anchorPattern.findAll(input).iterator()
+        if (!anchors.hasNext()) return linkifySegment(input)
+        // Most HTTP links in API comments are already anchors. Preserve the original string
+        // until a bare URL actually changes a segment, including the text between anchors.
+        var output: StringBuilder? = null
+        var segmentStart = 0
+        var copiedThrough = 0
+        var http = input.indexOf("http")
+        while (true) {
+            val anchor = if (anchors.hasNext()) anchors.next() else null
+            val segmentEnd = anchor?.range?.first ?: input.length
+            if (http >= 0 && http < segmentStart) http = input.indexOf("http", segmentStart)
+            if (http >= 0 && http < segmentEnd) {
+                val segment = input.substring(segmentStart, segmentEnd)
+                val linked = linkifySegment(segment)
+                if (linked != segment) {
+                    val destination = output ?: StringBuilder(input.length).also { output = it }
+                    destination.append(input, copiedThrough, segmentStart).append(linked)
+                    copiedThrough = segmentEnd
+                }
+            }
+            if (anchor == null) break
+            segmentStart = anchor.range.last + 1
         }
-        output.append(linkifySegment(input.substring(endOfPreviousAnchor)))
-        return output.toString()
+        return output?.append(input, copiedThrough, input.length)?.toString() ?: input
     }
 
     private fun linkifySegment(segment: String): String {

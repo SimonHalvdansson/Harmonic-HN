@@ -3,12 +3,27 @@ package com.simon.harmonichackernews.network
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteChannel
+import kotlinx.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.test.runTest
 
 class HttpResponseBodyTest {
+    @Test
+    fun rejectsBodyAlreadyClosedWithReadFailure() = runTest {
+        val body = HttpResponseBody(
+            ByteChannel().apply { cancel(IOException("truncated body")) },
+            headersOf(),
+        )
+        try {
+            assertFailsWith<IOException> { body.readBytes() }
+        } finally {
+            body.close()
+        }
+    }
+
     @Test
     fun rejectsDeclaredBodyLargerThanCallersLimit() = runTest {
         val body = HttpResponseBody(
