@@ -9,6 +9,7 @@ import com.fleeksoft.ksoup.Ksoup
 import androidx.compose.ui.text.AnnotatedString
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.PortableCommentThreadState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -192,7 +193,11 @@ internal object CommentHtmlTextCache {
 }
 
 /** Called from a UI coroutine. Only detached preparation runs on Default; installation stays here. */
-internal suspend fun prefetchCommentRenderModels(comments: List<PortableCommentItem>, collectLinks: Boolean) {
+internal suspend fun prefetchCommentRenderModels(
+    comments: List<PortableCommentItem>,
+    collectLinks: Boolean,
+    prepareHtml: (String) -> AnnotatedString = ::prepareCommentHtml,
+) {
     for (batch in comments.chunked(8)) {
         currentCoroutineContext().ensureActive()
         // Snapshot cache lookups on their owner. Workers receive immutable models and strings only.
@@ -206,14 +211,22 @@ internal suspend fun prefetchCommentRenderModels(comments: List<PortableCommentI
         }
         if (work.isEmpty()) continue
         val prepared = withContext(Dispatchers.Default) {
-            work.map { request ->
+            work.mapNotNull { request ->
                 coroutineContext.ensureActive()
-                val model = request.cached ?: CommentRenderModelCache.prepare(request.source, collectLinks)
-                val missing = request.missing ?: model.contentBlocks.mapNotNull { it.bodyHtml }.distinct()
-                Triple(request, model, missing.associateWith { html ->
-                    coroutineContext.ensureActive()
-                    prepareCommentHtml(html)
-                })
+                try {
+                    val model = request.cached ?: CommentRenderModelCache.prepare(request.source, collectLinks)
+                    val missing = request.missing ?: model.contentBlocks.mapNotNull { it.bodyHtml }.distinct()
+                    Triple(request, model, missing.associateWith { html ->
+                        coroutineContext.ensureActive()
+                        prepareHtml(html)
+                    })
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Prefetch is optional. Leave failed entries uncached so visible rendering
+                    // can use its fallback, while other comments still finish preparing.
+                    null
+                }
             }
         }
         prepared.forEach { (request, model, texts) ->
