@@ -127,8 +127,8 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
     score = score,
     descendantCount = descendants,
     createdAtEpochSeconds = createdAtEpochSeconds,
-    childIds = kids?.toList().orEmpty(),
-    pollOptionIds = pollOptionIds?.toList().orEmpty(),
+    childIds = kids.immutableIds(),
+    pollOptionIds = pollOptionIds.immutableIds(),
     isJob = isJob,
     isComment = isComment,
     parentId = parentId,
@@ -142,22 +142,22 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     isFrontpageLink = isFrontpageLink,
     pdfTitle = pdfTitle,
     videoTitle = videoTitle,
-    previewImage = ResourceLoadSnapshot(
+    previewImage = resourceLoadSnapshot(
         url = previewImageUrl,
         loaded = previewImageUrlResolved,
     ),
-    favicon = ResourceLoadSnapshot(
+    favicon = resourceLoadSnapshot(
         url = faviconTintSourceUrl,
         loaded = faviconTintColorLoaded,
     ),
-    previewTint = ResourceTintSnapshot(
+    previewTint = resourceTintSnapshot(
         colorArgb = previewImageTintColor,
         loaded = previewImageTintColorLoaded,
         sourceUrl = previewImageTintSourceUrl,
         baseColorArgb = previewImageTintBaseColor,
         mode = previewImageTintMode,
     ),
-    faviconTint = ResourceTintSnapshot(
+    faviconTint = resourceTintSnapshot(
         colorArgb = faviconTintColor,
         loaded = faviconTintColorLoaded,
         sourceUrl = faviconTintSourceUrl,
@@ -166,7 +166,10 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     linkSummaryDescription = linkSummaryDescription,
     linkSummaryLoaded = linkSummaryLoaded,
-    rootStory = CommentMasterSnapshot(
+    rootStory = if (rootStoryId == 0 && rootStoryTitle == null && rootStoryUrl == null &&
+        rootStoryAuthor == null && rootStoryScore == 0 && rootStoryCreatedAtEpochSeconds == 0 &&
+        rootStoryDescendantCount == 0 && !rootStoryLoaded
+    ) EmptyStoryResources.root else CommentMasterSnapshot(
         id = rootStoryId,
         title = rootStoryTitle,
         url = rootStoryUrl,
@@ -178,9 +181,9 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     aiSummaryText = aiSummaryText,
     summaryGeneratedSuccessfully = summaryGeneratedSuccessfully,
-    pollOptions = pollOptions.orEmpty().map {
+    pollOptions = pollOptions?.map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)
-    },
+    }.orEmpty(),
     gitHubRepoInfo = gitHubRepoInfo,
     gitLabInfo = gitLabInfo,
     huggingFaceInfo = huggingFaceInfo,
@@ -192,6 +195,31 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     linkPreviewInfo = linkPreviewInfo,
     linkPreviewLoading = linkPreviewLoading,
 )
+
+// These values contain no mutable data. Most feed rows have no resources or root-story
+// enrichment yet, so share the exact empty values without changing snapshot/serialized fields.
+private object EmptyStoryResources {
+    val load = ResourceLoadSnapshot()
+    val tint = ResourceTintSnapshot(colorArgb = 0, loaded = false)
+    val root = CommentMasterSnapshot()
+}
+
+private fun resourceLoadSnapshot(url: String?, loaded: Boolean): ResourceLoadSnapshot =
+    if (url == null && !loaded) EmptyStoryResources.load
+    else ResourceLoadSnapshot(url = url, loaded = loaded)
+
+private fun resourceTintSnapshot(
+    colorArgb: Int,
+    loaded: Boolean,
+    sourceUrl: String?,
+    baseColorArgb: Int,
+    mode: String?,
+): ResourceTintSnapshot =
+    if (colorArgb == 0 && !loaded && sourceUrl == null && baseColorArgb == 0 && mode == null) {
+        EmptyStoryResources.tint
+    } else {
+        ResourceTintSnapshot(colorArgb, loaded, sourceUrl, baseColorArgb, mode)
+    }
 
 fun Story.applySnapshot(snapshot: StorySnapshot): Story = apply {
     id = snapshot.id
@@ -215,7 +243,7 @@ fun Comment.toSnapshot(): CommentSnapshot = CommentSnapshot(
     parentId = parent,
     text = text,
     createdAtEpochSeconds = time,
-    childIds = kidsIds?.toList().orEmpty(),
+    childIds = kidsIds.immutableIds(),
     expandedAnchorText = expandedAnchorText,
 )
 
@@ -234,6 +262,28 @@ fun Comment.applySnapshot(snapshot: CommentSnapshot): Comment = apply {
     text = snapshot.text
     time = snapshot.createdAtEpochSeconds
     kidsIds = snapshot.childIds.takeIf(List<Int>::isNotEmpty)?.toIntArray()
+}
+
+/** Copy the mutable source while retaining primitive storage for multi-ID lists. */
+private fun IntArray?.immutableIds(): List<Int> = when {
+    this == null || isEmpty() -> emptyList()
+    size == 1 -> listOf(this[0])
+    else -> SnapshotIds(copyOf())
+}
+
+/** Unlike IntArray.asList(), equality between snapshots must not box every ID again. */
+private class SnapshotIds(private val values: IntArray) : AbstractList<Int>(), RandomAccess {
+    override val size: Int get() = values.size
+    override fun get(index: Int): Int = values[index]
+    override fun contains(element: Int): Boolean = element in values
+    override fun indexOf(element: Int): Int = values.indexOf(element)
+    override fun lastIndexOf(element: Int): Int = values.lastIndexOf(element)
+    override fun equals(other: Any?): Boolean = when {
+        this === other -> true
+        other is SnapshotIds -> values.contentEquals(other.values)
+        else -> super.equals(other)
+    }
+    override fun hashCode(): Int = values.contentHashCode()
 }
 
 object ItemTimeFormatter {

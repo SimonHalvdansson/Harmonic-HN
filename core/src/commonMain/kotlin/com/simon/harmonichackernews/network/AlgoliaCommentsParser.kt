@@ -212,9 +212,7 @@ class AlgoliaCommentsParser(
         val index = records.size
         // Reserve preorder position, then construct the immutable record once its subtree ends.
         records.add(null)
-        val children = if (payload.children.size > 1) {
-            payload.children.sortedByDescending { it.children.size }
-        } else payload.children
+        val children = payload.orderedChildren()
         for (child in children) appendPreparedComment(child, depth + 1, context, records)
         val html = StoryTextProcessor.preprocessHtml(rawText).orEmpty()
         records[index] = PreparedCommentRecord(
@@ -326,9 +324,7 @@ class AlgoliaCommentsParser(
             comment.depth = depth
             comment.children = payload.children.size
         })
-        val children = if (payload.children.size > 1) {
-            payload.children.sortedByDescending { it.children.size }
-        } else payload.children
+        val children = payload.orderedChildren()
         for (child in children) appendComment(child, depth + 1, filteredUsers, context, destination)
     }
 
@@ -385,6 +381,16 @@ private data class AlgoliaCommentPayload(
     val children: List<AlgoliaCommentPayload> = emptyList(),
 ) {
     val descendants: Int = children.sumOf { 1 + it.descendants }
+
+    fun orderedChildren(): List<AlgoliaCommentPayload> {
+        // Leaf siblings (and already-ranked replies) need no copied list or stable sort.
+        for (index in 1 until children.size) {
+            if (children[index - 1].children.size < children[index].children.size) {
+                return children.sortedByDescending { it.children.size }
+            }
+        }
+        return children
+    }
 }
 
 @OptIn(ExperimentalSerializationApi::class)

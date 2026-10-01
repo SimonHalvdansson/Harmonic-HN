@@ -484,6 +484,9 @@ class StoriesInteractionStore(
 /** Membership/order comparison that ignores metadata changes in immutable feed snapshots. */
 fun sameStoryIds(previous: List<StoryListItemSnapshot>, next: List<StoryListItemSnapshot>): Boolean {
     if (previous === next) return true
+    if (previous is StoryListItems && next is StoryListItems && previous.hasSameIdOrder(next)) {
+        return true
+    }
     if (previous.size != next.size) return false
     return previous.indices.all { previous[it].id == next[it].id }
 }

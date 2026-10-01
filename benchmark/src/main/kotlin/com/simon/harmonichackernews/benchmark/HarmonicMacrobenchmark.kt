@@ -69,6 +69,31 @@ class HarmonicMacrobenchmark {
     @OptIn(ExperimentalMetricApi::class)
     fun commentsOpenLarge() = measureCommentsOpen(CommentsBenchmarkFixture.LARGE)
 
+    /** Seeds raw fixture JSON without a prepared sidecar, so every open must prepare the thread. */
+    @Test
+    @OptIn(ExperimentalMetricApi::class)
+    fun rawCommentsOpenSmall() = rule.measureRepeated(
+        packageName = BenchmarkPackageName,
+        metrics = listOf(
+            FrameTimingMetric(),
+            TraceSectionMetric("CommentsOpen.parseCachedJson", TraceSectionMetric.Mode.First),
+            TraceSectionMetric("CommentsOpen.contentReady", TraceSectionMetric.Mode.First),
+        ),
+        compilationMode = CompilationMode.Full(),
+        iterations = InstrumentationRegistry.getArguments().getString("comments.iterations")?.toInt() ?: 10,
+        setupBlock = {
+            pressHome()
+            startActivityAndWait()
+            awaitStoryContent()
+        },
+        measureBlock = {
+            prepareDeterministicCommentsFixture(
+                CommentsBenchmarkFixture.SMALL,
+                returnToStories = false,
+            )
+        },
+    )
+
     @OptIn(ExperimentalMetricApi::class)
     private fun measureCommentsOpen(fixture: CommentsBenchmarkFixture) {
         rule.measureRepeated(

@@ -10,6 +10,82 @@ import kotlin.test.assertSame
 
 class DomainSnapshotsTest {
     @Test
+    fun idListsAreImmutableCopiesWithNormalListAndSerializationSemantics() {
+        for (ids in listOf(intArrayOf(), intArrayOf(500), intArrayOf(500, 501, 500),
+            IntArray(64) { Int.MAX_VALUE - it })) {
+            val expected = ids.toList()
+            val story = Story().apply { id = 1; kids = ids; pollOptionIds = ids }
+            val comment = Comment().apply { id = 2; kidsIds = ids }
+            val snapshot = story.toSnapshot()
+            val commentSnapshot = comment.toSnapshot()
+            ids.fill(999)
+            assertEquals(expected, snapshot.childIds)
+            assertEquals(snapshot.childIds, expected)
+            assertEquals(expected, snapshot.pollOptionIds)
+            assertEquals(expected, commentSnapshot.childIds)
+            assertEquals(expected.hashCode(), snapshot.childIds.hashCode())
+            assertEquals(expected.contains(500), snapshot.childIds.contains(500))
+            assertEquals(expected.indexOf(500), snapshot.childIds.indexOf(500))
+            assertEquals(expected.lastIndexOf(500), snapshot.childIds.lastIndexOf(500))
+            val untyped: List<Any?> = snapshot.childIds
+            assertFalse(untyped.contains(null))
+            assertFalse(untyped.contains(500L))
+            val second = Story().apply { kids = expected.toIntArray() }.toSnapshot()
+            assertEquals(snapshot.childIds, second.childIds)
+            assertFalse(snapshot.childIds == expected + 123)
+            assertEquals(snapshot, Json.decodeFromString<StorySnapshot>(Json.encodeToString(snapshot)))
+            assertEquals(commentSnapshot,
+                Json.decodeFromString<CommentSnapshot>(Json.encodeToString(commentSnapshot)))
+            assertEquals(expected, Story().applySnapshot(snapshot).kids?.toList().orEmpty())
+        }
+    }
+
+    @Test
+    fun emptyEnrichmentKeepsTheExactLegacyValuesAndEncoding() {
+        val expected = StoryPresentationSnapshot(
+            previewTint = ResourceTintSnapshot(0, false),
+            faviconTint = ResourceTintSnapshot(0, false),
+            rootStory = CommentMasterSnapshot(),
+        )
+        val actual = Story().presentationSnapshot()
+        assertEquals(expected, actual)
+        assertEquals(Json.encodeToString(expected), Json.encodeToString(actual))
+    }
+
+    @Test
+    fun partiallyLoadedResourcesArePreservedAndEarlierSnapshotsRemainUnchanged() {
+        val story = Story()
+        val empty = story.presentationSnapshot()
+        story.previewImageUrl = ""
+        story.faviconTintSourceUrl = "favicon"
+        story.previewImageTintBaseColor = 123
+        story.faviconTintMode = "mode"
+        story.rootStoryTitle = "Known title before its root ID"
+        val partial = story.presentationSnapshot()
+        assertEquals(ResourceLoadSnapshot(url = ""), partial.previewImage)
+        assertEquals(ResourceLoadSnapshot(url = "favicon"), partial.favicon)
+        assertEquals(ResourceTintSnapshot(0, false, baseColorArgb = 123), partial.previewTint)
+        assertEquals(ResourceTintSnapshot(0, false, "favicon", mode = "mode"), partial.faviconTint)
+        assertEquals(CommentMasterSnapshot(title = story.rootStoryTitle), partial.rootStory)
+        assertEquals(ResourceLoadSnapshot(), empty.previewImage)
+        assertEquals(ResourceLoadSnapshot(), empty.favicon)
+        assertEquals(ResourceTintSnapshot(0, false), empty.previewTint)
+        assertEquals(CommentMasterSnapshot(), empty.rootStory)
+
+        story.previewImageUrlResolved = true
+        story.previewImageTintColorLoaded = true
+        story.faviconTintColorLoaded = true
+        story.rootStoryLoaded = true
+        val loaded = story.presentationSnapshot()
+        assertEquals(partial.previewImage.copy(loaded = true), loaded.previewImage)
+        assertEquals(partial.favicon.copy(loaded = true), loaded.favicon)
+        assertEquals(partial.previewTint?.copy(loaded = true), loaded.previewTint)
+        assertEquals(partial.faviconTint?.copy(loaded = true), loaded.faviconTint)
+        assertEquals(partial.rootStory?.copy(loaded = true), loaded.rootStory)
+        assertEquals(loaded, Json.decodeFromString(Json.encodeToString(loaded)))
+    }
+
+    @Test
     fun storyDomainAndPresentationStateAreSeparated() {
         val story = Story().apply {
             id = 42

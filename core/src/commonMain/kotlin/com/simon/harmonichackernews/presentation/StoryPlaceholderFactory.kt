@@ -12,7 +12,7 @@ object StoryPlaceholderFactory {
         hydrateCachedStory: (Story) -> Boolean = { false },
         shouldHideHydratedStory: (Story) -> Boolean = { false },
         cachedStories: Map<Int, Story> = emptyMap(),
-    ): MutableList<Story> = itemIds.mapNotNullTo(mutableListOf()) { id ->
+    ): MutableList<Story> = itemIds.mapNotNullTo(ArrayList(if (hideRead) 0 else itemIds.size)) { id ->
         val isRead = id in readIds
         if (hideRead && isRead) return@mapNotNullTo null
         val cachedStory = cachedStories[id]
@@ -62,7 +62,7 @@ object StoryPlaceholderFactory {
         cachedStories: Map<Int, Story> = emptyMap(),
     ): MutableList<Story> {
         val existingById = existingStories.associateBy(Story::id)
-        return itemIds.mapNotNullTo(mutableListOf()) { id ->
+        return itemIds.mapNotNullTo(ArrayList(if (hideRead) 0 else itemIds.size)) { id ->
             if (hideRead && id in readIds) return@mapNotNullTo null
             existingById[id]?.also { story ->
                 story.isComment = id in commentIds

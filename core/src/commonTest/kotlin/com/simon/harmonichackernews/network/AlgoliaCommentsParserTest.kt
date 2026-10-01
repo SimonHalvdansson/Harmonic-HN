@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.toSnapshot
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,6 +10,25 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 
 class AlgoliaCommentsParserTest {
+    @Test
+    fun preparedAndDirectParsingPreserveSortedSiblingsAndStableTies() = runTest {
+        val parser = AlgoliaCommentsParser()
+        val children = listOf(
+            """{"id":11,"text":"largest","children":[{"id":111,"text":"a"},{"id":112,"text":"b"}]}""",
+            """{"id":12,"text":"first tie","children":[{"id":121,"text":"a"}]}""",
+            """{"id":13,"text":"second tie","children":[{"id":131,"text":"a"}]}""",
+            """{"id":14,"text":"leaf"}""",
+        )
+        for (order in listOf(children, listOf(children[3], children[1], children[0], children[2]))) {
+            val response = """{"children":[{"id":1,"text":"root","children":[${order.joinToString()}]}]}"""
+            val direct = parser.parse(response).comments
+            val prepared = parser.parseForDisplay(response).comments
+            assertEquals(listOf(1, 11, 111, 112, 12, 121, 13, 131, 14), direct.map { it.id })
+            assertEquals(direct.map { it.toSnapshot() }, prepared.map { it.toSnapshot() })
+            assertEquals(direct.map { it.depth }, prepared.map { it.depth })
+        }
+    }
+
     @Test
     fun integerFieldsDecodeOrdinaryValuesAndNulls() = runTest {
         // Exercise every integer field independently of string fallback.
