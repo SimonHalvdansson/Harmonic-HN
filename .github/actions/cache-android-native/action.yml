@@ -9,13 +9,9 @@ runs:
         sudo apt-get update -qq
         sudo apt-get install --no-install-recommends -y ccache
     - name: Configure native compiler cache
-      id: toolchain
       shell: bash
       run: |
         set -euo pipefail
-        test -n "${ImageOS:-}"
-        test -n "${ImageVersion:-}"
-        echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
         echo "HARMONIC_NATIVE_COMPILER_CACHE=$(command -v ccache)" >> "$GITHUB_ENV"
         echo "CCACHE_DIR=${HOME}/.cache/harmonic-android-ccache" >> "$GITHUB_ENV"
         echo "CCACHE_BASEDIR=${GITHUB_WORKSPACE}" >> "$GITHUB_ENV"
@@ -25,7 +21,14 @@ runs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/harmonic-android-ccache
-        key: android-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.image }}-${{ hashFiles('local_ai_runtime/build.gradle', 'app/build.gradle', '.github/actions/cache-android-native/action.yml') }}-${{ hashFiles('local_ai_runtime/src/main/cpp/**') }}
-        # ccache checks compiler contents, flags, sources, and headers before reusing an object.
+        key: android-native-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('local_ai_runtime/build.gradle', 'app/build.gradle', '.github/actions/cache-android-native/action.yml') }}-${{ hashFiles('local_ai_runtime/src/main/cpp/**') }}
+        # ccache validates compiler contents, flags, sources, and headers itself.
+        # A hosted-image update need not discard objects built with the same NDK.
         restore-keys: |
-          android-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.image }}-${{ hashFiles('local_ai_runtime/build.gradle', 'app/build.gradle', '.github/actions/cache-android-native/action.yml') }}-
+          android-native-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('local_ai_runtime/build.gradle', 'app/build.gradle', '.github/actions/cache-android-native/action.yml') }}-
+          android-native-v2-${{ runner.os }}-${{ runner.arch }}-
+          android-native-v1-${{ runner.os }}-${{ runner.arch }}-
+    - name: Reset restored compiler cache statistics
+      shell: bash
+      # Statistics are stored alongside objects; report only this job's calls.
+      run: ccache --zero-stats

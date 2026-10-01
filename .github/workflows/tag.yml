@@ -136,11 +136,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
       - uses: ./.github/actions/cache-desktop-native
-      - name: Verify desktop native library
-        shell: bash
-        run: |
-          ./gradlew :desktop_app:stageDesktopLocalAi --no-daemon --max-workers=2
-          python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - name: Add WiX Toolset to PATH
         if: runner.os == 'Windows'
         shell: pwsh
@@ -153,6 +148,10 @@ jobs:
           $wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build desktop package
         run: ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
+      # Packaging already stages the native library; avoid a separate Gradle startup.
+      - name: Verify desktop native library
+        shell: bash
+        run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.artifact_name }}
