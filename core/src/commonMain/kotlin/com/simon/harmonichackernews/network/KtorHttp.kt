@@ -312,6 +312,8 @@ class HttpResponseBody internal constructor(
         val declaredLength = contentLength()
         if (declaredLength > maxBytes) throw HttpBodyLimitException(maxBytes, declaredLength)
         val bytes = channel.readRemaining(maxBytes.toLong() + 1L).readByteArray()
+        // Ktor's bounded read can finish without throwing an already-closed channel's error.
+        channel.closedCause?.let { throw it }
         if (bytes.size > maxBytes) throw HttpBodyLimitException(maxBytes, bytes.size.toLong())
         return bytes
     }
