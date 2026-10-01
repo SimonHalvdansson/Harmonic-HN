@@ -1,15 +1,15 @@
 [versions]
 agp = "9.4.1"
-compose-bom = "2026.08.00"
+compose-bom = "2026.09.00"
 compose-multiplatform = "1.12.1"
-compose-multiplatform-material3 = "1.12.0-alpha03"
-kotlin = "2.4.20-RC2"
+compose-multiplatform-material3 = "1.13.0-alpha01"
+kotlin = "2.5.0-Beta1"
 material3 = "1.5.0-alpha27"
 material3-adaptive = "1.3.0-rc01"
 navigation3 = "1.2.0-alpha02"
 coil = "3.6.3"
 ksoup = "0.2.6"
-ktor = "3.5.2"
+ktor = "3.6.0"
 haze = "2.0.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
@@ -21,7 +21,7 @@ androidx-test-junit = "1.3.0"
 uiautomator = "2.4.0"
 profileinstaller = "1.4.1"
 jna = "5.19.1"
-swt = "3.134.0"
+swt = "3.135.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -36,7 +36,7 @@ baseline-profile = { id = "androidx.baselineprofile", version.ref = "benchmark" 
 
 [libraries]
 androidx-collection = "androidx.collection:collection:1.6.0"
-latex-renderer = "io.github.huarangmeng:latex-renderer:1.5.4"
+latex-renderer = "io.github.huarangmeng:latex-renderer:1.5.6"
 androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
 androidx-lifecycle-viewmodel-ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0"
 androidx-lifecycle-runtime-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.11.0"
@@ -62,7 +62,7 @@ compose-multiplatform-ui = { module = "org.jetbrains.compose.ui:ui", version.ref
 compose-multiplatform-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
 compose-multiplatform-animation = { module = "org.jetbrains.compose.animation:animation", version.ref = "compose-multiplatform" }
 compose-multiplatform-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-multiplatform-material3" }
-androidx-core = "androidx.core:core:1.19.0"
+androidx-core = "androidx.core:core:1.19.1"
 androidx-browser = "androidx.browser:browser:1.10.0"
 androidx-preference = "androidx.preference:preference:1.2.1"
 androidx-security = "androidx.security:security-crypto:1.1.0"
@@ -95,9 +95,9 @@ haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta4"
-litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.16.1"
+litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.17.1"
 play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"
-androidx-work = "androidx.work:work-runtime:2.11.2"
+androidx-work = "androidx.work:work-runtime:2.12.0"
 androidx-glance-appwidget = "androidx.glance:glance-appwidget:1.2.0"
 androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 androidx-benchmark-junit4 = { module = "androidx.benchmark:benchmark-junit4", version.ref = "benchmark" }
