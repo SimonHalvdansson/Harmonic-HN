@@ -35,7 +35,17 @@ class Comment {
     var children: Int = 0
     var totalReplies: Int = 0
 
-    var childComments: MutableList<Comment> = mutableListOf()
+    private var mutableChildComments: MutableList<Comment>? = null
+
+    // Most comments are leaves, and default-order threads never need a mutable child list.
+    // Preserve the mutable accessor for callers that explicitly build or edit a tree.
+    var childComments: MutableList<Comment>
+        get() = mutableChildComments ?: mutableListOf<Comment>().also { mutableChildComments = it }
+        set(value) { mutableChildComments = value }
+
+    internal val childCommentsOrEmpty: List<Comment> get() = mutableChildComments.orEmpty()
+
+    internal fun resetChildComments() { mutableChildComments = null }
     var sortOrder: Int = 0
     var kidsIds: IntArray? = null // For official HN API fallback - stores child comment IDs
 

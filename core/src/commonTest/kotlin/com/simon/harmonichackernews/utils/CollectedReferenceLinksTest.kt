@@ -7,6 +7,23 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun largeReferenceListPreservesSourceOrderAndInterleavedText() {
+        val html = buildString {
+            repeat(150) {
+                append("<p>Prose $it.</p><p>[${it + 1}] <a href='https://example.com/$it'>Source $it</a></p>")
+            }
+            append("<br>\n")
+        }
+        val result = CollectedReferenceLinks.parse(html)
+        assertEquals((1..150).map(Int::toString), result.links.map { it.number })
+        assertEquals(300, result.contentBlocks.size)
+        repeat(150) {
+            assertEquals("<p>Prose $it.</p>", result.contentBlocks[it * 2].bodyHtml)
+            assertEquals("https://example.com/$it", result.contentBlocks[it * 2 + 1].getLink()?.url)
+        }
+    }
+
+    @Test
     fun normalizedContainersKeepEntitiesNestedFormattingAndUnclosedParagraphs() {
         for (tag in listOf("p", "div", "span", "li")) {
             val result = CollectedReferenceLinks.parse(

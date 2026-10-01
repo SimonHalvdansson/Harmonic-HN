@@ -108,6 +108,15 @@ class CommentHtmlTest {
     }
 
     @Test
+    fun formattedProseCollapsesHtmlWhitespaceWithoutChangingNonbreakingSpaces() {
+        val text = prepareCommentHtml("<i>one \t\r\n\u000c two</i> <b>three&nbsp; four</b>")
+        assertEquals("one two three\u00a0 four", text.text)
+        assertEquals(listOf("one two", "three\u00a0 four"), text.spanStyles.map {
+            text.text.substring(it.start, it.end)
+        })
+    }
+
+    @Test
     fun codeBlockMarginsReuseFollowingParagraphBreaksAndKeepInternalBlankLines() {
         for (ending in listOf("After", "\nAfter", "<p>After", "<br><br>After")) {
             val rendered = prepareCommentHtml("Before<p><pre><code>  one\n\n    two\n</code></pre>$ending")

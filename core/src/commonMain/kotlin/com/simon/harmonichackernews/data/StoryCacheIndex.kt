@@ -12,6 +12,11 @@ data class StoryCacheEntry(val storyId: Int, val cachedAtMillis: Long)
 object StoryCacheIndex {
     const val DEFAULT_MAX_AGE_MILLIS: Long = 24L * 60L * 60L * 1_000L
 
+    private val evictionOrder = Comparator<StoryCacheEntry> { first, second ->
+        val timeOrder = first.cachedAtMillis.compareTo(second.cachedAtMillis)
+        if (timeOrder != 0) timeOrder else first.storyId.compareTo(second.storyId)
+    }
+
     fun record(
         encodedEntries: Set<String>,
         storyId: Int,
@@ -25,14 +30,16 @@ object StoryCacheIndex {
         }
         validEntries[storyId] = StoryCacheEntry(storyId, cachedAtMillis)
         val evictionCount = validEntries.size - maximumEntries.coerceAtLeast(0)
-        val evicted = if (evictionCount > 0) {
-            val evictionOrder = validEntries.values.sortedWith(
-                compareBy<StoryCacheEntry>(StoryCacheEntry::cachedAtMillis)
-                    .thenBy(StoryCacheEntry::storyId),
-            )
+        val evicted = if (evictionCount == 1) {
+            // The normal at-capacity write needs only the oldest entry, not a sorted copy.
+            val oldest = validEntries.values.minWithOrNull(evictionOrder)!!
+            validEntries.remove(oldest.storyId)
+            listOf(oldest.storyId)
+        } else if (evictionCount > 0) {
+            val ordered = validEntries.values.sortedWith(evictionOrder)
             ArrayList<Int>(evictionCount).apply {
                 repeat(evictionCount) { index ->
-                    val entry = evictionOrder[index]
+                    val entry = ordered[index]
                     validEntries.remove(entry.storyId)
                     add(entry.storyId)
                 }
@@ -65,7 +72,7 @@ object StoryCacheIndex {
             val entry = parse(value) ?: return@forEach
             if (entry.cachedAtMillis >= oldestAllowed) recent += entry
         }
-        recent.sortWith(compareBy(StoryCacheEntry::cachedAtMillis, StoryCacheEntry::storyId))
+        recent.sortWith(evictionOrder)
         return recent
     }
 
