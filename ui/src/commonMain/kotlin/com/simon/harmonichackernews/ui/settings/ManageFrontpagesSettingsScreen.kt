@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,9 +38,8 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -92,6 +92,7 @@ import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.stories.menuIcon
+import com.simon.harmonichackernews.ui.theme.HarmonicRipple
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import dev.chrisbanes.haze.rememberHazeState
@@ -318,8 +319,8 @@ fun ManageFrontpagesSettingsScreen(
                     // Only the name/icon area selects the default. The drag and remove controls
                     // are siblings, so a short tap on the handle cannot bubble into selection.
                     CompositionLocalProvider(
-                        LocalRippleConfiguration provides RippleConfiguration(
-                            color = if (HarmonicTheme.isDark) Color.White else Color.Unspecified,
+                        LocalIndication provides HarmonicRipple(
+                            color = if (HarmonicTheme.isDark) Color.White else LocalContentColor.current,
                             rippleAlpha = RippleAlpha(
                                 draggedAlpha = 0.08f, focusedAlpha = 0.06f,
                                 hoveredAlpha = 0.02f, pressedAlpha = 0.06f,

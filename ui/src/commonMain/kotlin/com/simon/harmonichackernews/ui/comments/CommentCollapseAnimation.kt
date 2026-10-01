@@ -46,7 +46,7 @@ internal fun commentCollapsePlan(
             precedingId = row.comment.id
             hasPreceding = true
         }
-        if (collapsedDepth != null && row.comment.depth <= collapsedDepth!!) collapsedDepth = null
+        if (collapsedDepth != null && row.comment.depth <= collapsedDepth) collapsedDepth = null
         if (row.comment.id in collapsedIds && row.comment.expanded && collapsedDepth == null) {
             collapsedDepth = row.comment.depth
             groups += mutableListOf<Int>()

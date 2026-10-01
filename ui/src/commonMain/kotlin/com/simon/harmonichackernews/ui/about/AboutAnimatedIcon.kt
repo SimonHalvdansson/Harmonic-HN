@@ -5,13 +5,11 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LocalRippleConfiguration
-import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -33,15 +31,15 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
+import com.simon.harmonichackernews.ui.theme.HarmonicRipple
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 
 /** The three splash studies, replayed only on request; the host's icon remains the idle artwork. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AboutAnimatedIcon(painter: Painter, modifier: Modifier = Modifier) = CompositionLocalProvider(
-    LocalRippleConfiguration provides RippleConfiguration(
+    LocalIndication provides HarmonicRipple(
         color = Color(0xFF341000),
         rippleAlpha = RippleAlpha(
             draggedAlpha = 0.02f,
