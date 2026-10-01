@@ -139,7 +139,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # Gradle also configures the Android native feature for desktop tasks.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -177,7 +177,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # Gradle also configures the Android native feature for iOS tasks.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
