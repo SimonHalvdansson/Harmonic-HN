@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -66,6 +67,51 @@ class NetworkUrlTest {
         val base = "https://example.com/directory/article".toNetworkUrl()
         for (relative in listOf("?q=%s", "next?q=%GG", "?%s=value", "/path/%s", "#%s")) {
             assertNull(base.resolve(relative), relative)
+        }
+    }
+
+    @Test
+    fun malformedEscapesAreRejectedAcrossUrlComponentsAndReferenceTypes() {
+        val base = "https://example.com/directory/article".toNetworkUrl()
+        for (escape in listOf("%", "%2", "%s", "%GG", "%0g", "%g0", "%%20", "%\uFF12F", "%20%")) {
+            for (reference in listOf(
+                "next/$escape",
+                "/path/$escape",
+                "?q=$escape",
+                "?$escape=value",
+                "#$escape",
+                "//other.example/$escape",
+                "https://other.example/$escape",
+            )) {
+                assertNull(base.resolve(reference), reference)
+                assertNull(base.resolve(" $reference "), "padded $reference")
+            }
+            for (url in listOf(
+                "https://example.com/$escape",
+                "https://example.com/?q=$escape",
+                "https://example.com/?$escape=value",
+                "https://example.com/#$escape",
+                "https://$escape:password@example.com/",
+                "https://user:$escape@example.com/",
+            )) {
+                assertNull(NetworkUrl.parseOrNull(url), url)
+                assertFailsWith<IllegalArgumentException>(url) { NetworkUrl.parse(url) }
+            }
+        }
+    }
+
+    @Test
+    fun validEscapesAreValidatedWithoutDecodingTwice() {
+        val reference = "/%25s/%252/%2f/%2F/%E2%82%AC?q=%252G&%25key=%25#%25s"
+        val absolute = "https://example.com$reference"
+        val parsed = assertNotNull(absolute.toNetworkUrlOrNull())
+        val resolved = assertNotNull("https://example.com/base".toNetworkUrl().resolve(reference))
+        for (url in listOf(parsed, resolved)) {
+            assertEquals(absolute, url.toString())
+            assertEquals(listOf("%s", "%2", "/", "/", "€"), url.pathSegments)
+            assertEquals("%2G", url.queryParameter("q"))
+            assertEquals("%", url.queryParameter("%key"))
+            assertEquals("%s", url.fragment)
         }
     }
 

@@ -46,6 +46,7 @@ class NetworkUrl private constructor(internal val value: Url) {
         // Ktor's relative-path builder drops the final path segment even when a reference
         // only replaces the query or fragment. Such references stay on the same document.
         val reference = relativeUrl.trim()
+        requireValidPercentEscapes(reference)
         val documentUrl = value.toString().substringBefore('#')
         val resolved = when {
             reference.isEmpty() -> Url(documentUrl)
@@ -91,7 +92,27 @@ class NetworkUrl private constructor(internal val value: Url) {
     companion object {
         private val absoluteScheme = Regex("^[A-Za-z][A-Za-z0-9+.-]*:")
 
-        fun parse(value: String): NetworkUrl = NetworkUrl(Url(value))
+        fun parse(value: String): NetworkUrl {
+            requireValidPercentEscapes(value)
+            return NetworkUrl(Url(value))
+        }
+
+        // Ktor 3.6.0 normalizes malformed path escapes (e.g. %s to %25s). Validate the
+        // encoded input first so parsing and resolution retain their rejection contract.
+        private fun requireValidPercentEscapes(value: String) {
+            var index = value.indexOf('%')
+            while (index >= 0) {
+                require(
+                    index + 2 < value.length &&
+                        value[index + 1].isAsciiHexDigit() && value[index + 2].isAsciiHexDigit()
+                ) { "Malformed URL percent escape at index $index" }
+                index = value.indexOf('%', startIndex = index + 3)
+            }
+        }
+
+        private fun Char.isAsciiHexDigit(): Boolean =
+            this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
+
         fun parseOrNull(value: String?): NetworkUrl? = try {
             value?.let(::parse)
         } catch (_: URLDecodeException) {
