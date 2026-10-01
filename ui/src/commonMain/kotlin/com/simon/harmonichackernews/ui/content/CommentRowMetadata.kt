@@ -198,6 +198,7 @@ internal fun CommentMeta(
                 color = commentCountContentColor(colors.commentCountIndicator),
                 fontFamily = fontFamily,
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 style = compactCommentTextStyle,
             )
         }
