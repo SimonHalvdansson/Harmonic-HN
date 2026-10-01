@@ -105,6 +105,9 @@ val desktopLocalAiResources = layout.buildDirectory.dir("generated/desktopLocalA
 val desktopLocalAiLibrary = desktopLocalAiOutput.map {
     it.file(System.mapLibraryName("harmonic-local-ai"))
 }
+// CI sets this only after an exact native-source/toolchain cache hit.
+val prebuiltDesktopLocalAi = providers.gradleProperty("harmonicDesktopLocalAiPrebuilt")
+    .map { File(it, System.mapLibraryName("harmonic-local-ai")) }
 val desktopLocalAiSources = fileTree(desktopLocalAiSource) {
     include("**/*.c", "**/*.cc", "**/*.cpp", "**/*.h", "**/*.hpp", "**/CMakeLists.txt")
 }
@@ -151,8 +154,14 @@ val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
 
 val stageDesktopLocalAi = tasks.register<Sync>("stageDesktopLocalAi") {
     description = "Stages the desktop local AI library as a packaged resource."
-    dependsOn(buildDesktopLocalAi)
-    from(desktopLocalAiLibrary)
+    if (prebuiltDesktopLocalAi.isPresent) {
+        val library = prebuiltDesktopLocalAi.get()
+        check(library.isFile) { "Missing cached native library: $library" }
+        from(library)
+    } else {
+        dependsOn(buildDesktopLocalAi)
+        from(desktopLocalAiLibrary)
+    }
     into(desktopLocalAiResources.map { it.dir("native") })
 }
 
@@ -190,11 +199,7 @@ val stageMacWebView = tasks.register<Sync>("stageMacWebView") {
 }
 
 tasks.named<ProcessResources>("desktopProcessResources") {
-    dependsOn(stageDesktopLocalAi)
-    dependsOn(stageMacWebView)
     from(generateDesktopMetadata)
-    from(desktopLocalAiResources)
-    from(macWebViewResources)
     from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
         rename { "harmonic-app-icon.png" }
     }
@@ -206,7 +211,18 @@ tasks.named<ProcessResources>("desktopProcessResources") {
     }
 }
 
+// Keep native resources off the unit-test classpath. Compose packaging and run include this
+// separate JAR, while desktopTest can build the application JAR without invoking a C++ compiler.
+val desktopNativeJar = tasks.register<Jar>("desktopNativeJar") {
+    archiveFileName.set("harmonic-desktop-native.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    dependsOn(stageDesktopLocalAi, stageMacWebView)
+    from(desktopLocalAiResources)
+    from(macWebViewResources)
+}
+
 val desktopProjectJars = files(
+    desktopNativeJar.flatMap { it.archiveFile },
     layout.buildDirectory.file("libs/desktop_app-desktop.jar"),
     project(":ui").layout.buildDirectory.file("libs/ui-desktop.jar"),
     project(":core").layout.buildDirectory.file("libs/core-desktop.jar"),
@@ -234,7 +250,12 @@ val stableDesktopProjectJars = files(
 
 compose.desktop {
     application {
+        // Compose's default target configuration ignores fromFiles; supply the runtime explicitly
+        // so the native JAR is packaged without adding it to desktopTest's dependencies.
+        disableDefaultConfiguration()
         mainClass = "com.simon.harmonichackernews.desktop.DesktopAppMainKt"
+        mainJar.set(tasks.named<Jar>("desktopJar").flatMap { it.archiveFile })
+        fromFiles(desktopProjectJars, configurations.named("desktopRuntimeClasspath"))
         if (isMacDesktopBuild) {
             // These must be present before AWT initializes. They give development runs Harmonic's
             // menu-bar/display name where the JBR supports it, but only a packaged .app has a true

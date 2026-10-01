@@ -31,6 +31,7 @@ jobs:
       - name: Install native build tools
         run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v4
+      - uses: ./.github/actions/cache-android-native
       - name: Build with Gradle
         run: >-
           ./gradlew
@@ -43,6 +44,9 @@ jobs:
           --no-daemon
           --max-workers=2
           --parallel
+      - name: Native compiler cache statistics
+        if: always()
+        run: ccache --show-stats
       - name: Sign release APKs
         env:
           ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
@@ -131,6 +135,12 @@ jobs:
       # Gradle also configures the Android native feature for desktop tasks.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+      - uses: ./.github/actions/cache-desktop-native
+      - name: Verify desktop native library
+        shell: bash
+        run: |
+          ./gradlew :desktop_app:stageDesktopLocalAi --no-daemon --max-workers=2
+          python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - name: Add WiX Toolset to PATH
         if: runner.os == 'Windows'
         shell: pwsh
