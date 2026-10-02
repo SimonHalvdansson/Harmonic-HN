@@ -103,9 +103,11 @@ import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
 /**
- * The header and rows share a centered content column with the app-wide maximum width.
+ * The header and rows fill a split pane, matching Stories, or share a centered content column
+ * with the app-wide maximum width in a single-pane layout.
  * A retained header scrolls away with the rows and returns as soon as scrolling reverses.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,6 +268,11 @@ private fun BoxScope.SubmissionsList(
 ) {
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val sideMargin = 0.dp
+    val contentWidthModifier = if (LocalSplitPaneLayout.current.supportsTwoPane) {
+        Modifier
+    } else {
+        Modifier.widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+    }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var scrollToTopJob by remember { mutableStateOf<Job?>(null) }
@@ -321,7 +328,7 @@ private fun BoxScope.SubmissionsList(
 
     LazyColumn(
         modifier = Modifier
-            .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+            .then(contentWidthModifier)
             .fillMaxSize()
             .align(Alignment.TopCenter)
             .nestedScroll(headerScroll),
@@ -474,7 +481,7 @@ private fun BoxScope.SubmissionsList(
     Box(
         Modifier
             .align(Alignment.TopCenter)
-            .widthIn(max = HarmonicDimens.fullscreen_content_max_width)
+            .then(contentWidthModifier)
             .fillMaxWidth()
             .graphicsLayer { translationY = headerOffsetPx }
             .nestedScroll(headerScroll)

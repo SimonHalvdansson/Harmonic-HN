@@ -41,6 +41,7 @@ internal fun DesktopSubmissionsContent(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     request: MainSubmissionsRequest,
+    isSplitLayout: Boolean = false,
 ) {
     val initialFocus = remember(request.serial) { FocusRequester() }
     LaunchedEffect(initialFocus) { initialFocus.requestFocus() }
@@ -78,6 +79,7 @@ internal fun DesktopSubmissionsContent(
             Modifier
                 .fillMaxSize()
                 .background(HarmonicTheme.colors.background)
+                .padding(start = if (isSplitLayout) DesktopWidePaneHorizontalPadding else 0.dp)
                 // Opening a destination should not keyboard-focus Back and show its tooltip.
                 // The screen receives initial focus; Tab still reaches its controls normally.
                 .focusRequester(initialFocus)
