@@ -391,7 +391,7 @@ private fun DesktopAppContent(
                 MainNavigationScene(
                     storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
                     onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = { DesktopSubmissionsContent(app, scene, request) },
+                    stories = { DesktopSubmissionsContent(app, scene, request, isSplitLayout = true) },
                     emptyDetail = { EmptyCommentsScreen() },
                     comments = paneComments,
                 )
