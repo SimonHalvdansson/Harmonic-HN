@@ -49,6 +49,16 @@ class PreviewTintContrastTest {
         }
     }
 
+    @Test
+    fun disablingBackgroundAvoidancePreservesUnadjustedTintOnAllBackgrounds() {
+        val config = PaletteTintPreferences.configKey(null, 100, 110, 0, false)
+        for (background in listOf(0xff151515.toInt(), 0xfff3edf7.toInt(), 0xff408050.toInt())) {
+            for (tint in listOf(background, 0xff777788.toInt())) {
+                assertEquals(tint, PreviewTintPolicy.ensureCardTintContrast(tint, background, config))
+            }
+        }
+    }
+
     private fun contrast(first: Int, second: Int): Double {
         val a = luminance(first)
         val b = luminance(second)

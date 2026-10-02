@@ -354,4 +354,18 @@ class StoredSettingsMutatorTest {
         assertTrue(mutator.clearPaletteTint())
         assertFalse(mutator.clearPaletteTint())
     }
+
+    @Test
+    fun backgroundAvoidancePersistsAcrossReopeningAndResetRestoresDefault() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertTrue(PaletteTintPreferences.avoidBackgroundColor(repository.snapshot().story.paletteTintConfigKey))
+        assertTrue(repository.setPaletteTint("dominant", 100, 110, 0, false))
+        assertFalse(repository.setPaletteTint("dominant", 100, 110, 0, false))
+        val reopened = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(PaletteTintPreferences.avoidBackgroundColor(reopened.snapshot().story.paletteTintConfigKey))
+        assertTrue(reopened.clearPaletteTint())
+        assertTrue(PaletteTintPreferences.avoidBackgroundColor(repository.snapshot().story.paletteTintConfigKey))
+        assertFalse(reopened.clearPaletteTint())
+    }
 }

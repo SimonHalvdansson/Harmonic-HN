@@ -226,8 +226,13 @@ class AppSettingsRepository(
     fun setStoriesToCache(value: Int) = reader.setStoriesToCache(value)
     fun applyWelcomePreset(expressive: Boolean) = mutator.applyWelcomePreset(expressive)
 
-    fun setPaletteTint(mode: String?, strength: Int, colorfulness: Int, tone: Int): Boolean =
-        mutator.setPaletteTint(mode, strength, colorfulness, tone)
+    fun setPaletteTint(
+        mode: String?,
+        strength: Int,
+        colorfulness: Int,
+        tone: Int,
+        avoidBackgroundColor: Boolean = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
+    ): Boolean = mutator.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
 
     fun clearPaletteTint(): Boolean = mutator.clearPaletteTint()
 }
