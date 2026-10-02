@@ -9,6 +9,9 @@ import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -660,11 +663,6 @@ fun StoryPreviewOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(
-                        horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
-                        vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
-                    )
                     .graphicsLayer {
                         val pageOffset = abs(
                             (pagerState.currentPage - page) +
@@ -674,55 +672,80 @@ fun StoryPreviewOverlay(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                val currentPage = page == pagerState.currentPage
-                val cardColor = if (currentPage) currentCardColor else {
-                    rememberStoryPreviewCardColor(controller, state.stories[page])
-                }
-                val cardModifier = Modifier
-                    .widthIn(
-                        max = if (tablet) {
-                            HarmonicDimens.compose_comment_action_tablet_max_width
-                        } else {
-                            HarmonicDimens.compose_comment_action_max_width
-                        },
-                    )
-                    .fillMaxWidth()
-                    .then(
-                        if (currentPage) {
-                            Modifier.onGloballyPositioned {
-                                if (updateRestingTargetGeometry) {
-                                    targetBounds = it.boundsInWindow()
+                // The background is a sibling, not an ancestor, of the card. Both touch
+                // origins then hand unused drag/fling motion directly to Pager through one
+                // nested-scroll child, without an extra scroll node intercepting card flings.
+                Box(Modifier.matchParentSize().scrollable(
+                    state = rememberScrollableState { 0f },
+                    orientation = Orientation.Vertical,
+                    enabled = progress >= 0.999f && dismissRequest == 0 && removalRequest == null,
+                ))
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .padding(
+                            horizontal = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+                            vertical = HarmonicDimens.compose_comment_action_screen_padding_vertical,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val currentPage = page == pagerState.currentPage
+                    val cardColor = if (currentPage) currentCardColor else {
+                        rememberStoryPreviewCardColor(controller, state.stories[page])
+                    }
+                    val cardModifier = Modifier
+                        .widthIn(
+                            max = if (tablet) {
+                                HarmonicDimens.compose_comment_action_tablet_max_width
+                            } else {
+                                HarmonicDimens.compose_comment_action_max_width
+                            },
+                        )
+                        .fillMaxWidth()
+                        .then(
+                            if (currentPage) {
+                                Modifier.onGloballyPositioned {
+                                    if (updateRestingTargetGeometry) {
+                                        targetBounds = it.boundsInWindow()
+                                    }
                                 }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .then(
+                            if (currentPage && predictiveEased > 0f) {
+                                Modifier.graphicsLayer {
+                                    scaleX = backScale
+                                    scaleY = backScale
+                                    translationX = backTranslationX
+                                    translationY = backTranslationY
+                                    transformOrigin = TransformOrigin(
+                                        backPivotFractionX,
+                                        0.5f,
+                                    )
+                                }
+                            } else {
+                                Modifier
                             }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .then(
-                        if (currentPage && predictiveEased > 0f) {
-                            Modifier.graphicsLayer {
-                                scaleX = backScale
-                                scaleY = backScale
-                                translationX = backTranslationX
-                                translationY = backTranslationY
-                                transformOrigin = TransformOrigin(
-                                    backPivotFractionX,
-                                    0.5f,
-                                )
-                            }
-                        } else {
-                            Modifier
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        )
+                    if (currentPage) {
+                        CompositionLocalProvider(
+                            LocalStoryPreviewSharedTransition provides sharedTransition,
+                        ) {
+                            cardContent(
+                                state.stories[page],
+                                page,
+                                cardColor,
+                                cardModifier,
+                            )
                         }
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    )
-                if (currentPage) {
-                    CompositionLocalProvider(
-                        LocalStoryPreviewSharedTransition provides sharedTransition,
-                    ) {
+                    } else {
                         cardContent(
                             state.stories[page],
                             page,
@@ -730,13 +753,6 @@ fun StoryPreviewOverlay(
                             cardModifier,
                         )
                     }
-                } else {
-                    cardContent(
-                        state.stories[page],
-                        page,
-                        cardColor,
-                        cardModifier,
-                    )
                 }
             }
         }
