@@ -14,6 +14,9 @@
 		A10000000000000000000006 /* IosAccountStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* IosAccountStorage.swift */; };
 		A10000000000000000000007 /* IosBrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* IosBrowserViewController.swift */; };
 		A10000000000000000000008 /* IosTextDocumentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* IosTextDocumentService.swift */; };
+		A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* IosLiteRtSummaryService.swift */; };
+		A10000000000000000000010 /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = AC0000000000000000000002 /* LiteRTLM */; };
+		C10000000000000000000001 /* IosLocalAiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* IosLocalAiTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -24,6 +27,8 @@
 			remoteGlobalIDString = A50000000000000000000001;
 			remoteInfo = HarmonicIos;
 		};
+
+		C30000000000000000000001 = {isa = PBXContainerItemProxy; containerPortal = A50000000000000000000002; proxyType = 1; remoteGlobalIDString = A50000000000000000000001; remoteInfo = HarmonicIos; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +42,9 @@
 		A20000000000000000000006 /* IosAccountStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosAccountStorage.swift; sourceTree = "<group>"; };
 		A20000000000000000000007 /* IosBrowserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBrowserViewController.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* IosTextDocumentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosTextDocumentService.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* IosLiteRtSummaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLiteRtSummaryService.swift; sourceTree = "<group>"; };
+		C20000000000000000000001 /* IosLocalAiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLocalAiTests.swift; sourceTree = "<group>"; };
+		C20000000000000000000002 /* HarmonicIosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HarmonicIosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000010 /* LiteRTLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,6 +63,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C30000000000000000000002 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -62,6 +72,7 @@
 			children = (
 				A40000000000000000000002 /* HarmonicIos */,
 				B40000000000000000000001 /* HarmonicIosUITests */,
+				C40000000000000000000001 /* HarmonicIosTests */,
 				A40000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -72,6 +83,7 @@
 				A20000000000000000000001 /* AppDelegate.swift */,
 				A20000000000000000000002 /* IosNativeServices.swift */,
 				A20000000000000000000008 /* IosTextDocumentService.swift */,
+				A20000000000000000000009 /* IosLiteRtSummaryService.swift */,
 				A20000000000000000000007 /* IosBrowserViewController.swift */,
 				A20000000000000000000006 /* IosAccountStorage.swift */,
 				A20000000000000000000004 /* Assets.xcassets */,
@@ -85,6 +97,7 @@
 			children = (
 				A20000000000000000000005 /* HarmonicIos.app */,
 				B20000000000000000000002 /* HarmonicIosUITests.xctest */,
+				C20000000000000000000002 /* HarmonicIosTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +108,13 @@
 				B20000000000000000000001 /* HarmonicIosUITests.swift */,
 			);
 			path = HarmonicIosUITests;
+			sourceTree = "<group>";
+		};
+
+		C40000000000000000000001 /* HarmonicIosTests */ = {
+			isa = PBXGroup;
+			children = (C20000000000000000000001 /* IosLocalAiTests.swift */);
+			path = HarmonicIosTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,6 +135,7 @@
 			);
 			name = HarmonicIos;
 			packageProductDependencies = (
+				AC0000000000000000000002 /* LiteRTLM */,
 			);
 			productName = HarmonicIos;
 			productReference = A20000000000000000000005 /* HarmonicIos.app */;
@@ -138,6 +159,18 @@
 			productName = HarmonicIosUITests;
 			productReference = B20000000000000000000002 /* HarmonicIosUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+
+		C50000000000000000000001 /* HarmonicIosTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C90000000000000000000001;
+			buildPhases = (C70000000000000000000001, C30000000000000000000002);
+			buildRules = ();
+			dependencies = (C80000000000000000000001);
+			name = HarmonicIosTests;
+			productName = HarmonicIosTests;
+			productReference = C20000000000000000000002;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -170,11 +203,15 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A40000000000000000000003 /* Products */;
+			packageReferences = (
+				AC0000000000000000000001 /* LiteRT-LM */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				A50000000000000000000001 /* HarmonicIos */,
 				B50000000000000000000001 /* HarmonicIosUITests */,
+				C50000000000000000000001 /* HarmonicIosTests */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +260,7 @@
 				A10000000000000000000001 /* AppDelegate.swift in Sources */,
 				A10000000000000000000002 /* IosNativeServices.swift in Sources */,
 				A10000000000000000000008 /* IosTextDocumentService.swift in Sources */,
+				A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */,
 				A10000000000000000000007 /* IosBrowserViewController.swift in Sources */,
 				A10000000000000000000006 /* IosAccountStorage.swift in Sources */,
 			);
@@ -236,6 +274,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C70000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -244,6 +283,7 @@
 			target = A50000000000000000000001 /* HarmonicIos */;
 			targetProxy = B30000000000000000000001 /* PBXContainerItemProxy */;
 		};
+		C80000000000000000000001 = {isa = PBXTargetDependency; target = A50000000000000000000001; targetProxy = C30000000000000000000001; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -408,6 +448,44 @@
 			};
 			name = Release;
 		};
+
+		CC0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-framework", HarmonicKit);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.simon.harmonichackernews.ios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HarmonicIos.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HarmonicIos";
+			};
+			name = Debug;
+		};
+
+		CC0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-framework", HarmonicKit);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.simon.harmonichackernews.ios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HarmonicIos.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HarmonicIos";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -438,7 +516,22 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C90000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (CC0000000000000000000001, CC0000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
+/* Begin XCLocalSwiftPackageReference section */
+		AC0000000000000000000001 /* LiteRT-LM */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LiteRTLM;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AC0000000000000000000002 /* LiteRTLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC0000000000000000000001 /* LiteRT-LM */;
+			productName = LiteRTLM;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A50000000000000000000002 /* Project object */;
 }

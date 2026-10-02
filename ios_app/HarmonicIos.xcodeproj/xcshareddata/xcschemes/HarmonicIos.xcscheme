@@ -51,6 +51,15 @@
                ReferencedContainer = "container:HarmonicIos.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C50000000000000000000001"
+               BuildableName = "HarmonicIosTests.xctest"
+               BlueprintName = "HarmonicIosTests"
+               ReferencedContainer = "container:HarmonicIos.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

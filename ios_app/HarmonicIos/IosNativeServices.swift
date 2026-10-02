@@ -17,6 +17,7 @@ final class IosNativeServices {
     let timeFormatting: PlatformTimeFormatter
     let appearance: IosAppearanceService
     let localSummary: IosNativeSummaryBridge
+    let liteRt = IosLiteRtSummaryService()
 
     init() {
         let vault = KeychainVault(service: "com.simon.harmonichackernews.ios")

@@ -28,6 +28,7 @@ import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.DataSettingsRoute
 import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
 import com.simon.harmonichackernews.ui.settings.ManagedLocalModelPanel
+import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
 import com.simon.harmonichackernews.ui.settings.SettingsSection
@@ -88,6 +89,8 @@ private fun IosAiSettings(
         app.createLocalSummarySettingsRuntime(scope)
     }
     val availabilityState by settingsRuntime.state.collectAsState()
+    val localModels = app.localModels
+    val managerState = localModels?.cachedState?.collectAsState()?.value
 
     LaunchedEffect(settingsRuntime, refresh) {
         settingsRuntime.resolve()
@@ -109,20 +112,33 @@ private fun IosAiSettings(
         onLocalModeUnavailable = {
             scene.userMessages.show(
                 availabilityState.failure
-                    ?: "Apple Intelligence summarization is unavailable on this device",
+                    ?: "Local summarization is unavailable on this device",
                 UserMessageDuration.LONG,
             )
         },
         localModelsContent = {
-            ManagedLocalModelPanel(
-                title = "Apple Intelligence",
-                status = when {
-                    !availabilityState.availabilityResolved -> "Checking availability…"
-                    availabilityState.available -> "Available · system managed"
-                    else -> availabilityState.failure ?: "Not available"
-                },
-                available = availabilityState.available,
-            )
+            if (localModels != null && managerState != null) {
+                LocalModelsRoute(
+                    localModels = localModels,
+                    managerState = managerState,
+                    nanoAvailabilityResolved = availabilityState.availabilityResolved,
+                    nanoAvailable = availabilityState.nanoAvailable,
+                    nanoBaseModelName = availabilityState.nanoBaseModelName,
+                    managedModelStatus = availabilityState.statusMessage,
+                    onChanged = { refresh++ },
+                    onMessage = { scene.userMessages.show(it, UserMessageDuration.LONG) },
+                )
+            } else {
+                ManagedLocalModelPanel(
+                    title = "Apple Intelligence",
+                    status = when {
+                        !availabilityState.availabilityResolved -> "Checking availability…"
+                        availabilityState.available -> "Available · system managed"
+                        else -> availabilityState.failure ?: "Not available"
+                    },
+                    available = availabilityState.available,
+                )
+            }
         },
         dialogContent = { dialog, dismiss ->
             when (dialog) {

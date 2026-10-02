@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.network.ReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.summary.IosLiteRtSummaryBridge
 
 /** Keeps UIKit traits, status-bar foreground, and backing views aligned with the shared theme. */
 interface IosAppearanceController {
@@ -27,6 +28,7 @@ class IosPlatformBindings(
     val replyNotifications: ReplyNotificationPlatform? = null,
     localSummary: LocalSummaryEngine? = null,
     nativeLocalSummary: IosNativeSummaryBridge? = null,
+    val nativeLiteRt: IosLiteRtSummaryBridge? = null,
 ) {
     val localSummary: LocalSummaryEngine? =
         localSummary ?: nativeLocalSummary?.let(::IosNativeLocalSummaryEngine)
@@ -40,6 +42,7 @@ class IosPlatformBindings(
 fun createIosPlatformDependencies(
     appDataStore: KeyValueStore,
     bindings: IosPlatformBindings,
+    localSummary: LocalSummaryEngine? = bindings.localSummary,
 ): AppPlatformDependencies = AppPlatformDependencies(
     credentials = bindings.credentials,
     accounts = bindings.accounts,
@@ -52,5 +55,5 @@ fun createIosPlatformDependencies(
     battery = IosBatteryStatusService(),
     timeFormatting = bindings.timeFormatting,
     replyNotifications = bindings.replyNotifications,
-    localSummary = bindings.localSummary,
+    localSummary = localSummary,
 )

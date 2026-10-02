@@ -16,7 +16,9 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 readonly repository_root="$SRCROOT/.."
 cd "$repository_root"
-./gradlew :ui:embedAndSignAppleFrameworkForXcode
+# Kotlin 2.5.0-Beta1's native incremental cache can fail while lowering exported enums.
+# Xcode's dependency file still skips this phase when the framework inputs are unchanged.
+./gradlew :ui:embedAndSignAppleFrameworkForXcode -Pkotlin.incremental.native=false
 
 readonly framework_output="${SCRIPT_OUTPUT_FILE_0:?Xcode must declare the HarmonicKit framework output}"
 if [[ ! -f "$framework_output" ]]; then

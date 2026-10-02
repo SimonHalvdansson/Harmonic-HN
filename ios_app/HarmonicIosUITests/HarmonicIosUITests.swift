@@ -16,6 +16,39 @@ private extension XCUIApplication {
     }
 }
 
+final class IosLiteRtSettingsUITests: XCTestCase {
+    func testLocalPickerOffersGemmaWithoutGgufModels() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        app.completeWelcomeIfNeeded()
+        let more = app.buttons["More options"]
+        XCTAssertTrue(more.waitForExistence(timeout: 20))
+        more.tap()
+        app.buttons["Settings"].tap()
+        let ai = app.buttons["AI summarization"]
+        for _ in 0..<4 where !ai.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(ai.waitForExistence(timeout: 10))
+        ai.tap()
+        let local = app.buttons["Local"]
+        XCTAssertTrue(local.waitForExistence(timeout: 10))
+        local.tap()
+        func labelContaining(_ text: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        }
+        XCTAssertTrue(labelContaining("Gemma 4 E2B").waitForExistence(timeout: 10))
+        XCTAssertTrue(labelContaining("Gemma 4 E4B").exists)
+        XCTAssertTrue(labelContaining("Apple Intelligence").exists)
+        XCTAssertFalse(labelContaining("Bonsai 1.7B").exists)
+        XCTAssertFalse(labelContaining("llama.cpp").exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "iOS LiteRT model picker"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+}
+
 final class HarmonicIosUITests: XCTestCase {
     private var app: XCUIApplication!
 

@@ -125,7 +125,8 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             textDocuments: services.textDocuments,
             replyNotifications: nil,
             localSummary: nil,
-            nativeLocalSummary: services.localSummary
+            nativeLocalSummary: services.localSummary,
+            nativeLiteRt: services.liteRt
         )
         let harmonic = IosHarmonicApplication(bindings: bindings, runtime: runtime)
         let root = HarmonicRootViewController(

@@ -10,6 +10,7 @@ import com.simon.harmonichackernews.settings.IosKeyValueStore
 import com.simon.harmonichackernews.settings.SurfaceEffectMode
 import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.summary.LocalModelService
+import com.simon.harmonichackernews.summary.IosLocalAiEnvironment
 import kotlinx.io.files.Path
 
 /** Native runtime and storage decisions required before the iOS host creates its app graph. */
@@ -51,9 +52,20 @@ class IosHarmonicAppBootstrap(
         NSUserDefaults(suiteName = StorageKeyPolicy.FILE_ACCESS_STORE),
     )
     val network = IosNetworkComponent(userAgent)
+    private val localAi = bindings.nativeLiteRt?.takeIf { runtime.localModels == null }?.let {
+        IosLocalAiEnvironment.create(
+            preferences = preferences,
+            modelsDirectory = Path(runtime.filesDirectory, "local_ai_models").toString(),
+            cacheDirectory = Path(runtime.cacheDirectory, "local_ai").toString(),
+            userAgent = userAgent,
+            apple = bindings.localSummary,
+            liteRt = it,
+        )
+    }
     val platform = createIosPlatformDependencies(
         appData,
         bindings,
+        localSummary = localAi?.summary ?: bindings.localSummary,
     )
     val persistentStorage = HarmonicPersistentStorageFactory.create(
         roots = HarmonicStorageRoots(
@@ -80,7 +92,7 @@ class IosHarmonicAppBootstrap(
             // WKWebView cannot consume the stored snapshot format yet.
             articleSnapshotStore = null,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
-            localModels = runtime.localModels,
+            localModels = runtime.localModels ?: localAi?.models,
         ),
     )
 
@@ -88,6 +100,7 @@ class IosHarmonicAppBootstrap(
     fun createScene(): HarmonicSceneComposition = app.createScene()
 
     fun close() {
+        localAi?.close()
         network.close()
     }
 }
