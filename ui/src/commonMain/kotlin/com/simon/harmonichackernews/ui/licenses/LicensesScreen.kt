@@ -79,6 +79,9 @@ private val LicenseIconShape = RoundedCornerShape(9.dp)
 private val InsetLicenseIcons = setOf(
     "Kotlin standard library",
     "kotlinx.coroutines",
+    "kotlinx.serialization",
+    "kotlinx.io",
+    "kotlinx.collections.immutable",
     "ML Kit GenAI APIs",
     "llama.cpp",
     "KaTeX math fonts",
@@ -288,6 +291,9 @@ internal fun licenseIconResource(name: String): DrawableResource? = when (name) 
     "Material Components for Android" -> Res.drawable.library_logo_material_components
     "Kotlin standard library" -> Res.drawable.library_logo_kotlin
     "kotlinx.coroutines" -> Res.drawable.library_logo_coroutines
+    "kotlinx.serialization" -> Res.drawable.library_logo_kotlin
+    "kotlinx.io" -> Res.drawable.library_logo_kotlin
+    "kotlinx.collections.immutable" -> Res.drawable.library_logo_kotlin
     "Ktor" -> Res.drawable.library_logo_ktor
     "Compose Multiplatform" -> Res.drawable.library_logo_compose_multiplatform
     "Haze" -> Res.drawable.library_logo_haze
