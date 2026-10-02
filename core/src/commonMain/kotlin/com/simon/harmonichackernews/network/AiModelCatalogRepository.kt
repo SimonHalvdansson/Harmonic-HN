@@ -284,14 +284,22 @@ object AiModelCatalogSelection {
         models.asSequence()
             .filter {
                 it.created >= createdAfter && it.hasPrices() &&
-                    !it.openRouterId.endsWith("-batch", ignoreCase = true) &&
-                    !it.openRouterId.endsWith("-pro", ignoreCase = true)
+                    isDefaultModelCandidate(it.openRouterId)
             }
             .minWithOrNull(
                 compareBy<AiModel>(AiModel::totalTokenPrice)
                     .thenByDescending(AiModel::created)
                     .thenBy { it.name.length },
             )
+
+    private fun isDefaultModelCandidate(openRouterId: String): Boolean {
+        val modelId = openRouterId.substringAfterLast('/')
+        // Routing qualifiers such as :batch and :free must never become automatic defaults.
+        if (':' in modelId) return false
+        return modelId.split('-', '_').none {
+            it.equals("pro", ignoreCase = true) || it.equals("batch", ignoreCase = true)
+        }
+    }
 }
 
 class AiModelCatalogException(message: String, cause: Throwable? = null) :
