@@ -614,8 +614,17 @@ private fun SubmissionsHeader(
 
 private fun formatSubmissionCount(count: AlgoliaSubmissionCount?, singular: String, plural: String): String? {
     if (count == null || count.value <= 0) return null
-    val amount = (if (count.exact) "" else "≈") + GroupedNumberFormatter.format(count.value)
-    return "$amount ${if (count.value == 1) singular else plural}"
+    // Algolia's exhaustiveNbHits flag, rather than a fixed count threshold, controls accuracy.
+    val roundingUnit = when {
+        count.exact -> 1
+        count.value >= 1000 -> 1000
+        count.value >= 100 -> 100
+        count.value >= 10 -> 10
+        else -> 1
+    }
+    val value = count.value / roundingUnit * roundingUnit
+    val amount = GroupedNumberFormatter.format(value).replace(',', ' ') + if (count.exact) "" else "+"
+    return "$amount ${if (count.exact && value == 1) singular else plural}"
 }
 
 @Composable
