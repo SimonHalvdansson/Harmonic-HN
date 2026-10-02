@@ -2,8 +2,37 @@ package com.simon.harmonichackernews.network
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import com.simon.harmonichackernews.data.Story
 
 class StoryTextProcessorTest {
+    @Test
+    fun pdfMarkerBeforePublicationYearIsRemovedWithoutRemovingTheYear() {
+        for (marker in listOf("[pdf]", "[PDF]", "(pdf)")) {
+            for (url in listOf("https://example.com/paper.pdf", "https://example.com/paper")) {
+                val story = Story().apply { title = "A paper $marker (2025)"; this.url = url }
+                StoryTextProcessor.applyTitleBadges(story)
+                assertEquals("A paper (2025)", story.pdfTitle)
+            }
+        }
+    }
+
+    @Test
+    fun pdfCleanupPreservesNonSuffixUsesAndExistingBadges() {
+        val story = Story().apply { url = "https://example.com/paper" }
+        for (title in listOf("[PDF] tools (2025)", "A paper [pdf] (draft)")) {
+            story.title = title
+            StoryTextProcessor.applyTitleBadges(story)
+            assertNull(story.pdfTitle)
+        }
+        story.title = "A paper (2025) [pdf]"
+        StoryTextProcessor.applyTitleBadges(story)
+        assertEquals("A paper (2025)", story.pdfTitle)
+        story.title = "A talk [video]"
+        StoryTextProcessor.applyTitleBadges(story)
+        assertEquals("A talk", story.videoTitle)
+    }
+
     @Test
     fun balancedParenthesesStayInUrlsButSurroundingPunctuationDoesNot() {
         val url = "https://en.wikipedia.org/wiki/Function_(mathematics)"

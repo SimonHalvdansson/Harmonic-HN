@@ -12,6 +12,7 @@ object StoryTextProcessor {
     )
     private const val TRAILING_PUNCTUATION = ".,;:!?"
     private val pdfSuffixes = arrayOf(" [pdf]", "[pdf]", " (pdf)", "(pdf)")
+    private val trailingYear = Regex("""\s+\(\d{4}\)\s*$""")
     private val videoSuffixes = arrayOf(" [video]", "[video]", " (video)", "(video)")
 
     fun preprocessHtml(input: String?): String? {
@@ -38,7 +39,11 @@ object StoryTextProcessor {
         story.videoTitle = null
 
         val mayHaveSuffix = title.last() == ']' || title.last() == ')'
-        val pdfTitle = if (mayHaveSuffix) stripSuffix(title, pdfSuffixes) else null
+        val year = trailingYear.find(title)
+        val pdfTitle = if (year != null) {
+            stripSuffix(title.substring(0, year.range.first), pdfSuffixes)
+                ?.plus(year.value.trimEnd())
+        } else if (mayHaveSuffix) stripSuffix(title, pdfSuffixes) else null
         when {
             url.endsWith(".pdf", ignoreCase = true) -> story.pdfTitle = pdfTitle ?: title
             pdfTitle != null -> story.pdfTitle = pdfTitle
