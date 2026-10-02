@@ -96,6 +96,7 @@ fun SettingsMainToggle(
     checked: Boolean,
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    summary: String? = null,
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = HarmonicTheme.colors.settingsMainToggle.copy(
@@ -120,7 +121,7 @@ fun SettingsMainToggle(
                 end = HarmonicDimens.settings_list_segment_horizontal_margin,
                 bottom = 16.dp,
             )
-            .height(72.dp)
+            .defaultMinSize(minHeight = 72.dp)
             .clip(RoundedCornerShape(36.dp))
             .background(backgroundColor)
             .toggleable(
@@ -129,18 +130,29 @@ fun SettingsMainToggle(
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
             )
-            .padding(start = 24.dp, end = 16.dp),
+            .padding(start = 24.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f),
-            color = textColor,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 17.sp,
-            lineHeight = 21.sp,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = textColor,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                lineHeight = 21.sp,
+            )
+            if (!summary.isNullOrBlank()) {
+                Text(
+                    text = summary,
+                    modifier = Modifier.padding(top = 1.dp),
+                    color = textColor,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+        }
         HarmonicSwitch(
             checked = checked,
             onCheckedChange = null,

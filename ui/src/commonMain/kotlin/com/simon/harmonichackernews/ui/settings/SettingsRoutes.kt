@@ -177,6 +177,14 @@ fun AiSummarySettingsRoute(
                 selectedLocalModelId ==
                 LocalModelCatalog.MODEL_GEMINI_NANO,
             geminiNanoSummaryMode = persistedSettings.geminiNanoSummaryMode,
+            disabledReason = if (
+                persistedSettings.mode == AiSummaryMode.CLOUD &&
+                persistedSettings.credentialsLoaded && persistedSettings.apiKey.isBlank()
+            ) {
+                "API key not set"
+            } else {
+                null
+            },
         ),
         showNavigation = showNavigation,
         contentVersion = persistedSettings.hashCode() + contentVersion,
