@@ -109,6 +109,8 @@ jobs:
   desktop:
     name: Desktop ${{ matrix.artifact_name }}
     runs-on: ${{ matrix.os }}
+    env:
+      ORG_GRADLE_PROJECT_harmonicAndroidHostEnabled: 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +134,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      # Gradle also configures the Android native feature for desktop tasks.
+      # The shared KMP modules still configure an Android library target.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
       - uses: ./.github/actions/cache-desktop-native

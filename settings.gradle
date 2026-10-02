@@ -16,11 +16,15 @@ dependencyResolutionManagement {
     }
 }
 
-include ':app'
-include ':local_ai_runtime'
+// Non-Android CI hosts still use the KMP modules, but do not need to configure
+// the Android application/dynamic feature (which installs the Android NDK).
+if (providers.gradleProperty('harmonicAndroidHostEnabled').getOrElse('true').toBoolean()) {
+    include ':app'
+    include ':local_ai_runtime'
+    include ':benchmark'
+}
 include ':resources'
 include ':core'
 include ':ui'
 include ':desktop_app'
-include ':benchmark'
 rootProject.name = "Harmonic Hacker News"

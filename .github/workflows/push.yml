@@ -10,6 +10,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Select platform checks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      android: ${{ steps.platforms.outputs.android }}
+      desktop: ${{ steps.platforms.outputs.desktop }}
+      ios: ${{ steps.platforms.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Test platform selection
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_ci_platforms.py'
+      - name: Find last successful push
+        if: github.event_name == 'push'
+        id: last-success
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Include changes from failed/cancelled runs, not just the last commit.
+        # An unavailable baseline selects every platform.
+        run: |
+          base=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow push.yml \
+            --branch "$GITHUB_REF_NAME" --event push --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // empty') || base=""
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+      - name: Select affected platforms
+        id: platforms
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || steps.last-success.outputs.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: python3 -B .github/scripts/ci_platforms.py
+
   verify:
     name: KMP and host tests
     runs-on: ubuntu-24.04
@@ -38,7 +73,8 @@ jobs:
           --parallel
 
   build:
-    needs: verify
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     env:
       BUNDLETOOL_VERSION: '1.18.3'
@@ -119,8 +155,11 @@ jobs:
 
   desktop:
     name: Desktop ${{ matrix.artifact_name }}
-    needs: verify
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: ${{ matrix.os }}
+    env:
+      ORG_GRADLE_PROJECT_harmonicAndroidHostEnabled: 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -144,7 +183,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      # Gradle also configures the Android native feature for desktop tasks.
+      # The shared KMP modules still configure an Android library target.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
       - uses: ./.github/actions/cache-desktop-native
@@ -177,8 +216,12 @@ jobs:
 
   ios:
     name: iOS KMP and Xcode verification
-    needs: verify
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-15
+    env:
+      # Inherited by both Gradle and the Gradle invocation inside xcodebuild.
+      ORG_GRADLE_PROJECT_harmonicAndroidHostEnabled: 'false'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -186,9 +229,27 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      # Gradle also configures the Android native feature for iOS tasks.
+      # The shared KMP modules still configure an Android library target.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+      - name: Identify Kotlin and Apple toolchains
+        id: konan-toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          kotlin=$(sed -n 's/^kotlin = "\([^"]*\)"/\1/p' gradle/libs.versions.toml)
+          test -n "$kotlin"
+          xcode_version=$(xcodebuild -version)
+          test -n "$xcode_version"
+          echo "kotlin=$kotlin" >> "$GITHUB_OUTPUT"
+          echo "xcode=$(printf '%s' "$xcode_version" | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Cache Kotlin Native toolchain and dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.konan
+          # No fallback across Kotlin/Xcode versions: native compiler caches
+          # must match the compiler and Apple SDK that produced them.
+          key: konan-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.konan-toolchain.outputs.kotlin }}-${{ steps.konan-toolchain.outputs.xcode }}-${{ hashFiles('gradle/libs.versions.toml', 'gradle.properties') }}
       - name: Run iOS KMP tests
         run: >-
           ./gradlew
