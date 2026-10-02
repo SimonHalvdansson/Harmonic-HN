@@ -31,6 +31,9 @@ object CommonLicenseCatalog {
     val entries = listOf(
         LicenseEntry("Kotlin standard library", "JetBrains", "Apache License 2.0", "https://kotlinlang.org/"),
         LicenseEntry("kotlinx.coroutines", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
+        LicenseEntry("kotlinx.serialization", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.serialization"),
+        LicenseEntry("kotlinx.io", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx-io"),
+        LicenseEntry("kotlinx.collections.immutable", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.collections.immutable"),
         LicenseEntry("Ktor", "JetBrains", "Apache License 2.0", "https://ktor.io/"),
         LicenseEntry("Compose Multiplatform", "JetBrains", "Apache License 2.0", "https://www.jetbrains.com/compose-multiplatform/"),
         LicenseEntry("Haze", "Chris Banes", "Apache License 2.0", "https://github.com/chrisbanes/haze"),
