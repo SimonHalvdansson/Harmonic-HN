@@ -133,7 +133,9 @@ class StoryPreviewRepository(
                 summary.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE) &&
             (LinkSummaryParser.hackerNewsItemId(url) == null ||
                 (summary.contentType == LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE &&
-                    (LinkSummaryParser.isHackerNewsStory(summary) || summary.commentTextVersion >= 1)))
+                    (if (LinkSummaryParser.isHackerNewsStory(summary)) {
+                        summary.storyMetadataVersion >= 1
+                    } else summary.commentTextVersion >= 1)))
     }
 
     suspend fun cachedLinkSummary(pageUrl: String): LinkSummary? = withContext(dispatcher) {

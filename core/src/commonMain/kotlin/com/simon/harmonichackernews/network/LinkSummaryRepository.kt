@@ -35,6 +35,10 @@ data class LinkSummary(
     val imageUrl: String = "",
     val finalUrl: String = "",
     val commentTextVersion: Int = 0,
+    val storyMetadataVersion: Int = 0,
+    val storyPoints: Int = -1,
+    val storyComments: Int = -1,
+    val storyUrl: String = "",
 )
 
 object LinkSummaryCodec {
@@ -49,6 +53,10 @@ object LinkSummaryCodec {
         .put("image", summary.imageUrl)
         .put("url", summary.finalUrl)
         .put("commentTextVersion", summary.commentTextVersion)
+        .put("storyMetadataVersion", summary.storyMetadataVersion)
+        .put("storyPoints", summary.storyPoints)
+        .put("storyComments", summary.storyComments)
+        .put("storyUrl", summary.storyUrl)
         .toString()
 
     fun decode(serialized: String?): LinkSummary? {
@@ -66,6 +74,10 @@ object LinkSummaryCodec {
                 imageUrl = json.optString("image", ""),
                 finalUrl = json.optString("url", ""),
                 commentTextVersion = json.optInt("commentTextVersion", 0),
+                storyMetadataVersion = json.optInt("storyMetadataVersion", 0),
+                storyPoints = json.optInt("storyPoints", -1),
+                storyComments = json.optInt("storyComments", -1),
+                storyUrl = json.optString("storyUrl", ""),
             )
         }.getOrNull()
     }
@@ -510,14 +522,7 @@ object LinkSummaryParser {
                 firstNonEmpty(clean(item.optString("title")), fallbackTitle)
             }
             if (title.isEmpty()) return null
-            val metadata = buildHackerNewsMetadata(item, comment, author)
             val body = cleanHackerNewsText(item.optString("text"))
-            val description = when {
-                comment -> body
-                body.isEmpty() -> metadata
-                metadata.isEmpty() -> body
-                else -> "$metadata — $body"
-            }
             LinkSummary(
                 title = title,
                 siteName = if (comment) HACKER_NEWS_COMMENT_SITE_NAME else HACKER_NEWS_STORY_SITE_NAME,
@@ -527,12 +532,14 @@ object LinkSummaryParser {
                 }.orEmpty(),
                 language = "en",
                 contentType = HACKER_NEWS_ITEM_CONTENT_TYPE,
-                description = if (comment) {
-                    HtmlTextUtils
-                        .normalizeAndTruncatePlainText(description, MAX_DESCRIPTION_CHARS)
-                } else truncate(description, MAX_DESCRIPTION_CHARS),
+                description = HtmlTextUtils.normalizeAndTruncatePlainText(body, MAX_DESCRIPTION_CHARS),
                 finalUrl = pageUrl,
                 commentTextVersion = if (comment) 1 else 0,
+                storyMetadataVersion = if (comment) 0 else 1,
+                storyPoints = if (comment) -1 else item.optInt("score", -1),
+                storyComments = if (comment) -1 else item.optInt("descendants", -1),
+                storyUrl = if (comment) "" else item.optString("url")
+                    .takeIf(String::isNotBlank)?.let(::normalizeHttpUrl).orEmpty(),
             )
         }.getOrNull()
     }
@@ -554,32 +561,6 @@ object LinkSummaryParser {
         .replace('\u00a0', ' ')
         .replace(whitespacePattern, " ")
         .trim()
-
-    private fun buildHackerNewsMetadata(
-        item: JsonObject,
-        comment: Boolean,
-        author: String,
-    ): String {
-        val parts = mutableListOf<String>()
-        if (!comment && item.has("score")) {
-            parts += formatCount(item.optInt("score"), "point", "points")
-        }
-        if (author.isNotEmpty()) parts += "by $author"
-        item.optInt("time").takeIf { it > 0 }?.let {
-            parts += RelativeTimeFormatter.format(
-                it.toLong(),
-                Clock.System.now().toEpochMilliseconds(),
-            )
-        }
-        if (comment) {
-            item.optJSONArray("kids")?.length()?.takeIf { it > 0 }?.let {
-                parts += formatCount(it, "reply", "replies")
-            }
-        } else if (item.has("descendants")) {
-            parts += formatCount(item.optInt("descendants"), "comment", "comments")
-        }
-        return parts.joinToString(" · ")
-    }
 
     private fun cleanHackerNewsText(html: String?): String {
         if (html.isNullOrEmpty()) return ""
@@ -609,9 +590,6 @@ object LinkSummaryParser {
         visit(Ksoup.parseBodyFragment(html).body())
         return output.toString().replace('\u00a0', ' ').trim()
     }
-
-    private fun formatCount(count: Int, singular: String, plural: String): String =
-        "$count ${if (count == 1) singular else plural}"
 
     private fun extractImageUrl(
         metadata: MetadataIndex,

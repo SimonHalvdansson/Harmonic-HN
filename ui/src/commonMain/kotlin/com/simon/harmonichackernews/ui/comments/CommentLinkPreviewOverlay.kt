@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import com.simon.harmonichackernews.ui.common.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ButtonDefaults
 import com.simon.harmonichackernews.ui.common.ElevatedButton
 import androidx.compose.material3.Icon
@@ -265,6 +268,7 @@ fun ReferenceCardContent(
     }
 
     val result = summaryContent.result
+    val hnStory = result?.takeIf(LinkSummaryParser::isHackerNewsStory)
     val title = firstNotBlank(result?.title, fallbackTitle, url)
     val description = result?.description?.takeIf(String::isNotBlank)
     val domain = if (
@@ -370,86 +374,233 @@ fun ReferenceCardContent(
                 )
                 .verticalScroll(rememberScrollState()),
         ) {
-            ReferenceImageHeader(
-                showImage = showImage,
-                imageUrl = imageUrl,
-                loading = summaryContent.loading,
-                expanded = imageExpanded,
-                imageShape = imageShape,
-                imageRatio = imageRatio,
-                metadataAlpha = metadataAlpha.value,
-                summaryContentAlpha = summaryContentAlpha.value,
-                domain = domain,
-                favicon = favicon,
-                title = title,
-                metadataLoading = summaryContent.loading && !summaryContent.showFallback,
-                fontFamily = typography.family,
-                metaSize = typography.storyMetaSize,
-                titleSize = typography.storyTitleSize + 0.5f,
-                lookaheadScope = this@LookaheadScope,
-                boundsTransform = headerBoundsTransform,
-                referenceImage = referenceImage,
-                onImageRatio = { imageRatio = it },
-                onImageClick = onImageClick,
-            )
+            if (hnStory != null) {
+                HackerNewsStoryCard(
+                    summary = hnStory,
+                    favicon = favicon,
+                    fontFamily = typography.family,
+                    textSize = typography.commentTextSize,
+                    onOpen = onOpen,
+                    modifier = Modifier.graphicsLayer { alpha = summaryContentAlpha.value },
+                )
+            } else {
+                ReferenceImageHeader(
+                    showImage = showImage,
+                    imageUrl = imageUrl,
+                    loading = summaryContent.loading,
+                    expanded = imageExpanded,
+                    imageShape = imageShape,
+                    imageRatio = imageRatio,
+                    metadataAlpha = metadataAlpha.value,
+                    summaryContentAlpha = summaryContentAlpha.value,
+                    domain = domain,
+                    favicon = favicon,
+                    title = title,
+                    metadataLoading = summaryContent.loading && !summaryContent.showFallback,
+                    fontFamily = typography.family,
+                    metaSize = typography.storyMetaSize,
+                    titleSize = typography.storyTitleSize + 0.5f,
+                    lookaheadScope = this@LookaheadScope,
+                    boundsTransform = headerBoundsTransform,
+                    referenceImage = referenceImage,
+                    onImageRatio = { imageRatio = it },
+                    onImageClick = onImageClick,
+                )
 
-            Column(
-                modifier = Modifier
-                    .animateBounds(
-                        lookaheadScope = this@LookaheadScope,
-                        boundsTransform = headerBoundsTransform,
-                    )
-                    .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 18.dp),
-            ) {
-                Box(Modifier.graphicsLayer { alpha = summaryContentAlpha.value }) {
-                    when {
-                        !description.isNullOrBlank() -> SelectionContainer {
-                            Text(
-                                text = description,
-                                color = HarmonicTheme.colors.contentPrimary,
-                                fontFamily = typography.family,
-                                fontSize = typography.commentTextSize.sp,
-                                lineHeight = (typography.commentTextSize + 2f).sp,
-                                style = textStyle,
-                            )
-                        }
-                        summaryContent.loading && !summaryContent.showFallback ->
-                            ReferenceDescriptionShimmer()
-                        summaryContent.error != null -> ReferenceErrorContent(
-                            offline = offline,
-                            message = errorMessage.orEmpty(),
-                            fontFamily = typography.family,
-                            errorTextSize = typography.commentTextSize - 1f,
-                        )
-                        else -> Spacer(Modifier.height(0.dp))
-                    }
-                }
-
-                ElevatedButton(
-                    onClick = onOpen,
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 18.dp)
-                        .height(52.dp),
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        contentColor = HarmonicTheme.colors.contentPrimary,
-                    ),
+                        .animateBounds(
+                            lookaheadScope = this@LookaheadScope,
+                            boundsTransform = headerBoundsTransform,
+                        )
+                        .padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 18.dp),
                 ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_link),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        stringResource(Res.string.link_summary_open_short),
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Box(Modifier.graphicsLayer { alpha = summaryContentAlpha.value }) {
+                        when {
+                            !description.isNullOrBlank() -> SelectionContainer {
+                                Text(
+                                    text = description,
+                                    color = HarmonicTheme.colors.contentPrimary,
+                                    fontFamily = typography.family,
+                                    fontSize = typography.commentTextSize.sp,
+                                    lineHeight = (typography.commentTextSize + 2f).sp,
+                                    style = textStyle,
+                                )
+                            }
+                            summaryContent.loading && !summaryContent.showFallback ->
+                                ReferenceDescriptionShimmer()
+                            summaryContent.error != null -> ReferenceErrorContent(
+                                offline = offline,
+                                message = errorMessage.orEmpty(),
+                                fontFamily = typography.family,
+                                errorTextSize = typography.commentTextSize - 1f,
+                            )
+                            else -> Spacer(Modifier.height(0.dp))
+                        }
+                    }
+
+                    ElevatedButton(
+                        onClick = onOpen,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 18.dp)
+                            .height(52.dp),
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            contentColor = HarmonicTheme.colors.contentPrimary,
+                        ),
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_link),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(Res.string.link_summary_open_short),
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/** A compact discussion card with one reading column and a separate action footer. */
+@Composable
+private fun HackerNewsStoryCard(
+    summary: LinkSummary,
+    favicon: String?,
+    fontFamily: FontFamily,
+    textSize: Float,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = HarmonicTheme.colors
+    val domain = DomainNamePolicy.fromUrl(summary.storyUrl)
+    Column(modifier.padding(24.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = favicon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp)),
+                fallback = tintedPainterResource(Res.drawable.ic_public, colors.iconTint),
+                error = tintedPainterResource(Res.drawable.ic_public, colors.iconTint),
+            )
+            Text(
+                "Hacker News",
+                modifier = Modifier.padding(start = 8.dp),
+                color = colors.contentPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+            )
+            Spacer(Modifier.width(16.dp))
+            if (!domain.isNullOrBlank()) {
+                Text(
+                    domain,
+                    modifier = Modifier.weight(1f),
+                    color = colors.mutedText,
+                    fontFamily = ProductSansFontFamily,
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        SelectionContainer {
+            Text(
+                summary.title,
+                modifier = Modifier.padding(top = 20.dp),
+                color = colors.contentPrimary,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = (textSize + 5f).sp,
+                lineHeight = (textSize + 10f).sp,
+            )
+        }
+        val byline = listOfNotNull(
+            summary.author.takeIf(String::isNotBlank)?.let { "by $it" },
+            summary.publishedTime.takeIf(String::isNotBlank),
+        ).joinToString("  ·  ")
+        if (byline.isNotBlank()) {
+            Text(
+                byline,
+                modifier = Modifier.padding(top = 4.dp),
+                color = colors.mutedText,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+            )
+        }
+        if (summary.description.isNotBlank()) {
+            SelectionContainer {
+                Text(
+                    summary.description,
+                    modifier = Modifier.padding(top = 14.dp),
+                    color = colors.contentPrimary,
+                    fontFamily = fontFamily,
+                    fontSize = textSize.sp,
+                    lineHeight = (textSize + 4f).sp,
+                )
+            }
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 22.dp, bottom = 16.dp),
+            color = colors.commentDivider.copy(alpha = 0.5f),
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(end = 16.dp).heightIn(min = 44.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (summary.storyPoints >= 0) HnStoryStat(summary.storyPoints, "point", "points")
+                if (summary.storyComments >= 0) HnStoryStat(summary.storyComments, "comment", "comments")
+            }
+            Button(
+                onClick = onOpen,
+                modifier = Modifier.heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.overlayButton,
+                    contentColor = colors.overlayButtonContent,
+                ),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Text(stringResource(Res.string.link_summary_open_short), fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
+                Icon(painterResource(Res.drawable.ic_chevron_right), null, Modifier.padding(start = 4.dp).size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HnStoryStat(count: Int, singular: String, plural: String) {
+    Column {
+        Text(
+            count.toString(),
+            color = HarmonicTheme.colors.contentPrimary,
+            fontFamily = ProductSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+            lineHeight = 20.sp,
+        )
+        Text(
+            if (count == 1) singular else plural,
+            color = HarmonicTheme.colors.mutedText,
+            fontFamily = ProductSansFontFamily,
+            fontSize = 12.sp,
+            lineHeight = 14.sp,
+        )
     }
 }
 

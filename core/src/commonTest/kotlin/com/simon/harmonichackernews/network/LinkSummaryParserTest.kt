@@ -7,6 +7,35 @@ import kotlin.test.assertTrue
 
 class LinkSummaryParserTest {
     @Test
+    fun storyPreviewKeepsDiscussionMetadataSeparateFromItsBody() {
+        val url = "https://news.ycombinator.com/item?id=1"
+        val summary = LinkSummaryParser.extractHackerNewsItem(
+            json = """{"type":"story","title":"Example","by":"pg","score":123,"descendants":45,"url":"https://example.com/article","text":"First paragraph.<p>Second paragraph."}""",
+            pageUrl = url,
+            fallbackTitle = null,
+        )!!
+        assertEquals(123, summary.storyPoints)
+        assertEquals(45, summary.storyComments)
+        assertEquals("https://example.com/article", summary.storyUrl)
+        assertEquals("First paragraph.\n\nSecond paragraph.", summary.description)
+        assertEquals(summary, LinkSummaryCodec.decode(LinkSummaryCodec.encode(summary)))
+        assertTrue(StoryPreviewRepository.isValidSummary(url, summary))
+        assertFalse(StoryPreviewRepository.isValidSummary(url, summary.copy(storyMetadataVersion = 0)))
+    }
+
+    @Test
+    fun textOnlyStoryDoesNotInventArticleUrlOrStatistics() {
+        val summary = LinkSummaryParser.extractHackerNewsItem(
+            """{"type":"story","title":"Ask HN","text":"Question"}""",
+            "https://news.ycombinator.com/item?id=1", null,
+        )!!
+        assertEquals("", summary.storyUrl)
+        assertEquals(-1, summary.storyPoints)
+        assertEquals(-1, summary.storyComments)
+        assertEquals("Question", summary.description)
+    }
+
+    @Test
     fun commentReferencePreservesParagraphsWithoutRepeatingMetadata() {
         val summary = LinkSummaryParser.extractHackerNewsItem(
             json = """{"type":"comment","by":"tptacek","time":1739365814,"kids":[1,2,3],"text":"First paragraph.<p>* A &amp; B<br>Next line.<p>Final <i>paragraph</i>."}""",
