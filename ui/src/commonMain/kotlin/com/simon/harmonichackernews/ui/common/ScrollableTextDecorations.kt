@@ -75,34 +75,35 @@ internal fun ScrollableTextDecorations(
         val fadeLengthPx = with(density) {
             HarmonicDimens.compose_comment_action_text_fade_length.toPx()
         }.coerceAtMost(size.height / 2f)
-        val topFadeStrength = (state.value / fadeLengthPx).coerceIn(0f, 1f)
-        val bottomFadeStrength = ((maxValue - state.value) / fadeLengthPx).coerceIn(0f, 1f)
-
-        if (topFadeStrength > 0f) {
+        // Keep the clipped edge opaque even just a few pixels into a scroll. Shorten
+        // the gradient near the boundary instead of making its endpoint translucent.
+        val topFadeLength = state.value.toFloat().coerceAtMost(fadeLengthPx)
+        val bottomFadeLength = (maxValue - state.value).toFloat().coerceAtMost(fadeLengthPx)
+        val opaqueContainer = containerColor.copy(alpha = 1f)
+        val transparentContainer = containerColor.copy(alpha = 0f)
+        if (topFadeLength > 0f) {
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        containerColor.copy(alpha = containerColor.alpha * topFadeStrength),
-                        containerColor.copy(alpha = 0f),
-                    ),
+                    0f to opaqueContainer,
+                    (1f / topFadeLength).coerceIn(0.12f, 1f) to opaqueContainer,
+                    1f to transparentContainer,
                     startY = 0f,
-                    endY = fadeLengthPx,
+                    endY = topFadeLength,
                 ),
-                size = androidx.compose.ui.geometry.Size(size.width, fadeLengthPx),
+                size = androidx.compose.ui.geometry.Size(size.width, topFadeLength),
             )
         }
-        if (bottomFadeStrength > 0f) {
+        if (bottomFadeLength > 0f) {
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        containerColor.copy(alpha = 0f),
-                        containerColor.copy(alpha = containerColor.alpha * bottomFadeStrength),
-                    ),
-                    startY = size.height - fadeLengthPx,
+                    0f to transparentContainer,
+                    (1f - (1f / bottomFadeLength).coerceIn(0.12f, 1f)) to opaqueContainer,
+                    1f to opaqueContainer,
+                    startY = size.height - bottomFadeLength,
                     endY = size.height,
                 ),
-                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - fadeLengthPx),
-                size = androidx.compose.ui.geometry.Size(size.width, fadeLengthPx),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - bottomFadeLength),
+                size = androidx.compose.ui.geometry.Size(size.width, bottomFadeLength),
             )
         }
 

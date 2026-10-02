@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -233,7 +234,7 @@ fun EditorScreen(
     ) {
         // Wide, short windows can keep all actions in one row and give the editor the height.
         val compactToolbar = maxWidth >= 600.dp && maxHeight < 360.dp
-        val topBarHeight = if (compactToolbar) 48.dp else 72.dp
+        val topBarHeight = if (compactToolbar) 48.dp else if (type == EditorType.COMMENT_REPLY) 64.dp else 72.dp
         val density = LocalDensity.current
         val preferredPreviewHeight = with(density) {
             (LocalWindowInfo.current.containerSize.height / 3f)
@@ -493,7 +494,7 @@ private fun ReplyPreview(
             modifier = Modifier
                 .verticalScroll(scrollState)
                 .testTag("compose_editor_replying_scrollview")
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         )
         ScrollableTextDecorations(
             state = scrollState,
@@ -521,15 +522,17 @@ private fun OriginalCommentText(
         htmlAnnotatedString(parentText, linkColor, linkListener)
     }
 
-    Text(
-        text = formattedParent,
-        modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
-        color = HarmonicTheme.colors.contentPrimary,
-        fontFamily = ProductSansFontFamily,
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-        style = includeFontPaddingStyle,
-    )
+    SelectionContainer {
+        Text(
+            text = formattedParent,
+            modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
+            color = HarmonicTheme.colors.contentPrimary,
+            fontFamily = ProductSansFontFamily,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            style = includeFontPaddingStyle,
+        )
+    }
 }
 
 @Composable
