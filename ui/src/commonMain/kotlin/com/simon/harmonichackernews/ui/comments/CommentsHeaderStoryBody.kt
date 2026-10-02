@@ -4,6 +4,8 @@ package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.resources.*
 
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -123,31 +125,35 @@ fun HeaderStoryBody(
         ?.contentBlocks
         ?: listOf(CollectedReferenceLinks.ContentBlock.text(story.text))
     val interleaved = references?.hasInterleavedLinks() == true
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 4.dp, bottom = 3.dp),
-    ) {
-        contentBlocks.forEachIndexed { index, block ->
-            if (interleaved) Spacer(Modifier.height(referenceBlockTopPadding(contentBlocks, index)))
-            val link = block.getLink()
-            if (link == null) {
-                HeaderStoryTextBlock(
-                    bodyHtml = block.bodyHtml.orEmpty(),
-                    trimParagraphEdges = interleaved,
-                    fontFamily = typography.family,
-                    fontSize = typography.commentTextSize,
-                    onLinkLongClick = onLinkLongClick,
-                )
-            } else {
-                HeaderReferenceRow(
-                    link = link,
-                    settings = settings,
-                    topPadding = if (interleaved) 0.dp else 4.dp,
-                    suppressed = link.url == suppressedReferenceUrl,
-                    onLongClick = onReferenceLongClick,
-                )
+    SelectionContainer {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 4.dp, bottom = 3.dp),
+        ) {
+            contentBlocks.forEachIndexed { index, block ->
+                if (interleaved) Spacer(Modifier.height(referenceBlockTopPadding(contentBlocks, index)))
+                val link = block.getLink()
+                if (link == null) {
+                    HeaderStoryTextBlock(
+                        bodyHtml = block.bodyHtml.orEmpty(),
+                        trimParagraphEdges = interleaved,
+                        fontFamily = typography.family,
+                        fontSize = typography.commentTextSize,
+                        onLinkLongClick = onLinkLongClick,
+                    )
+                } else {
+                    DisableSelection {
+                        HeaderReferenceRow(
+                            link = link,
+                            settings = settings,
+                            topPadding = if (interleaved) 0.dp else 4.dp,
+                            suppressed = link.url == suppressedReferenceUrl,
+                            onLongClick = onReferenceLongClick,
+                        )
+                    }
+                }
             }
         }
     }

@@ -36,6 +36,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
@@ -513,32 +515,43 @@ private fun CommentActionCardContent(
             element = CommentActionTargetElement.Body,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            SelectionContainer {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = HarmonicDimens.compose_comment_action_text_max_height),
-                ) {
+            // Handles are separate popup windows, so they cannot share the card's scale.
+            // Fade them before the card moves appreciably, retaining the selected range so
+            // cancelling the gesture brings the same handles back at their resting positions.
+            val selectionColors = LocalTextSelectionColors.current
+            val handlesAlpha = if (controller.commentActionDismissRequest != 0) 0f else
+                (1f - controller.commentActionPredictiveBackProgress / 0.08f).coerceIn(0f, 1f)
+            CompositionLocalProvider(LocalTextSelectionColors provides TextSelectionColors(
+                handleColor = selectionColors.handleColor.copy(alpha = selectionColors.handleColor.alpha * handlesAlpha),
+                backgroundColor = selectionColors.backgroundColor,
+            )) {
+                SelectionContainer {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fadingScrollEdges(bodyScrollState)
-                            .verticalScroll(bodyScrollState)
-                            .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
+                            .heightIn(max = HarmonicDimens.compose_comment_action_text_max_height),
                     ) {
-                        Text(
-                            text = body,
-                            color = HarmonicTheme.colors.contentPrimary,
-                            fontFamily = typography.family,
-                            fontSize = commentTextSize.sp,
-                            lineHeight = (commentTextSize * 1.34f).sp,
-                            style = textStyle,
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fadingScrollEdges(bodyScrollState)
+                                .verticalScroll(bodyScrollState)
+                                .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
+                        ) {
+                            Text(
+                                text = body,
+                                color = HarmonicTheme.colors.contentPrimary,
+                                fontFamily = typography.family,
+                                fontSize = commentTextSize.sp,
+                                lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
+                                style = textStyle,
+                            )
+                        }
+                        ScrollableTextScrollbar(
+                            state = bodyScrollState,
+                            modifier = Modifier.matchParentSize(),
                         )
                     }
-                    ScrollableTextScrollbar(
-                        state = bodyScrollState,
-                        modifier = Modifier.matchParentSize(),
-                    )
                 }
             }
         }

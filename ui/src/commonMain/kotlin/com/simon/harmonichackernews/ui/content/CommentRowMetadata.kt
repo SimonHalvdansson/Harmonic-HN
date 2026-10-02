@@ -84,7 +84,7 @@ internal fun CommentMeta(
         label = "comment meta horizontal padding",
     )
     val metaVerticalPadding by animateDpAsState(
-        if (emphasized) 2.dp else 0.dp,
+        if (emphasized) 1.5.dp else 0.dp,
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "comment meta vertical padding",
     )

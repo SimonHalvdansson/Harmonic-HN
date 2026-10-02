@@ -490,6 +490,68 @@ class CommentAppearanceRegressionTest {
     }
 
     @Test
+    fun codeLinesUseTheSameSpacingInTheRowAndDetailDialog() {
+        val html = com.simon.harmonichackernews.network.StoryTextProcessor.preprocessHtml(
+            "<pre><code>first line\nsecond line\nthird line</code></pre>",
+        )!!
+        val item = PortableCommentItem(
+            CommentSnapshot(73, author = "coder", text = html, expandedAnchorText = html),
+            CommentPresentationSnapshot(expanded = true),
+        )
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        val showDialog = mutableStateOf(false)
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                        if (showDialog.value) {
+                            CommentActionOverlay(controller, settings, false, false, TextStyle.Default, onOpenLink = {})
+                        } else {
+                            CommentRow(
+                                model = SettingsCommentPreviewModel.copy(body = html),
+                                style = CommentRowStyle(
+                                    displayStyle = DisplayStyle.FLAT, textSize = settings.preferredTextSize,
+                                    collectLinks = false, emphasizeMeta = false, depthIndicatorMode = "none",
+                                    showDivider = false, preferredFont = settings.font, animateChanges = false,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+            fun lineSpacing(): Float {
+                val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+                compose.onNodeWithText("first line\nsecond line\nthird line", useUnmergedTree = true)
+                    .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) {
+                        it(layouts)
+                    }
+                val layout = layouts.single()
+                assertEquals(3, layout.lineCount)
+                return layout.getLineBaseline(1) - layout.getLineBaseline(0)
+            }
+            val rowSpacing = lineSpacing()
+            compose.runOnIdle {
+                controller.restoreCommentActions(item)
+                showDialog.value = true
+            }
+            compose.waitForIdle()
+            assertEquals("Monospace baseline spacing should match the row", rowSpacing, lineSpacing(), 1f)
+        } finally { scene.close() }
+    }
+
+    @Test
     fun dialogSurvivesGeometryChangesBackgroundingAndCanBeDismissed() {
         val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
         val controller = CommentsScreenController.create(

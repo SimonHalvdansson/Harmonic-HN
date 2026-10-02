@@ -16,6 +16,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.flow.flow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +46,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -250,21 +258,10 @@ fun CommentsHeader(
                         }
                     } else {
                         Column(Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        enabled = story.isLink,
-                                        onClick = controller.listener::onHeaderClick,
-                                        onLongClick = null,
-                                    )
-                                    .semantics(mergeDescendants = true) {
-                                        if (story.isLink) {
-                                            contentDescription = "Open article: " +
-                                                storyTitle.text
-                                            role = Role.Button
-                                        }
-                                    },
+                            StoryHeaderClickArea(
+                                enabled = story.isLink,
+                                title = storyTitle.text,
+                                onClick = controller.listener::onHeaderClick,
                             ) {
                                 headerPreviewImage(visibleHeaderBackground) { loadedTint = it }
                                 StoryTitleText(
@@ -286,37 +283,39 @@ fun CommentsHeader(
                                 )
                                 CommentsPreviewPlatformProvider(previewPlatform) {
                                     HeaderLinkInfo(story = story, settings = settings)
-                                    HeaderStoryBody(
-                                        story = story,
-                                        settings = settings,
-                                        suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
-                                        onReferenceLongClick = { link, bounds, sourceContentLayer ->
-                                            controller.showReferencePreview(
-                                                link = link,
-                                                sourceBounds = bounds,
-                                                headerReference = true,
-                                                sourceContainerColor = visibleHeaderBackground,
-                                                sourceContentLayer = sourceContentLayer,
-                                            )
-                                        },
-                                        onLinkLongClick = { url, title, bounds ->
-                                            controller.showReferencePreview(
-                                                url = url,
-                                                title = title,
-                                                sourceBounds = bounds,
-                                                headerReference = true,
-                                            )
-                                        },
-                                    )
-                                    LinkPreviewContent(story, contentVersion, settings)
                                 }
-                                PollOptions(
-                                    pollOptions,
-                                    controller.pollVoteInFlightOptionId,
-                                    controller.listener::onPollOption,
-                                    typography = headerTypography,
-                                )
                             }
+                            CommentsPreviewPlatformProvider(previewPlatform) {
+                                HeaderStoryBody(
+                                    story = story,
+                                    settings = settings,
+                                    suppressedReferenceUrl = controller.suppressedHeaderReferenceUrl,
+                                    onReferenceLongClick = { link, bounds, sourceContentLayer ->
+                                        controller.showReferencePreview(
+                                            link = link,
+                                            sourceBounds = bounds,
+                                            headerReference = true,
+                                            sourceContainerColor = visibleHeaderBackground,
+                                            sourceContentLayer = sourceContentLayer,
+                                        )
+                                    },
+                                    onLinkLongClick = { url, title, bounds ->
+                                        controller.showReferencePreview(
+                                            url = url,
+                                            title = title,
+                                            sourceBounds = bounds,
+                                            headerReference = true,
+                                        )
+                                    },
+                                )
+                                LinkPreviewContent(story, contentVersion, settings)
+                            }
+                            PollOptions(
+                                pollOptions,
+                                controller.pollVoteInFlightOptionId,
+                                controller.listener::onPollOption,
+                                typography = headerTypography,
+                            )
                             // Keep selectable summary text outside the article click target so a
                             // long press starts text selection instead of opening the WebView.
                             CommentsPreviewPlatformProvider(previewPlatform) {
@@ -396,6 +395,75 @@ fun CommentsHeader(
         Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
+        }
+    }
+}
+
+/** Expands only the indication. The measured content and its siblings retain their positions. */
+@Composable
+internal fun StoryHeaderClickArea(
+    enabled: Boolean,
+    title: String,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val topInsetPx = with(LocalDensity.current) { 12.dp.roundToPx().toFloat() }
+    val indicationSource = remember(interactionSource, topInsetPx) {
+        object : InteractionSource {
+            override val interactions = flow {
+                val presses = mutableMapOf<PressInteraction.Press, PressInteraction.Press>()
+                interactionSource.interactions.collect { interaction ->
+                    emit(when (interaction) {
+                        is PressInteraction.Press -> PressInteraction.Press(
+                            interaction.pressPosition + Offset(0f, topInsetPx),
+                        ).also { presses[interaction] = it }
+                        is PressInteraction.Release -> PressInteraction.Release(
+                            presses.remove(interaction.press) ?: interaction.press,
+                        )
+                        is PressInteraction.Cancel -> PressInteraction.Cancel(
+                            presses.remove(interaction.press) ?: interaction.press,
+                        )
+                        else -> interaction
+                    })
+                }
+            }
+        }
+    }
+    Box(Modifier.fillMaxWidth()) {
+        Column(
+            Modifier.fillMaxWidth()
+                .combinedClickable(
+                    enabled = enabled,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = null,
+                )
+                .semantics(mergeDescendants = true) {
+                    if (enabled) {
+                        contentDescription = "Open article: $title"
+                        role = Role.Button
+                    }
+                },
+        ) { content() }
+        if (enabled) {
+            Box(
+                Modifier.matchParentSize()
+                    .layout { measurable, constraints ->
+                        val top = 12.dp.roundToPx()
+                        // Metadata begins with 6dp of padding; stop halfway through that gap.
+                        val bottom = 3.dp.roundToPx()
+                        val placeable = measurable.measure(constraints.copy(
+                            minHeight = constraints.minHeight + top + bottom,
+                            maxHeight = constraints.maxHeight + top + bottom,
+                        ))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            placeable.placeRelative(0, -top)
+                        }
+                    }
+                    .indication(indicationSource, ripple()),
+            )
         }
     }
 }

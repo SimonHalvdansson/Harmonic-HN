@@ -100,7 +100,9 @@ class LinkPreviewRippleTest {
             // Stay one physical pixel inside the capture: fractional layout bounds can leave
             // its outermost pixel outside even the straight edge of the rendered row.
             val straightEdgeDelta = delta(pressed.width / 2, 1)
-            val cornerDelta = delta(1, 1)
+            // At 2x density the 2dp corner has a 4px radius: (1, 1) already overlaps
+            // its antialiased interior. Sample the actual outer corner instead.
+            val cornerDelta = delta(0, 0)
             val screenshot = compose.onNodeWithTag("preview-fixture").captureToImage().asAndroidBitmap()
             File(compose.activity.filesDir, "link-preview-website-pressed-fixture.png").outputStream().use {
                 screenshot.compress(Bitmap.CompressFormat.PNG, 100, it)
