@@ -73,7 +73,6 @@ private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
 private const val DismissFallbackDelayMillis = 460L
-private const val ScrollWheelGestureIdleMillis = 100L
 private const val PreviewPagerSnapPositionalThreshold = 0.10f
 
 internal enum class StoryPreviewOpeningDecision {
@@ -152,8 +151,9 @@ fun StoryPreviewOverlay(
     val pagerSettlingScope = rememberCoroutineScope()
     var isPointerPressed by remember(state.sessionId) { mutableStateOf(false) }
     var pagerRepairJob by remember(state.sessionId) { mutableStateOf<Job?>(null) }
-    var scrollWheelGestureReady by remember(state.sessionId) { mutableStateOf(true) }
-    var scrollWheelResetJob by remember(state.sessionId) { mutableStateOf<Job?>(null) }
+    val scrollWheelPaging = remember(state.sessionId, pagerSettlingScope) {
+        StoryPreviewScrollWheelPagingState(pagerSettlingScope)
+    }
     val transformProgress = remember(state.sessionId) { Animatable(0f) }
     val dismissOpacity = remember(state.sessionId) { Animatable(1f) }
     val predictiveProgressAnimation = remember(state.sessionId) { Animatable(0f) }
@@ -629,14 +629,7 @@ fun StoryPreviewOverlay(
                 .then(
                     if (pageOnScrollWheel) {
                         Modifier.storyPreviewScrollWheelPaging { scrollDeltaY ->
-                            scrollWheelResetJob?.cancel()
-                            scrollWheelResetJob = pagerSettlingScope.launch {
-                                delay(ScrollWheelGestureIdleMillis)
-                                while (pagerState.isScrollInProgress) delay(16L)
-                                scrollWheelGestureReady = true
-                            }
                             if (
-                                !scrollWheelGestureReady ||
                                 progress < 0.999f ||
                                 dismissRequest != 0 || removalRequest != null
                             ) {
@@ -647,8 +640,7 @@ fun StoryPreviewOverlay(
                                 pageCount = state.stories.size,
                                 scrollDeltaY = scrollDeltaY,
                             ) ?: return@storyPreviewScrollWheelPaging
-                            scrollWheelGestureReady = false
-                            pagerSettlingScope.launch {
+                            scrollWheelPaging.page {
                                 pagerState.animateScrollToPage(target)
                             }
                         }
