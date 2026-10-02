@@ -330,13 +330,14 @@ fun PaletteTintSettingsRoute(
         initialStrength = PaletteTintPreferences.strength(config),
         initialColorfulness = PaletteTintPreferences.colorfulness(config),
         initialTone = PaletteTintPreferences.tone(config),
+        initialAvoidBackgroundColor = PaletteTintPreferences.avoidBackgroundColor(config),
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(score = 28, commentCount = 42, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         showNavigation = showNavigation,
         onBack = onBack,
-        onSettingsChanged = { mode, strength, colorfulness, tone ->
-            presenter.setPaletteTint(mode, strength, colorfulness, tone)
+        onSettingsChanged = { mode, strength, colorfulness, tone, avoidBackgroundColor ->
+            presenter.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
         },
         onReset = { presenter.clearPaletteTint() },
     )

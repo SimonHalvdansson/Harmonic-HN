@@ -99,6 +99,7 @@ object PaletteTintPreferences {
     const val DEFAULT_STRENGTH = 100
     const val DEFAULT_COLORFULNESS = 110
     const val DEFAULT_TONE = 0
+    const val DEFAULT_AVOID_BACKGROUND_COLOR = true
 
     fun sanitizeMode(modeOrConfigKey: String?): String = when (modePart(modeOrConfigKey)) {
         MUTED -> MUTED
@@ -107,17 +108,19 @@ object PaletteTintPreferences {
         else -> DEFAULT
     }
 
+    // Keep legacy four-part cache keys while background avoidance is enabled.
     fun configKey(
         mode: String?,
         strength: Int,
         colorfulness: Int,
         tone: Int,
+        avoidBackgroundColor: Boolean = DEFAULT_AVOID_BACKGROUND_COLOR,
     ): String = listOf(
         sanitizeMode(mode),
         clampStrength(strength),
         clampColorfulness(colorfulness),
         clampTone(tone),
-    ).joinToString("|")
+    ).joinToString("|") + if (avoidBackgroundColor) "" else "|false"
 
     fun normalizeConfigKey(modeOrConfigKey: String?): String {
         // This is called repeatedly while story rows resolve their preview and favicon tint state.
@@ -136,12 +139,17 @@ object PaletteTintPreferences {
             parts?.getOrNull(2)?.toIntOrNull() ?: DEFAULT_COLORFULNESS,
         )
         val tone = clampTone(parts?.getOrNull(3)?.toIntOrNull() ?: DEFAULT_TONE)
-        return "$mode|$strength|$colorfulness|$tone"
+        val avoidBackgroundColor = parts?.getOrNull(4)?.toBooleanStrictOrNull()
+            ?: DEFAULT_AVOID_BACKGROUND_COLOR
+        return "$mode|$strength|$colorfulness|$tone" + if (avoidBackgroundColor) "" else "|false"
     }
 
     fun strength(value: String?): Int = clampStrength(configInt(value, 1, DEFAULT_STRENGTH))
     fun colorfulness(value: String?): Int =
         clampColorfulness(configInt(value, 2, DEFAULT_COLORFULNESS))
+
+    fun avoidBackgroundColor(value: String?): Boolean =
+        value?.split('|')?.getOrNull(4)?.toBooleanStrictOrNull() ?: DEFAULT_AVOID_BACKGROUND_COLOR
 
     fun tone(value: String?): Int = clampTone(configInt(value, 3, DEFAULT_TONE))
     fun strengthMultiplier(value: String?): Float = strength(value) / 100f
@@ -158,7 +166,8 @@ object PaletteTintPreferences {
         return if (
             strength(value) == DEFAULT_STRENGTH &&
             colorfulness(value) == DEFAULT_COLORFULNESS &&
-            tone(value) == DEFAULT_TONE
+            tone(value) == DEFAULT_TONE &&
+            avoidBackgroundColor(value) == DEFAULT_AVOID_BACKGROUND_COLOR
         ) {
             label
         } else {

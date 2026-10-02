@@ -1,17 +1,24 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.core.animate
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -27,9 +34,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -38,23 +48,28 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
-import com.simon.harmonichackernews.ui.content.StoryRow
-import com.simon.harmonichackernews.ui.content.StoryRowStyle
-import com.simon.harmonichackernews.ui.content.StoryRowModel
-import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.content.rememberResourcePreview
+import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
+import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
+import com.simon.harmonichackernews.ui.common.sharedHazeBackground
+import com.simon.harmonichackernews.ui.common.sharedHazeSource
+import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowModel
+import com.simon.harmonichackernews.ui.content.StoryRowStyle
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.preloadResourcePreview
+import com.simon.harmonichackernews.ui.content.rememberResourcePreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import dev.chrisbanes.haze.rememberHazeState
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
 private val PalettePreviewSamples = listOf(
     StoryRowModel(
@@ -102,10 +117,17 @@ fun PaletteTintSettingsScreen(
     initialStrength: Int,
     initialColorfulness: Int,
     initialTone: Int,
+    initialAvoidBackgroundColor: Boolean,
     previewStyle: StoryRowStyle,
     showNavigation: Boolean,
     onBack: () -> Unit,
-    onSettingsChanged: (mode: String, strength: Int, colorfulness: Int, tone: Int) -> Unit,
+    onSettingsChanged: (
+        mode: String,
+        strength: Int,
+        colorfulness: Int,
+        tone: Int,
+        avoidBackgroundColor: Boolean,
+    ) -> Unit,
     onReset: () -> Unit,
 ) {
     var mode by rememberSaveable { mutableStateOf(PaletteTintPreferences.sanitizeMode(initialMode)) }
@@ -116,6 +138,11 @@ fun PaletteTintSettingsScreen(
         mutableIntStateOf(PaletteTintPreferences.clampColorfulness(initialColorfulness))
     }
     var tone by rememberSaveable { mutableIntStateOf(PaletteTintPreferences.clampTone(initialTone)) }
+    var avoidBackgroundColor by rememberSaveable { mutableStateOf(initialAvoidBackgroundColor) }
+    val hazeState = rememberHazeState()
+    val resetButtonShape = RoundedCornerShape(16.dp)
+    val density = LocalDensity.current
+    var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val animationScope = rememberCoroutineScope()
     var resetAnimation by remember { mutableStateOf<Job?>(null) }
     val resetAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
@@ -125,6 +152,7 @@ fun PaletteTintSettingsScreen(
         newStrength: Int = strength,
         newColorfulness: Int = colorfulness,
         newTone: Int = tone,
+        newAvoidBackgroundColor: Boolean = avoidBackgroundColor,
     ) {
         resetAnimation?.cancel()
         resetAnimation = null
@@ -132,7 +160,8 @@ fun PaletteTintSettingsScreen(
         strength = PaletteTintPreferences.clampStrength(newStrength)
         colorfulness = PaletteTintPreferences.clampColorfulness(newColorfulness)
         tone = PaletteTintPreferences.clampTone(newTone)
-        onSettingsChanged(mode, strength, colorfulness, tone)
+        avoidBackgroundColor = newAvoidBackgroundColor
+        onSettingsChanged(mode, strength, colorfulness, tone, avoidBackgroundColor)
     }
 
     fun reset() {
@@ -140,6 +169,7 @@ fun PaletteTintSettingsScreen(
         val startColorfulness = colorfulness
         val startTone = tone
         mode = PaletteTintPreferences.DEFAULT
+        avoidBackgroundColor = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR
         onReset()
         resetAnimation?.cancel()
         resetAnimation = animationScope.launch {
@@ -171,77 +201,107 @@ fun PaletteTintSettingsScreen(
         }
     }
 
-    val configKey = PaletteTintPreferences.configKey(mode, strength, colorfulness, tone)
-    SettingsPage(
-        title = stringResource(Res.string.settings_section_palette_tint),
-        showNavigation = showNavigation,
-        onBack = onBack,
-        contentVersion = configKey.hashCode(),
-    ) {
-        items(PalettePreviewSamples, key = { it.index }) { model ->
-            PaletteStoryPreview(model, previewStyle.copy(paletteTintConfigKey = configKey))
+    val configKey = PaletteTintPreferences.configKey(
+        mode, strength, colorfulness, tone, avoidBackgroundColor,
+    )
+    Box(Modifier.fillMaxSize()) {
+        SettingsPage(
+            modifier = Modifier.sharedHazeSource(hazeState),
+            extraBottomPadding = resetButtonHeight + 16.dp,
+            title = stringResource(Res.string.settings_section_palette_tint),
+            showNavigation = showNavigation,
+            onBack = onBack,
+            contentVersion = configKey.hashCode(),
+        ) {
+            items(PalettePreviewSamples, key = { it.index }) { model ->
+                PaletteStoryPreview(model, previewStyle.copy(paletteTintConfigKey = configKey))
+            }
+            item {
+                SettingsCategory("Palette source") {
+                    SegmentedSetting(
+                        options = listOf(
+                            PaletteTintPreferences.MUTED to "Muted",
+                            PaletteTintPreferences.DOMINANT to "Dominant",
+                            PaletteTintPreferences.VIBRANT to "Vibrant",
+                        ),
+                        selected = mode,
+                        onSelected = { persist(newMode = it) },
+                    )
+                }
+            }
+            item {
+                SettingsCategory("Adjust") {
+                    Column(
+                        Modifier.background(itemBackgroundColor()).padding(horizontal = 24.dp),
+                    ) {
+                        PaletteAdjustment(
+                            label = "Tint strength",
+                            valueLabel = "$strength%",
+                            value = strength.toFloat(),
+                            valueRange = PaletteTintPreferences.MIN_STRENGTH.toFloat()..
+                                PaletteTintPreferences.MAX_STRENGTH.toFloat(),
+                            onValueChange = { persist(newStrength = it.roundToInt()) },
+                        )
+                        PaletteAdjustment(
+                            label = "Colorfulness",
+                            valueLabel = "$colorfulness%",
+                            value = colorfulness.toFloat(),
+                            valueRange = PaletteTintPreferences.MIN_COLORFULNESS.toFloat()..
+                                PaletteTintPreferences.MAX_COLORFULNESS.toFloat(),
+                            onValueChange = { persist(newColorfulness = it.roundToInt()) },
+                        )
+                        PaletteAdjustment(
+                            label = "Brightness",
+                            valueLabel = if (tone > 0) "+$tone" else tone.toString(),
+                            value = tone.toFloat(),
+                            valueRange = PaletteTintPreferences.MIN_TONE.toFloat()..
+                                PaletteTintPreferences.MAX_TONE.toFloat(),
+                            onValueChange = { persist(newTone = it.roundToInt()) },
+                        )
+                    }
+                }
+            }
+            item {
+                SettingsCategory("Behavior") {
+                    SwitchSettingRow(
+                        title = "Avoid background color",
+                        summary = "Keep tinted cards distinct from the background",
+                        icon = Res.drawable.ic_palette,
+                        checked = avoidBackgroundColor,
+                        onCheckedChange = { persist(newAvoidBackgroundColor = it) },
+                    )
+                }
+            }
         }
-        item {
-            SettingsCategory("Palette source") {
-                SegmentedSetting(
-                    options = listOf(
-                        PaletteTintPreferences.MUTED to "Muted",
-                        PaletteTintPreferences.DOMINANT to "Dominant",
-                        PaletteTintPreferences.VIBRANT to "Vibrant",
-                    ),
-                    selected = mode,
-                    onSelected = { persist(newMode = it) },
+        ExtendedFloatingActionButton(
+            onClick = ::reset,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 )
-            }
-        }
-        item {
-            SettingsCategory("Adjust") {
-                Column(
-                    Modifier.background(itemBackgroundColor()).padding(horizontal = 24.dp),
-                ) {
-                    PaletteAdjustment(
-                        label = "Tint strength",
-                        valueLabel = "$strength%",
-                        value = strength.toFloat(),
-                        valueRange = PaletteTintPreferences.MIN_STRENGTH.toFloat()..
-                            PaletteTintPreferences.MAX_STRENGTH.toFloat(),
-                        onValueChange = { persist(newStrength = it.roundToInt()) },
-                    )
-                    PaletteAdjustment(
-                        label = "Colorfulness",
-                        valueLabel = "$colorfulness%",
-                        value = colorfulness.toFloat(),
-                        valueRange = PaletteTintPreferences.MIN_COLORFULNESS.toFloat()..
-                            PaletteTintPreferences.MAX_COLORFULNESS.toFloat(),
-                        onValueChange = { persist(newColorfulness = it.roundToInt()) },
-                    )
-                    PaletteAdjustment(
-                        label = "Brightness",
-                        valueLabel = if (tone > 0) "+$tone" else tone.toString(),
-                        value = tone.toFloat(),
-                        valueRange = PaletteTintPreferences.MIN_TONE.toFloat()..
-                            PaletteTintPreferences.MAX_TONE.toFloat(),
-                        onValueChange = { persist(newTone = it.roundToInt()) },
-                    )
-                }
-            }
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                SettingsDialogTextButton(onClick = ::reset) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_refresh),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Reset")
-                }
-            }
-        }
+                .padding(16.dp)
+                .widthIn(min = 140.dp)
+                .onSizeChanged { resetButtonHeight = with(density) { it.height.toDp() } }
+                .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, resetButtonShape, clip = false)
+                .sharedHazeBackground(
+                    glassAppearance = HazeGlassAppearance.FloatingButton,
+                    hazeState = hazeState,
+                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    shape = resetButtonShape,
+                )
+                .semantics { contentDescription = "Reset palette settings" },
+            shape = resetButtonShape,
+            containerColor = Color.Transparent,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = 0.dp,
+            ),
+            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
+            text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+        )
     }
 }
 

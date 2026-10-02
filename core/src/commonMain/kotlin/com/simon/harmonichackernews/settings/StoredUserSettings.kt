@@ -34,6 +34,7 @@ object UserPreferenceKeys {
     const val PALETTE_TINT_STRENGTH = "pref_palette_tint_strength"
     const val PALETTE_TINT_COLORFULNESS = "pref_palette_tint_colorfulness"
     const val PALETTE_TINT_TONE = "pref_palette_tint_tone"
+    const val PALETTE_TINT_AVOID_BACKGROUND_COLOR = "pref_palette_tint_avoid_background_color"
     const val GRAY_OUT_CLICKED = "pref_gray_out_clicked"
     const val HOTNESS = "pref_hotness"
     const val FAVICON_PROVIDER = "pref_favicon_provider"
@@ -382,6 +383,10 @@ class StoredUserSettings(
             PaletteTintPreferences.DEFAULT_COLORFULNESS,
         ),
         integer(UserPreferenceKeys.PALETTE_TINT_TONE, PaletteTintPreferences.DEFAULT_TONE),
+        boolean(
+            UserPreferenceKeys.PALETTE_TINT_AVOID_BACKGROUND_COLOR,
+            PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
+        ),
     )
 
     private fun previewImageMode(): StoryPreviewMode = StoryPreviewMode.fromStored(

@@ -364,6 +364,7 @@ class StoredSettingsMutator(
         strength: Int,
         colorfulness: Int,
         tone: Int,
+        avoidBackgroundColor: Boolean = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
     ): Boolean {
         val previous = paletteTintConfigKey()
         val sanitizedMode = PaletteTintPreferences.sanitizeMode(mode)
@@ -374,11 +375,13 @@ class StoredSettingsMutator(
         store.putInt(UserPreferenceKeys.PALETTE_TINT_STRENGTH, sanitizedStrength)
         store.putInt(UserPreferenceKeys.PALETTE_TINT_COLORFULNESS, sanitizedColorfulness)
         store.putInt(UserPreferenceKeys.PALETTE_TINT_TONE, sanitizedTone)
+        store.putBoolean(UserPreferenceKeys.PALETTE_TINT_AVOID_BACKGROUND_COLOR, avoidBackgroundColor)
         return previous != PaletteTintPreferences.configKey(
             sanitizedMode,
             sanitizedStrength,
             sanitizedColorfulness,
             sanitizedTone,
+            avoidBackgroundColor,
         )
     }
 
@@ -389,6 +392,7 @@ class StoredSettingsMutator(
         store.remove(UserPreferenceKeys.PALETTE_TINT_STRENGTH)
         store.remove(UserPreferenceKeys.PALETTE_TINT_COLORFULNESS)
         store.remove(UserPreferenceKeys.PALETTE_TINT_TONE)
+        store.remove(UserPreferenceKeys.PALETTE_TINT_AVOID_BACKGROUND_COLOR)
         return previous != defaultPaletteTintConfigKey()
     }
 
@@ -405,6 +409,10 @@ class StoredSettingsMutator(
         store.getInt(
             UserPreferenceKeys.PALETTE_TINT_TONE,
             PaletteTintPreferences.DEFAULT_TONE,
+        ),
+        store.getBoolean(
+            UserPreferenceKeys.PALETTE_TINT_AVOID_BACKGROUND_COLOR,
+            PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
         ),
     )
 

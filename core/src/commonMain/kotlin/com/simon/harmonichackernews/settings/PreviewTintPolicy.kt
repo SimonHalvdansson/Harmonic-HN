@@ -67,6 +67,7 @@ object PreviewTintPolicy {
      * Reduce the floor below default strength so zero strength still removes the tint.
      */
     fun ensureCardTintContrast(tint: Int, background: Int, modeOrConfigKey: String?): Int {
+        if (!PaletteTintPreferences.avoidBackgroundColor(modeOrConfigKey)) return tint
         val strength = PaletteTintPreferences.strengthMultiplier(modeOrConfigKey).coerceAtMost(1f)
         if (strength == 0f) return tint
         val minimumContrast = 1.0 + 0.2 * strength

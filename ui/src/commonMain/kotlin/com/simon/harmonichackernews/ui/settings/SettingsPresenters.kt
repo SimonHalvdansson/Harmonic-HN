@@ -322,8 +322,13 @@ class AppearanceSettingsPresenter(
 
     fun setFont(value: AppFont) = repository.setFont(value)
     fun applyWelcomePreset(expressive: Boolean) = repository.applyWelcomePreset(expressive)
-    fun setPaletteTint(mode: String?, strength: Int, colorfulness: Int, tone: Int): Boolean =
-        repository.setPaletteTint(mode, strength, colorfulness, tone)
+    fun setPaletteTint(
+        mode: String?,
+        strength: Int,
+        colorfulness: Int,
+        tone: Int,
+        avoidBackgroundColor: Boolean = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
+    ): Boolean = repository.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
 
     fun clearPaletteTint(): Boolean = repository.clearPaletteTint()
     val snapshot: AppSettings get() = repository.snapshot()
