@@ -43,6 +43,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import com.simon.harmonichackernews.ui.theme.HarmonicColors
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -195,7 +198,7 @@ private fun SettingsNavigationRow(
             )
             .background(
                 if (selected) {
-                    HarmonicTheme.colors.settingsHeaderSelected
+                    settingsSelectionColor(HarmonicTheme.colors)
                 } else {
                     itemBackgroundColor()
                 },
@@ -362,4 +365,21 @@ fun SettingsCard(
             ),
         content = { content() },
     )
+}
+
+/** Some palettes reuse the page color for selection; keep the active row visible on both surfaces. */
+internal fun settingsSelectionColor(colors: HarmonicColors): Color {
+    fun contrast(a: Color, b: Color): Float {
+        val first = a.luminance()
+        val second = b.luminance()
+        return (maxOf(first, second) + 0.05f) / (minOf(first, second) + 0.05f)
+    }
+    fun distinct(color: Color) = contrast(color, colors.background) >= 1.15f &&
+        contrast(color, colors.itemBackground) >= 1.15f
+    if (distinct(colors.settingsHeaderSelected)) return colors.settingsHeaderSelected
+    for (step in 1..10) {
+        val candidate = lerp(colors.background, colors.contentPrimary, step * 0.05f)
+        if (distinct(candidate)) return candidate
+    }
+    return lerp(colors.background, colors.contentPrimary, 0.5f)
 }

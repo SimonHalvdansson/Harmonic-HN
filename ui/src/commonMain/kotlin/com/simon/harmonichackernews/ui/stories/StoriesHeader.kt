@@ -627,6 +627,7 @@ private fun StoriesMoreMenu(
         if (showSearchItem) {
             DropdownMenuItem(
                 text = { HarmonicMenuText("Search") },
+                leadingIcon = { StoriesMenuIcon(Res.drawable.ic_search) },
                 onClick = {
                     dismiss()
                     controller.listener.onOpenSearch()
@@ -636,6 +637,7 @@ private fun StoriesMoreMenu(
         if (showRefreshItem) {
             DropdownMenuItem(
                 text = { HarmonicMenuText("Refresh") },
+                leadingIcon = { StoriesMenuIcon(Res.drawable.ic_refresh) },
                 onClick = {
                     dismiss()
                     controller.refresh()
@@ -666,11 +668,26 @@ private fun MoreItem(
 ) {
     DropdownMenuItem(
         text = { HarmonicMenuText(label) },
+        leadingIcon = {
+            StoriesMenuIcon(when (action) {
+                StoriesMenuAction.PROFILE -> Res.drawable.ic_account_circle
+                StoriesMenuAction.SUBMIT -> Res.drawable.ic_send
+                StoriesMenuAction.ACCOUNT -> if (controller.loggedIn) Res.drawable.ic_logout else Res.drawable.ic_login
+                StoriesMenuAction.CACHE -> Res.drawable.ic_file_download
+                StoriesMenuAction.CLEAR_HISTORY -> Res.drawable.ic_history
+                StoriesMenuAction.SETTINGS -> Res.drawable.ic_settings
+            })
+        },
         onClick = {
             dismiss()
             controller.listener.onMoreAction(action)
         },
     )
+}
+
+@Composable
+private fun StoriesMenuIcon(icon: DrawableResource) {
+    Icon(painterResource(icon), contentDescription = null, tint = HarmonicTheme.colors.iconTint)
 }
 
 @Composable
