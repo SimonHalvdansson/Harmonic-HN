@@ -129,20 +129,6 @@ object LocalModelCatalog {
             4096,
         ),
         LocalModelDefinition(
-            MODEL_QWEN_08B,
-            "Qwen 3.5 0.8B",
-            "0.8B",
-            "Q4_K_M",
-            LocalModelBrand.QWEN,
-            "Qwen3.5-0.8B-Q4_K_M.gguf",
-            "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/" +
-                "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0/Qwen3.5-0.8B-Q4_K_M.gguf?download=true",
-            532_517_120L,
-            true,
-            LocalModelRuntime.LLAMA_CPP,
-            2048,
-        ),
-        LocalModelDefinition(
             MODEL_NEMOTRON_4B,
             "Nemotron 3 Nano 4B",
             "4B",
