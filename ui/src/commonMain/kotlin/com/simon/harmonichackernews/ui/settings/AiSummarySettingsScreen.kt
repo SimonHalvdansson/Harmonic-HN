@@ -26,6 +26,7 @@ data class AiSummarySettingsUiState(
     val showAdditionalInfo: Boolean,
     val geminiNanoSelected: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
+    val disabledReason: String? = null,
 )
 
 @Composable
@@ -56,6 +57,7 @@ fun AiSummarySettingsScreen(
                 checked = state.enabled,
                 enabled = state.configurationComplete,
                 onCheckedChange = onEnabledChanged,
+                summary = state.disabledReason.takeIf { !state.configurationComplete },
             )
         }
 
