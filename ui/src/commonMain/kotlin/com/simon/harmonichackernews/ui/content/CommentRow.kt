@@ -163,6 +163,7 @@ private class CommentRowGeometry {
                 Rect(it.positionInWindow(), Size(it.size.width.toFloat(), it.size.height.toFloat()))
             },
             indicatorLayer = indicatorLayer?.takeUnless(GraphicsLayer::isReleased),
+            currentGeometry = ::snapshot,
         )
     }
 }

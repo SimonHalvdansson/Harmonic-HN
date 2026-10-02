@@ -108,13 +108,21 @@ fun CommentActionOverlay(
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
+    var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
     val cardColor = if (settings.hasBackground) {
         HarmonicTheme.colors.contentCardBackground
     } else {
         HarmonicTheme.colors.background
     }
-    // Geometry belongs to the opening gesture, but its colors must follow the live row's theme.
-    val source = state.sourceGeometry?.copy(
+    // Android retains this composition across rotation. The opening gesture's bounds and
+    // layer dimensions can therefore describe a different layout by the time we animate back.
+    // Query the live coordinates on recomposition (including viewport changes and dismissal).
+    // A detached row must use the fade fallback instead of returning to stale window pixels.
+    val sourceGeometry = state.sourceGeometry?.let { captured ->
+        val currentGeometry = captured.currentGeometry
+        if (currentGeometry != null) currentGeometry() else captured
+    }
+    val source = sourceGeometry?.copy(
         containerColor = commentSurfaceColor(
             cardColor,
             HarmonicTheme.colors.contentPrimary,
@@ -128,7 +136,6 @@ fun CommentActionOverlay(
     }
     val density = LocalDensity.current
     val transformProgress = remember(comment.id) { Animatable(0f) }
-    var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
     var targetContainer by remember(comment.id) { mutableStateOf<Rect?>(null) }
     var targetUserBounds by remember(comment.id) { mutableStateOf<Rect?>(null) }
     var targetBodyBounds by remember(comment.id) { mutableStateOf<Rect?>(null) }
@@ -148,7 +155,9 @@ fun CommentActionOverlay(
         dismissRequestVersion = dismissRequest,
     )
     val dismissCaptureVersion = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
-    val snapshotRefreshKey = HarmonicTheme.colors to dismissCaptureVersion
+    // The same graphics layers are re-recorded at new sizes after rotation. A theme/dismiss
+    // key alone reuses their old bitmaps and stretches them into the new bounds.
+    val snapshotRefreshKey = Triple(HarmonicTheme.colors, rootBounds.size, dismissCaptureVersion)
     val sourceCapture = rememberGraphicsLayerSnapshot(
         source?.contentLayer,
         // Re-record the returning row as well as the dialog: its text/depth colors may have changed.

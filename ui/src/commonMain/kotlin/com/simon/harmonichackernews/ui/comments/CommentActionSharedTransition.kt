@@ -56,6 +56,8 @@ data class CommentActionSourceGeometry(
     val contentLayer: GraphicsLayer? = null,
     val indicatorBounds: Rect? = null,
     val indicatorLayer: GraphicsLayer? = null,
+    /** Re-read the retained row after window/layout changes; null means it is detached. */
+    val currentGeometry: (() -> CommentActionSourceGeometry?)? = null,
 )
 
 internal enum class CommentActionTargetElement {
