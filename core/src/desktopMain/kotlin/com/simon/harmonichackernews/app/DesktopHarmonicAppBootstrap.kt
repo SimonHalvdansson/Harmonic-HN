@@ -20,7 +20,7 @@ import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.DesktopFileKeyValueStore
 import com.simon.harmonichackernews.summary.DesktopLocalAiEnvironment
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -42,7 +42,7 @@ import java.util.Locale
 import kotlinx.io.files.Path as KotlinPath
 
 /**
- * Desktop lifecycle owner for the real shared application and CIO networking graphs.
+ * Desktop lifecycle owner for the real shared application and OkHttp networking graphs.
  *
  * Constructing the graph does not make a request. A production desktop host can provide durable
  * [KeyValueStore] implementations and supported [AppPlatformDependencies]; [inMemory] is intended
@@ -60,7 +60,7 @@ class DesktopHarmonicAppBootstrap(
     val network: NetworkGraph = NetworkGraphFactory.create(NetworkGraphEnvironment(
         scope = scope,
         userAgent = userAgent,
-        engine = { CIO.create() },
+        engine = { OkHttp.create() },
     ))
     val app = HarmonicAppComposition(
         network = network,

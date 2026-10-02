@@ -82,7 +82,10 @@ fun TranslucentBackButton(
     val glassEnabled = LocalHazeGlassEnabled.current
     val backdropSelection = remember { HazeSourceSelection.Behind.where { it.zIndex <= 0f } }
 
-    val tooltipState = rememberTooltipState()
+    val immediateTooltipState = rememberTooltipState()
+    val tooltipState = remember(immediateTooltipState) {
+        HoverDelayedTooltipState(immediateTooltipState)
+    }
     val hapticFeedback = LocalHapticFeedback.current
     LaunchedEffect(tooltipState.isVisible) {
         if (tooltipState.isVisible) {

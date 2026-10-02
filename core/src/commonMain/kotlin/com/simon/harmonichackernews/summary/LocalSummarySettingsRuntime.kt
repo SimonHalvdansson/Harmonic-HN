@@ -17,6 +17,7 @@ data class LocalSummarySettingsState(
     val nanoBaseModelName: String? = null,
     val configurationReady: Boolean = false,
     val failure: String? = null,
+    val statusMessage: String? = null,
     val revision: Int = 0,
 )
 
@@ -41,7 +42,7 @@ class LocalSummarySettingsRuntime(
             try {
                 val availability = summary.availability()
                 val nanoAvailable = availability.available && !availability.downloadableFallbackRequired
-                if (!nanoAvailable && models?.selectedModel?.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
+                if (!nanoAvailable && models?.selectedModel?.downloadable == false) {
                     models.selectFirstReadyOrClear()
                 }
                 mutableState.value = LocalSummarySettingsState(
@@ -50,6 +51,7 @@ class LocalSummarySettingsRuntime(
                     available = availability.available,
                     nanoAvailable = nanoAvailable,
                     nanoBaseModelName = availability.baseModelName,
+                    statusMessage = availability.statusMessage,
                     configurationReady = summary.isReady(),
                     revision = mutableState.value.revision + 1,
                 )

@@ -33,6 +33,7 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
         override fun engineClassName(runtime: LocalModelRuntime): String? = null
 
         override fun runtimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+            LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
             LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
             else -> "local AI runtime"
         }

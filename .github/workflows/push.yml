@@ -164,6 +164,11 @@ jobs:
       - name: Verify desktop native library
         shell: bash
         run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
+      - name: Verify processed desktop runtime
+        run: >-
+          java -Xverify:all -Djava.awt.headless=true
+          -cp "desktop_app/build/compose/tmp/main-release/proguard/*"
+          .github/scripts/VerifyDesktopRelease.java
       - uses: actions/upload-artifact@v7
         with:
           name: harmonic-${{ matrix.artifact_name }}

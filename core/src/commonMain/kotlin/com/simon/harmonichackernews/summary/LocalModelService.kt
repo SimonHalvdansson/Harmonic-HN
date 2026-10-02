@@ -52,7 +52,7 @@ class LocalModelService(
         models = models,
         preferences = preferences,
         selectionKey = selectionKey,
-        defaultModelId = LocalModelCatalog.MODEL_GEMINI_NANO,
+        defaultModelId = models.first().id,
     )
     private val lifecycle = LocalModelLifecycle(
         models = models,

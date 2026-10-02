@@ -45,7 +45,7 @@ internal fun AboutAnimatedIcon(painter: Painter, modifier: Modifier = Modifier) 
             draggedAlpha = 0.02f,
             focusedAlpha = 0.02f,
             hoveredAlpha = 0.01f,
-            pressedAlpha = 0.02f,
+            pressedAlpha = 0.14f,
         ),
     ),
 ) {

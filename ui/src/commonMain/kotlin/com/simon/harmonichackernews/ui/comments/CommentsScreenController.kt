@@ -389,6 +389,10 @@ class CommentsScreenController private constructor(
         syncInteractionState()
     }
 
+    fun consumeWebsiteRequest(version: Int) {
+        interactionStore.consumeWebsiteRequest(version)
+    }
+
     fun requestWebsite() {
         interactionStore.requestWebsite()
         syncInteractionState()

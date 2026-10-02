@@ -4,6 +4,27 @@
 #import <limits.h>
 #import <string.h>
 
+// WebKit owns the cursor while the pointer is inside its native surface. Hand it back when
+// crossing into Compose, whose AWT cursor may otherwise still believe it is already the arrow.
+@interface HarmonicWKWebView : WKWebView
+@property(nonatomic, strong) NSTrackingArea *harmonicTrackingArea;
+@end
+@implementation HarmonicWKWebView
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+    if (self.harmonicTrackingArea != nil) [self removeTrackingArea:self.harmonicTrackingArea];
+    self.harmonicTrackingArea = [[NSTrackingArea alloc]
+        initWithRect:NSZeroRect
+        options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingInVisibleRect
+        owner:self userInfo:nil];
+    [self addTrackingArea:self.harmonicTrackingArea];
+}
+- (void)mouseExited:(NSEvent *)event {
+    [super mouseExited:event];
+    [[NSCursor arrowCursor] set];
+}
+@end
+
 @interface HarmonicWebViewHost : NSObject <WKNavigationDelegate, WKUIDelegate>
 @property(nonatomic, strong) WKWebView *webView;
 @end
@@ -73,7 +94,7 @@ void *harmonic_webview_create(
         @autoreleasepool {
             NSView *parent = (__bridge NSView *)parentPointer;
             WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
-            WKWebView *webView = [[WKWebView alloc]
+            WKWebView *webView = [[HarmonicWKWebView alloc]
                 initWithFrame:HarmonicFrame(parent, x, top, width, height)
                 configuration:configuration];
             HarmonicWebViewHost *host = [[HarmonicWebViewHost alloc] init];
@@ -151,7 +172,13 @@ void harmonic_webview_reload(void *hostPointer, const char *fallbackUrl) {
 __attribute__((visibility("default")))
 void harmonic_webview_set_visible(void *hostPointer, int visible) {
     if (hostPointer == NULL) return;
-    HarmonicOnMainSync(^{ HarmonicHost(hostPointer).webView.hidden = visible == 0; });
+    HarmonicOnMainSync(^{
+        WKWebView *webView = HarmonicHost(hostPointer).webView;
+        BOOL hidden = visible == 0;
+        if (webView.hidden == hidden) return;
+        webView.hidden = hidden;
+        if (hidden) [[NSCursor arrowCursor] set];
+    });
 }
 
 __attribute__((visibility("default")))

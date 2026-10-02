@@ -141,6 +141,7 @@ class DesktopFileKeyValueStore(
         synchronized(lock) {
             val staged = Properties().apply { putAll(this@DesktopFileKeyValueStore.values) }
             block(staged)
+            if (staged == values) return
             persistSafely(staged)
             values.clear()
             values.putAll(staged)

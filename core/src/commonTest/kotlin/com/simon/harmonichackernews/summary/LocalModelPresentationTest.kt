@@ -7,6 +7,29 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LocalModelPresentationTest {
+    @Test
+    fun anotherSystemManagedModelDoesNotRequireAnAppDownload() {
+        val apple = LocalModelCatalog.models.first().copy(
+            id = "apple-intelligence", displayName = "Apple Intelligence",
+            runtime = LocalModelRuntime.APPLE_FOUNDATION_MODELS,
+        )
+        val input = LocalModelPresentationInput(
+            model = apple, supported = true, selected = true,
+            nanoAvailabilityResolved = true, nanoAvailable = true,
+            transferStatus = LocalModelTransferStatus(LocalModelTransferState.NOT_DOWNLOADED),
+            runtimeStatus = LocalRuntimeInstallStatus(LocalRuntimeInstallState.NOT_INSTALLED),
+            runtimeInstalled = false,
+        )
+        val ready = LocalModelPresentationPolicy.present(input)
+        assertTrue(ready.selected)
+        assertTrue(ready.selectable)
+        assertNull(ready.action)
+        val unavailable = LocalModelPresentationPolicy.present(input.copy(nanoAvailable = false))
+        assertFalse(unavailable.selectable)
+        assertFalse(unavailable.selected)
+        assertNull(unavailable.action)
+    }
+
     private val model = LocalModelCatalog.models.first { it.downloadable }
 
     @Test

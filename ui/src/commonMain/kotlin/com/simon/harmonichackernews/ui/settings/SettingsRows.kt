@@ -381,11 +381,12 @@ fun <T> SegmentedSetting(
                     ),
                     label = "settings segmented button corners",
                 )
-                val shape = RoundedCornerShape(
-                    topStart = if (index == 0) outerCorner else innerCorner,
-                    topEnd = if (index == options.lastIndex) outerCorner else innerCorner,
-                    bottomEnd = if (index == options.lastIndex) outerCorner else innerCorner,
-                    bottomStart = if (index == 0) outerCorner else innerCorner,
+                val shape = segmentedSettingShape(
+                    first = index == 0,
+                    last = index == options.lastIndex,
+                    outerCorner = outerCorner,
+                    animatedInnerCorner = innerCorner,
+                    buttonHeight = buttonHeight,
                 )
                 val selectedBackground = HarmonicTheme.colors.secondaryContainer
                 Row(
@@ -511,4 +512,21 @@ fun SliderSetting(
             steps = steps,
         )
     }
+}
+
+/** Keep spring overshoot from making RoundedCornerShape rescale the opposite, fixed corners. */
+internal fun segmentedSettingShape(
+    first: Boolean,
+    last: Boolean,
+    outerCorner: Dp,
+    animatedInnerCorner: Dp,
+    buttonHeight: Dp,
+): RoundedCornerShape {
+    val innerCorner = animatedInnerCorner.coerceIn(0.dp, buttonHeight / 2)
+    return RoundedCornerShape(
+        topStart = if (first) outerCorner else innerCorner,
+        topEnd = if (last) outerCorner else innerCorner,
+        bottomEnd = if (last) outerCorner else innerCorner,
+        bottomStart = if (first) outerCorner else innerCorner,
+    )
 }

@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.desktop
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -13,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -39,6 +42,8 @@ internal fun DesktopSubmissionsContent(
     scene: HarmonicSceneComposition,
     request: MainSubmissionsRequest,
 ) {
+    val initialFocus = remember(request.serial) { FocusRequester() }
+    LaunchedEffect(initialFocus) { initialFocus.requestFocus() }
     val scope = rememberCoroutineScope()
     val store = remember(app, scene, request.serial, scope) {
         val state = scene.sessions.submissionsStateFor(
@@ -72,7 +77,11 @@ internal fun DesktopSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background),
+                .background(HarmonicTheme.colors.background)
+                // Opening a destination should not keyboard-focus Back and show its tooltip.
+                // The screen receives initial focus; Tab still reaches its controls normally.
+                .focusRequester(initialFocus)
+                .focusable(),
         ) {
             SubmissionsRoute(
                 userName = request.userName,

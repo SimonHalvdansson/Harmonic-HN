@@ -207,7 +207,7 @@ fun TransformOverlay(
     val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
     val backScale = 1f - 0.1f * predictiveVisualProgress
     val localTarget = targetBounds
-    val localViewport = Rect(0f, 0f, rootSize.width.toFloat(), rootSize.height.toFloat())
+    val localViewport = viewportBounds(rootSize)
     val localSource = sourceBoundsInOverlay?.intersectionOrNull(localViewport)
     val anchorSizePx = sourceAnchorSize?.let { with(density) { it.toPx() } }
     val transitionSource = when {
@@ -662,6 +662,11 @@ internal fun aspectPreservingCropCorrection(
         scaleY = uniformScale / scaleY,
     )
 }
+
+// Keep packed IntSize temporaries out of the large composable: ProGuard's frame generation
+// confuses their reused two-slot locals with the nullable Rect that follows this calculation.
+private fun viewportBounds(size: IntSize): Rect =
+    Rect(0f, 0f, size.width.toFloat(), size.height.toFloat())
 
 private fun Rect.scaledAboutCenter(scale: Float): Rect = Rect(
     left = center.x - width * scale / 2f,

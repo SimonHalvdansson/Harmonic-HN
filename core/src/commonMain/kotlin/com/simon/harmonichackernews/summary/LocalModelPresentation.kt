@@ -62,7 +62,7 @@ data class LocalModelPresentation(
 object LocalModelPresentationPolicy {
     fun present(input: LocalModelPresentationInput): LocalModelPresentation {
         val model = input.model
-        if (model.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
+        if (!model.downloadable) {
             val selectable = input.supported &&
                 input.nanoAvailabilityResolved &&
                 input.nanoAvailable
@@ -130,6 +130,7 @@ object LocalModelPresentationPolicy {
         when (model.runtime) {
             LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
             LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
+            LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
             LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         },
     ).filter(String::isNotBlank).joinToString(" · ")
@@ -182,6 +183,7 @@ object LocalModelPresentationPolicy {
     }
 
     private fun runtimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
         LocalModelRuntime.LLAMA_CPP -> "llama.cpp"

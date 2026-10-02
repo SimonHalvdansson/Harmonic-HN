@@ -184,7 +184,7 @@ private fun TimingSection(
 ) {
     val hasReportedLoad = diagnostics?.modelLoadMillis != null || backend.loadTime != null
     val showLoadPhase = diagnostics?.mode != StorySummaryMode.CLOUD &&
-        backend.localModelRuntime() != LocalModelRuntime.GEMINI_NANO
+        backend.localModelRuntime() !in setOf(LocalModelRuntime.GEMINI_NANO, LocalModelRuntime.APPLE_FOUNDATION_MODELS)
     val phases = buildList {
         if (showLoadPhase) {
             add(
@@ -484,7 +484,8 @@ private data class BackendPresentation(
 )
 
 private fun BackendPresentation.localModelRuntime(): LocalModelRuntime? = name?.let { modelName ->
-    LocalModelCatalog.models.firstOrNull { it.displayName == modelName }?.runtime
+    if (modelName == "Apple Intelligence") LocalModelRuntime.APPLE_FOUNDATION_MODELS
+    else LocalModelCatalog.models.firstOrNull { it.displayName == modelName }?.runtime
 }
 
 private fun modelIdentity(
@@ -494,6 +495,11 @@ private fun modelIdentity(
     val localRuntime = backend.localModelRuntime()
     return when (mode) {
         StorySummaryMode.LOCAL -> when (localRuntime) {
+            LocalModelRuntime.APPLE_FOUNDATION_MODELS -> ModelIdentity(
+                badge = "SYSTEM MODEL",
+                fallbackName = "Apple Intelligence",
+                icon = Res.drawable.ic_auto_awesome,
+            )
             LocalModelRuntime.GEMINI_NANO -> ModelIdentity(
                 badge = "SYSTEM MODEL",
                 fallbackName = "On-device model",

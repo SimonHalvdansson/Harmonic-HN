@@ -96,6 +96,7 @@ internal class MacWkWebViewCanvas(
     }
 
     override fun setBrowserVisible(visible: Boolean) {
+        if (browserVisible == visible) return
         browserVisible = visible
         val updateAwtVisibility = {
             if (!disposed.get()) isVisible = visible

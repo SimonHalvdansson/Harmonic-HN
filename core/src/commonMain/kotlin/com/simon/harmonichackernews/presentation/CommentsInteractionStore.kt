@@ -161,7 +161,13 @@ class CommentsInteractionStore(
     }
 
     fun requestWebsite() {
-        state = state.copy(websiteRequestVersion = state.websiteRequestVersion + 1)
+        state = state.copy(websiteRequestVersion = ++requestSerial)
+    }
+
+    fun consumeWebsiteRequest(version: Int) {
+        if (state.websiteRequestVersion == version) {
+            state = state.copy(websiteRequestVersion = 0)
+        }
     }
 
     fun scrollToComment(

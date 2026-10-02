@@ -1,10 +1,16 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractProguardTask
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.util.Properties
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
 val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
@@ -198,6 +204,22 @@ val stageMacWebView = tasks.register<Sync>("stageMacWebView") {
     into(macWebViewResources.map { it.dir("native") })
 }
 
+val macFoundationModelsOutput = layout.buildDirectory.file("macFoundationModels/harmonic-foundation-models")
+val buildMacFoundationModels = if (isMacDesktopBuild) {
+    tasks.register<Exec>("buildMacFoundationModels") {
+        val source = layout.projectDirectory.file("native/macos/HarmonicFoundationModels.swift")
+        val output = macFoundationModelsOutput.get().asFile
+        inputs.file(source)
+        outputs.file(output)
+        doFirst { output.parentFile.mkdirs() }
+        commandLine(
+            "/usr/bin/xcrun", "swiftc", "-O", "-parse-as-library",
+            "-target", "${if (System.getProperty("os.arch") in listOf("aarch64", "arm64")) "arm64" else "x86_64"}-apple-macosx11.0",
+            source.asFile.absolutePath, "-o", output.absolutePath,
+        )
+    }
+} else null
+
 tasks.named<ProcessResources>("desktopProcessResources") {
     from(generateDesktopMetadata)
     from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
@@ -217,6 +239,8 @@ val desktopNativeJar = tasks.register<Jar>("desktopNativeJar") {
     archiveFileName.set("harmonic-desktop-native.jar")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     dependsOn(stageDesktopLocalAi, stageMacWebView)
+    buildMacFoundationModels?.let { dependsOn(it) }
+    if (isMacDesktopBuild) from(macFoundationModelsOutput) { into("native") }
     from(desktopLocalAiResources)
     from(macWebViewResources)
 }
@@ -268,10 +292,12 @@ compose.desktop {
                 "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
             )
         }
-        // Compose 1.12.0-rc01's ProGuard runner dereferences Gradle 9.7's nullable output stream.
-        // Keep release packaging functional until the plugin is compatible; packaging still uses
-        // the release runtime and excludes debug-only UI through runtime metadata below.
-        buildTypes.release.proguard.isEnabled.set(false)
+        buildTypes.release.proguard {
+            isEnabled.set(true)
+            version.set("7.10.0")
+            optimize.set(true)
+            configurationFiles.from(project.file("proguard-rules.pro"))
+        }
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Harmonic"
@@ -303,5 +329,29 @@ afterEvaluate {
             .minus(desktopProjectJars)
             .plus(stableDesktopProjectJars)
         systemProperty("harmonic.desktop.debug", "true")
+    }
+}
+
+tasks.withType<AbstractProguardTask>().configureEach {
+    // ProGuard copies SWT's signing metadata even though it rewrites the signed classes.
+    // Remove invalid JAR signatures from processed outputs before jpackage consumes them.
+    doLast {
+        val outputDirectory = (this as AbstractProguardTask).destinationDir.get().asFile
+        val signature = Regex("META-INF/[^/]+\\.(SF|RSA|DSA|EC)", RegexOption.IGNORE_CASE)
+        outputDirectory.listFiles().orEmpty().filter { it.extension == "jar" }.forEach { jar ->
+            ZipFile(jar).use { input ->
+                val entries = input.entries().asSequence().toList()
+                if (entries.none { signature.matches(it.name) }) return@forEach
+                val unsignedJar = temporaryDir.resolve(jar.name)
+                ZipOutputStream(unsignedJar.outputStream().buffered()).use { output ->
+                    entries.filterNot { signature.matches(it.name) }.forEach { entry ->
+                        output.putNextEntry(ZipEntry(entry.name).apply { time = entry.time })
+                        input.getInputStream(entry).use { it.copyTo(output) }
+                        output.closeEntry()
+                    }
+                }
+            }
+            Files.move(temporaryDir.resolve(jar.name).toPath(), jar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 }

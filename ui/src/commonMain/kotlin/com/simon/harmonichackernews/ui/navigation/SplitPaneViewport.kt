@@ -169,7 +169,7 @@ internal fun SplitPaneViewport(
     CompositionLocalProvider(
         LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation, snapToCenter),
     ) {
-        Box(modifier.fillMaxSize().onSizeChanged { width = it.width }) {
+        Box(modifier.fillMaxSize().background(HarmonicTheme.colors.background).onSizeChanged { width = it.width }) {
             content(expansion)
             AnimatedVisibility(
                 visible = twoPane && settings.appearance.allowSplitAdjustment,

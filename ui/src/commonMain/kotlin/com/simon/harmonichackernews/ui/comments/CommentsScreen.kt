@@ -335,6 +335,7 @@ fun CommentsScreen(
             if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
                 listState.animateScrollToItem(0)
             }
+            controller.consumeWebsiteRequest(websiteRequest)
             controller.listener.onCollapseSheetForWebsite()
         }
     }

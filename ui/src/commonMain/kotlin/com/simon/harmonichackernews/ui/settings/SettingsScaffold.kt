@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -258,6 +259,10 @@ fun SettingsPage(
             .fillMaxSize()
             .background(HarmonicTheme.colors.background)
             .recalculateWindowInsets()
+            // Adaptive lookahead can place this pane beyond the window and produce negative
+            // consumed insets. Union with zero prevents phantom safe-area padding, which would
+            // give content animations a narrower target width and cause a final-frame jump.
+            .consumeWindowInsets(WindowInsets(0, 0, 0, 0))
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,

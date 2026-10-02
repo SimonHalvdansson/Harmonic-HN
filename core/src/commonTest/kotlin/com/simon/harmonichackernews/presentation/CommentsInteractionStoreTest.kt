@@ -11,6 +11,24 @@ import kotlin.test.assertTrue
 
 class CommentsInteractionStoreTest {
     @Test
+    fun returningToCommentsDoesNotReplayAnAlreadyHandledArticleRequest() {
+        val store = store()
+        store.requestWebsite()
+        val first = store.state.websiteRequestVersion
+        store.consumeWebsiteRequest(first)
+        store.requestSheet(expanded = true)
+        assertEquals(0, store.state.websiteRequestVersion)
+
+        store.requestWebsite()
+        val second = store.state.websiteRequestVersion
+        assertTrue(second > first)
+        store.consumeWebsiteRequest(first)
+        assertEquals(second, store.state.websiteRequestVersion)
+        store.consumeWebsiteRequest(second)
+        assertEquals(0, store.state.websiteRequestVersion)
+    }
+
+    @Test
     fun navigationAndScrollingCaptureThePlatformAnimationPolicy() {
         var smoothScroll = true
         val store = CommentsInteractionStore(

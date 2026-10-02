@@ -1,15 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -84,48 +74,7 @@ fun AiSummarySettingsScreen(
                         selected = state.mode.storedValue,
                         onSelected = { onModeSelected(AiSummaryMode.fromStored(it)) },
                     )
-                    AnimatedContent(
-                        targetState = state.mode,
-                        modifier = Modifier.fillMaxWidth(),
-                        transitionSpec = {
-                            val direction = if (targetState == AiSummaryMode.CLOUD) 1 else -1
-                            val enter = slideInHorizontally(
-                                animationSpec = tween(
-                                    AiModeTransitionDurationMillis,
-                                    easing = FastOutSlowInEasing,
-                                ),
-                                initialOffsetX = { width ->
-                                    direction * (width / AiModeEnterOffsetDivisor).coerceAtLeast(1)
-                                },
-                            ) + fadeIn(
-                                tween(
-                                    AiModeEnterFadeDurationMillis,
-                                    delayMillis = AiModeEnterFadeDelayMillis,
-                                    easing = LinearEasing,
-                                ),
-                            )
-                            val exit = slideOutHorizontally(
-                                animationSpec = tween(
-                                    AiModeExitDurationMillis,
-                                    easing = FastOutSlowInEasing,
-                                ),
-                                targetOffsetX = { width ->
-                                    -direction * (width / AiModeExitOffsetDivisor).coerceAtLeast(1)
-                                },
-                            ) + fadeOut(
-                                tween(AiModeExitFadeDurationMillis, easing = LinearEasing),
-                            )
-                            (enter togetherWith exit).using(
-                                SizeTransform(clip = true) { _, _ ->
-                                    tween(
-                                        AiModeTransitionDurationMillis,
-                                        easing = FastOutSlowInEasing,
-                                    )
-                                },
-                            )
-                        },
-                        label = "AI summary mode content",
-                    ) { mode ->
+                    AiSummaryModeTransition(mode = state.mode) { mode ->
                         if (mode == AiSummaryMode.LOCAL) {
                             Column(Modifier.fillMaxWidth()) {
                                 SettingsDivider()
@@ -250,11 +199,3 @@ private fun CloudAiModelSettingsContent(
         )
     }
 }
-
-private const val AiModeTransitionDurationMillis = 240
-private const val AiModeExitDurationMillis = 170
-private const val AiModeEnterFadeDurationMillis = 175
-private const val AiModeEnterFadeDelayMillis = 25
-private const val AiModeExitFadeDurationMillis = 125
-private const val AiModeEnterOffsetDivisor = 8
-private const val AiModeExitOffsetDivisor = 10

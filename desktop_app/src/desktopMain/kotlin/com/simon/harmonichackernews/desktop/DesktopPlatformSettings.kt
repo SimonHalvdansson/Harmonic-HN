@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.toPainter
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.network.CloudSummaryDefaults
@@ -42,6 +41,9 @@ import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
 import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import java.awt.Desktop
+import com.simon.harmonichackernews.resources.harmonic_app_icon
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.JOptionPane
@@ -51,10 +53,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun rememberDesktopAppIconPainter(): Painter = remember {
-    checkNotNull(desktopAppIconImage) { "The bundled Harmonic desktop app icon is missing" }
-        .toPainter()
-}
+internal fun rememberDesktopAppIconPainter(): Painter =
+    org.jetbrains.compose.resources.painterResource(
+        com.simon.harmonichackernews.resources.Res.drawable.harmonic_app_icon,
+    )
 
 @Composable
 internal fun DesktopSettingsDetail(
@@ -145,16 +147,15 @@ private fun DesktopAiSettings(
             val showMessage: (String) -> Unit = { message ->
                 scene.userMessages.show(message, UserMessageDuration.LONG)
             }
-            Column {
+            Column(Modifier.fillMaxWidth()) {
                 LocalModelsRoute(
                     localModels = localModels,
                     managerState = localModelState,
-                    nanoAvailabilityResolved = true,
-                    nanoAvailable = false,
-                    nanoBaseModelName = null,
-                    models = localModels.catalog.filter {
-                        it.runtime == LocalModelRuntime.LLAMA_CPP
-                    },
+                    nanoAvailabilityResolved = availabilityState.availabilityResolved,
+                    nanoAvailable = availabilityState.nanoAvailable,
+                    nanoBaseModelName = "System managed",
+                    models = localModels.catalog,
+                    managedModelStatus = availabilityState.statusMessage,
                     onChanged = { refresh++ },
                     onMessage = showMessage,
                 )

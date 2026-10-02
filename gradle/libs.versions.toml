@@ -96,6 +96,7 @@ haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta4"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.17.1"
+litertlm-jvm = "com.google.ai.edge.litertlm:litertlm-jvm:0.17.1"
 play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"
 androidx-work = "androidx.work:work-runtime:2.12.0"
 androidx-glance-appwidget = "androidx.glance:glance-appwidget:1.2.0"

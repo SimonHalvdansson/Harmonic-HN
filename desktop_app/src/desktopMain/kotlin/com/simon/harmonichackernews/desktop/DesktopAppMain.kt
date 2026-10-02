@@ -22,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.input.key.Key
@@ -168,7 +170,7 @@ fun main() {
                     HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
                 ) {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        Surface(Modifier.fillMaxSize()) {
+                        Surface(Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default)) {
                             DesktopAppContent(
                                 app = bootstrap.app,
                                 scene = bootstrap.scene,
@@ -201,7 +203,7 @@ private fun showDesktopStartupFailure(icon: BufferedImage?, error: Exception) {
             state = WindowState(width = 620.dp, height = 260.dp),
         ) {
             MaterialTheme {
-                Surface(Modifier.fillMaxSize()) {
+                Surface(Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default)) {
                     Box(Modifier.padding(24.dp)) {
                         Text(
                             "Harmonic could not open its settings or data folder. " +

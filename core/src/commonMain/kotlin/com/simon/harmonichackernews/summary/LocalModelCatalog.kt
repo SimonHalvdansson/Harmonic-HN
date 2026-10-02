@@ -2,11 +2,13 @@ package com.simon.harmonichackernews.summary
 
 enum class LocalModelRuntime {
     GEMINI_NANO,
+    APPLE_FOUNDATION_MODELS,
     LITERT_LM,
     LLAMA_CPP,
 }
 
 enum class LocalModelBrand(val artworkKey: String) {
+    SYSTEM("ic_auto_awesome"),
     GOOGLE("model_logo_google"),
     PRISM("model_logo_prism"),
     QWEN("model_logo_qwen"),

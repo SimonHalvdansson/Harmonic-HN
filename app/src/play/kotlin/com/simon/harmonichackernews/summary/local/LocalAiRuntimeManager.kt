@@ -315,12 +315,14 @@ internal class LocalAiRuntimeManager(
         LocalModelRuntime.LLAMA_CPP,
         LocalModelRuntime.LITERT_LM,
         -> "local AI runtime"
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
     }
 
     fun getEngineClassName(runtime: LocalModelRuntime): String = when (runtime) {
         LocalModelRuntime.LLAMA_CPP -> ENGINE_LLAMA
         LocalModelRuntime.LITERT_LM -> ENGINE_LITERT
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS,
         LocalModelRuntime.GEMINI_NANO ->
             throw IllegalArgumentException("Gemini Nano does not use a feature runtime")
     }
@@ -643,6 +645,7 @@ internal class LocalAiRuntimeManager(
         LocalModelRuntime.LLAMA_CPP,
         LocalModelRuntime.LITERT_LM,
         -> MODULE_RUNTIME
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS,
         LocalModelRuntime.GEMINI_NANO ->
             throw IllegalArgumentException("Gemini Nano has no feature module")
     }

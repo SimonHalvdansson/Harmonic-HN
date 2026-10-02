@@ -14,7 +14,7 @@ import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
@@ -144,7 +144,7 @@ class DesktopLocalAiEnvironment private constructor(
             Files.createDirectories(modelsRoot)
             Files.createDirectories(cacheRoot)
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-            val transferClient = createHarmonicHttpClient(CIO.create(), userAgent)
+            val transferClient = createHarmonicHttpClient(OkHttp.create(), userAgent)
             return try {
                 val storageLocation = DesktopLocalModelStorageLocation(
                     preferences = preferences,
@@ -158,6 +158,7 @@ class DesktopLocalAiEnvironment private constructor(
                     ),
                 )
                 val nativeLibrary = DesktopLlamaNativeLibrary(cacheRoot.resolve("local-ai-runtime"))
+                val apple = DesktopAppleIntelligence(cacheRoot)
                 val runtimeDelivery = DesktopLocalRuntimeDelivery(nativeLibrary)
                 val models = LocalModelService(
                     preferences = preferences,
@@ -169,9 +170,13 @@ class DesktopLocalAiEnvironment private constructor(
                     runtimeDelivery = runtimeDelivery,
                     capabilities = LocalModelDeviceCapabilities(
                         supportsDownloadableModels = DesktopNativePlatform.supported,
-                        supportsLiteRtModels = false,
+                        supportsLiteRtModels = DesktopLiteRtInference.supported,
                         liteRtUnsupportedReason = LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE,
                     ),
+                    models = buildList {
+                        if (DesktopAppleIntelligence.isMac) add(DesktopAppleIntelligence.model)
+                        addAll(LocalModelCatalog.models.filter { it.downloadable })
+                    },
                     storageLocation = storageLocation,
                 ).also { it.refresh() }
                 DesktopLocalAiEnvironment(
@@ -180,10 +185,14 @@ class DesktopLocalAiEnvironment private constructor(
                         models = models,
                         nativeLibrary = nativeLibrary,
                         totalMemoryBytes = ::desktopTotalMemoryBytes,
+                        apple = apple,
+                        liteRt = DesktopLiteRtInference(cacheRoot.toString()),
                     ),
                     scope = scope,
                     transferClient = transferClient,
-                )
+                ).also { environment ->
+                    scope.launch { environment.summary.availability() }
+                }
             } catch (error: Throwable) {
                 scope.cancel()
                 transferClient.close()
@@ -332,8 +341,13 @@ private class DesktopLocalRuntimeDelivery(
                 )
             },
         )
+        LocalModelRuntime.LITERT_LM -> LocalRuntimeInstallStatus(
+            state = if (DesktopLiteRtInference.supported) LocalRuntimeInstallState.INSTALLED
+                else LocalRuntimeInstallState.NOT_INSTALLED,
+            runtime = runtime,
+        )
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS,
         LocalModelRuntime.GEMINI_NANO,
-        LocalModelRuntime.LITERT_LM,
         -> LocalRuntimeInstallStatus(
             state = LocalRuntimeInstallState.NOT_INSTALLED,
             runtime = runtime,
@@ -341,10 +355,14 @@ private class DesktopLocalRuntimeDelivery(
     }
 
     override fun isInstalled(runtime: LocalModelRuntime): Boolean =
-        runtime == LocalModelRuntime.LLAMA_CPP && nativeLibrary.availability().isSuccess
+        when (runtime) {
+            LocalModelRuntime.LLAMA_CPP -> nativeLibrary.availability().isSuccess
+            LocalModelRuntime.LITERT_LM -> DesktopLiteRtInference.supported
+            LocalModelRuntime.APPLE_FOUNDATION_MODELS, LocalModelRuntime.GEMINI_NANO -> false
+        }
 
     override suspend fun request(model: LocalModelDefinition): String? =
-        if (model.runtime == LocalModelRuntime.LLAMA_CPP && isInstalled(model.runtime)) {
+        if (model.downloadable && isInstalled(model.runtime)) {
             downloadStarter(model.id)
         } else {
             "${runtimeLabel(model.runtime)} is not available on desktop."
@@ -364,6 +382,7 @@ private class DesktopLocalRuntimeDelivery(
     override fun engineClassName(runtime: LocalModelRuntime): String? = null
 
     override fun runtimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
+        LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
         LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
@@ -374,35 +393,28 @@ private class DesktopLocalSummaryEngine(
     private val models: LocalModelService,
     nativeLibrary: DesktopLlamaNativeLibrary,
     totalMemoryBytes: () -> Long,
+    private val apple: DesktopAppleIntelligence,
+    private val liteRt: DesktopLiteRtInference,
 ) : LocalSummaryEngine {
     private val inference = DesktopLlamaInference(nativeLibrary, totalMemoryBytes)
 
     override fun canAttempt(): Boolean = DesktopNativePlatform.supported
 
-    override suspend fun availability(): LocalSummaryAvailability {
+    override suspend fun availability(): LocalSummaryAvailability = withContext(Dispatchers.IO) {
         if (!DesktopNativePlatform.supported) {
-            return LocalSummaryAvailability(
+            return@withContext LocalSummaryAvailability(
                 available = false,
                 downloadableFallbackRequired = false,
                 statusMessage = "Local AI requires a 64-bit Windows, macOS, or Linux build",
             )
         }
         models.preload()
-        return inference.availability().fold(
-            onSuccess = {
-                LocalSummaryAvailability(
-                    available = true,
-                    downloadableFallbackRequired = true,
-                    statusMessage = "Choose and download a llama.cpp model",
-                )
-            },
-            onFailure = { error ->
-                LocalSummaryAvailability(
-                    available = false,
-                    downloadableFallbackRequired = false,
-                    statusMessage = error.message ?: "The desktop local AI runtime is unavailable",
-                )
-            },
+        apple.refresh()
+        LocalSummaryAvailability(
+            available = true,
+            downloadableFallbackRequired = !apple.available,
+            baseModelName = "Apple Intelligence".takeIf { apple.available },
+            statusMessage = if (DesktopAppleIntelligence.isMac) apple.status else "Choose and download a local model",
         )
     }
 
@@ -410,8 +422,8 @@ private class DesktopLocalSummaryEngine(
 
     override fun isReady(): Boolean {
         val selected = models.selectedModel
-        return selected.runtime == LocalModelRuntime.LLAMA_CPP &&
-            models.isSupported(selected) && models.isDownloaded(selected) &&
+        return if (selected.runtime == LocalModelRuntime.APPLE_FOUNDATION_MODELS) apple.available
+        else selected.downloadable && models.isSupported(selected) && models.isDownloaded(selected) &&
             models.isRuntimeInstalled(selected.runtime)
     }
 
@@ -437,30 +449,34 @@ private class DesktopLocalSummaryEngine(
         }
         try {
             val selected = models.selectedModel
-            check(selected.runtime == LocalModelRuntime.LLAMA_CPP) {
-                "Select a downloaded llama.cpp model in AI summarization settings"
+            val instruction = request.prompt?.takeIf(String::isNotBlank)
+                ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION
+            if (selected.runtime == LocalModelRuntime.APPLE_FOUNDATION_MODELS) {
+                apple.refresh()
+                check(apple.available) { apple.status }
+                send(StorySummaryEvent.DebugInfo("Apple Intelligence"))
+                val result = apple.summarize(instruction, content) {
+                    trySend(StorySummaryEvent.Progress(it))
+                }
+                send(StorySummaryEvent.Success(result))
+                return@channelFlow
             }
             check(models.isSupported(selected)) { models.unsupportedReason(selected) }
             check(models.isDownloaded(selected)) {
                 "Download the selected local model before using it"
             }
-            val summary = inference.summarize(
-                model = selected,
-                modelPath = models.installedPath(selected),
-                systemInstruction = request.prompt
-                    ?.takeIf(String::isNotBlank)
-                    ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
-                text = content,
-                onProgress = { trySend(StorySummaryEvent.Progress(it)) },
-                onLoaded = { loadMillis ->
-                    trySend(
-                        StorySummaryEvent.DebugInfo(
-                            SummaryFormatting.formatLoadInfo(selected.displayName, loadMillis),
-                            modelLoadMillis = loadMillis,
-                        ),
-                    )
-                },
-            )
+            val onProgress: (String) -> Unit = { trySend(StorySummaryEvent.Progress(it)) }
+            val onLoaded: (Long) -> Unit = { loadMillis ->
+                trySend(StorySummaryEvent.DebugInfo(
+                    SummaryFormatting.formatLoadInfo(selected.displayName, loadMillis),
+                    modelLoadMillis = loadMillis,
+                ))
+            }
+            val summary = if (selected.runtime == LocalModelRuntime.LITERT_LM) {
+                liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded)
+            } else {
+                inference.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded)
+            }
             send(StorySummaryEvent.Success(summary))
         } catch (error: CancellationException) {
             throw error

@@ -2,18 +2,15 @@ package com.simon.harmonichackernews.desktop
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +22,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -680,14 +678,15 @@ private fun DesktopWebViewToolbar(
     onShowComments: () -> Unit,
     onOpenExternal: () -> Unit,
 ) {
+    val openInBrowserInteractions = remember { MutableInteractionSource() }
+    val openInBrowserHovered by openInBrowserInteractions.collectIsHoveredAsState()
+    val openInBrowserFocused by openInBrowserInteractions.collectIsFocusedAsState()
     val pageHost = remember(session.currentPageUrl) {
         runCatching { URI(session.currentPageUrl).host }
             .getOrNull()
             ?.removePrefix("www.")
             .orEmpty()
     }
-    val openInBrowserInteractions = remember { MutableInteractionSource() }
-    val openInBrowserHovered by openInBrowserInteractions.collectIsHoveredAsState()
     Surface(
         color = HarmonicTheme.colors.background,
     ) {
@@ -699,24 +698,14 @@ private fun DesktopWebViewToolbar(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AnimatedVisibility(
-                    visible = showWebsite,
-                    enter = fadeIn(tween(160)) + expandHorizontally(
-                        animationSpec = tween(180),
-                        expandFrom = Alignment.Start,
-                    ),
-                    exit = fadeOut(tween(120)) + shrinkHorizontally(
-                        animationSpec = tween(180),
-                        shrinkTowards = Alignment.Start,
-                    ),
-                    label = "web navigation controls",
-                ) {
+                if (showWebsite) {
                     Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                         DesktopWebViewIconButton(
                             icon = Res.drawable.ic_chevron_left,
                             description = "Back",
-                            onClick = session::navigateBack,
-                            enabled = session.canGoBack,
+                            onClick = {
+                                if (session.canGoBack) session.navigateBack() else onShowComments()
+                            },
                         )
                         DesktopWebViewIconButton(
                             icon = Res.drawable.ic_chevron_right,
@@ -747,85 +736,64 @@ private fun DesktopWebViewToolbar(
                     }
                 }
 
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = desktopWebViewToolbarTitle(
-                            showWebsite = showWebsite,
-                            storyTitle = storyTitle,
-                            pageTitle = session.pageTitle,
-                            currentPageUrl = session.currentPageUrl,
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (pageHost.isNotEmpty()) {
+                Box(Modifier.weight(1f).padding(end = 6.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
                         Text(
-                            text = pageHost,
+                            text = desktopWebViewToolbarTitle(
+                                showWebsite = showWebsite,
+                                storyTitle = storyTitle,
+                                pageTitle = session.pageTitle,
+                                currentPageUrl = session.currentPageUrl,
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
+                        if (pageHost.isNotEmpty()) {
+                            Text(
+                                text = pageHost,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    // Draw in the toolbar itself: Compose popup layers can sit behind WKWebView
+                    // and SWT. The overlay never changes the button's bounds during hover.
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showWebsite && (openInBrowserHovered || openInBrowserFocused),
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                            .wrapContentSize(Alignment.CenterEnd, unbounded = true),
+                        enter = fadeIn(tween(120)),
+                        exit = fadeOut(tween(90)),
+                    ) {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = MaterialTheme.colorScheme.inverseSurface,
+                            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        ) {
+                            Text(
+                                "Open in browser",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = showWebsite,
-                    enter = fadeIn(tween(160)) + expandHorizontally(
-                        animationSpec = tween(180),
-                        expandFrom = Alignment.End,
-                    ),
-                    exit = fadeOut(tween(120)) + shrinkHorizontally(
-                        animationSpec = tween(180),
-                        shrinkTowards = Alignment.End,
-                    ),
-                    label = "open in browser button",
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.width(4.dp))
-                        AnimatedVisibility(
-                            visible = openInBrowserHovered,
-                            enter = fadeIn(tween(120)) + expandHorizontally(
-                                animationSpec = tween(150),
-                                expandFrom = Alignment.End,
-                            ),
-                            exit = fadeOut(tween(90)) + shrinkHorizontally(
-                                animationSpec = tween(120),
-                                shrinkTowards = Alignment.End,
-                            ),
-                            label = "open in browser tooltip",
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = MaterialTheme.shapes.extraSmall,
-                                    color = MaterialTheme.colorScheme.inverseSurface,
-                                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                                    shadowElevation = 2.dp,
-                                ) {
-                                    Text(
-                                        text = "Open in browser",
-                                        modifier = Modifier.padding(
-                                            horizontal = 10.dp,
-                                            vertical = 6.dp,
-                                        ),
-                                        style = MaterialTheme.typography.labelMedium,
-                                    )
-                                }
-                                Spacer(Modifier.width(6.dp))
-                            }
-                        }
-                        FilledTonalIconButton(
-                            onClick = onOpenExternal,
-                            modifier = Modifier.hoverable(openInBrowserInteractions),
-                        ) {
-                            Icon(
-                                painterResource(Res.drawable.ic_open_in_new),
-                                contentDescription = "Open in browser",
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                if (showWebsite) {
+                    FilledTonalIconButton(
+                        onClick = onOpenExternal,
+                        interactionSource = openInBrowserInteractions,
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_open_in_new),
+                            contentDescription = "Open in browser",
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 }
 

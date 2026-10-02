@@ -42,7 +42,8 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         getByName("desktopMain").dependencies {
-            implementation(libs.ktor.client.cio)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.litertlm.jvm)
             implementation(libs.jna.platform)
         }
     }

@@ -9,6 +9,8 @@ import com.sun.jna.win32.StdCallLibrary
 import java.net.NetworkInterface
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -46,13 +48,20 @@ private interface WindowsInternetStatus : StdCallLibrary {
 }
 
 internal data object DesktopSystemAppearance {
+    @Volatile private var cachedDark = readSystemDark()
+
+    // Compose asks for appearance during composition and on every preference change.
+    // Native process/registry reads belong to the background monitor, never that hot path.
+    fun isDark(): Boolean = cachedDark
+
     /** Emits when either the Windows app theme or the local minute changes while Harmonic is open. */
     val changes: Flow<Unit> = flow {
         var dark = isDark()
         var minute = currentMinute()
         while (currentCoroutineContext().isActive) {
             delay(APPEARANCE_POLL_MILLIS)
-            val nextDark = isDark()
+            val nextDark = readSystemDark()
+            cachedDark = nextDark
             val nextMinute = currentMinute()
             if (nextDark != dark || nextMinute != minute) {
                 dark = nextDark
@@ -60,9 +69,9 @@ internal data object DesktopSystemAppearance {
                 emit(Unit)
             }
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
-    fun isDark(): Boolean = when {
+    private fun readSystemDark(): Boolean = when {
         DesktopOperatingSystem.isWindows -> windowsAppsUseDarkTheme()
         DesktopOperatingSystem.isMac -> macOsUsesDarkTheme()
         else -> linuxUsesDarkTheme()

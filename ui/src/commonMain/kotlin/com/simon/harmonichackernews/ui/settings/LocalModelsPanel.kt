@@ -1,8 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
@@ -87,6 +88,7 @@ fun LocalModelsRoute(
     nanoAvailable: Boolean,
     nanoBaseModelName: String?,
     models: List<LocalModelDefinition> = localModels.catalog,
+    managedModelStatus: String? = null,
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
 ) {
@@ -99,9 +101,13 @@ fun LocalModelsRoute(
                 nanoAvailabilityResolved = nanoAvailabilityResolved,
                 nanoAvailable = nanoAvailable,
                 managerState = managerState,
-            ),
+            ).let { presentation ->
+                if (!definition.downloadable && managedModelStatus != null) {
+                    presentation.copy(summary = managedModelStatus)
+                } else presentation
+            },
             baseModelName = nanoBaseModelName.takeIf {
-                definition.runtime == LocalModelRuntime.GEMINI_NANO
+                !definition.downloadable
             },
         )
     }
@@ -110,6 +116,7 @@ fun LocalModelsRoute(
         modelIconPainter = { definition ->
             painterResource(
                 when (definition.brand) {
+                    LocalModelBrand.SYSTEM -> Res.drawable.ic_auto_awesome
                     LocalModelBrand.GOOGLE -> Res.drawable.model_logo_google
                     LocalModelBrand.PRISM -> Res.drawable.model_logo_prism
                     LocalModelBrand.QWEN -> Res.drawable.model_logo_qwen
@@ -151,10 +158,11 @@ fun LocalModelsPanel(
     onAction: (String, LocalModelPresentationAction) -> Unit,
 ) {
     val nanoRow = models.firstOrNull {
-        it.model.runtime == LocalModelRuntime.GEMINI_NANO && it.presentation.enabled
+        !it.model.downloadable &&
+            (it.presentation.enabled || it.model.runtime == LocalModelRuntime.APPLE_FOUNDATION_MODELS)
     }
-    val downloadableRows = models.filter { it.model.runtime != LocalModelRuntime.GEMINI_NANO }
-    val catalogIncludesNano = models.any { it.model.runtime == LocalModelRuntime.GEMINI_NANO }
+    val downloadableRows = models.filter { it.model.downloadable }
+    val catalogIncludesNano = models.any { !it.model.downloadable }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -173,7 +181,7 @@ fun LocalModelsPanel(
                     onAction = onAction,
                 )
                 Text(
-                    text = "System model managed by Android. No download required.",
+                    text = "System model managed by the operating system. No download required.",
                     modifier = Modifier.padding(top = 7.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
@@ -386,6 +394,9 @@ private fun LocalModelCard(
                     painter = iconPainter,
                     contentDescription = null,
                     modifier = Modifier.size(26.dp),
+                    colorFilter = if (row.model.brand == LocalModelBrand.SYSTEM) {
+                        ColorFilter.tint(MaterialTheme.colorScheme.primary)
+                    } else null,
                 )
             }
             Column(
@@ -578,6 +589,7 @@ private fun LocalModelRowUiState.visibleStatus(): String? {
 }
 
 private fun LocalModelRuntime.displayLabel(): String = when (this) {
+    LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Foundation Models"
     LocalModelRuntime.GEMINI_NANO -> "AI Core"
     LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
     LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
