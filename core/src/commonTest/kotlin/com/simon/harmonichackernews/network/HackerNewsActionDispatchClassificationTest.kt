@@ -12,6 +12,8 @@ import com.simon.harmonichackernews.presentation.EditorWorkflowResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headersOf
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
@@ -27,6 +29,61 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 
 class HackerNewsActionDispatchClassificationTest {
+    @Test
+    fun genuineBadLoginResponsesRemainRecognizedWithFormattingAndExplanation() = runTest {
+        for (body in listOf(
+            "Bad login.",
+            "<html><body><p>Bad <b>login.</b> Please try again.</p><a href='/login'>Sign in</a></body></html>",
+            "<table><tr><td>Bad&#32;login. Your session expired.</td></tr></table>",
+            "<form><p>BAD login.</p><input name='acct'></form>",
+        )) {
+            val accounts = MemoryAccounts()
+            val transport = HttpClient(MockEngine { respond(body) })
+            try {
+                val failure = assertIs<HackerNewsActionResult.Failure>(userService(transport, accounts).vote("42", "up"))
+                assertEquals(HackerNewsActionFailureReason.INVALID_CREDENTIALS, failure.reason, body)
+                assertEquals(null, accounts.currentAccount, body)
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
+    fun userContentAndNonvisibleMarkersDoNotInvalidatePostedComment() = runTest {
+        for (content in listOf(
+            "<span class='titleline'><a>Bad login.</a></span>",
+            "<div class='commtext'>Bad <i>login.</i></div>",
+            "<div class='toptext'>Bad login.</div>",
+            "<div class='pollopt-text'>Bad login.</div>",
+            "<textarea>Bad login.</textarea>",
+            "<script>Bad login.</script><a title='Bad login.'>Link</a>",
+            "<table><tr><td>about:</td><td>Bad login.</td></tr></table>",
+        )) {
+            val accounts = MemoryAccounts()
+            val transport = HttpClient(MockEngine { request ->
+                if (request.url.encodedPath == "/comment") respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/item?id=42"))
+                else respond("<html><body>$content</body></html>")
+            })
+            try {
+                assertIs<HackerNewsActionResult.Success>(userService(transport, accounts).comment("42", "Posted comment"))
+                assertEquals("tester", accounts.currentAccount?.username, content)
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
+    fun favoritePreflightAllowsBadLoginInTheItemTitleAndComments() = runTest {
+        val accounts = MemoryAccounts()
+        val transport = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath == "/login") respond("<input name='fnid' value='token'>")
+            else respond("""<table><tr class='athing' id='42'><td><span class='titleline'><a>Bad login.</a></span></td></tr></table>
+                <div class='commtext'>Bad login.</div><a href='/fave?id=42&amp;auth=token&amp;un=t'>unfavorite</a>""")
+        })
+        try {
+            assertIs<HackerNewsActionResult.Success>(userService(transport, accounts).setFavorite(42, true))
+            assertEquals("tester", accounts.currentAccount?.username)
+        } finally { transport.close() }
+    }
+
     @Test
     fun accountBoundRequestsRejectTheReplacementLoginBeforeNetworkDispatch() = runTest {
         var requests = 0

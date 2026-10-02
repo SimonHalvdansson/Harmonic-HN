@@ -8,6 +8,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.cancel
+import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterIsInstance
@@ -18,11 +19,47 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CloudSummaryStreamingTest {
+    @Test
+    fun articleExtractionRejectsOversizeBeforeEof() = runTest {
+        val body = ByteChannel(autoFlush = true)
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val transport = HttpClient(MockEngine) {
+            engine {
+                this.dispatcher = dispatcher
+                addHandler { respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "text/html")) }
+            }
+        }
+        backgroundScope.launch {
+            val chunk = ByteArray(64 * 1024)
+            repeat(4 * 1024 * 1024 / chunk.size) { body.writeFully(chunk) }
+            body.writeFully(byteArrayOf(1))
+        }
+        try {
+            withTimeout(2_000) {
+                assertFailsWith<HttpBodyLimitException> {
+                    KtorCloudSummaryRepository(KtorHttpClient(transport), "test", dispatcher)
+                        .extractMainContent("https://example.com/article")
+                }
+            }
+            assertTrue(body.isClosedForRead || body.closedCause != null)
+        } finally { body.cancel(); transport.close() }
+    }
+
+    @Test
+    fun ordinaryArticleExtractionStillReturnsReadableText() = runTest {
+        val client = HttpClient(MockEngine { respond("<html><body><p>Article text.</p></body></html>") })
+        try {
+            assertEquals("Article text.", KtorCloudSummaryRepository(KtorHttpClient(client), "test", StandardTestDispatcher(testScheduler))
+                .extractMainContent("https://example.com/article"))
+        } finally { client.close() }
+    }
+
     @Test
     fun doneEventFinishesWithoutWaitingForSocketEof() = runTest {
         val body = ByteChannel(autoFlush = true)

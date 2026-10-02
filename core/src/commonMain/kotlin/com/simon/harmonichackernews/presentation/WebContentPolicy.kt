@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
+import com.fleeksoft.ksoup.Ksoup
+
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.settings.WebViewPreferences
@@ -87,6 +89,17 @@ object WebContentPagePolicy {
             current ?: storyUrl?.takeIf(String::isNotBlank)
         }
     }
+
+    /** Relative resources retain their source base; the host must use an opaque document origin. */
+    fun cachedArticleHtml(html: String, sourceUrl: String): String {
+        val document = Ksoup.parse(html)
+        document.select("base").remove()
+        document.head().prependElement("base").attr("href", sourceUrl)
+        return document.outerHtml()
+    }
+
+    fun cachedArticleDisplayUrl(nativeUrl: String?, sourceUrl: String?): String? =
+        if (nativeUrl?.substringBefore('#') == "about:blank") sourceUrl else nativeUrl
 
     fun cachedArticleBaseUrl(
         storedSourceUrl: String?,

@@ -568,7 +568,7 @@ private class CallerContextHackerNewsActionRepository(
             HackerNewsActionResult.Failure("Unknown or expired link", body),
         )
 
-        body.contains(BAD_LOGIN_TEXT) -> PageResult.Result(
+        isBadLoginPage(body) -> PageResult.Result(
             HackerNewsActionResult.Failure(
                 summary = "Bad login",
                 detail = "Your session has expired or credentials are invalid. Logged out.",
@@ -586,6 +586,17 @@ private class CallerContextHackerNewsActionRepository(
         )
 
         else -> PageResult.Success(body)
+    }
+
+    private fun isBadLoginPage(body: String): Boolean {
+        val document = Ksoup.parse(body)
+        // These are HN's author-controlled regions, rather than server authentication messages.
+        // Parsing text also recognizes entities, nested formatting and surrounding explanation.
+        document.select(".athing, .titleline, .commtext, .comment, .toptext, .pollopt-text, .about, textarea, input, select, script, style, head").remove()
+        document.select("tr").filter { row ->
+            row.children().firstOrNull()?.text()?.trim()?.equals("about:", ignoreCase = true) == true
+        }.forEach { it.remove() }
+        return BAD_LOGIN_PATTERN.containsMatchIn(document.body().text())
     }
 
     private fun buildCaptchaRequest(
@@ -637,7 +648,7 @@ private class CallerContextHackerNewsActionRepository(
         const val SUBMIT_PARAM_FNOP = "fnop"
         const val DEFAULT_FNOP = "submit-page"
         const val LOCATION_HEADER = "Location"
-        const val BAD_LOGIN_TEXT = "Bad login."
+        val BAD_LOGIN_PATTERN = Regex("\\bBad\\s+login\\.", RegexOption.IGNORE_CASE)
         const val UNKNOWN_OR_EXPIRED_LINK_TEXT = "Unknown or expired link."
         val HN_GET_REDIRECT_CODES = setOf(301, 302, 303)
     }

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -7,9 +8,14 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.cancel
+import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.ByteChannel
 import kotlinx.io.IOException
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -21,6 +27,47 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HarmonicHttpClientTest {
+    @Test
+    fun boundedRequestsStopBeforeEofWithHttpCacheInstalled() = runTest {
+        for (buffered in listOf(false, true)) {
+            val body = ByteChannel(autoFlush = true)
+            val client = HttpClient(MockEngine) {
+                install(HttpCache)
+                engine {
+                    dispatcher = StandardTestDispatcher(testScheduler)
+                    addHandler { respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.CacheControl, "public, max-age=3600")) }
+                }
+            }
+            backgroundScope.launch {
+                val chunk = ByteArray(64 * 1024)
+                repeat(DEFAULT_MAX_BUFFERED_BODY_BYTES / chunk.size) { body.writeFully(chunk) }
+                body.writeFully(byteArrayOf(1))
+                awaitCancellation() // A hostile server need not ever finish the response.
+            }
+            try {
+                withTimeout(2_000) {
+                    assertFailsWith<HttpBodyLimitException> {
+                        if (buffered) KtorHttpClient(client).execute(HttpRequest.Builder().url("https://example.com/large").build())
+                        else client.getTextOrThrow("https://example.com/large")
+                    }
+                }
+                assertTrue(body.isClosedForRead || body.closedCause != null)
+            } finally { body.cancel(); client.close() }
+        }
+    }
+
+    @Test
+    fun bufferedResponsesHonorSmallerCapsAndRemainReadableAfterScopedClose() = runTest {
+        val client = HttpClient(MockEngine { respond("five!") })
+        try {
+            val transport = KtorHttpClient(client)
+            val request = HttpRequest.Builder().url("https://example.com/body").build()
+            assertFailsWith<HttpBodyLimitException> { transport.execute(request, maxBytes = 4) }
+            val response = transport.execute(request, maxBytes = 5)
+            try { assertEquals("five!", response.body.readText()) } finally { response.close() }
+        } finally { client.close() }
+    }
+
     @Test
     fun readOnlyRequestRetriesConnectionFailureOnce() = runTest {
         var attempts = 0

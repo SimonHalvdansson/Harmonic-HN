@@ -11,6 +11,38 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 
 class StoryCacheRepositoryTest {
     @Test
+    fun readerCannotDeleteAFileAwaitingCommitMetadata() {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val repository = StoryCacheRepository(files, metadata)
+        // FileDownloadStore has moved the new bytes but onCommit has not run yet.
+        files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html", "new article".encodeToByteArray())
+        assertNull(repository.loadArticle(42, 1_000))
+        assertTrue(files.contains(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html"))
+        repository.recordArticleMetadata(42, "https://final.test/article", "text/html")
+        assertEquals("new article", repository.loadArticle(42, 2_000))
+        assertEquals("https://final.test/article", repository.articleUrl(42))
+    }
+
+    @Test
+    fun legacyArticleOriginIsRejectedUntilRedownloaded() {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val repository = StoryCacheRepository(files, metadata)
+        files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html", "legacy active HTML".encodeToByteArray())
+        metadata.putString(StoryCacheKeys.articleUrlKey(42), "https://original.test/redirect")
+        assertNull(repository.loadArticle(42, 1_000))
+        assertTrue(files.contains(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html"))
+        assertNull(repository.articleUrl(42))
+        assertEquals(0, files.readTextCount)
+        files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "42.html", "new HTML".encodeToByteArray())
+        repository.recordArticleMetadata(42, "https://final.test/article", "text/html")
+        val reopened = StoryCacheRepository(files, metadata)
+        assertEquals("new HTML", reopened.loadArticle(42, 2_000))
+        assertEquals("https://final.test/article", reopened.articleUrl(42))
+    }
+
+    @Test
     fun preparedHeaderHitsMissesAndLegacyRebuildsRetainOfflineInformation() {
         val files = FakeFiles()
         val repository = StoryCacheRepository(files, FakeMetadata())
@@ -158,6 +190,7 @@ class StoryCacheRepositoryTest {
         val repository = StoryCacheRepository(files, FakeMetadata())
         repeat(200) { index ->
             files.write(StoryCacheKeys.ARTICLE_NAMESPACE, "$index.html", "cached $index".encodeToByteArray())
+            repository.recordArticleMetadata(index, "https://example.com/$index", null)
         }
 
         assertEquals("cached 42", repository.loadArticle(42, 1_000))

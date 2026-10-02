@@ -141,6 +141,7 @@ class InMemoryStoryCacheMetadataStore : StoryCacheMetadataStore {
 object StoryCacheKeys {
     const val INDEX = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
     const val ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
+    const val ARTICLE_ORIGIN_VERSION = "com.simon.harmonichackernews.KEY_CACHED_ARTICLE_ORIGIN_VERSION"
     const val ARTICLE_CHARSET =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_CHARSET"
 
@@ -152,6 +153,7 @@ object StoryCacheKeys {
     fun storyFile(storyId: Int): String = "$storyId.json"
     fun articleFile(storyId: Int): String = "$storyId.html"
     fun articleUrlKey(storyId: Int): String = ARTICLE_URL + storyId
+    fun articleOriginVersionKey(storyId: Int): String = ARTICLE_ORIGIN_VERSION + storyId
     fun articleCharsetKey(storyId: Int): String = ARTICLE_CHARSET + storyId
 }
 
@@ -222,6 +224,7 @@ class StoryCacheRepository(
             update.evictedStoryIds.forEach { evictedStoryId ->
                 remove(StoryCacheKeys.articleUrlKey(evictedStoryId))
                 remove(StoryCacheKeys.articleCharsetKey(evictedStoryId))
+                remove(StoryCacheKeys.articleOriginVersionKey(evictedStoryId))
             }
         }
         indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(update.encodedEntries)
@@ -327,6 +330,7 @@ class StoryCacheRepository(
             putStringSet(StoryCacheKeys.INDEX, updatedIndex)
             remove(StoryCacheKeys.articleUrlKey(storyId))
             remove(StoryCacheKeys.articleCharsetKey(storyId))
+            remove(StoryCacheKeys.articleOriginVersionKey(storyId))
         }
         indexedStoryIdsSnapshot = StoryCacheIndex.storyIds(updatedIndex)
         removeFiles(storyId)
@@ -342,7 +346,8 @@ class StoryCacheRepository(
         val cacheMetadataKeys = metadata.keys().filter { key ->
             if (key == StoryCacheKeys.INDEX ||
                 key.startsWith(StoryCacheKeys.ARTICLE_URL) ||
-                key.startsWith(StoryCacheKeys.ARTICLE_CHARSET)
+                key.startsWith(StoryCacheKeys.ARTICLE_CHARSET) ||
+                key.startsWith(StoryCacheKeys.ARTICLE_ORIGIN_VERSION)
             ) {
                 true
             } else {
@@ -360,6 +365,10 @@ class StoryCacheRepository(
         val key = StoryCacheKeys.articleFile(storyId)
         val file = files.info(StoryCacheKeys.ARTICLE_NAMESPACE, key)
             ?: return null
+        // Earlier snapshots recorded the pre-redirect URL; never restore their active HTML.
+        // A commit installs the file before its metadata. Leave an unverified file alone so
+        // a concurrent reader cannot delete that in-flight commit; the next download replaces it.
+        if (metadata.getString(StoryCacheKeys.articleOriginVersionKey(storyId)) != "1") return null
         if (!ArticleSnapshotPolicy.isValidSize(file.sizeBytes)) {
             removeArticle(storyId)
             return null
@@ -372,13 +381,16 @@ class StoryCacheRepository(
     }
 
     fun articleUrl(storyId: Int): String? = storyId.takeIf { it > 0 }?.let {
-        metadata.getString(StoryCacheKeys.articleUrlKey(it))
+        if (metadata.getString(StoryCacheKeys.articleOriginVersionKey(it)) == "1") {
+            metadata.getString(StoryCacheKeys.articleUrlKey(it))
+        } else null
     }
 
     fun recordArticleMetadata(storyId: Int, sourceUrl: String, contentType: String?) {
         if (storyId <= 0) return
         metadata.update {
             putString(StoryCacheKeys.articleUrlKey(storyId), sourceUrl)
+            putString(StoryCacheKeys.articleOriginVersionKey(storyId), "1")
             putString(
                 StoryCacheKeys.articleCharsetKey(storyId),
                 ArticleCacheMetadata.charsetName(contentType),
@@ -391,6 +403,7 @@ class StoryCacheRepository(
         metadata.update {
             remove(StoryCacheKeys.articleUrlKey(storyId))
             remove(StoryCacheKeys.articleCharsetKey(storyId))
+            remove(StoryCacheKeys.articleOriginVersionKey(storyId))
         }
     }
 

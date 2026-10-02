@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.settings.AppFont
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,6 +9,27 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WebContentPagePolicyTest {
+    @Test
+    fun cachedDisplayUrlFollowsLiveNavigationAfterOpaqueDocument() {
+        val source = "https://final.test/article"
+        assertEquals(source, WebContentPagePolicy.cachedArticleDisplayUrl("about:blank", source))
+        assertEquals(source, WebContentPagePolicy.cachedArticleDisplayUrl("about:blank#section", source))
+        assertEquals("https://next.test/page", WebContentPagePolicy.cachedArticleDisplayUrl("https://next.test/page", source))
+    }
+
+    @Test
+    fun cachedDocumentUsesFinalUrlForRelativeResourcesOnly() {
+        val html = WebContentPagePolicy.cachedArticleHtml(
+            "<html><head><base href='https://wrong.test/'></head><body><a href='next'>Next</a><img src='photo.png'></body></html>",
+            "https://final.test/articles/page",
+        )
+        val document = Ksoup.parse(html)
+        assertEquals(1, document.select("base").size)
+        assertEquals("https://final.test/articles/page", document.selectFirst("base")?.attr("href"))
+        assertEquals("https://final.test/articles/next", document.selectFirst("a")?.absUrl("href"))
+        assertEquals("https://final.test/articles/photo.png", document.selectFirst("img")?.absUrl("src"))
+    }
+
     private val urls = WebContentPlatformUrls(
         pdfViewer = "app://pdf/index.html",
         errorPage = "app://webview_error.html",

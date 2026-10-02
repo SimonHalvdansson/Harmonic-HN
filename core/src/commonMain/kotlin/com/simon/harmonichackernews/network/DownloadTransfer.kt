@@ -68,6 +68,8 @@ data class TransferRequest(
 }
 
 interface TransferResponse {
+    /** Final URL after redirects; this is the origin of the downloaded bytes. */
+    val responseUrl: String
     val statusCode: Int
     val statusMessage: String
     val contentLength: Long
@@ -115,6 +117,7 @@ class KtorTransferClient(
 
     private fun HttpResponse.asTransferResponse(): TransferResponse =
         object : TransferResponse {
+            override val responseUrl: String get() = requestUrl.toString()
             override val statusCode: Int get() = code
             override val statusMessage: String get() = message
             override val contentLength: Long get() = this@asTransferResponse.body.contentLength()
@@ -197,7 +200,6 @@ class HttpTransferEngine(
         client.withResponse(request) { response ->
             consumeResponse(
                 response = response,
-                request = request,
                 sinkForResponse = sinkForResponse,
                 optionsForResponse = optionsForResponse,
                 onProgress = onProgress,
@@ -208,7 +210,6 @@ class HttpTransferEngine(
         try {
             consumeResponse(
                 response = response,
-                request = request,
                 sinkForResponse = sinkForResponse,
                 optionsForResponse = optionsForResponse,
                 onProgress = onProgress,
@@ -220,7 +221,6 @@ class HttpTransferEngine(
 
     private suspend fun consumeResponse(
         response: TransferResponse,
-        request: TransferRequest,
         sinkForResponse: suspend (TransferResponseInfo) -> DownloadSink,
         optionsForResponse: (TransferResponseInfo) -> TransferOptions,
         onProgress: suspend (TransferProgress) -> Unit,
@@ -279,7 +279,7 @@ class HttpTransferEngine(
             }
             activeSink.close()
             return TransferReceipt(
-                metadata = DownloadMetadata(request.url, response.contentType?.toString()),
+                metadata = DownloadMetadata(response.responseUrl, response.contentType?.toString()),
                 responseBytes = responseBytes,
                 totalBytes = totalBytes,
                 statusCode = response.statusCode,

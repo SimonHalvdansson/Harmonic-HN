@@ -95,7 +95,9 @@ internal suspend fun HttpClient.getTextOrThrow(url: String): String = try {
 }
 
 private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {
-    return prepareGet(url).execute { response ->
+    return prepareGet(url) {
+        header(HttpHeaders.CacheControl, "no-store")
+    }.execute { response ->
         val channel = response.bodyAsChannel()
         try {
             val declaredLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull()

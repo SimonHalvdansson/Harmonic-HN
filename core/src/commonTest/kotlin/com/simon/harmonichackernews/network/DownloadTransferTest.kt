@@ -1,5 +1,11 @@
 package com.simon.harmonichackernews.network
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -12,6 +18,25 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 
 class DownloadTransferTest {
+    @Test
+    fun redirectedTransferRecordsTheFinalDocumentUrl() = runTest {
+        val client = HttpClient(MockEngine { request ->
+            if (request.url.host == "original.test") {
+                respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "https://final.test/article"))
+            } else {
+                respond("<html>Final origin</html>", headers = headersOf(HttpHeaders.ContentType, "text/html"))
+            }
+        })
+        try {
+            val receipt = HttpTransferEngine(KtorTransferClient(KtorHttpClient(client))).transfer(
+                TransferRequest("https://original.test/redirect"), RecordingSink(),
+                TransferOptions(maxTotalBytes = 1024),
+            )
+            assertEquals("https://final.test/article", receipt.metadata.sourceUrl)
+            assertEquals("text/html", receipt.metadata.contentType)
+        } finally { client.close() }
+    }
+
     @Test
     fun rangeTransferPreservesHeadersOffsetExpectedSizeAndProgress() = runTest {
         val body = ByteArrayTransferBody(byteArrayOf(1, 2, 3, 4))
@@ -228,6 +253,7 @@ class DownloadTransferTest {
     }
 
     private class FakeTransferResponse(
+        override val responseUrl: String = "https://example.com/file",
         override val statusCode: Int,
         override val body: TransferBody,
         override val contentLength: Long,

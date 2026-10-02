@@ -177,6 +177,8 @@ internal class AndroidCommentsWebViewController(
     private var pendingSummaryCallback: PageTextCallback? = null
     private var lastPageFinishedGeneration = -1
     private var cachedArticleJob: Job? = null
+    private var cachedArticleSourceUrl: String? = null
+
     private var pdfDownloadJob: Job? = null
     private var downloadedPdfUrl: String? = null
     val isReaderModeAvailable: Boolean get() = webContentSession.readerState.available
@@ -409,8 +411,13 @@ internal class AndroidCommentsWebViewController(
         webContentController.reload()
     }
 
+    private fun displayedWebUrl(view: WebView? = webView): String? =
+        if (showingCachedArticlePage) {
+            WebContentPagePolicy.cachedArticleDisplayUrl(view?.url, cachedArticleSourceUrl)
+        } else view?.url
+
     fun openCurrentOrStoryUrlInBrowser() {
-        val currentUrl = webView?.url
+        val currentUrl = displayedWebUrl()
         val url = WebContentPagePolicy.externalBrowserUrl(
             currentUrl = if (isPdfViewerUrl(currentUrl)) downloadedPdfUrl else currentUrl,
             storyUrl = story?.url,
@@ -847,7 +854,7 @@ internal class AndroidCommentsWebViewController(
             return
         }
         webContentDriver.publish(
-            url = view.url,
+            url = displayedWebUrl(view),
             loading = false,
             pageReady = true,
             canGoBack = view.canGoBack(),
@@ -1202,7 +1209,7 @@ internal class AndroidCommentsWebViewController(
                         failingUrl = failingUrl,
                         storyUrl = storyUrl,
                     ) ?: return@withContext null
-                    baseUrl to html
+                    baseUrl to WebContentPagePolicy.cachedArticleHtml(html, baseUrl)
                 }
                 if (!isCurrentWebViewCallback(view) || generation != webContentLoad.state.generation ||
                     showingErrorPage || showingCachedArticlePage
@@ -1215,10 +1222,13 @@ internal class AndroidCommentsWebViewController(
                     onMissing()
                 } else {
                     val (baseUrl, html) = snapshot
+                    cachedArticleSourceUrl = baseUrl
                     webContentSession.showCachedContent(failingUrl, baseUrl)
                     clearWebViewHistoryOnNextFinish = true
                     callbacks.showMessage(WebContentCopy.SHOWING_CACHED_CONTENT)
-                    view.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
+                    // A null base grants an opaque origin. <base> only resolves links/resources;
+                    // cached HTML must never inherit a live website's cookies or DOM storage.
+                    view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                 }
             } finally {
                 if (cachedArticleJob === currentCoroutineContext()[Job]) cachedArticleJob = null
@@ -1339,7 +1349,7 @@ internal class AndroidCommentsWebViewController(
         override fun reload() {
             cancelCachedArticleLoad()
             cancelPdfDownload()
-            webView?.reload()
+            if (showingCachedArticlePage) retryLastFailedUrl() else webView?.reload()
         }
 
         override fun goBack(): Boolean {
@@ -1375,7 +1385,7 @@ internal class AndroidCommentsWebViewController(
         }
 
         fun currentState(): WebContentDriverState = mutableState.value.copy(
-            currentUrl = webView?.url,
+            currentUrl = displayedWebUrl(),
             canGoBack = webView?.canGoBack() == true,
             showingError = showingErrorPage,
             showingCachedContent = showingCachedArticlePage,
@@ -1417,9 +1427,11 @@ internal class AndroidCommentsWebViewController(
             }
             beginWebViewLoad(currentView, url)
             if (!isErrorPageUrl(url)) {
+                val preserveCachedPage = showingCachedArticlePage &&
+                    url?.substringBefore('#') == "about:blank"
                 webContentSession.recordRequestedUrl(
-                    url,
-                    preservePage = showingCachedArticlePage,
+                    if (preserveCachedPage) cachedArticleSourceUrl else url,
+                    preservePage = preserveCachedPage,
                 )
             }
         }

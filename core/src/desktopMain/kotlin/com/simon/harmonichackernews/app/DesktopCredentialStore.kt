@@ -141,37 +141,6 @@ internal class WindowsCredential : Structure {
     }
 }
 
-/** Uses the login Keychain on macOS. */
-private class MacOsKeychainCredentialStore : CredentialStore {
-    override fun read(id: String): String? {
-        val result = security("find-generic-password", "-s", SERVICE, "-a", id, "-w")
-        return result.output.trimEnd('\r', '\n').takeIf { result.success }
-    }
-
-    override fun write(id: String, value: String): Boolean = security(
-        "add-generic-password",
-        "-U",
-        "-s",
-        SERVICE,
-        "-a",
-        id,
-        "-w",
-        value,
-    ).success
-
-    override fun remove(id: String): Boolean {
-        val result = security("delete-generic-password", "-s", SERVICE, "-a", id)
-        return result.success || result.output.contains("could not be found", ignoreCase = true)
-    }
-
-    private fun security(vararg arguments: String): CredentialCommandResult =
-        runCredentialCommand(listOf("/usr/bin/security") + arguments)
-
-    private companion object {
-        const val SERVICE = "com.simon.harmonichackernews.desktop"
-    }
-}
-
 /** Linux Secret Service adapter using libsecret's standard secret-tool client. */
 private class LinuxSecretServiceCredentialStore : CredentialStore {
     override fun read(id: String): String? {

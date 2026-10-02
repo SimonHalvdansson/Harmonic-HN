@@ -51,7 +51,7 @@ class KtorCloudSummaryRepository(
     override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = withContext(requestDispatcher) {
         val requestBuilder = HttpRequest.Builder().url(joinUrl(baseUrl, "models"))
         if (apiKey.isNotBlank()) requestBuilder.header("Authorization", "Bearer $apiKey")
-        val response = client.execute(requestBuilder.get().build())
+        val response = client.execute(requestBuilder.get().build(), maxBytes = MAX_MODEL_CATALOG_BYTES)
         try {
             val body = response.body.readText(MAX_MODEL_CATALOG_BYTES)
             if (!response.isSuccessful) throw CloudSummaryException(
@@ -74,7 +74,7 @@ class KtorCloudSummaryRepository(
             .header("User-Agent", articleUserAgent)
             .get()
             .build()
-        val response = client.newBuilder().readTimeoutMillis(10_000).build().execute(request)
+        val response = client.newBuilder().readTimeoutMillis(10_000).build().execute(request, maxBytes = MAX_ARTICLE_BYTES)
         try {
             if (!response.isSuccessful) {
                 throw CloudSummaryException("Article returned HTTP ${response.code}")

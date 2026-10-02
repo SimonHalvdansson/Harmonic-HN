@@ -5,7 +5,6 @@ import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareRequest
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse as KtorResponse
 import io.ktor.client.statement.bodyAsChannel
@@ -212,24 +211,11 @@ class KtorHttpClient(
         requestTimeoutMillis: Long = DEFAULT_REQUEST_TIMEOUT_MILLIS,
     ) : this({ client }, readTimeoutMillis, requestTimeoutMillis)
 
-    suspend fun execute(request: HttpRequest): HttpResponse {
-        val response = client().request(request.url.toString()) {
-            method = request.method
-            timeout {
-                requestTimeoutMillis = this@KtorHttpClient.requestTimeoutMillis
-                socketTimeoutMillis = readTimeoutMillis
-                connectTimeoutMillis = minOf(readTimeoutMillis, DEFAULT_CONNECT_TIMEOUT_MILLIS)
-            }
-            request.headers.forEach { (name, value) -> header(name, value) }
-            request.body?.let { body ->
-                body.mediaType?.let { contentType(ContentType.parse(it.toString())) }
-                setBody(body.bytes)
-            }
-        }
-        return HttpResponse(
-            response,
-            HttpResponseBody(response.bodyAsChannel(), response.headers),
-        )
+    suspend fun execute(
+        request: HttpRequest,
+        maxBytes: Int = DEFAULT_MAX_BUFFERED_BODY_BYTES,
+    ): HttpResponse = executeStreaming(request, requestTimeoutMillis) { response ->
+        response.bufferedCopy(maxBytes)
     }
 
     /**
@@ -250,6 +236,7 @@ class KtorHttpClient(
         request.headers.forEach { (name, value) -> header(name, value) }
         // Ktor's HttpCache consumes a cacheable response into a ByteArray before handing it to
         // the caller. Large file/model transfers must bypass that path to remain streaming.
+        headers.remove(HttpHeaders.CacheControl)
         header(HttpHeaders.CacheControl, "no-store")
         request.body?.let { body ->
             body.mediaType?.let { contentType(ContentType.parse(it.toString())) }
@@ -309,6 +296,11 @@ class HttpResponse internal constructor(
 
     fun header(name: String, defaultValue: String? = null): String? =
         delegate.headers[name] ?: defaultValue
+
+    internal suspend fun bufferedCopy(maxBytes: Int): HttpResponse = HttpResponse(
+        delegate,
+        HttpResponseBody(ByteReadChannel(body.readBytes(maxBytes)), delegate.headers),
+    )
 
     override fun close() {
         body.close()

@@ -4,7 +4,6 @@ import android.content.Context
 import com.simon.harmonichackernews.BuildConfig
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.cache.storage.CacheStorage
 import io.ktor.client.plugins.cache.storage.FileStorage
 import io.ktor.http.Url
@@ -57,12 +56,9 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
             userAgent = userAgent,
             cacheMaintenance = this,
             transportDispatcher = Dispatchers.IO,
-            configureTransport = {
-                install(HttpCache) {
-                    publicStorage(responseCache)
-                    privateStorage(responseCache)
-                }
-            },
+            // HttpCache buffers entire bodies, including legacy disk entries, before our byte
+            // limits run. Retain the bounded application story/preview caches instead.
+
         ))
     }
 
