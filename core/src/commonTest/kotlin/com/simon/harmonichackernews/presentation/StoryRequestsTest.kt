@@ -758,6 +758,56 @@ class StoryRequestsTest {
         assertTrue(runtime.mainStories.take(12).all { it.loaded })
     }
 
+    @Test
+    fun newStoryThresholdsFillTheViewportAndClearingRestoresExcludedRows() = runTest {
+        val session = StoriesSessionState().apply { mainStoryType = StoryType.NEW_STORIES }
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val api = object : HackerNewsApi by UnusedHackerNewsApi {
+            override suspend fun getItem(id: Int) = HackerNewsItemDto(
+                id = id, title = "Story $id", by = "author",
+                score = if (id <= 25) 1 else 5, descendants = 2,
+            )
+        }
+        val requests = storyRequests(session, saved, backgroundScope,
+            RecordingFeedLoader(StoryFeedResult.ItemIds((1..80).toList())), api)
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests, worker)
+        runtime.setNewStoriesFilter(NewStoriesFilter(5, 2))
+        runCurrent()
+        repeat(10) { worker.runAll(); runCurrent() }
+        assertEquals((26..37).toList(), runtime.mainStories.take(12).map { it.id })
+        assertTrue(runtime.mainStories.take(12).all { it.loaded })
+        runtime.setNewStoriesFilter(NewStoriesFilter())
+        runCurrent()
+        repeat(10) { worker.runAll(); runCurrent() }
+        assertEquals((1..12).toList(), runtime.mainStories.take(12).map { it.id })
+        assertTrue(runtime.mainStories.take(12).all { it.loaded })
+    }
+
+    @Test
+    fun newStoryThresholdsAlsoFilterCachedStoriesAndClearWithoutNetwork() = runTest {
+        val session = StoriesSessionState().apply {
+            mainStoryType = StoryType.NEW_STORIES
+            newStoriesFilter = NewStoriesFilter(5, 2)
+        }
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val cached = listOf(
+            Story("Below minimum", 1, true, false).apply { score = 1; descendants = 2 },
+            Story("Matching", 2, true, false).apply { score = 5; descendants = 2 },
+        )
+        val feed = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList()))
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, feed), worker, cached = { cached })
+        runtime.showCachedStories(cached)
+        assertEquals(listOf(2), runtime.mainStories.map { it.id })
+        runtime.setNewStoriesFilter(NewStoriesFilter())
+        runCurrent(); worker.runAll(); runCurrent()
+        assertEquals(listOf(1, 2), runtime.mainStories.map { it.id })
+        assertTrue(runtime.mainStore.state.value.showingCached)
+        assertTrue(feed.requests.isEmpty())
+    }
+
     private fun cachedHeader(id: Int, title: String = "Cached $id", extra: String = "") =
         JSONParser.prepareCachedStoryHeader(
             """{"id":$id,"title":"$title","author":"fixture"$extra}""", id,

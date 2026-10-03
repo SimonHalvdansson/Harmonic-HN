@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.presentation.NewStoriesFilter
+import com.simon.harmonichackernews.StoryType
+
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.FloatState
@@ -52,6 +55,26 @@ class StoriesScreenController private constructor(
     /** Recreate lazy item layers once a hidden Tap to update replacement has committed. */
     var mainListGeneration by mutableIntStateOf(0)
         private set
+
+    var newStoriesFilter by mutableStateOf(NewStoriesFilter())
+        private set
+    var canFilterNewStories by mutableStateOf(false)
+        private set
+    var newStoriesFilterDialogVisible by mutableStateOf(false)
+        private set
+
+    fun showNewStoriesFilterDialog() {
+        if (canFilterNewStories) newStoriesFilterDialogVisible = true
+    }
+
+    fun dismissNewStoriesFilterDialog() { newStoriesFilterDialogVisible = false }
+
+    fun applyNewStoriesFilter(filter: NewStoriesFilter) {
+        dismissNewStoriesFilterDialog()
+        if (!canFilterNewStories) return
+        scrollToTopRequestVersion++
+        listener.onNewStoriesFilterChanged(filter)
+    }
 
     val mainStories: List<StoryListItemSnapshot> get() = mainStoriesState
     val searchStories: List<StoryListItemSnapshot> get() = searchStoriesState
@@ -196,6 +219,9 @@ class StoriesScreenController private constructor(
                 previousContent.previewFavoriteLoadingIds != state.previewFavoriteLoadingIds
         val structureChanged = !sameStoryIds(mainStoriesState, state.mainList.items) ||
             !sameStoryIds(searchStoriesState, state.searchList.items)
+        newStoriesFilter = state.newStoriesFilter
+        canFilterNewStories = !state.searching && state.currentType == StoryType.NEW_STORIES
+        if (!canFilterNewStories) dismissNewStoriesFilterDialog()
         mainStoriesState = state.mainList.items
         searchStoriesState = state.searchList.items
         val currentStoryIds = if (structureChanged) {
@@ -690,6 +716,7 @@ class StoriesScreenController private constructor(
         fun onRefresh(showMainLoadingIndicator: Boolean = false)
         fun onShowCached()
         fun onLoadMore()
+        fun onNewStoriesFilterChanged(filter: NewStoriesFilter) = Unit
         fun onSavedFilterSelected(filter: SavedItemFilter)
         fun onShiftFrontDate(days: Int)
         fun onPickFrontDate()

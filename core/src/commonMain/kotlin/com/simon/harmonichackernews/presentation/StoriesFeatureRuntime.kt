@@ -636,6 +636,20 @@ class StoriesFeatureRuntime(
         changed()
     }
 
+    fun setNewStoriesFilter(filter: NewStoriesFilter) {
+        if (searching || currentType != StoryType.NEW_STORIES) return
+        if (sessionState.newStoriesFilter == filter) return
+        sessionState.newStoriesFilter = filter
+        visibleRanges.remove(mainStore)
+        if (mainStore.state.value.showingCached) {
+            showCachedStories()
+            return
+        }
+        // Rebuild from the feed IDs so relaxing or clearing also restores removed rows.
+        // The normal row loader fills gaps left by filtered stories, including page boundaries.
+        refresh(showSwipeRefreshIndicator = false, showMainLoadingIndicator = true)
+    }
+
     fun loadMore() {
         val state = activeStore.state.value
         when {
@@ -1035,9 +1049,12 @@ class StoriesFeatureRuntime(
         activeStore.setFailure(null)
         refreshIndicatorShowing = false
         rateLimited = false
-        replaceActive(cachedStories)
-        activeStore.markLoadedThrough(cachedStories.lastIndex)
-        cachedStories.filter(Story::loaded).forEach(::prefetch)
+        val visibleStories = cachedStories.filterNot {
+            sessionState.newStoriesFilter.shouldHide(it, currentType, searching)
+        }
+        replaceActive(visibleStories)
+        activeStore.markLoadedThrough(visibleStories.lastIndex)
+        visibleStories.filter(Story::loaded).forEach(::prefetch)
         changed()
     }
 

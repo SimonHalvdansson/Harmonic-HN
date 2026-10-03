@@ -102,7 +102,8 @@ class StoryRequests(
         storyVisibilityPolicy.update(filters, hideJobs)
 
     fun shouldHideStory(story: Story, type: StoryType): Boolean =
-        storyVisibilityPolicy.shouldHide(story, type)
+        storyVisibilityPolicy.shouldHide(story, type) ||
+            sessionState.newStoriesFilter.shouldHide(story, type, sessionState.searching)
     private var userItemsLoadJob: Job? = null
     private val storyRowLoader = StoryRowLoadOrchestrator(
         scope = scope,

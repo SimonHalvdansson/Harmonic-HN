@@ -55,6 +55,7 @@ data class StoriesState(
     val userItemsInitialLoadInProgress: Boolean = false,
     val savedSourceHasItems: Boolean = false,
     val cachedStoriesAvailable: Boolean = false,
+    val newStoriesFilter: NewStoriesFilter = NewStoriesFilter(),
     val savedFilter: SavedItemFilter = SavedItemFilter.BOTH,
     val frontDateLabel: String = "",
     val frontDateSelectedMillis: Long = 0L,
@@ -88,6 +89,7 @@ sealed interface StoriesIntent {
     data class Refresh(val showMainLoadingIndicator: Boolean = false) : StoriesIntent
     data object ShowCached : StoriesIntent
     data object LoadMore : StoriesIntent
+    data class SetNewStoriesFilter(val filter: NewStoriesFilter) : StoriesIntent
     data class SelectSavedFilter(val filter: SavedItemFilter) : StoriesIntent
     data class ShiftFrontDate(val days: Int) : StoriesIntent
     data class SelectFrontDate(val day: Long) : StoriesIntent
@@ -238,6 +240,7 @@ class StoriesFeatureStore internal constructor(
             )
             StoriesIntent.ShowCached -> runtime.showCachedStories()
             StoriesIntent.LoadMore -> runtime.loadMore()
+            is StoriesIntent.SetNewStoriesFilter -> runtime.setNewStoriesFilter(intent.filter)
             is StoriesIntent.SelectSavedFilter -> runtime.selectSavedFilter(intent.filter)
             is StoriesIntent.ShiftFrontDate -> runtime.shiftFrontPageDay(intent.days)
             is StoriesIntent.SelectFrontDate -> runtime.selectFrontPageDay(intent.day)
@@ -345,6 +348,7 @@ class StoriesFeatureStore internal constructor(
             // Only the failed main feed can offer cached stories; this check may read disk.
             cachedStoriesAvailable = !runtime.searching &&
                 runtime.mainStore.state.value.failure != null && runtime.cachedStoriesAvailable,
+            newStoriesFilter = sessionState.newStoriesFilter,
             savedFilter = runtime.savedFilter,
             frontDateLabel = frontDate.requestParameter,
             frontDateSelectedMillis = frontDate.selectedMillis,
