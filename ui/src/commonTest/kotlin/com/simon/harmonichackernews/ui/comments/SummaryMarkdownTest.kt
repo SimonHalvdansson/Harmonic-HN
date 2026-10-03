@@ -10,6 +10,20 @@ import kotlin.test.assertTrue
 
 class SummaryMarkdownTest {
     @Test
+    fun htmlRemovalPreservesLiteralAnglesAndIncompleteComments() {
+        assertEquals(
+            "Before after\n3 < 5 and 6 > 4\n<!-- unfinished",
+            summaryMarkdownAnnotatedString(
+                "Before <!-- hidden\non two lines --><b>after</b>\n3 < 5 and 6 > 4\n<!-- unfinished",
+            ).text,
+        )
+        assertEquals(
+            listOf(SummaryMarkdownListItem("• ", "First"), SummaryMarkdownListItem("• ", "Second")),
+            summaryMarkdownListItems("<!-- hidden -->- First\n- Second"),
+        )
+    }
+
+    @Test
     fun nestedMarkdownLinksResolveAgainstThePageAndUseTheAppCallback() {
         val opened = mutableListOf<String>()
         val rendered = summaryMarkdownAnnotatedString(

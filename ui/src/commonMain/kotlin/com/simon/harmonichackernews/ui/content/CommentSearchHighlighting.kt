@@ -69,13 +69,16 @@ internal fun highlightSearchMatches(
 ): AnnotatedString {
     val needle = searchTerm.trim()
     if (needle.isEmpty()) return body
+    val firstMatch = body.text.indexOf(needle, ignoreCase = true)
+    if (firstMatch < 0) return body
+    val style = SpanStyle(color = markedColor, fontWeight = FontWeight.Bold)
 
     return buildAnnotatedString {
         append(body)
-        var start = body.text.indexOf(needle, ignoreCase = true)
+        var start = firstMatch
         while (start >= 0) {
             addStyle(
-                SpanStyle(color = markedColor, fontWeight = FontWeight.Bold),
+                style,
                 start,
                 start + needle.length,
             )

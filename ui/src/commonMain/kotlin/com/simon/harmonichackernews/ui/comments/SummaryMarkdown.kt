@@ -346,13 +346,16 @@ internal fun summaryMarkdownAnnotatedString(
         }
     }
 }.let { parsed ->
+    val links = parsed.getLinkAnnotations(0, parsed.length)
+    if (links.isEmpty()) return@let parsed
+    val parsedBaseUrl = baseUrl?.toNetworkUrlOrNull()
     // Rebind parsed links after rendering so nested emphasis, lists and headings all use
     // the same base URL and host routing, without retaining a platform URI handler.
     buildAnnotatedString {
         append(AnnotatedString(parsed.text, parsed.spanStyles, parsed.paragraphStyles))
-        parsed.getLinkAnnotations(0, parsed.length).forEach { range ->
+        links.forEach { range ->
             val link = range.item as? LinkAnnotation.Url ?: return@forEach
-            val url = baseUrl?.toNetworkUrlOrNull()?.resolve(link.url)?.toString() ?: link.url
+            val url = parsedBaseUrl?.resolve(link.url)?.toString() ?: link.url
             addLink(
                 LinkAnnotation.Url(
                     url = url,
@@ -425,11 +428,14 @@ private fun String.markdownAlertLabel(): String? {
         .replaceFirstChar(Char::uppercase)
 }
 
-private fun String.stripMarkdownHtmlComments(): String =
-    replace(Regex("<!--[\\s\\S]*?-->"), "")
+internal fun String.stripMarkdownHtmlComments(): String =
+    if (contains("<!--")) replace(MARKDOWN_HTML_COMMENT, "") else this
 
 private fun String.stripMarkdownHtmlTags(): String =
-    replace(Regex("</?[A-Za-z][^>]*>"), "")
+    if (contains('<')) replace(MARKDOWN_HTML_TAG, "") else this
+
+private val MARKDOWN_HTML_COMMENT = Regex("<!--[\\s\\S]*?-->")
+private val MARKDOWN_HTML_TAG = Regex("</?[A-Za-z][^>]*>")
 
 private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     source: String,

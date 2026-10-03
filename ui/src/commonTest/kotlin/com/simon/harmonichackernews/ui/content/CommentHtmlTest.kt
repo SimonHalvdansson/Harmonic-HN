@@ -9,9 +9,21 @@ import com.simon.harmonichackernews.network.LinkPreviewParsers
 import com.simon.harmonichackernews.network.StoryTextProcessor
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentHtmlTest {
+    @Test
+    fun linkFreeTextReusesCachedStylesAcrossThemeAndListenerChanges() {
+        val html = "<p>A <b>bold</b> comment.<p>With <code>code</code>."
+        val first = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener { error("No links") })
+        val second = htmlAnnotatedString(html, Color.Red, LinkInteractionListener { error("No links") })
+
+        assertEquals(prepareCommentHtml(html), first)
+        assertSame(first, second)
+        assertTrue(first.spanStyles.isNotEmpty())
+    }
+
     @Test
     fun wikipediaSummaryPreservesParagraphsAndExplicitLineBreaks() {
         val info = requireNotNull(

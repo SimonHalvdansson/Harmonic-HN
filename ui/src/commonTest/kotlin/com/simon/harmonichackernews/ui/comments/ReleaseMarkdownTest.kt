@@ -8,6 +8,28 @@ class ReleaseMarkdownTest {
     private val pageUrl = "https://github.com/audacity/audacity/releases/tag/Audacity-4.0.0"
 
     @Test
+    fun multilineImageLinksKeepTheExistingEightLineLimit() {
+        fun markdown(blankLines: Int) =
+            "<a href='https://example.org/video'>\n" + "\n".repeat(blankLines) +
+                "<img src='https://example.org/image.png'>\n</a>"
+
+        assertEquals(
+            listOf(ReleaseMarkdownBlock.Image("https://example.org/image.png", "", "https://example.org/video")),
+            releaseMarkdownBlocks(markdown(6), pageUrl),
+        )
+        val beyondLimit = releaseMarkdownBlocks(markdown(7), pageUrl)
+        assertEquals(null, assertIs<ReleaseMarkdownBlock.Image>(beyondLimit[1]).link)
+        assertEquals(ReleaseMarkdownBlock.Text("</a>"), beyondLimit.last())
+    }
+
+    @Test
+    fun unclosedAnchorsRemainTextThroughoutLongReleaseNotes() {
+        val markdown = List(1_024) { "<a href='https://example.org/$it'>Unclosed $it" }.joinToString("\n")
+
+        assertEquals(listOf(ReleaseMarkdownBlock.Text(markdown)), releaseMarkdownBlocks(markdown, pageUrl))
+    }
+
+    @Test
     fun keepsAudacityVideoThumbnailBetweenIntroductionAndEditingNotes() {
         val blocks = releaseMarkdownBlocks(
             """

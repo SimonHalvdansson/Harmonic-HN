@@ -23,9 +23,14 @@ fun htmlAnnotatedString(
     linkListener: LinkInteractionListener,
 ): AnnotatedString = runCatching {
     val prepared = CommentHtmlTextCache.get(html)
+    val links = prepared.getStringAnnotations(COMMENT_URL_TAG, 0, prepared.length)
+    // Most comments have no links to bind. Their cached text already contains every style.
+    if (links.isEmpty()) {
+        return@runCatching prepared
+    }
     buildAnnotatedString {
         append(prepared)
-        prepared.getStringAnnotations(COMMENT_URL_TAG, 0, prepared.length).forEach { link ->
+        links.forEach { link ->
             addLink(
                 LinkAnnotation.Url(
                     url = link.item,

@@ -28,7 +28,7 @@ private const val RELEASE_PREVIEW_CHARACTERS_PER_LINE = 56
 
 /** Keep images in document order, including GitHub's linked HTML video thumbnails. */
 internal fun releaseMarkdownBlocks(markdown: String, pageUrl: String): List<ReleaseMarkdownBlock> {
-    val source = markdown.replace(Regex("<!--[\\s\\S]*?-->"), "")
+    val source = markdown.stripMarkdownHtmlComments()
     val blocks = mutableListOf<ReleaseMarkdownBlock>()
     val text = StringBuilder()
     var fence: String? = null
@@ -60,8 +60,9 @@ internal fun releaseMarkdownBlocks(markdown: String, pageUrl: String): List<Rele
         // An HTML anchor and its image can span several lines (as in Audacity's release notes).
         var chunk = line
         if (trimmed.startsWith("<a ", ignoreCase = true) && !chunk.contains("</a>", true)) {
-            val end = (index + 1 until lines.size).firstOrNull { lines[it].contains("</a>", true) }
-            if (end != null && end - index <= 8) {
+            val end = (index + 1 until minOf(index + 9, lines.size))
+                .firstOrNull { lines[it].contains("</a>", true) }
+            if (end != null) {
                 chunk = lines.subList(index, end + 1).joinToString("\n")
                 index = end
             }
