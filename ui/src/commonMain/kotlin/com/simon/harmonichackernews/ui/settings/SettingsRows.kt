@@ -3,10 +3,15 @@ package com.simon.harmonichackernews.ui.settings
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.resources.*
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -142,15 +147,27 @@ fun SettingsMainToggle(
                 fontSize = 17.sp,
                 lineHeight = 21.sp,
             )
-            if (!summary.isNullOrBlank()) {
-                Text(
-                    text = summary,
-                    modifier = Modifier.padding(top = 1.dp),
-                    color = textColor,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                    lineHeight = 17.sp,
-                )
+            // Animate the summary's layout height so the centered title moves with it.
+            // Keep the full text visible while that height changes, including on exit.
+            AnimatedContent(
+                targetState = summary?.takeIf { it.isNotBlank() },
+                transitionSpec = {
+                    val duration = SettingsMainToggleColorAnimationDurationMillis
+                    (fadeIn(tween(duration)) togetherWith fadeOut(tween(duration)))
+                        .using(SizeTransform(clip = false) { _, _ -> tween(duration) })
+                },
+                label = "settings main toggle summary",
+            ) { displayedSummary ->
+                if (displayedSummary != null) {
+                    Text(
+                        text = displayedSummary,
+                        modifier = Modifier.padding(top = 1.dp),
+                        color = textColor,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                    )
+                }
             }
         }
         HarmonicSwitch(
