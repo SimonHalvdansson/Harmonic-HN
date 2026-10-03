@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -47,6 +48,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.StoryMetricPill
+import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.hazeSource
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -163,7 +168,9 @@ fun WelcomeSettingsDialog(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            launcherIcon()
+                            Box(Modifier.clip(RoundedCornerShape(16.dp))) {
+                                launcherIcon()
+                            }
                         }
                     }
                 }
@@ -342,6 +349,10 @@ private fun WelcomeStoryPreviewContent(
     } else {
         ProductSansFontFamily
     }
+    val typography = rememberContentTypography(
+        if (expressive) "googlesansflexrounded" else "productsans",
+    )
+    val hazeState = rememberHazeState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -369,7 +380,7 @@ private fun WelcomeStoryPreviewContent(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "53 points • domain • 2h",
+                    text = if (expressive) "domain • 2h" else "53 points • domain • 2h",
                     color = HarmonicTheme.colors.mutedText,
                     fontFamily = fontFamily,
                     fontSize = 13.sp,
@@ -378,35 +389,71 @@ private fun WelcomeStoryPreviewContent(
             }
         }
         if (expressive) {
-            Image(
-                painter = painterResource(Res.drawable.palette1),
-                contentDescription = null,
+            Box(
                 modifier = Modifier
                     .padding(start = 12.dp)
-                    .width(124.dp)
-                    .height(88.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            )
-        }
-        Column(
-            modifier = Modifier.padding(start = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_comment),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = HarmonicTheme.colors.iconTint,
-            )
-            Text(
-                text = "18",
-                color = HarmonicTheme.colors.contentPrimary,
-                fontFamily = fontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                style = textStyle,
-            )
+                    .width(132.dp)
+                    .height(104.dp),
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.palette1),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp))
+                        .hazeSource(hazeState),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                )
+                Row(
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StoryMetricPill(
+                        icon = Res.drawable.ic_arrow_drop_up,
+                        text = "53",
+                        contentDescription = "53 points",
+                        typography = typography,
+                        dimAlpha = 1f,
+                        hazeState = hazeState,
+                        iconSize = 24.dp,
+                        iconSlotWidth = 14.dp,
+                        iconScale = 1.35f,
+                        startPadding = 2.dp,
+                        endPadding = 10.dp,
+                        iconTextSpacing = 0.dp,
+                    )
+                    StoryMetricPill(
+                        icon = Res.drawable.ic_comment,
+                        text = "18",
+                        contentDescription = "18 comments",
+                        typography = typography,
+                        dimAlpha = 1f,
+                        hazeState = hazeState,
+                        iconSize = 12.dp,
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.padding(start = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_comment),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = HarmonicTheme.colors.iconTint,
+                )
+                Text(
+                    text = "18",
+                    color = HarmonicTheme.colors.contentPrimary,
+                    fontFamily = fontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    style = textStyle,
+                )
+            }
         }
     }
 }

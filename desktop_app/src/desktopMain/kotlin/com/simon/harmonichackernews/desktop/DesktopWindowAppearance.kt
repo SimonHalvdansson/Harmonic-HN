@@ -1,22 +1,49 @@
 package com.simon.harmonichackernews.desktop
 
 import com.sun.jna.Native
+import com.jetbrains.JBR
 import com.sun.jna.platform.win32.WinDef.HWND
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.win32.StdCallLibrary
 import com.sun.jna.win32.W32APIOptions
 import java.awt.Color
 import java.awt.EventQueue
+import java.awt.Frame
 import java.awt.Window
 import javax.swing.RootPaneContainer
 
 /** Applies Harmonic's resolved theme to the desktop window and supported native frame. */
 internal data object DesktopWindowAppearance {
+    private val macWindowDecorations = if (
+        System.getProperty("os.name").startsWith("Mac", ignoreCase = true)
+    ) JBR.getWindowDecorations() else null
+
+    val usesIntegratedTitleBar: Boolean =
+        macWindowDecorations != null
+
+    const val integratedTitleBarHeight = 28f
+
+    /** Keep the native traffic lights and window gestures, but let Compose paint behind them. */
+    fun configureTitleBar(window: Window) {
+        val decorations = macWindowDecorations ?: return
+        if (window !is Frame) return
+        val titleBar = decorations.createCustomTitleBar().apply {
+            height = integratedTitleBarHeight
+        }
+        decorations.setCustomTitleBar(window, titleBar)
+    }
+
     fun apply(window: Window, dark: Boolean, backgroundArgb: Int) {
         EventQueue.invokeLater {
             val background = Color(backgroundArgb, true)
             window.background = background
             (window as? RootPaneContainer)?.contentPane?.background = background
+            if (usesIntegratedTitleBar) {
+                (window as? RootPaneContainer)?.rootPane?.putClientProperty(
+                    "apple.awt.windowAppearance",
+                    if (dark) "NSAppearanceNameDarkAqua" else "NSAppearanceNameAqua",
+                )
+            }
 
             if (
                 window.isDisplayable &&
