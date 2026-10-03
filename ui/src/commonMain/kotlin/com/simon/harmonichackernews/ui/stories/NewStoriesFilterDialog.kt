@@ -130,7 +130,7 @@ private fun ThresholdSlider(label: String, value: Int, onValueChange: (Int) -> U
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Any", style = MaterialTheme.typography.labelSmall, color = HarmonicTheme.colors.textSecondary)
-            Text("100+", style = MaterialTheme.typography.labelSmall, color = HarmonicTheme.colors.textSecondary)
+            Text("${thresholds.last()}+", style = MaterialTheme.typography.labelSmall, color = HarmonicTheme.colors.textSecondary)
         }
     }
 }

@@ -16,6 +16,6 @@ data class NewStoriesFilter(
                 (minimumComments > 0 && story.descendants < minimumComments))
 
     companion object {
-        val thresholds = listOf(0, 1, 2, 3, 5, 10, 20, 50, 100)
+        val thresholds = listOf(0, 1, 2, 3, 5, 10, 20, 50)
     }
 }
