@@ -579,7 +579,7 @@ fun CommentsScreen(
 
         if (showNavigationControls) CommentNavigationControls(controller)
 
-        if (showScrollbar && controller.sheetSlideOffset >= 0.999f) {
+        if (showScrollbar && controller.isSheetExpanded()) {
             CommentsScrollbar(
                 state = listState,
                 modifier = Modifier
