@@ -52,6 +52,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
         NetworkGraphFactory.create(NetworkGraphEnvironment(
             scope = networkScope,
             engine = { createAndroidHttpEngine() },
+            readOnlyEngine = { createAndroidHttpEngine(readOnly = true) },
             authenticatedClientProvider = authenticatedClientProvider,
             userAgent = userAgent,
             cacheMaintenance = this,

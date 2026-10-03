@@ -56,6 +56,7 @@ class NetworkGraph internal constructor(
     private val authenticatedClientProvider: AuthenticatedHttpClientProvider,
     val userAgent: String = "Harmonic-HN",
     private val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
+    private val readOnlyTransport: NetworkTransport? = null,
 ) {
     /** Retains ownership of caller-supplied transports for native and test hosts. */
     constructor(
@@ -68,8 +69,9 @@ class NetworkGraph internal constructor(
 
     /** Native compatibility access. Portable repositories await initialization off the UI thread. */
     val transportClient: HttpClient get() = transport.get()
-    private val client: suspend () -> HttpClient = transport::await
-    val httpClient: KtorHttpClient = KtorHttpClient(client)
+    private val client: suspend () -> HttpClient = (readOnlyTransport ?: transport)::await
+    // This surface can issue writes and GET-based actions; never give it read-only retries.
+    val httpClient: KtorHttpClient = KtorHttpClient(transport::await)
 
     val hackerNewsApi: HackerNewsApi = KtorHackerNewsApi(client)
     val userProfiles = UserProfileRepository(
@@ -122,5 +124,6 @@ class NetworkGraph internal constructor(
     fun close() {
         authenticatedClientProvider.close()
         transport.close()
+        readOnlyTransport?.close()
     }
 }

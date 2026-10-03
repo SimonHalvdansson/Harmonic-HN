@@ -63,7 +63,7 @@ class HackerNewsProfileRecoveryTest {
     }
 
     @Test
-    fun persistentConnectionFailureStopsAfterTwoAttempts() = runTest {
+    fun persistentConnectionFailureStopsAfterThreeAttempts() = runTest {
         var attempts = 0
         val client = HttpClient(MockEngine {
             attempts++
@@ -72,7 +72,7 @@ class HackerNewsProfileRecoveryTest {
         try {
             val api = KtorHackerNewsApi(client, requestDispatcher = StandardTestDispatcher(testScheduler))
             assertFailsWith<IOException> { api.getUser("Alice") }
-            assertEquals(2, attempts)
+            assertEquals(3, attempts)
         } finally {
             client.close()
         }
@@ -106,7 +106,7 @@ class HackerNewsProfileRecoveryTest {
     }
 
     @Test
-    fun completedResponsesAreNotRetried() = runTest {
+    fun completedResponsesOnlyRetryTransientServerErrors() = runTest {
         var attempts = 0
         val client = HttpClient(MockEngine { request ->
             attempts++
@@ -126,9 +126,9 @@ class HackerNewsProfileRecoveryTest {
             assertFailsWith<ApiDecodingException> { api.getUser("Invalid") }
             assertEquals(2, attempts)
             assertFailsWith<HttpStatusException> { api.getUser("Unavailable") }
-            assertEquals(3, attempts)
+            assertEquals(5, attempts)
             assertFailsWith<HttpBodyLimitException> { api.getUser("Oversized") }
-            assertEquals(4, attempts)
+            assertEquals(6, attempts)
         } finally {
             client.close()
         }

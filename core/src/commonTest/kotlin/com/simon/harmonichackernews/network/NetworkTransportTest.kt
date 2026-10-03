@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -16,12 +17,49 @@ import kotlin.test.assertSame
 
 class NetworkTransportTest {
     @Test
+    fun readOnlyRepositoriesUseRecoveryTransportWhileGenericRequestsAndActionsStaySeparate() = runTest {
+        val reads = mutableListOf<String>()
+        val actions = mutableListOf<String>()
+        val authenticated = mutableListOf<String>()
+        val readEngine = MockEngine { reads += it.url.toString(); respond("42") }
+        val actionEngine = MockEngine { actions += it.url.toString(); respond("ok") }
+        val authenticatedEngine = MockEngine { authenticated += it.url.toString(); respond("ok") }
+        val graph = NetworkGraphFactory.create(NetworkGraphEnvironment(
+            scope = backgroundScope,
+            userAgent = "test",
+            engine = { actionEngine },
+            readOnlyEngine = { readEngine },
+            authenticatedClientProvider = ResettableAuthenticatedHttpClientProvider {
+                createHarmonicHttpClient(authenticatedEngine, "test")
+            },
+            transportDispatcher = StandardTestDispatcher(testScheduler),
+        ))
+        try {
+            assertEquals(42, graph.hackerNewsApi.getMaxItemId())
+            graph.httpClient.execute(HttpRequest.Builder().url("https://news.ycombinator.com/vote?id=42").build()).close()
+            graph.httpClientWithCookies.execute(HttpRequest.Builder()
+                .url("https://news.ycombinator.com/login").post("id=reader".toHttpRequestBody()).build()).close()
+            assertEquals(listOf("https://hacker-news.firebaseio.com/v0/maxitem.json"), reads)
+            assertEquals(listOf("https://news.ycombinator.com/vote?id=42"), actions)
+            assertEquals(listOf("https://news.ycombinator.com/login"), authenticated)
+        } finally {
+            graph.close()
+        }
+        for (engine in listOf(readEngine, actionEngine, authenticatedEngine)) {
+            engine.coroutineContext[Job]!!.join()
+            assertFalse(engine.coroutineContext[Job]!!.isActive)
+        }
+        assertFailsWith<IllegalStateException> { graph.hackerNewsApi.getMaxItemId() }
+    }
+
+    @Test
     fun constructingAndClosingUnusedGraphDoesNotCreateEngine() = runTest {
         var creations = 0
         val graph = NetworkGraphFactory.create(NetworkGraphEnvironment(
             scope = backgroundScope,
             userAgent = "test",
             engine = { creations++; MockEngine { respond("42") } },
+            readOnlyEngine = { creations++; MockEngine { respond("42") } },
             transportDispatcher = StandardTestDispatcher(testScheduler),
         ))
         graph.httpClientWithCookies
