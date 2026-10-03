@@ -161,6 +161,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       ORG_GRADLE_PROJECT_harmonicAndroidHostEnabled: 'false'
+      # Keep shrinking and release verification, but leave expensive bytecode
+      # optimization to tagged releases (the Gradle default).
+      ORG_GRADLE_PROJECT_harmonicDesktopOptimize: 'false'
     strategy:
       fail-fast: false
       matrix:

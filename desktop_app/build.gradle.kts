@@ -296,7 +296,13 @@ compose.desktop {
         buildTypes.release.proguard {
             isEnabled.set(true)
             version.set("7.10.0")
-            optimize.set(true)
+            // Push/PR installers still shrink and verify the release JARs, but can skip
+            // expensive bytecode optimization. Tagged and local releases default to it.
+            optimize.set(
+                providers.gradleProperty("harmonicDesktopOptimize")
+                    .map(String::toBoolean)
+                    .orElse(true),
+            )
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
         nativeDistributions {
