@@ -311,6 +311,7 @@ private fun DesktopAppContent(
         navigation.failureRequest != null ||
         storiesController?.isHeaderMenuShowing() == true ||
         storiesController?.frontDatePickerRequest != null ||
+        storiesController?.newStoriesFilterDialogVisible == true ||
         storiesController?.isStoryPreviewShowing() == true ||
         commentsController?.isHeaderMenuShowing() == true ||
         commentsController?.isLinkPreviewOverlayShowing() == true ||

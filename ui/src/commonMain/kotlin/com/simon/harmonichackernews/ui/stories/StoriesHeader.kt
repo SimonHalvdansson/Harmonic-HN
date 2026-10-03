@@ -4,6 +4,8 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.presentation.NewStoriesFilter
+
 import org.jetbrains.compose.resources.DrawableResource
 
 
@@ -160,6 +162,14 @@ internal fun StoriesHeader(
                     showRefreshMenuItem = showRefreshMenuItem,
                     modifier = Modifier.padding(start = sideStart, end = sideEnd),
                 )
+                if (controller.canFilterNewStories && controller.newStoriesFilter.active) {
+                    NewStoriesFilterIndicator(
+                        filter = controller.newStoriesFilter,
+                        onEdit = controller::showNewStoriesFilterDialog,
+                        onClear = { controller.applyNewStoriesFilter(NewStoriesFilter()) },
+                        modifier = Modifier.padding(start = sideStart + 12.dp, end = sideEnd, top = 4.dp, bottom = 4.dp),
+                    )
+                }
                 if (settings.listSelector == StoryListSelector.CHIPS) {
                     StoryTypeChips(
                         labels = controller.typeLabels,
@@ -634,6 +644,16 @@ private fun StoriesMoreMenu(
                 },
             )
         }
+        if (controller.canFilterNewStories) {
+            DropdownMenuItem(
+                text = { HarmonicMenuText("Filter stories") },
+                leadingIcon = { StoriesMenuIcon(Res.drawable.ic_filter_list) },
+                onClick = {
+                    dismiss()
+                    controller.showNewStoriesFilterDialog()
+                },
+            )
+        }
         if (showRefreshItem) {
             DropdownMenuItem(
                 text = { HarmonicMenuText("Refresh") },
@@ -719,6 +739,14 @@ internal fun HeaderStatus(
     showFailure: Boolean = true,
 ) {
     val colors = HarmonicTheme.colors
+    if (!searchMode && controller.canFilterNewStories && controller.newStoriesFilter.active &&
+        controller.mainStories.isEmpty() && !controller.loading && !controller.loadingFailed
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
+            Text("No stories match these filters", color = colors.textPrimary, fontFamily = ProductSansFontFamily)
+            Text("Try lower minimums or clear the filters.", color = colors.textSecondary, fontFamily = ProductSansFontFamily)
+        }
+    }
     StoryListStatus(
         state = StoryListStatusState(
             loading = controller.loading,

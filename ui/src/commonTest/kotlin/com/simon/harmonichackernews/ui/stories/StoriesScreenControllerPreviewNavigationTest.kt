@@ -412,6 +412,21 @@ class StoriesScreenControllerPreviewNavigationTest {
         assertFalse(controller.isStoryPreviewRead(1, initialValue = true))
     }
 
+    @Test
+    fun newStoryFilterDialogIsScopedToNewStoriesAndClosesWhenLeaving() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        controller.updateContent(StoriesState())
+        controller.showNewStoriesFilterDialog()
+        assertFalse(controller.newStoriesFilterDialogVisible)
+        val newStories = StoriesState(currentType = com.simon.harmonichackernews.StoryType.NEW_STORIES)
+        controller.updateContent(newStories)
+        controller.showNewStoriesFilterDialog()
+        assertTrue(controller.newStoriesFilterDialogVisible)
+        controller.updateContent(newStories.copy(searching = true))
+        assertFalse(controller.canFilterNewStories)
+        assertFalse(controller.newStoriesFilterDialogVisible)
+    }
+
     private fun storiesState(
         mainStories: List<StoryListItemSnapshot> = emptyList(),
         previewResources: Map<Int, StoryPreviewResourceState> = emptyMap(),

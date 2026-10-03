@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.presentation.NewStoriesFilter
+
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesIntent
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
@@ -37,6 +39,8 @@ class StoriesFeatureListener(
     )
     override fun onShowCached() = store.accept(StoriesIntent.ShowCached)
     override fun onLoadMore() = store.accept(StoriesIntent.LoadMore)
+    override fun onNewStoriesFilterChanged(filter: NewStoriesFilter) =
+        store.accept(StoriesIntent.SetNewStoriesFilter(filter))
     override fun onSavedFilterSelected(filter: SavedItemFilter) =
         store.accept(StoriesIntent.SelectSavedFilter(filter))
 

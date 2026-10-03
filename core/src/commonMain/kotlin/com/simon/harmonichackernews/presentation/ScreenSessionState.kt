@@ -22,6 +22,8 @@ class StoriesSessionState {
     val userItemListStories = mutableListOf<Story>()
     val userItemListCommentIds = mutableSetOf<Int>()
 
+    var newStoriesFilter: NewStoriesFilter = NewStoriesFilter()
+
     var mainStoryType: StoryType = StoryType.TOP_STORIES
     var searchStoryType: StoryType = StoryType.TOP_STORIES
 

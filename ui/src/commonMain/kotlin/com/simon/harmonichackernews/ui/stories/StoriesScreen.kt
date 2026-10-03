@@ -264,6 +264,14 @@ fun StoriesScreen(
         },
     )
 
+    if (controller.newStoriesFilterDialogVisible) {
+        NewStoriesFilterDialog(
+            initial = controller.newStoriesFilter,
+            onDismiss = controller::dismissNewStoriesFilterDialog,
+            onApply = controller::applyNewStoriesFilter,
+        )
+    }
+
     controller.frontDatePickerRequest?.let { request ->
         FrontPageDatePickerDialog(
             request = request,
