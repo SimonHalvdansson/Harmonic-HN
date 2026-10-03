@@ -1,29 +1,8 @@
 <resources>
-
-    <style name="snackbarTextStyle" parent="@style/Widget.Material3.Button.TextButton.Snackbar">
-        <item name="android:textColor">#222</item>
-        <item name="android:textSize">14sp</item>
+    <style name="ProductSansTextViewStyle" parent="@android:style/Widget.TextView">
         <item name="android:fontFamily">@font/product_sans</item>
     </style>
-
-    <style name="snackbarTextStyleLight" parent="@style/snackbarTextStyle">
-        <item name="android:textColor">#ddd</item>
-    </style>
-
-    <style name="ProductSansTextViewStyle" parent="@style/Widget.MaterialComponents.TextView">
-        <item name="android:fontFamily">@font/product_sans</item>
-    </style>
-
-    <style name="JetBrainsMonoTextViewStyle" parent="@style/Widget.MaterialComponents.TextView">
+    <style name="JetBrainsMonoTextViewStyle" parent="@android:style/Widget.TextView">
         <item name="android:fontFamily">@font/jetbrains_mono</item>
     </style>
-
-    <style name="Widget.Harmonic.MaterialSwitch.HackerNews" parent="@style/Widget.Material3.CompoundButton.MaterialSwitch">
-        <item name="thumbTint">@color/hacker_news_switch_thumb_tint</item>
-    </style>
-
-    <style name="AlertDialogMaterialStyle" parent="@style/ThemeOverlay.Material3Expressive.MaterialAlertDialog">
-        <item name="android:colorBackground">?attr/colorSurfaceContainerHigh</item>
-    </style>
-
 </resources>

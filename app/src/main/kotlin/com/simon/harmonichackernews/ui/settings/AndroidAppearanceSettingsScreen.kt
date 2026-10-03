@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
-import android.content.res.Configuration
 import android.os.Build
-import androidx.appcompat.view.ContextThemeWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -17,7 +15,6 @@ import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
-import com.simon.harmonichackernews.utils.AndroidActivityTheme
 
 @Composable
 fun AndroidAppearanceSettingsScreen(
@@ -97,15 +94,7 @@ fun AndroidThemeSettingsScreen(
         onThemeChanged = onThemeChanged,
         resolvePreviewTheme = { theme, dark, accent ->
             previewThemes.getOrPut(Triple(theme, dark, accent)) {
-                val configuration = Configuration(currentConfiguration).apply {
-                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
-                        if (dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
-                }
-                val themedContext = ContextThemeWrapper(
-                    context.createConfigurationContext(configuration),
-                    AndroidActivityTheme.themeResource(theme, dark),
-                )
-                harmonicThemePalette(themedContext, ThemeSelection(theme, dark, accent))
+                harmonicThemePalette(context, ThemeSelection(theme, dark, accent))
             }
         },
         dialogContent = { dialog, presenter, dismiss ->

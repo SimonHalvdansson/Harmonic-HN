@@ -2,14 +2,16 @@ package com.simon.harmonichackernews
 
 import android.content.Context
 import android.graphics.Color
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.view.insets.ProtectionLayout
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.progressindicator.LinearProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.ui.comments.WebContentOverlay
+import com.simon.harmonichackernews.ui.comments.WebContentOverlayState
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidDisplay
 
 /**
@@ -21,8 +23,7 @@ internal class CommentsWebViewHost(context: Context) {
     val webViewContainer: FrameLayout
     val fullscreenContainer: FrameLayout
     val webViewBackdrop: View
-    val downloadButton: MaterialButton
-    val progressIndicator: LinearProgressIndicator
+    val overlayState = WebContentOverlayState()
 
     init {
         root = ProtectionLayout(context).apply {
@@ -51,39 +52,23 @@ internal class CommentsWebViewHost(context: Context) {
         }
         webViewContainer.addView(webViewBackdrop, matchParentFrameParams())
 
-        downloadButton = MaterialButton(
-            context,
-            null,
-            com.google.android.material.R.attr.materialIconButtonOutlinedStyle
-        ).apply {
-            id = R.id.webview_download
-            text = context.getString(R.string.download_file)
-            setIconResource(R.drawable.ic_file_download)
-            setTextColor(
-                MaterialColors.getColor(
-                    this,
-                    R.attr.contentPrimaryColor
+        val overlay = ComposeView(context).apply {
+            // Preloaded browsers can be measured offscreen before a window supplies Compose's
+            // lifecycle/recomposer. Only measure the overlay while attached to that window.
+            visibility = View.GONE
+            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(view: View) { view.visibility = View.VISIBLE }
+                override fun onViewDetachedFromWindow(view: View) { view.visibility = View.GONE }
+            })
+            setContent {
+                val appearance = context.harmonicAppComposition.appearance
+                val selection by appearance.selections.collectAsStateWithLifecycle(
+                    initialValue = appearance.selection(),
                 )
-            )
-            visibility = View.GONE
+                HarmonicTheme(selection) { WebContentOverlay(overlayState) }
+            }
         }
-        val downloadParams = FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER
-        )
-        webViewContainer.addView(downloadButton, downloadParams)
-
-        progressIndicator = LinearProgressIndicator(context).apply {
-            id = R.id.webview_progress
-            visibility = View.GONE
-        }
-        webViewContainer.addView(
-            progressIndicator, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
+        webViewContainer.addView(overlay, matchParentFrameParams())
 
         fullscreenContainer = FrameLayout(context).apply {
             id = R.id.comments_fullscreen_container

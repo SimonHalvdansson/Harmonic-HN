@@ -44,6 +44,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -420,7 +421,7 @@ class CommentsWebViewLifecycleTest {
                 onMain {
                     assertEquals(nextPage, browser.webView.url)
                     assertEquals(View.VISIBLE, browser.webView.visibility)
-                    assertEquals(View.GONE, browser.host.downloadButton.visibility)
+                    assertNull(browser.host.overlayState.onDownload)
                 }
             }
         }
@@ -449,7 +450,7 @@ class CommentsWebViewLifecycleTest {
                 browser.awaitDownloads()
                 onMain {
                     assertEquals(View.VISIBLE, browser.webView.visibility)
-                    assertEquals(View.GONE, browser.host.downloadButton.visibility)
+                    assertNull(browser.host.overlayState.onDownload)
                 }
             }
         }
@@ -595,7 +596,7 @@ class CommentsWebViewLifecycleTest {
                 override fun onFullscreenChanged(fullscreen: Boolean) = Unit
             },
         ).apply {
-            bindViews(host, host.progressIndicator)
+            bindViews(host)
             setCoveredByComments(coveredByComments)
             configure(false, true, reading, reading.blockAds)
             initialize()

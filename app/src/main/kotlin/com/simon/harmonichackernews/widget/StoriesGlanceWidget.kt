@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
@@ -14,7 +13,6 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
-import android.view.ContextThemeWrapper
 import android.widget.RemoteViews
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -58,7 +56,6 @@ import com.simon.harmonichackernews.ui.widget.WidgetTypography
 import com.simon.harmonichackernews.ui.widget.WidgetDimensions
 import com.simon.harmonichackernews.ui.widget.widgetMetricText
 import com.simon.harmonichackernews.utils.HtmlTextUtils
-import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.utils.HarmonicLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -195,14 +192,8 @@ internal data class WidgetColors(val day: HarmonicColors, val night: HarmonicCol
     val standaloneMetricBackground = ColorProvider(day.surfaceContainerHighest, night.surfaceContainerHighest)
 }
 
-private fun widgetPalette(context: Context, selection: ThemeSelection): HarmonicColors {
-    val configuration = Configuration(context.resources.configuration).apply {
-        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
-            if (selection.dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
-    }
-    val themed = ContextThemeWrapper(context.createConfigurationContext(configuration), AndroidActivityTheme.themeResource(selection.theme, selection.dark))
-    return harmonicThemePalette(themed, selection).colors
-}
+private fun widgetPalette(context: Context, selection: ThemeSelection): HarmonicColors =
+    harmonicThemePalette(context, selection).colors
 
 @Composable
 internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, configuration: WidgetConfiguration, colors: WidgetColors, visual: WidgetVisual?, availableWidth: Int = 360, fontFamily: FontFamily = FontFamily.SansSerif, isLast: Boolean = false) {
@@ -368,8 +359,7 @@ internal fun widgetFailureDescription(error: Throwable?): String = error?.let {
 internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable): RemoteViews {
     val app = context.harmonicAppComposition
     val selection = app.appearance.selection()
-    val themed = ContextThemeWrapper(context, AndroidActivityTheme.themeResource(selection.theme, selection.dark))
-    val colors = harmonicThemePalette(themed, selection).colors
+    val colors = harmonicThemePalette(context, selection).colors
     val message = if (app.userSettings.debug.showWidgetDebugInfo) {
         "Widget $widgetId could not render\n${widgetFailureDescription(error)}\nTap to retry."
     } else "Could not display stories. Tap to retry."

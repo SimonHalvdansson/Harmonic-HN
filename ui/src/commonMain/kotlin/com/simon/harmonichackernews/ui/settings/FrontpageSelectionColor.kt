@@ -21,3 +21,12 @@ internal fun frontpageSelectionColor(
     }
     return contrastingTone
 }
+
+/** Keep the preferred role when readable, including custom themes migrated from Android XML. */
+internal fun frontpageSelectionContentColor(background: Color, preferred: Color): Color {
+    fun contrast(foreground: Color): Float =
+        (maxOf(background.luminance(), foreground.luminance()) + 0.05f) /
+            (minOf(background.luminance(), foreground.luminance()) + 0.05f)
+    return if (contrast(preferred) >= 4.5f) preferred
+    else if (contrast(Color.White) >= contrast(Color.Black)) Color.White else Color.Black
+}
