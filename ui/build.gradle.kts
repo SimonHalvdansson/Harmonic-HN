@@ -68,6 +68,10 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
         }
+        getByName("desktopTest").dependencies {
+            // ImageComposeScene tests need Skiko's native library for the current host.
+            runtimeOnly(compose.desktop.currentOs)
+        }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.compose.material3)
