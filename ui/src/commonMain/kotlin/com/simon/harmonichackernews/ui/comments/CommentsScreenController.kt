@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -162,40 +163,46 @@ class CommentsScreenController private constructor(
     private var linkPreviewSourceImageAspectRatio by mutableStateOf<Float?>(null)
     private var linkPreviewSourceCovered by mutableStateOf(false)
 
-    val sheetSlideOffset: Float get() = interactionState.sheetSlideOffset
-    val topInsetPx: Int get() = interactionState.topInsetPx
-    val sheetRequest: CommentSheetRequest? get() = interactionState.sheetRequest
-    val navigationRequest: CommentNavigationRequest?
-        get() = interactionState.navigationRequest
-    val showWebsiteRequest: Int get() = interactionState.websiteRequestVersion
-    val scrollToCommentRequest: CommentScrollRequest? get() = interactionState.scrollRequest
-    val stopScrollRequest: Int get() = interactionState.stopScrollRequestVersion
-    val highlightedCommentId: Int get() = interactionState.highlightedCommentId
-    val searchScrollTopTargetId: Int get() = interactionState.searchScrollTopTargetId
-    val predictiveBackActive: Boolean get() = interactionState.predictiveBackActive
-    val predictiveBackProgress: Float get() = interactionState.predictiveBackProgress
-    val suppressedCommentIds: Set<Int> get() = interactionState.suppressedCommentIds
-    val searchDialogVisible: Boolean get() = interactionState.searchDialogVisible
+    // Sheet progress changes every frame. Observe individual values so moving the sheet does
+    // not invalidate readers of unrelated navigation, search, row or overlay state.
+    private val commentAction by derivedStateOf { interactionState.commentAction }
+    private val linkPreview by derivedStateOf { interactionState.linkPreview }
+    val sheetSlideOffset: Float by derivedStateOf { interactionState.sheetSlideOffset }
+    val topInsetPx: Int by derivedStateOf { interactionState.topInsetPx }
+    val sheetRequest: CommentSheetRequest? by derivedStateOf { interactionState.sheetRequest }
+    val navigationRequest: CommentNavigationRequest? by derivedStateOf { interactionState.navigationRequest }
+    val showWebsiteRequest: Int by derivedStateOf { interactionState.websiteRequestVersion }
+    val scrollToCommentRequest: CommentScrollRequest? by derivedStateOf { interactionState.scrollRequest }
+    val stopScrollRequest: Int by derivedStateOf { interactionState.stopScrollRequestVersion }
+    val highlightedCommentId: Int by derivedStateOf { interactionState.highlightedCommentId }
+    val searchScrollTopTargetId: Int by derivedStateOf { interactionState.searchScrollTopTargetId }
+    val predictiveBackActive: Boolean by derivedStateOf { interactionState.predictiveBackActive }
+    val predictiveBackProgress: Float by derivedStateOf { interactionState.predictiveBackProgress }
+    val suppressedCommentIds: Set<Int> by derivedStateOf { interactionState.suppressedCommentIds }
+    val searchDialogVisible: Boolean by derivedStateOf { interactionState.searchDialogVisible }
     val commentActionOverlay: CommentActionOverlayState?
-        get() = interactionState.commentAction?.let {
+        get() = commentAction?.let {
             CommentActionOverlayState(it, commentActionSourceBounds, commentActionSourceGeometry)
         }
-    val commentActionDismissRequest: Int
-        get() = interactionState.commentActionDismissRequestVersion
-    val commentActionPredictiveBackProgress: Float
-        get() = interactionState.commentActionPredictiveBackProgress
-    val commentActionPredictiveBackEdge: Int
-        get() = interactionState.commentActionPredictiveBackEdge
-    val commentActionFavoriteLoadingId: Int
-        get() = interactionState.commentActionFavoriteLoadingId
-    val commentActionVoteLoadingId: Int
-        get() = interactionState.commentActionVoteLoadingId
-    val commentActionVoteLoadingAction: CommentMenuAction?
-        get() = interactionState.commentActionVoteLoadingAction
-    val commentActionDownvotedIds: Set<Int>
-        get() = interactionState.commentActionDownvotedIds
+    val commentActionDismissRequest: Int by derivedStateOf {
+        interactionState.commentActionDismissRequestVersion
+    }
+    val commentActionPredictiveBackProgress: Float by derivedStateOf {
+        interactionState.commentActionPredictiveBackProgress
+    }
+    val commentActionPredictiveBackEdge: Int by derivedStateOf {
+        interactionState.commentActionPredictiveBackEdge
+    }
+    val commentActionFavoriteLoadingId: Int by derivedStateOf {
+        interactionState.commentActionFavoriteLoadingId
+    }
+    val commentActionVoteLoadingId: Int by derivedStateOf { interactionState.commentActionVoteLoadingId }
+    val commentActionVoteLoadingAction: CommentMenuAction? by derivedStateOf {
+        interactionState.commentActionVoteLoadingAction
+    }
+    val commentActionDownvotedIds: Set<Int> by derivedStateOf { interactionState.commentActionDownvotedIds }
     val linkPreviewOverlay: CommentLinkPreviewOverlayState?
-        get() = when (val preview = interactionState.linkPreview) {
+        get() = when (val preview = linkPreview) {
             is CommentLinkPreview.Reference -> CommentLinkPreviewOverlayState.Reference(
                 originalUrl = preview.originalUrl,
                 fallbackTitle = preview.fallbackTitle,
@@ -218,18 +225,19 @@ class CommentsScreenController private constructor(
             )
             null -> null
         }
-    val linkPreviewDismissRequest: Int
-        get() = interactionState.linkPreviewDismissRequestVersion
-    val linkPreviewPredictiveBackProgress: Float
-        get() = interactionState.linkPreviewPredictiveBackProgress
-    val linkPreviewPredictiveBackEdge: Int
-        get() = interactionState.linkPreviewPredictiveBackEdge
-    val linkPreviewPredictiveBackSettleRequest: CommentPredictiveBackSettleRequest?
-        get() = interactionState.linkPreviewPredictiveBackSettleRequest
-    val linkPreviewVisibleUrl: String?
-        get() = interactionState.linkPreviewVisibleUrl
+    val linkPreviewDismissRequest: Int by derivedStateOf { interactionState.linkPreviewDismissRequestVersion }
+    val linkPreviewPredictiveBackProgress: Float by derivedStateOf {
+        interactionState.linkPreviewPredictiveBackProgress
+    }
+    val linkPreviewPredictiveBackEdge: Int by derivedStateOf {
+        interactionState.linkPreviewPredictiveBackEdge
+    }
+    val linkPreviewPredictiveBackSettleRequest: CommentPredictiveBackSettleRequest? by derivedStateOf {
+        interactionState.linkPreviewPredictiveBackSettleRequest
+    }
+    val linkPreviewVisibleUrl: String? by derivedStateOf { interactionState.linkPreviewVisibleUrl }
     val suppressedHeaderReferenceUrl: String?
-        get() = (interactionState.linkPreview as? CommentLinkPreview.Reference)
+        get() = (linkPreview as? CommentLinkPreview.Reference)
             ?.takeIf {
                 it.headerReference && linkPreviewSourceIsReferenceRow &&
                     linkPreviewSourceCovered
@@ -336,9 +344,12 @@ class CommentsScreenController private constructor(
         syncInteractionState()
     }
 
-    fun isSheetExpanded(): Boolean = sheetSlideOffset >= 0.999f
+    private val sheetExpanded by derivedStateOf { sheetSlideOffset >= 0.999f }
+    private val websiteVisible by derivedStateOf { integratedWebView && sheetSlideOffset <= 0.001f }
 
-    fun isWebsiteVisible(): Boolean = integratedWebView && sheetSlideOffset <= 0.001f
+    fun isSheetExpanded(): Boolean = sheetExpanded
+
+    fun isWebsiteVisible(): Boolean = websiteVisible
 
     fun updateReaderMode(available: Boolean, enabled: Boolean) {
         screenState = screenState.copy(
@@ -671,16 +682,16 @@ class CommentsScreenController private constructor(
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
-    fun isLinkPreviewOverlayShowing(): Boolean = interactionState.linkPreview != null
+    fun isLinkPreviewOverlayShowing(): Boolean = linkPreview != null
 
     fun isLinkPreviewReferenceShowing(): Boolean =
-        interactionState.linkPreview is CommentLinkPreview.Reference
+        linkPreview is CommentLinkPreview.Reference
 
     fun isLinkPreviewImageShowing(): Boolean =
-        interactionState.linkPreview is CommentLinkPreview.Image
+        linkPreview is CommentLinkPreview.Image
 
     fun getLinkPreviewFallbackTitle(): String? =
-        (interactionState.linkPreview as? CommentLinkPreview.Reference)?.fallbackTitle
+        (linkPreview as? CommentLinkPreview.Reference)?.fallbackTitle
 
     fun updateLinkPreviewVisibleUrl(originalUrl: String, resolvedUrl: String?) {
         interactionStore.updateLinkPreviewVisibleUrl(originalUrl, resolvedUrl)
@@ -697,7 +708,7 @@ class CommentsScreenController private constructor(
         if (linkPreviewSourceCovered) return
         when {
             linkPreviewSourceIsReferenceRow -> Unit
-            interactionState.linkPreview is CommentLinkPreview.Image &&
+            linkPreview is CommentLinkPreview.Image &&
                 linkPreviewSourceContentLayer != null -> headerPreviewSuppressed = true
             else -> return
         }
@@ -705,7 +716,7 @@ class CommentsScreenController private constructor(
     }
 
     fun suppressedReferenceUrlForComment(commentId: Int): String? =
-        (interactionState.linkPreview as? CommentLinkPreview.Reference)
+        (linkPreview as? CommentLinkPreview.Reference)
             ?.takeIf {
                 it.sourceCommentId == commentId && linkPreviewSourceIsReferenceRow &&
                     linkPreviewSourceCovered
