@@ -2,8 +2,10 @@
 agp = "9.4.1"
 compose-bom = "2026.09.00"
 compose-multiplatform = "1.12.1"
-compose-multiplatform-material3 = "1.13.0-alpha01"
-kotlin = "2.5.0-Beta1"
+# Keep Material3 on the Compose 1.12 runtime/Skiko line used by the plugin.
+compose-multiplatform-material3 = "1.12.0-alpha03"
+# 2.5.0-Beta1 breaks Native enum lowering and linking of core test declarations.
+kotlin = "2.4.20-RC2"
 material3 = "1.5.0-alpha29"
 material3-adaptive = "1.3.0-rc01"
 navigation3 = "1.2.0-beta01"
