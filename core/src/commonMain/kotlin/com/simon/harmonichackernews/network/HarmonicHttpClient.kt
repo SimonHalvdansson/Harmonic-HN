@@ -6,6 +6,7 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
@@ -23,6 +24,7 @@ import kotlinx.io.IOException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 
 /** Common transport policy; takes ownership of a fresh platform engine and optional storage. */
 fun createHarmonicHttpClient(
@@ -83,15 +85,27 @@ private fun Url.defaultCookiePath(): String {
 
 /**
  * Buffered read-only content requests. Never use this for action URLs, even if they use GET.
- * Retry one transport/read failure; keep generic transport retries disabled to protect writes.
+ * Retry transient failures twice; keep generic transport retries disabled to protect writes.
  */
-internal suspend fun HttpClient.getTextOrThrow(url: String): String = try {
-    getTextOnceOrThrow(url)
-} catch (error: IOException) {
-    currentCoroutineContext().ensureActive()
-    if (error is HttpBodyLimitException) throw error
-    delay(250)
-    getTextOnceOrThrow(url)
+internal suspend fun HttpClient.getTextOrThrow(url: String): String {
+    var retries = 0
+    while (true) {
+        try {
+            return getTextOnceOrThrow(url)
+        } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (!error.isRetryableReadFailure() || retries >= 2) throw error
+            delay(if (retries++ == 0) 500L else 1_500L)
+        }
+    }
+}
+
+/** Shared by request retries and foreground feed recovery; never classify writes with this. */
+internal fun Throwable.isRetryableReadFailure(): Boolean = when (this) {
+    is CancellationException, is HttpBodyLimitException -> false
+    is HttpStatusException -> statusCode in setOf(502, 503, 504)
+    is HttpRequestTimeoutException, is IOException -> true
+    else -> false
 }
 
 private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {

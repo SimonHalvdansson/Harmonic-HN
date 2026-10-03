@@ -30,6 +30,9 @@ class StoriesSessionState {
     var searching: Boolean = false
     var lastSearch: String = ""
     var lastLoaded: Long = 0
+    // Retain the cause and cooldown across host recreation, without exposing details in the UI.
+    internal var feedLoadError: Throwable? = null
+    internal var lastAutomaticFeedRetryMillis: Long? = null
     var showRefreshPrompt: Boolean = false
     var userItemListFilter: Int = 1
     var frontPageDayUtcMillis: Long = -1L

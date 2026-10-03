@@ -35,6 +35,8 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.settings.StoredUserSettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.settings.UserPreferenceKeys
+import kotlinx.io.IOException
+import com.simon.harmonichackernews.network.HttpStatusException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -58,6 +60,159 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun foregroundRecoveryPreservesRowsAndPaginationAndDoesNotDuplicateActiveLoads() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val feed = RecoveringFeedLoader()
+        val preferences = MemoryKeyValueStore().apply {
+            putBoolean(UserPreferenceKeys.PAGINATION_MODE, true)
+        }
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed), worker,
+            settings = StoredUserSettings(preferences, emptyFlow()),
+        )
+        val stories = (1..90).map { Story("Existing $it", it, true, false) }
+        runtime.mainStore.replace(stories)
+        runtime.mainStore.setVisibleStoryCount(60)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(StoryLoadFailure.GENERAL, runtime.failure)
+        feed.error = null
+        feed.result = StoryFeedResult.ItemIds((1..90).toList())
+        feed.gate = CompletableDeferred()
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+        assertEquals(stories, runtime.mainStories)
+        assertEquals(60, runtime.mainStore.state.value.visibleStoryCount)
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+        feed.gate!!.complete(Unit)
+        runCurrent()
+        worker.runAll()
+        runCurrent()
+        assertEquals(null, runtime.failure)
+        assertEquals(60, runtime.mainStore.state.value.visibleStoryCount)
+        assertEquals(stories, runtime.mainStories)
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+    }
+
+    @Test
+    fun failedForegroundRecoveryHasRetainedCooldownAndManualRetryStillWorks() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val feed = RecoveringFeedLoader()
+        var now = 1_000L
+        fun createRuntime() = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+            QueuedCacheDispatcher(), nowMillis = { now },
+        )
+        var runtime = createRuntime()
+        runtime.refresh(false)
+        runCurrent()
+        // A retained failure also recovers after the platform recreates the runtime.
+        runtime.dispose()
+        runtime = createRuntime()
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+        runtime.dispose()
+        runtime = createRuntime()
+        now += 29_999L
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+        now++
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(3, feed.attempts)
+        runtime.refresh(true)
+        runCurrent()
+        assertEquals(4, feed.attempts)
+    }
+
+    @Test
+    fun foregroundRecoveryWaitsForOnlineActiveFeedAndLeavesCachedContentAlone() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val feed = RecoveringFeedLoader()
+        var online = false
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+            QueuedCacheDispatcher(), connectivity = object : ConnectivityService {
+                override fun isOnline() = online
+                override fun isUnmetered() = online
+            },
+        )
+        runtime.refresh(false)
+        runCurrent()
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(1, feed.attempts)
+        online = true
+        runtime.resume(hostStarted = false)
+        runCurrent()
+        assertEquals(1, feed.attempts)
+        runtime.openSearch()
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(1, feed.attempts)
+        runtime.closeSearch()
+        runtime.mainStore.setShowingCached(true)
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(1, feed.attempts)
+        runtime.mainStore.setShowingCached(false)
+        runtime.resume(hostStarted = true)
+        runCurrent()
+        assertEquals(2, feed.attempts)
+    }
+
+    @Test
+    fun foregroundRecoveryOnlyRetriesTransientFeedFailures() = runTest {
+        for (error in listOf(
+            HttpStatusException(503, "Unavailable", "feed"),
+            HttpStatusException(404, "Missing", "feed"),
+            HttpStatusException(429, "Rate limited", "feed"),
+            IllegalArgumentException("Invalid feed"),
+        )) {
+            val session = StoriesSessionState()
+            val saved = SavedItemsRepository(MemoryKeyValueStore())
+            val feed = RecoveringFeedLoader().apply { this.error = error }
+            val runtime = cacheRuntime(
+                backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+                QueuedCacheDispatcher(),
+            )
+            runtime.refresh(false)
+            runCurrent()
+            runtime.resume(hostStarted = true)
+            runCurrent()
+            assertEquals(if (error is HttpStatusException && error.statusCode == 503) 2 else 1,
+                feed.attempts, error.message)
+            runtime.dispose()
+        }
+    }
+
+    private class RecoveringFeedLoader : StoryFeedLoader {
+        var error: Throwable? = IOException("Connection lost")
+        var result: StoryFeedResult = StoryFeedResult.ItemIds(emptyList())
+        var gate: CompletableDeferred<Unit>? = null
+        var attempts = 0
+        override suspend fun load(storyType: StoryType, frontDay: String?): StoryFeedResult {
+            attempts++
+            gate?.await()
+            error?.let { throw it }
+            return result
+        }
+        override suspend fun loadNextScrapedPage(storyType: StoryType, nextPageUrl: String): HackerNewsListPage =
+            error("Not used")
+    }
+
     @Test
     fun logoutDuringSearchDiscardsRetainedPersonalFeedAndLoadsTopStoriesOnReturn() = runTest {
         val accounts = MemoryAccounts()
@@ -825,6 +980,8 @@ class StoryRequestsTest {
         history: ObservableHistoryStore = MemoryHistoryStore(),
         accounts: ObservableHackerNewsAccountRepository = MemoryAccounts(),
         settings: UserSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
+        connectivity: ConnectivityService = AlwaysOnline,
+        nowMillis: () -> Long = { 1_000L },
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
@@ -835,11 +992,11 @@ class StoryRequestsTest {
             favoriteRequest = { _, _ -> error("Not used") }),
         historyStore = history,
         accounts = accounts,
-        connectivity = AlwaysOnline,
+        connectivity = connectivity,
         userSettings = settings,
         loadContentFilters = { ContentFilters() },
         rootStoryResolver = CommentMasterResolver(UnusedHackerNewsRepository),
-        nowMillis = { 1_000L },
+        nowMillis = nowMillis,
         loadCachedStoryHeader = header ?: { id, _ ->
             val story = Story("Loading...", id, false, false)
             if (hydrate(story)) JSONParser.prepareCachedStoryHeader(

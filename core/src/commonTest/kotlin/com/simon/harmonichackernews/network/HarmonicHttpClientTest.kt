@@ -121,7 +121,7 @@ class HarmonicHttpClientTest {
     }
 
     @Test
-    fun persistentReadFailureStopsAfterTwoAttempts() = runTest {
+    fun persistentReadFailureStopsAfterThreeAttempts() = runTest {
         var attempts = 0
         val client = HttpClient(MockEngine {
             attempts++
@@ -129,7 +129,7 @@ class HarmonicHttpClientTest {
         })
         try {
             assertFailsWith<IOException> { client.getTextOrThrow("https://example.com/feed") }
-            assertEquals(2, attempts)
+            assertEquals(3, attempts)
         } finally {
             client.close()
         }
@@ -159,18 +159,68 @@ class HarmonicHttpClientTest {
     }
 
     @Test
-    fun httpErrorsAreNotRetried() = runTest {
+    fun transientServerErrorsRecoverWithIncreasingBackoff() = runTest {
+        val attemptTimes = mutableListOf<Long>()
+        val client = HttpClient(MockEngine) {
+            engine {
+                dispatcher = StandardTestDispatcher(testScheduler)
+                addHandler {
+                    attemptTimes += testScheduler.currentTime
+                    when (attemptTimes.size) {
+                        1 -> respond("unavailable", HttpStatusCode.BadGateway)
+                        2 -> respond("unavailable", HttpStatusCode.ServiceUnavailable)
+                        else -> respond("recovered")
+                    }
+                }
+            }
+        }
+        try {
+            assertEquals("recovered", client.getTextOrThrow("https://example.com/feed"))
+            assertEquals(listOf(0L, 500L, 2_000L), attemptTimes)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun persistentGatewayTimeoutStopsAfterThreeAttempts() = runTest {
         var attempts = 0
         val client = HttpClient(MockEngine {
             attempts++
-            respond("unavailable", HttpStatusCode.ServiceUnavailable)
+            respond("unavailable", HttpStatusCode.GatewayTimeout)
         })
         try {
             assertFailsWith<HttpStatusException> { client.getTextOrThrow("https://example.com/feed") }
-            assertEquals(1, attempts)
-        } finally {
-            client.close()
+            assertEquals(3, attempts)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun permanentErrorsAndRateLimitsAreNotRetried() = runTest {
+        for (status in listOf(400, 401, 403, 404, 429, 500, 501)) {
+            var attempts = 0
+            val client = HttpClient(MockEngine {
+                attempts++
+                respond("failed", HttpStatusCode.fromValue(status))
+            })
+            try {
+                assertFailsWith<HttpStatusException> { client.getTextOrThrow("https://example.com/feed") }
+                assertEquals(1, attempts, "HTTP $status")
+            } finally { client.close() }
         }
+    }
+
+    @Test
+    fun requestTimeoutCanRecover() = runTest {
+        var attempts = 0
+        val client = HttpClient(MockEngine {
+            if (++attempts <= 2) throw io.ktor.client.plugins.HttpRequestTimeoutException(
+                "https://example.com/feed", 60_000L,
+            )
+            respond("recovered")
+        })
+        try {
+            assertEquals("recovered", client.getTextOrThrow("https://example.com/feed"))
+            assertEquals(3, attempts)
+        } finally { client.close() }
     }
 
     @Test

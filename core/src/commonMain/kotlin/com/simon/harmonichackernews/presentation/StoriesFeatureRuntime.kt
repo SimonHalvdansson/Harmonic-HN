@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.network.StoryFeedResult
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
+import com.simon.harmonichackernews.network.isRetryableReadFailure
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.platform.ConnectivityService
@@ -81,6 +82,7 @@ data class StoryPreviewDeck(
 )
 
 private const val INITIAL_CACHE_ROWS = 12
+private const val FOREGROUND_FEED_RETRY_COOLDOWN_MILLIS = 30_000L
 
 /**
  * Lifecycle-independent stories-screen workflow.
@@ -415,7 +417,25 @@ class StoriesFeatureRuntime(
         syncVisibleUserItemsWithCache()
         refreshBookmarksIfNeeded(hostStarted)
         syncHistoryIfChanged()
+        retryFailedFeedOnResume(hostStarted)
         changed()
+    }
+
+    private fun retryFailedFeedOnResume(hostStarted: Boolean) {
+        val state = mainStore.state.value
+        if (!hostStarted || searching || !online || state.showingCached ||
+            state.loading || state.refreshing || state.failure != StoryLoadFailure.GENERAL ||
+            sessionState.feedLoadError?.isRetryableReadFailure() != true
+        ) return
+        val now = nowMillis()
+        val lastRetry = sessionState.lastAutomaticFeedRetryMillis
+        if (lastRetry != null && now - lastRetry < FOREGROUND_FEED_RETRY_COOLDOWN_MILLIS) return
+        sessionState.lastAutomaticFeedRetryMillis = now
+        refresh(
+            showSwipeRefreshIndicator = false,
+            showMainLoadingIndicator = false,
+            preserveVisibleStoryCount = true,
+        )
     }
 
     fun refreshAccountState() {
@@ -458,7 +478,10 @@ class StoriesFeatureRuntime(
     fun selectType(target: StoryListTarget, type: StoryType) {
         if (type != currentType) visibleRanges.remove(store(target))
         when (target) {
-            StoryListTarget.MAIN -> sessionState.mainStoryType = type
+            StoryListTarget.MAIN -> {
+                if (type != sessionState.mainStoryType) sessionState.feedLoadError = null
+                sessionState.mainStoryType = type
+            }
             StoryListTarget.SEARCH -> sessionState.searchStoryType = type
         }
         store(target).setPaginationEnabled(shouldUsePagination(type))
@@ -585,6 +608,12 @@ class StoriesFeatureRuntime(
     fun refresh(
         showSwipeRefreshIndicator: Boolean,
         showMainLoadingIndicator: Boolean = false,
+    ) = refresh(showSwipeRefreshIndicator, showMainLoadingIndicator, preserveVisibleStoryCount = false)
+
+    private fun refresh(
+        showSwipeRefreshIndicator: Boolean,
+        showMainLoadingIndicator: Boolean,
+        preserveVisibleStoryCount: Boolean,
     ) {
         if (currentType.isBookmarks) bookmarksChanged = false
         sessionState.showRefreshPrompt = false
@@ -601,6 +630,7 @@ class StoriesFeatureRuntime(
             return
         }
 
+        sessionState.feedLoadError = null
         refreshIndicatorShowing = plan.showRefreshIndicator
         rateLimited = false
         val generation = beginGeneration()
@@ -631,6 +661,9 @@ class StoriesFeatureRuntime(
                 type,
                 frontPageDay.requestParameter.takeIf { type.isFront },
                 generation,
+                minimumVisibleCount = if (preserveVisibleStoryCount) {
+                    activeStore.state.value.visibleStoryCount
+                } else 0,
             )
         }
         changed()
@@ -1175,7 +1208,12 @@ class StoriesFeatureRuntime(
         }
     }
 
-    private fun loadFeed(storyType: StoryType, frontDay: String?, generation: Int) {
+    private fun loadFeed(
+        storyType: StoryType,
+        frontDay: String?,
+        generation: Int,
+        minimumVisibleCount: Int = 0,
+    ) {
         feedLoadJob?.cancel()
         nextScrapedPageJob?.cancel()
         feedLoadJob = scope.launch {
@@ -1192,6 +1230,12 @@ class StoriesFeatureRuntime(
                     refreshIndicatorShowing = false
                     rateLimited = false
                     val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
+                    if (application.applied && minimumVisibleCount > 0) {
+                        activeStore.setVisibleStoryCount(max(
+                            activeStore.state.value.visibleStoryCount,
+                            minimumVisibleCount.coerceAtMost(activeStories.size),
+                        ))
+                    }
                     if (application.loadVisibleStories) {
                         requests.invalidateLoadedStoryRows(application.loadedStories)
                         loadVisibleStories()
@@ -1204,6 +1248,7 @@ class StoriesFeatureRuntime(
             } catch (error: Throwable) {
                 if (!isCurrentFeed(storyType, generation)) return@launch
                 refreshIndicatorShowing = false
+                sessionState.feedLoadError = error
                 val failure = StoryFeedRefreshPolicy.failureFor(error)
                 rateLimited = failure == StoryLoadFailure.RATE_LIMITED
                 activeStore.fail(failure)
