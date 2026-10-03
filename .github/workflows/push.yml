@@ -205,7 +205,7 @@ jobs:
         run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - name: Verify processed desktop runtime
         run: >-
-          java -Xverify:all -Djava.awt.headless=true
+          java -Xverify:all "-Djava.awt.headless=true"
           -cp "desktop_app/build/compose/tmp/main-release/proguard/*"
           .github/scripts/VerifyDesktopRelease.java
       - uses: actions/upload-artifact@v7
@@ -271,3 +271,14 @@ jobs:
           ONLY_ACTIVE_ARCH=YES
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
+      - name: Upload iOS test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-test-reports
+          path: |
+            core/build/reports/tests/iosSimulatorArm64Test
+            core/build/test-results/iosSimulatorArm64Test
+            ui/build/reports/tests/iosSimulatorArm64Test
+            ui/build/test-results/iosSimulatorArm64Test
+          if-no-files-found: ignore
