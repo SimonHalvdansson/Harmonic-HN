@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 
@@ -53,6 +54,7 @@ import androidx.compose.ui.platform.LocalDensity
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,19 +68,20 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 private data class SettingsListEntry(
     val section: SettingsSection,
     val icon: DrawableResource,
+    val summary: StringResource,
 )
 
 private val MainSettingsEntries = listOf(
-    SettingsListEntry(SettingsSection.Appearance, Res.drawable.ic_style),
-    SettingsListEntry(SettingsSection.Stories, Res.drawable.ic_newspaper),
-    SettingsListEntry(SettingsSection.Comments, Res.drawable.ic_comment),
-    SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset),
-    SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list),
-    SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome),
-    SettingsListEntry(SettingsSection.Notifications, Res.drawable.ic_notifications),
-    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_data_table),
-    SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api),
-    SettingsListEntry(SettingsSection.About, Res.drawable.ic_info),
+    SettingsListEntry(SettingsSection.Appearance, Res.drawable.ic_style, Res.string.settings_summary_appearance),
+    SettingsListEntry(SettingsSection.Stories, Res.drawable.ic_newspaper, Res.string.settings_summary_stories),
+    SettingsListEntry(SettingsSection.Comments, Res.drawable.ic_comment, Res.string.settings_summary_comments),
+    SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
+    SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list, Res.string.settings_summary_filters_tags),
+    SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome, Res.string.settings_summary_ai_summary),
+    SettingsListEntry(SettingsSection.Notifications, Res.drawable.ic_notifications, Res.string.settings_summary_notifications),
+    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_data_table, Res.string.settings_summary_data),
+    SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
+    SettingsListEntry(SettingsSection.About, Res.drawable.ic_info, Res.string.settings_summary_about),
 )
 
 @Composable
@@ -169,6 +172,7 @@ fun SettingsListScreen(
                             selectedSection == SettingsSection.Licenses
                         SettingsNavigationRow(
                             title = stringResource(entry.section.titleResource),
+                            summary = stringResource(entry.summary),
                             icon = entry.icon,
                             selected = showSelection && isSelected,
                             onClick = { onSectionSelected(entry.section) },
@@ -186,15 +190,17 @@ fun SettingsListScreen(
 @Composable
 private fun SettingsNavigationRow(
     title: String,
+    summary: String,
     icon: DrawableResource,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val colors = HarmonicTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(
-                minHeight = HarmonicDimens.compose_settings_row_min_height,
+                minHeight = 72.dp,
             )
             .background(
                 if (selected) {
@@ -204,31 +210,46 @@ private fun SettingsNavigationRow(
                 },
             )
             .clickable(role = Role.Button, onClick = onClick)
+            .semantics { this.selected = selected }
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
+                vertical = 12.dp,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(
-                HarmonicDimens.compose_settings_row_icon_size,
-            ),
-            tint = HarmonicTheme.colors.iconTint,
-        )
-        Spacer(
-            modifier = Modifier.width(
-                HarmonicDimens.compose_settings_row_icon_end_space,
-            ),
-        )
-        Text(
-            text = title,
-            color = HarmonicTheme.colors.textPrimary,
-            fontFamily = ProductSansFontFamily,
-            fontSize = 16.sp,
-            lineHeight = 20.sp,
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(colors.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = colors.onSecondaryContainer,
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = colors.textPrimary,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+            )
+            Text(
+                text = summary,
+                modifier = Modifier.padding(top = 2.dp),
+                color = colors.textSecondary,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 13.sp,
+                lineHeight = 17.sp,
+            )
+        }
     }
 }
 
