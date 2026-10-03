@@ -7,6 +7,12 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
@@ -25,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -36,6 +44,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.WindowPlacement
@@ -82,6 +91,8 @@ import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import java.awt.Taskbar
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import kotlinx.coroutines.delay
@@ -141,8 +152,8 @@ fun main() {
             ) {
                 // Set the native properties before the window's first visible frame.
                 DisposableEffect(window) {
-                    DesktopWindowAppearance.configureTitleBar(window)
-                    onDispose { }
+                    val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
+                    onDispose { releaseTitleBar() }
                 }
                 val selection by bootstrap.app.appearance.selections.collectAsState(
                     initial = bootstrap.app.appearance.selection(),
@@ -182,24 +193,28 @@ fun main() {
                             modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
                             color = palette.colors.background,
                         ) {
-                            // An unpainted native title bar shares the app's surface. Reserve its
-                            // small drag/traffic-light area on every screen, including compact
-                            // headers and settings, without adding a second toolbar or divider.
+                            // Reserve the native controls/drag area on every screen. Windows
+                            // branding shares the app surface with no separate strip or divider.
                             val titleBarInset = if (
                                 DesktopWindowAppearance.usesIntegratedTitleBar &&
                                 windowState.placement != WindowPlacement.Fullscreen
-                            ) DesktopMacTitleBarHeight else 0.dp
-                            Box(Modifier.fillMaxSize().padding(top = titleBarInset)) {
-                                DesktopAppContent(
-                                    app = bootstrap.app,
-                                    scene = bootstrap.scene,
-                                    storiesController = storiesController,
-                                    commentsController = commentsController,
-                                    editorBackRequestVersion = editorBackRequestVersion,
-                                    onStoriesControllerChanged = { storiesController = it },
-                                    onCommentsControllerChanged = { commentsController = it },
-                                    onSettingsNavigationChanged = { settingsNavigation = it },
-                                )
+                            ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
+                            Box(Modifier.fillMaxSize()) {
+                                if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
+                                    DesktopWindowsTitleBar(window, windowIcon)
+                                }
+                                Box(Modifier.fillMaxSize().padding(top = titleBarInset)) {
+                                    DesktopAppContent(
+                                        app = bootstrap.app,
+                                        scene = bootstrap.scene,
+                                        storiesController = storiesController,
+                                        commentsController = commentsController,
+                                        editorBackRequestVersion = editorBackRequestVersion,
+                                        onStoriesControllerChanged = { storiesController = it },
+                                        onCommentsControllerChanged = { commentsController = it },
+                                        onSettingsNavigationChanged = { settingsNavigation = it },
+                                    )
+                                }
                             }
                         }
                     }
@@ -435,7 +450,36 @@ private fun DesktopAppContent(
 
 private const val DesktopDestinationTransitionDurationMillis = 450L
 private const val DesktopOverlayExitDurationMillis = 160L
-private val DesktopMacTitleBarHeight = DesktopWindowAppearance.integratedTitleBarHeight.dp
+@Composable
+private fun DesktopWindowsTitleBar(window: java.awt.Window, icon: androidx.compose.ui.graphics.painter.Painter?) {
+    var active by remember(window) { mutableStateOf(window.isFocused) }
+    DisposableEffect(window) {
+        val listener = object : WindowAdapter() {
+            override fun windowGainedFocus(event: WindowEvent) { active = true }
+            override fun windowLostFocus(event: WindowEvent) { active = false }
+        }
+        window.addWindowFocusListener(listener)
+        onDispose { window.removeWindowFocusListener(listener) }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .height(DesktopWindowAppearance.integratedTitleBarHeight.dp)
+            .padding(start = 16.dp, end = DesktopWindowAppearance.windowsCaptionControlsWidth.dp + 16.dp)
+            .alpha(if (active) 1f else 0.55f),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (icon != null) Image(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Text(
+            text = "Harmonic",
+            style = MaterialTheme.typography.labelMedium,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+    }
+}
 
 @Composable
 private fun DesktopStoriesContent(
