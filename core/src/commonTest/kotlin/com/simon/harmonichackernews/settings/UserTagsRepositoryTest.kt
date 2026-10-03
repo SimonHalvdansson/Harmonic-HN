@@ -5,6 +5,32 @@ import kotlin.test.assertEquals
 
 class UserTagsRepositoryTest {
     @Test
+    fun repeatedRepositoryLookupsObserveExternalEditsAndMalformedData() {
+        val store = TestKeyValueStore()
+        val repository = UserTagsRepository(store)
+        val otherRepository = UserTagsRepository(store)
+        val usernames = listOf(" Alice ", "BOB", "İ", "i\u0307", "Σ", "ς", "missing", "", null)
+        for (serialized in listOf(
+            """{" Alice ":"first","ALICE":"last","Bob":42,"İ":"dotted","Σ":"sigma","ς":"final"}""",
+            """{"ALICE":null,"Bob":{"tag":true}}""",
+            "invalid", "[]", "", null,
+        )) {
+            store.putString(UserTagKeys.TAGS, serialized)
+            repeat(2) {
+                for (username in usernames) {
+                    assertEquals(UserTagCodec.tagFor(serialized, username), repository.tagFor(username))
+                }
+            }
+        }
+        otherRepository.setTag("Alice", "new")
+        assertEquals("new", repository.tagFor("alice"))
+        repository.setTag("Alice", "updated")
+        assertEquals("updated", repository.tagFor("alice"))
+        otherRepository.setTag("Alice", "")
+        assertEquals("", repository.tagFor("alice"))
+    }
+
+    @Test
     fun lookupPreservesLastNormalizedMatchAndJsonValueConversions() {
         val serialized = """{" Alice ":"first","ALICE":"last","Bob":42,"null":null,"object":{"a":1},"array":[1,2],"İ":"dotted","Σ":"sigma","ς":"final"}"""
         val decoded = UserTagCodec.decode(serialized, normalizeUsernames = true)

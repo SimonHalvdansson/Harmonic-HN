@@ -7,6 +7,22 @@ import kotlin.test.assertTrue
 
 class ContentFilterRepositoryTest {
     @Test
+    fun repeatedUserLookupsObserveWritesFromOtherRepositoriesAndClear() {
+        val store = TestKeyValueStore()
+        val repository = ContentFilterRepository(store)
+        val otherRepository = ContentFilterRepository(store)
+        assertFalse(repository.containsUser("alice"))
+        otherRepository.addUser("ALICE")
+        repeat(2) { assertTrue(repository.containsUser(" alice ")) }
+        otherRepository.removeUser("Alice")
+        assertFalse(repository.containsUser("alice"))
+        repository.setItems(ContentFilterType.USER, listOf("Alice", "BOB"))
+        assertTrue(repository.containsUser("bob"))
+        store.clear()
+        assertFalse(repository.containsUser("bob"))
+    }
+
+    @Test
     fun userLookupMatchesLoadedFiltersAndObservesPreferenceChanges() {
         val store = TestKeyValueStore()
         val repository = ContentFilterRepository(store)

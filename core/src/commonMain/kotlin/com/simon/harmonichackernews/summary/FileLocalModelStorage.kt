@@ -121,8 +121,8 @@ class FileLocalModelStorage(
         if (fileSystem.metadataOrNull(cacheRoot)?.isDirectory != true) return
         val prefixes = LocalModelFilePolicy.inferenceCachePrefixes(model)
         fileSystem.list(cacheRoot).forEach { path ->
-            if (fileSystem.metadataOrNull(path)?.isRegularFile == true &&
-                prefixes.any(path.name::startsWith)
+            if (prefixes.any(path.name::startsWith) &&
+                fileSystem.metadataOrNull(path)?.isRegularFile == true
             ) {
                 fileSystem.delete(path, mustExist = false)
             }
@@ -144,8 +144,8 @@ class FileLocalModelStorage(
             .flatMap(LocalModelFilePolicy::inferenceCachePrefixes)
             .distinct()
         return fileSystem.list(cacheRoot).filter { path ->
-            fileSystem.metadataOrNull(path)?.isRegularFile == true &&
-                prefixes.any(path.name::startsWith)
+            prefixes.any(path.name::startsWith) &&
+                fileSystem.metadataOrNull(path)?.isRegularFile == true
         }
     }
 

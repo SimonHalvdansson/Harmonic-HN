@@ -18,6 +18,53 @@ import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
     @Test
+    fun descendingSnapshotIdsStayCurrentAcrossEveryMembershipWrite() = runTest {
+        val repository = SavedItemsRepository(TestKeyValueStore())
+        val source = SavedItemSource.FAVORITES
+        repository.saveItems(source, listOf(TimestampedItem(4, 1), TimestampedItem(2, 2), TimestampedItem(4, 3)))
+        val original = repository.loadSnapshot(source)
+        assertEquals(listOf(4, 2), original.itemIds)
+        assertEquals(original, repository.loadSnapshot(source))
+        repository.saveCommentIds(source, setOf(2))
+        assertEquals(SavedItemSnapshot(listOf(4, 2), setOf(2)), repository.loadSnapshot(source))
+        repository.setMembership(source, 3, true, 4)
+        assertEquals(listOf(4, 3, 2), repository.loadSnapshot(source).itemIds)
+        repository.setMembership(source, 4, false, 5)
+        // The other occurrence of 4 is still present in this legacy-compatible item list.
+        assertEquals(listOf(4, 3, 2), repository.loadSnapshot(source).itemIds)
+        repository.setMembership(source, 4, false, 6)
+        assertEquals(listOf(3, 2), repository.loadSnapshot(source).itemIds)
+        repository.saveSnapshot(source, SavedItemSnapshot(listOf(9, 5), setOf(5)), 10)
+        assertEquals(SavedItemSnapshot(listOf(9, 5), setOf(5)), repository.loadSnapshot(source))
+        val update = repository.updateClassifiedMembershipAtomic(source, 7, true, 11, false)
+        assertEquals(SavedItemSnapshot(listOf(9, 7, 5), setOf(7, 5)), repository.loadSnapshot(source))
+        assertTrue(repository.restoreMembershipIfCurrentAtomic(update.token, false, false, 12))
+        assertEquals(SavedItemSnapshot(listOf(9, 5), setOf(5)), repository.loadSnapshot(source))
+        assertEquals(listOf(4, 2), original.itemIds)
+    }
+
+    @Test
+    fun descendingIdsRemainAccountScopedWhenBindingsAreReplaced() {
+        val store = TestKeyValueStore()
+        val repository = SavedItemsRepository(store)
+        var account = "alice"
+        repository.bindAccountScope { account }
+        repository.saveSnapshot(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(2, 8), emptySet()), 1)
+        assertEquals(listOf(8, 2), repository.loadSnapshot(SavedItemSource.FAVORITES).itemIds)
+        account = "bob"
+        repository.saveSnapshot(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(7), emptySet()), 2)
+        assertEquals(listOf(7), repository.loadSnapshot(SavedItemSource.FAVORITES).itemIds)
+        account = "alice"
+        assertEquals(listOf(8, 2), repository.loadSnapshot(SavedItemSource.FAVORITES).itemIds)
+        SavedItemsRepository(store).also { other ->
+            other.bindAccountScope { account }
+            other.saveSnapshot(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(5), emptySet()), 3)
+        }
+        repository.bindAccountScope { account }
+        assertEquals(listOf(5), repository.loadSnapshot(SavedItemSource.FAVORITES).itemIds)
+    }
+
+    @Test
     fun settledMembershipWritesDoNotRetainPerItemRevisions() = runTest {
         val repository = SavedItemsRepository(TestKeyValueStore())
         repeat(10_000) { id ->

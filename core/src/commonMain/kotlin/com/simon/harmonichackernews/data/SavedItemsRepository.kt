@@ -84,6 +84,7 @@ class SavedItemsRepository(
     private val mutableChanges = MutableSharedFlow<SavedItemsChange>(extraBufferCapacity = 32)
     private val itemCache = mutableMapOf<ItemCacheKey, List<TimestampedItem>>()
     private val itemIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
+    private val descendingItemIdsCache = mutableMapOf<SourceAccount, List<Int>>()
     private val commentIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
     private val sourceEpochs = mutableMapOf<SourceKind, Long>()
     // Only unsettled optimistic mutations need a revision. Globally unique stamps prevent an
@@ -110,6 +111,7 @@ class SavedItemsRepository(
     ) {
         itemCache.keys.removeAll { it.source != SavedItemSource.BOOKMARKS }
         itemIdsCache.keys.removeAll { it.source != SavedItemSource.BOOKMARKS }
+        descendingItemIdsCache.keys.removeAll { it.source != SavedItemSource.BOOKMARKS }
         commentIdsCache.clear()
         sourceEpochs.keys.removeAll { it.source != SavedItemSource.BOOKMARKS }
         itemMutationRevisions.keys.removeAll { it.source != SavedItemSource.BOOKMARKS }
@@ -207,6 +209,7 @@ class SavedItemsRepository(
             itemCache[ItemCacheKey(source, false, null)] = prepared.result.items
             itemCache[ItemCacheKey(source, true, null)] = prepared.sorted
             itemIdsCache[SourceAccount(source, null)] = prepared.ids
+            descendingItemIdsCache[SourceAccount(source, null)] = prepared.descendingIds.toList()
             advanceSourceEpoch(source, isComment = false)
             mutableChanges.tryEmit(SavedItemsChange(source, prepared.descendingIds, emptySet()))
             prepared.result
@@ -370,7 +373,7 @@ class SavedItemsRepository(
     fun loadSnapshot(source: SavedItemSource): SavedItemSnapshot {
         require(source != SavedItemSource.BOOKMARKS)
         return SavedItemSnapshot(
-            itemIds = loadItemsByDescendingId(source).map(TimestampedItem::id).distinct(),
+            itemIds = loadDescendingItemIds(source),
             commentIds = loadCommentIds(source),
         )
     }
@@ -509,7 +512,7 @@ class SavedItemsRepository(
         mutableChanges.tryEmit(
             SavedItemsChange(
                 source = source,
-                itemIds = loadItemsByDescendingId(source).map(TimestampedItem::id).distinct(),
+                itemIds = loadDescendingItemIds(source),
                 commentIds = if (source == SavedItemSource.BOOKMARKS) {
                     emptySet()
                 } else {
@@ -524,6 +527,15 @@ class SavedItemsRepository(
         itemIdsCache[sourceAccount(source)]?.let { return it }
         loadItems(source)
         return itemIdsCache.getValue(sourceAccount(source))
+    }
+
+    private fun loadDescendingItemIds(source: SavedItemSource): List<Int> {
+        refreshAccountScope()
+        val ids = descendingItemIdsCache.getOrPut(sourceAccount(source)) {
+            loadItemIds(source).sortedDescending()
+        }
+        // Published snapshots remain independent; only the sorting work is shared.
+        return ids.toList()
     }
 
     private fun writeItems(
@@ -549,6 +561,7 @@ class SavedItemsRepository(
         itemCache[ItemCacheKey(source, sortedByCreated = true, account)] =
             cachedItems.sortedByDescending(TimestampedItem::created)
         itemIdsCache[SourceAccount(source, account)] = cachedItems.mapTo(mutableSetOf(), TimestampedItem::id)
+        descendingItemIdsCache.remove(SourceAccount(source, account))
     }
 
     private fun writeCommentIds(source: SavedItemSource, ids: Set<Int>) {

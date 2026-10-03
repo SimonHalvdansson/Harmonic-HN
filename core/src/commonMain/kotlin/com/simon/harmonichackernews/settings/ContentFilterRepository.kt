@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.settings
 
+import kotlin.concurrent.Volatile
+
 object ContentFilterKeys {
     const val WORDS = "pref_filter"
     const val DOMAINS = "pref_filter_domains"
@@ -25,6 +27,9 @@ data class UserBlockUpdate(
 class ContentFilterRepository(
     private val store: KeyValueStore,
 ) {
+    @Volatile
+    private var userLookupSnapshot: UserLookupSnapshot? = null
+
     fun load(): ContentFilters = ContentFilters(
         words = parseList(store.getString(ContentFilterKeys.WORDS), lowercase = false),
         domains = parseList(store.getString(ContentFilterKeys.DOMAINS), lowercase = false),
@@ -33,9 +38,12 @@ class ContentFilterRepository(
 
     fun containsUser(username: String?): Boolean {
         val normalized = normalizeUsername(username) ?: return false
-        return store.getString(ContentFilterKeys.USERS).orEmpty()
-            .splitToSequence(',')
-            .any { it.trim().lowercase() == normalized }
+        val serialized = store.getString(ContentFilterKeys.USERS)
+        // Cache only private lookup data; load() still returns independent editable collections.
+        val snapshot = userLookupSnapshot?.takeIf { it.serialized == serialized }
+            ?: UserLookupSnapshot(serialized, parseList(serialized, lowercase = true).toSet())
+                .also { userLookupSnapshot = it }
+        return normalized in snapshot.users
     }
 
     fun items(type: ContentFilterType): List<String> = when (type) {
@@ -110,4 +118,6 @@ class ContentFilterRepository(
             ContentFilterType.DOMAIN -> ContentFilterKeys.DOMAINS
             ContentFilterType.USER -> ContentFilterKeys.USERS
         }
+
+    private data class UserLookupSnapshot(val serialized: String?, val users: Set<String>)
 }
