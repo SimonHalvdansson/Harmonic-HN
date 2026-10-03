@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.common
 
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +63,7 @@ private sealed interface LoginStatus {
 
 private const val LOGIN_STATUS_FADE_IN_MILLIS = 180
 private const val LOGIN_STATUS_FADE_OUT_MILLIS = 120
+private const val LOGIN_STATUS_RESIZE_MILLIS = 220
 
 @Composable
 fun LoginDialog(
@@ -232,8 +234,27 @@ fun LoginDialog(
                 AnimatedContent(
                     targetState = status,
                     transitionSpec = {
-                        fadeIn(tween(LOGIN_STATUS_FADE_IN_MILLIS)) togetherWith
-                            fadeOut(tween(LOGIN_STATUS_FADE_OUT_MILLIS))
+                        val resizeDelay = if (initialState == LoginStatus.Idle) {
+                            0
+                        } else {
+                            LOGIN_STATUS_FADE_OUT_MILLIS
+                        }
+                        // Reserve the full status area before painting the incoming content.
+                        // Keep the old area intact until its outgoing content has faded out.
+                        (fadeIn(
+                            tween(
+                                durationMillis = LOGIN_STATUS_FADE_IN_MILLIS,
+                                delayMillis = resizeDelay + LOGIN_STATUS_RESIZE_MILLIS,
+                            ),
+                        ) togetherWith fadeOut(tween(LOGIN_STATUS_FADE_OUT_MILLIS)))
+                            .using(
+                                SizeTransform { _, _ ->
+                                    tween(
+                                        durationMillis = LOGIN_STATUS_RESIZE_MILLIS,
+                                        delayMillis = resizeDelay,
+                                    )
+                                },
+                            )
                     },
                 ) { currentStatus ->
                     when (currentStatus) {
