@@ -24,12 +24,14 @@ import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 internal object WidgetState {
     val content = stringPreferencesKey("stories")
     val error = stringPreferencesKey("error")
     val updated = longPreferencesKey("updated")
     val refreshing = booleanPreferencesKey("refreshing")
+    val retryScheduled = booleanPreferencesKey("retryScheduled")
     val feed = stringPreferencesKey("feed")
     val revision = longPreferencesKey("revision")
     val width = intPreferencesKey("width")
@@ -78,6 +80,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 }
                 state[WidgetState.feed] = configuration.feedUrl
                 state[WidgetState.refreshing] = true
+                state[WidgetState.retryScheduled] = false
                 state.remove(WidgetState.error)
             }
             StoriesGlanceWidget().update(context, glanceId)
@@ -141,14 +144,16 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 }
                 is WidgetRefreshResult.Failed -> {
                     val cause = result.cause
+                    val retry = shouldRetryWidgetRefresh(cause, runAttemptCount)
                     HarmonicLog.debug("Widget refresh failed widgetId=$widgetId feed=${configuration.storyType}: $cause")
                     updateAppWidgetState(context, glanceId) { state ->
                         state[WidgetState.error] = widgetFailureDescription(cause)
+                        state[WidgetState.retryScheduled] = retry
                         state.remove(WidgetState.debug)
                         state[WidgetState.refreshing] = false
                     }
                     StoriesGlanceWidget().update(context, glanceId)
-                    return Result.success()
+                    return if (retry) Result.retry() else Result.failure()
                 }
                 WidgetRefreshResult.UseExisting -> return Result.success()
             }
@@ -158,6 +163,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
             HarmonicLog.debug("Widget refresh failed widgetId=$widgetId: $error")
             updateAppWidgetState(context, glanceId) {
                 it[WidgetState.error] = widgetFailureDescription(error)
+                it[WidgetState.retryScheduled] = false
                 it.remove(WidgetState.debug)
             }
             return Result.failure()
@@ -178,6 +184,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
             updated?.let { state[WidgetState.updated] = it }
             state[WidgetState.revision] = System.currentTimeMillis()
             state[WidgetState.refreshing] = false
+            state[WidgetState.retryScheduled] = false
             state.remove(WidgetState.error)
         }
         StoriesGlanceWidget().update(applicationContext, GlanceAppWidgetManager(applicationContext).getGlanceIdBy(widgetId))
@@ -212,10 +219,11 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
             WorkManager.getInstance(context).enqueueUniqueWork(
                 workName(widgetId), ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
-                    .setInputData(workDataOf(WIDGET_ID to widgetId)).build(),
+                    .setInputData(workDataOf(WIDGET_ID to widgetId))
+                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WIDGET_REFRESH_BACKOFF_SECONDS, TimeUnit.SECONDS)
+                    .build(),
             )
         }
         internal fun imageDirectory(context: Context, widgetId: Int) = File(context.cacheDir, "widget-images/$widgetId")
     }
 }
-

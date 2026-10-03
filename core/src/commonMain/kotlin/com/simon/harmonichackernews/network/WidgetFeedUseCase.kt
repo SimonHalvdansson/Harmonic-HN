@@ -41,6 +41,9 @@ sealed interface WidgetFeedResult {
     data class Failed(val cause: Throwable? = null) : WidgetFeedResult
 }
 
+/** A widget deadline expired; hosts can schedule recovery without parsing diagnostic text. */
+class WidgetFeedTimeoutException(message: String) : Exception(message)
+
 /** Bounded parallel loading, including feed discovery in the overall deadline. */
 class WidgetFeedUseCase(
     private val repository: HackerNewsRepository,
@@ -96,10 +99,11 @@ class WidgetFeedUseCase(
                                             failures++
                                             itemTimedOut = itemTimedOut || timedOut
                                             if (firstFailure == null) {
-                                                firstFailure = failure ?: IllegalStateException(
-                                                    if (timedOut) "Timed out loading HN item $id"
-                                                    else "HN item $id was unavailable",
-                                                )
+                                                firstFailure = failure ?: if (timedOut) {
+                                                    WidgetFeedTimeoutException("Timed out loading HN item $id")
+                                                } else {
+                                                    IllegalStateException("HN item $id was unavailable")
+                                                }
                                             }
                                         }
                                     }
@@ -118,10 +122,11 @@ class WidgetFeedUseCase(
         }
         if (stories.isEmpty()) {
             return WidgetFeedResult.Failed(
-                firstFailure ?: IllegalStateException(
-                    if (!completed) "Timed out loading ${request.storyType.label}"
-                    else "${request.storyType.label} returned no available items",
-                ),
+                firstFailure ?: if (!completed) {
+                    WidgetFeedTimeoutException("Timed out loading ${request.storyType.label}")
+                } else {
+                    IllegalStateException("${request.storyType.label} returned no available items")
+                },
             )
         }
         return WidgetFeedResult.Loaded(
