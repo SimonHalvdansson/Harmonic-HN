@@ -86,6 +86,7 @@ kotlin {
             implementation(libs.coil.network.ktor3)
             implementation(compose.desktop.currentOs)
             implementation(libs.jna.platform)
+            implementation("org.jetbrains.runtime:jbr-api:1.9.0")
             implementation(libs.swt.win32)
         }
         getByName("desktopTest").dependencies {

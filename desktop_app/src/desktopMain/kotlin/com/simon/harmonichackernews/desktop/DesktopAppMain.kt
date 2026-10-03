@@ -38,6 +38,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.application
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -108,11 +110,12 @@ fun main() {
             var commentsController by remember { mutableStateOf<CommentsScreenController?>(null) }
             var settingsNavigation by remember { mutableStateOf<SettingsNavigationStore?>(null) }
             var editorBackRequestVersion by remember { mutableIntStateOf(0) }
+            val windowState = rememberWindowState(width = 1180.dp, height = 840.dp)
             Window(
                 onCloseRequest = ::exitApplication,
                 title = "Harmonic",
                 icon = windowIcon,
-                state = WindowState(width = 1180.dp, height = 840.dp),
+                state = windowState,
                 onKeyEvent = { event ->
                     when {
                         event.type != KeyEventType.KeyDown -> false
@@ -136,6 +139,11 @@ fun main() {
                     }
                 },
             ) {
+                // Set the native properties before the window's first visible frame.
+                DisposableEffect(window) {
+                    DesktopWindowAppearance.configureTitleBar(window)
+                    onDispose { }
+                }
                 val selection by bootstrap.app.appearance.selections.collectAsState(
                     initial = bootstrap.app.appearance.selection(),
                 )
@@ -170,17 +178,29 @@ fun main() {
                     HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
                 ) {
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        Surface(Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default)) {
-                            DesktopAppContent(
-                                app = bootstrap.app,
-                                scene = bootstrap.scene,
-                                storiesController = storiesController,
-                                commentsController = commentsController,
-                                editorBackRequestVersion = editorBackRequestVersion,
-                                onStoriesControllerChanged = { storiesController = it },
-                                onCommentsControllerChanged = { commentsController = it },
-                                onSettingsNavigationChanged = { settingsNavigation = it },
-                            )
+                        Surface(
+                            modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
+                            color = palette.colors.background,
+                        ) {
+                            // An unpainted native title bar shares the app's surface. Reserve its
+                            // small drag/traffic-light area on every screen, including compact
+                            // headers and settings, without adding a second toolbar or divider.
+                            val titleBarInset = if (
+                                DesktopWindowAppearance.usesIntegratedTitleBar &&
+                                windowState.placement != WindowPlacement.Fullscreen
+                            ) DesktopMacTitleBarHeight else 0.dp
+                            Box(Modifier.fillMaxSize().padding(top = titleBarInset)) {
+                                DesktopAppContent(
+                                    app = bootstrap.app,
+                                    scene = bootstrap.scene,
+                                    storiesController = storiesController,
+                                    commentsController = commentsController,
+                                    editorBackRequestVersion = editorBackRequestVersion,
+                                    onStoriesControllerChanged = { storiesController = it },
+                                    onCommentsControllerChanged = { commentsController = it },
+                                    onSettingsNavigationChanged = { settingsNavigation = it },
+                                )
+                            }
                         }
                     }
                 }
@@ -415,6 +435,7 @@ private fun DesktopAppContent(
 
 private const val DesktopDestinationTransitionDurationMillis = 450L
 private const val DesktopOverlayExitDurationMillis = 160L
+private val DesktopMacTitleBarHeight = DesktopWindowAppearance.integratedTitleBarHeight.dp
 
 @Composable
 private fun DesktopStoriesContent(
