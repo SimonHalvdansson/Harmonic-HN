@@ -54,6 +54,30 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
     @Test
+    fun forbiddenHtmlChallengeCanRunScriptsAndNavigateToArticle() {
+        TestServer().use { server ->
+            fixture().use { browser ->
+                onMain { browser.webView.loadUrl(server.url("/challenge")) }
+                awaitTitle(browser.webView, PAGE_TITLE)
+                onMain { assertEquals(server.url("/next-article"), browser.webView.url) }
+                assertEquals(1, server.challengeRequests.get())
+                assertEquals(1, server.pageRequests.get())
+            }
+        }
+    }
+
+    @Test
+    fun nonHtmlHttpFailureStillShowsCustomErrorPage() {
+        TestServer().use { server ->
+            fixture().use { browser ->
+                onMain { browser.webView.loadUrl(server.url("/unavailable")) }
+                awaitJavascript(browser.webView,
+                    "location.href.includes('webview_error.html') && location.hash === '#generic'")
+            }
+        }
+    }
+
+    @Test
     fun concurrentRequestsWaitForStartupAndCreateOnlyOneWebView() {
         val startup = CompletableDeferred<Unit>()
         val calls = AtomicInteger()
@@ -651,6 +675,7 @@ class CommentsWebViewLifecycleTest {
         private val server = ServerSocket(0, 20, InetAddress.getByName("127.0.0.1"))
         private val workers = Executors.newCachedThreadPool()
         val pageRequests = AtomicInteger()
+        val challengeRequests = AtomicInteger()
         private val pdfRequests = AtomicInteger()
         val pdfDownloadStarted = CountDownLatch(1)
         val releasePdf = CountDownLatch(1)
@@ -666,17 +691,32 @@ class CommentsWebViewLifecycleTest {
                             while (!reader.readLine().isNullOrEmpty()) Unit
                             val path = request.substringAfter(' ').substringBefore(' ')
                             val pdf = path == "/document.pdf"
+                            if (path == "/challenge") challengeRequests.incrementAndGet()
                             if (pdf && pdfRequests.incrementAndGet() > 1) {
                                 pdfDownloadStarted.countDown()
                                 check(releasePdf.await(20, TimeUnit.SECONDS))
                             } else if (path == "/cached-article" || path == "/next-article") {
                                 pageRequests.incrementAndGet()
                             }
-                            val bytes = if (pdf) pdfBytes else
-                                "<html><head><title>$PAGE_TITLE</title></head><body>Cached article</body></html>"
-                                    .toByteArray()
-                            val type = if (pdf) "application/pdf" else "text/html"
-                            val headers = "HTTP/1.1 200 OK\r\nContent-Type: $type\r\n" +
+                            val bytes = if (pdf) pdfBytes else when (path) {
+                                "/challenge" -> "<html><head><title>Browser check</title></head>" +
+                                    "<body><script src='/challenge.js'></script></body></html>"
+                                "/challenge.js" -> "window.location.replace('/next-article');"
+                                "/unavailable" -> "Service unavailable"
+                                else -> "<html><head><title>$PAGE_TITLE</title></head><body>Cached article</body></html>"
+                            }.toByteArray()
+                            val type = when (path) {
+                                "/document.pdf" -> "application/pdf"
+                                "/challenge.js" -> "application/javascript"
+                                "/unavailable" -> "text/plain"
+                                else -> "text/html"
+                            }
+                            val status = when (path) {
+                                "/challenge" -> "403 Forbidden"
+                                "/unavailable" -> "503 Service Unavailable"
+                                else -> "200 OK"
+                            }
+                            val headers = "HTTP/1.1 $status\r\nContent-Type: $type\r\n" +
                                 "Content-Length: ${bytes.size}\r\nCache-Control: " +
                                 (if (pdf) "no-store" else "public, max-age=3600") +
                                 "\r\nConnection: close\r\n\r\n"

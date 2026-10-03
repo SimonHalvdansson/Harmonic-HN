@@ -1631,6 +1631,15 @@ internal class AndroidCommentsWebViewController(
                 val failingUrl = if (request.getUrl() != null) request.getUrl().toString() else null
                 val statusCode = if (errorResponse != null) errorResponse.getStatusCode() else -1
                 Log.w("MY_APP_TAG", "WebView HTTP error " + statusCode + " for " + failingUrl)
+                // Sites can return an HTML browser challenge with an error status (e.g. 403).
+                // Preserve that document so its scripts can complete navigation.
+                val mimeType = errorResponse?.mimeType?.substringBefore(';')?.trim()
+                if (mimeType.equals("text/html", ignoreCase = true) ||
+                    mimeType.equals("application/xhtml+xml", ignoreCase = true)
+                ) {
+                    super.onReceivedHttpError(view, request, errorResponse)
+                    return
+                }
                 showCustomErrorPage(view, failingUrl, WebContentFailure.GENERIC)
             } else {
                 super.onReceivedHttpError(view, request, errorResponse)
