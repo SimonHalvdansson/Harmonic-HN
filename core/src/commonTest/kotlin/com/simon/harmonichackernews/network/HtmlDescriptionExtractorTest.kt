@@ -31,4 +31,27 @@ class HtmlDescriptionExtractorTest {
             "<p hidden>$article</p><p>$second</p><p>$article</p></article>")
         assertEquals(second, HtmlDescriptionExtractor.chooseDescription(null, document, "Title", null))
     }
+
+    @Test fun maximumScoreKeepsTheEarliestArticleParagraph() {
+        val first = "First explanation. " + article.repeat(3)
+        val later = "Later explanation. " + article.repeat(3)
+        val document = Ksoup.parse("<article><p>$first</p>" +
+            "<p>$later</p>".repeat(200) + "</article>")
+        assertEquals(first, HtmlDescriptionExtractor.chooseDescription(null, document, "Title", null))
+    }
+
+    @Test fun laterArticleParagraphCanStillBeatMainAndShortParagraphs() {
+        val later = "Later explanation. " + article.repeat(3)
+        val document = Ksoup.parse("<main><p>${article.repeat(3)}</p></main>" +
+            "<article><p>$article</p><p>$later</p></article>")
+        assertEquals(later, HtmlDescriptionExtractor.chooseDescription(null, document, "Title", null))
+    }
+
+    @Test fun paragraphPositionPenaltyStopsGrowingAfterOneHundred() {
+        val first = "First explanation. " + article.repeat(3)
+        val later = "Later explanation. " + article.repeat(3)
+        val document = Ksoup.parse("<nav>" + "<p>Navigation item</p>".repeat(130) +
+            "</nav><article><p>$first</p><p>$later</p></article>")
+        assertEquals(first, HtmlDescriptionExtractor.chooseDescription(null, document, "Title", null))
+    }
 }

@@ -2,23 +2,42 @@ package com.simon.harmonichackernews.utils
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
+import com.fleeksoft.ksoup.select.Selector
 
 object HtmlTextUtils {
-    fun plainText(inputHtml: String?): String =
-        inputHtml?.takeIf(String::isNotEmpty)?.let { Ksoup.parse(it).text() }.orEmpty()
+    fun plainText(inputHtml: String?): String {
+        if (inputHtml.isNullOrEmpty()) return ""
+        // Printable ASCII with normalized spaces and no markup/entities is already DOM text.
+        // Keep the parser for Unicode, control characters and anything that needs HTML decoding.
+        var previousWasSpace = true
+        for (character in inputHtml) {
+            if (character !in ' '..'~' || character == '<' || character == '&' ||
+                (character == ' ' && previousWasSpace)
+            ) {
+                return Ksoup.parse(inputHtml).text()
+            }
+            previousWasSpace = character == ' '
+        }
+        return if (previousWasSpace) Ksoup.parse(inputHtml).text() else inputHtml
+    }
 
     fun expandShortenedAnchorText(inputHtml: String?): String? {
         if (inputHtml.isNullOrEmpty() || !inputHtml.contains("<a")) return inputHtml
 
         val document = Ksoup.parse(inputHtml, Parser.htmlParser(), "")
-        for (link in document.select("a[href]")) {
-            val decodedLinkText = Ksoup.parse(link.text()).text()
+        for (link in document.select(AnchorTextSelector.anchorsWithHref)) {
+            val decodedLinkText = plainText(link.text())
             if (!decodedLinkText.endsWith("...")) continue
-            val decodedHref = Ksoup.parse(link.attr("href")).text()
+            val decodedHref = plainText(link.attr("href"))
             val prefix = decodedLinkText.dropLast(3)
             if (decodedHref.startsWith(prefix)) link.text(decodedHref)
         }
         return document.body().html()
+    }
+
+    // Initialize only when an input contains anchors; the evaluator is reusable across documents.
+    private object AnchorTextSelector {
+        val anchorsWithHref = Selector.evaluatorOf("a[href]")
     }
 
     fun normalizeAndTruncatePlainText(value: String, maximumChars: Int): String {

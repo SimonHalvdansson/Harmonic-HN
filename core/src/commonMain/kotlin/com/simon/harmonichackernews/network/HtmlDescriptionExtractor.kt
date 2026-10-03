@@ -11,6 +11,11 @@ object HtmlDescriptionExtractor {
     private const val MIN_LETTER_CHARS = 20
     private const val MIN_LATIN_WORDS = 5
     private const val MAX_CANDIDATE_CHARS = 600
+    private const val MAX_SCORED_TEXT_CHARS = 240
+    private const val SENTENCE_SCORE = 20
+    private const val ARTICLE_CONTAINER_SCORE = 750
+    private const val MAX_PARAGRAPH_SCORE =
+        MAX_SCORED_TEXT_CHARS / 4 + SENTENCE_SCORE + ARTICLE_CONTAINER_SCORE
     private val paragraphs = Selector.evaluatorOf("p")
     private val anchors = Selector.evaluatorOf("a")
     private val LEADING_TITLE_SEPARATOR_PATTERN = Regex("^[|:–—\\-\\s]+")
@@ -97,6 +102,9 @@ object HtmlDescriptionExtractor {
         val excludedCache = mutableMapOf<Element, Boolean>()
         val containerScoreCache = mutableMapOf<Element, Int>()
         for (paragraph in document.select(paragraphs)) {
+            // Later paragraphs cannot beat this bound: 60 for length, 20 for punctuation,
+            // and at most 750 for their container. Equal scores keep the earlier paragraph.
+            if (bestScore >= MAX_PARAGRAPH_SCORE - min(paragraphIndex, 100) * 3) break
             val text = clean(paragraph.text())
             if (!isUsableParagraph(
                     paragraph,
@@ -180,9 +188,9 @@ object HtmlDescriptionExtractor {
         paragraphIndex: Int,
         containerScoreCache: MutableMap<Element, Int>,
     ): Int {
-        var score = min(text.length, 240) / 4
+        var score = min(text.length, MAX_SCORED_TEXT_CHARS) / 4
         if (text.any { it == '.' || it == '!' || it == '?' || it == '。' || it == '！' || it == '？' }) {
-            score += 20
+            score += SENTENCE_SCORE
         }
         score += paragraph.parent()?.let { positiveContainerScore(it, containerScoreCache) } ?: 0
         return score - min(paragraphIndex, 100) * 3
@@ -195,7 +203,7 @@ object HtmlDescriptionExtractor {
         cache[element]?.let { return it }
         val score = when {
             element.tagName() == "article" ||
-                element.attr("itemprop").contains("articlebody", ignoreCase = true) -> 750
+                element.attr("itemprop").contains("articlebody", ignoreCase = true) -> ARTICLE_CONTAINER_SCORE
             element.tagName() == "main" ||
                 element.attr("role").equals("main", ignoreCase = true) -> 650
             else -> {

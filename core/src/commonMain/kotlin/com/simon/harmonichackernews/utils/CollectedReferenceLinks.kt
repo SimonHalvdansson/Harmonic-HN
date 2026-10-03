@@ -53,7 +53,8 @@ object CollectedReferenceLinks {
         inputHtml.indexOf("<a", ignoreCase = true) >= 0 ||
             inputHtml.indexOf("http://", ignoreCase = true) >= 0 ||
             inputHtml.indexOf("https://", ignoreCase = true) >= 0 ||
-            possibleBareDomainPattern.containsMatchIn(inputHtml)
+            // A domain needs a dot. Avoid regex backtracking through long, unbroken code tokens.
+            ('.' in inputHtml && possibleBareDomainPattern.containsMatchIn(inputHtml))
 
     private fun collectStandaloneLinkNodes(
         nodes: List<Node>,
@@ -428,7 +429,7 @@ object CollectedReferenceLinks {
 
     private fun normalizeBareUrl(value: String?): String {
         val url = trimTrailingUrlPunctuation(
-            Ksoup.parse(value.orEmpty()).text().trim()
+            HtmlTextUtils.plainText(value).trim()
                 .replace("&#x2F;", "/")
                 .replace("&#47;", "/"),
         )

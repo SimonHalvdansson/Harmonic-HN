@@ -7,6 +7,24 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun longUnbrokenCodeWithoutDotsStaysUnchanged() {
+        val html = "<pre>" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".repeat(100) + "</pre>"
+        val result = CollectedReferenceLinks.parse(html)
+        assertFalse(result.hasLinks())
+        assertEquals(html, result.bodyHtml)
+    }
+
+    @Test
+    fun dotlessExplicitUrlsAndAnchorsStillUseReferenceExtraction() {
+        for (html in listOf(
+            "<p>https://localhost/path</p>",
+            "<p><a href='https://localhost/path'>Local source</a></p>",
+        )) {
+            assertEquals("https://localhost/path", CollectedReferenceLinks.parse(html).links.single().url)
+        }
+    }
+
+    @Test
     fun largeReferenceListPreservesSourceOrderAndInterleavedText() {
         val html = buildString {
             repeat(150) {

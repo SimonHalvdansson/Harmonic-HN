@@ -1,9 +1,56 @@
 package com.simon.harmonichackernews.utils
 
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.parser.Parser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HtmlTextUtilsTest {
+    @Test
+    fun plainTextKeepsHtmlParserOutputForAsciiUnicodeEntitiesAndWhitespace() {
+        val inputs = buildList {
+            addAll(listOf(
+                null, "", "ordinary text", " leading", "trailing ", "double  spaces",
+                "<p>one</p><p>two</p>", "<pre>  preserved\nwhitespace</pre>",
+                "a &amp; b &lt;b&gt; &#0;", "café 中文 Ελληνικά 😀", "a\u00a0b\u2003c",
+                "&amp;lt;em&amp;gt;nested&amp;lt;/em&amp;gt;", "a\u200bb\u00adc",
+            ))
+            for (code in 0..127) {
+                val character = code.toChar()
+                add("a${character}b")
+                add("${character}leading")
+                add("trailing$character")
+                add(character.toString())
+            }
+        }
+        for (input in inputs) {
+            assertEquals(input?.let { Ksoup.parse(it).text() }.orEmpty(), HtmlTextUtils.plainText(input))
+        }
+    }
+
+    @Test
+    fun sharedAnchorExpansionKeepsLegacyDecodingAndHtmlSerialization() {
+        val links = listOf(
+            "<a href='https://example.com/article'>https://example.com/art...</a>",
+            "<a href='https://example.com/?a=1&amp;amp;b=2'>https://example.com/?a=1...</a>",
+            "<a href='https://example.com/café'>https://example.com/caf...</a>",
+            "<a href='https://example.com/other'>different...</a>",
+            "<a href='https://example.com'>&lt;b&gt;nested&lt;/b&gt;</a>",
+            "<a href='https://example.com/whitespace'> https://example.com/white... </a>",
+            "<a href='/relative'>relative</a>",
+        )
+        for (input in links + links.joinToString("<p>")) {
+            val document = Ksoup.parse(input, Parser.htmlParser(), "")
+            for (link in document.select("a[href]")) {
+                val text = Ksoup.parse(link.text()).text()
+                if (!text.endsWith("...")) continue
+                val href = Ksoup.parse(link.attr("href")).text()
+                if (href.startsWith(text.dropLast(3))) link.text(href)
+            }
+            assertEquals(document.body().html(), HtmlTextUtils.expandShortenedAnchorText(input))
+        }
+    }
+
     @Test
     fun normalizesLineEndingsHorizontalWhitespaceAndBlankLines() {
         assertEquals(
