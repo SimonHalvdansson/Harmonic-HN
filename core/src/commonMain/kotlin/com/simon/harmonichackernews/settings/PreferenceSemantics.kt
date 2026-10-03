@@ -89,7 +89,7 @@ object PaletteTintPreferences {
     const val MUTED = "default"
     const val VIBRANT = "vibrant"
     const val DOMINANT = "dominant"
-    const val DEFAULT = DOMINANT
+    const val DEFAULT = MUTED
     const val MIN_STRENGTH = 0
     const val MAX_STRENGTH = 200
     const val MIN_COLORFULNESS = 0

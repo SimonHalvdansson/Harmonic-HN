@@ -6,10 +6,10 @@ import kotlin.test.assertEquals
 class PaletteTintPreferencesTest {
     @Test
     fun normalizeConfigKeyUsesDefaultsForMissingAndInvalidParts() {
-        assertEquals("dominant|100|110|0", PaletteTintPreferences.normalizeConfigKey(null))
+        assertEquals("default|100|110|0", PaletteTintPreferences.normalizeConfigKey(null))
         assertEquals("vibrant|100|110|0", PaletteTintPreferences.normalizeConfigKey("vibrant"))
         assertEquals(
-            "dominant|100|110|0",
+            "default|100|110|0",
             PaletteTintPreferences.normalizeConfigKey("unknown|invalid||overflow"),
         )
     }
