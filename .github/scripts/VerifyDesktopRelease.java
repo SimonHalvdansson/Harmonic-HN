@@ -5,6 +5,7 @@ import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -120,14 +121,19 @@ public class VerifyDesktopRelease {
             }
             if (testSession) {
                 Library binding = Native.load(path.toString(), api);
-                api.getMethod("harmonic_llama_backend_initialize", Pointer.class, Pointer.class)
-                        .invoke(binding, null, null);
-                Pointer engine = (Pointer) api.getMethod("harmonic_llama_create").invoke(binding);
-                require(engine != null, "Native inference session allocation failed");
-                try {
-                    api.getMethod("harmonic_llama_close", Pointer.class).invoke(binding, engine);
-                } finally {
-                    api.getMethod("harmonic_llama_destroy", Pointer.class).invoke(binding, engine);
+                // Native.load uses interface-specific options, so its proxy can own a
+                // second library handle. Close it before deleting the DLL on Windows.
+                Library.Handler handler = (Library.Handler) Proxy.getInvocationHandler(binding);
+                try (NativeLibrary bindingLibrary = handler.getNativeLibrary()) {
+                    api.getMethod("harmonic_llama_backend_initialize", Pointer.class, Pointer.class)
+                            .invoke(binding, null, null);
+                    Pointer engine = (Pointer) api.getMethod("harmonic_llama_create").invoke(binding);
+                    require(engine != null, "Native inference session allocation failed");
+                    try {
+                        api.getMethod("harmonic_llama_close", Pointer.class).invoke(binding, engine);
+                    } finally {
+                        api.getMethod("harmonic_llama_destroy", Pointer.class).invoke(binding, engine);
+                    }
                 }
             }
         } finally {
