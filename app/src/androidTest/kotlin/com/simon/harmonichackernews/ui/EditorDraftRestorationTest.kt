@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -55,10 +56,12 @@ class EditorDraftRestorationTest {
             openEditor(EditorType.POST)
             compose.onNodeWithTag(tag).performTextReplacement(draft)
             compose.onNodeWithContentDescription("Close").performClick()
+            awaitDiscardDialog()
             compose.onNodeWithText("Cancel", substring = false).performClick()
             assertFieldText(tag, draft)
             // System Back uses the same dirty-draft guard as the close button.
             compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            awaitDiscardDialog()
             compose.onNodeWithText("Cancel", substring = false).performClick()
             assertFieldText(tag, draft)
             discardEditor()
@@ -202,9 +205,18 @@ class EditorDraftRestorationTest {
 
     private fun discardEditor() {
         compose.onNodeWithContentDescription("Close").performClick()
+        awaitDiscardDialog()
         compose.onNodeWithText("Discard", substring = false).performClick()
         compose.waitUntil(10_000) {
             compose.onAllNodesWithTag("compose_editor_container").fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    private fun awaitDiscardDialog() {
+        // The native IME animation runs outside Compose's test clock. The dialog deliberately
+        // waits for it to finish before taking window focus.
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Discard", substring = false).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

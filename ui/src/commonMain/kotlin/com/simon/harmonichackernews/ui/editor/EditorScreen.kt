@@ -66,6 +66,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -109,6 +110,7 @@ import com.simon.harmonichackernews.presentation.formatEditorCodeBlock
 import com.simon.harmonichackernews.presentation.formatEditorItalic
 import com.simon.harmonichackernews.presentation.validate
 import com.simon.harmonichackernews.presentation.hasDraft
+import kotlinx.coroutines.flow.first
 
 private enum class EditorDialog {
     Information,
@@ -166,9 +168,27 @@ fun EditorScreen(
     }
     var focusedPostField by remember { mutableStateOf<PostEditorField?>(null) }
     var dialog by rememberSaveable { mutableStateOf<EditorDialog?>(null) }
+    var discardRequested by rememberSaveable { mutableStateOf(false) }
     var discardConfirmed by rememberSaveable { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
     val previewScrollState = rememberScrollState()
+
+    LaunchedEffect(discardRequested) {
+        if (discardRequested) {
+            keyboardController?.hide()
+            // Keep the editor window in control of the IME until its animated inset reaches
+            // zero. Opening the dialog earlier transfers focus and snaps the editor to the
+            // final inset while the dialog is still moving with the disappearing keyboard.
+            snapshotFlow { imeInsets.getBottom(density) }.first { it == 0 }
+            // Ending the input session while the IME is visible can also change its key layout.
+            focusManager.clearFocus(force = true)
+            dialog = EditorDialog.Discard
+            discardRequested = false
+        }
+    }
 
     // Let the dialog leave composition before starting the editor's parent exit transition.
     LaunchedEffect(discardConfirmed) {
@@ -181,12 +201,13 @@ fun EditorScreen(
     val titleTooLong = validation.titleTooLong
     val canSubmit = validation.canSubmit
     val hasDraft = submission.hasDraft(type)
-    val predictiveBackEnabled = !hasDraft && dialog == null && !submitting
+    val predictiveBackEnabled = !hasDraft && dialog == null && !discardRequested && !submitting
 
     SideEffect { onPredictiveBackEnabledChanged(predictiveBackEnabled) }
 
     fun requestClose() {
-        if (hasDraft) dialog = EditorDialog.Discard else onClose()
+        if (discardRequested || dialog != null) return
+        if (hasDraft) discardRequested = true else onClose()
     }
 
     LaunchedEffect(backRequestVersion) {
