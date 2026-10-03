@@ -2,7 +2,13 @@ package com.simon.harmonichackernews.ui
 
 import android.os.Bundle
 import android.os.Parcel
+import android.os.SystemClock
 import android.util.Log
+import android.view.InputDevice
+import android.view.KeyEvent
+import android.view.MotionEvent
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -42,6 +48,102 @@ class EditorDraftRestorationTest {
         compose.waitUntil(10_000) {
             compose.onAllNodesWithTag("compose_editor_container").fetchSemanticsNodes().isEmpty()
         }
+    }
+
+    @Test
+    fun backGestureHidesKeyboardBeforeAskingToDiscardPost() {
+        openEditor(EditorType.POST)
+        val fields = listOf(
+            "compose_editor_title" to "Ask HN: keyboard back regression",
+            "compose_editor_url" to "https://example.com/draft",
+            "compose_editor_text" to "Keep this draft when hiding the keyboard.",
+        )
+        fields.forEach { (tag, draft) ->
+            compose.onNodeWithTag(tag).performTextReplacement(draft)
+        }
+        fields.forEach { (tag, _) ->
+            compose.onNodeWithTag(tag).performClick()
+            awaitKeyboard(visible = true)
+            swipeBack()
+            awaitKeyboard(visible = false)
+            compose.onNodeWithText("Discard post?").assertDoesNotExist()
+            fields.forEach { (field, draft) -> assertFieldText(field, draft) }
+        }
+
+        // With the keyboard already hidden, the same gesture must protect the draft.
+        swipeBack()
+        awaitDiscardDialog()
+        compose.onNodeWithText("Cancel", substring = false).performClick()
+        fields.forEach { (tag, draft) -> assertFieldText(tag, draft) }
+        discardEditor()
+    }
+
+    private fun awaitKeyboard(visible: Boolean) {
+        compose.waitUntil(10_000) {
+            compose.runOnIdle {
+                val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                insets != null && insets.isVisible(WindowInsetsCompat.Type.ime()) == visible &&
+                    (visible || insets.getInsets(WindowInsetsCompat.Type.ime()).bottom == 0)
+            }
+        }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun backGestureHidesKeyboardBeforeClosingEmptyPost() {
+        openEditor(EditorType.POST)
+        compose.onNodeWithTag("compose_editor_title").performClick()
+        awaitKeyboard(visible = true)
+        swipeBack()
+        awaitKeyboard(visible = false)
+        compose.onNodeWithTag("compose_editor_container").assertExists()
+        compose.onNodeWithText("Discard post?").assertDoesNotExist()
+        swipeBack()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("compose_editor_container").fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    @Test
+    fun backKeyHidesKeyboardBeforeAskingToDiscardReply() {
+        openEditor(EditorType.COMMENT_REPLY)
+        val draft = "Keep this reply when hiding the keyboard."
+        compose.onNodeWithTag(COMMENT).performTextReplacement(draft)
+        compose.onNodeWithTag(COMMENT).performClick()
+        awaitKeyboard(visible = true)
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        awaitKeyboard(visible = false)
+        compose.onNodeWithText("Discard comment?").assertDoesNotExist()
+        assertFieldText(COMMENT, draft)
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        awaitDiscardDialog()
+        compose.onNodeWithText("Cancel", substring = false).performClick()
+        assertFieldText(COMMENT, draft)
+        discardEditor()
+    }
+
+    private fun swipeBack() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val bounds = compose.runOnIdle { compose.activity.window.decorView.let { it.width to it.height } }
+        val downTime = SystemClock.uptimeMillis()
+        for (step in 0..20) {
+            val action = when (step) {
+                0 -> MotionEvent.ACTION_DOWN
+                20 -> MotionEvent.ACTION_UP
+                else -> MotionEvent.ACTION_MOVE
+            }
+            val event = MotionEvent.obtain(
+                downTime, SystemClock.uptimeMillis(), action,
+                1f + bounds.first * 0.45f * step / 20, bounds.second * 0.5f, 0,
+            ).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+            try {
+                assertTrue("System back gesture must be injected", automation.injectInputEvent(event, true))
+            } finally {
+                event.recycle()
+            }
+            SystemClock.sleep(16)
+        }
+        compose.waitForIdle()
     }
 
     @Test

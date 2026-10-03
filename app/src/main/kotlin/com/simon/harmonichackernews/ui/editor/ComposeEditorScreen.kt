@@ -19,11 +19,16 @@ import com.simon.harmonichackernews.presentation.EditorSubmission
 import java.util.UUID
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import com.simon.harmonichackernews.HarmonicApplication
 
 /** Android lifecycle/back-dispatch adapter around the platform-neutral editor screen. */
@@ -83,7 +88,12 @@ internal fun ComposeEditorScreen(
     }
     var backRequestVersion by rememberSaveable { mutableIntStateOf(0) }
     var predictiveBackEnabled by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = !predictiveBackEnabled) { backRequestVersion++ }
+    // Back belongs to the IME until it finishes hiding, including an in-flight back gesture.
+    // Otherwise the draft guard can turn keyboard dismissal into a request to discard the post.
+    val keyboardShowing = WindowInsets.isImeVisible ||
+        WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    BackHandler(enabled = !predictiveBackEnabled && !keyboardShowing) { backRequestVersion++ }
+    SideEffect { onPredictiveBackEnabledChanged(predictiveBackEnabled && !keyboardShowing) }
 
     EditorScreen(
         type = type,
@@ -94,7 +104,6 @@ internal fun ComposeEditorScreen(
         backRequestVersion = backRequestVersion,
         onPredictiveBackEnabledChanged = { enabled ->
             predictiveBackEnabled = enabled
-            onPredictiveBackEnabledChanged(enabled)
         },
         onClose = onClose,
         onSubmit = onSubmit,
