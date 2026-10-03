@@ -102,6 +102,7 @@ jobs:
           :app:lintFossRelease
           :app:lintPlayRelease
           :app:verifyFossDependencies
+          :app:verifyNoMaterialComponents
           --warning-mode all
           --no-daemon
           --max-workers=2

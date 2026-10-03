@@ -1,252 +1,63 @@
 <resources>
-
     <bool name="before_android_15">true</bool>
-
-    <!-- These base themes are so that we can tell the app that android:isLightTheme="false"
-    which enables us to use darkened webview again!-->
-    <style name="AppThemeBase" parent="Theme.Material3Expressive.DynamicColors.Dark.NoActionBar" />
-    <style name="AppThemeLightBase" parent="Theme.Material3Expressive.DynamicColors.Light.NoActionBar" />
-    <style name="AppThemeMaterialFixedBase" parent="Theme.Material3Expressive.Dark.NoActionBar" />
-    <style name="AppThemeMaterialFixedLightBase" parent="Theme.Material3Expressive.Light.NoActionBar" />
-
-    <!-- This is just for daynight, there is another theme resource in the night folder-->
+    <style name="AppThemeBase" parent="Theme.AppCompat.NoActionBar" />
+    <style name="AppThemeLightBase" parent="Theme.AppCompat.Light.NoActionBar" />
+    <style name="AppThemeMaterialFixedBase" parent="Theme.AppCompat.NoActionBar" />
+    <style name="AppThemeMaterialFixedLightBase" parent="Theme.AppCompat.Light.NoActionBar" />
     <style name="AppThemeMaterialDayNight" parent="AppThemeMaterialLight" />
     <style name="AppThemeMaterialFixedDayNight" parent="AppThemeMaterialFixedLight" />
-
     <style name="AppThemeDarkLightDayNight" parent="AppThemeLight" />
-
     <style name="AppThemeAmoledWhiteDayNight" parent="AppThemeWhite" />
-
     <style name="AppThemeMaterialDark" parent="@style/AppThemeBase">
-        <item name="contentPrimaryColor">?attr/colorOnSurface</item>
-        <item name="mutedTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="textColorHighlighted">?attr/colorOnSurface</item>
-        <item name="textColorDefault">?attr/colorOnSurface</item>
-        <item name="textColorDisabled">?attr/colorOnSurfaceVariant</item>
-        <item name="commentDividerColor">?attr/colorOutlineVariant</item>
-        <item name="iconTintColor">?attr/colorOnSurface</item>
-        <item name="opCommentColor">?attr/colorTertiary</item>
-        <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">@color/material_comment_count_indicator</item>
-        <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnSurface</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
-        <item name="contentCardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="settingsHeaderSelectedColor">?attr/colorSurfaceContainer</item>
-        <item name="settingsMainToggleColor">?attr/colorSecondaryContainer</item>
-        <item name="settingsMainToggleTextColor">?attr/colorOnSecondaryContainer</item>
-        <item name="mutedSurfaceColor">?attr/colorSurfaceContainerHigh</item>
-
-        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
-        <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="android:windowBackground">@color/material_you_neutral_900</item>
+        <item name="android:colorBackground">@color/material_you_neutral_900</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_900</item>
+        <item name="iconTintColor">@color/darkContentPrimary</item>
+        <item name="colorAccent">#D0BCFF</item>
     </style>
-
     <style name="AppThemeMaterialFixedDark" parent="@style/AppThemeMaterialFixedBase">
-        <item name="contentPrimaryColor">?attr/colorOnSurface</item>
-        <item name="mutedTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="textColorHighlighted">?attr/colorOnSurface</item>
-        <item name="textColorDefault">?attr/colorOnSurface</item>
-        <item name="textColorDisabled">?attr/colorOnSurfaceVariant</item>
-        <item name="commentDividerColor">?attr/colorOutlineVariant</item>
-        <item name="iconTintColor">?attr/colorOnSurface</item>
-        <item name="opCommentColor">?attr/colorTertiary</item>
-        <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">@color/fixed_material_comment_count_indicator</item>
-        <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="overlayButtonColor">?attr/colorPrimaryContainer</item>
-        <item name="overlayButtonContentColor">?attr/colorOnSurface</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
-        <item name="contentCardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="settingsHeaderSelectedColor">?attr/colorSurfaceContainer</item>
-        <item name="settingsMainToggleColor">?attr/colorSecondaryContainer</item>
-        <item name="settingsMainToggleTextColor">?attr/colorOnSecondaryContainer</item>
-        <item name="mutedSurfaceColor">?attr/colorSurfaceContainerHigh</item>
-
-        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
-        <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="android:windowBackground">@color/material_fixed_surface_dark</item>
+        <item name="android:colorBackground">@color/material_fixed_surface_dark</item>
+        <item name="android:statusBarColor">@color/material_fixed_surface_dark</item>
+        <item name="iconTintColor">@color/darkContentPrimary</item>
+        <item name="colorAccent">#D0BCFF</item>
     </style>
-
     <style name="AppTheme" parent="AppThemeBase">
-        <item name="contentPrimaryColor">@color/darkContentPrimary</item>
-        <item name="mutedTextColor">@color/darkMutedText</item>
-        <item name="textColorHighlighted">@color/darkTextColorHighlighted</item>
-        <item name="textColorDefault">@color/darkTextColorDefault</item>
-        <item name="textColorDisabled">@color/darkTextColorDisabled</item>
-        <item name="commentDividerColor">@color/darkDividerColor</item>
         <item name="iconTintColor">@color/darkIconTint</item>
-        <item name="opCommentColor">@color/darkOpCommentColor</item>
-        <item name="selfCommentColor">@color/darkSelfCommentColor</item>
-        <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
-        <item name="secondaryTextColor">@color/darkTextColorDefault</item>
-        <item name="overlayButtonColor">?attr/colorSecondaryContainer</item>
-        <item name="overlayButtonContentColor">@android:color/white</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="colorSecondary">@color/colorPrimary</item>
-        <item name="colorOnSecondary">@color/base_surface_light</item>
-        <item name="colorSecondaryContainer">@color/colorPrimaryDark</item>
-        <item name="colorOnSecondaryContainer">@color/settings_main_toggle_text_dark</item>
-        <item name="colorTertiary">@color/colorPrimaryDark</item>
-        <item name="colorOnTertiary">@color/base_surface_light</item>
-        <item name="colorTertiaryContainer">@color/colorPrimaryDark</item>
-        <item name="colorOnTertiaryContainer">@color/darkContentPrimary</item>
-        <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
-        <item name="colorOnPrimary">@color/base_surface_light</item>
-        <item name="colorOnPrimaryContainer">@color/settings_main_toggle_text_dark</item>
-        <item name="colorOnBackground">@color/darkContentPrimary</item>
-        <item name="colorSurface">@color/base_surface_dark</item>
-        <item name="colorOnSurface">@color/darkContentPrimary</item>
-        <item name="colorSurfaceVariant">@color/darkContentCardBackground</item>
-        <item name="colorOnSurfaceVariant">@color/darkTextColorDefault</item>
-        <item name="colorSurfaceContainerLowest">@color/darkSurfaceBase</item>
-        <item name="colorSurfaceContainerLow">@color/base_surface_dark</item>
-        <item name="colorSurfaceContainer">@color/base_surface_dark</item>
-        <item name="colorSurfaceContainerHigh">@color/darkSurfaceBase</item>
-        <item name="colorSurfaceContainerHighest">@color/darkContentCardBackground</item>
-        <item name="colorOutline">@color/darkTextColorDisabled</item>
-        <item name="colorOutlineVariant">@color/darkDividerColor</item>
-        <item name="contentCardBackgroundColor">@color/darkContentCardBackground</item>
-        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_dark</item>
-        <item name="settingsMainToggleColor">@color/colorPrimaryDark</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_dark</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_dark</item>
-
         <item name="android:windowBackground">@color/base_surface_dark</item>
         <item name="android:colorBackground">@color/base_surface_dark</item>
         <item name="android:textColorPrimary">@color/darkTextColorDefault</item>
         <item name="android:textColorSecondary">@color/darkTextColorDisabled</item>
         <item name="android:textColorTertiary">@color/darkTextColorDisabled</item>
-        <item name="android:textColorHighlight">@color/text_selection_highlight</item>
-        <item name="android:textColorLink">?attr/colorSecondary</item>
+        <item name="android:textColorHighlight">#5299595E</item>
+        <item name="android:textColorLink">?attr/colorAccent</item>
         <item name="colorControlHighlight">#40ffffff</item>
-
-        <item name="popupMenuBackgroundColor">@color/darkSurfaceBase</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyle</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/statusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
     </style>
-
     <style name="AppThemeAmoledDark" parent="AppTheme">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/black</item>
-        <item name="colorOnBackground">@color/darkContentPrimary</item>
-        <item name="colorSurface">@android:color/black</item>
-        <item name="colorOnSurface">@color/darkContentPrimary</item>
-        <item name="colorSurfaceVariant">@android:color/black</item>
-        <item name="colorSurfaceContainerLowest">@android:color/black</item>
-        <item name="colorSurfaceContainerLow">@android:color/black</item>
-        <item name="colorSurfaceContainer">@android:color/black</item>
-        <item name="colorSurfaceContainerHigh">@android:color/black</item>
-        <item name="colorSurfaceContainerHighest">@android:color/black</item>
-        <item name="contentCardBackgroundColor">@android:color/black</item>
-
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="colorPrimaryContainer">@color/colorPrimaryDark</item>
-        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_black</item>
-        <item name="settingsMainToggleColor">@color/settings_header_selected_black</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_amoled</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_amoled</item>
-        <item name="overlayButtonColor">@android:color/black</item>
-        <item name="overlayButtonContentColor">@color/darkContentPrimary</item>
-        <item name="overlayButtonOutlineColor">#33FFFFFF</item>
-        <item name="submissionsCommentTimeBackgroundColor">@android:color/black</item>
-        <item name="submissionsCommentTimeOutlineColor">#33FFFFFF</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
     </style>
-
     <style name="AppThemeHacker" parent="AppThemeAmoledDark">
-        <item name="contentPrimaryColor">@color/hackerTextColor</item>
-        <item name="mutedTextColor">@color/hackerTextColorDisabled</item>
-        <item name="textColorHighlighted">@color/hackerTextColor</item>
-        <item name="textColorDefault">@color/hackerTextColor</item>
-        <item name="textColorDisabled">@color/hackerTextColorDisabled</item>
-        <item name="commentDividerColor">@color/hackerDividerColor</item>
         <item name="iconTintColor">@color/hackerTextColor</item>
-        <item name="opCommentColor">@color/hackerTextColor</item>
-        <item name="selfCommentColor">@color/hackerTextColor</item>
-        <item name="commentCountIndicatorColor">@color/hackerAccent</item>
-        <item name="secondaryTextColor">@color/hackerTextColorDisabled</item>
-        <item name="overlayButtonColor">@color/hackerBackground</item>
-        <item name="overlayButtonContentColor">@color/hackerTextColor</item>
-        <item name="overlayButtonOutlineColor">@color/hackerDividerColor</item>
-        <item name="submissionsCommentTimeBackgroundColor">@color/hackerBackground</item>
-        <item name="submissionsCommentTimeOutlineColor">@color/hackerDividerColor</item>
-
         <item name="colorPrimary">@color/hackerAccent</item>
         <item name="colorPrimaryDark">@color/hackerAccent</item>
         <item name="colorAccent">@color/hackerAccent</item>
-        <item name="colorSecondary">@color/hackerAccent</item>
-        <item name="colorTertiary">@color/hackerAccent</item>
-        <item name="colorOnPrimary">@color/hackerBackground</item>
-        <item name="colorOnSecondary">@color/hackerBackground</item>
-        <item name="colorOnTertiary">@color/hackerBackground</item>
-        <item name="colorPrimaryContainer">@color/hackerAccentContainer</item>
-        <item name="colorOnPrimaryContainer">@color/hackerTextColor</item>
-        <item name="colorSecondaryContainer">@color/hackerAccentContainer</item>
-        <item name="colorOnSecondaryContainer">@color/hackerTextColor</item>
-        <item name="colorTertiaryContainer">@color/hackerAccentContainer</item>
-        <item name="colorOnTertiaryContainer">@color/hackerTextColor</item>
-        <item name="colorSurface">@color/hackerBackground</item>
-        <item name="colorOnSurface">@color/hackerTextColor</item>
-        <item name="colorOnSurfaceVariant">@color/hackerTextColorDisabled</item>
-        <item name="colorOnBackground">@color/hackerTextColor</item>
-        <item name="colorOutline">@color/hackerDividerColor</item>
-        <item name="colorOutlineVariant">@color/hackerDividerColor</item>
-        <item name="colorSurfaceVariant">@color/hackerBackground</item>
-        <item name="colorSurfaceContainerLowest">@color/hackerBackground</item>
-        <item name="colorSurfaceContainerLow">@color/hackerBackground</item>
-        <item name="colorSurfaceContainer">@color/hackerBackground</item>
-        <item name="colorSurfaceContainerHigh">@color/hackerSurfaceContainer</item>
-        <item name="colorSurfaceContainerHighest">@color/hackerSurfaceContainer</item>
-        <item name="contentCardBackgroundColor">@color/hackerSurfaceContainer</item>
-        <item name="settingsHeaderSelectedColor">@color/hackerSurfaceContainerSelected</item>
-        <item name="settingsMainToggleColor">@color/hackerAccentContainer</item>
-        <item name="settingsMainToggleTextColor">@color/hackerTextColor</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_hacker</item>
-        <item name="popupMenuBackgroundColor">@color/hackerBackground</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
         <item name="colorControlHighlight">#3300FF00</item>
         <item name="android:textViewStyle">@style/JetBrainsMonoTextViewStyle</item>
-
         <item name="android:windowBackground">@color/hackerBackground</item>
         <item name="android:colorBackground">@color/hackerBackground</item>
         <item name="android:statusBarColor">@color/hackerBackground</item>
@@ -254,248 +65,67 @@
         <item name="android:textColorSecondary">@color/hackerTextColorDisabled</item>
         <item name="android:textColorTertiary">@color/hackerTextColorDisabled</item>
         <item name="android:fontFamily">@font/jetbrains_mono</item>
+        <item name="android:textColorHighlight">#5200FF00</item>
     </style>
-
     <style name="AppThemeGray" parent="AppTheme">
         <item name="android:windowBackground">@color/grayBackground</item>
         <item name="android:colorBackground">@color/grayBackground</item>
         <item name="android:statusBarColor">@color/grayStatusBarColor</item>
-        <item name="colorSurface">@color/grayBackground</item>
-        <item name="colorSurfaceVariant">@color/grayContentCardBackground</item>
-        <item name="colorSurfaceContainerLowest">@color/grayBackground</item>
-        <item name="colorSurfaceContainerLow">@color/grayBackground</item>
-        <item name="colorSurfaceContainer">@color/grayBackground</item>
-        <item name="colorSurfaceContainerHigh">@color/grayBackground</item>
-        <item name="colorSurfaceContainerHighest">@color/grayContentCardBackground</item>
-        <item name="contentCardBackgroundColor">@color/grayContentCardBackground</item>
-        <item name="settingsHeaderSelectedColor">@color/grayBackground</item>
-        <item name="settingsMainToggleColor">@color/grayContentCardBackground</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_gray</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_gray</item>
     </style>
-
     <style name="AppThemeLight" parent="AppThemeLightBase">
-        <item name="contentPrimaryColor">@color/lightContentPrimary</item>
-        <item name="mutedTextColor">@color/lightMutedText</item>
-        <item name="textColorHighlighted">@color/lightTextColorHighlighted</item>
-        <item name="textColorDefault">@color/lightTextColorDefault</item>
-        <item name="textColorDisabled">@color/lightTextColorDisabled</item>
-        <item name="commentDividerColor">@color/lightDividerColor</item>
         <item name="iconTintColor">@color/lightIconTint</item>
-        <item name="opCommentColor">@color/lightOpCommentColor</item>
-        <item name="selfCommentColor">@color/lightSelfCommentColor</item>
-        <item name="commentCountIndicatorColor">@color/colorPrimaryDark</item>
-        <item name="secondaryTextColor">@color/lightTextColorDefault</item>
-        <item name="overlayButtonColor">?attr/colorSecondary</item>
-        <item name="overlayButtonContentColor">?attr/colorOnSecondary</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
         <item name="colorPrimary">@color/colorPrimaryGreen</item>
         <item name="colorPrimaryDark">@color/colorPrimaryGreen</item>
         <item name="colorAccent">@color/colorPrimaryGreen</item>
-        <item name="colorSecondary">@color/colorPrimaryGreen</item>
-        <item name="colorSecondaryContainer">@color/settings_main_toggle_light</item>
-        <item name="colorOnSecondaryContainer">@color/settings_main_toggle_text_light</item>
-        <item name="colorTertiary">@color/colorPrimaryGreenLighter</item>
-        <item name="colorOnTertiary">@android:color/white</item>
-        <item name="colorTertiaryContainer">@color/settings_main_toggle_light</item>
-        <item name="colorOnTertiaryContainer">@color/settings_main_toggle_text_light</item>
-        <item name="colorOnSecondary">@android:color/white</item>
-        <item name="colorPrimaryContainer">@color/colorPrimaryGreenLighter</item>
-        <item name="colorOnPrimary">@android:color/white</item>
-        <item name="colorOnPrimaryContainer">@android:color/white</item>
-        <item name="colorOnBackground">@color/lightContentPrimary</item>
-        <item name="colorSurface">@color/base_surface_light</item>
-        <item name="colorOnSurface">@color/lightContentPrimary</item>
-        <item name="colorSurfaceVariant">@color/muted_surface_light</item>
-        <item name="colorOnSurfaceVariant">@color/lightTextColorDefault</item>
-        <item name="colorSurfaceContainerLowest">@android:color/white</item>
-        <item name="colorSurfaceContainerLow">@color/base_surface_light</item>
-        <item name="colorSurfaceContainer">@color/base_surface_light</item>
-        <item name="colorSurfaceContainerHigh">@color/base_surface_light</item>
-        <item name="colorSurfaceContainerHighest">@color/muted_surface_light</item>
-        <item name="colorOutline">@color/lightTextColorDisabled</item>
-        <item name="colorOutlineVariant">@color/lightDividerColor</item>
-        <item name="contentCardBackgroundColor">@color/base_surface_light</item>
-        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_light</item>
-        <item name="settingsMainToggleColor">@color/settings_main_toggle_light</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_light</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_light</item>
-
         <item name="android:windowBackground">@color/page_background_light</item>
         <item name="android:colorBackground">@color/base_surface_light</item>
         <item name="android:textColorPrimary">@color/lightTextColorDefault</item>
         <item name="android:textColorSecondary">@color/lightTextColorDisabled</item>
         <item name="android:textColorTertiary">@color/lightTextColorDisabled</item>
-        <item name="android:textColorHighlight">@color/text_selection_highlight</item>
-        <item name="android:textColorLink">?attr/colorSecondary</item>
+        <item name="android:textColorHighlight">#52478A74</item>
+        <item name="android:textColorLink">?attr/colorAccent</item>
         <item name="colorControlHighlight">#20000000</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
         <item name="android:statusBarColor">@color/lightStatusBarColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
     </style>
-
     <style name="AppThemeMaterialLight" parent="@style/AppThemeLightBase">
-        <item name="contentPrimaryColor">?attr/colorOnSurface</item>
-        <item name="mutedTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="textColorHighlighted">?attr/colorOnSurface</item>
-        <item name="textColorDefault">?attr/colorOnSurface</item>
-        <item name="textColorDisabled">?attr/colorOnSurfaceVariant</item>
-        <item name="commentDividerColor">?attr/colorOutlineVariant</item>
-        <item name="iconTintColor">?attr/colorOnSurface</item>
-        <item name="opCommentColor">?attr/colorTertiary</item>
-        <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">@color/material_comment_count_indicator</item>
-        <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="overlayButtonColor">?attr/colorPrimary</item>
-        <item name="overlayButtonContentColor">?attr/colorOnPrimary</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
-        <item name="contentCardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="settingsHeaderSelectedColor">?attr/colorSurfaceContainer</item>
-        <item name="settingsMainToggleColor">?attr/colorSecondaryContainer</item>
-        <item name="settingsMainToggleTextColor">?attr/colorOnSecondaryContainer</item>
-        <item name="mutedSurfaceColor">?attr/colorSurfaceContainerHigh</item>
-
-        <item name="android:windowBackground">?attr/mutedSurfaceColor</item>
-        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
-        <item name="android:statusBarColor">?attr/mutedSurfaceColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="android:windowBackground">@color/material_you_neutral_50</item>
+        <item name="android:colorBackground">@color/material_you_neutral_50</item>
+        <item name="android:statusBarColor">@color/material_you_neutral_50</item>
+        <item name="iconTintColor">@color/lightContentPrimary</item>
+        <item name="colorAccent">#6750A4</item>
     </style>
-
     <style name="AppThemeMaterialFixedLight" parent="@style/AppThemeMaterialFixedLightBase">
-        <item name="contentPrimaryColor">?attr/colorOnSurface</item>
-        <item name="mutedTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="textColorHighlighted">?attr/colorOnSurface</item>
-        <item name="textColorDefault">?attr/colorOnSurface</item>
-        <item name="textColorDisabled">?attr/colorOnSurfaceVariant</item>
-        <item name="commentDividerColor">?attr/colorOutlineVariant</item>
-        <item name="iconTintColor">?attr/colorOnSurface</item>
-        <item name="opCommentColor">?attr/colorTertiary</item>
-        <item name="selfCommentColor">?attr/colorPrimary</item>
-        <item name="commentCountIndicatorColor">@color/fixed_material_comment_count_indicator</item>
-        <item name="secondaryTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="overlayButtonColor">?attr/colorPrimary</item>
-        <item name="overlayButtonContentColor">?attr/colorOnPrimary</item>
-        <item name="overlayButtonOutlineColor">@android:color/transparent</item>
-        <item name="submissionsCommentTimeBackgroundColor">?attr/colorSurfaceContainerHighest</item>
-        <item name="submissionsCommentTimeOutlineColor">@android:color/transparent</item>
-
-        <item name="contentCardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="settingsHeaderSelectedColor">?attr/colorSurfaceContainer</item>
-        <item name="settingsMainToggleColor">?attr/colorSecondaryContainer</item>
-        <item name="settingsMainToggleTextColor">?attr/colorOnSecondaryContainer</item>
-        <item name="mutedSurfaceColor">?attr/colorSurfaceContainerHigh</item>
-
-        <item name="android:windowBackground">?attr/mutedSurfaceColor</item>
-        <item name="popupMenuBackgroundColor">?attr/colorSurfaceContainerHigh</item>
-        <item name="popupMenuBackground">@drawable/popup_menu_background</item>
-        <item name="snackbarTextViewStyle">@style/snackbarTextStyleLight</item>
         <item name="android:textViewStyle">@style/ProductSansTextViewStyle</item>
-        <item name="android:statusBarColor">?attr/mutedSurfaceColor</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
+        <item name="android:windowBackground">@color/material_fixed_surface_light</item>
+        <item name="android:colorBackground">@color/material_fixed_surface_light</item>
+        <item name="android:statusBarColor">@color/material_fixed_surface_light</item>
+        <item name="iconTintColor">@color/lightContentPrimary</item>
+        <item name="colorAccent">#6750A4</item>
     </style>
-
     <style name="AppThemeHackerNews" parent="AppThemeLight">
-        <item name="contentPrimaryColor">@color/hackerNewsContentPrimary</item>
-        <item name="mutedTextColor">@color/hackerNewsMutedText</item>
-        <item name="textColorHighlighted">@color/hackerNewsTextColorHighlighted</item>
-        <item name="textColorDefault">@color/hackerNewsTextColorDefault</item>
-        <item name="textColorDisabled">@color/hackerNewsTextColorDisabled</item>
-        <item name="commentDividerColor">@color/hackerNewsDividerColor</item>
         <item name="iconTintColor">@color/hackerNewsIconTint</item>
-        <item name="opCommentColor">@color/hackerNewsOpCommentColor</item>
-        <item name="selfCommentColor">@color/hackerNewsSelfCommentColor</item>
-        <item name="commentCountIndicatorColor">@color/hackerNewsAccentDark</item>
-        <item name="secondaryTextColor">@color/hackerNewsTextColorDisabled</item>
-        <item name="overlayButtonColor">@color/hackerNewsOverlayButton</item>
-        <item name="overlayButtonContentColor">@android:color/white</item>
-
         <item name="colorPrimary">@color/hackerNewsAccent</item>
         <item name="colorPrimaryDark">@color/hackerNewsAccentDark</item>
         <item name="colorAccent">@color/hackerNewsAccent</item>
-        <item name="colorSecondary">@color/hackerNewsAccent</item>
-        <item name="colorSecondaryContainer">@color/hackerNewsAccentContainer</item>
-        <item name="colorOnSecondaryContainer">@color/settings_main_toggle_text_hacker_news</item>
-        <item name="colorTertiary">@color/hackerNewsAccentDark</item>
-        <item name="colorOnTertiary">@android:color/white</item>
-        <item name="colorTertiaryContainer">@color/hackerNewsAccentContainer</item>
-        <item name="colorOnTertiaryContainer">@color/settings_main_toggle_text_hacker_news</item>
-        <item name="colorOnSecondary">@android:color/white</item>
-        <item name="colorPrimaryContainer">@color/hackerNewsAccentContainer</item>
-        <item name="colorOnPrimary">@android:color/white</item>
-        <item name="colorOnPrimaryContainer">@color/settings_main_toggle_text_hacker_news</item>
-        <item name="colorOnBackground">@color/hackerNewsContentPrimary</item>
-        <item name="colorSurface">@color/base_surface_hacker_news</item>
-        <item name="colorOnSurface">@color/hackerNewsContentPrimary</item>
-        <item name="colorSurfaceVariant">@color/hackerNewsSurfaceContainer</item>
-        <item name="colorOnSurfaceVariant">@color/hackerNewsTextColorDisabled</item>
-        <item name="colorSurfaceContainerLowest">@android:color/white</item>
-        <item name="colorSurfaceContainerLow">@color/base_surface_hacker_news</item>
-        <item name="colorSurfaceContainer">@color/hackerNewsSurfaceContainer</item>
-        <item name="colorSurfaceContainerHigh">@color/hackerNewsSurfaceContainer</item>
-        <item name="colorSurfaceContainerHighest">@color/muted_surface_hacker_news</item>
-        <item name="colorOutline">@color/hackerNewsDividerColor</item>
-        <item name="colorOutlineVariant">@color/hackerNewsDividerColor</item>
-        <item name="contentCardBackgroundColor">@color/hackerNewsSurfaceContainer</item>
-        <item name="settingsHeaderSelectedColor">@color/hackerNewsSurfaceContainer</item>
-        <item name="settingsMainToggleColor">@color/hackerNewsAccentContainer</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_hacker_news</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_hacker_news</item>
-        <item name="materialSwitchStyle">@style/Widget.Harmonic.MaterialSwitch.HackerNews</item>
-
         <item name="android:windowBackground">@color/page_background_hacker_news</item>
         <item name="android:colorBackground">@color/base_surface_hacker_news</item>
         <item name="android:statusBarColor">@color/page_background_hacker_news</item>
         <item name="android:textColorPrimary">@color/hackerNewsTextColorDefault</item>
         <item name="android:textColorSecondary">@color/hackerNewsTextColorDisabled</item>
         <item name="android:textColorTertiary">@color/hackerNewsTextColorDisabled</item>
+        <item name="android:textColorHighlight">#52B34700</item>
     </style>
-
     <style name="AppThemeWhite" parent="@style/AppThemeLight">
         <item name="android:windowBackground">@color/whiteBackground</item>
         <item name="android:colorBackground">@color/whiteBackground</item>
         <item name="android:statusBarColor">@color/whiteStatusBarColor</item>
-        <item name="colorSurface">@color/whiteBackground</item>
-        <item name="colorSurfaceVariant">@color/muted_surface_white</item>
-        <item name="colorSurfaceContainerLowest">@color/whiteBackground</item>
-        <item name="colorSurfaceContainerLow">@color/whiteBackground</item>
-        <item name="colorSurfaceContainer">@color/whiteBackground</item>
-        <item name="colorSurfaceContainerHigh">@color/whiteBackground</item>
-        <item name="colorSurfaceContainerHighest">@color/muted_surface_white</item>
-        <item name="contentCardBackgroundColor">@color/whiteBackground</item>
-        <item name="settingsHeaderSelectedColor">@color/settings_header_selected_white</item>
-        <item name="settingsMainToggleColor">@color/settings_main_toggle_white</item>
-        <item name="settingsMainToggleTextColor">@color/settings_main_toggle_text_light</item>
-        <item name="mutedSurfaceColor">@color/muted_surface_white</item>
-
-        <item name="materialAlertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="alertDialogTheme">@style/AlertDialogMaterialStyle</item>
-        <item name="dialogCornerRadius">28dp</item>
     </style>
 </resources>

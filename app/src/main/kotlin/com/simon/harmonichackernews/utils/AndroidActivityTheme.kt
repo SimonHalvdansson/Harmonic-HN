@@ -2,9 +2,9 @@ package com.simon.harmonichackernews.utils
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.drawable.ColorDrawable
 import android.graphics.Color
 import android.os.Build
-import android.view.ContextThemeWrapper
 import androidx.annotation.ColorInt
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.toArgb
@@ -38,6 +38,11 @@ object AndroidActivityTheme {
         activity.setTheme(themeResource(selection.theme, uiModeNight(activity)))
 
         val window = activity.getWindow()
+        if (selection.theme.startsWith("material")) {
+            val background = harmonicThemePalette(activity, selection).colors.background.toArgb()
+            window.setBackgroundDrawable(ColorDrawable(background))
+            window.statusBarColor = background
+        }
         val insetsController = WindowCompat.getInsetsController(window, window.getDecorView())
         insetsController.setAppearanceLightStatusBars(!selection.dark)
         insetsController.setAppearanceLightNavigationBars(!selection.dark)
@@ -73,8 +78,7 @@ object AndroidActivityTheme {
     @ColorInt
     fun getPageBackgroundColor(ctx: Context): Int {
         val selection = ctx.harmonicAppComposition.appearance.selection()
-        val themed = ContextThemeWrapper(ctx, themeResource(selection.theme, selection.dark))
-        return harmonicThemePalette(themed, selection).colors.background.toArgb()
+        return harmonicThemePalette(ctx, selection).colors.background.toArgb()
     }
 
     fun getPreferredTheme(ctx: Context): String {

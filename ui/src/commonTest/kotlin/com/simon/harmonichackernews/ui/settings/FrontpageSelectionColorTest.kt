@@ -36,8 +36,18 @@ class FrontpageSelectionColorTest {
                 colors.background, palette.colorScheme.secondaryContainer,
             )
             assertTrue(contrast(colors.background, selected) >= 1.3f, "$theme/${accent.value}")
-            assertTrue(contrast(palette.colorScheme.onSecondaryContainer, selected) >= 4.5f, "Name in $theme/${accent.value}")
+            val content = frontpageSelectionContentColor(selected, palette.colorScheme.onSecondaryContainer)
+            assertTrue(contrast(content, selected) >= 4.5f, "Name in $theme/${accent.value}")
         }
+    }
+
+    @Test
+    fun migratedAndroidLabelUsesAReadableForegroundWithoutChangingThePalette() {
+        val selected = Color(0xFF99595E)
+        val preferred = Color(0xFFFFD9DC)
+        assertTrue(contrast(preferred, selected) < 4.5f)
+        assertEquals(Color.White, frontpageSelectionContentColor(selected, preferred))
+        assertEquals(Color.White, frontpageSelectionContentColor(Color.Black, Color.White))
     }
 
     private fun contrast(first: Color, second: Color): Float =

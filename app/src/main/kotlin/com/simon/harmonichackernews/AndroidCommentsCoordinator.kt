@@ -249,7 +249,6 @@ class AndroidCommentsCoordinator(
         integratedWebview = featureSettings.integratedWebView
         val blockAds = readingPreferences.blockAds && !hostRestoration.adBlockDisabled
 
-        val progressIndicator = host.progressIndicator
         val linkPreviewController = LinkPreviewController(
             story,
             appComposition,
@@ -332,7 +331,7 @@ class AndroidCommentsCoordinator(
             webViewController = webViewController,
         )
         viewSession = session
-        webViewController.bindViews(host, progressIndicator)
+        webViewController.bindViews(host)
         webViewController.setCoveredByComments(!showWebsite)
         webViewController.setHostStarted(started)
         webViewController.configure(

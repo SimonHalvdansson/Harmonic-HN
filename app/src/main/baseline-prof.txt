@@ -151,7 +151,6 @@ PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->access$getShow
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->access$getShowingErrorPage(Lcom/simon/harmonichackernews/AndroidCommentsWebViewController;)Z
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->access$getWebView$p(Lcom/simon/harmonichackernews/AndroidCommentsWebViewController;)Landroid/webkit/WebView;
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->applyReaderModeChange(Lcom/simon/harmonichackernews/presentation/ReaderModeStateChange;)V
-PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->bindViews(Lcom/simon/harmonichackernews/CommentsWebViewHost;Lcom/google/android/material/progressindicator/LinearProgressIndicator;)V
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->canGoBack()Z
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->cancelCachedArticleLoad()V
 PLcom/simon/harmonichackernews/AndroidCommentsWebViewController;->cancelPdfDownload()V
@@ -338,9 +337,7 @@ PLcom/simon/harmonichackernews/CommentsWebViewFullscreen;->isShowing()Z
 PLcom/simon/harmonichackernews/CommentsWebViewFullscreen;->release()V
 PLcom/simon/harmonichackernews/CommentsWebViewHost;-><clinit>()V
 PLcom/simon/harmonichackernews/CommentsWebViewHost;-><init>(Landroid/content/Context;)V
-PLcom/simon/harmonichackernews/CommentsWebViewHost;->getDownloadButton()Lcom/google/android/material/button/MaterialButton;
 PLcom/simon/harmonichackernews/CommentsWebViewHost;->getFullscreenContainer()Landroid/widget/FrameLayout;
-PLcom/simon/harmonichackernews/CommentsWebViewHost;->getProgressIndicator()Lcom/google/android/material/progressindicator/LinearProgressIndicator;
 PLcom/simon/harmonichackernews/CommentsWebViewHost;->getRoot()Landroidx/core/view/insets/ProtectionLayout;
 PLcom/simon/harmonichackernews/CommentsWebViewHost;->getWebViewBackdrop()Landroid/view/View;
 PLcom/simon/harmonichackernews/CommentsWebViewHost;->getWebViewContainer()Landroid/widget/FrameLayout;
@@ -352,11 +349,8 @@ PLcom/simon/harmonichackernews/CommentsWebViewHost$Companion;->matchParentFrameP
 PLcom/simon/harmonichackernews/CommentsWebViewHost$Companion;->matchParentParams()Landroid/view/ViewGroup$LayoutParams;
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;-><clinit>()V
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;-><init>()V
-PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;->bind(Lcom/google/android/material/progressindicator/LinearProgressIndicator;Landroid/view/View;)V
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;->cancelAnimations()V
-PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;->cancelProgressAnimator()V
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi;->release()V
-PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi$$ExternalSyntheticLambda2;-><init>(Lcom/simon/harmonichackernews/CommentsWebViewLoadingUi;)V
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi$Companion;-><init>()V
 PLcom/simon/harmonichackernews/CommentsWebViewLoadingUi$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 Lcom/simon/harmonichackernews/HarmonicApplication;
@@ -8689,9 +8683,6 @@ Lcom/simon/harmonichackernews/ui/stories/StoryTypeDropdownMenuKt$$ExternalSynthe
 SPLcom/simon/harmonichackernews/ui/stories/StoryTypeDropdownMenuKt$$ExternalSyntheticLambda0;-><init>(Ljava/util/List;Lcom/simon/harmonichackernews/StoryType;Lkotlin/jvm/functions/Function1;Landroidx/compose/ui/text/font/FontFamily;J)V
 Lcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;
 SPLcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;->HarmonicTheme(Lcom/simon/harmonichackernews/settings/ThemeSelection;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
-SPLcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;->colorAttribute-mxwnekA(Landroid/content/Context;IJ)J
-SPLcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;->harmonicColors$resolveThemeSurface(Lcom/simon/harmonichackernews/ui/theme/HarmonicColors;JJJ)J
-SPLcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;->harmonicColors(Landroid/content/Context;Lcom/simon/harmonichackernews/ui/theme/HarmonicThemePalette;)Lcom/simon/harmonichackernews/ui/theme/HarmonicColors;
 SPLcom/simon/harmonichackernews/ui/theme/AndroidHarmonicThemeKt;->harmonicThemePalette(Landroid/content/Context;Lcom/simon/harmonichackernews/settings/ThemeSelection;)Lcom/simon/harmonichackernews/ui/theme/HarmonicThemePalette;
 Lcom/simon/harmonichackernews/ui/theme/AppFontFamiliesKt;
 SPLcom/simon/harmonichackernews/ui/theme/AppFontFamiliesKt;->getProductSansFontFamily(Landroidx/compose/runtime/Composer;I)Landroidx/compose/ui/text/font/FontFamily;

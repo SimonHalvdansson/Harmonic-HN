@@ -262,7 +262,9 @@ fun ManageFrontpagesSettingsScreen(
                 var sourceLayer by remember { mutableStateOf<GraphicsLayer?>(null) }
                 val selected = type.label == defaultLabel
                 val accent = MaterialTheme.colorScheme.primary
-                val selectedContent = MaterialTheme.colorScheme.onSecondaryContainer
+                val selectedContent = frontpageSelectionContentColor(
+                    selectedBackground, MaterialTheme.colorScheme.onSecondaryContainer,
+                )
                 val textColor = if (selected) selectedContent else HarmonicTheme.colors.textPrimary
                 val iconColor = if (selected) selectedContent else HarmonicTheme.colors.iconTint
                 val borderColor = accent.copy(alpha = maxOf(

@@ -35,12 +35,10 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.core.view.isGone
-import androidx.core.view.isVisible
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import androidx.webkit.WebViewAssetLoader
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.simon.harmonichackernews.ui.comments.WebContentOverlayState
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.linkpreview.LinkPreviewController
 import com.simon.harmonichackernews.platform.AndroidExternalLinkLauncher
@@ -135,7 +133,7 @@ internal class AndroidCommentsWebViewController(
     private val webViewHandler = Handler(Looper.getMainLooper())
     private var webView: WebView? = null
     private var webViewContainer: FrameLayout? = null
-    private var downloadButton: MaterialButton? = null
+    private var overlayState: WebContentOverlayState? = null
     private var coveredByComments = false
     private var hostStarted = true
     private var webViewPaused = false
@@ -190,16 +188,13 @@ internal class AndroidCommentsWebViewController(
     private var predictiveBackScrollY = 0
     private var predictiveBackScrollFrozen = false
 
-    fun bindViews(
-        host: CommentsWebViewHost,
-        progressIndicator: LinearProgressIndicator
-    ) {
+    fun bindViews(host: CommentsWebViewHost) {
         cancelCachedArticleLoad()
         cancelPdfDownload()
-        loadingUi.bind(progressIndicator, host.webViewBackdrop)
+        loadingUi.bind(host.overlayState, host.webViewBackdrop)
         fullscreen.bind(host.webViewContainer, host.fullscreenContainer)
         webView = null
-        downloadButton = host.downloadButton
+        overlayState = host.overlayState
         webViewContainer = host.webViewContainer
     }
 
@@ -386,10 +381,9 @@ internal class AndroidCommentsWebViewController(
         val currentWebView = webView?.takeIf { it.canGoBack() } ?: return
         cancelCachedArticleLoad()
         cancelPdfDownload()
-        val currentDownloadButton = downloadButton
-        if (currentDownloadButton?.isVisible == true && currentWebView.isGone) {
+        if (overlayState?.onDownload != null && currentWebView.isGone) {
             currentWebView.isGone = false
-            currentDownloadButton.isGone = true
+            overlayState?.dismissDownload()
         } else if (showingErrorPage) {
             webContentSession.showContent()
             if (currentWebView.canGoBackOrForward(-2)) {
@@ -801,6 +795,7 @@ internal class AndroidCommentsWebViewController(
         applyReaderModeChange(loadStart.readerMode)
         webContentDriver.publish(url = url, loading = true, pageReady = false)
 
+        if (overlayState?.onDownload != null) view.visibility = View.VISIBLE
         loadingUi.beginLoad()
 
         webViewHandler.postDelayed(
@@ -1069,42 +1064,40 @@ internal class AndroidCommentsWebViewController(
 
     private fun showDownloadButton(url: String?, contentDisposition: String?, mimetype: String?) {
         val currentWebView = webView ?: return
-        val currentDownloadButton = downloadButton ?: return
+        val currentOverlay = overlayState ?: return
+        val context = hostGateway.context ?: return
         currentWebView.visibility = View.GONE
-        currentDownloadButton.visibility = View.VISIBLE
-        currentDownloadButton.setOnClickListener(object : View.OnClickListener {
-                override fun onClick(view: View) {
-                    try {
-                        val request = DownloadManager.Request(Uri.parse(url))
+        currentOverlay.showDownload {
+            try {
+                val request = DownloadManager.Request(Uri.parse(url))
 
-                        request.allowScanningByMediaScanner()
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        request.setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS,
-                            URLUtil.guessFileName(url, contentDisposition, mimetype)
-                        )
-                        val dm = view.getContext()
-                            .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                        dm.enqueue(request)
-                        callbacks.showMessage("Downloading...", UserMessageDuration.LONG)
-                    } catch (e: Exception) {
-                        callbacks.showMessage(
-                            "Failed to download, opening in browser",
-                            UserMessageDuration.LONG,
-                        )
-                        if (!AndroidExternalLinkLauncher.openExternalBrowser(
-                                view.context,
-                                ExternalLinkRequest(
-                                    url.orEmpty(),
-                                    preferInApp = false,
-                                ),
-                            )
-                        ) {
-                            callbacks.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
-                        }
-                    }
+                request.allowScanningByMediaScanner()
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    URLUtil.guessFileName(url, contentDisposition, mimetype)
+                )
+                val dm = context
+                    .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                dm.enqueue(request)
+                callbacks.showMessage("Downloading...", UserMessageDuration.LONG)
+            } catch (e: Exception) {
+                callbacks.showMessage(
+                    "Failed to download, opening in browser",
+                    UserMessageDuration.LONG,
+                )
+                if (!AndroidExternalLinkLauncher.openExternalBrowser(
+                        context,
+                        ExternalLinkRequest(
+                            url.orEmpty(),
+                            preferInApp = false,
+                        ),
+                    )
+                ) {
+                    callbacks.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
                 }
-        })
+            }
+        }
     }
 
     fun requestSummary(callback: PageTextCallback) {
@@ -1321,7 +1314,7 @@ internal class AndroidCommentsWebViewController(
     fun onDestroyView(rootView: View?) {
         hideCustomView(false)
 
-        downloadButton?.setOnClickListener(null)
+        overlayState?.dismissDownload()
         destroy()
     }
 
@@ -1333,7 +1326,8 @@ internal class AndroidCommentsWebViewController(
         pdfWebViewSession.release(webView, removeJavascriptInterface = true)
         webView = null
         webViewContainer = null
-        downloadButton = null
+        overlayState?.reset()
+        overlayState = null
         loadingUi.release()
         fullscreen.release()
         webContentDriver.publish(WebContentDriverState())
