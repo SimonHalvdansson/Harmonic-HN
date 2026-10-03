@@ -2,8 +2,19 @@
 gradle.projectsEvaluated {
     def ui = gradle.rootProject.project(':ui')
     def core = gradle.rootProject.project(':core')
+    // Gradle 9.8 requires dependency resolution to run under the owning project's lock.
+    def compilerClasspath = core.tasks.register('performanceReviewCompilerClasspath') {
+        doLast {
+            def output = core.layout.buildDirectory.file('performance-review-compiler.classpath').get().asFile
+            output.parentFile.mkdirs()
+            output.text =
+                    core.configurations.named('kotlinCompilerClasspath').get().files
+                            .collect { it.absolutePath }.join(File.pathSeparator)
+        }
+    }
     ui.tasks.register('performanceReviewClasspath') {
         dependsOn ui.tasks.named('desktopJar')
+        dependsOn compilerClasspath
         doLast {
             def main = ui.kotlin.targets.getByName('desktop').compilations.getByName('main')
             def paths = [ui.tasks.named('desktopJar').get().archiveFile.get().asFile.absolutePath]
@@ -11,8 +22,7 @@ gradle.projectsEvaluated {
             ui.layout.buildDirectory.file('performance-review.classpath').get().asFile.text =
                     paths.join(File.pathSeparator)
             ui.layout.buildDirectory.file('json-access-benchmark-compiler.classpath').get().asFile.text =
-                    core.configurations.named('kotlinCompilerClasspath').get().files
-                            .collect { it.absolutePath }.join(File.pathSeparator)
+                    core.layout.buildDirectory.file('performance-review-compiler.classpath').get().asFile.text
         }
     }
 }
