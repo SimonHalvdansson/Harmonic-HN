@@ -123,18 +123,16 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 GlanceModifier.fillMaxSize().background(colors.background).appWidgetBackground()
                     .cornerRadius(24.dp),
             ) {
-                val error = state[WidgetState.error]?.let {
-                    if (settings.debug.showWidgetDebugInfo) it else "Could not refresh. Tap refresh to try again."
-                }
+                val error = state[WidgetState.error]
                 val updated = state[WidgetState.updated] ?: 0L
-                val status = when {
-                    state[WidgetState.refreshing] == true -> "Refreshing…"
-                    error != null -> "Refresh failed"
-                    updated > 0 -> app.platform.timeFormatting.time(updated).let {
-                        if (width >= 280) "Updated $it" else it
-                    }
-                    else -> "Loading…"
-                }
+                val presentation = widgetRefreshPresentation(
+                    refreshing = state[WidgetState.refreshing] == true,
+                    failed = error != null,
+                    retryScheduled = state[WidgetState.retryScheduled] == true,
+                    hasStories = entries.isNotEmpty(),
+                    updatedTime = updated.takeIf { it > 0 }?.let(app.platform.timeFormatting::time),
+                    wide = width >= 280,
+                )
                 Row(GlanceModifier.fillMaxWidth().clickable(actionStartActivity(widgetStoriesIntent(context)))
                     .padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -143,7 +141,7 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(color = colors.textPrimary, fontSize = WidgetTypography.HEADER_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily),
                         maxLines = 1,
                     )
-                    Text(status, GlanceModifier.padding(start = 8.dp),
+                    Text(presentation.status, GlanceModifier.padding(start = 8.dp),
                         style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.METADATA_SIZE.sp, fontFamily = fontFamily),
                         maxLines = 1)
                     CircleIconButton(
@@ -154,9 +152,8 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         contentColor = colors.textPrimary,
                     )
                 }
-                if (error != null) {
-                    Text(if (entries.isEmpty()) "Couldn’t refresh stories. Tap refresh to try again."
-                        else "Couldn’t refresh. Showing saved stories.",
+                presentation.message?.let { message ->
+                    Text(message,
                         GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
                         style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.METADATA_SIZE.sp, fontFamily = fontFamily),
                         maxLines = 4)

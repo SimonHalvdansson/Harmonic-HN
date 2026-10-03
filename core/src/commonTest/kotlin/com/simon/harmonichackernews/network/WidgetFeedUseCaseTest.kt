@@ -7,12 +7,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoredUserSettings
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 
 class WidgetFeedUseCaseTest {
@@ -72,7 +74,7 @@ class WidgetFeedUseCaseTest {
             delay(100)
             StoryFeedResult.ItemIds(listOf(1))
         }.load(WidgetFeedRequest(StoryType.TOP_STORIES, 1, 1, totalTimeoutMillis = 50))
-        assertTrue(assertIs<WidgetFeedResult.Failed>(timedOut).cause!!.message!!.contains("Timed out"))
+        assertIs<WidgetFeedTimeoutException>(assertIs<WidgetFeedResult.Failed>(timedOut).cause)
 
         val cause = IllegalStateException("HTTP 503")
         val widgets = WidgetConfigurationService(InMemoryKeyValueStore(), InMemoryKeyValueStore(), repository) { _, _ -> throw cause }
@@ -96,6 +98,41 @@ class WidgetFeedUseCaseTest {
         ))
         assertEquals(listOf(1, 3, 4), loaded.stories.map { it.id })
         assertTrue(loaded.timedOut)
+    }
+
+    @Test
+    fun itemDeadlineIsReportedAsRetryableWithoutReplacingMissingItemFailures() = runTest {
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStoryIds(type: StoryType) = listOf(1)
+            override suspend fun getComment(id: Int): Comment? = null
+            override suspend fun getStory(id: Int): Story {
+                delay(200)
+                return story(id)
+            }
+        }
+        val failed = assertIs<WidgetFeedResult.Failed>(WidgetFeedUseCase(repository).load(
+            WidgetFeedRequest(StoryType.TOP_STORIES, 1, 1, itemTimeoutMillis = 50, totalTimeoutMillis = 100),
+        ))
+        assertIs<WidgetFeedTimeoutException>(failed.cause)
+        val missing = assertIs<WidgetFeedResult.Failed>(WidgetFeedUseCase(FakeRepository(listOf(1), emptyMap())).load(
+            WidgetFeedRequest(StoryType.TOP_STORIES, 1, 1),
+        ))
+        assertIs<IllegalStateException>(missing.cause)
+    }
+
+    @Test
+    fun refreshCancellationPropagatesWithoutBeingConvertedToARecoverableFailure() = runTest {
+        val cancellation = CancellationException("Worker replaced")
+        val repository = FakeRepository(emptyList(), emptyMap())
+        val widgets = WidgetConfigurationService(InMemoryKeyValueStore(), InMemoryKeyValueStore(), repository) { _, _ ->
+            throw cancellation
+        }
+        val propagated = assertFailsWith<CancellationException> {
+            WidgetRefreshRuntime(widgets) { 123 }.refresh(7, false)
+        }
+        assertEquals(cancellation.message, propagated.message)
+        assertEquals(0L, widgets.runtime(7).lastUpdatedMillis)
+        assertFalse(widgets.runtime(7).skipFetch)
     }
 
     @Test
