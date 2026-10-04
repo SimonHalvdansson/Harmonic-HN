@@ -33,6 +33,7 @@
         android:resizeableActivity="true"
         android:supportsRtl="false"
         android:allowBackup="true"
+        android:appCategory="news"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
