@@ -15,6 +15,7 @@ import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.utils.DomainNamePolicy
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import kotlin.time.Clock
 
 data class StoryHeaderTintPresentation(
@@ -330,9 +331,7 @@ fun rememberSubmissionStoryRowModel(
     }
     val domain = domainAndFavicon.first
     val faviconUrl = domainAndFavicon.second
-    val nowMillis = remember(story.id, story.createdAtEpochSeconds) {
-        Clock.System.now().toEpochMilliseconds()
-    }
+    val nowMillis = rememberTimeOnResume(story.id, story.createdAtEpochSeconds)
     return StoryRowModelFactory.create(
         story = story,
         resources = StoryRowResourcePresentation(

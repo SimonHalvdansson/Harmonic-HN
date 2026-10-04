@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -54,7 +55,7 @@ fun CommentsHeaderMetadata(
                 HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography, textStyle)
             }
             HeaderMetaItem(Res.drawable.ic_comment, story.descendants.toString(), typography, textStyle)
-            HeaderMetaItem(Res.drawable.ic_schedule, story.timeFormatted, typography, textStyle)
+            HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle)
             val posterLabel = buildString {
                 append(story.by.orEmpty())
                 if (storyPosterTag.isNotBlank()) {

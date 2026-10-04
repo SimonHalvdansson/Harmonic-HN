@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.ElevatedButton
 import androidx.compose.material3.HorizontalDivider
@@ -198,12 +199,13 @@ fun StoryPreviewCard(
             story.author
         }
     }
-    val meta = remember(story.score, story.createdAtEpochSeconds, domain) {
+    val nowMillis = rememberTimeOnResume(story.id, story.createdAtEpochSeconds)
+    val meta = remember(story.score, story.createdAtEpochSeconds, domain, nowMillis) {
         buildString {
             append(story.score)
             append(if (story.score == 1) " point" else " points")
             if (!domain.isNullOrBlank()) append(" • ").append(domain)
-            append(" • ").append(ItemTimeFormatter.formatNow(story.createdAtEpochSeconds))
+            append(" • ").append(ItemTimeFormatter.format(story.createdAtEpochSeconds, nowMillis))
         }
     }
 

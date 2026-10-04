@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -80,7 +82,6 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 
 private const val StoriesRowMotionDurationMillis = 350
@@ -129,9 +130,7 @@ internal fun StoriesList(
     val visibleCount = (
         if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
     ).coerceIn(0, stories.size)
-    val modelNowMillis = remember(stories, settings) {
-        Clock.System.now().toEpochMilliseconds()
-    }
+    val modelNowMillis = rememberTimeOnResume(stories, settings)
     val centerFailure = !searchMode && visibleCount == 0 &&
         (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -292,8 +291,8 @@ internal fun StoriesList(
                             val storyRevision = controller.storyRevision(story.id)
                             val previewResource = controller.previewResource(story.id)
                                 ?.takeIf { it.pageUrl == story.url }
-                            // Palette tints are resolved against the theme's card background. Retain
-                            // row-model caching normally, but rebuild when that base color changes.
+                            // Rebuild cached ages on resume, and palette tints when the theme's
+                            // card background changes.
                             val model = remember(
                                 story,
                                 index,
@@ -301,6 +300,7 @@ internal fun StoriesList(
                                 storyRevision,
                                 previewResource,
                                 storyItemModelCacheKey,
+                                modelNowMillis,
                             ) {
                                 storyItemModel(
                                     story,
@@ -549,7 +549,7 @@ private fun SavedCommentStoryRow(
     val links = LocalHarmonicUiDependencies.current.links
     CommentFeedItem(
         rootStoryTitle = story.presentation.rootStory?.title,
-        timeText = story.timeFormatted,
+        timeText = relativeTimeOnResume(story.createdAtEpochSeconds),
         html = story.text.orEmpty(),
         canOpenStory = story.rootStoryId > 0 || story.parentId > 0,
         displaySettings = settings,

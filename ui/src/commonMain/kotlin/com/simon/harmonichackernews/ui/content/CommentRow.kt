@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
+import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.CommentDepthPaletteCatalog
 import com.simon.harmonichackernews.presentation.PortableCommentItem
@@ -499,7 +500,7 @@ fun CommentRow(
                 author = comment.by.orEmpty(),
                 avatarsEnabled = style.userAvatarsEnabled,
                 avatarOptions = style.userAvatarOptions,
-                age = comment.timeFormatted,
+                age = relativeTimeOnResume(comment.time),
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
