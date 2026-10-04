@@ -75,7 +75,7 @@ final class IosLocalAiTests: XCTestCase {
         var failure: Error?
         environment.summary.summarize(request: SummaryRequest(
             text: article, prompt: nil, model: nil,
-            streamResponses: true, useGeminiNanoSummarizationLora: false
+            streamResponses: true, useGeminiNanoSummarizationLora: false, preserveInput: false
         )) { result, error in
             output = result
             failure = error

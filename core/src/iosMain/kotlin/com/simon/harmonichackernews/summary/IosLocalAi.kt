@@ -251,7 +251,7 @@ private class IosLocalSummaryEngine(
 
     override fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> = channelFlow {
         try {
-            require(LocalSummaryPreparation.isLongEnough(request.text.trim())) {
+            require(request.preserveInput || LocalSummaryPreparation.isLongEnough(request.text.trim())) {
                 "Article is too short for local summarization"
             }
             val model = models.selectedModel
@@ -266,6 +266,7 @@ private class IosLocalSummaryEngine(
                     model, models.installedPath(model),
                     request.prompt?.takeIf(String::isNotBlank) ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
                     request.text,
+                    preserveInput = request.preserveInput,
                     onProgress = { trySend(StorySummaryEvent.Progress(it)) },
                     onLoaded = { millis -> trySend(StorySummaryEvent.DebugInfo(
                         SummaryFormatting.formatLoadInfo(model.displayName, millis), modelLoadMillis = millis,

@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
 import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -50,6 +51,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +67,10 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -72,6 +79,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextStyle
@@ -108,6 +116,28 @@ fun CommentActionOverlay(
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
+    val discussionProgress by animateFloatAsState(
+        targetValue = if (controller.commentDiscussionOpen)
+            1f - controller.commentDiscussionBackProgress.coerceIn(0f, 1f) * 0.35f else 0f,
+        animationSpec = tween(
+            durationMillis = if (controller.commentDiscussionBackProgress > 0f) 0
+                else if (controller.commentDiscussionOpen) 500 else 350,
+            easing = CommentDiscussionEasing,
+        ),
+        label = "Comment discussion container",
+    )
+    val discussionSource = rememberGraphicsLayer()
+    var discussionCreated by remember(comment.id) { mutableStateOf(false) }
+    SideEffect {
+        if (controller.commentDiscussionOpen) discussionCreated = true
+        controller.commentDiscussionSurfaceVisible = discussionProgress > 0f || controller.commentDiscussionOpen
+    }
+    DisposableEffect(controller, comment.id) {
+        onDispose {
+            controller.commentDiscussionSurfaceVisible = false
+            controller.closeCommentDiscussion()
+        }
+    }
     var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
     val cardColor = if (settings.hasBackground) {
         HarmonicTheme.colors.contentCardBackground
@@ -409,6 +439,14 @@ fun CommentActionOverlay(
                         }
                     }
                     .then(fallbackPresentation)
+                    .drawWithContent {
+                        if (discussionProgress > 0f) {
+                            clipRect(0f, 0f, 0f, 0f) { this@drawWithContent.drawContent() }
+                        } else {
+                            drawContent()
+                        }
+                    }
+                    .then(if (discussionProgress > 0f) Modifier.clearAndSetSemantics { } else Modifier)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -420,7 +458,12 @@ fun CommentActionOverlay(
                         sharedTransition.takeIf { source != null },
                 ) {
                     CommentActionContainerBackground(cardColor)
-                    Box(Modifier.fillMaxWidth().clip(shape)) {
+                    // Capture content only. A captured rounded background produces a second
+                    // bottom edge when width-fit content is shorter than the moving container.
+                    Box(Modifier.fillMaxWidth().clip(shape).drawWithContent {
+                        discussionSource.record { this@drawWithContent.drawContent() }
+                        drawLayer(discussionSource)
+                    }) {
                         CommentActionCardContent(
                             controller = controller,
                             settings = settings,
@@ -429,12 +472,29 @@ fun CommentActionOverlay(
                             bookmarksEnabled = bookmarksEnabled,
                             textStyle = textStyle,
                             onOpenLink = onOpenLink,
+                            onAsk = {
+                                if (openingCompleted && !closingStarted) {
+                                    discussionCreated = true
+                                    controller.openCommentDiscussion()
+                                }
+                            },
                         )
                     }
                 }
             }
         }
         CommentActionTransitionOverlay(sharedTransition, cardColor)
+        if (discussionCreated) {
+            CommentDiscussionSurface(
+                controller = controller,
+                origin = targetContainer?.translate(-rootBounds.left, -rootBounds.top) ?: Rect.Zero,
+                progress = discussionProgress,
+                source = discussionSource,
+                settings = settings,
+                color = cardColor,
+                onOpenLink = onOpenLink,
+            )
+        }
         }
     }
 }
@@ -448,6 +508,7 @@ private fun CommentActionCardContent(
     bookmarksEnabled: Boolean,
     textStyle: TextStyle,
     onOpenLink: (String) -> Unit,
+    onAsk: () -> Unit,
 ) {
     val bookmarked = remember(controller.contentVersion, comment.id, bookmarksEnabled) {
         bookmarksEnabled && controller.isBookmarked(comment.id)
@@ -487,36 +548,50 @@ private fun CommentActionCardContent(
             .padding(HarmonicDimens.compose_comment_action_card_padding),
     ) {
         CommentActionTarget(CommentActionTargetElement.User) {
-            Button(
-                onClick = {
-                    controller.dismissCommentActionsThen(
-                        comment,
-                        CommentMenuAction.USER,
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = HarmonicTheme.colors.overlayButtonContent,
-                ),
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.height(40.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (settings.userAvatarsEnabled && author != null) {
-                    UserAvatar(
-                        author = author,
-                        options = settings.userAvatarOptions,
-                        modifier = Modifier.size(24.dp),
+                Button(
+                    onClick = {
+                        controller.dismissCommentActionsThen(
+                            comment,
+                            CommentMenuAction.USER,
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HarmonicTheme.colors.overlayButton,
+                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                    ),
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).height(40.dp),
+                ) {
+                    if (settings.userAvatarsEnabled && author != null) {
+                        UserAvatar(
+                            author = author,
+                            options = settings.userAvatarOptions,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    } else {
+                        Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
+                    }
+                    Text(
+                        userLabel,
+                        modifier = Modifier.padding(start = 8.dp),
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                     )
-                } else {
-                    Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
                 }
-                Text(
-                    userLabel,
-                    modifier = Modifier.padding(start = 8.dp),
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
+                TextButton(
+                    onClick = onAsk,
+                    colors = ButtonDefaults.textButtonColors(contentColor = HarmonicTheme.colors.link),
+                ) {
+                    Icon(painterResource(Res.drawable.ic_auto_awesome), contentDescription = null,
+                        modifier = Modifier.size(20.dp))
+                    Text("Ask", modifier = Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily)
+                }
             }
         }
 

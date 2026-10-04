@@ -197,8 +197,9 @@ internal class AndroidLocalSummaryBackend(
         input: StorySummaryInput,
         request: SummaryRequest,
     ): Flow<StorySummaryEvent> = channelFlow {
-        val content = LocalSummaryPreparation.prepareManagedText(input.articleText.orEmpty())
-        if (!LocalSummaryPreparation.isLongEnough(content)) {
+        val content = if (request.preserveInput) input.articleText.orEmpty().trim()
+            else LocalSummaryPreparation.prepareManagedText(input.articleText.orEmpty())
+        if (!request.preserveInput && !LocalSummaryPreparation.isLongEnough(content)) {
             send(StorySummaryEvent.Failure(LOCAL_SUMMARY_ARTICLE_TOO_SHORT))
             return@channelFlow
         }
@@ -228,6 +229,7 @@ internal class AndroidLocalSummaryBackend(
             } else {
                 summarizeWithDownloadedModel(
                     content = content,
+                    preserveInput = request.preserveInput,
                     systemPrompt = request.prompt
                         ?.takeIf(String::isNotBlank)
                         ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
@@ -259,6 +261,7 @@ internal class AndroidLocalSummaryBackend(
 
     private suspend fun summarizeWithDownloadedModel(
         content: String,
+        preserveInput: Boolean,
         systemPrompt: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
@@ -278,6 +281,7 @@ internal class AndroidLocalSummaryBackend(
             systemPrompt,
             LocalModelInference.ProgressCallback(onProgress),
             LocalModelInference.LoadCallback(onLoaded),
+            preserveInput = preserveInput,
         )
     }
 

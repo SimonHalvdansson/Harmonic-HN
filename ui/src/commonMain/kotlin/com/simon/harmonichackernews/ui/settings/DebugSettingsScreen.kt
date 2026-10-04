@@ -114,6 +114,8 @@ fun DebugSettingsScreen(
     onLinkPreviewsRequested: () -> Unit,
     onDialogRequested: (DebugSettingsDialog) -> Unit,
     onEasterEggRequested: () -> Unit,
+    mockAiAnswers: Boolean = false,
+    onMockAiAnswersChanged: (Boolean) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -147,6 +149,14 @@ fun DebugSettingsScreen(
                     icon = Res.drawable.ic_info,
                     checked = showWidgetDebugInfo,
                     onCheckedChange = onShowWidgetDebugInfoChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Mock AI answers",
+                    summary = "Stream sample replies and summaries instead of calling an AI model",
+                    icon = Res.drawable.ic_auto_awesome,
+                    checked = mockAiAnswers,
+                    onCheckedChange = onMockAiAnswersChanged,
                 )
                 SettingsDivider()
                 DebugOpenSetting(

@@ -260,14 +260,14 @@ class CommentsFeatureRuntime(
         )
         thread.setHideDelayedComments(settings.comments.hideDelayedComments)
         val aiSnapshot = summarySettings?.snapshot()
-        val canProvideSummary = aiSnapshot?.let { snapshot ->
+        val canProvideSummary = settings.debug.mockAiAnswers || (aiSnapshot?.let { snapshot ->
             AiSummaryAvailabilityPolicy.canProvideSummary(
                 explicitlyEnabled = snapshot.explicitlyEnabled,
                 mode = snapshot.mode.storedValue,
                 localAvailable = localSummaryAvailable(),
                 cloudApiKeyAvailable = snapshot.apiKey.isNotBlank(),
             )
-        } ?: false
+        } ?: false)
         val previous = mutableSettingsState.value
         val display = CommentDisplaySettings.from(
             preferences = settings.comments,
@@ -588,6 +588,10 @@ class CommentsFeatureRuntime(
         val currentStory = story ?: return
         val snapshot = summarySettings?.snapshot() ?: return
         if (currentStory.url.isNullOrBlank()) return
+        if (userSettings?.debug?.mockAiAnswers == true) {
+            startSummary(null)
+            return
+        }
         if (!AiSummaryAvailabilityPolicy.isEnabled(
                 explicitlyEnabled = snapshot.explicitlyEnabled,
                 localAvailable = localSummaryAvailable(),
@@ -892,7 +896,7 @@ class CommentsFeatureRuntime(
     private fun requestAutomaticSummaryIfEligible() {
         val currentStory = story ?: return
         val snapshot = summarySettings?.snapshot() ?: return
-        val canProvideSummary = AiSummaryAvailabilityPolicy.canProvideSummary(
+        val canProvideSummary = userSettings?.debug?.mockAiAnswers == true || AiSummaryAvailabilityPolicy.canProvideSummary(
             explicitlyEnabled = snapshot.explicitlyEnabled,
             mode = snapshot.mode.storedValue,
             localAvailable = localSummaryAvailable(),

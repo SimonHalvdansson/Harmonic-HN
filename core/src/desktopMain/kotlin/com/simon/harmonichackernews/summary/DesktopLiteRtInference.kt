@@ -37,9 +37,10 @@ internal class DesktopLiteRtInference(private val cacheDirectory: String) {
         text: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
+        preserveInput: Boolean = false,
     ): String = mutex.withLock {
         withContext(Dispatchers.IO) {
-            val prepared = LocalSummaryPreparation.prepare(text, model.contextTokens, Long.MAX_VALUE)
+            val prepared = LocalSummaryPreparation.prepare(text, model.contextTokens, Long.MAX_VALUE, preserveInput)
             val engine = Engine(EngineConfig(
                 modelPath = modelPath,
                 backend = Backend.CPU(),

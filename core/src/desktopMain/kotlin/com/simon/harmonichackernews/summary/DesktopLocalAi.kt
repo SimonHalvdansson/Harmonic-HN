@@ -442,8 +442,9 @@ private class DesktopLocalSummaryEngine(
     }
 
     override fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> = channelFlow {
-        val content = LocalSummaryPreparation.prepareManagedText(request.text)
-        if (!LocalSummaryPreparation.isLongEnough(content)) {
+        val content = if (request.preserveInput) request.text.trim()
+            else LocalSummaryPreparation.prepareManagedText(request.text)
+        if (!request.preserveInput && !LocalSummaryPreparation.isLongEnough(content)) {
             send(StorySummaryEvent.Failure("Article is too short for local summarization"))
             return@channelFlow
         }
@@ -455,7 +456,7 @@ private class DesktopLocalSummaryEngine(
                 apple.refresh()
                 check(apple.available) { apple.status }
                 send(StorySummaryEvent.DebugInfo("Apple Intelligence"))
-                val result = apple.summarize(instruction, content) {
+                val result = apple.summarize(instruction, content, preserveInput = request.preserveInput) {
                     trySend(StorySummaryEvent.Progress(it))
                 }
                 send(StorySummaryEvent.Success(result))
@@ -473,9 +474,9 @@ private class DesktopLocalSummaryEngine(
                 ))
             }
             val summary = if (selected.runtime == LocalModelRuntime.LITERT_LM) {
-                liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded)
+                liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
             } else {
-                inference.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded)
+                inference.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
             }
             send(StorySummaryEvent.Success(summary))
         } catch (error: CancellationException) {
@@ -502,6 +503,7 @@ private class DesktopLlamaInference(
         text: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
+        preserveInput: Boolean = false,
     ): String = inferenceMutex.withLock {
         withContext(Dispatchers.IO) {
             val api = nativeLibrary.requireApi()
@@ -513,6 +515,7 @@ private class DesktopLlamaInference(
                     text = text,
                     modelContextTokens = model.contextTokens,
                     totalMemoryBytes = totalMemoryBytes(),
+                    preserveInput = preserveInput,
                 )
                 val loadStartedAt = System.nanoTime()
                 check(api.harmonic_llama_load(engine, modelPath, prepared.contextTokens) != 0) {

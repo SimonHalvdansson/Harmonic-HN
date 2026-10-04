@@ -38,8 +38,9 @@ class IosNativeLocalSummaryEngine(
     override fun isReady(): Boolean = bridge.isAvailable()
 
     override suspend fun summarize(request: SummaryRequest): SummaryResult {
-        val content = LocalSummaryPreparation.prepareManagedText(request.text)
-        require(LocalSummaryPreparation.isLongEnough(content)) {
+        val content = if (request.preserveInput) request.text.trim()
+            else LocalSummaryPreparation.prepareManagedText(request.text)
+        require(request.preserveInput || LocalSummaryPreparation.isLongEnough(content)) {
             "Article is too short for local summarization"
         }
         check(bridge.isAvailable()) {

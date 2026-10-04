@@ -41,8 +41,9 @@ internal class IosLiteRtInference(
         text: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
+        preserveInput: Boolean = false,
     ): String = mutex.withLock {
-        val prepared = LocalSummaryPreparation.prepare(text, model.contextTokens, totalMemoryBytes())
+        val prepared = LocalSummaryPreparation.prepare(text, model.contextTokens, totalMemoryBytes(), preserveInput)
         withTimeout(10 * 60_000L) {
             suspendCancellableCoroutine { continuation ->
                 val task = bridge.start(

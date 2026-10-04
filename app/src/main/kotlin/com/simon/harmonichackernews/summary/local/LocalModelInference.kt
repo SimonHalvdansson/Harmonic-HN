@@ -27,8 +27,9 @@ class LocalModelInference(
     systemInstruction: String = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
+    preserveInput: Boolean = false,
   ): String = synchronized(inferenceLock) {
-    summarizeLocked(text, systemInstruction, progressCallback, loadCallback)
+    summarizeLocked(text, systemInstruction, progressCallback, loadCallback, preserveInput)
   }
 
   private fun summarizeLocked(
@@ -36,6 +37,7 @@ class LocalModelInference(
     systemInstruction: String,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
+    preserveInput: Boolean,
   ): String {
     val model = models.selectedModel
     if (!models.isRuntimeInstalled(model.runtime)) {
@@ -49,6 +51,7 @@ class LocalModelInference(
       text = text,
       modelContextTokens = model.contextTokens,
       totalMemoryBytes = androidTotalMemoryBytes(appContext),
+      preserveInput = preserveInput,
     )
 
     return getEngine(model.runtime).summarize(

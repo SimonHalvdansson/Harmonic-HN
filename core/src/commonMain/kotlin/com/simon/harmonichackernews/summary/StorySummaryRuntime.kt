@@ -164,6 +164,7 @@ class StorySummaryRuntime(
     private val scope: CoroutineScope,
     private val cloudBackend: StorySummaryBackend,
     private val localBackend: StorySummaryBackend,
+    private val mockAnswers: () -> Boolean = { false },
 ) {
     private val mutableState = MutableStateFlow(StorySummaryState())
     private var activeJob: Job? = null
@@ -191,7 +192,8 @@ class StorySummaryRuntime(
             var reachedTerminalState = false
             var modelReadyAtMillis: Long? = null
             try {
-                backend(mode).summarize(input).collect { event ->
+                val events = if (mockAnswers()) MockAiResponses.summary() else backend(mode).summarize(input)
+                events.collect { event ->
                     if (generation != mutableState.value.generation) return@collect
                     when (event) {
                         is StorySummaryEvent.DebugInfo -> {

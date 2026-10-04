@@ -106,6 +106,8 @@ data class SummaryRequest(
     val model: String? = null,
     val streamResponses: Boolean = true,
     val useGeminiNanoSummarizationLora: Boolean = false,
+    // Conversations must reach the model intact; article-only length/truncation rules do not apply.
+    val preserveInput: Boolean = false,
 )
 
 data class SummaryResult(

@@ -76,6 +76,7 @@ enum class GeneralBooleanPreference(internal val storageKey: String) {
 enum class DebugBooleanPreference(internal val storageKey: String) {
     ALWAYS_SHOW_TAP_TO_REFRESH(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH),
     SHOW_WIDGET_DEBUG_INFO("show_widget_debug_info"),
+    MOCK_AI_ANSWERS("pref_debug_mock_ai_answers"),
 }
 
 /**

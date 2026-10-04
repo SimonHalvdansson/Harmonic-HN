@@ -205,7 +205,9 @@ internal fun CommentsPane(
                     )
                 }
                 if (modalOverlayVisible) {
-                    Box(Modifier.fillMaxSize().zIndex(100f)) {
+                    Box(Modifier.fillMaxSize().zIndex(
+                        if (commentsController.commentDiscussionSurfaceVisible) 102f else 100f,
+                    )) {
                         AndroidCommentLinkPreviewOverlay(
                             controller = commentsController,
                             onScrimAlphaChanged = { alpha -> modalScrimAlpha = alpha },

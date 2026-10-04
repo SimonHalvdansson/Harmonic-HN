@@ -239,6 +239,10 @@ fun DebugSettingsRoute(
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
         showWidgetDebugInfo = settings.debug.showWidgetDebugInfo,
+        mockAiAnswers = settings.debug.mockAiAnswers,
+        onMockAiAnswersChanged = {
+            repository.setDebugBoolean(DebugBooleanPreference.MOCK_AI_ANSWERS, it)
+        },
         environment = environment,
         onBack = onBack,
         onAlwaysShowTapToRefreshChanged = {

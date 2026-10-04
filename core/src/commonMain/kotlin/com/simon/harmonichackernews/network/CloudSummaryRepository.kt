@@ -29,6 +29,7 @@ data class CloudSummaryConfig(
     val model: String,
     val systemPrompt: String = CloudSummaryDefaults.SYSTEM_PROMPT,
     val streamResponses: Boolean = true,
+    val inputCharacterLimit: Int = 15_000,
 )
 
 sealed interface CloudSummaryEvent {
@@ -103,7 +104,7 @@ class KtorCloudSummaryRepository(
             anthropic = anthropic,
             model = model,
             prompt = config.systemPrompt,
-            text = prepareInput(text),
+            text = text.orEmpty().trim().take(config.inputCharacterLimit),
             stream = config.streamResponses,
         )
         val requestBuilder = HttpRequest.Builder()
@@ -357,8 +358,6 @@ object SummaryFormatting {
     private fun formatOneDecimal(value: Double): String =
         ((value * 10.0).roundToLong() / 10.0).toString()
 }
-
-private fun prepareInput(text: String?): String = text.orEmpty().trim().take(15_000)
 
 private fun joinUrl(baseUrl: String?, path: String): String =
     AiSummaryProviders.normalizeUrl(baseUrl) + "/" + path

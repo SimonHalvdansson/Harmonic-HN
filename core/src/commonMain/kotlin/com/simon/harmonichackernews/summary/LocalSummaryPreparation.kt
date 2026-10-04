@@ -19,6 +19,7 @@ object LocalSummaryPreparation {
         text: String,
         modelContextTokens: Int,
         totalMemoryBytes: Long,
+        preserveInput: Boolean = false,
     ): LocalSummaryInput {
         val lowMemory = totalMemoryBytes in 1 until LOW_MEMORY_THRESHOLD_BYTES
         val contextTokens = if (lowMemory) {
@@ -32,7 +33,7 @@ object LocalSummaryPreparation {
         )
         val preferredMaxWords = if (lowMemory) LOW_MEMORY_MAX_WORDS else DEFAULT_MAX_WORDS
         return LocalSummaryInput(
-            text = truncateWords(text, min(preferredMaxWords, contextWordBudget)),
+            text = if (preserveInput) text.trim() else truncateWords(text, min(preferredMaxWords, contextWordBudget)),
             contextTokens = contextTokens,
         )
     }

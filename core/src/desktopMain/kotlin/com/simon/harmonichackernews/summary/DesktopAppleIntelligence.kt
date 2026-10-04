@@ -46,14 +46,14 @@ internal class DesktopAppleIntelligence(private val cacheRoot: Path) {
         }
     }
 
-    suspend fun summarize(instruction: String, text: String, onProgress: (String) -> Unit): String =
+    suspend fun summarize(instruction: String, text: String, preserveInput: Boolean = false, onProgress: (String) -> Unit): String =
         withContext(Dispatchers.IO) {
             withTimeout(10 * 60_000L) {
                 var result = ""
                 var completed = false
                 val input = buildJsonObject {
                     put("instruction", instruction)
-                    put("text", LocalSummaryPreparation.prepare(text, 4096, Long.MAX_VALUE).text)
+                    put("text", LocalSummaryPreparation.prepare(text, 4096, Long.MAX_VALUE, preserveInput).text)
                 }.toString()
                 runHelper(emptyList(), input) { event ->
                     event["error"]?.jsonPrimitive?.contentOrNull?.let { error(it) }

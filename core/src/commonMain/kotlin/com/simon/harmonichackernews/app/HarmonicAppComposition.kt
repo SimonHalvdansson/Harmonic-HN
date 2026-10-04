@@ -254,6 +254,7 @@ class HarmonicAppComposition(
             ?: UnavailableStorySummaryBackend("The platform has no local summary engine")
         return StorySummaryRuntime(
             scope = scope,
+            mockAnswers = { userSettings.debug.mockAiAnswers },
             cloudBackend = CloudStorySummaryBackend(network.summaryUseCase) {
                 aiSummarySettings.cloudConfig()
             },
