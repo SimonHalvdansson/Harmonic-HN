@@ -77,7 +77,16 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
                 models.preload()
                 withContext(Dispatchers.Main.immediate) { models.startMonitoring() }
             }
-            preloadScope.launch { appComposition.localSummaryEngine?.availability() }
+            preloadScope.launch {
+                val engine = appComposition.localSummaryEngine ?: return@launch
+                val availability = engine.availability()
+                withContext(Dispatchers.Main.immediate) {
+                    appComposition.aiSummarySettings.preferLocalModeByDefault(
+                        localAvailable = availability.available &&
+                            !availability.downloadableFallbackRequired && engine.isReady(),
+                    )
+                }
+            }
         }
     }
 
