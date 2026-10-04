@@ -72,7 +72,7 @@ class PlatformLocalStorySummaryBackend(
 data class LocalSummaryBehavior(
     val systemPrompt: String = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
     val streamResponses: Boolean = true,
-    val useGeminiNanoSummarizationLora: Boolean = true,
+    val useGeminiNanoSummarizationLora: Boolean = false,
 )
 
 class UnavailableStorySummaryBackend(

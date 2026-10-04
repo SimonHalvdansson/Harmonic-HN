@@ -105,7 +105,7 @@ data class SummaryRequest(
     val prompt: String? = null,
     val model: String? = null,
     val streamResponses: Boolean = true,
-    val useGeminiNanoSummarizationLora: Boolean = true,
+    val useGeminiNanoSummarizationLora: Boolean = false,
 )
 
 data class SummaryResult(

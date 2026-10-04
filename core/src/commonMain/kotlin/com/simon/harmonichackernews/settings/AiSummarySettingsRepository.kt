@@ -37,7 +37,7 @@ enum class GeminiNanoSummaryMode(val storedValue: String) {
 
     companion object {
         fun fromStored(value: String?): GeminiNanoSummaryMode =
-            entries.firstOrNull { it.storedValue == value } ?: THREE_BULLETS
+            entries.firstOrNull { it.storedValue == value } ?: SYSTEM_PROMPT
     }
 }
 
@@ -156,7 +156,17 @@ class AiSummarySettingsRepository(
         store.putString(AiSummaryPreferenceKeys.MODE, value.storedValue)
     }
 
-    fun forceCloudMode() = setMode(AiSummaryMode.CLOUD)
+    /** Select a usable built-in local provider without replacing a saved mode or enable choice. */
+    fun preferLocalModeByDefault(localAvailable: Boolean) {
+        if (localAvailable && !store.contains(AiSummaryPreferenceKeys.MODE)) {
+            setMode(AiSummaryMode.LOCAL)
+        }
+    }
+
+    fun forceCloudMode() {
+        // Do not persist the cloud fallback as a user choice before local support is available.
+        if (snapshot().mode == AiSummaryMode.LOCAL) setMode(AiSummaryMode.CLOUD)
+    }
 
     fun setStreamResponses(value: Boolean) {
         store.putBoolean(AiSummaryPreferenceKeys.STREAM_RESPONSES, value)

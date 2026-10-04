@@ -118,7 +118,7 @@ class StorySummaryRuntimeTest {
     }
 
     @Test
-    fun localBehaviorReachesThePlatformAndCanSuppressProgress() = runTest {
+    fun localBehaviorDefaultsToPromptAndCanSuppressProgress() = runTest {
         var received: SummaryRequest? = null
         val engine = object : LocalSummaryEngine {
             override suspend fun isAvailable(): Boolean = true
@@ -133,7 +133,6 @@ class StorySummaryRuntimeTest {
             LocalSummaryBehavior(
                 systemPrompt = "custom",
                 streamResponses = false,
-                useGeminiNanoSummarizationLora = false,
             )
         }
         val events = mutableListOf<StorySummaryEvent>()

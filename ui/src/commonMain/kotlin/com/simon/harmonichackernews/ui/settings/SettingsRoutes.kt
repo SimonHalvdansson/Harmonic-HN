@@ -122,7 +122,14 @@ fun AiSummarySettingsRoute(
         localAvailabilityResolved,
         localSummarizationSupported,
         localModeAvailable,
+        geminiNanoAvailable,
+        localConfigurationReady,
     ) {
+        if (localAvailabilityResolved) {
+            repository.preferLocalModeByDefault(
+                localAvailable = geminiNanoAvailable && localConfigurationReady,
+            )
+        }
         if (
             localAvailabilityResolved &&
             (!localSummarizationSupported || !localModeAvailable)

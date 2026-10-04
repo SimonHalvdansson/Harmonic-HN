@@ -25,12 +25,62 @@ class AiSummarySettingsRepositoryTest {
         assertEquals(AiSummaryMode.CLOUD, settings.mode)
         assertEquals(AiSummaryProviders.defaultBaseUrl, settings.baseUrl)
         assertEquals(CloudSummaryDefaults.SYSTEM_PROMPT, settings.systemPrompt)
-        assertEquals(GeminiNanoSummaryMode.THREE_BULLETS, settings.geminiNanoSummaryMode)
+        assertEquals(GeminiNanoSummaryMode.SYSTEM_PROMPT, settings.geminiNanoSummaryMode)
         assertFalse(settings.autoSummarizeArticles)
         assertTrue(settings.enableBoldFormatting)
         assertFalse(settings.showAdditionalInfo)
         assertFalse(settings.cloudConfigurationComplete)
         assertFalse(settings.enabled(localConfigurationReady = false))
+    }
+
+    @Test
+    fun availableBuiltInLocalProviderEnablesSummariesByDefault() {
+        val store = TestKeyValueStore()
+        val repository = AiSummarySettingsRepository(store, TestCredentialStore(), emptyFlow())
+
+        repository.preferLocalModeByDefault(localAvailable = true)
+
+        val settings = repository.snapshot()
+        assertEquals(AiSummaryMode.LOCAL, settings.mode)
+        assertTrue(settings.enabled(localConfigurationReady = true))
+        assertNull(settings.explicitlyEnabled)
+        assertFalse(settings.enabled(localConfigurationReady = false))
+    }
+
+    @Test
+    fun unavailableLocalProviderDoesNotPersistCloudFallback() {
+        val store = TestKeyValueStore()
+        val repository = AiSummarySettingsRepository(store, TestCredentialStore(), emptyFlow())
+
+        repository.preferLocalModeByDefault(localAvailable = false)
+        repository.forceCloudMode()
+
+        assertEquals(AiSummaryMode.CLOUD, repository.snapshot().mode)
+        assertFalse(repository.snapshot().enabled(localConfigurationReady = false))
+        assertFalse(store.contains(AiSummaryPreferenceKeys.MODE))
+
+        repository.preferLocalModeByDefault(localAvailable = true)
+        assertTrue(repository.snapshot().enabled(localConfigurationReady = true))
+    }
+
+    @Test
+    fun localDefaultPreservesExplicitOffAndProviderChoices() {
+        val repository = AiSummarySettingsRepository(
+            TestKeyValueStore(), TestCredentialStore(), emptyFlow(),
+        )
+        repository.setEnabled(false)
+        repository.preferLocalModeByDefault(localAvailable = true)
+        assertFalse(repository.snapshot().enabled(localConfigurationReady = true))
+
+        repository.setMode(AiSummaryMode.CLOUD)
+        repository.preferLocalModeByDefault(localAvailable = true)
+        assertEquals(AiSummaryMode.CLOUD, repository.snapshot().mode)
+
+        repository.setMode(AiSummaryMode.LOCAL)
+        repository.preferLocalModeByDefault(localAvailable = false)
+        assertEquals(AiSummaryMode.LOCAL, repository.snapshot().mode)
+        repository.forceCloudMode()
+        assertEquals(AiSummaryMode.CLOUD, repository.snapshot().mode)
     }
 
     @Test
@@ -110,13 +160,13 @@ class AiSummarySettingsRepositoryTest {
         )
 
         repository.setAutoSummarizeArticles(true)
-        repository.setGeminiNanoSummaryMode(GeminiNanoSummaryMode.SYSTEM_PROMPT)
+        repository.setGeminiNanoSummaryMode(GeminiNanoSummaryMode.THREE_BULLETS)
         repository.setEnableBoldFormatting(false)
         repository.setShowAdditionalInfo(true)
 
         assertTrue(repository.snapshot().autoSummarizeArticles)
         assertEquals(
-            GeminiNanoSummaryMode.SYSTEM_PROMPT,
+            GeminiNanoSummaryMode.THREE_BULLETS,
             repository.snapshot().geminiNanoSummaryMode,
         )
         assertFalse(repository.snapshot().enableBoldFormatting)
