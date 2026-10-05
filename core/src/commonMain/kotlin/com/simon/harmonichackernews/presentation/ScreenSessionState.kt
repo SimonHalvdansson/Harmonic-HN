@@ -82,6 +82,7 @@ class CommentsSessionState(
     var story: Story? = null
     var showWebsite: Boolean = false
     var commentsLoaded: Boolean = false
+    var showingCached: Boolean = false
     var refreshInProgress: Boolean = false
     var loadingFailed: Boolean = false
     var loadingFailedServerError: Boolean = false

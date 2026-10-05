@@ -471,6 +471,87 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun cachedOpeningStaysQuietOfflineButManualRefreshReportsFailureUntilRecovery() = runTest {
+        for (preparedCache in listOf(false, true)) {
+            val dispatcher = UnconfinedTestDispatcher(testScheduler)
+            val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+            val response = """{"id":42,"title":"Cached","children":[{"id":7,"text":"Saved comment"}]}"""
+            var network = CompletableDeferred<String>()
+            val algolia = object : AlgoliaRepository {
+                override suspend fun getItemJson(id: Int): String = network.await()
+                override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
+                override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
+            }
+            val session = CommentsSessionState()
+            val repository = CommentThreadRepository(algolia, RecordingHackerNewsRepository(), parser, requestDispatcher = dispatcher)
+            val presenter = CommentsPresenter(
+                backgroundScope, session, repository, UnusedPollOptions, savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = dispatcher,
+            )
+            val runtime = CommentsFeatureRuntime(
+                backgroundScope, session, presenter,
+                loadCachedThread = { response },
+                loadPreparedThread = { if (preparedCache) parser.prepare(response, listOf(7)) else null },
+                nowMillis = { 100L },
+            )
+            runtime.initialize(Story("Cached", 42, true, false), false, -1, "Default", false)
+            runtime.loadInitial(restoreScrollFromCache = false)
+            runCurrent()
+            assertTrue(presenter.state.value.showingCached)
+            network.completeExceptionally(IllegalStateException("Offline"))
+            runCurrent()
+            assertNull(presenter.state.value.failure)
+            assertTrue(presenter.state.value.showingCached)
+            assertTrue(session.showingCached, "Cache status is retained with the session")
+            assertEquals(listOf(7), presenter.thread.state.value.allComments.drop(1).map { it.id })
+
+            network = CompletableDeferred()
+            runtime.retry()
+            runCurrent()
+            assertTrue(presenter.state.value.refreshing)
+            network.completeExceptionally(IllegalStateException("Still offline"))
+            runCurrent()
+            assertEquals(StoryLoadFailure.GENERAL, presenter.state.value.failure)
+            assertTrue(presenter.state.value.showingCached)
+            assertFalse(presenter.state.value.refreshing)
+
+            network = CompletableDeferred()
+            runtime.retry()
+            runCurrent()
+            network.complete(response)
+            runCurrent()
+            assertNull(presenter.state.value.failure)
+            assertFalse(presenter.state.value.showingCached)
+            assertFalse(session.showingCached)
+            runtime.dispose()
+        }
+    }
+
+    @Test
+    fun offlineOpeningWithoutUsableCacheStillReportsFailure() = runTest {
+        for (cachedResponse in listOf(null, "invalid cache")) {
+            val dispatcher = UnconfinedTestDispatcher(testScheduler)
+            val algolia = object : AlgoliaRepository {
+                override suspend fun getItemJson(id: Int): String = error("Offline")
+                override suspend fun getSubmissions(userName: String, pageSize: Int, type: AlgoliaSubmissionType, cursor: AlgoliaSubmissionsCursor): AlgoliaSubmissionsPage = error("Unused")
+                override suspend fun search(url: String): AlgoliaSearchPage = error("Unused")
+            }
+            val presenter = CommentsPresenter(
+                backgroundScope, CommentsSessionState(),
+                CommentThreadRepository(algolia, UnusedHackerNewsRepository, AlgoliaCommentsParser(parsingDispatcher = dispatcher), requestDispatcher = dispatcher),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService,
+                threadPreparationDispatcher = dispatcher,
+            )
+            presenter.dispatch(CommentsAction.LoadThread(
+                Story("Uncached", 42, true, false), true, emptySet(), "Default", false, cachedResponse, false,
+            ))
+            runCurrent()
+            assertEquals(StoryLoadFailure.GENERAL, presenter.state.value.failure)
+            assertFalse(presenter.state.value.showingCached)
+        }
+    }
+
+    @Test
     fun preparedCacheDisplaysOfflineWithCurrentFiltersWithoutReadingRawJson() = runTest {
         val response = """{"id":42,"title":"Cached","children":[
             {"id":7,"author":"blocked","text":"One","extra_field":true},{"id":8,"text":"Two"}
@@ -504,6 +585,7 @@ class CommentsPresenterTest {
         runCurrent()
         assertTrue(presenter.state.value.loaded)
         assertEquals(listOf(8), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertTrue(presenter.state.value.showingCached)
         assertFalse(network.isCompleted)
         assertEquals(0, source.storyRequests)
         assertTrue(effects.single().restoreScroll)
@@ -511,6 +593,7 @@ class CommentsPresenterTest {
         runCurrent()
         assertNull(presenter.state.value.failure)
         assertFalse(effects.last().contentApplied)
+        assertFalse(presenter.state.value.showingCached)
         assertTrue(effects.last().networkCompleted)
         assertEquals(0, source.storyRequests)
     }

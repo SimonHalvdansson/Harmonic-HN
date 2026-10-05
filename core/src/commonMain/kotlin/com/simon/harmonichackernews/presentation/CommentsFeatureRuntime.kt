@@ -405,6 +405,7 @@ class CommentsFeatureRuntime(
                 beforeApplyCachedResponse = beforeApplyCachedResponse,
                 loadPreparedThread = loadPreparedResponse,
                 openingRequest = initialRequest,
+                userInitiated = refreshing,
             ),
         )
         presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = refreshing))

@@ -26,6 +26,7 @@ data class CommentsScreenState(
     val displaySettings: CommentDisplaySettings? = null,
     val commentsLoaded: Boolean = false,
     val initialThreadCached: Boolean = false,
+    val showingCached: Boolean = false,
     val commentsRefreshInProgress: Boolean = false,
     val loadingFailed: Boolean = false,
     val loadingFailedServerError: Boolean = false,
@@ -96,6 +97,7 @@ class CommentsScreenController private constructor(
     val displaySettings: CommentDisplaySettings? get() = screenState.displaySettings
     val commentsLoaded: Boolean get() = screenState.commentsLoaded
     val initialThreadCached: Boolean get() = screenState.initialThreadCached
+    val showingCached: Boolean get() = screenState.showingCached
     val commentsRefreshInProgress: Boolean get() = screenState.commentsRefreshInProgress
     val loadingFailed: Boolean get() = screenState.loadingFailed
     val loadingFailedServerError: Boolean get() = screenState.loadingFailedServerError

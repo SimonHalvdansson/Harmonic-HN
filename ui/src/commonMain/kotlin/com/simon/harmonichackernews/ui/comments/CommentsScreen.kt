@@ -264,6 +264,7 @@ fun CommentsScreen(
     val statusBarInset = with(density) { topInsetPx.toDp() }
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navigationVisible = settings.showNavigationBar && visibleComments.size > 1
+    val showCachedBadge = controller.showingCached && !controller.commentsRefreshInProgress
     val bottomPadding = navigationBottom + if (navigationVisible) 88.dp else 16.dp
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }
@@ -442,6 +443,39 @@ fun CommentsScreen(
                     ) {
                         AlgoliaFallbackNotice()
                     }
+                    if (showCachedBadge) {
+                        val badgeColors = HarmonicTheme.colors
+                        val badgeBackground = if (HarmonicTheme.isDark) {
+                            badgeColors.surfaceContainerHigh
+                        } else {
+                            badgeColors.secondaryContainer
+                        }
+                        val badgeText = if (HarmonicTheme.isDark) {
+                            badgeColors.textSecondary
+                        } else {
+                            badgeColors.onSecondaryContainer
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = contentInsetStart, end = contentInsetEnd)
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Cached version",
+                                modifier = Modifier
+                                    .testTag("comments-cached-version")
+                                    .clip(RoundedCornerShape(50))
+                                    .background(badgeBackground)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                color = badgeText,
+                                fontFamily = ProductSansFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
                 }
             },
         ) { index, item ->
@@ -595,7 +629,7 @@ fun CommentsScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = contentInsetEnd + 16.dp,
-                    bottom = navigationBottom + if (navigationVisible) 88.dp else 16.dp,
+                    bottom = bottomPadding,
                 ),
             enter = fadeIn(),
             exit = fadeOut(),

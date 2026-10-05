@@ -30,6 +30,7 @@ object CommentsScreenStateFactory {
             comments = thread.filteredComments,
             displaySettings = settings.displaySettings,
             commentsLoaded = state.loaded,
+            showingCached = state.showingCached,
             initialThreadCached = feature.initialThreadCached,
             commentsRefreshInProgress = state.refreshing,
             loadingFailed = state.failure != null,

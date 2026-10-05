@@ -40,6 +40,7 @@ data class CommentsPresenterState(
     val savedItemRevision: Long = 0L,
     val lastLoadedMillis: Long = 0L,
     val loaded: Boolean = false,
+    val showingCached: Boolean = false,
     val refreshing: Boolean = false,
     val failure: StoryLoadFailure? = null,
     val usingOfficialApiFallback: Boolean = false,
@@ -107,6 +108,7 @@ sealed interface CommentsAction {
         val beforeApplyCachedResponse: (suspend () -> Unit)? = null,
         val loadPreparedThread: (suspend () -> PreparedCommentThread?)? = null,
         val openingRequest: AlgoliaCommentRequest? = null,
+        val userInitiated: Boolean = false,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story, val forceRefresh: Boolean = false) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
@@ -195,6 +197,7 @@ class CommentsPresenter(
             thread = thread.state.value,
             lastLoadedMillis = sessionState.lastLoaded,
             loaded = sessionState.commentsLoaded,
+            showingCached = sessionState.showingCached,
             refreshing = sessionState.refreshInProgress,
             failure = when {
                 !sessionState.loadingFailed -> null
@@ -234,7 +237,10 @@ class CommentsPresenter(
     override fun dispatch(intent: CommentsAction) {
         val action = intent
         when (action) {
-            is CommentsAction.ResetThread -> thread.reset(action.story, action.header, action.sorting)
+            is CommentsAction.ResetThread -> {
+                thread.reset(action.story, action.header, action.sorting)
+                publish(showingCached = false)
+            }
             is CommentsAction.SetSorting -> thread.setSorting(action.sorting)
             is CommentsAction.ToggleExpanded -> thread.toggleExpanded(action.commentId)
             is CommentsAction.ExpandParents -> thread.expandParents(action.commentId)
@@ -460,7 +466,7 @@ class CommentsPresenter(
         val storyId = action.story.id
         val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
-        publish(usingOfficialApiFallback = false)
+        publish(usingOfficialApiFallback = false, failure = null)
         // Only HTTP starts here. Cache reads, parsing and publication stay in their existing
         // scheduled load job; a navigation lease may already have started the same transfer.
         val request = if (action.useAlgolia) {
@@ -580,6 +586,7 @@ class CommentsPresenter(
                             restoreScroll = action.restoreScrollFromCache,
                             broadcastStoryUpdate = false,
                             prepared = prepared,
+                            fromCache = true,
                         )
                     }
                 }
@@ -641,7 +648,7 @@ class CommentsPresenter(
                             broadcastStoryUpdate = true,
                         )
                     } else {
-                        publish(loaded = true, refreshing = false, failure = null)
+                        publish(loaded = true, refreshing = false, failure = null, showingCached = false)
                         mutableEffects.emit(
                             CommentsPresenterEffect.ThreadApplied(
                                 requestId = requestId,
@@ -668,7 +675,11 @@ class CommentsPresenter(
                     publish(
                         loaded = true,
                         refreshing = false,
-                        failure = CommentsPresentationPolicy.failureFor(result),
+                        failure = if (state.value.showingCached && !action.userInitiated && result.noInternet) {
+                            null
+                        } else {
+                            CommentsPresentationPolicy.failureFor(result)
+                        },
                     )
                     mutableEffects.emit(
                         CommentsPresenterEffect.ThreadFailed(requestId, storyId, result),
@@ -725,7 +736,7 @@ class CommentsPresenter(
     ) {
         CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, officialStory)
         if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = false)) return
-        publish(loaded = true, refreshing = false, failure = null)
+        publish(loaded = true, refreshing = false, failure = null, showingCached = false)
         mutableEffects.emit(
             CommentsPresenterEffect.ThreadApplied(
                 requestId = requestId,
@@ -824,6 +835,7 @@ class CommentsPresenter(
         restoreScroll: Boolean,
         broadcastStoryUpdate: Boolean,
         prepared: CachedThreadPreparation? = null,
+        fromCache: Boolean = false,
     ) {
         val headerChanged = prepared?.headerChanged ?: parsed.updateStoryInformation(
             action.story,
@@ -845,6 +857,7 @@ class CommentsPresenter(
         }
         publish(
             loaded = true,
+            showingCached = fromCache,
             refreshing = if (networkCompleted) false else state.value.refreshing,
             failure = null,
         )
@@ -891,6 +904,7 @@ class CommentsPresenter(
         savedItemRevision: Long = state.value.savedItemRevision,
         lastLoadedMillis: Long = state.value.lastLoadedMillis,
         loaded: Boolean = state.value.loaded,
+        showingCached: Boolean = state.value.showingCached,
         refreshing: Boolean = state.value.refreshing,
         failure: StoryLoadFailure? = state.value.failure,
         usingOfficialApiFallback: Boolean = state.value.usingOfficialApiFallback,
@@ -905,6 +919,7 @@ class CommentsPresenter(
     ) {
         sessionState.lastLoaded = lastLoadedMillis
         sessionState.commentsLoaded = loaded
+        sessionState.showingCached = showingCached
         sessionState.refreshInProgress = refreshing
         sessionState.loadingFailed = failure != null
         sessionState.loadingFailedServerError = failure == StoryLoadFailure.NOT_FOUND
@@ -916,6 +931,7 @@ class CommentsPresenter(
             savedItemRevision = savedItemRevision,
             lastLoadedMillis = lastLoadedMillis,
             loaded = loaded,
+            showingCached = showingCached,
             refreshing = refreshing,
             failure = failure,
             usingOfficialApiFallback = usingOfficialApiFallback,
