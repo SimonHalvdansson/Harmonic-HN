@@ -756,6 +756,8 @@ class AndroidCommentsCoordinator(
                 commentActionVisible = commentsController?.isCommentActionOverlayShowing() == true,
                 customWebContentVisible = websiteController?.isShowingCustomView == true,
                 readerModeEnabled = websiteController?.isReaderModeEnabled() == true,
+                readerModeDefault =
+                    commentsStore.state.value.settings?.reading?.readerModeDefault == true,
                 websiteVisible = websiteVisible,
                 webHistoryAvailable = websiteController?.canGoBack() == true,
                 closeWebsiteOnBack =
