@@ -49,7 +49,10 @@ internal fun CommentDiscussionContainer(
     content: @Composable () -> Unit,
 ) {
     if (progress <= 0f) return
-    BoxWithConstraints(Modifier.fillMaxSize().consumeAllPointerGestures()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Block the underlying dialog from a sibling behind the content. Consuming on
+        // an ancestor cancels the scrollable's touch-slop detection on plain message text.
+        Box(Modifier.fillMaxSize().consumeAllPointerGestures())
         val density = LocalDensity.current
         val width = with(density) { maxWidth.toPx() }
         val height = with(density) { maxHeight.toPx() }
@@ -89,7 +92,9 @@ internal fun CommentDiscussionContainer(
                 transformOrigin = TransformOrigin(0f, 0f)
                 translationX = bounds.left
                 translationY = bounds.top
-                alpha = ((p - 0.15f) / 0.30f).coerceIn(0f, 1f)
+                // Fade text and controls throughout the shrink, including predictive back,
+                // while the independently drawn surface keeps its opacity.
+                alpha = ((p - 0.15f) / 0.85f).coerceIn(0f, 1f)
             }) { content() }
         }
     }

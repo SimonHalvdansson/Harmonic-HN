@@ -15,8 +15,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,8 +26,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
@@ -38,7 +36,6 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,10 +44,12 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.summary.CommentDiscussion
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.settings.SettingsSection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
@@ -86,6 +85,8 @@ internal fun CommentDiscussionSurface(
     val questions = remember(comment.id) { CommentDiscussion.suggestedQuestions(comment) }
     val revealedTurns = remember(comment.id) { mutableSetOf<Int>() }
     val resetAlpha = remember(comment.id) { Animatable(1f) }
+    val density = LocalDensity.current
+    var composerHeight by remember { mutableStateOf(80.dp) }
     var resetting by remember(comment.id) { mutableStateOf(false) }
     val followThreshold = with(LocalDensity.current) { 96.dp.toPx() }
     var followOutput by remember { mutableStateOf(true) }
@@ -139,28 +140,18 @@ internal fun CommentDiscussionSurface(
 
     CommentDiscussionContainer(origin, progress, color, source) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = controller::closeCommentDiscussion) {
-                    Icon(painterResource(Res.drawable.ic_arrow_back), "Back to comment",
-                        tint = HarmonicTheme.colors.contentPrimary)
-                }
-                Text("Ask about this comment", Modifier.weight(1f),
-                    color = HarmonicTheme.colors.contentPrimary,
-                    style = MaterialTheme.typography.titleMedium)
-                IconButton(onClick = ::reset, enabled = !resetting && (state.turns.isNotEmpty() || draft.isNotBlank())) {
-                    Icon(painterResource(Res.drawable.ic_refresh), "Reset discussion",
-                        tint = HarmonicTheme.colors.contentPrimary.copy(alpha =
-                            if (!resetting && (state.turns.isNotEmpty() || draft.isNotBlank())) 1f else 0.38f))
-                }
-            }
+            HarmonicTopAppBar(
+                title = "Ask about this comment",
+                onBack = controller::closeCommentDiscussion,
+                navigationContentDescription = "Back to comment",
+                toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
+            )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             Column(
-                Modifier.weight(1f).fillMaxWidth().graphicsLayer {
+                Modifier.fillMaxSize().graphicsLayer {
                     alpha = resetAlpha.value
                     translationY = (1f - resetAlpha.value) * 8.dp.toPx()
-                }.verticalScroll(scroll).padding(horizontal = 20.dp),
+                }.verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, bottom = composerHeight),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 val linkColor = HarmonicTheme.colors.link
@@ -274,16 +265,13 @@ internal fun CommentDiscussionSurface(
                                     .background(HarmonicTheme.colors.overlayButton).padding(horizontal = 14.dp, vertical = 10.dp),
                                     color = HarmonicTheme.colors.overlayButtonContent,
                                     fontFamily = typography.family,
-                                    fontSize = typography.commentTextSize.sp)
-                                val accountUser = controller.accountUser
-                                if (settings.userAvatarsEnabled && !accountUser.isNullOrBlank()) {
-                                    Spacer(Modifier.width(8.dp))
-                                    UserAvatar(author = accountUser, options = settings.userAvatarOptions, modifier = Modifier.size(28.dp))
-                                }
+                                    fontSize = typography.commentTextSize.sp,
+                                    lineHeight = (typography.commentTextSize + 2f).sp)
                             }
                         }
-                        // Keep the renderer mounted from the first empty chunk through completion,
-                        // using the same glyph-fade implementation and typography as story summaries.
+                        // An empty answer must not reserve a text line or an extra item gap.
+                        // Once text arrives, retain the renderer through streaming and completion.
+                        if (turn.answer.isNotBlank()) {
                         SelectionContainer {
                             SummaryMarkdownText(
                                 markdown = turn.answer,
@@ -299,6 +287,7 @@ internal fun CommentDiscussionSurface(
                                 animationContentKey = comment.id to index,
                             )
                         }
+                        }
                     }
                 }
                 if (state.running && state.turns.lastOrNull()?.answer.isNullOrBlank()) {
@@ -310,48 +299,36 @@ internal fun CommentDiscussionSurface(
                     }
                 }
                 state.error?.let { error ->
-                    Column {
-                        Text(error, color = MaterialTheme.colorScheme.error)
-                        if (state.contextLimitReached) {
-                            TextButton(onClick = ::reset, enabled = !resetting) { Text("Reset discussion") }
-                        } else {
-                            TextButton(onClick = discussion::retry, enabled = !resetting) { Text("Retry") }
-                        }
-                    }
+                    val presentation = discussionErrorPresentation(error, state.contextLimitReached)
+                    CommentDiscussionErrorCard(
+                        presentation = presentation,
+                        enabled = !resetting,
+                        onAction = {
+                            when (presentation.action) {
+                                DiscussionErrorAction.OpenSettings -> {
+                                    keyboard?.hide()
+                                    dependencies.navigation.openSettings(SettingsSection.AiSummary.route)
+                                }
+                                DiscussionErrorAction.Reset -> reset()
+                                DiscussionErrorAction.Retry -> discussion.retry()
+                            }
+                        },
+                    )
                 }
                 Spacer(Modifier.height(4.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom) {
-                OutlinedTextField(
-                    value = draft, onValueChange = { draft = it }, enabled = !resetting,
-                    placeholder = { Text(if (state.turns.isEmpty()) "Ask a question…" else "Ask a follow-up…") },
-                    modifier = Modifier.weight(1f).onPreviewKeyEvent { event ->
-                        if ((event.key == Key.Enter || event.key == Key.NumPadEnter) && !event.isShiftPressed) {
-                            if (event.type == KeyEventType.KeyDown) send()
-                            true
-                        } else false
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { send() }),
-                    shape = RoundedCornerShape(24.dp), maxLines = 5,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = HarmonicTheme.colors.contentPrimary,
-                        unfocusedTextColor = HarmonicTheme.colors.contentPrimary,
-                    ),
-                )
-                IconButton(
-                    enabled = !resetting && (state.running || draft.isNotBlank()),
-                    onClick = { if (state.running) discussion.stop() else send() },
-                    modifier = Modifier.padding(bottom = 4.dp),
-                ) {
-                    if (state.running) {
-                        Icon(painterResource(Res.drawable.ic_stop), "Stop response",
-                            tint = HarmonicTheme.colors.link)
-                    } else {
-                        Icon(painterResource(Res.drawable.ic_send), "Send question",
-                            tint = HarmonicTheme.colors.link.copy(alpha = if (draft.isNotBlank()) 1f else 0.38f))
-                    }
-                }
+            CommentDiscussionComposer(
+                draft = draft,
+                onDraftChanged = { draft = it },
+                hasTurns = state.turns.isNotEmpty(),
+                running = state.running,
+                enabled = !resetting,
+                onSend = ::send,
+                onStop = discussion::stop,
+                modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged {
+                    composerHeight = with(density) { it.height.toDp() }
+                },
+            )
             }
         }
     }

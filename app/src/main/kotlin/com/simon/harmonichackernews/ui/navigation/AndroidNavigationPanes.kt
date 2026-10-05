@@ -189,7 +189,10 @@ internal fun CommentsPane(
                     StatusBarProtection(
                         color = statusBarColor,
                         statusBarHeight = statusBarHeight,
-                        modalScrimAlpha = modalScrimAlpha,
+                        // Ask lifts the entire overlay above this protection, so its scrim
+                        // already dims the bar. Tinting it as well would apply the dim twice.
+                        modalScrimAlpha = if (commentsController.commentDiscussionSurfaceVisible) 0f
+                            else modalScrimAlpha,
                     )
                 }
                 if (showFloatingUpButton) {
