@@ -12,6 +12,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.*
 
 /** A conversation owned by the open comment overlay; no article retrieval or AI tool calls. */
@@ -25,6 +27,8 @@ class CommentDiscussion(
     private val comment: PortableCommentItem,
     private val comments: List<PortableCommentItem>,
     private val mockAnswers: () -> Boolean = { false },
+    private val builtInModelSelected: () -> Boolean = { false },
+    private val contextDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     data class Turn(val question: String, val answer: String = "", val complete: Boolean = false)
     data class State(
@@ -34,22 +38,75 @@ class CommentDiscussion(
         val contextLimitReached: Boolean = false,
         val contextReady: Boolean = false,
         val parentCount: Int = 0,
+        val suggestedQuestions: List<String> = emptyList(),
+        val loadingSuggestions: Boolean = false,
     )
     private val mutableState = MutableStateFlow(State())
     val state = mutableState.asStateFlow()
     private var job: Job? = null
     private var context: JsonObject? = null
     private var generation = 0
+    private val contextMutex = Mutex()
+    private var suggestionJob: Job? = null
+    private var suggestionsAttempted = false
+    private var suggestionGeneration = 0
+
+    fun generateSuggestedQuestions() {
+        if (suggestionsAttempted || suggestionJob?.isActive == true || state.value.turns.isNotEmpty()) return
+        val requestGeneration = ++suggestionGeneration
+        suggestionJob = scope.launch {
+            try {
+                val mock = mockAnswers()
+                if (!mock && (settings.awaitSnapshot().mode != AiSummaryMode.LOCAL ||
+                        !builtInModelSelected() || localEngine == null)) return@launch
+                mutableState.update { it.copy(loadingSuggestions = true) }
+                val questions = withTimeoutOrNull(30_000) {
+                    if (mock) {
+                        delay(1_600)
+                        listOf("What would be a counterexample to this point?", "What evidence would help evaluate this claim?")
+                    } else {
+                        val input = sourceContext().toString()
+                        if (input.length > MAX_INPUT) return@withTimeoutOrNull emptyList()
+                        val response = checkNotNull(localEngine).summarize(SummaryRequest(
+                            text = input, prompt = CommentQuestionSuggestions.PROMPT,
+                            streamResponses = false, useGeminiNanoSummarizationLora = false, preserveInput = true,
+                        ))
+                        CommentQuestionSuggestions.parse(response.text, suggestedQuestions(comment))
+                    }
+                }.orEmpty()
+                if (suggestionGeneration == requestGeneration) {
+                    mutableState.update { it.copy(suggestedQuestions = questions) }
+                    suggestionsAttempted = true
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Suggestions are optional. A failed request must not block the conversation.
+                if (suggestionGeneration == requestGeneration) suggestionsAttempted = true
+            } finally {
+                if (suggestionGeneration == requestGeneration) mutableState.update { it.copy(loadingSuggestions = false) }
+            }
+        }
+    }
+
+    fun cancelSuggestedQuestions() {
+        suggestionGeneration++
+        suggestionJob?.cancel()
+        mutableState.update { it.copy(loadingSuggestions = false) }
+    }
 
     fun ask(question: String) {
         val trimmed = question.trim()
         if (trimmed.isEmpty() || state.value.running) return
+        val pendingSuggestions = suggestionJob
+        cancelSuggestedQuestions()
         val requestGeneration = ++generation
         mutableState.value = state.value.copy(
             turns = state.value.turns + Turn(trimmed), running = true, error = null, contextLimitReached = false,
         )
         job = scope.launch {
             try {
+                pendingSuggestions?.join()
                 if (mockAnswers()) {
                     MockAiResponses.discussion(trimmed).collect { event ->
                         when (event) {
@@ -62,8 +119,8 @@ class CommentDiscussion(
                 }
                 val config = settings.awaitSnapshot()
                 val turns = state.value.turns
-                val input = withContext(Dispatchers.Default) {
-                    val source = context ?: loadContext().also { context = it }
+                val input = withContext(contextDispatcher) {
+                    val source = sourceContext()
                     buildJsonObject {
                         put("source_context", source)
                         put("conversation", buildJsonArray {
@@ -132,7 +189,9 @@ class CommentDiscussion(
         generation++
         job?.cancel()
         job = null
-        mutableState.value = State(contextReady = context != null, parentCount = state.value.parentCount)
+        cancelSuggestedQuestions()
+        mutableState.value = State(contextReady = context != null, parentCount = state.value.parentCount,
+            suggestedQuestions = state.value.suggestedQuestions)
         // The source context is immutable for this comment; resetting only clears conversation history.
     }
 
@@ -162,6 +221,10 @@ class CommentDiscussion(
         if (complete && text.isBlank()) error("The model returned an empty answer. Please retry.")
         mutableState.value = state.value.copy(turns = state.value.turns.dropLast(1) +
             state.value.turns.last().copy(answer = text, complete = complete))
+    }
+
+    private suspend fun sourceContext(): JsonObject = contextMutex.withLock {
+        context ?: withContext(contextDispatcher) { loadContext() }.also { context = it }
     }
 
     private suspend fun loadContext(): JsonObject {

@@ -74,6 +74,7 @@ internal fun CommentDiscussionSurface(
             dependencies.network.summaryUseCase, dependencies.aiSummarySettings,
             dependencies.localSummaryEngine, controller.story, comment, controller.comments.toList(),
             mockAnswers = { dependencies.userSettings.debug.mockAiAnswers },
+            builtInModelSelected = { dependencies.localModels?.selectedModel?.downloadable == false },
         )
     }
     val state by discussion.state.collectAsState()
@@ -97,12 +98,16 @@ internal fun CommentDiscussionSurface(
     }
     LaunchedEffect(scroll) {
         snapshotFlow { scroll.maxValue }.distinctUntilChanged().collect { end ->
-            if (followOutput && !scroll.isScrollInProgress) scroll.scrollTo(end)
+            if (discussion.state.value.turns.isNotEmpty() && followOutput && !scroll.isScrollInProgress) scroll.scrollTo(end)
         }
     }
     LaunchedEffect(state.turns.size) { followOutput = true }
     LaunchedEffect(controller.commentDiscussionOpen) {
         if (!controller.commentDiscussionOpen) keyboard?.hide()
+    }
+    LaunchedEffect(controller.commentDiscussionOpen, state.turns.isEmpty()) {
+        if (controller.commentDiscussionOpen && state.turns.isEmpty()) discussion.generateSuggestedQuestions()
+        else discussion.cancelSuggestedQuestions()
     }
     fun reset() {
         if (resetting) return
@@ -197,43 +202,54 @@ internal fun CommentDiscussionSurface(
                     visible = state.turns.isEmpty(),
                     exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = CommentDiscussionEasing)),
                 ) {
+                    var fixedQuestionsRevealed by remember { mutableStateOf(false) }
+                    val show = progress >= 0.65f && controller.commentDiscussionOpen
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("What would you like to understand?",
                             modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                             color = HarmonicTheme.colors.contentPrimary,
                             style = MaterialTheme.typography.titleMedium)
                         questions.forEachIndexed { index, question ->
-                            val entrance = remember(question) { Animatable(0f) }
-                            val show = progress >= 0.65f && controller.commentDiscussionOpen
-                            LaunchedEffect(show) {
-                                if (show) {
-                                    delay(index * 65L)
-                                    entrance.animateTo(1f, tween(280, easing = CommentDiscussionEasing))
-                                }
-                            }
-                            val offset = with(LocalDensity.current) { 12.dp.toPx() }
-                            OutlinedButton(
+                            DiscussionQuestionButton(
+                                question = question,
+                                show = show,
+                                index = index,
+                                enabled = !resetting,
+                                fontFamily = typography.family,
                                 onClick = { discussion.ask(question) },
-                                enabled = entrance.value > 0.9f && !resetting,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).graphicsLayer {
-                                    alpha = entrance.value
-                                    translationY = offset * (1f - entrance.value)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                            ) {
-                                val questionIcon = when {
-                                    question == "Explain this comment" -> Res.drawable.ic_auto_awesome
-                                    "example" in question -> Res.drawable.ic_preview
-                                    "Summarize" in question -> Res.drawable.ic_subject
-                                    "technical" in question -> Res.drawable.ic_code_blocks
-                                    "parent" in question -> Res.drawable.ic_forum
-                                    else -> Res.drawable.ic_live_help
+                                onRevealed = { if (index == questions.lastIndex) fixedQuestionsRevealed = true },
+                            )
+                        }
+                        // The completion callback uses the animation clock, including system motion
+                        // scaling, so even an immediate model response waits for the fixed questions.
+                        AnimatedVisibility(
+                            visible = fixedQuestionsRevealed &&
+                                (state.loadingSuggestions || state.suggestedQuestions.isNotEmpty()),
+                            enter = fadeIn(tween(220)) + expandVertically(tween(300, easing = CommentDiscussionEasing)),
+                            exit = fadeOut(tween(150)) + shrinkVertically(tween(220)),
+                        ) {
+                            Column(Modifier.animateContentSize(tween(300, easing = CommentDiscussionEasing)),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (state.suggestedQuestions.isEmpty()) {
+                                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.Center) {
+                                        HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
+                                    }
+                                } else {
+                                    state.suggestedQuestions.forEachIndexed { index, question ->
+                                        key(question) {
+                                            DiscussionQuestionButton(
+                                                question = question,
+                                                show = show,
+                                                index = index,
+                                                enabled = !resetting,
+                                                fontFamily = typography.family,
+                                                generated = true,
+                                                onClick = { discussion.ask(question) },
+                                            )
+                                        }
+                                    }
                                 }
-                                Icon(painterResource(questionIcon), null, Modifier.size(20.dp))
-                                Spacer(Modifier.width(12.dp))
-                                Text(question, Modifier.weight(1f), fontFamily = typography.family,
-                                    fontSize = 14.sp, lineHeight = 19.sp)
                             }
                         }
                     }
@@ -338,5 +354,54 @@ internal fun CommentDiscussionSurface(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun DiscussionQuestionButton(
+    question: String,
+    show: Boolean,
+    index: Int,
+    enabled: Boolean,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    onClick: () -> Unit,
+    generated: Boolean = false,
+    onRevealed: () -> Unit = {},
+) {
+    val entrance = remember(question) { Animatable(0f) }
+    val currentOnRevealed by rememberUpdatedState(onRevealed)
+    LaunchedEffect(show) {
+        if (show) {
+            if (entrance.value < 1f) {
+                delay(index * 160L)
+                entrance.animateTo(1f, tween(420, easing = CommentDiscussionEasing))
+            }
+            currentOnRevealed()
+        }
+    }
+    val offset = with(LocalDensity.current) { 12.dp.toPx() }
+    OutlinedButton(
+        onClick = onClick,
+        enabled = entrance.value > 0.9f && enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).graphicsLayer {
+            alpha = entrance.value
+            translationY = offset * (1f - entrance.value)
+        },
+        shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        val questionIcon = when {
+            generated || question == "Explain this comment" -> Res.drawable.ic_auto_awesome
+            "example" in question -> Res.drawable.ic_preview
+            "Summarize" in question -> Res.drawable.ic_subject
+            "technical" in question -> Res.drawable.ic_code_blocks
+            "parent" in question -> Res.drawable.ic_forum
+            else -> Res.drawable.ic_live_help
+        }
+        Icon(painterResource(questionIcon), null, Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(question, Modifier.weight(1f), fontFamily = fontFamily,
+            fontSize = 14.sp, lineHeight = 19.sp)
     }
 }
