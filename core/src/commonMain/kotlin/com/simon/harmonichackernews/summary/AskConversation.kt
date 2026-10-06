@@ -36,6 +36,7 @@ class AskConversation(
         val contextLimitReached: Boolean = false,
         val inputTooLarge: Boolean = false,
         val omittedTurns: Int = 0,
+        val articleIncluded: Boolean? = null,
         val contextReady: Boolean = false,
         val parentCount: Int = 0,
         val suggestedQuestions: List<String> = emptyList(),
@@ -51,6 +52,7 @@ class AskConversation(
     private var suggestionsAttempted = false
     private var suggestionGeneration = 0
     private var firstIncludedTurn = 0
+    private var includeArticle = (source as? AskSource.Post)?.articleText?.isNotBlank() == true
 
     fun generateSuggestedQuestions() {
         if (suggestionsAttempted || suggestionJob?.isActive == true || state.value.turns.isNotEmpty()) return
@@ -121,11 +123,12 @@ class AskConversation(
                 }
                 val config = settings.awaitSnapshot()
                 val allTurns = state.value.turns
+                val reserveDiscussionSpace = allTurns.none { it.complete }
                 while (true) {
                     val turns = allTurns.drop(firstIncludedTurn)
                     try {
                         val input = withContext(contextDispatcher) {
-                            val source = sourceContext()
+                            val source = answerContext()
                             buildJsonObject {
                                 put("source_context", source)
                                 put("conversation", buildJsonArray {
@@ -143,12 +146,23 @@ class AskConversation(
                             }.toString()
                         }
                         if (input.length > MAX_INPUT) throw DiscussionContextLimitException()
+                        // Without a tokenizer/capacity contract, admit only small initial requests.
+                        // Nano additionally enforces half its actual input budget, including instructions.
+                        if (includeArticle && reserveDiscussionSpace &&
+                            (config.mode != AiSummaryMode.LOCAL || !builtInModelSelected()) &&
+                            input.length + prompt.length > MAX_INITIAL_ARTICLE_CHARACTERS) {
+                            throw DiscussionContextLimitException()
+                        }
+                        if (source is AskSource.Post) {
+                            mutableState.update { it.copy(articleIncluded = includeArticle) }
+                        }
                         if (config.mode == AiSummaryMode.LOCAL) {
                             val engine = localEngine ?: error("No local AI model is available. Configure AI in Settings.")
                             engine.summarizeEvents(SummaryRequest(
                                 text = input, prompt = prompt, streamResponses = config.streamResponses,
                                 useGeminiNanoSummarizationLora = false,
                                 preserveInput = true,
+                                reserveDiscussionSpace = includeArticle && reserveDiscussionSpace,
                             )).collect { event ->
                                 when (event) {
                                     is StorySummaryEvent.Progress -> answer(event.text, generation = requestGeneration)
@@ -175,9 +189,17 @@ class AskConversation(
                     } catch (error: Exception) {
                         if (error is CancellationException) throw error
                         val oversized = error is DiscussionContextLimitException || isContextLimitError(error.message)
+                        if (!oversized || state.value.turns.last().answer.isNotEmpty()) throw error
+                        // Prefer the summary over losing conversation history. Nano preflights the
+                        // complete request with its tokenizer; other providers report their limits.
+                        if (includeArticle) {
+                            includeArticle = false
+                            mutableState.update { it.copy(articleIncluded = false) }
+                            continue
+                        }
                         // Only discard complete turns, and never retry after any answer has streamed.
                         val oldest = (firstIncludedTurn until allTurns.lastIndex).firstOrNull { allTurns[it].complete }
-                        if (!oversized || oldest == null || state.value.turns.last().answer.isNotEmpty()) throw error
+                        if (oldest == null) throw error
                         firstIncludedTurn = oldest + 1
                         mutableState.update { it.copy(omittedTurns = allTurns.take(firstIncludedTurn).count { it.complete }) }
                     }
@@ -207,6 +229,7 @@ class AskConversation(
         job?.cancel()
         job = null
         firstIncludedTurn = 0
+        includeArticle = (source as? AskSource.Post)?.articleText?.isNotBlank() == true
         cancelSuggestedQuestions()
         mutableState.value = State(contextReady = context != null, parentCount = state.value.parentCount,
             suggestedQuestions = state.value.suggestedQuestions)
@@ -243,6 +266,15 @@ class AskConversation(
 
     private suspend fun sourceContext(): JsonObject = contextMutex.withLock {
         context ?: withContext(contextDispatcher) { loadContext() }.also { context = it }
+    }
+
+    private suspend fun answerContext(): JsonObject {
+        val summaryContext = sourceContext()
+        if (!includeArticle || source !is AskSource.Post) return summaryContext
+        return JsonObject(summaryContext + mapOf(
+            "article_text" to JsonPrimitive(source.articleText),
+            "original_article_included" to JsonPrimitive(true),
+        ))
     }
 
     private suspend fun loadContext(): JsonObject {
@@ -329,6 +361,7 @@ class AskConversation(
             )
         }
         private const val MAX_INPUT = 60_000
+        private const val MAX_INITIAL_ARTICLE_CHARACTERS = 3_000
         internal fun isContextLimitError(message: String?): Boolean {
             val text = message.orEmpty().lowercase()
             return listOf("context_length_exceeded", "context window", "context size", "context length",
@@ -354,9 +387,10 @@ class AskConversation(
             "parents_oldest_first: compare their points when asked, keeping authors distinct. " +
             "The linked article is not included."
         private const val POST_PROMPT = RESPONSE_STYLE +
-            "Your only post context is post_title and displayed_summary, an AI summary that may be " +
-            "incomplete or mistaken. You have not read the article or HN discussion. " +
-            "Explain concepts, but do not invent article details missing from the summary."
+            "Use article_text when supplied; prefer it over displayed_summary if they disagree. " +
+            "Otherwise you only have post_title and displayed_summary, an AI summary that may be " +
+            "incomplete or mistaken. Do not invent details absent from the supplied context. " +
+            "The HN discussion is not included."
     }
 }
 

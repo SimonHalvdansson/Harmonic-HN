@@ -53,8 +53,9 @@ class PostAskTest {
     }
 
     @Test
-    fun postFollowUpsUseOnlyTheVisibleSummaryAndHistoryWithoutRetrieval() = runTest {
+    fun postFollowUpsUseAvailableArticleSummaryAndHistoryWithoutRetrieval() = runTest {
         for (mode in listOf(AiSummaryMode.CLOUD, AiSummaryMode.LOCAL)) {
+          for (article in listOf(null, "", "The original article supplies additional evidence.")) {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
             settings.setMode(mode)
@@ -70,6 +71,7 @@ class PostAskTest {
             val source = AskSource.Post(
                 StoryListItemSnapshot(StorySnapshot(42, title = "A post", url = "https://example.com"), StoryPresentationSnapshot()),
                 summary = "The visible AI summary.",
+                articleText = article,
             )
             val conversation = AskConversation(this, noNetwork, SummaryUseCase(repo), settings, engine,
                 source, contextDispatcher = dispatcher)
@@ -80,7 +82,9 @@ class PostAskTest {
             val input = if (mode == AiSummaryMode.CLOUD) repo.requests.last() else localRequests.last().text
             val json = Json.parseToJsonElement(input).jsonObject
             assertNull(json["source_context"]!!.jsonObject["summary_source"])
-            assertEquals(false, json["source_context"]!!.jsonObject["original_article_included"]!!.jsonPrimitive.boolean)
+            assertEquals(!article.isNullOrBlank(), json["source_context"]!!.jsonObject["original_article_included"]!!.jsonPrimitive.boolean)
+            assertEquals(article?.takeIf { it.isNotBlank() }, json["source_context"]!!.jsonObject["article_text"]?.jsonPrimitive?.content)
+            assertEquals(!article.isNullOrBlank(), conversation.state.value.articleIncluded)
             assertEquals(source.summary, json["source_context"]!!.jsonObject["displayed_summary"]!!.jsonPrimitive.content)
             assertEquals(3, json["conversation"]!!.jsonArray.size)
             assertEquals(0, repo.extractions, "Ask must never retrieve a different version of the article")
@@ -96,7 +100,104 @@ class PostAskTest {
             assertEquals(1, resetJson["conversation"]!!.jsonArray.size)
             assertEquals(json["source_context"], resetJson["source_context"])
             if (mode == AiSummaryMode.LOCAL) assertTrue(localRequests.all { it.preserveInput && !it.useGeminiNanoSummarizationLora })
+          }
         }
+    }
+
+    @Test
+    fun articleNearTheLimitFallsBackBeforeAnsweringAndResetRechecksIt() = runTest {
+        for (mode in listOf(AiSummaryMode.LOCAL, AiSummaryMode.CLOUD)) {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+            settings.setMode(mode)
+            val repo = Repository(rejectArticle = true)
+            val requests = mutableListOf<SummaryRequest>()
+            val engine = object : LocalSummaryEngine {
+                override suspend fun isAvailable() = true
+                override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                    requests += request
+                    if (request.text.contains("article_text")) {
+                        assertTrue(request.reserveDiscussionSpace)
+                        error("Input token count exceeds the model's context limit")
+                    }
+                    assertFalse(request.reserveDiscussionSpace)
+                    return SummaryResult("answer")
+                }
+            }
+            val source = AskSource.Post(
+                StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary", "Article",
+            )
+            val conversation = AskConversation(this, noNetwork, SummaryUseCase(repo), settings, engine,
+                source, builtInModelSelected = { true }, contextDispatcher = dispatcher)
+            conversation.ask("first")
+            advanceUntilIdle()
+            assertFalse(assertNotNull(conversation.state.value.articleIncluded))
+            assertNull(conversation.state.value.error)
+            conversation.ask("second")
+            advanceUntilIdle()
+            val inputs = if (mode == AiSummaryMode.LOCAL) requests.map { it.text } else repo.requests
+            assertEquals(3, inputs.size, "Article is retried once, then omitted from follow-ups")
+            assertEquals(3, Json.parseToJsonElement(inputs.last()).jsonObject["conversation"]!!.jsonArray.size)
+            assertEquals(0, conversation.state.value.omittedTurns)
+            conversation.reset()
+            assertNull(conversation.state.value.articleIncluded)
+            conversation.ask("fresh")
+            advanceUntilIdle()
+            assertEquals(5, if (mode == AiSummaryMode.LOCAL) requests.size else repo.requests.size)
+        }
+    }
+
+    @Test
+    fun providersWithoutTokenCountingOnlyReceiveSmallArticleContexts() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        val repo = Repository()
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary", "x".repeat(3_000),
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(repo), settings, null,
+            source, contextDispatcher = dispatcher)
+        conversation.ask("Explain")
+        advanceUntilIdle()
+        assertFalse(repo.requests.single().contains("article_text"))
+        assertEquals(false, conversation.state.value.articleIncluded)
+        assertTrue(conversation.state.value.turns.single().complete)
+    }
+
+    @Test
+    fun laterContextPressureDropsArticleBeforeConversationHistory() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        val requests = mutableListOf<SummaryRequest>()
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                requests += request
+                val json = Json.parseToJsonElement(request.text).jsonObject
+                if (json["conversation"]!!.jsonArray.size > 1 && request.text.contains("article_text")) {
+                    assertFalse(request.reserveDiscussionSpace, "Follow-ups can use the reserved space")
+                    error("context window exceeded")
+                }
+                return SummaryResult("answer")
+            }
+        }
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary", "Article",
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine,
+            source, contextDispatcher = dispatcher)
+        conversation.ask("first")
+        advanceUntilIdle()
+        assertEquals(true, conversation.state.value.articleIncluded)
+        assertTrue(requests.first().reserveDiscussionSpace)
+        conversation.ask("second")
+        advanceUntilIdle()
+        assertEquals(3, requests.size)
+        assertEquals(false, conversation.state.value.articleIncluded)
+        assertEquals(0, conversation.state.value.omittedTurns)
+        assertEquals(3, Json.parseToJsonElement(requests.last().text).jsonObject["conversation"]!!.jsonArray.size)
     }
 
     @Test
@@ -202,7 +303,7 @@ class PostAskTest {
         assertFalse(conversation.state.value.inputTooLarge)
     }
 
-    private class Repository : CloudSummaryRepository {
+    private class Repository(val rejectArticle: Boolean = false) : CloudSummaryRepository {
         val article = "  Extracted article with details and evidence beyond its summary  "
         var extractions = 0
         val requests = mutableListOf<String>()
@@ -212,6 +313,7 @@ class PostAskTest {
         override fun summarize(config: CloudSummaryConfig, text: String?) = flow {
             requests += text.orEmpty()
             configs += config
+            if (rejectArticle && text.orEmpty().contains("article_text")) error("context window exceeded")
             emit(CloudSummaryEvent.Success("An answer"))
         }
     }

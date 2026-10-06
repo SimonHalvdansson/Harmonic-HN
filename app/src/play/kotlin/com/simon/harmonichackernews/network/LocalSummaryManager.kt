@@ -224,6 +224,7 @@ internal class AndroidLocalSummaryBackend(
                     summarizeWithGeminiNanoPrompt(
                         content = content,
                         preserveInput = request.preserveInput,
+                        reserveDiscussionSpace = request.reserveDiscussionSpace,
                         systemPrompt = request.prompt
                             ?.takeIf(String::isNotBlank)
                             ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
@@ -325,6 +326,7 @@ internal class AndroidLocalSummaryBackend(
     private suspend fun summarizeWithGeminiNanoPrompt(
         content: String,
         preserveInput: Boolean,
+        reserveDiscussionSpace: Boolean,
         systemPrompt: String,
         streamResponses: Boolean,
         onProgress: (String) -> Unit,
@@ -354,7 +356,7 @@ internal class AndroidLocalSummaryBackend(
                 enableThinking = thinkingAvailable
                 maxOutputTokens = outputTokens
             }
-            val budget = NanoPromptBudget.fit(content, generativeModel.getTokenLimit(), preserveInput) {
+            val budget = NanoPromptBudget.fit(content, generativeModel.getTokenLimit(), preserveInput, reserveDiscussionSpace) {
                 generativeModel.countTokens(request(it)).totalTokens
             }
             val promptRequest = request(budget.text, budget.outputTokens)

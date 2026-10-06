@@ -137,7 +137,7 @@ fun StoryAiSummary(
                         enabled = canAsk,
                         contentPadding = PaddingValues(horizontal = 12.dp), onClick = {
                         onAsk(PostAskState(
-                            subject = AskSource.Post(story, summary),
+                            subject = AskSource.Post(story, summary, story.aiSummarySourceText),
                             source = sourceLayer,
                             bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
                             color = containerColor,

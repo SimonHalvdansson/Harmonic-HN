@@ -238,7 +238,16 @@ internal fun AskSurface(
                     }
                 }
                 if (post != null) {
-                    Text("Answers use the AI summary above, not the full article. The summary may miss details or contain mistakes.",
+                    val contextNotice = when (state.articleIncluded) {
+                        true -> "Answers use the article text and AI summary."
+                        false -> "Answers use only the AI summary. The article is unavailable or too long for this conversation."
+                        null -> if (post.articleText.isNullOrBlank()) {
+                            "Answers use only the AI summary; the article text is unavailable."
+                        } else {
+                            "Answers include the article text when it fits; otherwise they use only the AI summary."
+                        }
+                    }
+                    Text(contextNotice,
                         color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.7f),
                         fontSize = 13.sp, lineHeight = 18.sp)
                 }

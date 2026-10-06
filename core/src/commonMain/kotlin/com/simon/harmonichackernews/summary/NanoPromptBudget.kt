@@ -8,10 +8,12 @@ object NanoPromptBudget {
         text: String,
         totalTokenLimit: Int,
         preserveInput: Boolean,
+        reserveDiscussionSpace: Boolean = false,
         countRequestTokens: suspend (String) -> Int,
     ): Input {
         // Prompt API accepts fewer than 4000 input tokens. Leave room for an answer/thinking.
-        val inputLimit = minOf(3999, totalTokenLimit - 1024)
+        val usableInputLimit = minOf(3999, totalTokenLimit - 1024)
+        val inputLimit = if (reserveDiscussionSpace) usableInputLimit / 2 else usableInputLimit
         var candidate = text
         while (true) {
             val tokens = countRequestTokens(candidate)

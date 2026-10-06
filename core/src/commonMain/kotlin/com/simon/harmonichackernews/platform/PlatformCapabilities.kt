@@ -108,6 +108,8 @@ data class SummaryRequest(
     val useGeminiNanoSummarizationLora: Boolean = false,
     // Conversations must reach the model intact; article-only length/truncation rules do not apply.
     val preserveInput: Boolean = false,
+    // Token-aware engines reserve half the usable input budget for later discussion turns.
+    val reserveDiscussionSpace: Boolean = false,
 )
 
 data class SummaryResult(
