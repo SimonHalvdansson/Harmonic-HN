@@ -842,7 +842,7 @@ private fun SubmitButton(
                     Icon(
                         painter = painterResource(Res.drawable.ic_send),
                         contentDescription = "Submit",
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(if (compact) 24.dp else 30.dp),
                         tint = content,
                     )
                 }
