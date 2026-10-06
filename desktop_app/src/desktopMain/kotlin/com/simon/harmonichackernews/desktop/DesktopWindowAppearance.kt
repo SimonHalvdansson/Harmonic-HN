@@ -45,7 +45,7 @@ internal data object DesktopWindowAppearance {
         decorations.setCustomTitleBar(window, titleBar)
         titleBars[window] = titleBar
         // Compose's AWT canvas has mouse listeners, so JBR needs an explicit native hit test
-        // on each event. This bar contains only branding; all of it remains draggable.
+        // on each event on both macOS and Windows. The reserved strip remains draggable.
         // JBR restricts the override to the title bar, preserving content input and resizing.
         val mouseListener = AWTEventListener { event ->
             if (event is MouseEvent && event.id != MouseEvent.MOUSE_EXITED &&
@@ -57,14 +57,12 @@ internal data object DesktopWindowAppearance {
                 }
             }
         }
-        if (isWindows) {
-            Toolkit.getDefaultToolkit().addAWTEventListener(
-                mouseListener,
-                AWTEvent.MOUSE_EVENT_MASK or AWTEvent.MOUSE_MOTION_EVENT_MASK,
-            )
-        }
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+            mouseListener,
+            AWTEvent.MOUSE_EVENT_MASK or AWTEvent.MOUSE_MOTION_EVENT_MASK,
+        )
         return {
-            if (isWindows) Toolkit.getDefaultToolkit().removeAWTEventListener(mouseListener)
+            Toolkit.getDefaultToolkit().removeAWTEventListener(mouseListener)
             titleBars.remove(window)
             decorations.setCustomTitleBar(window, null)
         }
