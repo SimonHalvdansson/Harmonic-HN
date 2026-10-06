@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 /** Preference keys consumed by common settings snapshots. */
 object UserPreferenceKeys {
+    const val STORY_LOAD_FAILURE_PERCENT = "debug_story_load_failure_percent"
     const val SPLIT_RATIO_PORTRAIT = "pref_split_ratio_portrait"
     const val SPLIT_RATIO_LANDSCAPE = "pref_split_ratio_landscape"
     const val ALLOW_SPLIT_ADJUSTMENT = "pref_allow_split_adjustment"
@@ -358,6 +359,7 @@ class StoredUserSettings(
             alwaysShowTapToRefresh = boolean(UserPreferenceKeys.ALWAYS_SHOW_TAP_TO_REFRESH, false),
             showWidgetDebugInfo = boolean(DebugBooleanPreference.SHOW_WIDGET_DEBUG_INFO.storageKey, false),
             mockAiAnswers = boolean(DebugBooleanPreference.MOCK_AI_ANSWERS.storageKey, false),
+            storyLoadFailurePercent = integer(UserPreferenceKeys.STORY_LOAD_FAILURE_PERCENT, 0).coerceIn(0, 100),
             glass = GlassPreferences(
                 parameters = GlassParameter.entries.filter { store.contains(it.storageKey) }
                     .associateWith { it.sanitize(store.getFloat(it.storageKey, it.default)) },

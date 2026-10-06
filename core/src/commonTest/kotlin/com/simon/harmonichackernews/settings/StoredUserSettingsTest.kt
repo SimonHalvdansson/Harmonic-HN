@@ -9,6 +9,17 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun storyLoadFailureRateDefaultsOffAndPersistsWithinBounds() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, emptyFlow())
+        assertEquals(0, repository.snapshot().debug.storyLoadFailurePercent)
+        for ((value, expected) in listOf(35 to 35, 120 to 100, -1 to 0)) {
+            repository.setStoryLoadFailurePercent(value)
+            assertEquals(expected, AppSettingsRepository(store, emptyFlow()).snapshot().debug.storyLoadFailurePercent)
+        }
+    }
+
+    @Test
     fun newCommentMarkersDefaultOnAndSurviveReopening() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, emptyFlow())

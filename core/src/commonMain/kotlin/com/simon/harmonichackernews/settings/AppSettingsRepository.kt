@@ -218,6 +218,8 @@ class AppSettingsRepository(
     fun setDebugBoolean(preference: DebugBooleanPreference, value: Boolean) =
         mutator.setDebugBoolean(preference, value)
 
+    fun setStoryLoadFailurePercent(value: Int) = mutator.setStoryLoadFailurePercent(value)
+
     fun setSurfaceEffectMode(value: SurfaceEffectMode) = mutator.setSurfaceEffectMode(value)
     fun setGlassParameter(parameter: GlassParameter, value: Float) = mutator.setGlassParameter(parameter, value)
     fun setGlassSwitch(option: GlassSwitch, value: Boolean) = mutator.setGlassSwitch(option, value)

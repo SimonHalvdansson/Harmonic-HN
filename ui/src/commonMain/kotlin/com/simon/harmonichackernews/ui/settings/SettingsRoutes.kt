@@ -240,6 +240,8 @@ fun DebugSettingsRoute(
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,
         showWidgetDebugInfo = settings.debug.showWidgetDebugInfo,
         mockAiAnswers = settings.debug.mockAiAnswers,
+        storyLoadFailurePercent = settings.debug.storyLoadFailurePercent,
+        onStoryLoadFailurePercentChanged = repository::setStoryLoadFailurePercent,
         onMockAiAnswersChanged = {
             repository.setDebugBoolean(DebugBooleanPreference.MOCK_AI_ANSWERS, it)
         },

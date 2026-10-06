@@ -36,6 +36,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlin.time.TimeMark
+import kotlin.math.roundToInt
 import kotlin.time.TimeSource
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -116,6 +117,8 @@ fun DebugSettingsScreen(
     onEasterEggRequested: () -> Unit,
     mockAiAnswers: Boolean = false,
     onMockAiAnswersChanged: (Boolean) -> Unit = {},
+    storyLoadFailurePercent: Int = 0,
+    onStoryLoadFailurePercentChanged: (Int) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -136,6 +139,15 @@ fun DebugSettingsScreen(
     ) {
         item {
             SettingsCategory("Debug tools") {
+                SliderSetting(
+                    title = "Fail story loads",
+                    valueLabel = "$storyLoadFailurePercent%",
+                    value = storyLoadFailurePercent.toFloat(),
+                    valueRange = 0f..100f,
+                    steps = 19,
+                    onValueChange = { onStoryLoadFailurePercentChanged(it.roundToInt()) },
+                )
+                SettingsDivider()
                 SwitchSettingRow(
                     title = "Always show tap to refresh",
                     icon = Res.drawable.ic_refresh,

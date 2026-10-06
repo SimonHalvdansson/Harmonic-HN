@@ -74,6 +74,7 @@ class StoryRequests(
     readStoryIds: () -> List<Int>,
     isStoryRead: (Int) -> Boolean,
     shouldHideReadStories: () -> Boolean,
+    storyLoadFailurePercent: () -> Int = { 0 },
 ) {
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
     val searchStore = StorySearchStore(
@@ -109,6 +110,9 @@ class StoryRequests(
         scope = scope,
         hackerNewsApi = hackerNewsApi,
         staleLoadMillis = STORY_ROW_STALE_MILLIS,
+        shouldSimulateFailure = {
+            kotlin.random.Random.nextInt(100) < storyLoadFailurePercent().coerceIn(0, 100)
+        },
         nowMillis = { kotlin.time.Clock.System.now().toEpochMilliseconds() },
     )
 

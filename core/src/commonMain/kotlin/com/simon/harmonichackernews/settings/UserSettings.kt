@@ -174,6 +174,7 @@ data class DebugPreferences(
     val glass: GlassPreferences = GlassPreferences(),
     val showWidgetDebugInfo: Boolean = false,
     val mockAiAnswers: Boolean = false,
+    val storyLoadFailurePercent: Int = 0,
 )
 
 data class AppSettings(

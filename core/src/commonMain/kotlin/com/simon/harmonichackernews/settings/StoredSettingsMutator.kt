@@ -263,6 +263,10 @@ class StoredSettingsMutator(
         store.putBoolean(preference.storageKey, value)
     }
 
+    fun setStoryLoadFailurePercent(value: Int) {
+        store.putInt(UserPreferenceKeys.STORY_LOAD_FAILURE_PERCENT, value.coerceIn(0, 100))
+    }
+
     fun setSurfaceEffectMode(value: SurfaceEffectMode) {
         store.putString(SurfaceEffectMode.STORAGE_KEY, value.storedValue)
     }

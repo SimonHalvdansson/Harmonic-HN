@@ -24,6 +24,44 @@ import kotlin.test.assertFalse
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRowLoadOrchestratorTest {
     @Test
+    fun simulatedFailureCoversAutomaticRetriesAndManualRetryResamples() = runTest {
+        val api = RetryingApi()
+        var fail = true
+        var samples = 0
+        val orchestrator = StoryRowLoadOrchestrator(
+            scope = backgroundScope,
+            hackerNewsApi = api,
+            staleLoadMillis = 30_000,
+            shouldSimulateFailure = { samples++; fail },
+            nowMillis = { testScheduler.currentTime },
+        )
+        val story = Story("Loading", 42, false, false)
+        orchestrator.load(story, false)
+        runCurrent()
+        assertTrue(story.loadingFailed)
+        assertFalse(story.loaded)
+        assertFalse(orchestrator.isInProgress(42))
+        assertEquals(0, api.attempts)
+        assertEquals(1, samples)
+
+        fail = false
+        story.loadingFailed = false
+        orchestrator.load(story, false)
+        runCurrent()
+        assertTrue(story.loaded)
+        assertFalse(story.loadingFailed)
+        assertEquals(2, samples)
+
+        fail = true
+        orchestrator.invalidateLoadedStories(listOf(42))
+        orchestrator.load(story, false)
+        runCurrent()
+        assertTrue(story.loaded)
+        assertFalse(story.loadingFailed)
+        assertEquals(2, samples)
+    }
+
+    @Test
     fun cachedContentArrivingDuringRetriesRemainsUsableWhenHttpFails() = runTest {
         val reply = kotlinx.coroutines.CompletableDeferred<Unit>()
         val api = object : HackerNewsApi {

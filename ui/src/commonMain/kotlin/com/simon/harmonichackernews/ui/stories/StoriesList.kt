@@ -268,7 +268,17 @@ internal fun StoriesList(
                                 },
                                 modifier = itemHeightModifier,
                             )
-                        } else if (!story.loaded && !story.loadingFailed) {
+                        } else if (!story.loaded && story.loadingFailed) {
+                            StoryLoadFailureItem(
+                                onRetry = {
+                                    dismissSearchKeyboard()
+                                    controller.listener.onLinkClick(story)
+                                },
+                                modifier = Modifier.onSizeChanged { size ->
+                                    controller.updateStoryItemHeight(story.id, size.height)
+                                },
+                            )
+                        } else if (!story.loaded) {
                             val itemHeightModifier = Modifier.onSizeChanged { size ->
                                 controller.updateStoryItemHeight(story.id, size.height)
                             }

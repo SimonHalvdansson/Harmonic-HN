@@ -41,6 +41,7 @@ class StoryRowLoadOrchestrator(
     private val scope: CoroutineScope,
     private val hackerNewsApi: HackerNewsApi,
     staleLoadMillis: Long,
+    private val shouldSimulateFailure: () -> Boolean = { false },
     private val nowMillis: () -> Long,
 ) {
     private val session = StoryFeedLoadSession(staleLoadMillis)
@@ -92,9 +93,13 @@ class StoryRowLoadOrchestrator(
         ) return
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
+                // Sample once per row load, so automatic retries don't dilute the chosen rate.
+                // A manual retry starts a new load and samples again. Retain loaded content.
+                val simulateFailure = !story.loaded && shouldSimulateFailure()
                 for (attempt in 0 until MAX_ATTEMPTS) {
                     val startedAt = session.markStoryStarted(story.id, nowMillis())
                     try {
+                        check(!simulateFailure) { "Simulated story load failure" }
                         val item = hackerNewsApi.getItem(story.id)
                         if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
                         session.clearStory(story.id, startedAt)
