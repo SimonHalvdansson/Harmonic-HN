@@ -34,6 +34,10 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 import org.jetbrains.compose.resources.DrawableResource
 
+// StoriesRoot fades search out over the first half of the transition. Keep 25% visible
+// while held; the release animation can still settle all the way to 1f.
+private const val SearchBackGestureMaxProgress = 0.5f * 0.75f
+
 class StoriesScreenController private constructor(
     defaultStoryHeightPx: Int,
     private val savedItemState: SavedItemStateReader,
@@ -398,7 +402,7 @@ class StoriesScreenController private constructor(
      */
     fun startSearchBack(progress: Float): Boolean {
         if (!searching) return false
-        beginPredictiveBack(progress)
+        beginPredictiveBack(progress.coerceIn(0f, 1f) * SearchBackGestureMaxProgress)
         return true
     }
 
@@ -409,10 +413,11 @@ class StoriesScreenController private constructor(
 
     fun updateSearchBack(progress: Float): Boolean {
         if (!searching) return false
+        val gestureProgress = progress.coerceIn(0f, 1f) * SearchBackGestureMaxProgress
         if (predictiveBackActive) {
-            updatePredictiveBack(progress)
+            updatePredictiveBack(gestureProgress)
         } else {
-            beginPredictiveBack(progress)
+            beginPredictiveBack(gestureProgress)
         }
         return true
     }
