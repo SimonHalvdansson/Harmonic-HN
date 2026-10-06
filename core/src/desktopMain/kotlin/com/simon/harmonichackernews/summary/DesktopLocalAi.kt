@@ -433,6 +433,7 @@ private class DesktopLocalSummaryEngine(
         summarizeEvents(request).collect { event ->
             when (event) {
                 is StorySummaryEvent.DebugInfo -> debugInfo = event.value
+                is StorySummaryEvent.SourceInput -> Unit
                 is StorySummaryEvent.Progress -> Unit
                 is StorySummaryEvent.Success -> result = SummaryResult(event.text, debugInfo)
                 is StorySummaryEvent.Failure -> error(event.message)

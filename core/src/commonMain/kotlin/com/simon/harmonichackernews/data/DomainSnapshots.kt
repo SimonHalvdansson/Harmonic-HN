@@ -44,6 +44,7 @@ data class StoryPresentationSnapshot(
     val rootStory: CommentMasterSnapshot? = null,
     @SerialName("summary")
     val aiSummaryText: String? = null,
+    val aiSummarySourceText: String? = null,
     val summaryGeneratedSuccessfully: Boolean = false,
     val pollOptions: List<PollOptionSnapshot> = emptyList(),
     @SerialName("repoInfo")
@@ -180,6 +181,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
         loaded = rootStoryLoaded,
     ),
     aiSummaryText = aiSummaryText,
+    aiSummarySourceText = aiSummarySourceText,
     summaryGeneratedSuccessfully = summaryGeneratedSuccessfully,
     pollOptions = pollOptions?.map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)

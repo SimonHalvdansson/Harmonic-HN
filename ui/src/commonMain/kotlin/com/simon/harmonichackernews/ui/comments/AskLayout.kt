@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun CommentDiscussionLayout(
+internal fun AskLayout(
     header: @Composable () -> Unit,
     composer: @Composable (Modifier) -> Unit,
     safeInsets: WindowInsets = WindowInsets.safeDrawing,

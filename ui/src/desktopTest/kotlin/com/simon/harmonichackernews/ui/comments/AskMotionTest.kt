@@ -32,7 +32,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class CommentDiscussionMotionTest {
+class AskMotionTest {
     @Test
     fun reverseTransformAndCancelledBackRetainTheOriginalDialog() = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("DiscussionMotionTest")
@@ -70,7 +70,7 @@ class CommentDiscussionMotionTest {
             controller.restoreCommentActions(comment)
             repeat(50) { frame() }
             val before = frame("dialog")
-            controller.openCommentDiscussion()
+            controller.openCommentAsk()
             repeat(50) { frame() }
             frame("discussion")
             controller.updateCommentActionPredictiveBack(0.8f, 0, 400f)
@@ -78,8 +78,8 @@ class CommentDiscussionMotionTest {
             frame("back-preview")
             controller.cancelCommentActionPredictiveBack()
             repeat(40) { frame() }
-            assertTrue(controller.commentDiscussionOpen)
-            controller.closeCommentDiscussion()
+            assertTrue(controller.askOpen)
+            controller.closeAsk()
             repeat(30) { index ->
                 val pixels = frame("return-${index.toString().padStart(2, '0')}")
                 if (index == 11) {
@@ -95,7 +95,7 @@ class CommentDiscussionMotionTest {
                 }
             }
             val after = frame("restored")
-            assertFalse(controller.commentDiscussionOpen)
+            assertFalse(controller.askOpen)
             assertTrue(controller.commentActionOverlay != null)
             var totalDifference = 0.0
             for (y in 0 until 920) for (x in 0 until 680) {

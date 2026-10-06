@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -15,6 +16,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,8 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.material3.TextButton
+import com.simon.harmonichackernews.summary.AskSource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,8 +69,12 @@ fun StoryAiSummary(
     diagnostics: StorySummaryDiagnostics? = null,
     streaming: Boolean = false,
     containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
+    onAsk: ((PostAskState) -> Unit)? = null,
+    askVisible: Boolean = false,
 ) {
     val summary = story.aiSummaryText.orEmpty()
+    val sourceLayer = rememberGraphicsLayer()
+    var sourceCoordinates by remember(story.id) { mutableStateOf<LayoutCoordinates?>(null) }
     var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
         summary == GEMINI_NANO_POLICY_BLOCKED_MESSAGE
@@ -78,9 +95,15 @@ fun StoryAiSummary(
                     animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                     alignment = Alignment.TopStart,
                 )
+                .onGloballyPositioned { sourceCoordinates = it }
+                .graphicsLayer { alpha = if (askVisible) 0f else 1f }
                 .clip(RoundedCornerShape(14.dp))
                 .background(containerColor)
                 .border(1.dp, HarmonicTheme.colors.commentDivider, RoundedCornerShape(14.dp))
+                .drawWithContent {
+                    if (!askVisible) sourceLayer.record { this@drawWithContent.drawContent() }
+                    drawLayer(sourceLayer)
+                }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             Row(
@@ -101,6 +124,29 @@ fun StoryAiSummary(
                     color = HarmonicTheme.colors.contentPrimary,
                 )
                 Spacer(Modifier.weight(1f))
+                if (onAsk != null) {
+                    val canAsk = story.summaryGeneratedSuccessfully && !streaming &&
+                        !story.aiSummarySourceText.isNullOrBlank()
+                    val askAlpha by animateFloatAsState(
+                        targetValue = if (canAsk) 1f else 0f,
+                        animationSpec = tween(120),
+                        label = "Summary Ask visibility",
+                    )
+                    TextButton(modifier = Modifier.height(32.dp)
+                        .graphicsLayer { alpha = askAlpha }
+                        .then(if (canAsk) Modifier else Modifier.clearAndSetSemantics {}),
+                        enabled = canAsk,
+                        contentPadding = PaddingValues(horizontal = 12.dp), onClick = {
+                        onAsk(PostAskState(
+                            subject = AskSource.Post(story, story.aiSummarySourceText.orEmpty(), summary),
+                            source = sourceLayer,
+                            bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
+                            color = containerColor,
+                        ))
+                    }) {
+                        Text("Ask", fontFamily = typography.family, fontWeight = FontWeight.Bold)
+                    }
+                }
                 if (settings.showAdditionalSummaryInfo) {
                     IconButton(
                         onClick = { showInfoDialog = true },

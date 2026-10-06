@@ -29,12 +29,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CommentDiscussionContainerTest {
+class AskContainerTest {
     @Test
     fun touchSwipeStartingOnPlainMessageScrolls() = SwingUtilities.invokeAndWait {
         val scroll = ScrollState(0)
         val scene = ImageComposeScene(400, 300, Density(1f)) {
-            CommentDiscussionContainer(Rect.Zero, 1f, Color.White, rememberGraphicsLayer()) {
+            AskContainer(Rect.Zero, 1f, Color.White, rememberGraphicsLayer()) {
                 Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                     repeat(12) {
                         BasicText("My question $it", Modifier.fillMaxWidth().height(80.dp)
@@ -66,7 +66,7 @@ class CommentDiscussionContainerTest {
         val progress = mutableFloatStateOf(1f)
         val scene = ImageComposeScene(400, 300, Density(1f)) {
             Box(Modifier.fillMaxSize().background(Color.Red)) {
-                CommentDiscussionContainer(Rect(60f, 80f, 340f, 220f), progress.floatValue,
+                AskContainer(Rect(60f, 80f, 340f, 220f), progress.floatValue,
                     Color.White, rememberGraphicsLayer()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Box(Modifier.size(100.dp).background(Color.Black))

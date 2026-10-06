@@ -3,10 +3,12 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 
@@ -51,9 +54,11 @@ internal fun SummaryMarkdownText(
     animationContentKey: Any? = null,
 ) {
     val listItems = remember(markdown) { summaryMarkdownListItems(markdown) }
-    if (listItems != null && maxLines == Int.MAX_VALUE) {
+    if (listItems != null) {
         SummaryMarkdownList(
             items = listItems,
+            maxLines = maxLines,
+            overflow = overflow,
             color = color,
             linkColor = linkColor,
             fontFamily = fontFamily,
@@ -89,6 +94,8 @@ internal fun SummaryMarkdownText(
 @Composable
 private fun SummaryMarkdownList(
     items: List<SummaryMarkdownListItem>,
+    maxLines: Int,
+    overflow: TextOverflow,
     color: Color,
     linkColor: Color,
     fontFamily: FontFamily,
@@ -113,31 +120,48 @@ private fun SummaryMarkdownList(
         }
         with(density) { width.toDp() }
     }
-    Column(modifier) {
-        items.forEachIndexed { index, item ->
-            Row(Modifier.fillMaxWidth()) {
-                Text(
-                    text = item.marker,
-                    modifier = Modifier.width(markerWidth),
-                    color = color,
-                    fontFamily = fontFamily,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight,
-                )
-                SummaryMarkdownSingleText(
-                    markdown = item.content,
-                    color = color,
-                    linkColor = linkColor,
-                    fontFamily = fontFamily,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight,
-                    onOpenLink = onOpenLink,
-                    baseUrl = baseUrl,
-                    modifier = Modifier.weight(1f),
-                    enableBoldFormatting = enableBoldFormatting,
-                    animateStreamingText = animateStreamingText,
-                    animationContentKey = animationContentKey to index,
-                )
+    val bodyStyle = LocalTextStyle.current.copy(fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight)
+    BoxWithConstraints(modifier) {
+        val textWidth = (constraints.maxWidth - with(density) { markerWidth.roundToPx() }).coerceAtLeast(0)
+        Column {
+            var remainingLines = maxLines
+            items.forEachIndexed { index, item ->
+                if (remainingLines <= 0) return@forEachIndexed
+                val allowedLines = remainingLines
+                val lineCount = if (maxLines == Int.MAX_VALUE) 0 else textMeasurer.measure(
+                    text = summaryMarkdownAnnotatedString(item.content, linkColor, enableBoldFormatting, baseUrl, onOpenLink),
+                    style = bodyStyle,
+                    constraints = Constraints(maxWidth = textWidth),
+                ).lineCount
+                remainingLines -= lineCount
+                val content = if (remainingLines <= 0 && lineCount <= allowedLines && index < items.lastIndex &&
+                    overflow == TextOverflow.Ellipsis) item.content + "…" else item.content
+                Row(Modifier.fillMaxWidth()) {
+                    Text(
+                        text = item.marker,
+                        modifier = Modifier.width(markerWidth),
+                        color = color,
+                        fontFamily = fontFamily,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                    )
+                    SummaryMarkdownSingleText(
+                        markdown = content,
+                        maxLines = allowedLines,
+                        overflow = overflow,
+                        color = color,
+                        linkColor = linkColor,
+                        fontFamily = fontFamily,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                        onOpenLink = onOpenLink,
+                        baseUrl = baseUrl,
+                        modifier = Modifier.weight(1f),
+                        enableBoldFormatting = enableBoldFormatting,
+                        animateStreamingText = animateStreamingText,
+                        animationContentKey = animationContentKey to index,
+                    )
+                }
             }
         }
     }

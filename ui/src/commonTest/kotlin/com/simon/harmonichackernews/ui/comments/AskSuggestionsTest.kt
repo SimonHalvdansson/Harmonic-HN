@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CommentDiscussionSuggestionsTest {
+class AskSuggestionsTest {
     private val starters = listOf("Explain this comment", "Give me a concrete example", "What assumptions are they making?")
 
     @Test

@@ -143,7 +143,7 @@ class StorySummaryRuntimeTest {
         assertEquals("custom", request.prompt)
         assertFalse(request.streamResponses)
         assertFalse(request.useGeminiNanoSummarizationLora)
-        assertEquals(listOf<StorySummaryEvent>(StorySummaryEvent.Success("done")), events)
+        assertEquals(listOf<StorySummaryEvent>(StorySummaryEvent.SourceInput("article"), StorySummaryEvent.Success("done")), events)
     }
 
     private fun failingBackend() = StorySummaryBackend {

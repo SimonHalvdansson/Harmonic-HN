@@ -149,7 +149,7 @@ internal fun CommentsPane(
         window = activity.window,
         active = navigation.currentDestination == MainDestination.STORY &&
             navigation.storyRequest?.serial == request.serial &&
-            commentsController?.commentDiscussionSurfaceVisible == true,
+            commentsController?.askSurfaceVisible == true,
     )
     // Each retained destination owns its bar color, just like its header and scroll state.
     // Reading the active controller here would repaint the parent with the child's tint.
@@ -183,7 +183,7 @@ internal fun CommentsPane(
                 val modalOverlayVisible = !commentsController.searchDialogVisible &&
                     (
                         commentsController.linkPreviewOverlay != null ||
-                            commentsController.commentActionOverlay != null
+                            commentsController.isCommentActionOverlayShowing()
                     )
                 LaunchedEffect(modalOverlayVisible) {
                     if (!modalOverlayVisible) modalScrimAlpha = 0f
@@ -202,7 +202,7 @@ internal fun CommentsPane(
                         statusBarHeight = statusBarHeight,
                         // Ask lifts the entire overlay above this protection, so its scrim
                         // already dims the bar. Tinting it as well would apply the dim twice.
-                        modalScrimAlpha = if (commentsController.commentDiscussionSurfaceVisible) 0f
+                        modalScrimAlpha = if (commentsController.askSurfaceVisible) 0f
                             else modalScrimAlpha,
                     )
                 }
@@ -220,7 +220,7 @@ internal fun CommentsPane(
                 }
                 if (modalOverlayVisible) {
                     Box(Modifier.fillMaxSize().zIndex(
-                        if (commentsController.commentDiscussionSurfaceVisible) 102f else 100f,
+                        if (commentsController.askSurfaceVisible) 102f else 100f,
                     )) {
                         AndroidCommentLinkPreviewOverlay(
                             controller = commentsController,

@@ -6,7 +6,6 @@ import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
 import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -113,29 +112,21 @@ fun CommentActionOverlay(
     onOpenLink: (String) -> Unit,
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
+    PostAskOverlay(controller, settings, onOpenLink)
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
-    val discussionProgress by animateFloatAsState(
-        targetValue = if (controller.commentDiscussionOpen)
-            1f - controller.commentDiscussionBackProgress.coerceIn(0f, 1f) * 0.35f else 0f,
-        animationSpec = tween(
-            durationMillis = if (controller.commentDiscussionBackProgress > 0f) 0
-                else if (controller.commentDiscussionOpen) 500 else 350,
-            easing = CommentDiscussionEasing,
-        ),
-        label = "Comment discussion container",
-    )
+    val discussionProgress by rememberAskProgress(controller.askOpen, controller.askBackProgress)
     val discussionSource = rememberGraphicsLayer()
     var discussionCreated by remember(comment.id) { mutableStateOf(false) }
     SideEffect {
-        if (controller.commentDiscussionOpen) discussionCreated = true
-        controller.commentDiscussionSurfaceVisible = discussionProgress > 0f || controller.commentDiscussionOpen
+        if (controller.askOpen) discussionCreated = true
+        controller.askSurfaceVisible = discussionProgress > 0f || controller.askOpen
     }
     DisposableEffect(controller, comment.id) {
         onDispose {
-            controller.commentDiscussionSurfaceVisible = false
-            controller.closeCommentDiscussion()
+            controller.askSurfaceVisible = false
+            controller.closeAsk()
         }
     }
     var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
@@ -475,7 +466,7 @@ fun CommentActionOverlay(
                             onAsk = {
                                 if (openingCompleted && !closingStarted) {
                                     discussionCreated = true
-                                    controller.openCommentDiscussion()
+                                    controller.openCommentAsk()
                                 }
                             },
                         )
@@ -485,8 +476,13 @@ fun CommentActionOverlay(
         }
         CommentActionTransitionOverlay(sharedTransition, cardColor)
         if (discussionCreated) {
-            CommentDiscussionSurface(
+            AskSurface(
                 controller = controller,
+                subject = remember(comment.id) {
+                    com.simon.harmonichackernews.summary.AskSource.Comment(
+                        controller.story, comment, controller.comments.toList(),
+                    )
+                },
                 origin = targetContainer?.translate(-rootBounds.left, -rootBounds.top) ?: Rect.Zero,
                 progress = discussionProgress,
                 source = discussionSource,

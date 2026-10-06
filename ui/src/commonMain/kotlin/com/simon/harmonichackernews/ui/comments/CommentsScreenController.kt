@@ -445,7 +445,7 @@ class CommentsScreenController private constructor(
         // Long presses can arrive from multiple comments before Compose has a chance to render
         // the overlay. Keep the overlay single-owner so a rejected second request cannot leave
         // its source comment suppressed without a corresponding dialog.
-        if (!interactionStore.showCommentActions(comment, stopScroll = true)) return
+        if (postAsk != null || !interactionStore.showCommentActions(comment, stopScroll = true)) return
         commentActionSourceBounds = sourceBounds
         commentActionSourceGeometry = pendingCommentActionSourceGeometry
             ?.takeIf { (commentId, geometry) ->
@@ -469,30 +469,47 @@ class CommentsScreenController private constructor(
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
-    fun isCommentActionOverlayShowing(): Boolean = commentActionOverlay != null
+    fun isCommentActionOverlayShowing(): Boolean = commentActionOverlay != null || postAsk != null
 
     fun getVisibleCommentActionId(): Int = commentActionOverlay?.comment?.id ?: -1
 
     // Includes the reverse transform so host controls stay beneath the returning surface.
-    var commentDiscussionSurfaceVisible by mutableStateOf(false)
+    var askSurfaceVisible by mutableStateOf(false)
         internal set
-    var commentDiscussionOpen by mutableStateOf(false)
+    var askOpen by mutableStateOf(false)
         private set
-    var commentDiscussionBackProgress by mutableFloatStateOf(0f)
+    var askBackProgress by mutableFloatStateOf(0f)
         private set
 
-    fun openCommentDiscussion() {
-        if (commentActionDismissRequest == 0) commentDiscussionOpen = true
+    var postAsk by mutableStateOf<PostAskState?>(null)
+        private set
+
+    fun openPostAsk(state: PostAskState) {
+        if (isCommentActionOverlayShowing()) return
+        postAsk = state
+        askOpen = true
+        listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
-    fun closeCommentDiscussion() {
-        commentDiscussionOpen = false
-        commentDiscussionBackProgress = 0f
+    internal fun completePostAskDismiss() {
+        if (postAsk == null || askOpen) return
+        postAsk = null
+        askSurfaceVisible = false
+        listener.onCommentActionOverlayVisibilityChanged(false)
+    }
+
+    fun openCommentAsk() {
+        if (commentActionOverlay != null && commentActionDismissRequest == 0) askOpen = true
+    }
+
+    fun closeAsk() {
+        askOpen = false
+        askBackProgress = 0f
     }
 
     fun requestDismissCommentActions() {
-        if (commentDiscussionOpen) {
-            closeCommentDiscussion()
+        if (askOpen) {
+            closeAsk()
             return
         }
         interactionStore.requestDismissCommentActions()
@@ -509,8 +526,8 @@ class CommentsScreenController private constructor(
     }
 
     fun updateCommentActionPredictiveBack(progress: Float, edge: Int, touchY: Float) {
-        if (commentDiscussionOpen) {
-            commentDiscussionBackProgress = progress
+        if (askOpen) {
+            askBackProgress = progress
             return
         }
         interactionStore.updateCommentActionPredictiveBack(progress, edge, touchY)
@@ -518,17 +535,17 @@ class CommentsScreenController private constructor(
     }
 
     fun cancelCommentActionPredictiveBack() {
-        commentDiscussionBackProgress = 0f
+        askBackProgress = 0f
         interactionStore.cancelCommentActionPredictiveBack()
         syncInteractionState()
     }
 
     fun isCommentActionPredictiveBackActive(): Boolean =
-        commentActionOverlay != null && (commentActionPredictiveBackProgress > 0f || commentDiscussionBackProgress > 0f)
+        isCommentActionOverlayShowing() && (commentActionPredictiveBackProgress > 0f || askBackProgress > 0f)
 
     fun commitCommentActionPredictiveBack() {
-        if (commentDiscussionOpen) {
-            closeCommentDiscussion()
+        if (askOpen) {
+            closeAsk()
             return
         }
         interactionStore.commitCommentActionPredictiveBack()
@@ -537,7 +554,7 @@ class CommentsScreenController private constructor(
 
     fun completeCommentActionDismiss(dispatchPendingAction: Boolean = true) {
         if (!interactionStore.completeCommentActionDismiss()) return
-        closeCommentDiscussion()
+        closeAsk()
         val pendingAction = pendingCommentActionAfterDismiss
         pendingCommentActionAfterDismiss = null
         commentActionSourceBounds = null

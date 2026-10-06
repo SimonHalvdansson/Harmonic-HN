@@ -1,5 +1,10 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.State
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,20 +40,35 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 // Material emphasized easing. One timeline drives bounds, uniform content scale and fade-through.
-internal val CommentDiscussionEasing = activityNavigationEasing()
+internal val AskEasing = activityNavigationEasing()
+
+@Composable
+internal fun rememberAskProgress(open: Boolean, backProgress: Float): State<Float> = animateFloatAsState(
+    targetValue = if (open) 1f - backProgress.coerceIn(0f, 1f) * 0.35f else 0f,
+    animationSpec = tween(
+        durationMillis = if (backProgress > 0f) 0 else if (open) 500 else 350,
+        easing = AskEasing,
+    ),
+    label = "Ask container",
+)
 
 /** Material container transform with width-fit content, rather than a stationary reveal. */
 @Composable
-internal fun CommentDiscussionContainer(
+internal fun AskContainer(
     origin: Rect,
     progress: Float,
     color: Color,
     source: GraphicsLayer,
+    sourceCornerRadius: Dp = 28.dp,
+    summarySource: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    if (progress <= 0f) return
+    // Summary sources are hidden while this layer owns their pixels. Keep drawing the
+    // exact resting card at zero until the source and overlay swap in one composition.
+    if (progress <= 0f && !summarySource) return
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Block the underlying dialog from a sibling behind the content. Consuming on
         // an ancestor cancels the scrollable's touch-slop detection on plain message text.
@@ -62,18 +82,26 @@ internal fun CommentDiscussionContainer(
             origin.right + (width - origin.right) * p,
             origin.bottom + (height - origin.bottom) * p,
         )
-        val radius = with(density) { 28.dp.toPx() } * (1f - p)
+        val radius = with(density) { sourceCornerRadius.toPx() } * (1f - p)
         val mask = object : Shape {
             override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
                 Outline.Generic(Path().apply { addRoundRect(RoundRect(bounds, CornerRadius(radius))) })
         }
         // One material surface owns the entire morph, including the final shadow and corners.
         // The recorded source contains only foreground content, never a second background.
+        val shape = RoundedCornerShape(with(density) { radius.toDp() })
+        val surface = if (summarySource) {
+            // The summary starts as a flat, opaque card. Match its border and fill at
+            // the handoff rather than briefly substituting the comment dialog's glass/shadow.
+            Modifier.background(color, shape).border(1.dp,
+                HarmonicTheme.colors.commentDivider.copy(alpha = HarmonicTheme.colors.commentDivider.alpha * (1f - p)), shape)
+        } else {
+            Modifier.shadow((8f * (1f - p)).dp, shape, clip = false)
+                .sharedHazeDialogBackground(color, shape, revealProgress = 1f - p)
+        }
         Box(Modifier.absoluteOffset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
             .requiredSize(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() })
-            .shadow((8f * (1f - p)).dp, RoundedCornerShape(with(density) { radius.toDp() }), clip = false)
-            .sharedHazeDialogBackground(color, RoundedCornerShape(with(density) { radius.toDp() }),
-                revealProgress = 1f - p))
+            .then(surface))
         Box(Modifier.fillMaxSize().clip(mask)) {
             val sourceAlpha = (1f - p / 0.15f).coerceIn(0f, 1f)
             if (sourceAlpha > 0f && !source.isReleased && source.size.width > 0) {

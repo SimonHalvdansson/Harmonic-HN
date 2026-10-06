@@ -30,7 +30,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.math.abs
 
-class CommentDiscussionComposerTest {
+class AskComposerTest {
     @Test
     fun darkInputIsDarkerThanTheAskSurfaceInBothDarkPalettes() = SwingUtilities.invokeAndWait {
         for (theme in listOf("dark", "material_dark")) {
@@ -39,7 +39,7 @@ class CommentDiscussionComposerTest {
             val scene = ImageComposeScene(360, 200, Density(1f)) {
                 HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                     Box(Modifier.fillMaxSize().background(surface)) {
-                        CommentDiscussionComposer("", {}, false, false, true, {}, {},
+                        AskComposer("", {}, false, false, true, {}, {},
                             Modifier.align(Alignment.BottomCenter), surfaceColor = surface)
                     }
                 }
@@ -75,7 +75,7 @@ class CommentDiscussionComposerTest {
                         HarmonicTopAppBar("Ask about this comment", { backs++ },
                             toolbarHeight = 64.dp * fontScale.coerceAtLeast(1f))
                         Box(Modifier.weight(1f)) {
-                            CommentDiscussionComposer(
+                            AskComposer(
                                 draft.value, { draft.value = it }, false, running.value, enabled.value,
                                 { sends++ }, { stops++ },
                                 Modifier.align(Alignment.BottomCenter)

@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.comments
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class CommentDiscussionErrorTest {
+class AskErrorTest {
     @Test
     fun setupErrorsOfferSettingsInsteadOfRetry() {
         listOf(

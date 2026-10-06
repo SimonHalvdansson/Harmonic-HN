@@ -22,7 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CommentDiscussionErrorRenderingTest {
+class AskErrorRenderingTest {
     @Test
     fun cardsFitAndActionsWorkWithLargeTextInBothThemes() = SwingUtilities.invokeAndWait {
         val examples = listOf(
@@ -39,7 +39,7 @@ class CommentDiscussionErrorRenderingTest {
                     val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
                     HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
                         Box(Modifier.fillMaxSize().background(HarmonicTheme.colors.background).padding(16.dp)) {
-                            CommentDiscussionErrorCard(
+                            AskErrorCard(
                                 discussionErrorPresentation(error, contextLimit), true, { clicks++ },
                                 Modifier.onGloballyPositioned { bounds = it.boundsInRoot() },
                             )

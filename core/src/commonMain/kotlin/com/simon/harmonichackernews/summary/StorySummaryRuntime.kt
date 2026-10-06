@@ -36,6 +36,7 @@ data class StorySummaryInput(
 }
 
 sealed interface StorySummaryEvent {
+    data class SourceInput(val text: String) : StorySummaryEvent
     data class DebugInfo(
         val value: String,
         val modelLoadMillis: Long? = null,
@@ -55,6 +56,7 @@ class PlatformLocalStorySummaryBackend(
     private val behavior: () -> LocalSummaryBehavior = { LocalSummaryBehavior() },
 ) : StorySummaryBackend {
     override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
+        emit(StorySummaryEvent.SourceInput(input.articleText.orEmpty()))
         val current = behavior()
         engine.summarizeEvents(
             SummaryRequest(
@@ -130,6 +132,7 @@ sealed interface StorySummaryStatus {
 
 data class StorySummaryState(
     val text: String? = null,
+    val sourceInput: String? = null,
     val debugInfo: String? = null,
     val diagnostics: StorySummaryDiagnostics? = null,
     val status: StorySummaryStatus = StorySummaryStatus.Idle,
@@ -181,6 +184,7 @@ class StorySummaryRuntime(
         val startedAt = TimeSource.Monotonic.markNow()
         mutableState.value = StorySummaryState(
             text = currentText,
+            sourceInput = input.articleText ?: if (mockAnswers()) "Sample article used for mock AI answers." else null,
             diagnostics = StorySummaryDiagnostics(
                 mode = mode,
                 inputCharacters = input.articleText?.length ?: 0,
@@ -196,6 +200,10 @@ class StorySummaryRuntime(
                 events.collect { event ->
                     if (generation != mutableState.value.generation) return@collect
                     when (event) {
+                        is StorySummaryEvent.SourceInput -> mutableState.value = mutableState.value.copy(
+                            sourceInput = event.text,
+                            diagnostics = mutableState.value.diagnostics?.copy(inputCharacters = event.text.length),
+                        )
                         is StorySummaryEvent.DebugInfo -> {
                             if (event.modelLoadMillis != null) {
                                 modelReadyAtMillis = startedAt.elapsedNow().inWholeMilliseconds
@@ -347,12 +355,22 @@ class CloudStorySummaryBackend(
     private val config: suspend () -> CloudSummaryConfig,
 ) : StorySummaryBackend {
     override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> = flow {
-        val upstream = if (input.hasArticleText) {
-            useCase.summarizeText(config(), input.articleText)
-        } else {
-            useCase.summarizeArticle(config(), input.articleUrl)
+        val currentConfig = config()
+        val source = if (input.hasArticleText) input.articleText.orEmpty() else {
+            try {
+                useCase.extractArticleText(input.articleUrl)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                throw com.simon.harmonichackernews.network.SummaryExtractionException(
+                    "Extraction failed: ${error.message ?: "Unknown error"}", error,
+                )
+            }
         }
-        upstream.collect { event ->
+        // Retain exactly the cloud payload's input, including its configured character limit.
+        val prepared = source.trim().take(currentConfig.inputCharacterLimit)
+        emit(StorySummaryEvent.SourceInput(prepared))
+        useCase.summarizeText(currentConfig, prepared).collect { event ->
             emit(
                 when (event) {
                     is CloudSummaryEvent.DebugInfo -> StorySummaryEvent.DebugInfo(event.value)

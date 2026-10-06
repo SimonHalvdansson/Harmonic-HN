@@ -12,17 +12,17 @@ import kotlinx.coroutines.test.*
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class CommentQuestionSuggestionsTest {
+class AskQuestionSuggestionsTest {
     private val questions = listOf("How does an inversion bend light?", "Why count the lighthouse flashes?")
     private val response = "[\"${questions[0]}\", \"${questions[1]}\"]"
 
     @Test
     fun parsesJsonAndNumberedResponsesButRejectsIncompleteOrDuplicateSuggestions() {
-        assertEquals(questions, CommentQuestionSuggestions.parse("```json\n$response\n```", emptyList()))
-        assertEquals(questions, CommentQuestionSuggestions.parse("1. ${questions[0]}\n2. ${questions[1]}", emptyList()))
-        assertTrue(CommentQuestionSuggestions.parse(response, listOf(questions[0])).isEmpty())
-        assertTrue(CommentQuestionSuggestions.parse("[\"${questions[0]}\", \"${questions[0]}\"]", emptyList()).isEmpty())
-        assertTrue(CommentQuestionSuggestions.parse("Sorry, I cannot help.", emptyList()).isEmpty())
+        assertEquals(questions, AskQuestionSuggestions.parse("```json\n$response\n```", emptyList()))
+        assertEquals(questions, AskQuestionSuggestions.parse("1. ${questions[0]}\n2. ${questions[1]}", emptyList()))
+        assertTrue(AskQuestionSuggestions.parse(response, listOf(questions[0])).isEmpty())
+        assertTrue(AskQuestionSuggestions.parse("[\"${questions[0]}\", \"${questions[0]}\"]", emptyList()).isEmpty())
+        assertTrue(AskQuestionSuggestions.parse("Sorry, I cannot help.", emptyList()).isEmpty())
     }
 
     @Test
@@ -61,7 +61,7 @@ class CommentQuestionSuggestionsTest {
     fun sendingAQuestionCancelsSuggestionsBeforeAnswering() = runTest {
         var cancelled = false
         val engine = Engine { request ->
-            if (request.prompt == CommentQuestionSuggestions.PROMPT) {
+            if (request.prompt == AskQuestionSuggestions.PROMPT) {
                 try { awaitCancellation() } finally { cancelled = true }
             } else {
                 assertTrue(cancelled)
@@ -117,11 +117,11 @@ class CommentQuestionSuggestionsTest {
         mode: AiSummaryMode = AiSummaryMode.LOCAL,
         builtIn: Boolean = true,
         mock: Boolean = false,
-    ): CommentDiscussion {
+    ): AskConversation {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         settings.setMode(mode)
-        return CommentDiscussion(
+        return AskConversation(
             this,
             object : HackerNewsApi {
                 override suspend fun getItem(id: Int) = error("Unexpected network call")
@@ -135,10 +135,10 @@ class CommentQuestionSuggestionsTest {
                 override fun summarize(config: CloudSummaryConfig, text: String?) = error("Unexpected cloud call")
             }),
             settings, engine,
-            StoryListItemSnapshot(StorySnapshot(1, title = "Lighthouses"), StoryPresentationSnapshot()),
+            AskSource.Comment(StoryListItemSnapshot(StorySnapshot(1, title = "Lighthouses"), StoryPresentationSnapshot()),
             PortableCommentItem(CommentSnapshot(2, parentId = 1, text = "Could a temperature inversion explain this?"),
                 CommentPresentationSnapshot()),
-            emptyList(), mockAnswers = { mock }, builtInModelSelected = { builtIn }, contextDispatcher = dispatcher,
+            emptyList()), mockAnswers = { mock }, builtInModelSelected = { builtIn }, contextDispatcher = dispatcher,
         )
     }
 

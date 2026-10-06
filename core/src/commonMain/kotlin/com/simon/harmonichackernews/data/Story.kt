@@ -81,6 +81,7 @@ class Story : LinkPreviewState {
     var rootStoryLoaded: Boolean = false
     var parentId: Int = 0 // Direct parent ID (for comments)
     var aiSummaryText: String? = null
+    var aiSummarySourceText: String? = null
 
     var summaryGeneratedSuccessfully: Boolean = false
 

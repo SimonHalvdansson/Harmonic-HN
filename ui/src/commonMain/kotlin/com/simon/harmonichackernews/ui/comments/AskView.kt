@@ -40,7 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.summary.CommentDiscussion
+import com.simon.harmonichackernews.summary.AskConversation
+import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
@@ -54,8 +55,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-internal fun CommentDiscussionSurface(
+internal fun AskSurface(
     controller: CommentsScreenController,
+    subject: AskSource,
     origin: Rect,
     progress: Float,
     source: GraphicsLayer,
@@ -64,31 +66,34 @@ internal fun CommentDiscussionSurface(
     onOpenLink: (String) -> Unit,
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
-    val comment = controller.commentActionOverlay?.comment ?: return
+    val comment = (subject as? AskSource.Comment)?.comment
+    val post = subject as? AskSource.Post
+    val sourceKey = comment?.id ?: subject.story.id
+    val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=${comment?.id}"
     val scope = rememberCoroutineScope()
-    val discussion = remember(comment.id) {
-        CommentDiscussion(
+    val discussion = remember(subject) {
+        AskConversation(
             scope, dependencies.network.hackerNewsApi,
             dependencies.network.summaryUseCase, dependencies.aiSummarySettings,
-            dependencies.localSummaryEngine, controller.story, comment, controller.comments.toList(),
+            dependencies.localSummaryEngine, subject,
             mockAnswers = { dependencies.userSettings.debug.mockAiAnswers },
             builtInModelSelected = { dependencies.localModels?.selectedModel?.downloadable == false },
         )
     }
     val state by discussion.state.collectAsState()
-    var draft by remember(comment.id) { mutableStateOf("") }
-    var expanded by remember(comment.id) { mutableStateOf(false) }
+    var draft by remember(subject) { mutableStateOf("") }
+    var expanded by remember(subject) { mutableStateOf(false) }
     val scroll = rememberScrollState()
     val keyboard = LocalSoftwareKeyboardController.current
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
-    val questions = remember(comment.id) { CommentDiscussion.suggestedQuestions(comment) }
+    val questions = remember(subject) { AskConversation.suggestedQuestions(subject) }
     val remainingQuestions = remember(questions, state.suggestedQuestions, state.turns) {
         remainingDiscussionQuestions(questions + state.suggestedQuestions, state.turns.map { it.question })
     }
-    val revealedTurns = remember(comment.id) { mutableSetOf<Int>() }
-    val resetAlpha = remember(comment.id) { Animatable(1f) }
+    val revealedTurns = remember(subject) { mutableSetOf<Int>() }
+    val resetAlpha = remember(subject) { Animatable(1f) }
     val density = LocalDensity.current
-    var resetting by remember(comment.id) { mutableStateOf(false) }
+    var resetting by remember(subject) { mutableStateOf(false) }
     val followThreshold = with(LocalDensity.current) { 96.dp.toPx() }
     var followOutput by remember { mutableStateOf(true) }
     // Follow layout growth, not each network chunk: repeated smooth-scroll animations made
@@ -104,11 +109,11 @@ internal fun CommentDiscussionSurface(
         }
     }
     LaunchedEffect(state.turns.size) { followOutput = true }
-    LaunchedEffect(controller.commentDiscussionOpen) {
-        if (!controller.commentDiscussionOpen) keyboard?.hide()
+    LaunchedEffect(controller.askOpen) {
+        if (!controller.askOpen) keyboard?.hide()
     }
-    LaunchedEffect(controller.commentDiscussionOpen, state.turns.isEmpty()) {
-        if (controller.commentDiscussionOpen && state.turns.isEmpty()) discussion.generateSuggestedQuestions()
+    LaunchedEffect(controller.askOpen, state.turns.isEmpty()) {
+        if (controller.askOpen && state.turns.isEmpty()) discussion.generateSuggestedQuestions()
         else discussion.cancelSuggestedQuestions()
     }
     fun reset() {
@@ -125,7 +130,7 @@ internal fun CommentDiscussionSurface(
                 followOutput = true
                 scroll.scrollTo(0)
                 withFrameNanos { }
-                resetAlpha.animateTo(1f, tween(220, easing = CommentDiscussionEasing))
+                resetAlpha.animateTo(1f, tween(220, easing = AskEasing))
             } finally {
                 resetting = false
                 resetAlpha.snapTo(1f)
@@ -139,18 +144,19 @@ internal fun CommentDiscussionSurface(
         keyboard?.hide()
     }
 
-    CommentDiscussionContainer(origin, progress, color, source) {
-        CommentDiscussionLayout(
+    AskContainer(origin, progress, color, source, sourceCornerRadius = if (post != null) 14.dp else 28.dp,
+        summarySource = post != null) {
+        AskLayout(
             header = {
                 HarmonicTopAppBar(
-                    title = "Ask about this comment",
-                    onBack = controller::closeCommentDiscussion,
-                    navigationContentDescription = "Back to comment",
+                    title = if (post != null) "Ask about this post" else "Ask about this comment",
+                    onBack = controller::closeAsk,
+                    navigationContentDescription = if (post != null) "Back to summary" else "Back to comment",
                     toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
                 )
             },
             composer = { modifier ->
-                CommentDiscussionComposer(
+                AskComposer(
                     draft = draft,
                     onDraftChanged = { draft = it },
                     hasTurns = state.turns.isNotEmpty(),
@@ -171,29 +177,34 @@ internal fun CommentDiscussionSurface(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 val linkColor = HarmonicTheme.colors.link
-                val body = remember(comment.expandedAnchorText, linkColor, onOpenLink) {
-                    htmlAnnotatedString(comment.expandedAnchorText.orEmpty(), linkColor,
+                val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
+                    htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
                         LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
                 }
                 val caretRotation by animateFloatAsState(
                     if (expanded) 180f else 0f,
-                    tween(260, easing = CommentDiscussionEasing), label = "Comment caret",
+                    tween(260, easing = AskEasing), label = "Comment caret",
                 )
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                         .background(HarmonicTheme.colors.contentPrimary.copy(alpha = 0.05f))
-                        .clickable(role = Role.Button, onClickLabel = "Toggle comment preview") { expanded = !expanded }
+                        .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
                         .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
-                        .animateContentSize(tween(300, easing = CommentDiscussionEasing))
+                        .animateContentSize(tween(300, easing = AskEasing))
                         .padding(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (settings.userAvatarsEnabled && !comment.by.isNullOrBlank()) {
+                        if (settings.userAvatarsEnabled && !comment?.by.isNullOrBlank()) {
                             UserAvatar(author = comment.by!!, options = settings.userAvatarOptions,
                                 modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                         }
-                        Text(comment.by ?: "Unknown user", Modifier.weight(1f),
+                        if (post != null) {
+                            Icon(painterResource(Res.drawable.ic_auto_awesome), null, Modifier.size(18.dp),
+                                tint = HarmonicTheme.colors.link)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
                             color = HarmonicTheme.colors.link, fontFamily = typography.family,
                             fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Icon(painterResource(Res.drawable.ic_keyboard_arrow_down), null,
@@ -201,16 +212,33 @@ internal fun CommentDiscussionSurface(
                             tint = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.65f))
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text(body, color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
-                        fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
-                        maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
+                    if (post != null) {
+                        Text(subject.story.title.orEmpty(), fontFamily = typography.family,
+                            fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium,
+                            color = HarmonicTheme.colors.contentPrimary,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(6.dp))
+                        SummaryMarkdownText(
+                            markdown = post.summary,
+                            color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
+                            linkColor = linkColor, fontFamily = typography.family,
+                            fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
+                            baseUrl = baseUrl, maxLines = if (expanded) Int.MAX_VALUE else 3,
+                            overflow = TextOverflow.Ellipsis,
+                            enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                        )
+                    } else {
+                        Text(body, color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
+                            fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
+                            maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
+                    }
                 }
                 AnimatedVisibility(
                     visible = state.turns.isEmpty(),
-                    exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = CommentDiscussionEasing)),
+                    exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
                 ) {
                     var fixedQuestionsRevealed by remember { mutableStateOf(false) }
-                    val show = progress >= 0.65f && controller.commentDiscussionOpen
+                    val show = progress >= 0.65f && controller.askOpen
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("What would you like to understand?",
                             modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
@@ -232,10 +260,10 @@ internal fun CommentDiscussionSurface(
                         AnimatedVisibility(
                             visible = fixedQuestionsRevealed &&
                                 (state.loadingSuggestions || state.suggestedQuestions.isNotEmpty()),
-                            enter = fadeIn(tween(220)) + expandVertically(tween(300, easing = CommentDiscussionEasing)),
+                            enter = fadeIn(tween(220)) + expandVertically(tween(300, easing = AskEasing)),
                             exit = fadeOut(tween(150)) + shrinkVertically(tween(220)),
                         ) {
-                            Column(Modifier.animateContentSize(tween(300, easing = CommentDiscussionEasing)),
+                            Column(Modifier.animateContentSize(tween(300, easing = AskEasing)),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (state.suggestedQuestions.isEmpty()) {
                                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -271,8 +299,8 @@ internal fun CommentDiscussionSurface(
                         AnimatedVisibility(
                             entered,
                             enter = fadeIn(tween(180)) +
-                                expandVertically(tween(260, easing = CommentDiscussionEasing), Alignment.Top) +
-                                slideInVertically(tween(260, easing = CommentDiscussionEasing)) { it / 4 },
+                                expandVertically(tween(260, easing = AskEasing), Alignment.Top) +
+                                slideInVertically(tween(260, easing = AskEasing)) { it / 4 },
                         ) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.Top) {
@@ -298,9 +326,9 @@ internal fun CommentDiscussionSurface(
                                 lineHeight = (typography.commentTextSize + 2f).sp,
                                 enableBoldFormatting = settings.enableSummaryBoldFormatting,
                                 onOpenLink = onOpenLink,
-                                baseUrl = "https://news.ycombinator.com/item?id=${comment.id}",
+                                baseUrl = baseUrl,
                                 animateStreamingText = state.running && index == state.turns.lastIndex,
-                                animationContentKey = comment.id to index,
+                                animationContentKey = sourceKey to index,
                             )
                         }
                         }
@@ -316,7 +344,7 @@ internal fun CommentDiscussionSurface(
                 }
                 state.error?.let { error ->
                     val presentation = discussionErrorPresentation(error, state.contextLimitReached)
-                    CommentDiscussionErrorCard(
+                    AskErrorCard(
                         presentation = presentation,
                         enabled = !resetting,
                         onAction = {
@@ -333,7 +361,7 @@ internal fun CommentDiscussionSurface(
                 }
                 AnimatedVisibility(
                     visible = state.turns.isNotEmpty() && !state.running && remainingQuestions.isNotEmpty(),
-                    enter = fadeIn(tween(180)) + expandVertically(tween(240, easing = CommentDiscussionEasing)),
+                    enter = fadeIn(tween(180)) + expandVertically(tween(240, easing = AskEasing)),
                     exit = fadeOut(tween(120)) + shrinkVertically(tween(180)),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -344,7 +372,7 @@ internal fun CommentDiscussionSurface(
                             key(question) {
                                 DiscussionQuestionButton(
                                     question = question,
-                                    show = progress >= 0.65f && controller.commentDiscussionOpen,
+                                    show = progress >= 0.65f && controller.askOpen,
                                     index = index,
                                     enabled = !resetting && !state.running,
                                     fontFamily = typography.family,
@@ -382,7 +410,7 @@ private fun DiscussionQuestionButton(
         if (show) {
             if (entrance.value < 1f) {
                 delay(index * 160L)
-                entrance.animateTo(1f, tween(420, easing = CommentDiscussionEasing))
+                entrance.animateTo(1f, tween(420, easing = AskEasing))
             }
             currentOnRevealed()
         }

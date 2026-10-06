@@ -78,7 +78,7 @@ internal fun discussionErrorPresentation(error: String, contextLimitReached: Boo
 }
 
 @Composable
-internal fun CommentDiscussionErrorCard(
+internal fun AskErrorCard(
     presentation: DiscussionErrorPresentation,
     enabled: Boolean,
     onAction: () -> Unit,

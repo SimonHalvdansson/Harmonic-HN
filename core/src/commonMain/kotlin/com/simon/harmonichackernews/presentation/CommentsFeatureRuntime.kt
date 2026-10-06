@@ -884,6 +884,7 @@ class CommentsFeatureRuntime(
             return
         }
         currentStory.aiSummaryText = state.text
+        currentStory.aiSummarySourceText = state.sourceInput
         when (state.status) {
             StorySummaryStatus.Idle,
             StorySummaryStatus.Running,

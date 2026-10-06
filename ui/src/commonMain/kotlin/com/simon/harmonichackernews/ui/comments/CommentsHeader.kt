@@ -326,6 +326,8 @@ fun CommentsHeader(
                                     diagnostics = controller.summaryDiagnostics,
                                     streaming = controller.storySummaryLoading,
                                     containerColor = summaryContainerColor,
+                                    onAsk = controller::openPostAsk,
+                                    askVisible = controller.postAsk?.coveringSource == true,
                                 )
                             }
                             if (story.isComment) {

@@ -48,7 +48,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /** Floating input bar; the host reserves its measured height in the conversation's scroll content. */
 @Composable
-internal fun CommentDiscussionComposer(
+internal fun AskComposer(
     draft: String,
     onDraftChanged: (String) -> Unit,
     hasTurns: Boolean,

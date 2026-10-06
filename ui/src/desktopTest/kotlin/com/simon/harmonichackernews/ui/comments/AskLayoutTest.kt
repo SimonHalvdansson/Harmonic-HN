@@ -25,14 +25,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalLayoutApi::class)
-class CommentDiscussionLayoutTest {
+class AskLayoutTest {
     @Test
     fun contentDrawsBehindSystemBarWhileComposerAndLastMessageAvoidBarAndKeyboard() = SwingUtilities.invokeAndWait {
         val safeInsets = MutableWindowInsets(WindowInsets(top = 12, bottom = 24))
         val scroll = ScrollState(0)
         val scene = ImageComposeScene(400, 500, Density(1f)) {
             Box(Modifier.fillMaxSize().background(Color.White)) {
-                CommentDiscussionLayout(
+                AskLayout(
                     header = { Box(Modifier.fillMaxWidth().height(40.dp)) },
                     composer = { modifier ->
                         Box(modifier.fillMaxWidth().height(56.dp).background(Color.Red))
