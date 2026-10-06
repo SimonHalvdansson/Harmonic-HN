@@ -63,6 +63,16 @@ internal object WikipediaLinkPreview {
 
     private fun sanitizeWikipediaHtml(summaryHtml: String): Document {
         val document = Ksoup.parseBodyFragment(summaryHtml)
+        // TextExtracts can omit a pronunciation but leave its empty span and parentheses.
+        document.selectFirst("p")?.let { introduction ->
+            val title = introduction.firstElementChild()?.takeIf { it.tagName() == "b" }
+            val titleHtml = title?.outerHtml()
+            val html = introduction.html()
+            if (titleHtml != null && html.startsWith(titleHtml)) {
+                val remainder = html.removePrefix(titleHtml)
+                introduction.html(titleHtml + remainder.replaceFirst(emptyLeadingPronunciation, ""))
+            }
+        }
         document.select(UNSUPPORTED_WIKIPEDIA_ELEMENTS).remove()
         for (blockquote in document.select("blockquote")) blockquote.unwrap()
         for (element in document.select("p, ul, ol")) {
@@ -73,6 +83,8 @@ internal object WikipediaLinkPreview {
 
     private const val UNSUPPORTED_WIKIPEDIA_ELEMENTS =
         "script, style, svg, wiki-chart, table, figure, iframe, canvas, noscript, object, embed"
+
+    private val emptyLeadingPronunciation = Regex("^\\s+\\(\\s*<span>\\s*</span>\\s*\\)")
 }
 
 internal suspend fun HttpClient.loadWikipediaInfo(url: String): WikipediaInfo {
