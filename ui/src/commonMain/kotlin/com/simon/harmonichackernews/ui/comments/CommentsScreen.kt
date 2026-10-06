@@ -264,7 +264,8 @@ fun CommentsScreen(
     val statusBarInset = with(density) { topInsetPx.toDp() }
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navigationVisible = settings.showNavigationBar && visibleComments.size > 1
-    val showCachedBadge = controller.showingCached && !controller.commentsRefreshInProgress
+    val showCachedBadge = controller.openedFromCachedStories &&
+        controller.showingCached && !controller.commentsRefreshInProgress
     val bottomPadding = navigationBottom + if (navigationVisible) 88.dp else 16.dp
     val contentInsetStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val contentInsetEnd = with(density) { controller.contentInsetRightPx.toDp() }

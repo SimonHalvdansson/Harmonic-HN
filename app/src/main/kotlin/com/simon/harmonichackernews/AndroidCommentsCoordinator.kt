@@ -616,6 +616,7 @@ class AndroidCommentsCoordinator(
             },
             story = storySnapshot,
             initialThreadCached = commentsStore.state.value.initialThreadCached,
+            openedFromCachedStories = destination.openedFromCachedStories,
             showWebsite = showWebsite,
             initialScrollRestorationPending = restoringStoredProgress && !showWebsite &&
                 (scrollProgress.topCommentId != 0 || scrollProgress.topCommentOffset != 0),

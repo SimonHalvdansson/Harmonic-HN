@@ -202,6 +202,7 @@ class CommentsFeatureBinding private constructor(
                 shouldSmoothScroll = { store.state.value.settings?.smoothScroll ?: true },
                 story = initialState,
                 initialThreadCached = store.state.value.initialThreadCached,
+                openedFromCachedStories = request.route.openedFromCachedStories,
                 initialScrollRestorationPending = restoreProgress && !request.destination.showWebsite,
                 showWebsite = request.destination.showWebsite,
                 accountUser = store.state.value.accountUser,

@@ -12,6 +12,20 @@ import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
     @Test
+    fun cachedStoriesOriginSurvivesNavigationSerializationAndRouteConversion() {
+        val destination = StoryDestination(storyId = 42, openedFromCachedStories = true)
+        val restored = AppDestinationCodec.decode(AppDestinationCodec.encode(destination)) as StoryDestination
+
+        assertTrue(restored.openedFromCachedStories)
+        assertTrue(restored.route.toDestination().openedFromCachedStories)
+        assertFalse(StoryDestination(storyId = 42).openedFromCachedStories)
+        val legacy = AppDestinationCodec.decode(
+            """{"kind":"story","value":{"storyId":42}}""",
+        ) as StoryDestination
+        assertFalse(legacy.openedFromCachedStories)
+    }
+
+    @Test
     fun rootStoryRenamesPreservePreviouslySerializedNavigationSeeds() {
         val payload = """
             {

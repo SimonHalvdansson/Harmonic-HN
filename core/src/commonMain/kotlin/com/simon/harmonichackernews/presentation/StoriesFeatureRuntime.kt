@@ -804,7 +804,10 @@ class StoriesFeatureRuntime(
     fun openStory(story: Story, showWebsite: Boolean) {
         markRead(story)
         changed(story)
-        emit(StoriesFeatureEffect.OpenStory(story.toDestination(showWebsite = showWebsite)))
+        val destination = story.toDestination(showWebsite = showWebsite).copy(
+            openedFromCachedStories = activeStore.state.value.showingCached,
+        )
+        emit(StoriesFeatureEffect.OpenStory(destination))
     }
 
     fun previewStories(openedStoryId: Int): List<Story> {
