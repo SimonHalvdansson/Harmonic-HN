@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -58,6 +60,7 @@ internal fun AskComposer(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
     surfaceColor: Color = HarmonicTheme.colors.background,
+    showCursor: Boolean = true,
 ) {
     val canSend = enabled && !running && draft.isNotBlank()
     val actionEnabled = enabled && (running || draft.isNotBlank())
@@ -117,7 +120,13 @@ internal fun AskComposer(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,
-                cursorColor = accent,
+                // Android handles live in separate popups. Hide their pixels while the
+                // screen transforms, without disturbing focus, selection or the IME.
+                cursorColor = if (showCursor) accent else Color.Transparent,
+                selectionColors = TextSelectionColors(
+                    handleColor = if (showCursor) LocalTextSelectionColors.current.handleColor else Color.Transparent,
+                    backgroundColor = LocalTextSelectionColors.current.backgroundColor,
+                ),
             ),
         )
         FilledIconButton(

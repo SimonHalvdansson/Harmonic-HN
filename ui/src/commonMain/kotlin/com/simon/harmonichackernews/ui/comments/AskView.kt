@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -153,6 +154,7 @@ internal fun AskSurface(
                     onBack = controller::closeAsk,
                     navigationContentDescription = if (post != null) "Back to summary" else "Back to comment",
                     toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
+                    navigationContainerColor = lerp(color, HarmonicTheme.colors.onSurface, 0.06f),
                 )
             },
             composer = { modifier ->
@@ -165,6 +167,8 @@ internal fun AskSurface(
                     onSend = ::send,
                     onStop = discussion::stop,
                     surfaceColor = color,
+                    // Include the settling animation after cancellation, not just gesture progress.
+                    showCursor = controller.askOpen && controller.askBackProgress == 0f && progress == 1f,
                     modifier = modifier,
                 )
             },
