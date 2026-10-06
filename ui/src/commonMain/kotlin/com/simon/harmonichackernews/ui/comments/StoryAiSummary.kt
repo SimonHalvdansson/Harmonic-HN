@@ -125,8 +125,7 @@ fun StoryAiSummary(
                 )
                 Spacer(Modifier.weight(1f))
                 if (onAsk != null) {
-                    val canAsk = story.summaryGeneratedSuccessfully && !streaming &&
-                        !story.aiSummarySourceText.isNullOrBlank()
+                    val canAsk = story.summaryGeneratedSuccessfully && !streaming && summary.isNotBlank()
                     val askAlpha by animateFloatAsState(
                         targetValue = if (canAsk) 1f else 0f,
                         animationSpec = tween(120),
@@ -138,7 +137,7 @@ fun StoryAiSummary(
                         enabled = canAsk,
                         contentPadding = PaddingValues(horizontal = 12.dp), onClick = {
                         onAsk(PostAskState(
-                            subject = AskSource.Post(story, story.aiSummarySourceText.orEmpty(), summary),
+                            subject = AskSource.Post(story, summary),
                             source = sourceLayer,
                             bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
                             color = containerColor,

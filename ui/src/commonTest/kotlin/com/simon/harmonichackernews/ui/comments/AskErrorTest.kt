@@ -24,6 +24,14 @@ class AskErrorTest {
     }
 
     @Test
+    fun sourceThatCannotFitOffersAnotherModelInsteadOfRetryOrReset() {
+        val message = "The question and source are too long. Try a shorter question or another model."
+        val presentation = discussionErrorPresentation(message, true, inputTooLarge = true)
+        assertEquals(DiscussionErrorAction.OpenSettings, presentation.action)
+        assertEquals(message, presentation.message)
+    }
+
+    @Test
     fun otherFailuresPreserveTheirDetailsAndOfferRetry() {
         listOf("API error: Service unavailable", "Invalid streaming response",
             "Local summarization failed: Inference interrupted").forEach { error ->

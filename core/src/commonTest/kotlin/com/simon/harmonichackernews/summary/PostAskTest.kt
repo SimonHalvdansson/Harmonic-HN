@@ -53,7 +53,7 @@ class PostAskTest {
     }
 
     @Test
-    fun postFollowUpsUseCapturedSourceAndHistoryWithoutRetrievalAndResetKeepsSource() = runTest {
+    fun postFollowUpsUseOnlyTheVisibleSummaryAndHistoryWithoutRetrieval() = runTest {
         for (mode in listOf(AiSummaryMode.CLOUD, AiSummaryMode.LOCAL)) {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
@@ -69,7 +69,6 @@ class PostAskTest {
             }
             val source = AskSource.Post(
                 StoryListItemSnapshot(StorySnapshot(42, title = "A post", url = "https://example.com"), StoryPresentationSnapshot()),
-                input = "Original article with details missing from the summary.",
                 summary = "The visible AI summary.",
             )
             val conversation = AskConversation(this, noNetwork, SummaryUseCase(repo), settings, engine,
@@ -80,12 +79,13 @@ class PostAskTest {
             advanceUntilIdle()
             val input = if (mode == AiSummaryMode.CLOUD) repo.requests.last() else localRequests.last().text
             val json = Json.parseToJsonElement(input).jsonObject
-            assertEquals(source.input, json["source_context"]!!.jsonObject["summary_source"]!!.jsonPrimitive.content)
+            assertNull(json["source_context"]!!.jsonObject["summary_source"])
+            assertEquals(false, json["source_context"]!!.jsonObject["original_article_included"]!!.jsonPrimitive.boolean)
             assertEquals(source.summary, json["source_context"]!!.jsonObject["displayed_summary"]!!.jsonPrimitive.content)
             assertEquals(3, json["conversation"]!!.jsonArray.size)
             assertEquals(0, repo.extractions, "Ask must never retrieve a different version of the article")
             val prompt = if (mode == AiSummaryMode.CLOUD) repo.configs.last().systemPrompt else localRequests.last().prompt
-            assertTrue(assertNotNull(prompt).contains("summary_source"))
+            assertTrue(assertNotNull(prompt).contains("displayed_summary"))
             assertFalse(assertNotNull(prompt).contains("Focus on selected_comment"))
             assertTrue(AskConversation.suggestedQuestions(source).none { "comment" in it })
             conversation.reset()
@@ -97,6 +97,109 @@ class PostAskTest {
             assertEquals(json["source_context"], resetJson["source_context"])
             if (mode == AiSummaryMode.LOCAL) assertTrue(localRequests.all { it.preserveInput && !it.useGeminiNanoSummarizationLora })
         }
+    }
+
+    @Test
+    fun oversizedHistoryDropsWholeOldestTurnsAndKeepsVisibleTranscript() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        val requests = mutableListOf<JsonObject>()
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                val json = Json.parseToJsonElement(request.text).jsonObject
+                requests += json
+                if (json["conversation"]!!.jsonArray.size > 3) {
+                    error("Input text length exceeds the limit. Please check the countTokens API.")
+                }
+                return SummaryResult("answer")
+            }
+        }
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42, title = "Post"), StoryPresentationSnapshot()), "Summary",
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine,
+            source, contextDispatcher = dispatcher)
+        listOf("first", "second", "third").forEach { conversation.ask(it); advanceUntilIdle() }
+        assertEquals(4, requests.size, "Only the oversized request is retried")
+        assertEquals(3, conversation.state.value.turns.size, "The visible history is retained")
+        assertTrue(conversation.state.value.turns.all { it.complete })
+        assertEquals(1, conversation.state.value.omittedTurns)
+        val kept = requests.last()["conversation"]!!.jsonArray
+        assertEquals(listOf("second", "answer", "third"), kept.map { it.jsonObject["content"]!!.jsonPrimitive.content })
+        assertEquals(requests.first()["source_context"], requests.last()["source_context"])
+        conversation.reset()
+        assertEquals(0, conversation.state.value.omittedTurns)
+        conversation.ask("fresh")
+        advanceUntilIdle()
+        assertEquals(1, requests.last()["conversation"]!!.jsonArray.size)
+    }
+
+    @Test
+    fun sourceTooLargeDoesNotRetryForeverAndShorterQuestionCanRecover() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        var calls = 0
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                calls++
+                if (calls == 1) error("Input token count exceeds the model's context limit")
+                val turns = Json.parseToJsonElement(request.text).jsonObject["conversation"]!!.jsonArray
+                assertEquals(1, turns.size, "Failed questions must not accumulate in the request")
+                return SummaryResult("answer")
+            }
+        }
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary",
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine,
+            source, contextDispatcher = dispatcher)
+        conversation.ask("long question")
+        advanceUntilIdle()
+        assertEquals(1, calls)
+        assertTrue(conversation.state.value.inputTooLarge)
+        conversation.retry()
+        advanceUntilIdle()
+        assertEquals(1, calls)
+        conversation.ask("short")
+        advanceUntilIdle()
+        assertFalse(conversation.state.value.inputTooLarge)
+        assertTrue(conversation.state.value.turns.last().complete)
+    }
+
+    @Test
+    fun partialAnswersAreNotSilentlyRegeneratedOnContextErrors() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        var calls = 0
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest) = error("Use streaming")
+            override fun summarizeEvents(request: SummaryRequest) = flow {
+                calls++
+                if (calls == 1) emit(StorySummaryEvent.Success("first answer")) else {
+                    emit(StorySummaryEvent.Progress("partial answer"))
+                    emit(StorySummaryEvent.Failure("context window exceeded"))
+                }
+            }
+        }
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary",
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine,
+            source, contextDispatcher = dispatcher)
+        conversation.ask("first")
+        advanceUntilIdle()
+        conversation.ask("second")
+        advanceUntilIdle()
+        assertEquals(2, calls)
+        assertEquals("partial answer", conversation.state.value.turns.last().answer)
+        assertTrue(conversation.state.value.contextLimitReached)
+        assertFalse(conversation.state.value.inputTooLarge)
     }
 
     private class Repository : CloudSummaryRepository {

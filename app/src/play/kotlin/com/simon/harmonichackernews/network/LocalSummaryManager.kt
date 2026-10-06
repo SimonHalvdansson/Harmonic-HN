@@ -13,6 +13,7 @@ import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.SystemInstruction
 import com.google.mlkit.genai.prompt.generateContentRequest
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelService
@@ -20,6 +21,7 @@ import com.simon.harmonichackernews.summary.LocalModelTransferState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
+import com.simon.harmonichackernews.summary.NanoPromptBudget
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
 import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
@@ -32,6 +34,7 @@ import java.util.concurrent.ExecutionException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -220,6 +223,7 @@ internal class AndroidLocalSummaryBackend(
                 } else {
                     summarizeWithGeminiNanoPrompt(
                         content = content,
+                        preserveInput = request.preserveInput,
                         systemPrompt = request.prompt
                             ?.takeIf(String::isNotBlank)
                             ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
@@ -250,6 +254,8 @@ internal class AndroidLocalSummaryBackend(
                 )
             }
             send(StorySummaryEvent.Success(result))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: InterruptedException) {
             Thread.currentThread().interrupt()
             send(StorySummaryEvent.Failure("Local summarization was interrupted"))
@@ -318,6 +324,7 @@ internal class AndroidLocalSummaryBackend(
 
     private suspend fun summarizeWithGeminiNanoPrompt(
         content: String,
+        preserveInput: Boolean,
         systemPrompt: String,
         streamResponses: Boolean,
         onProgress: (String) -> Unit,
@@ -337,12 +344,20 @@ internal class AndroidLocalSummaryBackend(
                 FeatureStatus.AVAILABLE -> Unit
                 else -> error("Gemini Nano prompt feature returned status $featureStatus")
             }
-            val promptRequest = generateContentRequest(
-                TextPart("$systemPrompt\n\n## Article\n$content"),
+            val nativeSystemPrompt = generativeModel.isSystemPromptAvailable()
+            val thinkingAvailable = generativeModel.isThinkingModeAvailable()
+            fun request(text: String, outputTokens: Int = 1024) = generateContentRequest(
+                TextPart(if (nativeSystemPrompt) text else "$systemPrompt\n\n## Input\n$text"),
             ) {
+                if (nativeSystemPrompt) systemInstruction = SystemInstruction(systemPrompt)
                 temperature = 0.2f
-                maxOutputTokens = 256
+                enableThinking = thinkingAvailable
+                maxOutputTokens = outputTokens
             }
+            val budget = NanoPromptBudget.fit(content, generativeModel.getTokenLimit(), preserveInput) {
+                generativeModel.countTokens(request(it)).totalTokens
+            }
+            val promptRequest = request(budget.text, budget.outputTokens)
             if (streamResponses) {
                 val summary = StringBuilder()
                 generativeModel.generateContentStream(promptRequest).collect { response ->

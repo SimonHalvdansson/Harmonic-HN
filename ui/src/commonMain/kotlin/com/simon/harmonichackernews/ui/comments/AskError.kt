@@ -46,9 +46,15 @@ internal data class DiscussionErrorPresentation(
     val action: DiscussionErrorAction,
 )
 
-internal fun discussionErrorPresentation(error: String, contextLimitReached: Boolean): DiscussionErrorPresentation {
+internal fun discussionErrorPresentation(
+    error: String, contextLimitReached: Boolean, inputTooLarge: Boolean = false,
+): DiscussionErrorPresentation {
     val localDetail = error.removePrefix("Local summarization failed: ")
     return when {
+        inputTooLarge -> DiscussionErrorPresentation(
+            "Too much context", error,
+            Res.drawable.ic_info, DiscussionErrorAction.OpenSettings,
+        )
         contextLimitReached -> DiscussionErrorPresentation(
             "Discussion is full",
             "This conversation has reached the model’s context limit. Reset it to start fresh.",

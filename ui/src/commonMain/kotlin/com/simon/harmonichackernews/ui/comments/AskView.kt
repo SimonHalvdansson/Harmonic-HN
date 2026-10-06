@@ -237,6 +237,16 @@ internal fun AskSurface(
                             maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
                     }
                 }
+                if (post != null) {
+                    Text("Answers use the AI summary above, not the full article. The summary may miss details or contain mistakes.",
+                        color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.7f),
+                        fontSize = 13.sp, lineHeight = 18.sp)
+                }
+                if (state.omittedTurns > 0) {
+                    Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
+                        color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.7f),
+                        fontSize = 13.sp, lineHeight = 18.sp)
+                }
                 AnimatedVisibility(
                     visible = state.turns.isEmpty(),
                     exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
@@ -347,7 +357,7 @@ internal fun AskSurface(
                     }
                 }
                 state.error?.let { error ->
-                    val presentation = discussionErrorPresentation(error, state.contextLimitReached)
+                    val presentation = discussionErrorPresentation(error, state.contextLimitReached, state.inputTooLarge)
                     AskErrorCard(
                         presentation = presentation,
                         enabled = !resetting,

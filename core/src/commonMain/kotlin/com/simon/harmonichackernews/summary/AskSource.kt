@@ -15,7 +15,6 @@ sealed interface AskSource {
 
     data class Post(
         override val story: StoryListItemSnapshot,
-        val input: String,
         val summary: String,
     ) : AskSource
 }
