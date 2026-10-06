@@ -132,6 +132,12 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
         let root = HarmonicRootViewController(
             content: harmonic.makeViewController()
         )
+        root.onScreenCornersChanged = { [weak harmonic] topLeft, topRight, bottomRight, bottomLeft in
+            harmonic?.updateScreenCorners(
+                topLeft: Float(topLeft), topRight: Float(topRight),
+                bottomRight: Float(bottomRight), bottomLeft: Float(bottomLeft)
+            )
+        }
         services.appearance.attach(root)
         let window = HarmonicWindow(windowScene: windowScene)
         window.onSystemAppearanceChanged = { [weak harmonic] in harmonic?.refreshAppearance() }
@@ -182,6 +188,7 @@ final class HarmonicWindow: UIWindow {
 final class HarmonicRootViewController: UIViewController {
     private let content: UIViewController
     private var darkAppearance = false
+    var onScreenCornersChanged: ((CGFloat, CGFloat, CGFloat, CGFloat) -> Void)?
 
     init(content: UIViewController) {
         self.content = content
@@ -207,6 +214,12 @@ final class HarmonicRootViewController: UIViewController {
         ])
         content.didMove(toParent: self)
 
+        let cornerProbe = HarmonicScreenCornerProbe(frame: view.bounds)
+        cornerProbe.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        cornerProbe.onChange = { [weak self] topLeft, topRight, bottomRight, bottomLeft in
+            self?.onScreenCornersChanged?(topLeft, topRight, bottomRight, bottomLeft)
+        }
+        view.addSubview(cornerProbe)
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -231,4 +244,52 @@ final class HarmonicRootViewController: UIViewController {
         setNeedsStatusBarAppearanceUpdate()
     }
 
+}
+
+/// A transparent geometry probe; it does not clip or alter the Compose view itself.
+private final class HarmonicScreenCornerProbe: UIView {
+    var onChange: ((CGFloat, CGFloat, CGFloat, CGFloat) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        accessibilityElementsHidden = true
+        backgroundColor = .clear
+#if compiler(>=6.2) && !targetEnvironment(macCatalyst)
+        if #available(iOS 26.0, *) {
+            cornerConfiguration = .corners(radius: .containerConcentric(minimum: 0))
+        }
+#endif
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+#if compiler(>=6.2) && !targetEnvironment(macCatalyst)
+        if #available(iOS 26.0, *), !ProcessInfo.processInfo.isiOSAppOnMac,
+           let window, let screen = window.windowScene?.screen {
+            let windowFrame = window.convert(window.bounds, to: screen.coordinateSpace)
+            let display = screen.bounds
+            let fullScreen = abs(windowFrame.minX - display.minX) < 0.5 &&
+                abs(windowFrame.minY - display.minY) < 0.5 &&
+                abs(windowFrame.width - display.width) < 0.5 &&
+                abs(windowFrame.height - display.height) < 0.5
+            if fullScreen {
+                // Query in layoutSubviews so UIKit invalidates this probe when the
+                // effective corners change (rotation, resizing or a different display).
+                onChange?(effectiveRadius(corner: .topLeft), effectiveRadius(corner: .topRight),
+                    effectiveRadius(corner: .bottomRight), effectiveRadius(corner: .bottomLeft))
+                return
+            }
+        }
+#endif
+        onChange?(0, 0, 0, 0)
+    }
 }

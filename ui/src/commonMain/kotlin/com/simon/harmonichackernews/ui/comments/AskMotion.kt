@@ -3,6 +3,10 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
@@ -34,6 +38,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.simon.harmonichackernews.ui.common.rememberScreenCorners
+import com.simon.harmonichackernews.ui.common.forViewport
+import com.simon.harmonichackernews.ui.common.interpolateFrom
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.geometry.Size
@@ -69,7 +80,10 @@ internal fun AskContainer(
     // Summary sources are hidden while this layer owns their pixels. Keep drawing the
     // exact resting card at zero until the source and overlay swap in one composition.
     if (progress <= 0f && !summarySource) return
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val screenCorners = rememberScreenCorners()
+    val windowSize = LocalWindowInfo.current.containerSize
+    var viewport by remember { mutableStateOf<Rect?>(null) }
+    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInWindow() }) {
         // Block the underlying dialog from a sibling behind the content. Consuming on
         // an ancestor cancels the scrollable's touch-slop detection on plain message text.
         Box(Modifier.fillMaxSize().consumeAllPointerGestures())
@@ -82,14 +96,26 @@ internal fun AskContainer(
             origin.right + (width - origin.right) * p,
             origin.bottom + (height - origin.bottom) * p,
         )
-        val radius = with(density) { sourceCornerRadius.toPx() } * (1f - p)
+        val corners = screenCorners.forViewport(viewport, windowSize)
+            .interpolateFrom(sourceCornerRadius.value, p)
+        fun px(radius: Float) = with(density) { radius.dp.toPx() }
         val mask = object : Shape {
             override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
-                Outline.Generic(Path().apply { addRoundRect(RoundRect(bounds, CornerRadius(radius))) })
+                Outline.Generic(Path().apply { addRoundRect(RoundRect(
+                    rect = bounds,
+                    topLeft = CornerRadius(px(corners.topLeft)), topRight = CornerRadius(px(corners.topRight)),
+                    bottomRight = CornerRadius(px(corners.bottomRight)), bottomLeft = CornerRadius(px(corners.bottomLeft)),
+                )) })
         }
         // One material surface owns the entire morph, including the final shadow and corners.
         // The recorded source contains only foreground content, never a second background.
-        val shape = RoundedCornerShape(with(density) { radius.toDp() })
+        val ltr = LocalLayoutDirection.current == LayoutDirection.Ltr
+        val shape = RoundedCornerShape(
+            topStart = (if (ltr) corners.topLeft else corners.topRight).dp,
+            topEnd = (if (ltr) corners.topRight else corners.topLeft).dp,
+            bottomEnd = (if (ltr) corners.bottomRight else corners.bottomLeft).dp,
+            bottomStart = (if (ltr) corners.bottomLeft else corners.bottomRight).dp,
+        )
         val surface = if (summarySource) {
             // The summary starts as a flat, opaque card. Match its border and fill at
             // the handoff rather than briefly substituting the comment dialog's glass/shadow.

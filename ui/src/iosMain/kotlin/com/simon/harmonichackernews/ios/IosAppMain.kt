@@ -39,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlin.time.Clock
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
+import com.simon.harmonichackernews.ui.common.LocalIosScreenCorners
+import com.simon.harmonichackernews.ui.common.ScreenCorners
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -119,6 +121,14 @@ class IosHarmonicApplication(
     private val scene = bootstrap.createScene()
     private var closed = false
     private var foreground by mutableStateOf(false)
+    private var screenCorners by mutableStateOf(ScreenCorners())
+
+    /** UIKit supplies public, container-relative radii in points; non-full-screen hosts send zero. */
+    fun updateScreenCorners(topLeft: Float, topRight: Float, bottomRight: Float, bottomLeft: Float) {
+        if (!closed) screenCorners = ScreenCorners(
+            topLeft, topRight, bottomRight, bottomLeft,
+        )
+    }
 
     fun setForeground(active: Boolean) {
         if (closed) return
@@ -131,7 +141,10 @@ class IosHarmonicApplication(
     }
 
     fun makeViewController(): UIViewController = ComposeUIViewController {
-        CompositionLocalProvider(LocalIosForeground provides foreground) {
+        CompositionLocalProvider(
+            LocalIosForeground provides foreground,
+            LocalIosScreenCorners provides screenCorners,
+        ) {
             IosApp(
                 bootstrap = bootstrap,
                 scene = scene,
