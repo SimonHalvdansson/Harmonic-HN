@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -30,6 +31,32 @@ import kotlin.test.assertTrue
 import kotlin.math.abs
 
 class CommentDiscussionComposerTest {
+    @Test
+    fun darkInputIsDarkerThanTheAskSurfaceInBothDarkPalettes() = SwingUtilities.invokeAndWait {
+        for (theme in listOf("dark", "material_dark")) {
+            val palette = HarmonicThemeCatalog.resolve(theme, true)
+            val surface = palette.colors.contentCardBackground
+            val scene = ImageComposeScene(360, 200, Density(1f)) {
+                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    Box(Modifier.fillMaxSize().background(surface)) {
+                        CommentDiscussionComposer("", {}, false, false, true, {}, {},
+                            Modifier.align(Alignment.BottomCenter), surfaceColor = surface)
+                    }
+                }
+            }
+            try {
+                repeat(5) { scene.render(it * 16_000_000L).close() }
+                scene.render(96_000_000L).use { image ->
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    assertTrue(pixels[180, 128].luminance() < pixels[180, 50].luminance(),
+                        "The input must be darker than the surrounding Ask surface in $theme")
+                }
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
     @Test
     fun floatingComposerGrowsAndDispatchesOnlyAvailableActions() = SwingUtilities.invokeAndWait {
         val evidence = System.getenv("HARMONIC_COMPOSER_EVIDENCE")?.let(::File)?.apply { mkdirs() }

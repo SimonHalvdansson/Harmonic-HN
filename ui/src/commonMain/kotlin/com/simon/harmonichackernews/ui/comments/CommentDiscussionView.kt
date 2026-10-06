@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
@@ -83,10 +82,12 @@ internal fun CommentDiscussionSurface(
     val keyboard = LocalSoftwareKeyboardController.current
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
     val questions = remember(comment.id) { CommentDiscussion.suggestedQuestions(comment) }
+    val remainingQuestions = remember(questions, state.suggestedQuestions, state.turns) {
+        remainingDiscussionQuestions(questions + state.suggestedQuestions, state.turns.map { it.question })
+    }
     val revealedTurns = remember(comment.id) { mutableSetOf<Int>() }
     val resetAlpha = remember(comment.id) { Animatable(1f) }
     val density = LocalDensity.current
-    var composerHeight by remember { mutableStateOf(80.dp) }
     var resetting by remember(comment.id) { mutableStateOf(false) }
     val followThreshold = with(LocalDensity.current) { 96.dp.toPx() }
     var followOutput by remember { mutableStateOf(true) }
@@ -139,14 +140,29 @@ internal fun CommentDiscussionSurface(
     }
 
     CommentDiscussionContainer(origin, progress, color, source) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-            HarmonicTopAppBar(
-                title = "Ask about this comment",
-                onBack = controller::closeCommentDiscussion,
-                navigationContentDescription = "Back to comment",
-                toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
-            )
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        CommentDiscussionLayout(
+            header = {
+                HarmonicTopAppBar(
+                    title = "Ask about this comment",
+                    onBack = controller::closeCommentDiscussion,
+                    navigationContentDescription = "Back to comment",
+                    toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
+                )
+            },
+            composer = { modifier ->
+                CommentDiscussionComposer(
+                    draft = draft,
+                    onDraftChanged = { draft = it },
+                    hasTurns = state.turns.isNotEmpty(),
+                    running = state.running,
+                    enabled = !resetting,
+                    onSend = ::send,
+                    onStop = discussion::stop,
+                    surfaceColor = color,
+                    modifier = modifier,
+                )
+            },
+        ) { composerHeight ->
             Column(
                 Modifier.fillMaxSize().graphicsLayer {
                     alpha = resetAlpha.value
@@ -187,7 +203,7 @@ internal fun CommentDiscussionSurface(
                     Spacer(Modifier.height(6.dp))
                     Text(body, color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
                         fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
-                        maxLines = if (expanded) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
+                        maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
                 }
                 AnimatedVisibility(
                     visible = state.turns.isEmpty(),
@@ -315,20 +331,34 @@ internal fun CommentDiscussionSurface(
                         },
                     )
                 }
+                AnimatedVisibility(
+                    visible = state.turns.isNotEmpty() && !state.running && remainingQuestions.isNotEmpty(),
+                    enter = fadeIn(tween(180)) + expandVertically(tween(240, easing = CommentDiscussionEasing)),
+                    exit = fadeOut(tween(120)) + shrinkVertically(tween(180)),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("More questions", Modifier.padding(top = 4.dp, bottom = 6.dp),
+                            color = HarmonicTheme.colors.contentPrimary,
+                            style = MaterialTheme.typography.titleMedium)
+                        remainingQuestions.forEachIndexed { index, question ->
+                            key(question) {
+                                DiscussionQuestionButton(
+                                    question = question,
+                                    show = progress >= 0.65f && controller.commentDiscussionOpen,
+                                    index = index,
+                                    enabled = !resetting && !state.running,
+                                    fontFamily = typography.family,
+                                    generated = question !in questions,
+                                    onClick = {
+                                        keyboard?.hide()
+                                        discussion.ask(question)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
-            }
-            CommentDiscussionComposer(
-                draft = draft,
-                onDraftChanged = { draft = it },
-                hasTurns = state.turns.isNotEmpty(),
-                running = state.running,
-                enabled = !resetting,
-                onSend = ::send,
-                onStop = discussion::stop,
-                modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged {
-                    composerHeight = with(density) { it.height.toDp() }
-                },
-            )
             }
         }
     }
@@ -367,6 +397,7 @@ private fun DiscussionQuestionButton(
         },
         shape = RoundedCornerShape(16.dp),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = HarmonicTheme.colors.contentPrimary),
     ) {
         val questionIcon = when {
             generated || question == "Explain this comment" -> Res.drawable.ic_auto_awesome
@@ -381,4 +412,11 @@ private fun DiscussionQuestionButton(
         Text(question, Modifier.weight(1f), fontFamily = fontFamily,
             fontSize = 14.sp, lineHeight = 19.sp)
     }
+}
+
+/** Keep unused starter and generated questions available after each turn. */
+internal fun remainingDiscussionQuestions(suggestions: List<String>, asked: List<String>): List<String> {
+    val askedQuestions = asked.map { it.trim().lowercase() }.toSet()
+    return suggestions.distinctBy { it.trim().lowercase() }
+        .filter { it.isNotBlank() && it.trim().lowercase() !in askedQuestions }
 }

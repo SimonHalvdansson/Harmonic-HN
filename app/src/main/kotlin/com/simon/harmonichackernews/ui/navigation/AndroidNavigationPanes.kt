@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import android.os.Build
+import android.view.Window
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -35,6 +37,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ui.comments.AndroidCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
@@ -48,6 +51,7 @@ import com.simon.harmonichackernews.ui.stories.StoryTapToUpdateButton
 import com.simon.harmonichackernews.ui.stories.AndroidStoriesScreen
 import com.simon.harmonichackernews.ui.stories.AndroidStoryPreviewOverlay
 import com.simon.harmonichackernews.navigation.MainStoryRequest
+import com.simon.harmonichackernews.navigation.MainDestination
 
 @Composable
 internal fun StoriesPane(
@@ -140,6 +144,13 @@ internal fun CommentsPane(
         }
     }
     val commentsController = activeCoordinator.composeUiController
+    val navigation by controller.navigationState.state.collectAsStateWithLifecycle()
+    AskNavigationBarAppearance(
+        window = activity.window,
+        active = navigation.currentDestination == MainDestination.STORY &&
+            navigation.storyRequest?.serial == request.serial &&
+            commentsController?.commentDiscussionSurfaceVisible == true,
+    )
     // Each retained destination owns its bar color, just like its header and scroll state.
     // Reading the active controller here would repaint the parent with the child's tint.
     val background = HarmonicTheme.colors.background
@@ -246,3 +257,25 @@ internal fun CommentsPane(
 }
 
 internal const val LEGACY_COMMENTS_PANE_WEIGHT = 5f
+
+@Suppress("DEPRECATION")
+@Composable
+private fun AskNavigationBarAppearance(window: Window, active: Boolean) {
+    DisposableEffect(window, active) {
+        if (!active) return@DisposableEffect onDispose { }
+        val previousColor = window.navigationBarColor
+        val previousContrast = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced
+        } else null
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        onDispose {
+            window.navigationBarColor = previousColor
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && previousContrast != null) {
+                window.isNavigationBarContrastEnforced = previousContrast
+            }
+        }
+    }
+}

@@ -24,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -33,9 +35,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_upward
 import com.simon.harmonichackernews.resources.ic_stop
@@ -53,11 +57,13 @@ internal fun CommentDiscussionComposer(
     onSend: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
+    surfaceColor: Color = HarmonicTheme.colors.background,
 ) {
     val canSend = enabled && !running && draft.isNotBlank()
     val actionEnabled = enabled && (running || draft.isNotBlank())
     val fieldShape = RoundedCornerShape(32.dp)
-    val fieldColor = HarmonicTheme.colors.surfaceContainerHigh
+    val fieldColor = if (HarmonicTheme.isDark) lerp(surfaceColor, Color.Black, 0.35f)
+        else HarmonicTheme.colors.surfaceContainerHigh
     val accent = MaterialTheme.colorScheme.primary
     val actionBackground by animateColorAsState(
         if (actionEnabled) accent else accent.copy(alpha = 0.25f),
@@ -70,7 +76,12 @@ internal fun CommentDiscussionComposer(
     )
     Row(
         modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-            .shadow(3.dp, fieldShape)
+            .dropShadow(fieldShape, Shadow(
+                radius = 8.dp,
+                spread = 0.dp,
+                color = Color.Black.copy(alpha = 0.18f),
+                offset = DpOffset(0.dp, 2.dp),
+            ))
             .background(fieldColor, fieldShape)
             .padding(end = 8.dp, top = 4.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -80,14 +91,20 @@ internal fun CommentDiscussionComposer(
             value = draft,
             onValueChange = onDraftChanged,
             enabled = enabled,
-            placeholder = { Text(if (hasTurns) "Ask a follow-up…" else "Ask a question…") },
+            placeholder = {
+                Text(if (hasTurns) "Ask a follow-up…" else "Ask a question…",
+                    modifier = Modifier.padding(start = 2.dp))
+            },
             modifier = Modifier.weight(1f).onPreviewKeyEvent { event ->
                 if ((event.key == Key.Enter || event.key == Key.NumPadEnter) && !event.isShiftPressed) {
                     if (event.type == KeyEventType.KeyDown && canSend) onSend()
                     true
                 } else false
             },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Send,
+            ),
             keyboardActions = KeyboardActions(onSend = { if (canSend) onSend() }),
             shape = fieldShape,
             maxLines = 5,
