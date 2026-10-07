@@ -29,6 +29,7 @@ import com.simon.harmonichackernews.ui.theme.cardBackground
 fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
+    val controlsEnabled = reading.integratedWebView && reading.readerModeEnabled
     var showFontPicker by rememberSaveable { mutableStateOf(false) }
     val family = rememberContentTypography(reading.readerModeFont.storedValue).family
     SettingsPage(
@@ -69,12 +70,12 @@ fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
                     summary = "Automatically simplify supported articles",
                     icon = Res.drawable.ic_chrome_reader_mode,
                     checked = reading.readerModeDefault,
-                    enabled = reading.integratedWebView && reading.readerModeEnabled,
+                    enabled = controlsEnabled,
                     onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, it) },
                 )
                 SettingsDivider()
                 SettingRow(title = "Font", summary = reading.readerModeFont.label,
-                    icon = Res.drawable.ic_font_download, onClick = { showFontPicker = true })
+                    icon = Res.drawable.ic_font_download, enabled = controlsEnabled, onClick = { showFontPicker = true })
                 SettingsDivider()
                 SliderSetting(
                     title = "Text size",
@@ -83,12 +84,13 @@ fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
                     value = reading.readerModeFontSize.toFloat(),
                     valueRange = TextPreferences.MIN_READER_MODE_FONT_SIZE.toFloat()..TextPreferences.MAX_READER_MODE_FONT_SIZE.toFloat(),
                     steps = TextPreferences.MAX_READER_MODE_FONT_SIZE - TextPreferences.MIN_READER_MODE_FONT_SIZE - 1,
+                    enabled = controlsEnabled,
                     onValueChange = { repository.setReaderModeFontSize(it.toInt()) },
                 )
             }
         }
     }
-    if (showFontPicker) {
+    if (showFontPicker && controlsEnabled) {
         FontSelectionDialog(readerMode = true, selected = reading.readerModeFont,
             options = AppFont.entries.map { it.label to it },
             onSelected = repository::setReaderModeFont, onDismiss = { showFontPicker = false })
