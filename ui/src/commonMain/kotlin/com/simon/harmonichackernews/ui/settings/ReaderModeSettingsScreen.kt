@@ -43,8 +43,8 @@ fun ReaderModeSettingsRoute(
         item {
             SettingsCategory("Reading") {
                 SwitchSettingRow(
-                    title = "Reader mode on by default",
-                    summary = "Automatically simplify supported articles",
+                    title = "Activate automatically",
+                    summary = "On page load, when available",
                     icon = Res.drawable.ic_chrome_reader_mode,
                     checked = reading.readerModeDefault,
                     enabled = controlsEnabled,

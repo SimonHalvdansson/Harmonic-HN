@@ -13,7 +13,14 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** Wait before touching WebView APIs, including feature checks and CookieManager. */
-internal suspend fun awaitAndroidWebViewStartup(context: Context) {
+internal suspend fun awaitAndroidWebViewStartup(context: Context) =
+    startAndroidWebView(context, runUiThreadTasks = true)
+
+/** Prepares the provider off the UI thread; still await full startup before using WebView APIs. */
+internal suspend fun awaitAndroidWebViewBackgroundStartup(context: Context) =
+    startAndroidWebView(context, runUiThreadTasks = false)
+
+private suspend fun startAndroidWebView(context: Context, runUiThreadTasks: Boolean) {
     suspendCancellableCoroutine { continuation ->
         val config = WebViewStartUpConfig.Builder { command ->
             Dispatchers.IO.asExecutor().execute {
@@ -24,7 +31,7 @@ internal suspend fun awaitAndroidWebViewStartup(context: Context) {
                     continuation.resumeWithException(error)
                 }
             }
-        }.build()
+        }.setShouldRunUiThreadStartUpTasks(runUiThreadTasks).build()
         WebViewCompat.startUpWebView(
             context.applicationContext,
             config,

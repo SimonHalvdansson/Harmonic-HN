@@ -9,7 +9,10 @@ object ReaderPreviewDocument {
     const val Title = "Article preview"
     const val Text = "Reader mode brings the words into focus. Adjust the font and text size to find a comfortable way to read your next story."
 
-    fun html(font: String, fontFaceCss: String, background: Int, foreground: Int, heightChanged: String): String {
+    fun html(
+        font: String, fontFaceCss: String, background: Int, foreground: Int, heightChanged: String,
+        fontSize: Int = 17, lineHeight: Double = 1.68,
+    ): String {
         val fallback = ReaderModeScriptProtocol.fontFamily(font)
         val family = if (fontFaceCss.isBlank()) fallback else "'HarmonicReaderFont', $fallback"
         return """
@@ -18,11 +21,14 @@ object ReaderPreviewDocument {
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
             <style>
             $fontFaceCss
+            :root{--reader-size:${fontSize}px;--reader-title:${(fontSize * 1.78).roundToInt()}px;--reader-line-height:$lineHeight;}
             html,body{margin:0;padding:0;background:${ReaderModeSourceAssembler.cssColor(background)};
                 color:${ReaderModeSourceAssembler.cssColor(foreground)};-webkit-text-size-adjust:100%;}
             #preview{box-sizing:border-box;max-width:760px;margin:0 auto;padding:20px;overflow-wrap:anywhere;font-family:$family;}
             h1{font:700 var(--reader-title,32px)/1.15 $family;margin:0 0 12px;}
-            p{font-size:var(--reader-size,17px);line-height:var(--reader-line-height,1.68);margin:0;}
+            p{font-size:var(--reader-size,17px);line-height:var(--reader-line-height,1.68);margin:0;
+                transition:line-height 250ms ease;}
+            @media (prefers-reduced-motion:reduce){p{transition:none;}}
             </style></head><body><main id="preview"><h1>$Title</h1><p>$Text</p></main>
             <script>new ResizeObserver(function(){
                 var height=document.getElementById('preview').getBoundingClientRect().height;
