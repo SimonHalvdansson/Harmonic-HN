@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
@@ -22,6 +25,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -64,6 +68,16 @@ internal fun CommentsScaffold(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
         val travelPx = with(density) { (fullHeight - peekHeight).toPx().coerceAtLeast(1f) }
+        val backPreviewLiftPx = with(density) { 48.dp.toPx() }.coerceAtMost(travelPx)
+        val backPreviewLift = animateFloatAsState(
+            targetValue = if (controller.predictiveBackActive) {
+                backPreviewLiftPx * controller.predictiveBackProgress.coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            animationSpec = if (controller.predictiveBackActive) snap() else tween(200),
+            label = "comments sheet back preview",
+        )
 
         LaunchedEffect(controller.sheetRequest) {
             val request = controller.sheetRequest ?: return@LaunchedEffect
@@ -92,7 +106,16 @@ internal fun CommentsScaffold(
         }
 
         BottomSheetScaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Keep the logical sheet collapsed during the preview so returning to
+                    // comments remains the back target throughout the gesture. Translate the
+                    // complete surface, including its shadow, and settle alongside expansion.
+                    val remainingTravel = runCatching { sheetState.requireOffset() }
+                        .getOrDefault(0f).coerceAtLeast(0f)
+                    translationY = -backPreviewLift.value.coerceAtMost(remainingTravel)
+                },
             scaffoldState = scaffoldState,
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
@@ -102,7 +125,7 @@ internal fun CommentsScaffold(
             // Only cast a shadow as the sheet lowers to expose the article underneath.
             sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
             sheetDragHandle = null,
-            sheetSwipeEnabled = controller.integratedWebView,
+            sheetSwipeEnabled = controller.integratedWebView && !controller.predictiveBackActive,
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             sheetContent = {
