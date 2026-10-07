@@ -133,7 +133,7 @@ internal fun AskComposer(
         FilledIconButton(
             enabled = actionEnabled,
             onClick = { if (running) onStop() else onSend() },
-            modifier = Modifier.padding(bottom = 4.dp).size(48.dp).semantics {
+            modifier = Modifier.padding(bottom = 8.dp).size(40.dp).semantics {
                 contentDescription = if (running) "Stop response" else "Send question"
             },
             shape = CircleShape,
@@ -148,7 +148,7 @@ internal fun AskComposer(
                 Icon(
                     painterResource(if (showStop) Res.drawable.ic_stop else Res.drawable.ic_arrow_upward),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }
