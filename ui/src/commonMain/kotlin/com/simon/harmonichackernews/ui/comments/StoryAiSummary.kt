@@ -114,10 +114,11 @@ fun StoryAiSummary(
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 7.dp)
-                        .size(14.dp),
+                        .size(18.dp),
                 )
                 Text(
                     "Summary",
+                    fontSize = 14.sp,
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -178,8 +179,8 @@ fun StoryAiSummary(
                         text = summary,
                         color = MaterialTheme.colorScheme.error,
                         fontFamily = typography.family,
-                        fontSize = typography.commentTextSize.sp,
-                        lineHeight = (typography.commentTextSize + 2f).sp,
+                        fontSize = (typography.commentTextSize - 1f).sp,
+                        lineHeight = (typography.commentTextSize + 1f).sp,
                     )
                 }
             } else if (summary.isNotBlank()) {
@@ -192,8 +193,8 @@ fun StoryAiSummary(
                         color = MaterialTheme.colorScheme.onSurface,
                         linkColor = MaterialTheme.colorScheme.primary,
                         fontFamily = typography.family,
-                        fontSize = typography.commentTextSize.sp,
-                        lineHeight = (typography.commentTextSize + 2f).sp,
+                        fontSize = (typography.commentTextSize - 1f).sp,
+                        lineHeight = (typography.commentTextSize + 1f).sp,
                         enableBoldFormatting = settings.enableSummaryBoldFormatting,
                         animateStreamingText = streaming,
                         animationContentKey = story.id,
