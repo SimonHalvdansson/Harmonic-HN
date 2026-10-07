@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
-import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -48,7 +48,7 @@ fun SubmissionsRoute(
     SideEffect { previewResources.updateSettings(displaySettings) }
     val states by previewResources.statesFlow.collectAsStateWithLifecycle()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
-    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     key(store) {
         SubmissionsScreen(
             userName = userName,

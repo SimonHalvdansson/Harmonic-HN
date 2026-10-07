@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.background
@@ -327,7 +328,7 @@ private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
 private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
     val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
     val palette = preview?.palette
-    val baseColor = MaterialTheme.colorScheme.cardBackground
+    val baseColor = HarmonicTheme.targetColorScheme.cardBackground
     val tint = remember(palette, style.paletteTintConfigKey, baseColor) {
         PreviewTintPolicy.calculateCardTint(
             baseColor.toArgb(),

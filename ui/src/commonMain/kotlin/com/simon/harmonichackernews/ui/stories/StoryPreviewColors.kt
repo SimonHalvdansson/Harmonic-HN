@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,7 +38,7 @@ internal fun rememberStoryPreviewCardColor(
     if (!settings.tintCardsFromImages) {
         return if (settings.hasBackground) baseColor else MaterialTheme.colorScheme.pageBackground
     }
-    val baseArgb = baseColor.toArgb()
+    val baseArgb = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     val revision = controller.storyRevision(story.id)
     val resource = controller.previewResource(story.id)?.takeIf { it.pageUrl == story.url }
     val model = remember(story, settings, baseArgb, revision, resource) {

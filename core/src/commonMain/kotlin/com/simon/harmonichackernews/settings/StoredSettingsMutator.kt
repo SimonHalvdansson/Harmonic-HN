@@ -208,32 +208,15 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.STORY_LIST_SELECTOR, value.storedValue)
     }
 
-    fun setColorScheme(value: String, dark: Boolean) {
+    fun setColorScheme(value: String) {
         val current = ColorSchemePreferences.read(store)
         val scheme = ColorSchemePreferences.sanitize(value)
-        ColorSchemePreferences.write(store, when {
-            current.coupled -> current.copy(light = scheme, dark = scheme)
-            dark -> current.copy(dark = scheme)
-            else -> current.copy(light = scheme)
-        })
+        ColorSchemePreferences.write(store, current.copy(light = scheme, dark = scheme, coupled = true))
     }
 
-    fun setColorStyle(value: ColorSchemeStyle, dark: Boolean) {
+    fun setColorStyle(value: ColorSchemeStyle) {
         val current = ColorSchemePreferences.read(store)
-        ColorSchemePreferences.write(store, when {
-            current.coupled -> current.copy(lightStyle = value, darkStyle = value)
-            dark -> current.copy(darkStyle = value)
-            else -> current.copy(lightStyle = value)
-        })
-    }
-
-    fun setColorSchemesCoupled(value: Boolean, displayedDark: Boolean) {
-        val current = ColorSchemePreferences.read(store)
-        val scheme = current.forMode(displayedDark)
-        val style = current.styleForMode(displayedDark)
-        ColorSchemePreferences.write(store, if (value) current.copy(
-            light = scheme, dark = scheme, lightStyle = style, darkStyle = style, coupled = true,
-        ) else current.copy(coupled = false))
+        ColorSchemePreferences.write(store, current.copy(lightStyle = value, darkStyle = value, coupled = true))
     }
 
     fun setNighttimeColorStyle(value: ColorSchemeStyle) = ColorSchemePreferences.write(

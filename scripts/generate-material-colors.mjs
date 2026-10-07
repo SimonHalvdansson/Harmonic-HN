@@ -3,8 +3,8 @@
 // node scripts/generate-material-colors.mjs /tmp/harmonic-colors/node_modules/@material/material-color-utilities/index.js
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const { Hct, SchemeRainbow, SchemeTonalSpot, SchemeVibrant } = await import(pathToFileURL(process.argv[2]).href);
-const seeds = { orange: 0xFFA74413, blue: 0xFF365FB5, violet: 0xFF7048A6, teal: 0xFF00796B, rose: 0xFFA83E60, green: 0xFF2E7D32, amber: 0xFF8F6600, slate: 0xFF546E7A };
+const { Hct, SchemeMonochrome, SchemeRainbow, SchemeTonalSpot, SchemeVibrant } = await import(pathToFileURL(process.argv[2]).href);
+const seeds = { orange: 0xFFA74413, blue: 0xFF365FB5, violet: 0xFF7048A6, teal: 0xFF00796B, rose: 0xFFA83E60, green: 0xFF2E7D32, amber: 0xFF8F6600, slate: 0xFF546E7A, hn: 0xFFFF6600, hackerGreen: 0xFF00FF00 };
 const variants = { NeutralSurfaces: SchemeRainbow, Balanced: SchemeTonalSpot, Vibrant: SchemeVibrant };
 const roles = `primary onPrimary primaryContainer onPrimaryContainer inversePrimary secondary onSecondary secondaryContainer onSecondaryContainer tertiary onTertiary tertiaryContainer onTertiaryContainer error onError errorContainer onErrorContainer surface onSurface surfaceVariant onSurfaceVariant surfaceTint inverseSurface inverseOnSurface outline outlineVariant scrim surfaceBright surfaceDim surfaceContainerLowest surfaceContainerLow surfaceContainer surfaceContainerHigh surfaceContainerHighest primaryFixed primaryFixedDim onPrimaryFixed onPrimaryFixedVariant secondaryFixed secondaryFixedDim onSecondaryFixed onSecondaryFixedVariant tertiaryFixed tertiaryFixedDim onTertiaryFixed onTertiaryFixedVariant`.split(' ');
 let result = `package com.simon.harmonichackernews.ui.theme
@@ -27,6 +27,13 @@ for (const [style, Recipe] of Object.entries(variants)) {
       result += `        background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n        onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n    )\n`;
     }
   }
+}
+// Fixed neutral surfaces need neutral accents too, otherwise Rainbow can match Balanced.
+for (const dark of [false, true]) {
+  const scheme = new SchemeMonochrome(Hct.fromInt(0xFF000000), dark, 0);
+  result += `    val monochrome${dark ? 'Dark' : 'Light'} = ${dark ? 'dark' : 'light'}ColorScheme(\n`;
+  for (const role of roles) result += `        ${role} = Color(0x${scheme[role].toString(16).toUpperCase()}),\n`;
+  result += `        background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n        onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n    )\n`;
 }
 result += `    fun generated(base: String, dark: Boolean, style: ColorSchemeStyle): ColorScheme = when (style) {\n`;
 for (const style of Object.keys(variants)) {

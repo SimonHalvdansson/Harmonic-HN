@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
@@ -326,7 +327,7 @@ private fun PortableStoriesSettings(
     StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = MaterialTheme.colorScheme.cardBackground.toArgb(),
+            tintFallbackArgb = HarmonicTheme.targetColorScheme.cardBackground.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,

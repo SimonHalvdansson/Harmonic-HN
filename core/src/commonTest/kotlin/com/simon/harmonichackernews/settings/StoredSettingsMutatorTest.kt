@@ -234,7 +234,7 @@ class StoredSettingsMutatorTest {
         mutator.setCommentBoolean(CommentBooleanPreference.HEADER_TINT, false)
         mutator.setCommentBoolean(CommentBooleanPreference.SHOW_UP_BUTTON, true)
         mutator.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, true)
-        mutator.setColorScheme("gray", dark = true)
+        mutator.setColorScheme("gray")
         mutator.setNighttimeColorScheme("unknown")
         mutator.setCommentSorting(CommentSortingPreference.NEWEST_FIRST)
         mutator.setCommentsProvider(CommentsProvider.OFFICIAL)
@@ -263,7 +263,7 @@ class StoredSettingsMutatorTest {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)
 
-        mutator.setColorScheme("pure", dark = true)
+        mutator.setColorScheme("pure")
         mutator.setManualDark(true)
 
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
@@ -279,7 +279,7 @@ class StoredSettingsMutatorTest {
         mutator.setFollowSystem(false)
         mutator.setManualDark(true)
 
-        mutator.setColorScheme("pure", dark = true)
+        mutator.setColorScheme("pure")
 
         val appearance = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
         assertFalse(appearance.followSystem)

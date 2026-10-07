@@ -292,11 +292,8 @@ class AppearanceSettingsPresenter(
 
     fun setFollowSystem(value: Boolean) = themeEffect { repository.setFollowSystemTheme(value) }
     fun setManualDark(value: Boolean) = themeEffect { repository.setManualDarkTheme(value) }
-    fun setColorScheme(value: String, dark: Boolean) = themeEffect { repository.setColorScheme(value, dark) }
-    fun setCoupled(value: Boolean, activeDark: Boolean) = themeEffect {
-        repository.setColorSchemesCoupled(value, activeDark)
-    }
-    fun setColorStyle(value: ColorSchemeStyle, dark: Boolean) = themeEffect { repository.setColorStyle(value, dark) }
+    fun setColorScheme(value: String) = themeEffect { repository.setColorScheme(value) }
+    fun setColorStyle(value: ColorSchemeStyle) = themeEffect { repository.setColorStyle(value) }
     fun setNighttimeColorStyle(value: ColorSchemeStyle) = themeEffect { repository.setNighttimeColorStyle(value) }
     fun setNighttimeColorScheme(value: String) = themeEffect { repository.setNighttimeColorScheme(value) }
     fun setSpecialNighttime(value: Boolean) = themeEffect {

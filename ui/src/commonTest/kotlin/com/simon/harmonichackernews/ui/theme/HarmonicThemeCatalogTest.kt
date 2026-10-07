@@ -125,13 +125,52 @@ class HarmonicThemeCatalogTest {
     }
 
     @Test
-    fun dynamicFallbackAndCuratedSchemesIgnoreGeneratedStyles() {
+    fun dynamicFallbackIgnoresStyles() {
         for (option in ColorSchemeCatalog.options.filterNot { ColorSchemePreferences.supportsStyle(it.value) }) {
             for (dark in listOf(false, true)) for (style in ColorSchemeStyle.entries) {
                 assertEquals(HarmonicThemeCatalog.scheme(option.value, dark).colorScheme,
                     HarmonicThemeCatalog.scheme(option.value, dark, style).colorScheme)
             }
         }
+    }
+
+    @Test
+    fun curatedSchemesHaveDistinctStylesWithoutLosingPureAndGraySurfaces() {
+        for (base in listOf("classic", "pure", "hacker_news", "hacker", "gray")) for (dark in listOf(false, true)) {
+            val schemes = ColorSchemeStyle.entries.map { HarmonicThemeCatalog.scheme(base, dark, it).colorScheme }
+            assertEquals(3, schemes.map { listOf(it.primary, it.secondary, it.tertiary, it.surfaceContainer) }.distinct().size,
+                "$base/$dark must offer three distinct styles")
+            if (base == "pure" || base == "gray") {
+                assertEquals(1, schemes.map { it.pageBackground }.distinct().size)
+            }
+        }
+    }
+
+    @Test
+    fun hackerKeepsItsGreenTextInEveryStyle() {
+        for (dark in listOf(false, true)) {
+            val balanced = HarmonicThemeCatalog.scheme("hacker", dark).colorScheme
+            for (style in ColorSchemeStyle.entries) {
+                val colors = HarmonicThemeCatalog.scheme("hacker", dark, style).colorScheme
+                assertEquals(balanced.onSurface, colors.onSurface)
+                assertEquals(balanced.onSurfaceVariant, colors.onSurfaceVariant)
+                assertEquals(balanced.inverseOnSurface, colors.inverseOnSurface)
+                for (text in listOf(colors.onSurface, colors.onSurfaceVariant)) {
+                    assertTrue(text.green > text.red && text.green > text.blue, "$dark/$style must keep green text")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun hnBalancedUsesWebsiteOrangeCreamAndBlack() {
+        val scheme = HarmonicThemeCatalog.scheme("hacker_news", false).colorScheme
+        assertEquals("HN", ColorSchemeCatalog.label("hacker_news"))
+        assertEquals(Color(0xFFF6F6EF), scheme.pageBackground)
+        assertEquals(Color(0xFFFF6600), scheme.primaryContainer)
+        assertEquals(Color.Black, scheme.onPrimaryContainer)
+        assertEquals(Color.Black, scheme.onSurface)
+        assertEquals(Color.White, scheme.cardBackground)
     }
 
     @Test

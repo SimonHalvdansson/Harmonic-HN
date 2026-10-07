@@ -21,7 +21,7 @@ class StoredUserSettingsTest {
         val appearance = repository.snapshot().appearance
         assertEquals(ColorSchemeSelection("orange", "orange", true, "orange"), appearance.colorSchemes)
         assertTrue(appearance.followSystem)
-        repository.setColorScheme("dynamic", false)
+        repository.setColorScheme("dynamic")
         assertEquals("dynamic", AppSettingsRepository(store, emptyFlow()).snapshot().appearance.colorSchemes.light)
 
     }

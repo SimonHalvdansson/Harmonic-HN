@@ -414,9 +414,8 @@ fun ThemeSettingsRoute(
         onBack = onBack,
         onFollowSystemChanged = { value -> applyThemeChange { presenter.setFollowSystem(value) } },
         onManualDarkChanged = { value -> applyThemeChange { presenter.setManualDark(value) } },
-        onCoupledChanged = { value -> applyThemeChange { presenter.setCoupled(value, labels.activeDark) } },
-        onColorSchemeSelected = { value, dark -> applyThemeChange { presenter.setColorScheme(value, dark) } },
-        onColorStyleSelected = { value, dark -> applyThemeChange { presenter.setColorStyle(value, dark) } },
+        onColorSchemeSelected = { value -> applyThemeChange { presenter.setColorScheme(value) } },
+        onColorStyleSelected = { value -> applyThemeChange { presenter.setColorStyle(value) } },
         onNighttimeColorStyleSelected = { value -> applyThemeChange { presenter.setNighttimeColorStyle(value) } },
         onNighttimeColorSchemeSelected = { value -> applyThemeChange { presenter.setNighttimeColorScheme(value) } },
         onSpecialNighttimeChanged = { value ->

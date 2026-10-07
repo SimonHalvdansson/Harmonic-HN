@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -488,8 +489,7 @@ private fun IosCommentsHeader(
     settings: CommentDisplaySettings,
     onBrowserBack: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val tintBase = colors.cardBackground.toArgb()
+    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

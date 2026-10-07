@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
-import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -23,7 +23,7 @@ fun StoriesRoute(
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
-    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     StoriesScreen(
         controller = controller,
         mainListState = mainListState,

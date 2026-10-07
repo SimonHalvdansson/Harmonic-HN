@@ -12,15 +12,70 @@ data class HarmonicThemePalette(val dark: Boolean, val colorScheme: ColorScheme)
 object HarmonicThemeCatalog {
     fun scheme(id: String, dark: Boolean, style: ColorSchemeStyle = ColorSchemeStyle.Balanced): HarmonicThemePalette = HarmonicThemePalette(dark,
         when (ColorSchemePreferences.sanitize(id)) {
-            "classic" -> if (dark) classicDark else classicLight
-            "pure" -> if (dark) black else white
-            "hacker_news" -> if (dark) hackerNewsDark else hackerNews
-            "hacker" -> if (dark) hacker else hackerLight
-            "gray" -> if (dark) gray else grayLight
+            "classic" -> styledCurated(if (dark) "rose" else "teal", dark, style,
+                if (dark) classicDark else classicLight)
+            "pure" -> styledCurated(if (dark) "rose" else "teal", dark, style,
+                if (dark) black else white, preserveSurfaces = true)
+            "hacker_news" -> hackerNewsScheme(dark, style)
+            "hacker" -> hackerScheme(dark, style)
+            "gray" -> styledCurated("rose", dark, style, if (dark) gray else grayLight,
+                preserveSurfaces = true)
             in ColorSchemePreferences.generatedValues -> MaterialColorSchemes.generated(id, dark, style)
             // Defined fallback for Dynamic on platforms without Android system colors.
             else -> if (dark) MaterialColorSchemes.violetDark else MaterialColorSchemes.violetLight
         },
+    )
+
+    private fun hackerScheme(dark: Boolean, style: ColorSchemeStyle): ColorScheme {
+        val identity = if (dark) hacker else hackerLight
+        return styledCurated("hackerGreen", dark, style, identity).copy(
+            onSurface = identity.onSurface,
+            onSurfaceVariant = identity.onSurfaceVariant,
+            onBackground = identity.onSurface,
+            inverseOnSurface = identity.inverseOnSurface,
+        )
+    }
+
+    private fun styledCurated(
+        base: String,
+        dark: Boolean,
+        style: ColorSchemeStyle,
+        balanced: ColorScheme,
+        preserveSurfaces: Boolean = false,
+    ): ColorScheme {
+        if (style == ColorSchemeStyle.Balanced) return balanced
+        if (preserveSurfaces && style == ColorSchemeStyle.NeutralSurfaces) {
+            val monochrome = if (dark) MaterialColorSchemes.monochromeDark else MaterialColorSchemes.monochromeLight
+            return monochrome.withSurfacesFrom(balanced)
+        }
+        val generated = MaterialColorSchemes.generated(base, dark, style)
+        // Pure keeps its white/black canvas; Gray keeps its neutral canvas. Their accent roles
+        // still use each recipe, including the secondary and tertiary color families.
+        return if (preserveSurfaces) generated.withSurfacesFrom(balanced) else generated
+    }
+
+    private fun hackerNewsScheme(dark: Boolean, style: ColorSchemeStyle): ColorScheme {
+        val generated = MaterialColorSchemes.generated("hn", dark, style)
+        val surfaces = if (style == ColorSchemeStyle.Balanced) {
+            generated.withSurfacesFrom(if (dark) hackerNewsDark else hackerNews)
+        } else generated
+        // HN's orange header becomes the filled action color. Keep the generated primary
+        // foreground readable for links and icons instead of putting bright orange text on cream.
+        return surfaces.copy(
+            primaryContainer = Color(0xFFFF6600),
+            onPrimaryContainer = Color.Black,
+        )
+    }
+
+    private fun ColorScheme.withSurfacesFrom(source: ColorScheme): ColorScheme = copy(
+        surface = source.surface, surfaceDim = source.surfaceDim, surfaceBright = source.surfaceBright,
+        surfaceContainerLowest = source.surfaceContainerLowest, surfaceContainerLow = source.surfaceContainerLow,
+        surfaceContainer = source.surfaceContainer, surfaceContainerHigh = source.surfaceContainerHigh,
+        surfaceContainerHighest = source.surfaceContainerHighest,
+        onSurface = source.onSurface, onSurfaceVariant = source.onSurfaceVariant,
+        surfaceVariant = source.surfaceVariant, outline = source.outline, outlineVariant = source.outlineVariant,
+        inverseSurface = source.inverseSurface, inverseOnSurface = source.inverseOnSurface,
+        background = source.surface, onBackground = source.onSurface,
     )
 
     /** Compatibility resolver for old theme IDs used in saved data and existing fixtures. */
@@ -100,17 +155,18 @@ object HarmonicThemeCatalog {
         outlineVariant = Color(0xFFCACACA),
     )
     private val hackerNews = MaterialColorSchemes.orangeLight.copy(
-        surface = Color(0xFFF6F6EF),
-        surfaceBright = Color(0xFFF6F6EF),
+        surface = Color.White,
+        surfaceBright = Color.White,
         surfaceDim = Color(0xFFDEDCCD),
         surfaceContainerLowest = Color.White,
-        surfaceContainerLow = Color(0xFFF1F0E5),
-        surfaceContainer = Color(0xFFEBEADD),
-        surfaceContainerHigh = Color(0xFFE6E4D5),
-        surfaceContainerHighest = Color(0xFFDEDDCE),
-        onSurface = Color(0xFF222222),
-        onSurfaceVariant = Color(0xFF56564F),
-        outline = Color(0xFF7C796C),
+        surfaceContainerLow = Color(0xFFFAFAF5),
+        surfaceContainer = Color(0xFFF6F6EF),
+        surfaceContainerHigh = Color(0xFFEFEFE5),
+        surfaceContainerHighest = Color(0xFFE7E7DC),
+        onSurface = Color.Black,
+        onSurfaceVariant = Color(0xFF5A5A5A),
+        surfaceVariant = Color(0xFFE7E7DC),
+        outline = Color(0xFF828282),
         outlineVariant = Color(0xFFD0CEBE),
     )
     private val hacker = black.copy(

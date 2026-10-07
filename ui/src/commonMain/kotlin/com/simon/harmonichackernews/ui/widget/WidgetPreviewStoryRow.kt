@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.widget
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -67,7 +68,7 @@ fun WidgetPreviewStoryRow(
     val targetBackground = when {
         configuration.displayStyle == DisplayStyle.FLAT -> colors.pageBackground
         configuration.tint && palette != null -> rememberStoryTintColor(
-            PreviewTintPolicy.calculateCardTint(colors.cardBackground.toArgb(), palette, paletteTintConfigKey),
+            PreviewTintPolicy.calculateCardTint(HarmonicTheme.targetColorScheme.cardBackground.toArgb(), palette, paletteTintConfigKey),
             paletteTintConfigKey,
         ) ?: colors.cardBackground
         else -> colors.cardBackground

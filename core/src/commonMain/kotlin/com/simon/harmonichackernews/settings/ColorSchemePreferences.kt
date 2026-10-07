@@ -9,7 +9,10 @@ enum class ColorSchemeStyle(val storedValue: String) {
     }
 }
 
-/** Scheme identity is independent of appearance mode. Every identity has two Material palettes. */
+/**
+ * Scheme identity is independent of appearance mode. Every identity has two Material palettes.
+ * The paired fields retain backup compatibility; repository reads and writes always synchronize them.
+ */
 data class ColorSchemeSelection(
     val light: String = ColorSchemePreferences.DYNAMIC,
     val dark: String = light,
@@ -40,7 +43,7 @@ object ColorSchemePreferences {
     const val GRAY = "gray"
     val generatedValues = listOf("orange", "blue", "violet", "teal", "rose", "green", "amber", "slate")
     val values = listOf(DYNAMIC) + generatedValues + listOf(CLASSIC, PURE, HACKER_NEWS, HACKER, GRAY)
-    fun supportsStyle(value: String): Boolean = value in generatedValues
+    fun supportsStyle(value: String): Boolean = value in values && value != DYNAMIC
 
     fun sanitize(value: String?): String = value?.takeIf { it in values } ?: DYNAMIC
 
@@ -54,38 +57,39 @@ object ColorSchemePreferences {
         else -> sanitize(theme)
     }
 
-    /** Read-through migration preserves each effective mode before any new setting is written. */
+    /** The saved light selection is the shared scheme; old dark/coupling keys are compatibility data. */
     fun read(store: KeyValueStore): ColorSchemeSelection {
         val legacy = store.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT)
         val color = store.getString(ThemePreferences.COLOR_KEY)
-        val light = if (store.contains(LIGHT_KEY)) sanitize(store.getString(LIGHT_KEY)) else fromLegacyTheme(
-            ThemePreferences.selectableLightTheme(store.getString(ThemePreferences.LIGHT_KEY)
-                ?: ThemePreferences.pairedLightTheme(legacy)), color,
-        )
-        val dark = if (store.contains(DARK_KEY)) sanitize(store.getString(DARK_KEY)) else fromLegacyTheme(
-            ThemePreferences.selectableDarkTheme(store.getString(ThemePreferences.DARK_KEY)
-                ?: ThemePreferences.pairedDarkTheme(legacy)), color,
-        )
+        val darkOnly = !store.contains(LIGHT_KEY) && store.contains(DARK_KEY)
+        val light = when {
+            store.contains(LIGHT_KEY) -> sanitize(store.getString(LIGHT_KEY))
+            darkOnly -> sanitize(store.getString(DARK_KEY))
+            else -> fromLegacyTheme(
+                store.getString(ThemePreferences.LIGHT_KEY)
+                    ?: if (ThemePreferences.isAutomatic(legacy)) ThemePreferences.pairedLightTheme(legacy) else legacy,
+                color,
+            )
+        }
         val nighttime = if (store.contains(NIGHTTIME_KEY)) sanitize(store.getString(NIGHTTIME_KEY)) else fromLegacyTheme(
             ThemePreferences.selectableNighttimeTheme(store.getString(ThemePreferences.NIGHTTIME_KEY)), color,
         )
-        // Existing generated presets already used Tonal Spot; missing/unknown styles stay Balanced.
-        val lightStyle = ColorSchemeStyle.fromStored(store.getString(LIGHT_STYLE_KEY))
-        val darkStyle = ColorSchemeStyle.fromStored(store.getString(DARK_STYLE_KEY))
+        // Missing/unknown styles stay Balanced; retain the old stored name for Neutral.
+        val lightStyle = ColorSchemeStyle.fromStored(store.getString(if (darkOnly) DARK_STYLE_KEY else LIGHT_STYLE_KEY))
         val nighttimeStyle = ColorSchemeStyle.fromStored(store.getString(NIGHTTIME_STYLE_KEY))
-        val matching = light == dark && lightStyle == darkStyle
-        // Never silently overwrite a distinct migrated or partially restored pair.
-        val coupled = store.getBoolean(COUPLED_KEY, matching) && matching
-        return ColorSchemeSelection(light, dark, coupled, nighttime, lightStyle, darkStyle, nighttimeStyle)
+        return ColorSchemeSelection(
+            light = light, dark = light, coupled = true, nighttime = nighttime,
+            lightStyle = lightStyle, darkStyle = lightStyle, nighttimeStyle = nighttimeStyle,
+        )
     }
 
     fun write(store: KeyValueStore, selection: ColorSchemeSelection) = store.update {
         putString(LIGHT_KEY, sanitize(selection.light))
-        putString(DARK_KEY, sanitize(selection.dark))
-        putBoolean(COUPLED_KEY, selection.coupled)
+        putString(DARK_KEY, sanitize(selection.light))
+        putBoolean(COUPLED_KEY, true)
         putString(NIGHTTIME_KEY, sanitize(selection.nighttime))
         putString(LIGHT_STYLE_KEY, selection.lightStyle.storedValue)
-        putString(DARK_STYLE_KEY, selection.darkStyle.storedValue)
+        putString(DARK_STYLE_KEY, selection.lightStyle.storedValue)
         putString(NIGHTTIME_STYLE_KEY, selection.nighttimeStyle.storedValue)
     }
 }

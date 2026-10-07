@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.desktop
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -317,8 +318,7 @@ private fun DesktopCommentsHeader(
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val tintBase = colors.cardBackground.toArgb()
+    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

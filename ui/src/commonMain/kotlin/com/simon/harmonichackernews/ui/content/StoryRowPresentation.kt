@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDp
@@ -133,7 +134,7 @@ internal fun rememberStoryRowPresentation(
         }
     }
     val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.cardBackground
-    val tintBaseColorArgb = tintFallback.toArgb()
+    val tintBaseColorArgb = model.tintFallbackArgb ?: HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     var extractedPreviewTint by remember(
         model.previewImageUrl,
         model.previewImageFallback,

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -166,7 +167,7 @@ private fun AndroidCommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
+    val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     val headerPresentation = remember(
         story.id,
         story.previewImageUrl,

@@ -91,87 +91,58 @@ class ColorSchemeSettingsTest {
     }
 
     @Test
-    fun synchronizationIncludesStylesAndPersistsThroughExplicitAppearances() = showSettings {
-        assertEquals(ColorSchemeSelection(), appearance().colorSchemes)
-        compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+    fun onePickerKeepsSchemeAndStyleSyncedThroughAppearanceChanges() = showSettings {
+        compose.onNodeWithText(couplingLabel).assertDoesNotExist()
         select("Color scheme", "blue")
         style("Color scheme", "Vibrant")
-        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.lightStyle)
-        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.darkStyle)
-        assertSwatch("Color scheme", "blue", false, ColorSchemeStyle.Vibrant)
-        click(couplingLabel)
-        assertFalse(appearance().colorSchemes.coupled)
-        assertEquals(appearance().colorSchemes.lightStyle, appearance().colorSchemes.darkStyle)
-        style("Dark color scheme", "Neutral surfaces")
-        click("Light")
-        compose.onNodeWithText(couplingLabel).assertIsNotEnabled()
-        compose.onNodeWithTag("Dark color scheme").assertDoesNotExist()
-        select("Light color scheme", "amber")
-        style("Light color scheme", "Balanced")
-        assertEquals("amber", appearance().colorSchemes.light)
-        assertEquals("blue", appearance().colorSchemes.dark)
+        for (mode in listOf("Light", "Dark", "System")) {
+            click(mode)
+            compose.onNodeWithText(couplingLabel).assertDoesNotExist()
+            compose.onNodeWithTag("Light color scheme").assertDoesNotExist()
+            compose.onNodeWithTag("Dark color scheme").assertDoesNotExist()
+            val schemes = appearance().colorSchemes
+            assertTrue(schemes.coupled)
+            assertEquals("blue", schemes.light)
+            assertEquals(schemes.light, schemes.dark)
+            assertEquals(ColorSchemeStyle.Vibrant, schemes.lightStyle)
+            assertEquals(schemes.lightStyle, schemes.darkStyle)
+        }
+        select("Color scheme", "hacker_news")
+        style("Color scheme", "Neutral")
+        assertEquals("hacker_news", appearance().colorSchemes.dark)
         assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.darkStyle)
-        click("Dark")
-        compose.onNodeWithText(couplingLabel).assertIsNotEnabled()
-        compose.onNodeWithTag("Light color scheme").assertDoesNotExist()
-        rootList().performScrollToNode(hasTestTag("Dark color scheme"))
-        compose.onNode(hasContentDescription("Blue color scheme") and
-            hasAnyAncestor(hasTestTag("Dark color scheme"))).assertIsSelected()
-        assertSwatch("Dark color scheme", "blue", true, ColorSchemeStyle.NeutralSurfaces)
+    }
+
+    @Test
+    fun dynamicSwatchesUseActualSystemRolesInTheDisplayedMode() = showSettings {
+        select("Color scheme", "dynamic")
+        compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+        assertSwatch("Color scheme", "dynamic", false)
         compose.runOnIdle { systemDark.value = true }
-        click("System")
-        compose.onNodeWithText(couplingLabel).assertIsEnabled()
-        click(couplingLabel)
-        assertTrue(appearance().followSystem)
-        assertTrue(appearance().manualDark)
-        assertEquals("blue", appearance().colorSchemes.light)
-        assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.lightStyle)
-        assertTrue(appearance().colorSchemes.coupled)
+        assertSwatch("Color scheme", "dynamic", true)
         click("Light")
-        compose.onNodeWithText(couplingLabel).assertIsNotEnabled()
-        select("Light color scheme", "rose")
-        style("Light color scheme", "Vibrant")
-        assertEquals("rose", appearance().colorSchemes.dark)
-        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.darkStyle)
-        click("System")
         rootList().performScrollToNode(hasTestTag("Color scheme"))
-        compose.onNodeWithTag("Color scheme").assertExists()
-        assertTrue(appearance().colorSchemes.coupled)
+        assertSwatch("Color scheme", "dynamic", false)
+        click("Dark")
+        rootList().performScrollToNode(hasTestTag("Color scheme"))
+        assertSwatch("Color scheme", "dynamic", true)
     }
 
     @Test
-    fun dynamicSwatchesUseActualSystemRolesInTheDisplayedMode() {
-        repository.setColorSchemesCoupled(false, false)
-        repository.setColorScheme("classic", false)
-        repository.setColorScheme("pure", true)
-        systemDark.value = true
-        showSettings {
-            click(couplingLabel)
-            assertEquals(ColorSchemeSelection("pure"), appearance().colorSchemes)
-            select("Color scheme", "dynamic")
-            compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
-            assertSwatch("Color scheme", "dynamic", true)
-            compose.runOnIdle { systemDark.value = false }
-            assertSwatch("Color scheme", "dynamic", false)
-            click(couplingLabel)
-            select("Light color scheme", "dynamic")
-            assertSwatch("Light color scheme", "dynamic", false)
-            select("Dark color scheme", "dynamic")
-            assertSwatch("Dark color scheme", "dynamic", true)
-        }
-    }
-
-    @Test
-    fun curatedAndDynamicChoicesHideStyleControlsWithoutDiscardingTheStyle() = showSettings {
-        select("Color scheme", "green")
-        style("Color scheme", "Vibrant")
-        for (base in listOf("classic", "pure", "hacker_news", "hacker", "gray", "dynamic")) {
+    fun allNonDynamicSchemesOfferStyleAndDynamicRetainsTheSavedChoice() = showSettings {
+        for (base in ColorSchemePreferences.values.filter { it != ColorSchemePreferences.DYNAMIC }) {
             select("Color scheme", base)
-            compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+            style("Color scheme", "Vibrant")
             assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.lightStyle)
+            style("Color scheme", "Neutral")
+            assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.darkStyle)
         }
-        select("Color scheme", "teal")
+        select("Color scheme", "dynamic")
+        compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+        assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.lightStyle)
+        select("Color scheme", "hacker_news")
         rootList().performScrollToNode(hasTestTag("Color scheme style"))
-        compose.onNode(hasText("Vibrant") and hasAnyAncestor(hasTestTag("Color scheme style"))).assertIsSelected()
+        compose.onNode(hasText("Neutral") and hasAnyAncestor(hasTestTag("Color scheme style"))).assertIsSelected()
+        compose.onNodeWithText("Color style").assertDoesNotExist()
     }
 }

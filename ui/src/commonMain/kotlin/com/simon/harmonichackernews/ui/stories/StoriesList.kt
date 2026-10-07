@@ -6,6 +6,7 @@ package com.simon.harmonichackernews.ui.stories
 
 
 
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
@@ -338,7 +339,7 @@ internal fun StoriesList(
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
-                                    ?: MaterialTheme.colorScheme.cardBackground.toArgb()
+                                    ?: HarmonicTheme.targetColorScheme.cardBackground.toArgb()
                             } else {
                                 untintedStoryBackground.toArgb()
                             }
