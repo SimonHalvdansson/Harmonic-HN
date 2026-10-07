@@ -184,8 +184,7 @@ fun SettingsShell(
                     onBack = onBack,
                     onThemeChanged = onThemeChanged,
                 )
-                SettingsSection.PaletteTint -> PaletteTintSettingsRoute(
-                    repository = dependencies.settings,
+                SettingsSection.PaletteTint -> AndroidPaletteTintSettingsScreen(
                     showNavigation = true,
                     onBack = onBack,
                 )

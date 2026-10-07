@@ -343,26 +343,41 @@ fun PaletteTintSettingsRoute(
     repository: AppSettingsRepository,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    previewThemeEffect: @Composable (Boolean) -> Unit = {},
+    resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette =
+        { scheme, dark, style -> HarmonicThemeCatalog.scheme(scheme, dark, style) },
 ) {
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val config = settings.story.paletteTintConfigKey
-    PaletteTintSettingsScreen(
-        initialMode = PaletteTintPreferences.sanitizeMode(config),
-        initialStrength = PaletteTintPreferences.strength(config),
-        initialColorfulness = PaletteTintPreferences.colorfulness(config),
-        initialTone = PaletteTintPreferences.tone(config),
-        initialAvoidBackgroundColor = PaletteTintPreferences.avoidBackgroundColor(config),
-        previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
-            StoryRowStyleContext(score = 28, commentCount = 42, isRead = false),
-        ).copy(preferredFont = settings.appearance.font),
-        showNavigation = showNavigation,
-        onBack = onBack,
-        onSettingsChanged = { mode, strength, colorfulness, tone, avoidBackgroundColor ->
-            presenter.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
-        },
-        onReset = { presenter.clearPaletteTint() },
-    )
+    val activeDark = com.simon.harmonichackernews.ui.theme.HarmonicTheme.isDark
+    var previewDark by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val dark = previewDark ?: activeDark
+    val schemes = settings.appearance.colorSchemes
+    val palette = resolvePreviewScheme(schemes.forMode(dark), dark, schemes.styleForMode(dark))
+    com.simon.harmonichackernews.ui.theme.HarmonicTheme(palette.colorScheme, dark) {
+        previewThemeEffect(dark)
+        PaletteTintSettingsScreen(
+            initialMode = PaletteTintPreferences.sanitizeMode(config),
+            initialStrength = PaletteTintPreferences.strength(config),
+            initialColorfulness = PaletteTintPreferences.colorfulness(config),
+            initialTone = PaletteTintPreferences.tone(config),
+            initialAvoidBackgroundColor = PaletteTintPreferences.avoidBackgroundColor(config),
+            previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
+                StoryRowStyleContext(score = 28, commentCount = 42, isRead = false),
+            ).copy(preferredFont = settings.appearance.font),
+            showNavigation = showNavigation,
+            onBack = onBack,
+            onSettingsChanged = { mode, strength, colorfulness, tone, avoidBackgroundColor ->
+                presenter.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
+            },
+            previewDark = dark,
+            onTogglePreview = if (settings.appearance.followSystem || settings.general.specialNighttimeTheme) {
+                { previewDark = !dark }
+            } else null,
+            onReset = { presenter.clearPaletteTint() },
+        )
+    }
 }
 
 @Composable

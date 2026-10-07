@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.os.Build
+import androidx.activity.compose.LocalActivity
+import androidx.compose.runtime.DisposableEffect
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -102,3 +105,36 @@ private fun formatNighttimeRange(
     schedule = schedule,
     use24HourClock = use24HourClock,
 )
+
+@Composable
+fun AndroidPaletteTintSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
+    val activity = LocalActivity.current
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val palettes = remember(context, configuration) {
+        mutableMapOf<Triple<String, Boolean, ColorSchemeStyle>, HarmonicThemePalette>()
+    }
+    PaletteTintSettingsRoute(
+        repository = LocalHarmonicUiDependencies.current.settings,
+        showNavigation = showNavigation,
+        onBack = onBack,
+        previewThemeEffect = { dark ->
+            DisposableEffect(activity, dark) {
+                val controller = activity?.window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+                val statusLight = controller?.isAppearanceLightStatusBars
+                val navigationLight = controller?.isAppearanceLightNavigationBars
+                controller?.isAppearanceLightStatusBars = !dark
+                controller?.isAppearanceLightNavigationBars = !dark
+                onDispose {
+                    if (statusLight != null) controller.isAppearanceLightStatusBars = statusLight
+                    if (navigationLight != null) controller.isAppearanceLightNavigationBars = navigationLight
+                }
+            }
+        },
+        resolvePreviewScheme = { scheme, dark, style ->
+            palettes.getOrPut(Triple(scheme, dark, style)) {
+                harmonicThemePalette(context, ThemeSelection.forScheme(scheme, dark, style))
+            }
+        },
+    )
+}

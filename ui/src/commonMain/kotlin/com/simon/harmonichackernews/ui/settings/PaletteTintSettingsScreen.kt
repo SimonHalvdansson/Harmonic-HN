@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -130,6 +131,8 @@ fun PaletteTintSettingsScreen(
         avoidBackgroundColor: Boolean,
     ) -> Unit,
     onReset: () -> Unit,
+    previewDark: Boolean = false,
+    onTogglePreview: (() -> Unit)? = null,
 ) {
     var mode by rememberSaveable { mutableStateOf(PaletteTintPreferences.sanitizeMode(initialMode)) }
     var strength by rememberSaveable {
@@ -213,6 +216,15 @@ fun PaletteTintSettingsScreen(
             showNavigation = showNavigation,
             onBack = onBack,
             contentVersion = configKey.hashCode(),
+            headerContent = onTogglePreview?.let { toggle ->
+                {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        TextButton(onClick = toggle, modifier = Modifier.align(Alignment.CenterEnd)) {
+                            Text(if (previewDark) "Preview light theme" else "Preview dark theme")
+                        }
+                    }
+                }
+            },
         ) {
             items(PalettePreviewSamples, key = { it.index }) { model ->
                 PaletteStoryPreview(model, previewStyle.copy(paletteTintConfigKey = configKey))
