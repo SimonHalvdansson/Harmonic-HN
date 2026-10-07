@@ -13,12 +13,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppFont
+import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import com.simon.harmonichackernews.settings.TextPreferences
@@ -26,12 +27,15 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.theme.cardBackground
 
 @Composable
-fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
+fun ReaderModeSettingsRoute(
+    repository: AppSettingsRepository,
+    onBack: () -> Unit,
+    preview: @Composable (ReadingPreferences) -> Unit = { ReaderModeTextPreview(it) },
+) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
     val controlsEnabled = reading.integratedWebView && reading.readerModeEnabled
     var showFontPicker by rememberSaveable { mutableStateOf(false) }
-    val family = rememberContentTypography(reading.readerModeFont.storedValue).family
     SettingsPage(
         title = "Reader mode",
         showNavigation = true,
@@ -47,22 +51,7 @@ fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
                 onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_ENABLED, it) },
             )
         }
-        item {
-            Column(
-                Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.cardBackground, RoundedCornerShape(20.dp))
-                    .padding(24.dp),
-            ) {
-                Text("Article preview", fontFamily = family, fontWeight = FontWeight.Bold,
-                    fontSize = (reading.readerModeFontSize * 1.3f).sp,
-                    color = MaterialTheme.colorScheme.onSurface)
-                Text("Reader mode brings the words into focus. Adjust the font and text size to find a comfortable way to read your next story.",
-                    modifier = Modifier.padding(top = 12.dp), fontFamily = family,
-                    fontSize = reading.readerModeFontSize.sp,
-                    lineHeight = (reading.readerModeFontSize * 1.68f).sp,
-                    color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
+        item { preview(reading) }
         item {
             SettingsCategory("Reading") {
                 SwitchSettingRow(
@@ -94,5 +83,28 @@ fun ReaderModeSettingsRoute(repository: AppSettingsRepository, onBack: () -> Uni
         FontSelectionDialog(readerMode = true, selected = reading.readerModeFont,
             options = AppFont.entries.map { it.label to it },
             onSelected = repository::setReaderModeFont, onDismiss = { showFontPicker = false })
+    }
+}
+
+private const val ReaderPreviewTitle = "Article preview"
+private const val ReaderPreviewText = "Reader mode brings the words into focus. Adjust the font and text size to find a comfortable way to read your next story."
+
+/** CSS pixels at a device-width viewport are density-independent, without Compose font scaling. */
+@Composable
+private fun ReaderModeTextPreview(reading: ReadingPreferences) {
+    val family = rememberContentTypography(reading.readerModeFont.storedValue).family
+    val density = LocalDensity.current
+    Column(
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()
+            .background(MaterialTheme.colorScheme.cardBackground, RoundedCornerShape(20.dp))
+            .padding(20.dp),
+    ) {
+        Text(ReaderPreviewTitle, fontFamily = family, fontWeight = FontWeight.Bold,
+            fontSize = with(density) { (reading.readerModeFontSize * 1.78f).dp.toSp() },
+            color = MaterialTheme.colorScheme.onSurface)
+        Text(ReaderPreviewText, modifier = Modifier.padding(top = 12.dp), fontFamily = family,
+            fontSize = with(density) { reading.readerModeFontSize.dp.toSp() },
+            lineHeight = with(density) { (reading.readerModeFontSize * 1.68f).dp.toSp() },
+            color = MaterialTheme.colorScheme.onSurface)
     }
 }

@@ -219,7 +219,9 @@ fun SettingsShell(
                     onBack = onBack,
                     onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
                 )
-                SettingsSection.ReaderMode -> ReaderModeSettingsRoute(dependencies.settings, onBack)
+                SettingsSection.ReaderMode -> ReaderModeSettingsRoute(
+                    dependencies.settings, onBack, preview = { AndroidReaderModePreview(it) },
+                )
                 SettingsSection.FiltersTags -> AndroidFiltersTagsSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
