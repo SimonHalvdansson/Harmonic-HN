@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.DisplayStyle
@@ -63,12 +65,12 @@ fun WidgetPreviewStoryRow(
     val outlineWidth = with(LocalDensity.current) { 1.dp.toPx().toInt().toDp() }
     val palette = rememberResourceTintPalette(model.previewImageFallback ?: model.faviconFallback)
     val targetBackground = when {
-        configuration.displayStyle == DisplayStyle.FLAT -> colors.surface
+        configuration.displayStyle == DisplayStyle.FLAT -> colors.pageBackground
         configuration.tint && palette != null -> rememberStoryTintColor(
-            PreviewTintPolicy.calculateCardTint(colors.surfaceContainerLow.toArgb(), palette, paletteTintConfigKey),
+            PreviewTintPolicy.calculateCardTint(colors.cardBackground.toArgb(), palette, paletteTintConfigKey),
             paletteTintConfigKey,
-        ) ?: colors.surfaceContainerLow
-        else -> colors.surfaceContainerLow
+        ) ?: colors.cardBackground
+        else -> colors.cardBackground
     }
     val background by animateColorAsState(targetBackground, tween(220), label = "Widget card tint")
     val frame by animateColorAsState(when (configuration.displayStyle) {

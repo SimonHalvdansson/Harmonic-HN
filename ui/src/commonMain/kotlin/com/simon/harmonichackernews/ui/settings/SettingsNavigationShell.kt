@@ -9,6 +9,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.navigation.ActivityBackPreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationStack
 import com.simon.harmonichackernews.ui.navigation.SplitPaneViewport
@@ -104,7 +105,7 @@ fun SettingsNavigationShell(
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
         snapToCenter = snapToCenter,
-        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState ->
         val navigationState by navigation.state.collectAsStateWithLifecycle()
@@ -252,7 +253,7 @@ private fun SinglePaneSettingsNavigation(
         },
         modifier = modifier,
         root = {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
                 renderList(selectedSection, false, onBackFromSettings) { onNavigateTo(it, false) }
             }
         },

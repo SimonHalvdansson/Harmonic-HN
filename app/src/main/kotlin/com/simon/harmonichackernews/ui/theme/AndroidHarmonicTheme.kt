@@ -48,4 +48,4 @@ fun harmonicColorScheme(context: Context): ColorScheme = harmonicThemePalette(
 ).colorScheme
 
 /** Base color used by story preview tint extraction on Android. */
-fun previewTintBaseColor(context: Context): Int = harmonicColorScheme(context).surfaceContainerLow.toArgb()
+fun previewTintBaseColor(context: Context): Int = harmonicColorScheme(context).cardBackground.toArgb()

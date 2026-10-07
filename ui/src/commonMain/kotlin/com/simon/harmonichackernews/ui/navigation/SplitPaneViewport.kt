@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.SplitOrientation
 import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -169,7 +170,7 @@ internal fun SplitPaneViewport(
     CompositionLocalProvider(
         LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation, snapToCenter),
     ) {
-        Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).onSizeChanged { width = it.width }) {
+        Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).onSizeChanged { width = it.width }) {
             content(expansion)
             AnimatedVisibility(
                 visible = twoPane && settings.appearance.allowSplitAdjustment,

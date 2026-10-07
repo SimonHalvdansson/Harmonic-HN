@@ -6,6 +6,8 @@ package com.simon.harmonichackernews.ui.stories
 
 
 
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.animateContentSize
@@ -330,13 +332,13 @@ internal fun StoriesList(
                                 )
                             }
                             val untintedStoryBackground = if (style.hasBackground) {
-                                MaterialTheme.colorScheme.surfaceContainerLow
+                                MaterialTheme.colorScheme.cardBackground
                             } else {
-                                MaterialTheme.colorScheme.surface
+                                MaterialTheme.colorScheme.pageBackground
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
-                                    ?: MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+                                    ?: MaterialTheme.colorScheme.cardBackground.toArgb()
                             } else {
                                 untintedStoryBackground.toArgb()
                             }
@@ -369,7 +371,7 @@ internal fun StoriesList(
                                 style = style,
                                 modifier = itemModifier,
                                 listItem = true,
-                                pageBackground = MaterialTheme.colorScheme.surface,
+                                pageBackground = MaterialTheme.colorScheme.pageBackground,
                                 animateChanges = true,
                                 onLinkClick = {
                                     dismissSearchKeyboard()
@@ -536,7 +538,7 @@ internal fun StoriesList(
 @Composable
 private fun StoryLoadingItem(hasBackground: Boolean, modifier: Modifier = Modifier) {
     Surface(
-        color = if (hasBackground) MaterialTheme.colorScheme.surfaceContainerLow else Color.Transparent,
+        color = if (hasBackground) MaterialTheme.colorScheme.cardBackground else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {

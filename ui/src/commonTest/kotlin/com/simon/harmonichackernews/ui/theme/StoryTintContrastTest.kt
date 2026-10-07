@@ -20,10 +20,10 @@ class StoryTintContrastTest {
                     for (adjustments in listOf("100|110|0", "100|200|20", "100|0|-20", "200|200|20")) {
                         val config = "dominant|$adjustments"
                         val palette = PreviewTintPalette(dominant = PreviewTintSwatch(hue.toFloat(), saturation))
-                        val raw = PreviewTintPolicy.calculateCardTint(colors.surfaceContainerLow.toArgb(), palette, config)
-                        val tint = Color(PreviewTintPolicy.ensureCardTintContrast(raw, colors.surface.toArgb(), config))
+                        val raw = PreviewTintPolicy.calculateCardTint(colors.cardBackground.toArgb(), palette, config)
+                        val tint = Color(PreviewTintPolicy.ensureCardTintContrast(raw, colors.pageBackground.toArgb(), config))
                         val a = tint.luminance()
-                        val b = colors.surface.luminance()
+                        val b = colors.pageBackground.luminance()
                         val contrast = (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f)
                         assertTrue(contrast >= 1.19999f, "$theme, hue=$hue, saturation=$saturation, $config: $contrast")
                     }

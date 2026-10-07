@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
@@ -318,7 +319,7 @@ fun SettingsDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(HarmonicDimens.settings_list_segment_internal_gap)
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.pageBackground),
     )
 }
 

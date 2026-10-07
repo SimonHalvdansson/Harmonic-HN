@@ -5,6 +5,7 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.presentation.NewStoriesFilter
 
 import org.jetbrains.compose.resources.DrawableResource
@@ -148,7 +149,7 @@ internal fun StoriesHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.pageBackground)
                 // Inset the viewport, so scrolling chips cannot pass beneath side system UI.
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(top = topInset + topSpacing),

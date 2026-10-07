@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_upward
 import com.simon.harmonichackernews.resources.ic_stop
@@ -59,7 +60,7 @@ internal fun AskComposer(
     onSend: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
-    surfaceColor: Color = MaterialTheme.colorScheme.surface,
+    surfaceColor: Color = MaterialTheme.colorScheme.pageBackground,
     showCursor: Boolean = true,
 ) {
     val canSend = enabled && !running && draft.isNotBlank()

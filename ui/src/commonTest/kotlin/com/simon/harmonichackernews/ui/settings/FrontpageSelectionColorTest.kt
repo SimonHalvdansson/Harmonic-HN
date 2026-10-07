@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.theme.ColorSchemeCatalog
 import kotlin.test.assertEquals
@@ -29,9 +30,9 @@ class FrontpageSelectionColorTest {
             val palette = HarmonicThemeCatalog.scheme(option.value, dark)
             val colors = palette.colorScheme
             val selected = frontpageSelectionColor(
-                colors.surface, palette.colorScheme.secondaryContainer,
+                colors.pageBackground, palette.colorScheme.secondaryContainer,
             )
-            assertTrue(contrast(colors.surface, selected) >= 1.3f, "${option.value}/$dark")
+            assertTrue(contrast(colors.pageBackground, selected) >= 1.3f, "${option.value}/$dark")
             val content = frontpageSelectionContentColor(selected, palette.colorScheme.onSecondaryContainer)
             assertTrue(contrast(content, selected) >= 4.5f, "Name in ${option.value}/$dark")
         }

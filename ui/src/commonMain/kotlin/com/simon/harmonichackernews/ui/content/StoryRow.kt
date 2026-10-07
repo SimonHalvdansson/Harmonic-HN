@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.resources.Res
@@ -187,7 +188,7 @@ fun StoryRow(
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
-    pageBackground: Color = MaterialTheme.colorScheme.surface,
+    pageBackground: Color = MaterialTheme.colorScheme.pageBackground,
     typographyOverride: ContentTypography? = null,
     cardPadding: PaddingValues = PaddingValues(
         horizontal = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,

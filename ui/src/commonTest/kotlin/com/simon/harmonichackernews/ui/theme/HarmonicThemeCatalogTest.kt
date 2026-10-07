@@ -12,6 +12,25 @@ import kotlin.test.assertTrue
 
 class HarmonicThemeCatalogTest {
     @Test
+    fun cardsAreLighterThanThePageAcrossAllSchemesAndModes() {
+        for (option in ColorSchemeCatalog.options) for (dark in listOf(false, true)) for (style in ColorSchemeStyle.entries) {
+            val colors = HarmonicThemeCatalog.scheme(option.value, dark, style).colorScheme
+            assertTrue(
+                colors.cardBackground.luminance() > colors.pageBackground.luminance(),
+                "${option.value}/$dark/$style: cards must be lighter than the page",
+            )
+            if (dark) {
+                assertEquals(colors.surface, colors.pageBackground)
+                assertEquals(colors.surfaceContainerLow, colors.cardBackground)
+            } else {
+                assertEquals(colors.surfaceContainer, colors.pageBackground)
+                assertEquals(colors.surfaceBright, colors.cardBackground)
+                assertTrue(colors.cardBackground.luminance() > colors.surfaceContainerLow.luminance())
+            }
+        }
+    }
+
+    @Test
     fun presetsChangeEveryColorFamilyAndNeutralSurfacesInBothModes() {
         for (dark in listOf(false, true)) {
             val schemes = ColorSchemeCatalog.options.filter { it.value in listOf("orange", "blue", "violet", "teal", "rose", "green", "amber", "slate") }
@@ -39,6 +58,8 @@ class HarmonicThemeCatalogTest {
                 scheme.tertiary to scheme.onTertiary, scheme.tertiaryContainer to scheme.onTertiaryContainer,
                 scheme.error to scheme.onError, scheme.errorContainer to scheme.onErrorContainer,
                 scheme.surface to scheme.onSurface, scheme.surfaceContainerLow to scheme.onSurfaceVariant,
+                scheme.pageBackground to scheme.onSurface, scheme.pageBackground to scheme.onSurfaceVariant,
+                scheme.cardBackground to scheme.onSurface, scheme.cardBackground to scheme.onSurfaceVariant,
                 scheme.surfaceContainerHighest to scheme.onSurfaceVariant,
                 scheme.inverseSurface to scheme.inverseOnSurface,
             )
@@ -72,13 +93,13 @@ class HarmonicThemeCatalogTest {
     }
 
     @Test
-    fun readerUsesSurfaceTextLinkAndDividerRolesFromTheSameScheme() {
+    fun readerUsesPageBackgroundTextLinkAndDividerRolesFromTheSameScheme() {
         val scheme = HarmonicThemeCatalog.scheme("blue", false).colorScheme.copy(
-            surface = Color(0xFF123456), onSurface = Color(0xFF234567),
+            surfaceContainer = Color(0xFFABCDEF), onSurface = Color(0xFF234567),
             primary = Color(0xFF345678), outlineVariant = Color(0xFF456789),
         )
         val reader = ReaderModeThemeFactory.create(scheme, true, null, 16)
-        assertEquals("#123456", reader.backgroundColor)
+        assertEquals("#ABCDEF", reader.backgroundColor)
         assertEquals("#234567", reader.textColor)
         assertEquals("#345678", reader.linkColor)
         assertEquals("#456789", reader.dividerColor)

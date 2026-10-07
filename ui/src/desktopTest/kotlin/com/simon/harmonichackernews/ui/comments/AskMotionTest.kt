@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.data.CommentPresentationSnapshot
@@ -53,7 +54,7 @@ class AskMotionTest {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
                         CommentActionOverlay(controller, settings, false, true, TextStyle.Default, {})
                     }
                 }

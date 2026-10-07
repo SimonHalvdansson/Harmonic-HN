@@ -47,6 +47,7 @@ import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_chevron_left
 import com.simon.harmonichackernews.resources.ic_chevron_right
@@ -218,7 +219,7 @@ internal fun DesktopCommentsWebViewScaffold(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.pageBackground),
         ) {
             if (browserStarted) {
                 DesktopEmbeddedBrowserSurface(
@@ -687,7 +688,7 @@ private fun DesktopWebViewToolbar(
             .orEmpty()
     }
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.pageBackground,
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(

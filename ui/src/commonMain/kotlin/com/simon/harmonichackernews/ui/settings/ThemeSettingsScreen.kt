@@ -1,6 +1,11 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -31,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppearancePreferences
 import com.simon.harmonichackernews.settings.ColorSchemeSelection
@@ -120,31 +127,38 @@ fun ThemeSettingsScreen(
                         }
                     },
                 )
-                if (state.followSystem) {
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Use the same color scheme in light and dark",
-                        icon = Res.drawable.ic_routine,
-                        checked = state.schemes.coupled,
-                        onCheckedChange = onCoupledChanged,
-                    )
-                }
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Use the same color scheme in light and dark",
+                    icon = Res.drawable.ic_routine,
+                    checked = state.schemes.coupled,
+                    enabled = state.followSystem,
+                    onCheckedChange = onCoupledChanged,
+                )
             }
         }
-        colorSchemePickerModes(state.schemes.coupled, state.followSystem, state.manualDark).forEach { mode ->
-            item(key = mode.name) {
-                val dark = if (mode == ColorSchemePickerMode.Coupled) state.activeDark
-                    else mode == ColorSchemePickerMode.Dark
-                SettingsCategory(mode.title) {
-                    ColorSchemePicker(
-                        selected = state.schemes.forMode(dark),
-                        dark = dark,
-                        style = state.schemes.styleForMode(dark),
-                        tag = mode.title,
-                        resolveScheme = resolvePreviewScheme,
-                        onSelected = { onColorSchemeSelected(it, dark) },
-                        onStyleSelected = { onColorStyleSelected(it, dark) },
-                    )
+        item(key = "color-scheme-pickers") {
+            val visibleModes = colorSchemePickerModes(state.schemes.coupled, state.followSystem, state.manualDark)
+            // Coupled and light share one picker so a heading change preserves its scroll and controls.
+            val primaryMode = if (ColorSchemePickerMode.Coupled in visibleModes) ColorSchemePickerMode.Coupled
+                else ColorSchemePickerMode.Light
+            Column {
+                listOf(primaryMode, ColorSchemePickerMode.Dark).forEach { mode ->
+                    ThemeSettingsVisibility(visible = mode in visibleModes) {
+                        val dark = if (mode == ColorSchemePickerMode.Coupled) state.activeDark
+                            else mode == ColorSchemePickerMode.Dark
+                        SettingsCategory(mode.title) {
+                            ColorSchemePicker(
+                                selected = state.schemes.forMode(dark),
+                                dark = dark,
+                                style = state.schemes.styleForMode(dark),
+                                tag = mode.title,
+                                resolveScheme = resolvePreviewScheme,
+                                onSelected = { onColorSchemeSelected(it, dark) },
+                                onStyleSelected = { onColorStyleSelected(it, dark) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -165,7 +179,7 @@ fun ThemeSettingsScreen(
                     checked = state.specialNighttime,
                     onCheckedChange = onSpecialNighttimeChanged,
                 )
-                if (state.specialNighttime) {
+                ThemeSettingsVisibility(visible = state.specialNighttime) {
                     SettingsDivider()
                     SettingRow(title = "Timed range", summary = state.nighttimeRangeLabel,
                         icon = Res.drawable.ic_schedule,
@@ -173,8 +187,8 @@ fun ThemeSettingsScreen(
                 }
             }
         }
-        if (state.specialNighttime) {
-            item {
+        item(key = "nighttime-color-scheme") {
+            ThemeSettingsVisibility(visible = state.specialNighttime) {
                 SettingsCategory("Nighttime color scheme") {
                     ColorSchemePicker(state.schemes.nighttime, dark = true, style = state.schemes.nighttimeStyle,
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
@@ -183,6 +197,17 @@ fun ThemeSettingsScreen(
             }
         }
         item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun ThemeSettingsVisibility(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(tween(300), expandFrom = Alignment.Top) + fadeIn(tween(180, delayMillis = 60)),
+        exit = shrinkVertically(tween(300), shrinkTowards = Alignment.Top) + fadeOut(tween(120)),
+    ) {
+        Column { content() }
     }
 }
 
@@ -237,7 +262,7 @@ private fun ColorSchemePicker(
             }
         }
     }
-    if (ColorSchemePreferences.supportsStyle(selected)) {
+    ThemeSettingsVisibility(visible = ColorSchemePreferences.supportsStyle(selected)) {
         Box(Modifier.testTag("$tag style")) {
             SegmentedSetting(
                 title = "Color style",
@@ -296,9 +321,10 @@ private fun StoryThemePreview(
     modifier: Modifier = Modifier,
 ) {
     val preview = animateStoryPreviewPalette(palette)
+    val pageBackground = animatePreviewColor(palette.colorScheme.pageBackground)
     // Extract against the destination palette, not every intermediate animation color. Keep the
     // existing sample tint visible while extraction runs; unchanged tints need no transition.
-    val tintBase = palette.colorScheme.surfaceContainerLow.toArgb()
+    val tintBase = palette.colorScheme.cardBackground.toArgb()
     val faviconTint = rememberPainterPaletteTint(
         painter = painterResource(SettingsStoryPreviewModel.faviconFallback),
         baseColorArgb = tintBase,
@@ -311,7 +337,7 @@ private fun StoryThemePreview(
     }
     HarmonicTheme(preview.colorScheme, preview.dark) {
         Column(
-            modifier = modifier.fillMaxWidth().fillMaxHeight().background(preview.colorScheme.surface)
+            modifier = modifier.fillMaxWidth().fillMaxHeight().background(pageBackground)
                 .padding(vertical = 6.dp),
         ) {
             StoryRow(
@@ -320,6 +346,7 @@ private fun StoryThemePreview(
                 ),
                 // Keep the preview visible above the controls even with large image settings.
                 style = style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false),
+                pageBackground = pageBackground,
                 animateChanges = false,
             )
             Spacer(Modifier.weight(1f))
@@ -350,6 +377,7 @@ private fun animateStoryPreviewPalette(target: HarmonicThemePalette): HarmonicTh
     val scheme = target.colorScheme
     return target.copy(colorScheme = scheme.copy(
         surface = animatePreviewColor(scheme.surface),
+        surfaceBright = animatePreviewColor(scheme.surfaceBright),
         surfaceContainerLow = animatePreviewColor(scheme.surfaceContainerLow),
         surfaceContainerHigh = animatePreviewColor(scheme.surfaceContainerHigh),
         surfaceContainerHighest = animatePreviewColor(scheme.surfaceContainerHighest),

@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
 import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.resources.*
@@ -131,9 +133,9 @@ fun CommentActionOverlay(
     }
     var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
     val cardColor = if (settings.hasBackground) {
-        MaterialTheme.colorScheme.surfaceContainerLow
+        MaterialTheme.colorScheme.cardBackground
     } else {
-        MaterialTheme.colorScheme.surface
+        MaterialTheme.colorScheme.pageBackground
     }
     // Android retains this composition across rotation. The opening gesture's bounds and
     // layer dimensions can therefore describe a different layout by the time we animate back.

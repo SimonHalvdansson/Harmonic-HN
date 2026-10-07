@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -161,11 +162,11 @@ fun main() {
                 val palette = remember(selection) {
                     HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
                 }
-                LaunchedEffect(window, selection.dark, palette.colorScheme.surface) {
+                LaunchedEffect(window, selection.dark, palette.colorScheme.pageBackground) {
                     DesktopWindowAppearance.apply(
                         window = window,
                         dark = selection.dark,
-                        backgroundArgb = palette.colorScheme.surface.toArgb(),
+                        backgroundArgb = palette.colorScheme.pageBackground.toArgb(),
                     )
                 }
                 LaunchedEffect(bootstrap.app.launchState) {
@@ -187,7 +188,7 @@ fun main() {
                     HarmonicTheme(palette.colorScheme, palette.dark) {
                         Surface(
                             modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
-                            color = palette.colorScheme.surface,
+                            color = palette.colorScheme.pageBackground,
                         ) {
                             // Reserve the native controls/drag area on every screen. Windows
                             // branding shares the app surface with no separate strip or divider.

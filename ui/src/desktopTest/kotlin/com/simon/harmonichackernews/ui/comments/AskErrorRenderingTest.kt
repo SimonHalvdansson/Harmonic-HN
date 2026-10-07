@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import org.jetbrains.skia.EncodedImageFormat
@@ -39,7 +40,7 @@ class AskErrorRenderingTest {
                 val scene = ImageComposeScene(320, 500, Density(1f, fontScale)) {
                     val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
                     HarmonicTheme(palette.colorScheme, palette.dark) {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).padding(16.dp)) {
                             AskErrorCard(
                                 discussionErrorPresentation(error, contextLimit), true, { clicks++ },
                                 Modifier.onGloballyPositioned { bounds = it.boundsInRoot() },

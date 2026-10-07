@@ -32,6 +32,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -312,7 +313,7 @@ private fun DesktopCommentsHeader(
     settings: CommentDisplaySettings,
 ) {
     val colors = MaterialTheme.colorScheme
-    val tintBase = colors.surfaceContainerLow.toArgb()
+    val tintBase = colors.cardBackground.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,

@@ -45,6 +45,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
@@ -313,7 +315,7 @@ private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
 private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
     val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
     val palette = preview?.palette
-    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val baseColor = MaterialTheme.colorScheme.cardBackground
     val tint = remember(palette, style.paletteTintConfigKey, baseColor) {
         PreviewTintPolicy.calculateCardTint(
             baseColor.toArgb(),
@@ -338,7 +340,7 @@ private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
         listItem = true,
         // Only tint changes here; avoid constructing animations for fixed text and row geometry.
         animateChanges = false,
-        pageBackground = MaterialTheme.colorScheme.surface,
+        pageBackground = MaterialTheme.colorScheme.pageBackground,
     )
 }
 

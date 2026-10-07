@@ -28,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -286,7 +288,7 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
     CompositionLocalProvider(LocalHazePreferences provides preferences) {
         HazeHost {
             val hazeState = currentSharedHazeState()
-            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.pageBackground).padding(16.dp)) {
                 Box(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(20.dp))) {
                     Row(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                         listOf(Color(0xFF78A6C8), Color(0xFFE7A493), Color(0xFF8BBAA5)).forEachIndexed { index, color ->
@@ -299,7 +301,7 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
                     Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f).height(80.dp).sharedHazeDialogBackground(
-                            MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp)),
+                            MaterialTheme.colorScheme.cardBackground, RoundedCornerShape(20.dp)),
                             contentAlignment = Alignment.Center) {
                             Text("Dialog preview", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         }

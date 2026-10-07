@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 
@@ -131,7 +132,7 @@ internal fun rememberStoryRowPresentation(
             }
         }
     }
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerLow
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.cardBackground
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
         model.previewImageUrl,
@@ -170,7 +171,7 @@ internal fun rememberStoryRowPresentation(
     val tint = rememberStoryTintColor(rawTint, style.paletteTintConfigKey, pageBackground)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
-        style.hasBackground -> colors.surfaceContainerLow
+        style.hasBackground -> colors.cardBackground
         else -> pageBackground
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old

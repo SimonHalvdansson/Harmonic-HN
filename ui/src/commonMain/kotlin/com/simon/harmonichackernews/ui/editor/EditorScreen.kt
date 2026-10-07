@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.editor
 
 import org.jetbrains.compose.resources.DrawableResource
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
@@ -248,7 +249,7 @@ fun EditorScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.pageBackground)
             .testTag("compose_editor_container")
             .windowInsetsPadding(topAndSideInsets.union(bottomInsets)),
     ) {
@@ -518,7 +519,7 @@ private fun ReplyPreview(
         )
         ScrollableTextDecorations(
             state = scrollState,
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.pageBackground,
             modifier = Modifier.matchParentSize(),
         )
     }

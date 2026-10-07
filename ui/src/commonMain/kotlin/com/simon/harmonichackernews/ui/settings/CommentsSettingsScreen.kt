@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
@@ -102,7 +103,7 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.pageBackground)) {
                 CommentRow(
                     model = SettingsCommentPreviewModel,
                     style = state.toPreviewCommentRowStyle(),

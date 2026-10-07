@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
@@ -584,7 +585,7 @@ internal fun IosCommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = MaterialTheme.colorScheme.surface,
+            sheetContainerColor = MaterialTheme.colorScheme.pageBackground,
             sheetContentColor = MaterialTheme.colorScheme.onSurface,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,
@@ -597,7 +598,7 @@ internal fun IosCommentsScaffold(
                         .fillMaxWidth()
                         .height(fullHeight)
                         .nestedScroll(scrollBoundary)
-                        .background(MaterialTheme.colorScheme.surface),
+                        .background(MaterialTheme.colorScheme.pageBackground),
                 ) {
                     // The iOS rubber-band effect otherwise retains downward motion at the top
                     // instead of consistently handing it to the containing sheet.
@@ -624,7 +625,7 @@ internal fun IosCommentsScaffold(
                 if (webView.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 webView.failure?.let { message ->
                     Column(
-                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(24.dp),
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).padding(24.dp),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

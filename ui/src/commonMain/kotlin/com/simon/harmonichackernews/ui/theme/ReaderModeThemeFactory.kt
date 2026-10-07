@@ -27,7 +27,7 @@ object ReaderModeThemeFactory {
         fontData: ReaderModeFontData? = null,
     ): ReaderModeTheme = ReaderModeTheme(
         light = light,
-        backgroundColor = css(colors.surface.toArgb()),
+        backgroundColor = css(colors.pageBackground.toArgb()),
         textColor = css(colors.onSurface.toArgb()),
         headingColor = css(colors.onSurface.toArgb()),
         secondaryTextColor = css(colors.onSurfaceVariant.toArgb()),

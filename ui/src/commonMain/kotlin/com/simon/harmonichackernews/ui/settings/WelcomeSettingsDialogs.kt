@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -307,7 +308,7 @@ private fun WelcomeStoryPreview(
     textStyle: androidx.compose.ui.text.TextStyle,
     modifier: Modifier = Modifier,
 ) {
-    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val baseColor = MaterialTheme.colorScheme.cardBackground
     val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val palette = rememberResourceTintPalette(Res.drawable.palette1)
     val rawTint = remember(

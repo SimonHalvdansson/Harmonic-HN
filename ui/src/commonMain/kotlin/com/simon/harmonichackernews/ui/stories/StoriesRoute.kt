@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.toArgb
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -22,7 +23,7 @@ fun StoriesRoute(
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
-    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
     StoriesScreen(
         controller = controller,
         mainListState = mainListState,

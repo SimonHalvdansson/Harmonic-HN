@@ -40,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModelProvider
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.AndroidCommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.HarmonicSceneViewModel
@@ -208,7 +209,7 @@ private fun MainNavigation(
     val scenePlan = mainNavigationScenePlan(
         navigationSnapshot, isTwoPane, controller.externalStoryEntrySerial,
     )
-    val paneStatusBarColor = MaterialTheme.colorScheme.surface
+    val paneStatusBarColor = MaterialTheme.colorScheme.pageBackground
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     LaunchedEffect(navigationSnapshot.closeRequest) {
@@ -414,7 +415,7 @@ private fun MainNavigation(
             submissionsPredictiveBack.completedRequestKey,
             editorPredictiveBack.completedRequestKey,
         ),
-        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+        modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground)
             .semantics { testTagsAsResourceId = true },
         stories = { detail, paneComments ->
             val stories: @Composable () -> Unit = {
@@ -525,7 +526,7 @@ private fun MainNavigation(
                         onBack = ::popMainBackStack,
                         stories = submissionsContent,
                         emptyDetail = { EmptyCommentsScreen() },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground),
                         comments = paneComments,
                     )
                 } else {

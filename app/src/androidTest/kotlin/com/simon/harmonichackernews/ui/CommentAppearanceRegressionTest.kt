@@ -23,6 +23,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.*
@@ -356,7 +357,7 @@ class CommentAppearanceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                     HarmonicTheme(palette.colorScheme, palette.dark) {
-                        Column(Modifier.fillMaxWidth().background(palette.colorScheme.surface).testTag("thread")) {
+                        Column(Modifier.fillMaxWidth().background(palette.colorScheme.pageBackground).testTag("thread")) {
                             rows.forEachIndexed { index, row ->
                                 CommentRow(
                                     comment = row, style = style.value, storyAuthor = null, accountUser = null,

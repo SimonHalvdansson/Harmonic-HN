@@ -32,6 +32,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.compose
 import androidx.glance.appwidget.provideContent
 import androidx.test.platform.app.InstrumentationRegistry
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.toDestination
@@ -81,7 +82,7 @@ class WidgetPreviewParityTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalWidgetTextStyle provides TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))) {
-                    Column(Modifier.width(360.dp).background(palette.colorScheme.surface)) {
+                    Column(Modifier.width(360.dp).background(palette.colorScheme.pageBackground)) {
                         Text("Configuration preview")
                         WidgetPreviewStoryRow(SettingsStoryPreviewModel.copy(index = "1.", title = "Patterns", points = 291,
                             commentCount = 108, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,

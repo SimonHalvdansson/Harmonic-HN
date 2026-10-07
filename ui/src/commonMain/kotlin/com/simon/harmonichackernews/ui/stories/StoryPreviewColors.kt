@@ -12,6 +12,8 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.settings.StoryPreviewMode
@@ -31,9 +33,9 @@ internal fun rememberStoryPreviewCardColor(
     val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
         ?: StoryDisplaySettings.from(dependencies.userSettings.story)
-    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val baseColor = MaterialTheme.colorScheme.cardBackground
     if (!settings.tintCardsFromImages) {
-        return if (settings.hasBackground) baseColor else MaterialTheme.colorScheme.surface
+        return if (settings.hasBackground) baseColor else MaterialTheme.colorScheme.pageBackground
     }
     val baseArgb = baseColor.toArgb()
     val revision = controller.storyRevision(story.id)

@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import androidx.compose.animation.AnimatedVisibility
@@ -218,7 +220,7 @@ fun CommentsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.pageBackground),
             contentAlignment = Alignment.Center,
         ) {
             HarmonicLoadingIndicator(Modifier.size(42.dp))
@@ -421,7 +423,7 @@ fun CommentsScreen(
                 // Capture an opaque backdrop as well as the rows. Blurring transparent gaps
                 // around depth rails otherwise lets the original sharp lines show through.
                 .commentsHazeSource(commentsHazeState)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.pageBackground)
                 // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
                     alpha = if (
@@ -567,9 +569,9 @@ fun CommentsScreen(
                             sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
                             sourceContainerColor = if (settings.hasBackground) {
-                                colors.surfaceContainerLow
+                                colors.cardBackground
                             } else {
-                                colors.surface
+                                colors.pageBackground
                             },
                             sourceContentLayer = sourceContentLayer,
                         )
@@ -802,7 +804,7 @@ fun EmptyCommentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.pageBackground),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

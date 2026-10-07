@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -481,7 +482,7 @@ fun StoryPreviewCard(
                                         },
                                     colors = ButtonDefaults.elevatedButtonColors(
                                         containerColor =
-                                            MaterialTheme.colorScheme.surfaceContainerLow,
+                                            MaterialTheme.colorScheme.cardBackground,
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                                 ) {

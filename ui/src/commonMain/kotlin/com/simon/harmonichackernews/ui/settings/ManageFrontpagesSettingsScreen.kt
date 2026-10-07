@@ -81,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.resources.*
@@ -167,7 +168,7 @@ fun ManageFrontpagesSettingsScreen(
     val density = LocalDensity.current
     var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val selectedBackground = frontpageSelectionColor(
-        pageBackground = MaterialTheme.colorScheme.surface,
+        pageBackground = MaterialTheme.colorScheme.pageBackground,
         selectedContainer = MaterialTheme.colorScheme.secondaryContainer,
     )
     // Persisting a drop must not replace the state that is still animating that drop.

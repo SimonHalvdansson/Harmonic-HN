@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.common.lerpRect
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.common.outerShadow
@@ -234,7 +235,7 @@ internal fun StoryPreviewTransitionOverlay(
     }
     val commentsShadowProgress = supplementaryAlpha(progress)
     val commentsButtonShape = RoundedCornerShape(percent = 50)
-    val commentsButtonColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val commentsButtonColor = MaterialTheme.colorScheme.cardBackground
 
     Box(Modifier.fillMaxSize()) {
         Box(

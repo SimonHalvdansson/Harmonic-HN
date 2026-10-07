@@ -37,6 +37,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.color.ColorProvider
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.CommentsIntentExtras
@@ -111,8 +113,8 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         }
                         fun tint(theme: ColorScheme) = palette?.let {
                             val config = app.userSettings.story.paletteTintConfigKey
-                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.surfaceContainerLow.toArgb(), it, config)
-                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.surface.toArgb(), config)
+                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.cardBackground.toArgb(), it, config)
+                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.pageBackground.toArgb(), config)
                         }
                         entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
                             entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night))
@@ -178,8 +180,8 @@ internal data class WidgetVisual(val image: Bitmap?, val tint: Int?, val favicon
 
 /** Day/night colors are resolved by the launcher even while the application process is stopped. */
 internal data class WidgetColors(val day: ColorScheme, val night: ColorScheme = day) {
-    val background = ColorProvider(day.surface, night.surface)
-    val contentCardBackground = ColorProvider(day.surfaceContainerLow, night.surfaceContainerLow)
+    val background = ColorProvider(day.pageBackground, night.pageBackground)
+    val contentCardBackground = ColorProvider(day.cardBackground, night.cardBackground)
     val textPrimary = ColorProvider(day.onSurface, night.onSurface)
     val contentPrimary = ColorProvider(day.onSurface, night.onSurface)
     val textSecondary = ColorProvider(day.onSurfaceVariant, night.onSurfaceVariant)
@@ -366,7 +368,7 @@ internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable)
     return RemoteViews(context.packageName, R.layout.widget_error).apply {
         setTextViewText(R.id.widget_error_message, message)
         setTextColor(R.id.widget_error_message, colors.onSurface.toArgb())
-        setInt(R.id.widget_error_message, "setBackgroundColor", colors.surface.toArgb())
+        setInt(R.id.widget_error_message, "setBackgroundColor", colors.pageBackground.toArgb())
         setOnClickPendingIntent(R.id.widget_error_message,
             PendingIntent.getBroadcast(context, widgetId, retry, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }

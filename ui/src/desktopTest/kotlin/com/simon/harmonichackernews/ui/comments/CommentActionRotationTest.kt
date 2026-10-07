@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.data.CommentPresentationSnapshot
@@ -71,7 +72,7 @@ class CommentActionRotationTest {
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
                     Box(Modifier.size(if (landscape.value) 840.dp else 420.dp, if (landscape.value) 420.dp else 840.dp)
-                        .background(MaterialTheme.colorScheme.surface)) {
+                        .background(MaterialTheme.colorScheme.pageBackground)) {
                         Box(Modifier.fillMaxSize().padding(top = if (landscape.value) 60.dp else 220.dp)) {
                             CommentRow(
                                 comment = comment,

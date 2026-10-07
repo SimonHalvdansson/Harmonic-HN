@@ -7,6 +7,7 @@ package com.simon.harmonichackernews.ui.stories
 
 
 import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedVisibility
@@ -213,7 +214,7 @@ fun StoriesScreen(
         suppressSearchAutoFocus = controller.suppressSearchAutoFocus,
         predictiveBackActive = controller.predictiveBackActive,
         predictiveBackProgress = controller.predictiveBackProgress,
-        backgroundColor = MaterialTheme.colorScheme.surface,
+        backgroundColor = MaterialTheme.colorScheme.pageBackground,
         mainLayer = {
             Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                 StoriesList(

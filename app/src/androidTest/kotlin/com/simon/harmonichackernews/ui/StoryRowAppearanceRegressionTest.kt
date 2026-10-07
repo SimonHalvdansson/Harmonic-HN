@@ -24,6 +24,7 @@ import coil3.decode.DataSource
 import coil3.intercept.Interceptor
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -88,7 +89,7 @@ class StoryRowAppearanceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve(case.theme, case.theme == "dark")
                 HarmonicTheme(palette.colorScheme, palette.dark) {
                     key(case) {
-                        Box(Modifier.width(360.dp).background(palette.colorScheme.surface).testTag("story-frame")) {
+                        Box(Modifier.width(360.dp).background(palette.colorScheme.pageBackground).testTag("story-frame")) {
                             StoryRow(
                                 model = SettingsStoryPreviewModel.copy(
                                     faviconUrl = case.url,
@@ -164,7 +165,7 @@ class StoryRowAppearanceRegressionTest {
             val palette = HarmonicThemeCatalog.resolve(case.theme, case.theme == "dark")
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 key(case) {
-                    Box(Modifier.width(360.dp).background(palette.colorScheme.surface).testTag("story-frame")) {
+                    Box(Modifier.width(360.dp).background(palette.colorScheme.pageBackground).testTag("story-frame")) {
                         StoryRow(
                             model = SettingsStoryPreviewModel.copy(
                                 previewImageTintArgb = if (!read && changed.value) 0xffc6d7ee.toInt() else 0xffe3d4bf.toInt(),

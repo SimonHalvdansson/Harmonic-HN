@@ -16,7 +16,7 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 internal fun rememberStoryTintColor(
     rawTint: Int?,
     paletteTintConfigKey: String,
-    background: Color = MaterialTheme.colorScheme.surface,
+    background: Color = MaterialTheme.colorScheme.pageBackground,
 ): Color? = remember(rawTint, background, paletteTintConfigKey) {
     rawTint?.let {
         Color(PreviewTintPolicy.ensureCardTintContrast(it, background.toArgb(), paletteTintConfigKey))

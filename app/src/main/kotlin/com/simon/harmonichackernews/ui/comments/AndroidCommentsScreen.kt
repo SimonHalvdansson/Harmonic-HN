@@ -30,6 +30,8 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -94,7 +96,7 @@ internal fun CommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = MaterialTheme.colorScheme.surface,
+            sheetContainerColor = MaterialTheme.colorScheme.pageBackground,
             sheetContentColor = MaterialTheme.colorScheme.onSurface,
             // Only cast a shadow as the sheet lowers to expose the article underneath.
             sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
@@ -164,7 +166,7 @@ private fun AndroidCommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
     val headerPresentation = remember(
         story.id,
         story.previewImageUrl,

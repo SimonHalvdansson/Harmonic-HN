@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -37,7 +38,7 @@ class WidgetPreviewStyleMotionTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                Box(Modifier.width(360.dp).background(palette.colorScheme.surface).testTag("preview")) {
+                Box(Modifier.width(360.dp).background(palette.colorScheme.pageBackground).testTag("preview")) {
                     WidgetPreviewStoryRow(
                         SettingsStoryPreviewModel.copy(previewImageFallback = null),
                         WidgetConfiguration(previewImageMode = StoryPreviewMode.OFF, displayStyle = displayStyle.value),

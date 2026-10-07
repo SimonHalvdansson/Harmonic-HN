@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
 /** Softens the internal pane boundary without covering chips once the row reaches its end. */
@@ -18,7 +19,7 @@ import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 internal fun Modifier.headerChipEndScrim(listState: LazyListState): Modifier {
     if (!LocalSplitPaneLayout.current.supportsTwoPane) return this
 
-    val background = MaterialTheme.colorScheme.surface
+    val background = MaterialTheme.colorScheme.pageBackground
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     return drawWithCache {
         val width = 24.dp.toPx().coerceAtMost(size.width)

@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import kotlinx.coroutines.flow.first
 
@@ -116,7 +117,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
             it.isIdle && it.currentState && it.targetState
         } == true
     val rootIsPreviewParent = preview != null && preview.parent == null
-    val background = MaterialTheme.colorScheme.surface
+    val background = MaterialTheme.colorScheme.pageBackground
     Box(modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxSize()

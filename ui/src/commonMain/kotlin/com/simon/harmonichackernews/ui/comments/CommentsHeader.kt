@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
@@ -133,7 +134,7 @@ fun CommentsHeader(
     var loadedTint by remember(story.id, contentVersion, initialTint) {
         mutableStateOf(initialTint)
     }
-    val normalBackground = colors.surface
+    val normalBackground = colors.pageBackground
     val correctedTint = rememberStoryTintColor(loadedTint, settings.paletteTintMode)
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
         correctedTint ?: Color(tintBaseColor)

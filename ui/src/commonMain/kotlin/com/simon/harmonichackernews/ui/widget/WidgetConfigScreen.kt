@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.resources.*
@@ -99,7 +100,7 @@ fun WidgetConfigScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .then(if (pinPreview) Modifier.weight(1f) else Modifier)
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.pageBackground)
                         .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                         .padding(bottom = 112.dp),
@@ -249,7 +250,7 @@ private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, palet
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
-            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.surface),
+            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.pageBackground),
     ) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
             Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->

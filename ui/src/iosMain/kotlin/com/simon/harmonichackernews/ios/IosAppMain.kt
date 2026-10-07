@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.app.IosHostRuntimeBindings
 import com.simon.harmonichackernews.platform.IosAppearanceController
 import com.simon.harmonichackernews.platform.IosPlatformBindings
@@ -191,7 +192,7 @@ private fun IosApp(
         HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
     }
     SideEffect {
-        appearance.setAppearance(selection.dark, palette.colorScheme.surface.toArgb())
+        appearance.setAppearance(selection.dark, palette.colorScheme.pageBackground.toArgb())
     }
     LaunchedEffect(bootstrap.app.launchState) {
         when (
@@ -290,7 +291,7 @@ private fun IosApp(
         HarmonicUiDependencies(bootstrap.app, scene),
     ) {
         HarmonicTheme(palette.colorScheme, palette.dark) {
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.pageBackground) {
                 IosAppContent(
                     app = bootstrap.app,
                     scene = scene,
@@ -683,7 +684,7 @@ private fun IosStoriesContent(
     Box(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.pageBackground),
     ) {
         StoriesRoute(
             controller = controller,
@@ -691,7 +692,7 @@ private fun IosStoriesContent(
             filterColors = filterColors,
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
-        IosStatusBarProtection(MaterialTheme.colorScheme.surface)
+        IosStatusBarProtection(MaterialTheme.colorScheme.pageBackground)
         if (controller.isStoryPreviewShowing()) {
             IosStoryPreviewOverlay(app, controller)
         }

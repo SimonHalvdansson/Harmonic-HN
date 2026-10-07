@@ -10,6 +10,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.toArgb
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
@@ -47,7 +48,7 @@ fun SubmissionsRoute(
     SideEffect { previewResources.updateSettings(displaySettings) }
     val states by previewResources.statesFlow.collectAsStateWithLifecycle()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
-    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.cardBackground.toArgb()
     key(store) {
         SubmissionsScreen(
             userName = userName,

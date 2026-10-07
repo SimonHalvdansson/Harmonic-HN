@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.animation.AnimatedContent
@@ -747,9 +749,9 @@ private fun CommentSurface(
         bottomStart = if (showIndicator) shapeRadius * indicatorGeometry.rounding else shapeRadius,
     )
     val baseBackground = when {
-        style.hasBackground -> colors.surfaceContainerLow
+        style.hasBackground -> colors.cardBackground
         style.transparentNonCardBackground -> Color.Transparent
-        else -> colors.surface
+        else -> colors.pageBackground
     }
     val targetBackground = commentSurfaceColor(baseBackground, colors.onSurface, highlighted)
     val background by animateColorAsState(

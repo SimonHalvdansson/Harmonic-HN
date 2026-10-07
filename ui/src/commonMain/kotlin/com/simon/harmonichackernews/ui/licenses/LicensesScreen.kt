@@ -43,6 +43,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.app.LicenseEntry
 import com.simon.harmonichackernews.resources.Res
@@ -103,7 +105,7 @@ fun LicensesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.surface)
+            .background(colors.pageBackground)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -139,7 +141,7 @@ fun LicensesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(LicenseCardShape)
-                        .background(colors.surfaceContainerLow)
+                        .background(colors.cardBackground)
                         .border(1.dp, colors.outlineVariant, LicenseCardShape),
                 ) {
                     LicenseHeader(platformTextStyle)

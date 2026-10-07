@@ -1,9 +1,13 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.background
@@ -82,7 +86,7 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
-internal fun itemBackgroundColor(): Color = MaterialTheme.colorScheme.surfaceContainerLow
+internal fun itemBackgroundColor(): Color = MaterialTheme.colorScheme.cardBackground
 
 @Composable
 private fun SettingsTopAppBar(
@@ -123,7 +127,7 @@ fun SettingsListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.pageBackground)
             .recalculateWindowInsets()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
@@ -278,7 +282,7 @@ fun SettingsPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.pageBackground)
             .recalculateWindowInsets()
             // Adaptive lookahead can place this pane beyond the window and produce negative
             // consumed insets. Union with zero prevents phantom safe-area padding, which would
@@ -318,7 +322,7 @@ fun SettingsPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .onGloballyPositioned { previewSize = it.size }
-                            .background(MaterialTheme.colorScheme.surface),
+                            .background(MaterialTheme.colorScheme.pageBackground),
                     ) {
                         preview()
                     }
@@ -340,8 +344,10 @@ fun SettingsCategory(
     content: @Composable () -> Unit,
 ) {
     Column {
-        Text(
-            text = title,
+        Crossfade(
+            targetState = title,
+            animationSpec = tween(180),
+            label = "settings category title",
             modifier = Modifier
                 .semantics { heading() }
                 .padding(
@@ -350,12 +356,16 @@ fun SettingsCategory(
                     end = HarmonicDimens.settings_list_segment_horizontal_margin,
                     bottom = HarmonicDimens.compose_settings_category_padding_bottom,
                 ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
-        )
+        ) { displayedTitle ->
+            Text(
+                text = displayedTitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+            )
+        }
         Spacer(
             modifier = Modifier.height(
                 HarmonicDimens.compose_settings_category_segment_gap,

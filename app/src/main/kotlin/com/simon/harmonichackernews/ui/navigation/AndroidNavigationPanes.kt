@@ -38,6 +38,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.ui.comments.AndroidCommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
@@ -153,7 +154,7 @@ internal fun CommentsPane(
     )
     // Each retained destination owns its bar color, just like its header and scroll state.
     // Reading the active controller here would repaint the parent with the child's tint.
-    val background = MaterialTheme.colorScheme.surface
+    val background = MaterialTheme.colorScheme.pageBackground
     val statusBarColor by animateColorAsState(
         targetValue = lerp(
             background,

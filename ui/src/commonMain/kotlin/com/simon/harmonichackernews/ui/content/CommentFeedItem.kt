@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.common.TextButton
@@ -55,9 +57,9 @@ fun CommentFeedItem(
     }
     val cardStyle = displaySettings.cardStyle
     val cardBackground = if (displaySettings.hasBackground) {
-        colors.surfaceContainerLow
+        colors.cardBackground
     } else {
-        colors.surface
+        colors.pageBackground
     }
     val shape = RoundedCornerShape(8.dp)
     val container = modifier

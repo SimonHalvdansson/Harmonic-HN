@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.ui.comments
 
 import kotlin.time.Duration.Companion.milliseconds
 
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.animateBounds
@@ -151,7 +153,7 @@ fun CommentLinkPreviewOverlay(
         containerColor = previewContainerColor,
         sourceContainerColor = if (referenceRowSource) {
             state.sourceContainerColor
-                ?: MaterialTheme.colorScheme.surface
+                ?: MaterialTheme.colorScheme.pageBackground
         } else {
             previewContainerColor.copy(alpha = 0f)
         },
@@ -445,7 +447,7 @@ fun ReferenceCardContent(
                             .padding(top = 18.dp)
                             .height(52.dp),
                         colors = ButtonDefaults.elevatedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            containerColor = MaterialTheme.colorScheme.cardBackground,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {

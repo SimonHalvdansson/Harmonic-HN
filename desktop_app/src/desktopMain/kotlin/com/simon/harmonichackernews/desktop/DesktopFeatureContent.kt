@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
@@ -78,7 +79,7 @@ internal fun DesktopSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.pageBackground)
                 .padding(start = if (isSplitLayout) DesktopWidePaneHorizontalPadding else 0.dp)
                 // Opening a destination should not keyboard-focus Back and show its tooltip.
                 // The screen receives initial focus; Tab still reaches its controls normally.

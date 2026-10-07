@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.app.CommonLicenseCatalog
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -320,7 +321,7 @@ private fun PortableStoriesSettings(
     StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgb(),
+            tintFallbackArgb = MaterialTheme.colorScheme.cardBackground.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,

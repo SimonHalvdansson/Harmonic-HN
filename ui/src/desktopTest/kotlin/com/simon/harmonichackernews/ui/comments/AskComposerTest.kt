@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
@@ -72,7 +73,7 @@ class AskComposerTest {
             val scene = ImageComposeScene(360, 500, Density(1f, fontScale)) {
                 val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
                 HarmonicTheme(palette.colorScheme, palette.dark) {
-                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
                         HarmonicTopAppBar("Ask about this comment", { backs++ },
                             toolbarHeight = 64.dp * fontScale.coerceAtLeast(1f))
                         Box(Modifier.weight(1f)) {

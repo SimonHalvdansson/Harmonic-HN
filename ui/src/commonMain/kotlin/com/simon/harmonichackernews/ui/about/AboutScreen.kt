@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_attribution
@@ -99,7 +101,7 @@ fun AboutScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.surface)
+            .background(colors.pageBackground)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -133,7 +135,7 @@ fun AboutScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(colors.surfaceContainerLow)
+                        .background(colors.cardBackground)
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                 ) {
                     AboutIdentity(

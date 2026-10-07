@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.OverscrollEffect
@@ -177,7 +178,7 @@ fun SubmissionsScreen(
 
     val modifier = Modifier
         .fillMaxSize()
-        .background(MaterialTheme.colorScheme.surface)
+        .background(MaterialTheme.colorScheme.pageBackground)
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         // Render bounce/stretch once around both layers so the header stays with the rows.
@@ -536,7 +537,7 @@ private fun SubmissionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.pageBackground)
             .padding(horizontal = sideMargin)
             .padding(horizontal = 16.dp)
             .then(

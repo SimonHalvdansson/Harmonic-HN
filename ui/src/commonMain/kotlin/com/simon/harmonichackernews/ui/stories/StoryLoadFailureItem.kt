@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_error
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -29,7 +30,7 @@ internal fun StoryLoadFailureItem(onRetry: () -> Unit, modifier: Modifier = Modi
     val colors = MaterialTheme.colorScheme
     Surface(
         onClick = onRetry,
-        color = lerp(colors.surface, colors.primary, 0.10f),
+        color = lerp(colors.pageBackground, colors.primary, 0.10f),
         shape = RoundedCornerShape(12.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {

@@ -9,6 +9,7 @@ import androidx.annotation.ColorInt
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.ThemeSelection
@@ -39,7 +40,7 @@ object AndroidActivityTheme {
         activity.setTheme(themeResource(selection))
 
         val window = activity.getWindow()
-        val background = harmonicThemePalette(activity, selection).colorScheme.surface.toArgb()
+        val background = harmonicThemePalette(activity, selection).colorScheme.pageBackground.toArgb()
         window.setBackgroundDrawable(ColorDrawable(background))
         window.statusBarColor = background
         val insetsController = WindowCompat.getInsetsController(window, window.getDecorView())
@@ -72,7 +73,7 @@ object AndroidActivityTheme {
     @ColorInt
     fun getPageBackgroundColor(ctx: Context): Int {
         val selection = ctx.harmonicAppComposition.appearance.selection()
-        return harmonicThemePalette(ctx, selection).colorScheme.surface.toArgb()
+        return harmonicThemePalette(ctx, selection).colorScheme.pageBackground.toArgb()
     }
 
     fun themeResource(selection: ThemeSelection): Int = materialTheme(
