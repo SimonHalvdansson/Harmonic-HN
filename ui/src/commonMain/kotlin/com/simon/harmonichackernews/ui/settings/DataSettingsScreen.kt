@@ -38,6 +38,8 @@ enum class DataSettingsAction {
     ClearAiModels,
     OpenLinksSettings,
     ResetSettings,
+    ExportSettings,
+    ImportSettings,
 }
 
 fun DataSettingsRuntime.handleDataSettingsAction(action: DataSettingsAction) {
@@ -50,6 +52,8 @@ fun DataSettingsRuntime.handleDataSettingsAction(action: DataSettingsAction) {
         DataSettingsAction.ClearTintCache -> clearTintCache()
         DataSettingsAction.ClearAiModels -> showDialog(DataSettingsDialogState.AI_MODELS)
         DataSettingsAction.OpenLinksSettings -> showDialog(DataSettingsDialogState.LINKS)
+        DataSettingsAction.ExportSettings -> exportSettings()
+        DataSettingsAction.ImportSettings -> requestSettingsImport()
         DataSettingsAction.ResetSettings -> showDialog(DataSettingsDialogState.RESET)
     }
 }
@@ -140,6 +144,29 @@ fun DataSettingsScreen(
             }
         }
         item {
+            SettingsCategory("Settings") {
+                SettingRow(
+                    title = "Export settings",
+                    summary = "Save a JSON backup. Accounts, AI connections and downloaded models are not included.",
+                    icon = Res.drawable.ic_system_update_alt,
+                    onClick = { onAction(DataSettingsAction.ExportSettings) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Import settings",
+                    summary = "Restore compatible settings from a JSON backup",
+                    icon = Res.drawable.ic_settings,
+                    onClick = { onAction(DataSettingsAction.ImportSettings) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Reset all settings",
+                    icon = Res.drawable.ic_refresh,
+                    onClick = { onAction(DataSettingsAction.ResetSettings) },
+                )
+            }
+        }
+        item {
             SettingsCategory("Other") {
                 if (showAppLinkSettings) {
                     SettingRow(
@@ -149,12 +176,6 @@ fun DataSettingsScreen(
                     )
                     SettingsDivider()
                 }
-                SettingRow(
-                    title = "Reset all settings",
-                    icon = Res.drawable.ic_refresh,
-                    onClick = { onAction(DataSettingsAction.ResetSettings) },
-                )
-                SettingsDivider()
                 SwitchSettingRow(
                     title = "Show update changelogs",
                     icon = Res.drawable.ic_system_update_alt,

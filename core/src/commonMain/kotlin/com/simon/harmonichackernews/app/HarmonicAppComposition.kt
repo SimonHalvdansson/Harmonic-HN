@@ -180,6 +180,7 @@ class HarmonicAppComposition(
         previewResources = previewResources,
         storyResourceTints = storyResourceTints,
         localModels = localModels,
+        settingsTransfer = com.simon.harmonichackernews.settings.SettingsTransfer(host.settingsStore, host.appDataStore),
     )
 
     /** Creates navigation, retained screen state, and transient messages for one host scene. */

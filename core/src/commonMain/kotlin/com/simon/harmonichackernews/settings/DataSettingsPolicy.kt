@@ -93,6 +93,7 @@ class DataSettingsService(
     private val previewResources: StoryPreviewRepository,
     private val storyResourceTints: StoryResourceTintRepository,
     private val localModels: LocalModelService?,
+    private val settingsTransfer: SettingsTransfer? = null,
 ) {
     fun storageCounts(): DataSettingsStorageCounts = DataSettingsStorageCounts(
         posts = storyCache.itemCount(),
@@ -157,6 +158,11 @@ class DataSettingsService(
             "Could not clear AI models"
         }
     }
+
+    fun exportSettings(): String? = settingsTransfer?.export()
+
+    fun importSettings(content: String): SettingsImportResult =
+        settingsTransfer?.import(content) ?: SettingsImportResult.Invalid
 
     suspend fun resetSettings() = settingsReset.execute()
 }

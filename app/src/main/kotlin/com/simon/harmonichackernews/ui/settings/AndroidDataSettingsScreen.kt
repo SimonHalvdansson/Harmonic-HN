@@ -13,6 +13,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.simon.harmonichackernews.settings.SettingsTransfer
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -95,15 +99,58 @@ fun AndroidDataSettingsScreen(
         }
     }
 
+    var pendingSettingsExport by rememberSaveable { mutableStateOf<String?>(null) }
+    val settingsExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        val content = pendingSettingsExport
+        pendingSettingsExport = null
+        if (uri != null && content != null) scope.launch {
+            try {
+                AndroidTextDocuments.write(context, uri, content)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                appComposition.userMessages.show(PresentationCopy.WRITE_ERROR)
+            }
+        }
+    }
+    val settingsImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            try {
+                runtime.importSettings(AndroidTextDocuments.read(context, uri, SettingsTransfer.MAX_CHARS))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                appComposition.userMessages.show("Could not read settings. Choose a JSON file under 256 KB.")
+            }
+        }
+    }
+
     LaunchedEffect(runtime) {
         runtime.effects.collect { effect ->
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
-                    pendingExport.replace(effect.content)
                     try {
-                        exportLauncher.launch(effect.filename)
+                        if (effect.mimeType == "application/json") {
+                            pendingSettingsExport = effect.content
+                            settingsExportLauncher.launch(effect.filename)
+                        } else {
+                            pendingExport.replace(effect.content)
+                            exportLauncher.launch(effect.filename)
+                        }
                     } catch (_: ActivityNotFoundException) {
                         pendingExport.clear()
+                        pendingSettingsExport = null
+                        appComposition.userMessages.show(FILE_PICKER_UNAVAILABLE)
+                    }
+                }
+                DataSettingsRuntimeEffect.OpenSettingsImportDocument -> {
+                    try {
+                        settingsImportLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                    } catch (_: ActivityNotFoundException) {
                         appComposition.userMessages.show(FILE_PICKER_UNAVAILABLE)
                     }
                 }

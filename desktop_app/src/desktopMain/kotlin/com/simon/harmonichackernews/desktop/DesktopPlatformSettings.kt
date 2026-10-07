@@ -290,14 +290,32 @@ private fun DesktopDataSettings(
                     val file = chooseTextFile(save = true, suggestedName = effect.filename)
                     if (file == null) return@collect
                     runCatching { withContext(Dispatchers.IO) { file.writeText(effect.content) } }
-                        .onSuccess { scene.userMessages.show("Bookmarks exported") }
+                        .onSuccess { scene.userMessages.show(if (effect.mimeType == "application/json") "Settings exported" else "Bookmarks exported") }
                         .onFailure { scene.userMessages.show("Write error") }
                 }
-                DataSettingsRuntimeEffect.OpenImportDocument -> {
+                DataSettingsRuntimeEffect.OpenImportDocument,
+                DataSettingsRuntimeEffect.OpenSettingsImportDocument -> {
                     val file = chooseTextFile(save = false)
                     if (file == null) return@collect
-                    runCatching { withContext(Dispatchers.IO) { file.readText() } }
-                        .onSuccess(runtime::importBookmarks)
+                    runCatching { withContext(Dispatchers.IO) {
+                        val limit = if (effect == DataSettingsRuntimeEffect.OpenSettingsImportDocument)
+                            com.simon.harmonichackernews.settings.SettingsTransfer.MAX_CHARS else 4 * 1024 * 1024
+                        file.bufferedReader().use { reader ->
+                            val result = StringBuilder()
+                            val buffer = CharArray(8192)
+                            while (true) {
+                                val count = reader.read(buffer)
+                                if (count < 0) break
+                                require(result.length + count <= limit) { "File too large" }
+                                result.append(buffer, 0, count)
+                            }
+                            result.toString()
+                        }
+                    } }
+                        .onSuccess { content ->
+                            if (effect == DataSettingsRuntimeEffect.OpenSettingsImportDocument) runtime.importSettings(content)
+                            else runtime.importBookmarks(content)
+                        }
                         .onFailure { scene.userMessages.show("Read error") }
                 }
                 DataSettingsRuntimeEffect.OpenAppLinkSettings ->
@@ -360,7 +378,7 @@ private fun DesktopDataSettings(
 private fun chooseTextFile(save: Boolean, suggestedName: String? = null): File? {
     val chooser = JFileChooser().apply {
         dialogTitle = if (save) "Export Harmonic bookmarks" else "Import Harmonic bookmarks"
-        fileFilter = FileNameExtensionFilter("Text files", "txt")
+        fileFilter = FileNameExtensionFilter("Text and JSON files", "txt", "json")
         suggestedName?.let { selectedFile = File(it) }
     }
     if (!save) {

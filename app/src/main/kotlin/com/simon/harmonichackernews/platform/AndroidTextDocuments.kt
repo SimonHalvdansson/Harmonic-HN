@@ -42,12 +42,12 @@ object AndroidTextDocuments {
         outputStream.bufferedWriter(Charsets.UTF_8).use { writer -> writer.write(text) }
     }
 
-    suspend fun read(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
+    suspend fun read(context: Context, uri: Uri, maxChars: Int = MAX_IMPORTED_TEXT_CHARS): String = withContext(Dispatchers.IO) {
         val inputStream = checkNotNull(context.contentResolver.openInputStream(uri)) {
             "Unable to open the selected text document for reading"
         }
         inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-            reader.readBoundedText(MAX_IMPORTED_TEXT_CHARS)
+            reader.readBoundedText(maxChars)
         }
     }
 

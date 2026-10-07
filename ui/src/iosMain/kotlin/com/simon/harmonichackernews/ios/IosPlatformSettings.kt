@@ -206,14 +206,16 @@ private fun IosDataSettings(
                         },
                     )
                 }
-                DataSettingsRuntimeEffect.OpenImportDocument -> {
+                DataSettingsRuntimeEffect.OpenImportDocument,
+                DataSettingsRuntimeEffect.OpenSettingsImportDocument -> {
                     checkNotNull(app.platform.textDocuments).importText(
                         object : TextDocumentCallback {
                             override fun complete(content: String?, errorMessage: String?) {
                                 if (errorMessage != null) {
                                     scene.userMessages.show(errorMessage, UserMessageDuration.LONG)
                                 } else if (content != null) {
-                                    runtime.importBookmarks(content)
+                                    if (effect == DataSettingsRuntimeEffect.OpenSettingsImportDocument) runtime.importSettings(content)
+                                    else runtime.importBookmarks(content)
                                 }
                             }
                         },

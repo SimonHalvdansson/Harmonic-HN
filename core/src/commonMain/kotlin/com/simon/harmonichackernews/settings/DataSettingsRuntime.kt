@@ -27,7 +27,8 @@ data class DataSettingsRuntimeState(
 )
 
 sealed interface DataSettingsRuntimeEffect {
-    data class CreateExportDocument(val filename: String, val content: String) : DataSettingsRuntimeEffect
+    data class CreateExportDocument(val filename: String, val content: String, val mimeType: String = "text/plain") : DataSettingsRuntimeEffect
+    data object OpenSettingsImportDocument : DataSettingsRuntimeEffect
     data object OpenImportDocument : DataSettingsRuntimeEffect
     data object OpenAppLinkSettings : DataSettingsRuntimeEffect
     data object SettingsReset : DataSettingsRuntimeEffect
@@ -70,6 +71,45 @@ class DataSettingsRuntime(
                 content,
             ),
         )
+    }
+
+    fun exportSettings() {
+        try {
+            val content = service.exportSettings() ?: return
+            val date = today()
+            mutableEffects.tryEmit(DataSettingsRuntimeEffect.CreateExportDocument(
+                "HarmonicSettings${date.year}-${date.month}-${date.day}.json", content, "application/json",
+            ))
+        } catch (_: Exception) {
+            emitMessage("Could not export settings")
+        }
+    }
+
+    fun requestSettingsImport() {
+        mutableEffects.tryEmit(DataSettingsRuntimeEffect.OpenSettingsImportDocument)
+    }
+
+    fun importSettings(content: String) {
+        scope.launch {
+            val result = try {
+                withContext(storageDispatcher) { service.importSettings(content) }
+            } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                emitMessage("Could not import settings")
+                return@launch
+            }
+            when (result) {
+                is SettingsImportResult.Imported -> {
+                    emitMessage(if (result.count == 0) "No compatible settings found" else
+                        "Settings imported" + if (result.skipped > 0) " (${result.skipped} unsupported or invalid entries skipped)" else "")
+                    refresh()
+                    mutableEffects.tryEmit(DataSettingsRuntimeEffect.SettingsReset)
+                }
+                SettingsImportResult.Invalid -> emitMessage("Not a valid Harmonic settings file")
+                SettingsImportResult.UnsupportedVersion -> emitMessage("This settings file needs a newer version of Harmonic")
+            }
+        }
     }
 
     fun requestImport(overwrite: Boolean) {

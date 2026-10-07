@@ -13,7 +13,7 @@ final class IosTextDocumentService: NSObject, TextDocumentService, UIDocumentPic
             guard self.begin(callback) else { return }
             self.importing = true
             self.present(UIDocumentPickerViewController(
-                forOpeningContentTypes: [.plainText], asCopy: true
+                forOpeningContentTypes: [.plainText, .json], asCopy: true
             ))
         }
     }
@@ -31,7 +31,7 @@ final class IosTextDocumentService: NSObject, TextDocumentService, UIDocumentPic
                 try content.write(to: file, atomically: true, encoding: .utf8)
                 self.present(UIDocumentPickerViewController(forExporting: [file], asCopy: true))
             } catch {
-                self.finish(error: "Could not export bookmarks: \(error.localizedDescription)")
+                self.finish(error: "Could not export file: \(error.localizedDescription)")
             }
         }
     }
@@ -73,16 +73,16 @@ final class IosTextDocumentService: NSObject, TextDocumentService, UIDocumentPic
                 do {
                     let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                     guard size <= 10 * 1024 * 1024 else {
-                        failure = "This file is too large. Choose a bookmark text file under 10 MB."
+                        failure = "This file is too large. Choose a text or JSON file under 10 MB."
                         return
                     }
                     content = try String(contentsOf: file, encoding: .utf8)
                 } catch {
-                    failure = "Could not read bookmarks: \(error.localizedDescription)"
+                    failure = "Could not read file: \(error.localizedDescription)"
                 }
             }
             let result = content
-            let error = failure ?? coordinationError.map { "Could not read bookmarks: \($0.localizedDescription)" }
+            let error = failure ?? coordinationError.map { "Could not read file: \($0.localizedDescription)" }
             DispatchQueue.main.async { self.finish(content: result, error: error) }
         }
     }
