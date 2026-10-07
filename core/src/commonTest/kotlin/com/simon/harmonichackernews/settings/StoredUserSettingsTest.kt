@@ -124,7 +124,7 @@ class StoredUserSettingsTest {
         assertEquals(WebViewPreloadMode.NEVER, settings.comments.preloadCommentsMode)
         assertTrue(settings.reading.integratedWebView)
         assertTrue(settings.reading.readerModeEnabled)
-        assertEquals(18, settings.reading.readerModeFontSize)
+        assertEquals(17, settings.reading.readerModeFontSize)
         assertTrue(LinkPreviewType.GITHUB_REPOSITORY in settings.reading.enabledLinkPreviews)
         assertTrue(LinkPreviewType.HUGGING_FACE_MODEL in settings.reading.enabledLinkPreviews)
         assertTrue(LinkPreviewType.OPENROUTER_MODEL in settings.reading.enabledLinkPreviews)

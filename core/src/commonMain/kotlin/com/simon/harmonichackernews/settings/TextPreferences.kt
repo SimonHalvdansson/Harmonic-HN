@@ -29,8 +29,8 @@ object TextPreferences {
     const val MIN_TEXT_SIZE_OFFSET = -6
     const val MAX_TEXT_SIZE_OFFSET = 6
     const val TEXT_SIZE_OFFSET_STEP = 0.5f
-    const val DEFAULT_READER_MODE_FONT_SIZE = 18
-    const val MIN_READER_MODE_FONT_SIZE = 14
+    const val DEFAULT_READER_MODE_FONT_SIZE = 17
+    const val MIN_READER_MODE_FONT_SIZE = 13
     const val MAX_READER_MODE_FONT_SIZE = 24
 
     fun sanitizeFont(font: String?): String = AppFont.fromStored(font).storedValue

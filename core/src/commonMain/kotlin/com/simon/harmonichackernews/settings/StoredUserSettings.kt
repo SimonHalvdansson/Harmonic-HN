@@ -271,7 +271,7 @@ class StoredUserSettings(
                     string(UserPreferenceKeys.READER_MODE_FONT, "googlesansflexrounded"),
                 ),
                 readerModeFontSize = TextPreferences.clampReaderModeFontSize(
-                    integer(UserPreferenceKeys.READER_MODE_FONT_SIZE, 18),
+                    integer(UserPreferenceKeys.READER_MODE_FONT_SIZE, TextPreferences.DEFAULT_READER_MODE_FONT_SIZE),
                 ),
                 externalBrowser = boolean(UserPreferenceKeys.EXTERNAL_BROWSER, false),
                 redirectNitter = boolean(UserPreferenceKeys.REDIRECT_NITTER, false),

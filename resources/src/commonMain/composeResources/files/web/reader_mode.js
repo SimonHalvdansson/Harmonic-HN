@@ -538,7 +538,7 @@
         if (!isFinite(parsed)) {
             return fallback;
         }
-        return Math.max(14, Math.min(24, parsed));
+        return Math.max(13, Math.min(24, parsed));
     }
 
     function getReaderTheme() {
@@ -556,7 +556,7 @@
             fontFaceCss: sanitizeCssText(configured.fontFaceCss, ""),
             fontFamily: sanitizeCssText(configured.fontFamily, "Georgia,'Times New Roman',serif"),
             headingFontFamily: sanitizeCssText(configured.headingFontFamily, "Georgia,'Times New Roman',serif"),
-            fontSizePx: sanitizeFontSize(configured.fontSizePx, 18)
+            fontSizePx: sanitizeFontSize(configured.fontSizePx, 17)
         };
     }
 
