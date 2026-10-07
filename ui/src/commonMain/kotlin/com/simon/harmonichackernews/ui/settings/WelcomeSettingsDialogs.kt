@@ -56,7 +56,6 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -180,7 +179,7 @@ fun WelcomeSettingsDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = if (styleChooser) 0.dp else 8.dp),
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = GoogleSansFlexRoundedFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp,
@@ -308,7 +307,7 @@ private fun WelcomeStoryPreview(
     textStyle: androidx.compose.ui.text.TextStyle,
     modifier: Modifier = Modifier,
 ) {
-    val baseColor = HarmonicTheme.colors.contentCardBackground
+    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
     val backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val palette = rememberResourceTintPalette(Res.drawable.palette1)
     val rawTint = remember(
@@ -366,7 +365,7 @@ private fun WelcomeStoryPreviewContent(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Post title",
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.5.sp,
@@ -381,7 +380,7 @@ private fun WelcomeStoryPreviewContent(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = if (expressive) "domain • 2h" else "53 points • domain • 2h",
-                    color = HarmonicTheme.colors.mutedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = fontFamily,
                     fontSize = 13.sp,
                     style = textStyle,
@@ -443,11 +442,11 @@ private fun WelcomeStoryPreviewContent(
                     painter = painterResource(Res.drawable.ic_comment),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = HarmonicTheme.colors.iconTint,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "18",
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = fontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

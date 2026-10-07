@@ -7,7 +7,8 @@ object ThemePreferences {
     const val MANUAL_DARK_KEY = "pref_theme_manual_dark"
     const val LIGHT_KEY = "pref_theme_light"
     const val DARK_KEY = "pref_theme_dark"
-    const val ACCENT_KEY = "pref_theme_accent"
+    // Keep the storage key/value for existing installations.
+    const val COLOR_KEY = "pref_theme_accent"
     const val DEFAULT = "material_daynight"
     const val DEFAULT_NIGHTTIME = "dark"
     const val DEFAULT_LIGHT = "material_light"
@@ -16,12 +17,12 @@ object ThemePreferences {
     const val MATERIAL_FIXED_LIGHT = "material_fixed_light"
     const val MATERIAL_FIXED_DARK = "material_fixed_dark"
 
-    const val ACCENT_DEFAULT = "default"
-    const val ACCENT_ORANGE = "orange"
-    const val ACCENT_BLUE = "blue"
-    const val ACCENT_VIOLET = "violet"
-    const val ACCENT_TEAL = "teal"
-    const val ACCENT_ROSE = "rose"
+    const val COLOR_SYSTEM = "default"
+    const val COLOR_ORANGE = "orange"
+    const val COLOR_BLUE = "blue"
+    const val COLOR_VIOLET = "violet"
+    const val COLOR_TEAL = "teal"
+    const val COLOR_ROSE = "rose"
 
     fun isAutomatic(theme: String?): Boolean = when (theme) {
         DEFAULT,
@@ -42,20 +43,20 @@ object ThemePreferences {
     }
 
     fun selectableNighttimeTheme(theme: String?): String =
-        theme?.takeIf(::isDark) ?: DEFAULT_NIGHTTIME
+        canonicalTheme(theme).takeIf(::isDark) ?: DEFAULT_NIGHTTIME
 
-    fun selectableLightTheme(theme: String?): String = when (theme) {
-        "material_light", MATERIAL_FIXED_LIGHT, "light", "hacker_news", "white" -> theme
+    fun selectableLightTheme(theme: String?): String = when (val canonical = canonicalTheme(theme)) {
+        "material_light", "light", "hacker_news", "white" -> canonical
         else -> pairedLightTheme(theme)
     }
 
-    fun selectableDarkTheme(theme: String?): String = when (theme) {
-        "material_dark", MATERIAL_FIXED_DARK, "dark", "hacker", "amoled", "gray" -> theme
+    fun selectableDarkTheme(theme: String?): String = when (val canonical = canonicalTheme(theme)) {
+        "material_dark", "dark", "hacker", "amoled", "gray" -> canonical
         else -> pairedDarkTheme(theme)
     }
 
     fun pairedLightTheme(theme: String?): String = when (theme) {
-        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> MATERIAL_FIXED_LIGHT
+        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> DEFAULT_LIGHT
         "darklight_daynight", "light", "dark", "gray" -> "light"
         "amoledwhite_daynight", "amoled", "white" -> "white"
         "hacker", "hacker_news" -> "hacker_news"
@@ -63,7 +64,7 @@ object ThemePreferences {
     }
 
     fun pairedDarkTheme(theme: String?): String = when (theme) {
-        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> MATERIAL_FIXED_DARK
+        MATERIAL_FIXED_AUTO, MATERIAL_FIXED_LIGHT, MATERIAL_FIXED_DARK -> DEFAULT_DARK
         "darklight_daynight", "light", "dark" -> "dark"
         "amoledwhite_daynight", "amoled", "white" -> "amoled"
         "hacker", "hacker_news" -> "hacker"
@@ -71,17 +72,21 @@ object ThemePreferences {
         else -> DEFAULT_DARK
     }
 
-    fun sanitizeAccent(accent: String?): String = when (accent) {
-        ACCENT_ORANGE, ACCENT_BLUE, ACCENT_VIOLET, ACCENT_TEAL, ACCENT_ROSE -> accent
-        else -> ACCENT_DEFAULT
+    fun sanitizeMaterialColor(value: String?): String = when (value) {
+        COLOR_ORANGE, COLOR_BLUE, COLOR_VIOLET, COLOR_TEAL, COLOR_ROSE -> value
+        else -> COLOR_SYSTEM
     }
 
-    fun fixedMaterialEquivalent(theme: String?): String? = when (theme) {
-        DEFAULT -> MATERIAL_FIXED_AUTO
-        "material_light" -> MATERIAL_FIXED_LIGHT
-        "material_dark" -> MATERIAL_FIXED_DARK
-        else -> theme
+    /** Old fixed/You choices now identify the same Material theme. */
+    fun canonicalTheme(theme: String?): String = when (theme) {
+        MATERIAL_FIXED_AUTO -> DEFAULT
+        MATERIAL_FIXED_LIGHT -> DEFAULT_LIGHT
+        MATERIAL_FIXED_DARK -> DEFAULT_DARK
+        else -> theme ?: DEFAULT
     }
+
+    fun isMaterial(theme: String?): Boolean = canonicalTheme(theme) in
+        setOf(DEFAULT, DEFAULT_LIGHT, DEFAULT_DARK)
 }
 
 object PaletteTintPreferences {
@@ -276,7 +281,7 @@ object CommentDepthPreferences {
     fun shouldShowIndicators(mode: String): Boolean = sanitizeMode(mode) != NONE
 
     fun modeLabel(mode: String): String = when (sanitizeMode(mode)) {
-        MATERIAL_YOU -> "Material You"
+        MATERIAL_YOU -> "Theme colors"
         COLORS -> "Colorful"
         AUTHOR -> "Author"
         MONOCHROME -> "Monochrome"

@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
@@ -160,7 +159,7 @@ fun AddBookmarksToFavoritesDialog(
                                 "Adding bookmark ${currentIndex + 1} of ${items.size}"
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            color = HarmonicTheme.colors.mutedText,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
@@ -290,7 +289,7 @@ private fun BookmarkFavoriteResults(
                         Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
                             Text(
                                 text = result.title,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 15.sp,
                                 lineHeight = 19.sp,
@@ -300,7 +299,7 @@ private fun BookmarkFavoriteResults(
                             Text(
                                 text = result.message,
                                 modifier = Modifier.padding(top = 2.dp),
-                                color = HarmonicTheme.colors.mutedText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 13.sp,
                                 lineHeight = 17.sp,
@@ -312,7 +311,7 @@ private fun BookmarkFavoriteResults(
                     if (index < results.lastIndex) {
                         HorizontalDivider(
                             modifier = Modifier.padding(start = 38.dp),
-                            color = HarmonicTheme.colors.outlineVariant,
+                            color = MaterialTheme.colorScheme.outlineVariant,
                         )
                     }
                 }

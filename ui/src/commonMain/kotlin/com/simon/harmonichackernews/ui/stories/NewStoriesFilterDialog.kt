@@ -36,7 +36,6 @@ import com.simon.harmonichackernews.ui.common.TextButton
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
@@ -60,7 +59,7 @@ internal fun NewStoriesFilterDialog(
             ) {
                 Text(
                     "Show stories that meet both minimums. Only applies to New stories.",
-                    color = HarmonicTheme.colors.textSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = ProductSansFontFamily,
                 )
@@ -95,7 +94,7 @@ private fun ThresholdSlider(label: String, value: Int, onValueChange: (Int) -> U
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                label, Modifier.weight(1f), color = HarmonicTheme.colors.textPrimary,
+                label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium, fontFamily = ProductSansFontFamily,
             )
             Surface(
@@ -129,8 +128,8 @@ private fun ThresholdSlider(label: String, value: Int, onValueChange: (Int) -> U
             },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Any", style = MaterialTheme.typography.labelSmall, color = HarmonicTheme.colors.textSecondary)
-            Text("${thresholds.last()}+", style = MaterialTheme.typography.labelSmall, color = HarmonicTheme.colors.textSecondary)
+            Text("Any", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${thresholds.last()}+", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -149,7 +148,7 @@ internal fun NewStoriesFilterIndicator(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = HarmonicTheme.colors.contentCardBackground,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {

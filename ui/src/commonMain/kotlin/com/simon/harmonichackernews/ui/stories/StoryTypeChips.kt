@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,14 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.StoryType
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -41,14 +39,9 @@ internal fun StoryTypeChips(
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = selectedIndex.coerceIn(0, labels.lastIndex.coerceAtLeast(0)),
     )
-    val colors = HarmonicTheme.colors
-    val isDark = HarmonicTheme.isDark
-    val chipBackground = lerp(colors.background, Color.White, if (isDark) 0.08f else 0.45f)
-    val selectedBackground = if (isDark) {
-        lerp(chipBackground, colors.secondaryContainer, 0.55f)
-    } else {
-        lerp(colors.secondaryContainer, colors.textPrimary, 0.10f)
-    }
+    val colors = MaterialTheme.colorScheme
+    val chipBackground = colors.surfaceContainerLow
+    val selectedBackground = colors.secondaryContainer
     LaunchedEffect(selectedIndex, labels) {
         if (selectedIndex !in labels.indices) return@LaunchedEffect
         val layout = listState.layoutInfo
@@ -81,7 +74,7 @@ internal fun StoryTypeChips(
                             painter = painterResource(StoryType.fromLabel(label).menuIcon),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = if (selected) colors.onSecondaryContainer else colors.iconTint,
+                            tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
                         )
                         Text(
                             text = label,
@@ -94,8 +87,8 @@ internal fun StoryTypeChips(
                 },
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = chipBackground,
-                    labelColor = colors.textPrimary,
-                    iconColor = colors.iconTint,
+                    labelColor = colors.onSurface,
+                    iconColor = colors.onSurfaceVariant,
                     selectedContainerColor = selectedBackground,
                     selectedLabelColor = colors.onSecondaryContainer,
                     selectedLeadingIconColor = colors.onSecondaryContainer,

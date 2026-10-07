@@ -59,7 +59,7 @@ class CommentAppearanceRegressionTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.width(width.value)) {
                     CommentsHeaderMetadata(story, settings, textStyle = TextStyle.Default)
                 }
@@ -85,7 +85,7 @@ class CommentAppearanceRegressionTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             CompositionLocalProvider(LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Solid)) {
-                HarmonicTheme(palette.colors.copy(surfaceContainerHigh = Color.Blue, iconTint = Color.Blue), palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme.copy(surfaceContainerHigh = Color.Blue, onSurfaceVariant = Color.Blue), palette.dark) {
                     Box(Modifier.size(120.dp).testTag("layers")) {
                         CommentsUpButton({}, Modifier.padding(16.dp).zIndex(101f), modalScrimAlpha = 0.32f)
                         Box(Modifier.fillMaxSize().zIndex(100f).background(Color.Magenta))
@@ -124,7 +124,7 @@ class CommentAppearanceRegressionTest {
                     LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
                     LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Frosted),
                 ) {
-                    HarmonicTheme(palette.colors.copy(background = Color.White), palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme.copy(surface = Color.White), palette.dark) {
                         HazeHost {
                             Box(Modifier.size(260.dp).testTag("blurred-rails")) {
                                 CommentsScreen(
@@ -166,7 +166,7 @@ class CommentAppearanceRegressionTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
-                HarmonicTheme(palette.colors.copy(accent = Color.Red), palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme.copy(primary = Color.Red), palette.dark) {
                     CommentRow(
                         model = SettingsCommentPreviewModel,
                         style = CommentRowStyle(
@@ -230,7 +230,7 @@ class CommentAppearanceRegressionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                    HarmonicTheme(palette.colors.copy(commentCountIndicator = Color(0xFF0066CC)), palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme.copy(tertiary = Color(0xFF0066CC)), palette.dark) {
                         CommentRow(
                             modifier = Modifier.background(Color.White),
                             comment = item.value,
@@ -319,7 +319,7 @@ class CommentAppearanceRegressionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         CommentRow(
                             comment = row,
                             style = CommentRowStyle(
@@ -355,8 +355,8 @@ class CommentAppearanceRegressionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        Column(Modifier.fillMaxWidth().background(palette.colors.background).testTag("thread")) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
+                        Column(Modifier.fillMaxWidth().background(palette.colorScheme.surface).testTag("thread")) {
                             rows.forEachIndexed { index, row ->
                                 CommentRow(
                                     comment = row, style = style.value, storyAuthor = null, accountUser = null,
@@ -411,7 +411,7 @@ class CommentAppearanceRegressionTest {
         val options = mutableStateOf(UserAvatarOptions(setOf(UserAvatarStyle.ROBOT)))
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 UserAvatar(author.value, Modifier.size(64.dp).testTag("animated-avatar"), options.value)
             }
         }
@@ -454,7 +454,7 @@ class CommentAppearanceRegressionTest {
         val options = mutableStateOf(UserAvatarOptions())
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 if (enabled.value) Row {
                     UserAvatar("willow", Modifier.size(40.dp).testTag("first"), options.value)
                     UserAvatar("willow", Modifier.size(40.dp).testTag("same"), options.value)
@@ -515,7 +515,7 @@ class CommentAppearanceRegressionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         if (showDialog.value) {
                             CommentActionOverlay(controller, settings, false, false, TextStyle.Default, onOpenLink = {})
                         } else {
@@ -567,7 +567,7 @@ class CommentAppearanceRegressionTest {
         var scrim = 0f
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.fillMaxSize().padding(horizontal = inset.value)) {
                     CommentActionOverlay(controller, settings, false, false, TextStyle.Default,
                         onOpenLink = {}, onScrimAlphaChanged = { scrim = it })
@@ -640,7 +640,7 @@ class CommentAppearanceRegressionTest {
                     LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
                     LocalHazePreferences provides SurfaceEffectPreferences(mode = SurfaceEffectMode.Solid),
                 ) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         Box(Modifier.fillMaxWidth().height(600.dp).testTag("comparison-thread")) {
                             CommentsScreen(
                                 controller, Modifier, false, pullToRefreshEnabled = false,

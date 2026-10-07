@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.licenses
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,7 +67,6 @@ import com.simon.harmonichackernews.resources.library_logo_pdfjs
 import com.simon.harmonichackernews.resources.library_logo_readability
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -99,11 +99,11 @@ fun LicensesScreen(
     topBarNavigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(colors.surface)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -139,7 +139,7 @@ fun LicensesScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clip(LicenseCardShape)
-                        .background(colors.itemBackground)
+                        .background(colors.surfaceContainerLow)
                         .border(1.dp, colors.outlineVariant, LicenseCardShape),
                 ) {
                     LicenseHeader(platformTextStyle)
@@ -162,7 +162,7 @@ fun LicensesScreen(
 
 @Composable
 private fun LicenseHeader(platformTextStyle: TextStyle) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val style = TextStyle(
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.SemiBold,
@@ -181,11 +181,11 @@ private fun LicenseHeader(platformTextStyle: TextStyle) {
         Text(
             text = "DEPENDENCY",
             modifier = Modifier.weight(1f),
-            color = colors.mutedText,
+            color = colors.onSurfaceVariant,
             style = style,
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text = "CREATOR", color = colors.mutedText, style = style)
+        Text(text = "CREATOR", color = colors.onSurfaceVariant, style = style)
     }
 }
 
@@ -195,7 +195,7 @@ private fun LicenseRow(
     onClick: () -> Unit,
     platformTextStyle: TextStyle,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val description = buildString {
         append(license.name)
         append(", ")
@@ -227,7 +227,7 @@ private fun LicenseRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = license.name,
-                color = colors.contentPrimary,
+                color = colors.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
@@ -235,7 +235,7 @@ private fun LicenseRow(
             )
             Text(
                 text = license.licenseType,
-                color = colors.mutedText,
+                color = colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 style = platformTextStyle,
@@ -246,7 +246,7 @@ private fun LicenseRow(
             Text(
                 text = license.creator,
                 modifier = Modifier.widthIn(max = 180.dp),
-                color = colors.mutedText,
+                color = colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 textAlign = TextAlign.End,

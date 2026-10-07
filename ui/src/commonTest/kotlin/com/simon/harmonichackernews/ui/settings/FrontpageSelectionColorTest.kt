@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
-import com.simon.harmonichackernews.ui.theme.ThemeAccentCatalog
+import com.simon.harmonichackernews.ui.theme.ColorSchemeCatalog
 import kotlin.test.assertEquals
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -24,20 +24,16 @@ class FrontpageSelectionColorTest {
     }
 
     @Test
-    fun themeAndAccentCombinationsKeepSelectionDistinctAndItsNameReadable() {
-        val themes = listOf(
-            "light", "white", "dark", "gray", "amoled", "hacker", "hacker_news",
-            "material_light", "material_dark", "material_fixed_light", "material_fixed_dark",
-        )
-        for (theme in themes) for (accent in ThemeAccentCatalog.options) {
-            val palette = HarmonicThemeCatalog.resolve(theme, false, accent.value)
-            val colors = palette.colors
+    fun everySchemeKeepsSelectionDistinctAndItsNameReadable() {
+        for (option in ColorSchemeCatalog.options) for (dark in listOf(false, true)) {
+            val palette = HarmonicThemeCatalog.scheme(option.value, dark)
+            val colors = palette.colorScheme
             val selected = frontpageSelectionColor(
-                colors.background, palette.colorScheme.secondaryContainer,
+                colors.surface, palette.colorScheme.secondaryContainer,
             )
-            assertTrue(contrast(colors.background, selected) >= 1.3f, "$theme/${accent.value}")
+            assertTrue(contrast(colors.surface, selected) >= 1.3f, "${option.value}/$dark")
             val content = frontpageSelectionContentColor(selected, palette.colorScheme.onSecondaryContainer)
-            assertTrue(contrast(content, selected) >= 4.5f, "Name in $theme/${accent.value}")
+            assertTrue(contrast(content, selected) >= 4.5f, "Name in ${option.value}/$dark")
         }
     }
 

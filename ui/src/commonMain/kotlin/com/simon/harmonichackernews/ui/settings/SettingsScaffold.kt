@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -44,9 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
-import com.simon.harmonichackernews.ui.theme.HarmonicColors
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -62,7 +60,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private data class SettingsListEntry(
@@ -85,7 +82,7 @@ private val MainSettingsEntries = listOf(
 )
 
 @Composable
-internal fun itemBackgroundColor(): Color = HarmonicTheme.colors.itemBackground
+internal fun itemBackgroundColor(): Color = MaterialTheme.colorScheme.surfaceContainerLow
 
 @Composable
 private fun SettingsTopAppBar(
@@ -126,7 +123,7 @@ fun SettingsListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(MaterialTheme.colorScheme.surface)
             .recalculateWindowInsets()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
@@ -195,7 +192,7 @@ private fun SettingsNavigationRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -204,7 +201,7 @@ private fun SettingsNavigationRow(
             )
             .background(
                 if (selected) {
-                    settingsSelectionColor(HarmonicTheme.colors)
+                    colors.secondaryContainer
                 } else {
                     itemBackgroundColor()
                 },
@@ -235,7 +232,7 @@ private fun SettingsNavigationRow(
         Column(Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = colors.textPrimary,
+                color = if (selected) colors.onSecondaryContainer else colors.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
@@ -244,7 +241,7 @@ private fun SettingsNavigationRow(
             Text(
                 text = summary,
                 modifier = Modifier.padding(top = 2.dp),
-                color = colors.textSecondary,
+                color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
@@ -281,7 +278,7 @@ fun SettingsPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(MaterialTheme.colorScheme.surface)
             .recalculateWindowInsets()
             // Adaptive lookahead can place this pane beyond the window and produce negative
             // consumed insets. Union with zero prevents phantom safe-area padding, which would
@@ -321,7 +318,7 @@ fun SettingsPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .onGloballyPositioned { previewSize = it.size }
-                            .background(HarmonicTheme.colors.background),
+                            .background(MaterialTheme.colorScheme.surface),
                     ) {
                         preview()
                     }
@@ -353,7 +350,7 @@ fun SettingsCategory(
                     end = HarmonicDimens.settings_list_segment_horizontal_margin,
                     bottom = HarmonicDimens.compose_settings_category_padding_bottom,
                 ),
-            color = HarmonicTheme.colors.textSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
@@ -386,21 +383,4 @@ fun SettingsCard(
             ),
         content = { content() },
     )
-}
-
-/** Some palettes reuse the page color for selection; keep the active row visible on both surfaces. */
-internal fun settingsSelectionColor(colors: HarmonicColors): Color {
-    fun contrast(a: Color, b: Color): Float {
-        val first = a.luminance()
-        val second = b.luminance()
-        return (maxOf(first, second) + 0.05f) / (minOf(first, second) + 0.05f)
-    }
-    fun distinct(color: Color) = contrast(color, colors.background) >= 1.15f &&
-        contrast(color, colors.itemBackground) >= 1.15f
-    if (distinct(colors.settingsHeaderSelected)) return colors.settingsHeaderSelected
-    for (step in 1..10) {
-        val candidate = lerp(colors.background, colors.contentPrimary, step * 0.05f)
-        if (distinct(candidate)) return candidate
-    }
-    return lerp(colors.background, colors.contentPrimary, 0.5f)
 }

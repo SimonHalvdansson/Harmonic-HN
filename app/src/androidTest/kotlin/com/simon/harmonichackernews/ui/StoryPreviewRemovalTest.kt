@@ -132,7 +132,7 @@ class StoryPreviewRemovalTest {
         compose.setContent {
             CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     Box(Modifier.fillMaxSize().background(Color.White)) {
                         StoryPreviewOverlay(
                             controller = controller,

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import org.jetbrains.compose.resources.DrawableResource
@@ -102,7 +103,6 @@ import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
@@ -177,7 +177,7 @@ fun SubmissionsScreen(
 
     val modifier = Modifier
         .fillMaxSize()
-        .background(HarmonicTheme.colors.background)
+        .background(MaterialTheme.colorScheme.surface)
         .sharedHazeSource(hazeState)
     val content: @Composable BoxScope.() -> Unit = {
         // Render bounce/stretch once around both layers so the header stays with the rows.
@@ -450,7 +450,7 @@ private fun BoxScope.SubmissionsList(
                 ) {
                     Text(
                         "Couldn't load submissions",
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                     )
                     OutlinedButton(
@@ -536,7 +536,7 @@ private fun SubmissionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HarmonicTheme.colors.background)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = sideMargin)
             .padding(horizontal = 16.dp)
             .then(
@@ -565,7 +565,7 @@ private fun SubmissionsHeader(
                     heading()
                     contentDescription = "Submissions by $userName"
                 },
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 26.sp,
@@ -577,7 +577,7 @@ private fun SubmissionsHeader(
                 Text(
                     text = summary,
                     modifier = Modifier.padding(bottom = if (compact) 12.dp else 16.dp),
-                    color = HarmonicTheme.colors.textSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp,
@@ -706,12 +706,12 @@ private fun EmptySubmissions(
             painter = painterResource(Res.drawable.ic_subject),
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = HarmonicTheme.colors.iconTint,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = text,
             modifier = Modifier.padding(top = 4.dp, bottom = 36.dp),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,

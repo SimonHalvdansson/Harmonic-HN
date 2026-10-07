@@ -38,7 +38,7 @@ class WidgetFontSelectionTest {
         var saved: WidgetConfiguration? = null
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 WidgetConfigScreen(WidgetConfiguration(), listOf(StoryType.TOP_STORIES, StoryType.BEST_STORIES, StoryType.UNSLOP),
                     onConfirm = { saved = it })
             }
@@ -68,7 +68,7 @@ class WidgetFontSelectionTest {
         var saved: WidgetConfiguration? = null
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 WidgetConfigScreen(WidgetConfiguration(), listOf(StoryType.TOP_STORIES),
                     onConfirm = { saved = it }, headlineFontFamily = headline.value)
             }

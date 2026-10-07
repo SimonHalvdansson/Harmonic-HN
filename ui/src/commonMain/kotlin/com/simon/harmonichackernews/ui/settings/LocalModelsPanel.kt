@@ -40,8 +40,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +66,6 @@ import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.rememberCoroutineScope
@@ -274,8 +271,8 @@ fun ManagedLocalModelPanel(
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
                 .clip(shape)
-                .background(HarmonicTheme.colors.surfaceContainerHigh)
-                .border(1.dp, HarmonicTheme.colors.outlineVariant, shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
                 .alpha(if (available) 1f else 0.38f)
                 .padding(start = 12.dp, top = 9.dp, end = 12.dp, bottom = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -297,7 +294,7 @@ fun ManagedLocalModelPanel(
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(
                     text = title,
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
@@ -337,7 +334,7 @@ private fun LocalModelCard(
         targetValue = if (presentation.selected) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            HarmonicTheme.colors.surfaceContainerHigh
+            MaterialTheme.colorScheme.surfaceContainerHigh
         },
         animationSpec = tween(180),
         label = "local model card background",
@@ -346,7 +343,7 @@ private fun LocalModelCard(
         targetValue = if (presentation.selected) {
             MaterialTheme.colorScheme.primary
         } else {
-            HarmonicTheme.colors.outlineVariant
+            MaterialTheme.colorScheme.outlineVariant
         },
         animationSpec = tween(180),
         label = "local model card outline",
@@ -406,7 +403,7 @@ private fun LocalModelCard(
             ) {
                 Text(
                     text = row.model.displayName,
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
@@ -443,7 +440,7 @@ private fun LocalModelCard(
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),
-                            background = HarmonicTheme.colors.surfaceContainerHighest,
+                            background = MaterialTheme.colorScheme.surfaceContainerHighest,
                             foreground = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -460,7 +457,7 @@ private fun LocalModelCard(
                         )
                         LocalModelTag(
                             text = row.model.runtime.displayLabel(),
-                            background = HarmonicTheme.colors.surfaceContainerHighest,
+                            background = MaterialTheme.colorScheme.surfaceContainerHighest,
                             foreground = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -495,7 +492,7 @@ private fun LocalModelCard(
             Text(
                 text = status.orEmpty(),
                 modifier = Modifier.padding(start = 42.dp, top = 2.dp, end = 6.dp),
-                color = HarmonicTheme.colors.textSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 11.sp,
                 lineHeight = 14.sp,
@@ -511,32 +508,19 @@ private fun LocalModelTag(
     foreground: Color,
 ) {
     if (text.isBlank()) return
-    val textColor = remember(background, foreground) { localModelTagForeground(background, foreground) }
     Text(
         text = text,
         modifier = Modifier
             .clip(RoundedCornerShape(5.dp))
             .background(background)
             .padding(horizontal = 5.dp, vertical = 2.dp),
-        color = textColor,
+        color = foreground,
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         lineHeight = 10.sp,
         maxLines = 1,
     )
-}
-
-/** Legacy themes can override a container while retaining an unrelated Material foreground. */
-internal fun localModelTagForeground(background: Color, preferred: Color): Color {
-    val backgroundLuminance = background.luminance()
-    val foregroundLuminance = preferred.compositeOver(background).luminance()
-    val preferredContrast = (maxOf(backgroundLuminance, foregroundLuminance) + 0.05f) /
-        (minOf(backgroundLuminance, foregroundLuminance) + 0.05f)
-    if (preferredContrast >= 4.5f) return preferred
-    val blackContrast = (backgroundLuminance + 0.05f) / 0.05f
-    val whiteContrast = 1.05f / (backgroundLuminance + 0.05f)
-    return if (blackContrast >= whiteContrast) Color.Black else Color.White
 }
 
 @Composable
@@ -574,7 +558,7 @@ private fun LocalModelTrailingAction(
                     Icon(
                         painter = painterResource(icon),
                         contentDescription = description,
-                        tint = HarmonicTheme.colors.iconTint,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

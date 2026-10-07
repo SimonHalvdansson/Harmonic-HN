@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -75,7 +76,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import platform.UIKit.UIDevice
 import platform.UIKit.UIUserInterfaceIdiomPhone
@@ -356,7 +356,7 @@ internal fun IosCommentsContent(
             }
         }
     }
-    val background = HarmonicTheme.colors.background
+    val background = MaterialTheme.colorScheme.surface
     val protectionColor = lerp(
         background,
         host.controller.statusBarHeaderColor ?: background,
@@ -473,8 +473,8 @@ private fun IosCommentsHeader(
     settings: CommentDisplaySettings,
     onBrowserBack: () -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
-    val tintBase = colors.contentCardBackground.toArgb()
+    val colors = MaterialTheme.colorScheme
+    val tintBase = colors.surfaceContainerLow.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,
@@ -640,7 +640,7 @@ private fun IosReferencePreview(
             Box(
                 modifier = modifier
                     .clip(shape)
-                    .background(HarmonicTheme.colors.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .clickable(enabled = imageUrl != null, onClick = onClick),
             ) {
                 if (loading) LinkPreviewShimmer(Modifier.fillMaxSize())

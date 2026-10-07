@@ -87,7 +87,7 @@ class CommentsHeaderMotionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         CommentsScreen(
                             controller, Modifier, false, pullToRefreshEnabled = false,
                             showNavigationControls = false, animateComments = true, showScrollbar = false,
@@ -175,7 +175,7 @@ class CommentsHeaderMotionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         CommentsHeaderActions(controller, settings, 0, false)
                     }
                 }
@@ -245,8 +245,8 @@ class CommentsHeaderMotionTest {
                         LocalDensity provides density,
                     ) {
                         HarmonicTheme(
-                            palette.colors.copy(background = Color.White),
-                            palette.colorScheme, palette.dark,
+                            palette.colorScheme.copy(surface = Color.White),
+                            palette.dark,
                         ) {
                             Box(Modifier.fillMaxSize().background(Color.White).testTag("refresh-root")) {
                                 CommentsScreen(
@@ -358,7 +358,7 @@ class CommentsHeaderMotionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("dark", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         CommentsScreen(
                             controller = controller, listModifier = Modifier, reserveUpButtonInset = false,
                             pullToRefreshEnabled = false, showNavigationControls = false,
@@ -448,7 +448,7 @@ class CommentsHeaderMotionTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         CommentsScreen(
                             controller, Modifier, false, pullToRefreshEnabled = true,
                             showNavigationControls = false, animateComments = true, showScrollbar = false,

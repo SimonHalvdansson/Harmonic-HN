@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -24,7 +25,6 @@ import com.simon.harmonichackernews.settings.UserAvatarColors
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.UserAvatarShape
 import com.simon.harmonichackernews.settings.UserAvatarStyle
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 private data class AvatarVisual(
@@ -72,9 +72,9 @@ fun UserAvatar(
         if (content.style == null) {
             Icon(
                 painterResource(Res.drawable.ic_person), contentDescription = null,
-                tint = HarmonicTheme.colors.mutedText,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxSize()
-                    .background(HarmonicTheme.colors.surfaceContainerHighest).padding(2.dp),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest).padding(2.dp),
             )
         } else {
             val artwork = remember(content) {

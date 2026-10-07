@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,9 +36,9 @@ class AskComposerTest {
     fun darkInputIsDarkerThanTheAskSurfaceInBothDarkPalettes() = SwingUtilities.invokeAndWait {
         for (theme in listOf("dark", "material_dark")) {
             val palette = HarmonicThemeCatalog.resolve(theme, true)
-            val surface = palette.colors.contentCardBackground
+            val surface = palette.colorScheme.surfaceContainerLow
             val scene = ImageComposeScene(360, 200, Density(1f)) {
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     Box(Modifier.fillMaxSize().background(surface)) {
                         AskComposer("", {}, false, false, true, {}, {},
                             Modifier.align(Alignment.BottomCenter), surfaceColor = surface)
@@ -70,8 +71,8 @@ class AskComposerTest {
             var backs = 0
             val scene = ImageComposeScene(360, 500, Density(1f, fontScale)) {
                 val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                    Column(Modifier.fillMaxSize().background(HarmonicTheme.colors.background)) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                         HarmonicTopAppBar("Ask about this comment", { backs++ },
                             toolbarHeight = 64.dp * fontScale.coerceAtLeast(1f))
                         Box(Modifier.weight(1f)) {

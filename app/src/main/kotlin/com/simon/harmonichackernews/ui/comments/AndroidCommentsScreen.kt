@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,7 +34,6 @@ import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.network.StoryResourceTintKind
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -94,14 +94,14 @@ internal fun CommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = HarmonicTheme.colors.background,
-            sheetContentColor = HarmonicTheme.colors.contentPrimary,
+            sheetContainerColor = MaterialTheme.colorScheme.surface,
+            sheetContentColor = MaterialTheme.colorScheme.onSurface,
             // Only cast a shadow as the sheet lowers to expose the article underneath.
             sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
             sheetDragHandle = null,
             sheetSwipeEnabled = controller.integratedWebView,
             containerColor = Color.Transparent,
-            contentColor = HarmonicTheme.colors.contentPrimary,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             sheetContent = {
                 Box(
                     modifier = Modifier
@@ -164,7 +164,7 @@ private fun AndroidCommentsHeader(
     val dependencies = LocalHarmonicUiDependencies.current
     val story = remember(controller.story, contentVersion) { controller.story }
     val previewResource = controller.headerPreviewResource?.takeIf { it.pageUrl == story.url }
-    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
     val headerPresentation = remember(
         story.id,
         story.previewImageUrl,

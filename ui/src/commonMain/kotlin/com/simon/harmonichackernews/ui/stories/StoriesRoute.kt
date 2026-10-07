@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -8,7 +9,6 @@ import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.storyRowModel
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Portable stories Compose bridge; host inputs are limited to form-factor resource flags. */
 @Composable
@@ -22,7 +22,7 @@ fun StoriesRoute(
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
-    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
     StoriesScreen(
         controller = controller,
         mainListState = mainListState,

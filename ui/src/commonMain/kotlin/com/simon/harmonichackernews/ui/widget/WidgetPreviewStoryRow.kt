@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.widget
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
@@ -41,7 +42,6 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -57,18 +57,18 @@ fun WidgetPreviewStoryRow(
     fontFamily: FontFamily = FontFamily.SansSerif,
     paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     // RemoteViews truncates padding to physical pixels. Match thin Glance borders on devices
     // with fractional density instead of Compose's usual rounding to the nearest pixel.
     val outlineWidth = with(LocalDensity.current) { 1.dp.toPx().toInt().toDp() }
     val palette = rememberResourceTintPalette(model.previewImageFallback ?: model.faviconFallback)
     val targetBackground = when {
-        configuration.displayStyle == DisplayStyle.FLAT -> colors.background
+        configuration.displayStyle == DisplayStyle.FLAT -> colors.surface
         configuration.tint && palette != null -> rememberStoryTintColor(
-            PreviewTintPolicy.calculateCardTint(colors.contentCardBackground.toArgb(), palette, paletteTintConfigKey),
+            PreviewTintPolicy.calculateCardTint(colors.surfaceContainerLow.toArgb(), palette, paletteTintConfigKey),
             paletteTintConfigKey,
-        ) ?: colors.contentCardBackground
-        else -> colors.contentCardBackground
+        ) ?: colors.surfaceContainerLow
+        else -> colors.surfaceContainerLow
     }
     val background by animateColorAsState(targetBackground, tween(220), label = "Widget card tint")
     val frame by animateColorAsState(when (configuration.displayStyle) {
@@ -98,18 +98,18 @@ fun WidgetPreviewStoryRow(
                         (if (hasImage) WidgetDimensions.mediumImageHeight else WidgetDimensions.mediumNoImageHeight) + 16.dp else 0.dp)) {
                         Row(Modifier.align(Alignment.CenterStart).padding(start = 8.dp, top = 12.dp, bottom = 12.dp)) {
                             if (showIndex) WidgetPreviewText(model.index, fontFamily, WidgetTypography.INDEX_SIZE,
-                                colors.textSecondary, Modifier.width(WidgetDimensions.indexWidth).alignBy(FirstBaseline).testTag("widget-preview-index"))
+                                colors.onSurfaceVariant, Modifier.width(WidgetDimensions.indexWidth).alignBy(FirstBaseline).testTag("widget-preview-index"))
                             Column(Modifier.weight(1f).alignBy(FirstBaseline)) {
-                                WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.contentPrimary,
+                                WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.onSurface,
                                     Modifier.testTag("widget-preview-title"), bold = true, maxLines = 4)
                                 Spacer(Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(painterResource(model.faviconFallback), null, Modifier.size(WidgetDimensions.faviconSize)
                                         .clip(RoundedCornerShape(WidgetDimensions.faviconCornerRadius)).alpha(if (model.tintFaviconFallback) 0.8f else 1f),
-                                        tint = if (model.tintFaviconFallback) colors.textSecondary else Color.Unspecified)
+                                        tint = if (model.tintFaviconFallback) colors.onSurfaceVariant else Color.Unspecified)
                                     Spacer(Modifier.width(4.dp))
                                     WidgetPreviewText(listOfNotNull("${model.points} points".takeUnless { medium }, model.domain, model.age).joinToString(" · "),
-                                        fontFamily, WidgetTypography.METADATA_SIZE, colors.textSecondary, maxLines = 2)
+                                        fontFamily, WidgetTypography.METADATA_SIZE, colors.onSurfaceVariant, maxLines = 2)
                                 }
                             }
                         }
@@ -144,8 +144,8 @@ fun WidgetPreviewStoryRow(
                         }
                         Column(Modifier.width(48.dp).fillMaxHeight().padding(horizontal = 6.dp),
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(painterResource(Res.drawable.ic_comment), null, Modifier.size(18.dp).alpha(0.8f), tint = colors.contentPrimary)
-                            WidgetPreviewText(model.commentCount.toString(), fontFamily, WidgetTypography.COMMENT_COUNT_SIZE, colors.contentPrimary, bold = true)
+                            Icon(painterResource(Res.drawable.ic_comment), null, Modifier.size(18.dp).alpha(0.8f), tint = colors.onSurface)
+                            WidgetPreviewText(model.commentCount.toString(), fontFamily, WidgetTypography.COMMENT_COUNT_SIZE, colors.onSurface, bold = true)
                         }
                     }
                 }
@@ -156,18 +156,18 @@ fun WidgetPreviewStoryRow(
 
 @Composable
 private fun WidgetPreviewMetric(value: String, icon: DrawableResource, family: FontFamily, onImage: Boolean = true) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val points = icon == Res.drawable.ic_arrow_drop_up
     val outlineWidth = with(LocalDensity.current) { 1.dp.toPx().toInt().toDp() }
     Box(if (onImage) Modifier else Modifier.clip(RoundedCornerShape(20.dp)).background(colors.outlineVariant).padding(outlineWidth)) {
         Row(Modifier.clip(RoundedCornerShape(20.dp)).background(
-            if (onImage) colors.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha) else colors.surfaceContainerHighest)
+            if (onImage) colors.surfaceContainerLow.copy(alpha = WidgetDimensions.metricBackgroundAlpha) else colors.surfaceContainerHighest)
             .padding(start = if (points) WidgetDimensions.pointsStartPadding else WidgetDimensions.metricStartPadding,
                 end = WidgetDimensions.metricEndPadding, top = WidgetDimensions.metricVerticalPadding, bottom = WidgetDimensions.metricVerticalPadding),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(icon), null, Modifier.size(WidgetDimensions.metricIconSize).alpha(0.8f), tint = colors.contentPrimary)
+            Icon(painterResource(icon), null, Modifier.size(WidgetDimensions.metricIconSize).alpha(0.8f), tint = colors.onSurface)
             if (!points) Spacer(Modifier.width(2.dp))
-            WidgetPreviewText(value, family, WidgetTypography.COMMENT_COUNT_SIZE, colors.contentPrimary, bold = true)
+            WidgetPreviewText(value, family, WidgetTypography.COMMENT_COUNT_SIZE, colors.onSurface, bold = true)
         }
     }
 }

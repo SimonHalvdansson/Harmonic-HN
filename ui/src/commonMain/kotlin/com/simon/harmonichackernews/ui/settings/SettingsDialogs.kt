@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 @Composable
@@ -282,7 +281,7 @@ fun SingleChoiceDialog(
                         Text(
                             text = option.second,
                             modifier = Modifier.padding(start = 4.dp),
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 16.sp,
                         )
@@ -327,7 +326,7 @@ fun MultiChoiceDialog(
                                 end = 24.dp,
                                 bottom = 12.dp,
                             ),
-                            color = HarmonicTheme.colors.mutedText,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
@@ -357,7 +356,7 @@ fun MultiChoiceDialog(
                         Text(
                             text = option,
                             modifier = Modifier.padding(start = 4.dp),
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 16.sp,
                         )
@@ -400,7 +399,7 @@ fun MessageActionDialog(
         text = {
             Text(
                 text = message.toString(),
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -434,7 +433,7 @@ fun MessageActionDialog(
 fun SettingsDialogTitle(title: String) {
     Text(
         text = title,
-        color = HarmonicTheme.colors.textPrimary,
+        color = MaterialTheme.colorScheme.onSurface,
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 24.sp,

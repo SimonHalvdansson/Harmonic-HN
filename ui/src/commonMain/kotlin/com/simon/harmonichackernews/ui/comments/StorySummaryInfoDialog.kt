@@ -44,7 +44,6 @@ import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -293,7 +292,7 @@ private fun TimingPhaseLabel(
                 .height(38.dp)
                 .background(
                     if (phase.millis == null) {
-                        HarmonicTheme.colors.outlineVariant
+                        MaterialTheme.colorScheme.outlineVariant
                     } else {
                         phase.color
                     },
@@ -303,7 +302,7 @@ private fun TimingPhaseLabel(
         Column {
             Text(
                 text = phase.label,
-                color = HarmonicTheme.colors.textSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
@@ -312,7 +311,7 @@ private fun TimingPhaseLabel(
             )
             Text(
                 text = phase.value,
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -359,7 +358,7 @@ private fun WorkloadSection(
                 value = estimatedTokens?.let { "≈${it.formatCount()}" } ?: "—",
                 icon = Res.drawable.ic_stacks,
                 containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                contentColor = HarmonicTheme.colors.textPrimary,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(0.85f),
             )
             MetricTile(
@@ -445,7 +444,7 @@ private fun SectionHeader(
         Text(
             text = title,
             modifier = Modifier.weight(1f),
-            color = HarmonicTheme.colors.textSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,

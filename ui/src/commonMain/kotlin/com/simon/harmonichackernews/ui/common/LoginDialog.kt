@@ -49,7 +49,6 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.presentation.LoginWorkflow
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -124,7 +123,7 @@ fun LoginDialog(
         title = {
             Text(
                 text = stringResource(Res.string.login_dialog_title),
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 27.sp,
@@ -194,7 +193,7 @@ fun LoginDialog(
                         top = HarmonicDimens.login_dialog_section_spacing,
                         bottom = HarmonicDimens.login_dialog_small_spacing,
                     ),
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
@@ -213,7 +212,7 @@ fun LoginDialog(
                         top = HarmonicDimens.login_dialog_info_spacing,
                         bottom = HarmonicDimens.login_dialog_small_spacing,
                     ),
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
@@ -277,7 +276,7 @@ fun LoginDialog(
                             )
                             Text(
                                 text = stringResource(Res.string.login_dialog_loading),
-                                color = HarmonicTheme.colors.textPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 14.sp,
                                 lineHeight = 18.sp,
@@ -321,7 +320,7 @@ fun LoginDialog(
                     text = stringResource(Res.string.login_dialog_information) + "\n\n" +
                         stringResource(Res.string.login_dialog_troubleshooting),
                     modifier = Modifier.verticalScroll(rememberScrollState()),
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 15.sp,
                     lineHeight = 20.sp,
@@ -375,7 +374,7 @@ fun CaptchaDialogLayout(
         title = {
             Text(
                 text = stringResource(Res.string.captcha_dialog_title),
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,

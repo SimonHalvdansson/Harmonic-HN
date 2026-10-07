@@ -53,7 +53,7 @@ class StoryPreviewMotionTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             CompositionLocalProvider(LocalHapticFeedback provides feedback) {
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     StoryRow(
                         model = SettingsStoryPreviewModel,
                         style = previewStyle(mode.value),
@@ -93,7 +93,7 @@ class StoryPreviewMotionTest {
         val mode = mutableStateOf(StoryPreviewMode.MEDIUM)
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.width(360.dp)) {
                     StoryRow(
                         model = SettingsStoryPreviewModel,
@@ -150,7 +150,7 @@ class StoryPreviewMotionTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.width(360.dp)) {
                     StoryRow(
                         model = model,

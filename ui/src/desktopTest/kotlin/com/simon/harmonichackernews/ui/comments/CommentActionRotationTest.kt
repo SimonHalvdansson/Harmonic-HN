@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,10 +68,10 @@ class CommentActionRotationTest {
         var rowBounds = Rect.Zero
         val scene = ImageComposeScene(900, 900, Density(1f)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
                     Box(Modifier.size(if (landscape.value) 840.dp else 420.dp, if (landscape.value) 420.dp else 840.dp)
-                        .background(HarmonicTheme.colors.background)) {
+                        .background(MaterialTheme.colorScheme.surface)) {
                         Box(Modifier.fillMaxSize().padding(top = if (landscape.value) 60.dp else 220.dp)) {
                             CommentRow(
                                 comment = comment,

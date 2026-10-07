@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,7 +56,6 @@ import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
@@ -85,11 +85,11 @@ internal fun StoryMetricPill(
     endPadding: Dp = 7.dp,
     iconTextSpacing: Dp = 2.dp,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val container = colors.surfaceContainerHighest
     val foreground = readStateForeground(
-        colors.contentPrimary,
-        colors.mutedText,
+        colors.onSurface,
+        colors.onSurfaceVariant,
         dimAlpha,
         StoryMetricPillDimStrength,
     )
@@ -311,7 +311,7 @@ internal fun StoryMeta(
             append("+")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.mutedText.copy(alpha = plusVisibility),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = plusVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = plusVisibility.coerceAtLeast(0.001f),
                     ),
@@ -323,7 +323,7 @@ internal fun StoryMeta(
             append(model.points.toString())
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsVisibility),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = pointsVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsVisibility.coerceAtLeast(0.001f),
                     ),
@@ -336,7 +336,7 @@ internal fun StoryMeta(
             append(" points")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsWordVisibility),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = pointsWordVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsWordVisibility.coerceAtLeast(0.001f),
                     ),
@@ -348,7 +348,7 @@ internal fun StoryMeta(
             append(" • ")
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.mutedText.copy(alpha = pointsVisibility),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = pointsVisibility),
                     textGeometricTransform = TextGeometricTransform(
                         scaleX = pointsVisibility.coerceAtLeast(0.001f),
                     ),
@@ -363,7 +363,7 @@ internal fun StoryMeta(
             append(domainSuffix)
             addStyle(
                 SpanStyle(
-                    color = HarmonicTheme.colors.mutedText.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
                         alpha = topLevelDomainProgress.value,
                     ),
                     textGeometricTransform = TextGeometricTransform(
@@ -432,7 +432,7 @@ private fun StoryMetaRow(
         Text(
             text = metaText,
             modifier = Modifier.weight(1f),
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = typography.storyMetaFamily,
             fontSize = metaSize.sp,
             style = storyRowTextStyle,
@@ -452,8 +452,8 @@ internal fun StoryCommentRail(
     modifier: Modifier = Modifier,
 ) {
     val foreground = readStateForeground(
-        HarmonicTheme.colors.contentPrimary,
-        HarmonicTheme.colors.mutedText,
+        MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.onSurfaceVariant,
         dimAlpha,
     )
     val countSize = if (animateChanges) {
@@ -490,7 +490,7 @@ internal fun StoryCommentRail(
             ),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = HarmonicTheme.colors.iconTint.copy(alpha = dimAlpha),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dimAlpha),
         )
         StoryVisibility(
             visible = style.showCommentCount && !style.compact,

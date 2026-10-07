@@ -78,7 +78,6 @@ import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.common.LazyContentList
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -331,13 +330,13 @@ internal fun StoriesList(
                                 )
                             }
                             val untintedStoryBackground = if (style.hasBackground) {
-                                HarmonicTheme.colors.contentCardBackground
+                                MaterialTheme.colorScheme.surfaceContainerLow
                             } else {
-                                HarmonicTheme.colors.background
+                                MaterialTheme.colorScheme.surface
                             }
                             val storyTintBase = if (style.tintCard) {
                                 model.tintFallbackArgb
-                                    ?: HarmonicTheme.colors.contentCardBackground.toArgb()
+                                    ?: MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
                             } else {
                                 untintedStoryBackground.toArgb()
                             }
@@ -370,7 +369,7 @@ internal fun StoriesList(
                                 style = style,
                                 modifier = itemModifier,
                                 listItem = true,
-                                pageBackground = HarmonicTheme.colors.background,
+                                pageBackground = MaterialTheme.colorScheme.surface,
                                 animateChanges = true,
                                 onLinkClick = {
                                     dismissSearchKeyboard()
@@ -537,7 +536,7 @@ internal fun StoriesList(
 @Composable
 private fun StoryLoadingItem(hasBackground: Boolean, modifier: Modifier = Modifier) {
     Surface(
-        color = if (hasBackground) HarmonicTheme.colors.contentCardBackground else Color.Transparent,
+        color = if (hasBackground) MaterialTheme.colorScheme.surfaceContainerLow else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
     ) {

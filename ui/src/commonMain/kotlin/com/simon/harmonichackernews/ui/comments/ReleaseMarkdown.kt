@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,6 @@ import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 internal sealed interface ReleaseMarkdownBlock {
@@ -195,8 +195,8 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
                     baseUrl = pageUrl,
                     onOpenLink = platform.openLink,
                     modifier = Modifier.padding(vertical = 4.dp),
-                    color = HarmonicTheme.colors.contentPrimary,
-                    linkColor = HarmonicTheme.colors.link,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    linkColor = MaterialTheme.colorScheme.primary,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,

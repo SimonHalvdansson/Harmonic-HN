@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.about
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -57,7 +58,6 @@ import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.settings.SettingsCard
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -94,12 +94,12 @@ fun AboutScreen(
     aboutBody: String = DefaultAboutBody,
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(colors.surface)
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -133,7 +133,7 @@ fun AboutScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(colors.itemBackground)
+                        .background(colors.surfaceContainerLow)
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                 ) {
                     AboutIdentity(
@@ -147,7 +147,7 @@ fun AboutScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 22.dp, bottom = 18.dp),
-                        color = colors.contentPrimary,
+                        color = colors.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 15.sp,
                         style = platformTextStyle,
@@ -191,7 +191,7 @@ private fun AboutIdentity(
     appIcon: Painter,
     platformTextStyle: TextStyle,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Row(modifier = Modifier.fillMaxWidth().height(56.dp)) {
         AboutAnimatedIcon(
             painter = appIcon,
@@ -202,7 +202,7 @@ private fun AboutIdentity(
             Text(
                 text = "Harmonic",
                 modifier = Modifier.offset(y = (-2).dp).semantics { heading() },
-                color = colors.contentPrimary,
+                color = colors.onSurface,
                 fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(29.dp),
@@ -211,7 +211,7 @@ private fun AboutIdentity(
             Text(
                 text = versionLabel,
                 modifier = Modifier.offset(y = 34.dp),
-                color = colors.mutedText,
+                color = colors.onSurfaceVariant,
                 fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(13.dp),
@@ -223,7 +223,7 @@ private fun AboutIdentity(
 
 @Composable
 private fun FeedbackCard(platformTextStyle: TextStyle) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,7 +267,7 @@ private fun AboutActionButton(
     onClick: () -> Unit,
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier
@@ -295,12 +295,12 @@ private fun AboutActionButton(
                     .padding(start = 24.dp)
                     .alpha(0.8f)
                     .size(24.dp),
-                colorFilter = ColorFilter.tint(colors.contentPrimary),
+                colorFilter = ColorFilter.tint(colors.onSurface),
             )
             Text(
                 text = text,
                 modifier = Modifier.align(Alignment.Center).offset(x = 12.dp, y = (-0.5).dp),
-                color = colors.contentPrimary,
+                color = colors.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,

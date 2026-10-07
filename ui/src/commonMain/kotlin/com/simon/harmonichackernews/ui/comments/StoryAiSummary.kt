@@ -58,7 +58,6 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.summary.GEMINI_NANO_POLICY_BLOCKED_MESSAGE
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -68,7 +67,7 @@ fun StoryAiSummary(
     onOpenLink: (String) -> Unit,
     diagnostics: StorySummaryDiagnostics? = null,
     streaming: Boolean = false,
-    containerColor: Color = HarmonicTheme.colors.surfaceContainerHigh,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     onAsk: ((PostAskState) -> Unit)? = null,
     askVisible: Boolean = false,
 ) {
@@ -99,7 +98,7 @@ fun StoryAiSummary(
                 .graphicsLayer { alpha = if (askVisible) 0f else 1f }
                 .clip(RoundedCornerShape(14.dp))
                 .background(containerColor)
-                .border(1.dp, HarmonicTheme.colors.commentDivider, RoundedCornerShape(14.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                 .drawWithContent {
                     if (!askVisible) sourceLayer.record { this@drawWithContent.drawContent() }
                     drawLayer(sourceLayer)
@@ -121,7 +120,7 @@ fun StoryAiSummary(
                     "Summary",
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.weight(1f))
                 if (onAsk != null) {
@@ -155,7 +154,7 @@ fun StoryAiSummary(
                             painter = painterResource(Res.drawable.ic_info),
                             contentDescription = "AI summary info",
                             modifier = Modifier.size(18.dp),
-                            tint = HarmonicTheme.colors.textSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -190,8 +189,8 @@ fun StoryAiSummary(
                         baseUrl = story.url ?: "https://news.ycombinator.com/item?id=${story.id}",
                         onOpenLink = onOpenLink,
                         modifier = Modifier.padding(top = 4.dp),
-                        color = HarmonicTheme.colors.contentPrimary,
-                        linkColor = HarmonicTheme.colors.link,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        linkColor = MaterialTheme.colorScheme.primary,
                         fontFamily = typography.family,
                         fontSize = typography.commentTextSize.sp,
                         lineHeight = (typography.commentTextSize + 2f).sp,

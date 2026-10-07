@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,7 +20,6 @@ import com.simon.harmonichackernews.ui.content.paletteCompatible
 import com.simon.harmonichackernews.ui.content.rememberCoilImagePaletteTint
 import com.simon.harmonichackernews.ui.content.rememberPreviewImagePaletteTint
 import com.simon.harmonichackernews.ui.content.storyRowModel
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 
 /** Resolve against the live theme without replacing the deck or resetting its pager/animations. */
@@ -31,9 +31,9 @@ internal fun rememberStoryPreviewCardColor(
     val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
         ?: StoryDisplaySettings.from(dependencies.userSettings.story)
-    val baseColor = HarmonicTheme.colors.contentCardBackground
+    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
     if (!settings.tintCardsFromImages) {
-        return if (settings.hasBackground) baseColor else HarmonicTheme.colors.background
+        return if (settings.hasBackground) baseColor else MaterialTheme.colorScheme.surface
     }
     val baseArgb = baseColor.toArgb()
     val revision = controller.storyRevision(story.id)

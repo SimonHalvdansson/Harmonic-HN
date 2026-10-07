@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.background
@@ -50,7 +51,6 @@ import com.simon.harmonichackernews.ui.comments.canDragCommentsSheet
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -584,20 +584,20 @@ internal fun IosCommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = HarmonicTheme.colors.background,
-            sheetContentColor = HarmonicTheme.colors.contentPrimary,
+            sheetContainerColor = MaterialTheme.colorScheme.surface,
+            sheetContentColor = MaterialTheme.colorScheme.onSurface,
             sheetShadowElevation = 16.dp,
             sheetDragHandle = null,
             sheetSwipeEnabled = sheetDragEnabled,
             containerColor = Color.Transparent,
-            contentColor = HarmonicTheme.colors.contentPrimary,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             sheetContent = {
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .height(fullHeight)
                         .nestedScroll(scrollBoundary)
-                        .background(HarmonicTheme.colors.background),
+                        .background(MaterialTheme.colorScheme.surface),
                 ) {
                     // The iOS rubber-band effect otherwise retains downward motion at the top
                     // instead of consistently handing it to the containing sheet.
@@ -624,7 +624,7 @@ internal fun IosCommentsScaffold(
                 if (webView.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 webView.failure?.let { message ->
                     Column(
-                        Modifier.fillMaxSize().background(HarmonicTheme.colors.background).padding(24.dp),
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(24.dp),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

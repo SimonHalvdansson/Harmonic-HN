@@ -234,8 +234,8 @@ class StoredSettingsMutatorTest {
         mutator.setCommentBoolean(CommentBooleanPreference.HEADER_TINT, false)
         mutator.setCommentBoolean(CommentBooleanPreference.SHOW_UP_BUTTON, true)
         mutator.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, true)
-        mutator.setTheme("gray")
-        mutator.setNighttimeTheme("material_daynight")
+        mutator.setColorScheme("gray", dark = true)
+        mutator.setNighttimeColorScheme("unknown")
         mutator.setCommentSorting(CommentSortingPreference.NEWEST_FIRST)
         mutator.setCommentsProvider(CommentsProvider.OFFICIAL)
         mutator.setCommentsVolumeNavigation(CommentVolumeNavigationMode.ALL)
@@ -247,8 +247,8 @@ class StoredSettingsMutatorTest {
         assertFalse(settings.comments.headerTintEnabled)
         assertTrue(settings.comments.showUpButton)
         assertTrue(settings.general.specialNighttimeTheme)
-        assertEquals("gray", settings.appearance.theme)
-        assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
+        assertEquals("gray", settings.appearance.colorSchemes.dark)
+        assertEquals("dynamic", settings.appearance.colorSchemes.nighttime)
         assertEquals(CommentSortingPreference.NEWEST_FIRST, settings.comments.sorting)
         assertEquals(CommentsProvider.OFFICIAL, settings.reading.commentsProvider)
         assertEquals(CommentVolumeNavigationMode.ALL, settings.comments.volumeNavigationMode)
@@ -263,32 +263,28 @@ class StoredSettingsMutatorTest {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)
 
-        mutator.setThemePair("white", "amoled")
+        mutator.setColorScheme("pure", dark = true)
         mutator.setManualDark(true)
-        mutator.setAccentPreset(ThemePreferences.ACCENT_TEAL)
 
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
         assertTrue(settings.followSystem)
         assertTrue(settings.manualDark)
-        assertEquals("white", settings.lightTheme)
-        assertEquals("amoled", settings.darkTheme)
-        assertEquals(ThemePreferences.ACCENT_TEAL, settings.accentPreset)
+        assertEquals(ColorSchemeSelection("pure"), settings.colorSchemes)
     }
 
     @Test
-    fun quickThemePairsPreserveManualAppearanceMode() {
+    fun coupledSchemesPreserveManualAppearanceMode() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)
         mutator.setFollowSystem(false)
         mutator.setManualDark(true)
 
-        mutator.setThemePair("white", "amoled")
+        mutator.setColorScheme("pure", dark = true)
 
         val appearance = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
         assertFalse(appearance.followSystem)
         assertTrue(appearance.manualDark)
-        assertEquals("white", appearance.lightTheme)
-        assertEquals("amoled", appearance.darkTheme)
+        assertEquals(ColorSchemeSelection("pure"), appearance.colorSchemes)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
 import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
@@ -92,7 +93,6 @@ import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
@@ -131,9 +131,9 @@ fun CommentActionOverlay(
     }
     var rootBounds by remember(comment.id) { mutableStateOf(Rect.Zero) }
     val cardColor = if (settings.hasBackground) {
-        HarmonicTheme.colors.contentCardBackground
+        MaterialTheme.colorScheme.surfaceContainerLow
     } else {
-        HarmonicTheme.colors.background
+        MaterialTheme.colorScheme.surface
     }
     // Android retains this composition across rotation. The opening gesture's bounds and
     // layer dimensions can therefore describe a different layout by the time we animate back.
@@ -146,10 +146,10 @@ fun CommentActionOverlay(
     val source = sourceGeometry?.copy(
         containerColor = commentSurfaceColor(
             cardColor,
-            HarmonicTheme.colors.contentPrimary,
+            MaterialTheme.colorScheme.onSurface,
             highlighted = controller.highlightedCommentId == comment.id,
         ),
-        containerBorderColor = HarmonicTheme.colors.commentDivider,
+        containerBorderColor = MaterialTheme.colorScheme.outlineVariant,
     )?.takeIf {
         it.contentLayer?.let { layer ->
             !layer.isReleased && layer.size.width > 0 && layer.size.height > 0
@@ -178,7 +178,7 @@ fun CommentActionOverlay(
     val dismissCaptureVersion = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
     // The same graphics layers are re-recorded at new sizes after rotation. A theme/dismiss
     // key alone reuses their old bitmaps and stretches them into the new bounds.
-    val snapshotRefreshKey = Triple(HarmonicTheme.colors, rootBounds.size, dismissCaptureVersion)
+    val snapshotRefreshKey = Triple(MaterialTheme.colorScheme, rootBounds.size, dismissCaptureVersion)
     val sourceCapture = rememberGraphicsLayerSnapshot(
         source?.contentLayer,
         // Re-record the returning row as well as the dialog: its text/depth colors may have changed.
@@ -532,7 +532,7 @@ private fun CommentActionCardContent(
             onOpenLink(url)
         }
     }
-    val linkColor = HarmonicTheme.colors.link
+    val linkColor = MaterialTheme.colorScheme.primary
     val body = remember(comment.expandedAnchorText, linkColor, linkListener) {
         htmlAnnotatedString(comment.expandedAnchorText.orEmpty(), linkColor, linkListener)
     }
@@ -557,8 +557,8 @@ private fun CommentActionCardContent(
                         )
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = HarmonicTheme.colors.overlayButton,
-                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).height(40.dp),
@@ -582,7 +582,7 @@ private fun CommentActionCardContent(
                 }
                 TextButton(
                     onClick = onAsk,
-                    colors = ButtonDefaults.textButtonColors(contentColor = HarmonicTheme.colors.link),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Icon(painterResource(Res.drawable.ic_auto_awesome), contentDescription = null,
                         modifier = Modifier.size(20.dp))
@@ -620,7 +620,7 @@ private fun CommentActionCardContent(
                         ) {
                             Text(
                                 text = body,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = typography.family,
                                 fontSize = commentTextSize.sp,
                                 lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
@@ -641,7 +641,7 @@ private fun CommentActionCardContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.fillMaxWidth()) {
-                HorizontalDivider(color = HarmonicTheme.colors.commentDivider.copy(alpha = 0.45f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -739,8 +739,8 @@ private fun CommentActionCardContent(
                             )
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = HarmonicTheme.colors.overlayButton,
-                            contentColor = HarmonicTheme.colors.overlayButtonContent,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -815,7 +815,7 @@ private fun RowScope.CommentActionIcon(
                         Icon(
                             painterResource(visual.icon),
                             contentDescription = visual.description,
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

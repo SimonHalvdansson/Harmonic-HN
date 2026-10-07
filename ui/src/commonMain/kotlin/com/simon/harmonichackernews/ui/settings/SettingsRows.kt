@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.resources.*
 
@@ -56,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 @Composable
@@ -104,14 +104,14 @@ fun SettingsMainToggle(
     summary: String? = null,
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = HarmonicTheme.colors.settingsMainToggle.copy(
+        targetValue = MaterialTheme.colorScheme.primaryContainer.copy(
             alpha = if (enabled) 1f else SettingsMainToggleDisabledAlpha,
         ),
         animationSpec = tween(SettingsMainToggleColorAnimationDurationMillis),
         label = "settings main toggle background",
     )
     val textColor by animateColorAsState(
-        targetValue = HarmonicTheme.colors.settingsMainToggleText.copy(
+        targetValue = MaterialTheme.colorScheme.onPrimaryContainer.copy(
             alpha = if (enabled) 1f else SettingsMainToggleDisabledAlpha,
         ),
         animationSpec = tween(SettingsMainToggleColorAnimationDurationMillis),
@@ -238,7 +238,7 @@ fun SettingRow(
                 modifier = Modifier.size(
                     HarmonicDimens.compose_settings_row_icon_size,
                 ),
-                tint = iconTint ?: HarmonicTheme.colors.iconTint,
+                tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(
                 modifier = Modifier.width(
@@ -257,7 +257,7 @@ fun SettingRow(
         ) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -265,7 +265,7 @@ fun SettingRow(
             if (!summary.isNullOrBlank()) {
                 Text(
                     text = summary,
-                    color = HarmonicTheme.colors.mutedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = summaryFontSizeSp.sp,
                     lineHeight = summaryLineHeightSp.sp,
@@ -318,7 +318,7 @@ fun SettingsDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(HarmonicDimens.settings_list_segment_internal_gap)
-            .background(HarmonicTheme.colors.background),
+            .background(MaterialTheme.colorScheme.surface),
     )
 }
 
@@ -355,7 +355,7 @@ fun <T> SegmentedSetting(
         if (!title.isNullOrBlank()) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -371,7 +371,7 @@ fun <T> SegmentedSetting(
                         top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
                     )
                 },
-                color = HarmonicTheme.colors.mutedText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
@@ -417,7 +417,7 @@ fun <T> SegmentedSetting(
                     animatedInnerCorner = innerCorner,
                     buttonHeight = buttonHeight,
                 )
-                val selectedBackground = HarmonicTheme.colors.secondaryContainer
+                val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
                 Row(
                     modifier = Modifier
                         .weight(optionWeights[value] ?: 1f)
@@ -438,7 +438,7 @@ fun <T> SegmentedSetting(
                             if (isSelected) {
                                 selectedBackground
                             } else {
-                                HarmonicTheme.colors.outlineVariant
+                                MaterialTheme.colorScheme.outlineVariant
                             },
                             shape,
                         )
@@ -462,9 +462,9 @@ fun <T> SegmentedSetting(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                                 tint = if (isSelected) {
-                                    HarmonicTheme.colors.onSecondaryContainer
+                                    MaterialTheme.colorScheme.onSecondaryContainer
                                 } else {
-                                    HarmonicTheme.colors.iconTint
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -472,9 +472,9 @@ fun <T> SegmentedSetting(
                         Text(
                             text = label,
                             color = if (isSelected) {
-                                HarmonicTheme.colors.onSecondaryContainer
+                                MaterialTheme.colorScheme.onSecondaryContainer
                             } else {
-                                HarmonicTheme.colors.textPrimary
+                                MaterialTheme.colorScheme.onSurface
                             },
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.SemiBold,
@@ -517,14 +517,14 @@ fun SliderSetting(
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
             Text(
                 text = valueLabel,
-                color = HarmonicTheme.colors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,

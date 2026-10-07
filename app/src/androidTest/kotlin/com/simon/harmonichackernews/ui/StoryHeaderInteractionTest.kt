@@ -41,7 +41,7 @@ class StoryHeaderInteractionTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 com.simon.harmonichackernews.ui.content.StoryTitleText(title.text, title.badge)
             }
         }
@@ -55,7 +55,7 @@ class StoryHeaderInteractionTest {
         var clicks = 0
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Column(Modifier.fillMaxWidth().background(Color.White).testTag("root").padding(vertical = 24.dp)) {
                     StoryHeaderClickArea(true, "Fixture", { clicks++ }) {
                         Box(Modifier.fillMaxWidth().height(80.dp).background(Color.Blue).testTag("image"))

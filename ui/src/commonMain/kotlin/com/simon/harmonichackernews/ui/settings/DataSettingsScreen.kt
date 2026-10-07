@@ -26,7 +26,6 @@ import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.settings.DataSettingsSnapshot
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 enum class DataSettingsAction {
@@ -184,7 +183,7 @@ fun ClearAiModelsConfirmationDialog(
                 Text(
                     text = "Downloaded and partially downloaded local AI models will be " +
                         "removed. You can download them again later.",
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
@@ -193,7 +192,7 @@ fun ClearAiModelsConfirmationDialog(
                     Text(
                         text = "Models to delete",
                         modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
@@ -202,7 +201,7 @@ fun ClearAiModelsConfirmationDialog(
                     modelNames.forEach { modelName ->
                         Text(
                             text = "•  $modelName",
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
@@ -238,7 +237,7 @@ fun ImportBookmarksDialog(
                 Text(
                     text = "Choose what should happen to your existing bookmarks.",
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-                    color = HarmonicTheme.colors.mutedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
@@ -296,7 +295,7 @@ private fun ImportBookmarksOption(
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
@@ -304,7 +303,7 @@ private fun ImportBookmarksOption(
             )
             Text(
                 text = summary,
-                color = HarmonicTheme.colors.mutedText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,

@@ -12,7 +12,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.ui.theme.ReaderModeFontData
 import com.simon.harmonichackernews.ui.theme.ReaderModeThemeFactory
-import com.simon.harmonichackernews.ui.theme.harmonicColors
+import com.simon.harmonichackernews.ui.theme.harmonicColorScheme
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -50,7 +50,7 @@ internal object AndroidReaderModeResources {
             assetMutex.withLock { fontData(context.applicationContext, preferences.readerModeFont.storedValue) }
         }
         return ReaderModeThemeFactory.create(
-            colors = harmonicColors(context),
+            colors = harmonicColorScheme(context),
             light = AndroidActivityTheme.isLightMode(context),
             font = preferences.readerModeFont.storedValue,
             fontSizePx = preferences.readerModeFontSize,

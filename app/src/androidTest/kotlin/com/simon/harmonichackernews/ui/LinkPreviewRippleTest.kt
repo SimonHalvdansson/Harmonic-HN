@@ -67,7 +67,7 @@ class LinkPreviewRippleTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default,
                     openLink = { openedLink = it }, downloadPdf = {}, openCustomTab = {},
@@ -130,7 +130,7 @@ class LinkPreviewRippleTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve(if (dark.value) "dark" else "light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default, openLink = {}, downloadPdf = {}, openCustomTab = {},
                     plainText = { it },
@@ -169,7 +169,7 @@ class LinkPreviewRippleTest {
         )
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CommentsPreviewPlatformProvider(CommentsPreviewPlatform(
                     textStyle = TextStyle.Default, openLink = { openedLink = it },
                     downloadPdf = {}, openCustomTab = {}, plainText = { it },

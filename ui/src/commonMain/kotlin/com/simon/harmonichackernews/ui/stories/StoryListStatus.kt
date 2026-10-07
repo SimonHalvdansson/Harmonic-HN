@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -44,7 +45,6 @@ import com.simon.harmonichackernews.resources.ic_library_books
 import com.simon.harmonichackernews.resources.ic_refresh
 import com.simon.harmonichackernews.resources.ic_search
 import org.jetbrains.compose.resources.DrawableResource
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 internal const val SavedListTransitionDurationMillis = 220
@@ -149,8 +149,8 @@ fun StoryListStatus(
                     onClick = onRetry,
                     modifier = Modifier.height(48.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = HarmonicTheme.colors.overlayButton,
-                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                 ) {
                     Icon(

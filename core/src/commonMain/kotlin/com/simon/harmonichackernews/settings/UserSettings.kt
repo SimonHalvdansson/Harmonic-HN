@@ -147,14 +147,10 @@ data class GeneralPreferences(
 )
 
 data class AppearancePreferences(
-    val theme: String,
-    val nighttimeTheme: String,
     val followSystem: Boolean,
     val manualDark: Boolean,
-    val lightTheme: String,
-    val darkTheme: String,
-    val accentPreset: String,
-    /** Saved font choice before a theme (such as Hacker) overrides content typography. */
+    val colorSchemes: ColorSchemeSelection = ColorSchemeSelection(),
+    /** Saved font choice, shared by every color scheme. */
     val font: String = "googlesansflexrounded",
     /** Null preserves the host’s original pane proportions until the user chooses a ratio. */
     val portraitSplitRatio: Float? = null,

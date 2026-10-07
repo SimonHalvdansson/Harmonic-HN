@@ -82,8 +82,8 @@ class WidgetPayloadTest {
                             itemsIndexed(entries, itemId = { _, entry -> entry.destination.storyId.toLong() }) { index, entry ->
                                 WidgetStoryRow(context, entry, index,
                                     WidgetConfiguration(visibleStoryCount = 24, previewImageMode = mode, displayStyle = DisplayStyle.OUTLINED, tint = true),
-                                    WidgetColors(HarmonicThemeCatalog.resolve("light", false).colors,
-                                        HarmonicThemeCatalog.resolve("dark", true).colors), visuals[index])
+                                    WidgetColors(HarmonicThemeCatalog.resolve("light", false).colorScheme,
+                                        HarmonicThemeCatalog.resolve("dark", true).colorScheme), visuals[index])
                             }
                         }
                     }

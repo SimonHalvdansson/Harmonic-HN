@@ -67,7 +67,6 @@ import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewState
 import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.delay
@@ -128,7 +127,7 @@ fun CommentLinkPreviewOverlay(
     val previewContainerColor = if (imageOnly) {
         Color.Transparent
     } else {
-        HarmonicTheme.colors.surfaceContainerHigh
+        MaterialTheme.colorScheme.surfaceContainerHigh
     }
     TransformOverlay(
         contentKey = state,
@@ -152,11 +151,11 @@ fun CommentLinkPreviewOverlay(
         containerColor = previewContainerColor,
         sourceContainerColor = if (referenceRowSource) {
             state.sourceContainerColor
-                ?: HarmonicTheme.colors.background
+                ?: MaterialTheme.colorScheme.surface
         } else {
             previewContainerColor.copy(alpha = 0f)
         },
-        sourceBorderColor = HarmonicTheme.colors.commentDivider,
+        sourceBorderColor = MaterialTheme.colorScheme.outlineVariant,
         sourceBorderWidth = if (referenceRowSource) 1.dp else 0.dp,
         sourceAnchorSize = if (imageOnly || referenceRowSource) null else 8.dp,
         shadowElevation = if (imageOnly) 0.dp else 8.dp,
@@ -420,7 +419,7 @@ fun ReferenceCardContent(
                             !description.isNullOrBlank() -> SelectionContainer {
                                 Text(
                                     text = description,
-                                    color = HarmonicTheme.colors.contentPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontFamily = typography.family,
                                     fontSize = typography.commentTextSize.sp,
                                     lineHeight = (typography.commentTextSize + 2f).sp,
@@ -447,7 +446,7 @@ fun ReferenceCardContent(
                             .height(52.dp),
                         colors = ButtonDefaults.elevatedButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = HarmonicTheme.colors.contentPrimary,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
                         Icon(
@@ -478,7 +477,7 @@ private fun HackerNewsStoryCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val domain = DomainNamePolicy.fromUrl(summary.storyUrl)
     Column(modifier.padding(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -486,13 +485,13 @@ private fun HackerNewsStoryCard(
                 model = favicon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp)),
-                fallback = tintedPainterResource(Res.drawable.ic_public, colors.iconTint),
-                error = tintedPainterResource(Res.drawable.ic_public, colors.iconTint),
+                fallback = tintedPainterResource(Res.drawable.ic_public, colors.onSurfaceVariant),
+                error = tintedPainterResource(Res.drawable.ic_public, colors.onSurfaceVariant),
             )
             Text(
                 "Hacker News",
                 modifier = Modifier.padding(start = 8.dp),
-                color = colors.contentPrimary,
+                color = colors.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
@@ -503,7 +502,7 @@ private fun HackerNewsStoryCard(
                 Text(
                     domain,
                     modifier = Modifier.weight(1f),
-                    color = colors.mutedText,
+                    color = colors.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 12.sp,
                     lineHeight = 14.sp,
@@ -517,7 +516,7 @@ private fun HackerNewsStoryCard(
             Text(
                 summary.title,
                 modifier = Modifier.padding(top = 20.dp),
-                color = colors.contentPrimary,
+                color = colors.onSurface,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = (textSize + 5f).sp,
@@ -532,7 +531,7 @@ private fun HackerNewsStoryCard(
             Text(
                 byline,
                 modifier = Modifier.padding(top = 4.dp),
-                color = colors.mutedText,
+                color = colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 16.sp,
@@ -543,7 +542,7 @@ private fun HackerNewsStoryCard(
                 Text(
                     summary.description,
                     modifier = Modifier.padding(top = 14.dp),
-                    color = colors.contentPrimary,
+                    color = colors.onSurface,
                     fontFamily = fontFamily,
                     fontSize = textSize.sp,
                     lineHeight = (textSize + 4f).sp,
@@ -552,7 +551,7 @@ private fun HackerNewsStoryCard(
         }
         HorizontalDivider(
             modifier = Modifier.padding(top = 22.dp, bottom = 16.dp),
-            color = colors.commentDivider.copy(alpha = 0.5f),
+            color = colors.outlineVariant.copy(alpha = 0.5f),
         )
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -571,8 +570,8 @@ private fun HackerNewsStoryCard(
                 onClick = onOpen,
                 modifier = Modifier.heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.overlayButton,
-                    contentColor = colors.overlayButtonContent,
+                    containerColor = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer,
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
@@ -588,7 +587,7 @@ private fun HnStoryStat(count: Int, singular: String, plural: String) {
     Column {
         Text(
             count.toString(),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
@@ -596,7 +595,7 @@ private fun HnStoryStat(count: Int, singular: String, plural: String) {
         )
         Text(
             if (count == 1) singular else plural,
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontSize = 12.sp,
             lineHeight = 14.sp,
@@ -750,15 +749,15 @@ private fun ReferenceMetadata(
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
                 model = favicon,
-                fallback = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.iconTint),
-                error = tintedPainterResource(Res.drawable.ic_public, HarmonicTheme.colors.iconTint),
+                fallback = tintedPainterResource(Res.drawable.ic_public, MaterialTheme.colorScheme.onSurfaceVariant),
+                error = tintedPainterResource(Res.drawable.ic_public, MaterialTheme.colorScheme.onSurfaceVariant),
                 contentDescription = null,
                 modifier = Modifier.size(17.dp).clip(RoundedCornerShape(3.dp)),
             )
             Text(
                 text = domain,
                 modifier = Modifier.padding(start = 6.dp),
-                color = HarmonicTheme.colors.mutedText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = fontFamily,
                 fontSize = metaSize.sp,
                 maxLines = 1,
@@ -779,7 +778,7 @@ private fun ReferenceMetadata(
                     Text(
                         text = title,
                         modifier = Modifier.padding(top = 5.dp),
-                        color = HarmonicTheme.colors.contentPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = fontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = titleSize.sp,
@@ -817,7 +816,7 @@ private fun ReferenceErrorContent(
                 painterResource(Res.drawable.ic_cloud_off),
                 contentDescription = null,
                 modifier = Modifier.size(44.dp),
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(
@@ -825,7 +824,7 @@ private fun ReferenceErrorContent(
                 if (offline) Res.string.link_summary_offline_title else Res.string.link_summary_error_title,
             ),
             modifier = Modifier.padding(top = if (offline) 12.dp else 0.dp),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = (errorTextSize + 4f).sp,
@@ -833,7 +832,7 @@ private fun ReferenceErrorContent(
         Text(
             text = message,
             modifier = Modifier.padding(top = 4.dp),
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = fontFamily,
             fontSize = errorTextSize.sp,
             lineHeight = (errorTextSize + 2f).sp,
@@ -854,8 +853,8 @@ fun LinkPreviewShimmer(modifier: Modifier = Modifier) {
         ),
         label = "link preview shimmer progress",
     )
-    val base = HarmonicTheme.colors.mutedText.copy(alpha = 0.15f)
-    val highlight = HarmonicTheme.colors.mutedText.copy(alpha = 0.22f)
+    val base = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+    val highlight = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.22f)
     Box(
         modifier.background(
             Brush.horizontalGradient(

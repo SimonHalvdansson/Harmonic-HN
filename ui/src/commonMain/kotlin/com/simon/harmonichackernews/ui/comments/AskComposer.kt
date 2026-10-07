@@ -59,14 +59,14 @@ internal fun AskComposer(
     onSend: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
-    surfaceColor: Color = HarmonicTheme.colors.background,
+    surfaceColor: Color = MaterialTheme.colorScheme.surface,
     showCursor: Boolean = true,
 ) {
     val canSend = enabled && !running && draft.isNotBlank()
     val actionEnabled = enabled && (running || draft.isNotBlank())
     val fieldShape = RoundedCornerShape(32.dp)
     val fieldColor = if (HarmonicTheme.isDark) lerp(surfaceColor, Color.Black, 0.35f)
-        else HarmonicTheme.colors.surfaceContainerHigh
+        else MaterialTheme.colorScheme.surfaceContainerHigh
     val accent = MaterialTheme.colorScheme.primary
     val actionBackground by animateColorAsState(
         if (actionEnabled) accent else accent.copy(alpha = 0.25f),
@@ -74,7 +74,7 @@ internal fun AskComposer(
     )
     val actionForeground by animateColorAsState(
         if (actionEnabled) MaterialTheme.colorScheme.onPrimary
-            else HarmonicTheme.colors.contentPrimary.copy(alpha = 0.38f),
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
         tween(140), label = "Chat action foreground",
     )
     Row(
@@ -115,8 +115,8 @@ internal fun AskComposer(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent,
-                focusedTextColor = HarmonicTheme.colors.contentPrimary,
-                unfocusedTextColor = HarmonicTheme.colors.contentPrimary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,

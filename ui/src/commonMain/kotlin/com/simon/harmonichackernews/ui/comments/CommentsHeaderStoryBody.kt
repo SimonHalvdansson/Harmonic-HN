@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -47,14 +48,13 @@ import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.content.trimmedCommentText
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.referenceBlockTopPadding
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 
 @Composable
 fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySettings) {
     if (!story.loaded || !story.isLink || story.isComment || story.url.isNullOrBlank()) return
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val typography = rememberContentTypography(preferredFont = settings.font)
     val domain = remember(story.url) {
         runCatching { story.getDisplayDomain(true) }.getOrDefault("")
@@ -79,7 +79,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
                 placeholder = fallback,
                 fallback = fallback,
                 error = fallback,
-                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.iconTint),
+                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
                 onLoading = { faviconLoaded = false },
                 onSuccess = { faviconLoaded = true },
                 onError = { faviconLoaded = false },
@@ -92,7 +92,7 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
         }
         Text(
             text = domain.orEmpty(),
-            color = colors.mutedText,
+            color = colors.onSurfaceVariant,
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
             style = LocalCommentsPreviewPlatform.current.textStyle,
@@ -168,7 +168,7 @@ private fun HeaderStoryTextBlock(
     onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     val platform = LocalCommentsPreviewPlatform.current
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val hapticFeedback = LocalHapticFeedback.current
     val linkGestureState = remember(bodyHtml) { AnnotatedLinkGestureState() }
     val linkListener = remember(platform.openLink, linkGestureState) {
@@ -180,8 +180,8 @@ private fun HeaderStoryTextBlock(
             }
         }
     }
-    val annotated = remember(bodyHtml, colors.link, linkListener, trimParagraphEdges) {
-        htmlAnnotatedString(bodyHtml, colors.link, linkListener).let {
+    val annotated = remember(bodyHtml, colors.primary, linkListener, trimParagraphEdges) {
+        htmlAnnotatedString(bodyHtml, colors.primary, linkListener).let {
             if (trimParagraphEdges) it.trimmedCommentText() else it
         }
     }
@@ -201,7 +201,7 @@ private fun HeaderStoryTextBlock(
                     hapticFeedback = hapticFeedback,
                     onLongPress = onLinkLongClick,
                 ),
-            color = colors.contentPrimary,
+            color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
             style = LocalCommentsPreviewPlatform.current.textStyle,

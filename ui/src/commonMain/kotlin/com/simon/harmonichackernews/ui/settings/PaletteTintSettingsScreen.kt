@@ -60,7 +60,6 @@ import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.preloadResourcePreview
 import com.simon.harmonichackernews.ui.content.rememberResourcePreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
@@ -286,7 +285,7 @@ fun PaletteTintSettingsScreen(
                 .sharedHazeBackground(
                     glassAppearance = HazeGlassAppearance.FloatingButton,
                     hazeState = hazeState,
-                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                     shape = resetButtonShape,
                 )
                 .semantics { contentDescription = "Reset palette settings" },
@@ -298,7 +297,7 @@ fun PaletteTintSettingsScreen(
                 focusedElevation = 0.dp,
                 hoveredElevation = 0.dp,
             ),
-            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
             text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
         )
@@ -314,7 +313,7 @@ private val EmptyPalettePreviewImage by lazy { ImageBitmap(1, 1) }
 private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
     val preview = rememberResourcePreview(requireNotNull(model.previewImageFallback))
     val palette = preview?.palette
-    val baseColor = HarmonicTheme.colors.contentCardBackground
+    val baseColor = MaterialTheme.colorScheme.surfaceContainerLow
     val tint = remember(palette, style.paletteTintConfigKey, baseColor) {
         PreviewTintPolicy.calculateCardTint(
             baseColor.toArgb(),
@@ -339,7 +338,7 @@ private fun PaletteStoryPreview(model: StoryRowModel, style: StoryRowStyle) {
         listItem = true,
         // Only tint changes here; avoid constructing animations for fixed text and row geometry.
         animateChanges = false,
-        pageBackground = HarmonicTheme.colors.background,
+        pageBackground = MaterialTheme.colorScheme.surface,
     )
 }
 
@@ -356,14 +355,14 @@ private fun PaletteAdjustment(
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
             Text(
                 text = valueLabel,
-                color = HarmonicTheme.colors.mutedText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
             )

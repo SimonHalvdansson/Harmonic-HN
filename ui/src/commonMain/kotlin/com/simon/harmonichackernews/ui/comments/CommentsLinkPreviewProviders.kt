@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.content.MathPreviewText
 import org.jetbrains.compose.resources.DrawableResource
 
@@ -43,7 +44,6 @@ import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.prepareCommentHtml
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.data.LinkPreviewDetail
 import com.simon.harmonichackernews.data.LinkPreviewType
@@ -136,7 +136,7 @@ internal fun OpenRouterPreview(story: StoryListItemSnapshot) {
             text = "${info.provider} / ${info.name}",
             icon = Res.drawable.ic_link_preview_openrouter,
             logoUrl = info.providerIconUrl,
-            logoTint = HarmonicTheme.colors.iconTint,
+            logoTint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         PreviewBody(info.description.orEmpty(), maxLines = 12)
         PreviewInfoColumns(
@@ -195,7 +195,7 @@ internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplay
         PreviewHeader("Abstract:")
         MathPreviewText(
             text = info.arxivAbstract.orEmpty(),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = typography.family,
             fontSize = abstractTextSize.sp,
             lineHeight = 18.sp,
@@ -212,8 +212,8 @@ internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplay
         )
         PreviewInfoRow(Res.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
         val actionColors = ButtonDefaults.buttonColors(
-            containerColor = HarmonicTheme.colors.secondaryContainer,
-            contentColor = HarmonicTheme.colors.onSecondaryContainer,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         )
         Row(
             modifier = Modifier
@@ -318,8 +318,8 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 baseUrl = info.url,
                 onOpenLink = platform.openLink,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                color = HarmonicTheme.colors.contentPrimary,
-                linkColor = HarmonicTheme.colors.link,
+                color = MaterialTheme.colorScheme.onSurface,
+                linkColor = MaterialTheme.colorScheme.primary,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 17.sp,
@@ -497,12 +497,12 @@ private fun PreviewCompactInfo(
         painterResource(icon),
         contentDescription = null,
         modifier = Modifier.size(width = iconWidth, height = 16.dp),
-        tint = HarmonicTheme.colors.iconTint,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
         text,
         modifier = Modifier.padding(start = startPadding, end = endPadding),
-        color = HarmonicTheme.colors.contentPrimary,
+        color = MaterialTheme.colorScheme.onSurface,
         fontFamily = ProductSansFontFamily,
         fontSize = 13.sp,
         lineHeight = 16.sp,

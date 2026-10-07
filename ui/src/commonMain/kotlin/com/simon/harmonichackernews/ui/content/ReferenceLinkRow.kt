@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -55,7 +56,6 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -72,7 +72,7 @@ internal fun ReferenceLinkRow(
     onClick: () -> Unit,
     onLongClick: (Rect, GraphicsLayer?) -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val resolvedExpandedUrl = expandedUrl?.takeIf { hasReferenceLinkTitle(label, it) }
     val faviconSize by animateDpAsState(
         targetValue = if (resolvedExpandedUrl != null) 21.dp else 17.dp,
@@ -88,11 +88,11 @@ internal fun ReferenceLinkRow(
                 .graphicsLayer(alpha = if (suppressed) 0f else 1f)
                 .defaultMinSize(minHeight = 38.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .border(1.dp, colors.commentDivider, RoundedCornerShape(6.dp))
+                .border(1.dp, colors.outlineVariant, RoundedCornerShape(6.dp))
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(color = colors.mutedText.copy(alpha = 0.35f)),
+                    indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
                     onClick = onClick,
                     onLongClick = { onLongClick(bounds, sourceContentLayer) },
                 )
@@ -106,7 +106,7 @@ internal fun ReferenceLinkRow(
                 Icon(
                     painter = faviconFallback,
                     contentDescription = null,
-                    tint = colors.iconTint,
+                    tint = colors.onSurfaceVariant,
                     modifier = Modifier.padding(end = 8.dp).size(faviconSize),
                 )
             } else {
@@ -117,7 +117,7 @@ internal fun ReferenceLinkRow(
                     placeholder = faviconFallback,
                     error = faviconFallback,
                     fallback = faviconFallback,
-                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.iconTint),
+                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
                     onLoading = { faviconLoaded = false },
                     onSuccess = { faviconLoaded = true },
                     onError = { faviconLoaded = false },
@@ -152,7 +152,7 @@ internal fun ReferenceLinkRow(
                                         animatedVisibilityScope = visibilityScope,
                                         boundsTransform = BoundsTransform { _, _ -> contentTween() },
                                     ),
-                                color = colors.mutedText,
+                                color = colors.onSurfaceVariant,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = titleSize.sp,
@@ -171,7 +171,7 @@ internal fun ReferenceLinkRow(
                                         exit = fadeOut(contentTween()),
                                         boundsTransform = BoundsTransform { _, _ -> contentTween() },
                                     ),
-                                color = if (url != null) lerp(colors.mutedText, colors.contentPrimary, 0.55f) else colors.contentPrimary,
+                                color = if (url != null) lerp(colors.onSurfaceVariant, colors.onSurface, 0.55f) else colors.onSurface,
                                 fontFamily = typography.family,
                                 fontSize = titleSize.sp,
                                 lineHeight = titleLineHeight.sp,
@@ -189,7 +189,7 @@ internal fun ReferenceLinkRow(
                                 exit = fadeOut(contentTween()),
                                 boundsTransform = BoundsTransform { _, _ -> contentTween() },
                             ),
-                            color = colors.mutedText,
+                            color = colors.onSurfaceVariant,
                             fontFamily = typography.family,
                             fontSize = (typography.referenceMarkerSize - 2f).sp,
                             lineHeight = (typography.referenceMarkerSize - 0.5f).sp,

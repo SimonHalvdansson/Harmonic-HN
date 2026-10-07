@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,9 +53,9 @@ class PostAskMotionTest {
                     aiSummarySourceText = "The original article, including the test methods and measurements."))
             val scene = ImageComposeScene(400, 800, Density(1f)) {
                 val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
-                        Box(Modifier.fillMaxSize().background(HarmonicTheme.colors.background)) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                             StoryAiSummary(story, settings, {}, onAsk = controller::openPostAsk,
                                 askVisible = controller.postAsk?.coveringSource == true)
                             CommentActionOverlay(controller, settings, false, false, TextStyle.Default, {})

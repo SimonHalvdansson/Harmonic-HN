@@ -86,9 +86,9 @@ class StoryRowAppearanceRegressionTest {
             compose.setContent {
                 val case = current.value
                 val palette = HarmonicThemeCatalog.resolve(case.theme, case.theme == "dark")
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     key(case) {
-                        Box(Modifier.width(360.dp).background(palette.colors.background).testTag("story-frame")) {
+                        Box(Modifier.width(360.dp).background(palette.colorScheme.surface).testTag("story-frame")) {
                             StoryRow(
                                 model = SettingsStoryPreviewModel.copy(
                                     faviconUrl = case.url,
@@ -162,9 +162,9 @@ class StoryRowAppearanceRegressionTest {
         compose.setContent {
             val case = current.value
             val palette = HarmonicThemeCatalog.resolve(case.theme, case.theme == "dark")
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 key(case) {
-                    Box(Modifier.width(360.dp).background(palette.colors.background).testTag("story-frame")) {
+                    Box(Modifier.width(360.dp).background(palette.colorScheme.surface).testTag("story-frame")) {
                         StoryRow(
                             model = SettingsStoryPreviewModel.copy(
                                 previewImageTintArgb = if (!read && changed.value) 0xffc6d7ee.toInt() else 0xffe3d4bf.toInt(),

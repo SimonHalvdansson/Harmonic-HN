@@ -48,7 +48,7 @@ enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPr
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
 }
-enum class AppearanceSettingsDialog { Theme, NighttimeRange, NighttimeTheme, Font, Style }
+enum class AppearanceSettingsDialog { Font, Style }
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -73,9 +73,9 @@ fun AppearanceSettingsScreen(
         contentVersion = contentVersion,
     ) {
         item {
-            SettingsCategory("Theme") {
+            SettingsCategory("Colors") {
                 SettingRow(
-                    title = "Theme",
+                    title = "Color scheme",
                     summary = state.themeLabel,
                     icon = Res.drawable.ic_style,
                     onClick = { onNavigate(SettingsSection.Theme) },

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,14 +12,13 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Softens the internal pane boundary without covering chips once the row reaches its end. */
 @Composable
 internal fun Modifier.headerChipEndScrim(listState: LazyListState): Modifier {
     if (!LocalSplitPaneLayout.current.supportsTwoPane) return this
 
-    val background = HarmonicTheme.colors.background
+    val background = MaterialTheme.colorScheme.surface
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     return drawWithCache {
         val width = 24.dp.toPx().coerceAtMost(size.width)

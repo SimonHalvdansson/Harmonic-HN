@@ -221,7 +221,7 @@ class ManageFrontpagesInteractionTest {
     private fun showRoute(repository: AppSettingsRepository, focusFrontpage: StoryType? = null) {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.height(480.dp)) {
                     ManageFrontpagesSettingsRoute(repository, onBack = {}, focusFrontpage = focusFrontpage)
                 }
@@ -288,7 +288,7 @@ class ManageFrontpagesInteractionTest {
     private fun showScreen() {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 ManageFrontpagesSettingsScreen(
                     frontpages = frontpages.value,
                     defaultLabel = default.value.label,

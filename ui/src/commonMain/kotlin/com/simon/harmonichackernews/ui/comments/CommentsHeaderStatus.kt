@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -60,9 +61,9 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun OpFilterBanner(controller: CommentsScreenController) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
-    val contentColor = if (HarmonicTheme.isDark) colors.contentPrimary else colors.onSecondaryContainer
+    val contentColor = if (HarmonicTheme.isDark) colors.onSurface else colors.onSecondaryContainer
     AnimatedVisibility(
         visible = controller.opThreadFilterEnabled,
         enter = fadeIn() + expandVertically(),
@@ -169,11 +170,11 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                     painterResource(Res.drawable.ic_cloud_off),
                     null,
                     Modifier.size(40.dp),
-                    tint = HarmonicTheme.colors.textPrimary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     if (controller.loadingFailedServerError) "Loading failed" else "No internet connection",
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 6.dp),
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -227,7 +228,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp),
-                        color = HarmonicTheme.colors.textSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
@@ -243,8 +244,8 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                         .padding(top = 10.dp, bottom = 16.dp)
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    containerColor = HarmonicTheme.colors.overlayButton,
-                    contentColor = HarmonicTheme.colors.overlayButtonContent,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     icon = {
                         Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                     },

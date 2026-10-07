@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.data.LinkPreviewGroup
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -50,7 +49,7 @@ fun LinkPreviewsSettingsDialog(
                 Text(
                     text = "Choose which links get a source-aware preview above the comments.",
                     modifier = Modifier.padding(top = 6.dp, end = 16.dp, bottom = 10.dp),
-                    color = HarmonicTheme.colors.mutedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
@@ -154,7 +153,7 @@ private fun LinkPreviewToggleRow(
         Text(
             text = type.title,
             modifier = Modifier.weight(1f),
-            color = HarmonicTheme.colors.textPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontSize = 16.sp,
             lineHeight = 20.sp,

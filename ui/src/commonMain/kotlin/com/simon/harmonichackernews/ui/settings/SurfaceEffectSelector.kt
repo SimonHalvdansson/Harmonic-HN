@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,7 +34,6 @@ import com.simon.harmonichackernews.ui.common.LocalHazePreferences
 import com.simon.harmonichackernews.ui.common.currentSharedHazeState
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 @Composable
@@ -51,8 +51,8 @@ internal fun SurfaceEffectSelector(mode: SurfaceEffectMode, onSelected: (Surface
                 SurfaceEffectIcon(value, selected)
                 Text(
                     text = value.displayLabel,
-                    color = if (selected) HarmonicTheme.colors.onSecondaryContainer
-                        else HarmonicTheme.colors.textPrimary,
+                    color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
@@ -70,11 +70,11 @@ private val SurfaceEffectMode.displayLabel: String
 @Composable
 private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
     val shape = RoundedCornerShape(10.dp)
-    val dark = HarmonicTheme.colors.background.luminance() < 0.5f
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val surface = if (dark) Color(0xFF252525) else Color(0xFFF5F5F5)
-    val backdrop = if (selected) HarmonicTheme.colors.secondaryContainer
-        else HarmonicTheme.colors.itemBackground
-    val outline = HarmonicTheme.colors.outlineVariant
+    val backdrop = if (selected) MaterialTheme.colorScheme.secondaryContainer
+        else MaterialTheme.colorScheme.surfaceContainerLow
+    val outline = MaterialTheme.colorScheme.outlineVariant
     val sample = SurfaceEffectPreferences(mode = mode)
     CompositionLocalProvider(
         LocalHazePreferences provides sample,

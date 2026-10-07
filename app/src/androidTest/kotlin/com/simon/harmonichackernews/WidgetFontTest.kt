@@ -122,7 +122,7 @@ class WidgetFontTest {
                 provideContent {
                     WidgetStoryRow(
                         context, WidgetEntry(Story("Named font story", 71, true, false).toDestination(false), null, null, null),
-                        0, WidgetConfiguration(), WidgetColors(HarmonicThemeCatalog.resolve("light", false).colors),
+                        0, WidgetConfiguration(), WidgetColors(HarmonicThemeCatalog.resolve("light", false).colorScheme),
                         null, fontFamily = FontFamily(family),
                     )
                 }

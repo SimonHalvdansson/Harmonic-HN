@@ -62,7 +62,7 @@ class CommentRenderingPerformanceTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("dark", false)
             CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     // A newly visible comment has its own key in the production LazyColumn.
                     // Reusing one row's remembered typography/layout would favor the old path.
                     key(item.value.id) {

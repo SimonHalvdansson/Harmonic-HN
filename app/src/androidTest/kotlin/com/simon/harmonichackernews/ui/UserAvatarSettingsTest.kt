@@ -38,7 +38,7 @@ class UserAvatarSettingsTest {
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         UserAvatarSettingsScreen(
                             enabled = enabled.value, options = options.value,
                             previewStyle = CommentRowStyle(

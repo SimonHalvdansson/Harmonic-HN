@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.common.TextButton
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import org.jetbrains.compose.resources.DrawableResource
@@ -47,7 +47,7 @@ fun CommentFeedItem(
     onRepliesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     // Relative times normally have no descenders; years and "just now" do.
     // Center the visible Product Sans glyphs, with a font-scaled optical correction.
     val timeOpticalOffset = with(LocalDensity.current) {
@@ -55,9 +55,9 @@ fun CommentFeedItem(
     }
     val cardStyle = displaySettings.cardStyle
     val cardBackground = if (displaySettings.hasBackground) {
-        colors.contentCardBackground
+        colors.surfaceContainerLow
     } else {
-        colors.background
+        colors.surface
     }
     val shape = RoundedCornerShape(8.dp)
     val container = modifier
@@ -96,7 +96,7 @@ fun CommentFeedItem(
                 ) {
                     Text(
                         text = "On",
-                        color = colors.mutedText,
+                        color = colors.onSurfaceVariant,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
@@ -110,7 +110,7 @@ fun CommentFeedItem(
                 Text(
                     text = "On \"$rootStoryTitle\"",
                     modifier = Modifier.weight(1f),
-                    color = colors.mutedText,
+                    color = colors.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -122,10 +122,10 @@ fun CommentFeedItem(
                     .padding(start = 8.dp)
                     .defaultMinSize(minHeight = 22.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colors.submissionsCommentTimeBackground)
+                    .background(colors.surfaceContainerHighest)
                     .border(
                         1.dp,
-                        colors.submissionsCommentTimeOutline,
+                        colors.outlineVariant,
                         RoundedCornerShape(8.dp),
                     )
                     .padding(horizontal = 7.dp, vertical = 2.dp),
@@ -134,7 +134,7 @@ fun CommentFeedItem(
                 Text(
                     text = timeText,
                     modifier = Modifier.offset(y = timeOpticalOffset),
-                    color = colors.mutedText,
+                    color = colors.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
@@ -180,7 +180,7 @@ private fun CommentFeedBody(
     background: Color,
     onOpenLink: (String) -> Unit,
 ) {
-    val linkColor = HarmonicTheme.colors.link
+    val linkColor = MaterialTheme.colorScheme.primary
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { annotation ->
             if (annotation is LinkAnnotation.Url) {
@@ -204,7 +204,7 @@ private fun CommentFeedBody(
     Box(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = formatted,
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = typography.family,
             fontSize = typography.commentTextSize.sp,
             maxLines = 16,
@@ -240,7 +240,7 @@ private fun CommentFeedActionButton(
         onClick = onClick,
         modifier = modifier.height(42.dp),
         enabled = enabled,
-        colors = ButtonDefaults.textButtonColors(contentColor = HarmonicTheme.colors.accent),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
     ) {
         Icon(
             painter = painterResource(icon),
@@ -266,8 +266,8 @@ private fun CommentStoryTitleShimmer(modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(1_100, easing = LinearEasing)),
         label = "comment story shimmer",
     )
-    val base = HarmonicTheme.colors.surfaceContainerHighest
-    val highlight = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.12f)
+    val base = MaterialTheme.colorScheme.surfaceContainerHighest
+    val highlight = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     Box(modifier.widthIn(max = 150.dp).clip(RoundedCornerShape(5.dp)).drawWithCache {
         onDrawBehind {
             drawRect(base)

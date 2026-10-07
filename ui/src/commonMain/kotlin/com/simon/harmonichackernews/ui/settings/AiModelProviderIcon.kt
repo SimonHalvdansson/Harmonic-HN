@@ -50,7 +50,7 @@ internal fun AiModelProviderIcon(
     Box(
         modifier = Modifier
             .size(24.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(

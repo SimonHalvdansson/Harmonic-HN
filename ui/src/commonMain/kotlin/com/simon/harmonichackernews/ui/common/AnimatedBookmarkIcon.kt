@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -19,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_bookmark
 import com.simon.harmonichackernews.resources.ic_bookmark_filled
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.PI
 import kotlin.math.sin
@@ -31,7 +31,7 @@ fun AnimatedBookmarkIcon(
     itemId: Int,
     description: String? = if (bookmarked) "Remove bookmark" else "Bookmark",
     modifier: Modifier = Modifier,
-    tint: Color = HarmonicTheme.colors.iconTint,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) = key(itemId) {
     val transition = updateTransition(bookmarked, label = "bookmark")
     val fill by transition.animateFloat(

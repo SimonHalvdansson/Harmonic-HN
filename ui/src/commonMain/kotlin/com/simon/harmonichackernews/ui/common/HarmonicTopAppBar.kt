@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
@@ -54,10 +54,10 @@ fun HarmonicTopAppBar(
     navigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
     navigationContainerColor: Color = lerp(
-        HarmonicTheme.colors.surfaceContainerHighest, HarmonicTheme.colors.onSurface, 0.04f,
+        MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, 0.04f,
     ),
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
 
     Row(
         modifier = modifier
@@ -102,7 +102,7 @@ fun HarmonicTopAppBar(
                         painter = painterResource(Res.drawable.ic_arrow_back),
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        colorFilter = ColorFilter.tint(colors.iconTint),
+                        colorFilter = ColorFilter.tint(colors.onSurfaceVariant),
                     )
                 }
             }

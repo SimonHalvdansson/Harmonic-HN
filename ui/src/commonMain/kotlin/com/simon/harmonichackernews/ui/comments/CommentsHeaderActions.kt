@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
 import com.simon.harmonichackernews.resources.*
@@ -69,7 +70,6 @@ import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
@@ -163,7 +163,7 @@ fun CommentsHeaderActions(
                             painterResource(Res.drawable.ic_share),
                             contentDescription = "Share",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -201,7 +201,7 @@ fun CommentsHeaderActions(
                                     painterResource(Res.drawable.ic_refresh),
                                     contentDescription = "Refresh",
                                     modifier = Modifier.size(24.dp),
-                                    tint = HarmonicTheme.colors.iconTint,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -225,7 +225,7 @@ fun CommentsHeaderActions(
                             painterResource(Res.drawable.ic_more_vert),
                             contentDescription = "More options",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -303,7 +303,7 @@ private fun HeaderActionButton(
                         painterResource(visual.icon),
                         contentDescription = visual.label,
                         modifier = Modifier.size(24.dp),
-                        tint = HarmonicTheme.colors.iconTint,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -430,8 +430,8 @@ private fun MoreMenu(
                         options.forEach { option ->
                             val isSelected = option == controller.currentSorting
                             val selectionColor by animateColorAsState(
-                                if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f)
-                                else HarmonicTheme.colors.accent.copy(alpha = 0f),
+                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                else MaterialTheme.colorScheme.primary.copy(alpha = 0f),
                                 animationSpec = tween(180),
                                 label = "comment sort selection",
                             )
@@ -451,7 +451,7 @@ private fun MoreMenu(
                                                 painterResource(Res.drawable.ic_check),
                                                 contentDescription = null,
                                                 modifier = Modifier.padding(end = 12.dp).size(24.dp),
-                                                tint = HarmonicTheme.colors.iconTint,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                         CommentsMenuText(option)
@@ -494,7 +494,7 @@ private fun MoreMenu(
                                     Icon(
                                         painterResource(icon),
                                         contentDescription = null,
-                                        tint = HarmonicTheme.colors.iconTint,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 },
                                 onClick = {
@@ -586,12 +586,12 @@ private fun SubmenuHeader(title: String, onClick: () -> Unit) {
             Icon(
                 painterResource(Res.drawable.ic_arrow_back),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         onClick = onClick,
     )
-    HorizontalDivider(color = HarmonicTheme.colors.commentDivider)
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -602,14 +602,14 @@ private fun SubmenuEntry(title: String, icon: DrawableResource, onClick: () -> U
             Icon(
                 painterResource(icon),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         trailingIcon = {
             Icon(
                 painterResource(Res.drawable.ic_chevron_right),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         onClick = onClick,

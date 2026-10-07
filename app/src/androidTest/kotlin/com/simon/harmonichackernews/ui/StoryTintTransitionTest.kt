@@ -83,7 +83,7 @@ class StoryTintTransitionTest {
             ))
             compose.setContent {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     StoryRow(
                         model.value, style.value, Modifier.testTag("story"), listItem = true,
                         onPreviewTintExtracted = { extractedTint.complete(it) },

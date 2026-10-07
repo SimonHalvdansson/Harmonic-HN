@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.debug
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
@@ -47,8 +47,8 @@ private data class GasFrame(
 /** Compose Canvas version of the full-screen Ginibre log-gas Easter egg. */
 @Composable
 fun CoulombGasScreen() {
-    val colors = HarmonicTheme.colors
-    val lightTheme = colors.background.luminance() > colors.onSurface.luminance()
+    val colors = MaterialTheme.colorScheme
+    val lightTheme = colors.surface.luminance() > colors.onSurface.luminance()
     val density = LocalDensity.current.density
     val palette = remember(lightTheme) { createPalette(lightTheme) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }

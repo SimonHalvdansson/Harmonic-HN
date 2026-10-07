@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -43,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.content.ContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlin.math.roundToInt
@@ -110,7 +110,7 @@ private fun PollOptionCard(
     typography: ContentTypography,
     onVote: (Int) -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(14.dp)
     val label = remember(option.text) { HtmlTextUtils.plainText(option.text) }
     val share = pollPointShare(option.points, totalPoints)
@@ -127,7 +127,7 @@ private fun PollOptionCard(
             .heightIn(min = 76.dp)
             .clip(shape)
             .background(colors.surfaceContainerHigh)
-            .border(1.dp, if (submitting) colors.accent else colors.commentDivider, shape)
+            .border(1.dp, if (submitting) colors.primary else colors.outlineVariant, shape)
             .clickable(
                 enabled = option.loaded && votingEnabled,
                 role = Role.Button,
@@ -153,37 +153,37 @@ private fun PollOptionCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = typography.commentTextSize.sp,
                         lineHeight = (typography.commentTextSize * 1.25f).sp,
-                        color = colors.textPrimary,
+                        color = colors.onSurface,
                     )
                     Text(
                         pointCount(option.points.coerceAtLeast(0).toLong()),
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
-                        color = colors.textSecondary,
+                        color = colors.onSurfaceVariant,
                     )
                 }
                 if (submitting) {
-                    HarmonicLoadingIndicator(Modifier.size(24.dp), color = colors.accent)
+                    HarmonicLoadingIndicator(Modifier.size(24.dp), color = colors.primary)
                 } else if (share != null) {
                     Text(
                         "${(share * 100).roundToInt()}%",
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = colors.textPrimary,
+                        color = colors.onSurface,
                     )
                 }
             }
             Box(
                 Modifier.fillMaxWidth().height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(colors.textSecondary.copy(alpha = 0.12f)),
+                    .background(colors.onSurfaceVariant.copy(alpha = 0.12f)),
             ) {
                 Box(
                     Modifier.fillMaxWidth(animatedShare).height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(colors.accent),
+                        .background(colors.primary),
                 )
             }
         } else {
@@ -197,7 +197,7 @@ private fun PollOptionCard(
                     if (option.loadFailed) "Unable to load this option" else "Loading option…",
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
-                    color = colors.textSecondary,
+                    color = colors.onSurfaceVariant,
                 )
             }
         }

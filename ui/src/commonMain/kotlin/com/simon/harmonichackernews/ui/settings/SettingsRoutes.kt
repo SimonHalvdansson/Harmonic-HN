@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.ColorSchemeStyle
+
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.settings.GeneralBooleanPreference
 import com.simon.harmonichackernews.summary.LocalModelCatalog
@@ -269,14 +271,14 @@ fun DebugSettingsRoute(
 
 data class AppearanceRouteLabels(
     val showTransparentStatusBar: Boolean,
-    val materialYouAvailable: Boolean = true,
+    val dynamicColorAvailable: Boolean = true,
     val showExtraSidePadding: Boolean = false,
 )
 
 data class ThemeRouteLabels(
     val nighttimeRange: String,
-    val activeTheme: String,
-    val materialYouAvailable: Boolean = true,
+    val activeDark: Boolean,
+    val dynamicColorAvailable: Boolean = true,
 )
 
 @Composable
@@ -302,7 +304,6 @@ fun AppearanceSettingsRoute(
             settings = settings,
             themeLabel = themeSettingsSummary(
                 settings.appearance,
-                labels.materialYouAvailable,
             ),
             fontLabel = settings.story.fontChoice.label,
             showTransparentStatusBar = labels.showTransparentStatusBar,
@@ -371,8 +372,8 @@ fun ThemeSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThemeChanged: () -> Unit,
-    resolvePreviewTheme: (String, Boolean, String) -> HarmonicThemePalette =
-        HarmonicThemeCatalog::resolve,
+    resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette =
+        HarmonicThemeCatalog::scheme,
     dialogContent: @Composable (
         dialog: ThemeSettingsDialog,
         presenter: AppearanceSettingsPresenter,
@@ -390,21 +391,24 @@ fun ThemeSettingsRoute(
     ThemeSettingsScreen(
         state = presenter.themeState(
             nighttimeRangeLabel = labels.nighttimeRange,
-            activeTheme = labels.activeTheme,
-            materialYouAvailable = labels.materialYouAvailable,
+            activeDark = labels.activeDark,
+            dynamicColorAvailable = labels.dynamicColorAvailable,
             settings = settings,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onFollowSystemChanged = { value -> applyThemeChange { presenter.setFollowSystem(value) } },
         onManualDarkChanged = { value -> applyThemeChange { presenter.setManualDark(value) } },
-        onPairSelected = { pair -> applyThemeChange { presenter.setPair(pair) } },
-        onAccentSelected = { value -> applyThemeChange { presenter.setAccent(value) } },
+        onCoupledChanged = { value -> applyThemeChange { presenter.setCoupled(value, labels.activeDark) } },
+        onColorSchemeSelected = { value, dark -> applyThemeChange { presenter.setColorScheme(value, dark) } },
+        onColorStyleSelected = { value, dark -> applyThemeChange { presenter.setColorStyle(value, dark) } },
+        onNighttimeColorStyleSelected = { value -> applyThemeChange { presenter.setNighttimeColorStyle(value) } },
+        onNighttimeColorSchemeSelected = { value -> applyThemeChange { presenter.setNighttimeColorScheme(value) } },
         onSpecialNighttimeChanged = { value ->
             applyThemeChange { presenter.setSpecialNighttime(value) }
         },
         onDialogRequested = { dialog = it },
-        resolvePreviewTheme = resolvePreviewTheme,
+        resolvePreviewScheme = resolvePreviewScheme,
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
         ).copy(preferredFont = settings.appearance.font),

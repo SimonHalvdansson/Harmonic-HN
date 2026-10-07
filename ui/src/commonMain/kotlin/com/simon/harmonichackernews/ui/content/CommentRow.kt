@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.animation.AnimatedContent
@@ -84,7 +85,6 @@ import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.ui.comments.CommentActionSourceGeometry
 import com.simon.harmonichackernews.ui.comments.captureCommentActionSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -242,7 +242,7 @@ fun CommentRow(
         CommentBodyText(
             html = previewBody,
             searchTerm = "",
-            markedColor = HarmonicTheme.colors.contentPrimary,
+            markedColor = MaterialTheme.colorScheme.onSurface,
             fontFamily = typography.family,
             fontSize = bodySize,
             animateSearchMatches = false,
@@ -288,7 +288,7 @@ fun CommentRow(
                         html = inlineReferenceHtml,
                         modifier = Modifier.padding(top = 16.dp),
                         searchTerm = "",
-                        markedColor = HarmonicTheme.colors.contentPrimary,
+                        markedColor = MaterialTheme.colorScheme.onSurface,
                         fontFamily = typography.family,
                         fontSize = bodySize,
                         animateSearchMatches = false,
@@ -335,7 +335,7 @@ fun CommentRow(
     onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect, GraphicsLayer?) -> Unit,
     onLinkClick: (String) -> Unit = {},
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val typography = rememberContentTypography(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
@@ -371,7 +371,7 @@ fun CommentRow(
     val contentBlocks = renderModel.contentBlocks
     val hasInterleavedReferences = references?.hasInterleavedLinks() == true
     val firstReferenceIndex = contentBlocks.indexOfFirst { it.getLink() != null }
-    val markedColor = if (colors.background.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
+    val markedColor = if (colors.surface.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
     val hiddenPreview = remember(comment.id, comment.text, textCollapsed) {
         collapsedCommentPreview(comment.id, comment.text, textCollapsed)
     }
@@ -385,7 +385,7 @@ fun CommentRow(
     val railColors = if (continuousProgress > 0f) (firstRailDepth..effectiveDepth).map { depth ->
         commentDepthColor(style.depthIndicatorMode, depth - firstRailDepth, "")
     } else emptyList()
-    val dividerColor = colors.commentDivider
+    val dividerColor = colors.outlineVariant
     val decorations = Modifier.drawWithCache {
         // Match the row layout's pixel rounding, including devices with fractional density.
         val railWidth = indicatorGeometry.width.roundToPx().toFloat()
@@ -629,7 +629,7 @@ private fun CommentBodyText(
     onLinkClick: (String) -> Unit,
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val hapticFeedback = LocalHapticFeedback.current
     val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
     val linkListener = remember(linkGestureState, onLinkClick) {
@@ -641,14 +641,14 @@ private fun CommentBodyText(
             }
         }
     }
-    val body = remember(html, colors.link, linkListener) {
-        htmlAnnotatedString(html, colors.link, linkListener)
+    val body = remember(html, colors.primary, linkListener) {
+        htmlAnnotatedString(html, colors.primary, linkListener)
     }
     val displayedBody = if (animateSearchMatches) {
         animatedSearchMatches(
             body = body,
             searchTerm = searchTerm,
-            baseColor = colors.contentPrimary,
+            baseColor = colors.onSurface,
             markedColor = markedColor,
         )
     } else {
@@ -674,7 +674,7 @@ private fun CommentBodyText(
                     onLongPress = onLinkLongClick,
                 ),
             onTextLayout = { textLayout = it },
-            color = colors.contentPrimary,
+            color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
             style = animatedCommentTextStyle,
@@ -734,7 +734,7 @@ private fun CommentSurface(
     onLongClick: (() -> Unit)?,
     content: @Composable () -> Unit,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val shapeRadius by animateDpAsState(
         if (style.hasBackground) 8.dp else 0.dp,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -747,11 +747,11 @@ private fun CommentSurface(
         bottomStart = if (showIndicator) shapeRadius * indicatorGeometry.rounding else shapeRadius,
     )
     val baseBackground = when {
-        style.hasBackground -> colors.contentCardBackground
+        style.hasBackground -> colors.surfaceContainerLow
         style.transparentNonCardBackground -> Color.Transparent
-        else -> colors.background
+        else -> colors.surface
     }
-    val targetBackground = commentSurfaceColor(baseBackground, colors.contentPrimary, highlighted)
+    val targetBackground = commentSurfaceColor(baseBackground, colors.onSurface, highlighted)
     val background by animateColorAsState(
         targetValue = targetBackground,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -809,7 +809,7 @@ private fun CommentSurface(
         itemGeometry?.containerColor = background
         itemGeometry?.containerCornerRadiusDp = if (style.hasBackground) 8f else 0f
         itemGeometry?.containerElevationDp = if (style.cardStyle) 1f else 0f
-        itemGeometry?.containerBorderColor = colors.commentDivider
+        itemGeometry?.containerBorderColor = colors.outlineVariant
         itemGeometry?.containerBorderWidthDp =
             if (style.showOutline) 1f else 0f
         if (detachedProgress == 0f) itemGeometry?.indicatorLayer = null
@@ -874,14 +874,14 @@ private fun CommentSurface(
                         onDrawBehind {
                             drawOutline(
                                 outline,
-                                colors.commentDivider.copy(alpha = outlineAlpha),
+                                colors.outlineVariant.copy(alpha = outlineAlpha),
                                 style = stroke,
                             )
                         }
                     }
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = colors.mutedText.copy(alpha = 0.35f)),
+                        indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
                         onClick = onClick,
                         onLongClick = onLongClick,
                     )
@@ -955,7 +955,7 @@ private fun CommentSurface(
 @Composable
 private fun commentDepthColor(mode: String, depth: Int, author: String): Color {
     val selection = LocalHarmonicUiDependencies.current.appearance.selection()
-    return CommentDepthPaletteCatalog.color(mode, selection.theme, selection.dark, depth, author)
+    return CommentDepthPaletteCatalog.color(mode, selection.colorScheme, selection.dark, depth, author, MaterialTheme.colorScheme)
 }
 
 private val animatedCommentTextStyle = TextStyle(

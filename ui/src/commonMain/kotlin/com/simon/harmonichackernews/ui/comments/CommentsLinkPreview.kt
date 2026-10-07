@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
 
 
@@ -50,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.runtime.CompositionLocalProvider
@@ -89,14 +89,14 @@ fun LinkPreviewContent(
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
-        val colors = HarmonicTheme.colors
+        val colors = MaterialTheme.colorScheme
         AnimatedContent(
             targetState = previewType,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, colors.mutedText, RoundedCornerShape(16.dp))
+                .border(2.dp, colors.onSurfaceVariant, RoundedCornerShape(16.dp))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             transitionSpec = {
                 (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
@@ -139,7 +139,7 @@ internal fun PreviewHeader(
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
             val fallback = if (tintIcon) {
-                tintedPainterResource(icon, HarmonicTheme.colors.iconTint)
+                tintedPainterResource(icon, MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 painterResource(icon)
             }
@@ -169,7 +169,7 @@ internal fun PreviewHeader(
         }
         Text(
             text.uppercase(),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
@@ -194,7 +194,7 @@ internal fun PreviewBody(
     Text(
         text = text,
         modifier = Modifier.padding(top = topPadding, bottom = bottomPadding),
-        color = HarmonicTheme.colors.contentPrimary,
+        color = MaterialTheme.colorScheme.onSurface,
         fontFamily = fontFamily,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         fontSize = fontSize.sp,
@@ -234,11 +234,11 @@ internal fun PreviewInfoRow(
             modifier = Modifier
                 .padding(end = 4.dp)
                 .size(20.dp),
-            tint = HarmonicTheme.colors.iconTint,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text,
-            color = if (onClick != null) HarmonicTheme.colors.link else HarmonicTheme.colors.contentPrimary,
+            color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontSize = 14.sp,
             lineHeight = 17.sp,

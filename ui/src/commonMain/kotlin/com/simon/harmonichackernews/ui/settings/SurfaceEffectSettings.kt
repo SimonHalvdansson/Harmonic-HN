@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
@@ -63,7 +64,6 @@ import com.simon.harmonichackernews.ui.common.currentSharedHazeState
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
@@ -119,7 +119,7 @@ fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
                             Text(
                                 "Select Glass in Appearance to adjust its settings.",
                                 modifier = Modifier.padding(24.dp),
-                                color = HarmonicTheme.colors.textPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     }
@@ -138,14 +138,14 @@ fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
                             .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, shape, clip = false)
                             .sharedHazeBackground(
                                 hazeState = hazeState,
-                                surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                                surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                                 shape = shape,
                                 glassAppearance = HazeGlassAppearance.FloatingButton,
                             )
                             .semantics { contentDescription = "Reset glass settings" },
                         shape = shape,
                         containerColor = Color.Transparent,
-                        contentColor = HarmonicTheme.colors.overlayButtonContent,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                         icon = { Icon(painterResource(Res.drawable.ic_refresh), null) },
                         text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
@@ -286,7 +286,7 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
     CompositionLocalProvider(LocalHazePreferences provides preferences) {
         HazeHost {
             val hazeState = currentSharedHazeState()
-            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background).padding(16.dp)) {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
                 Box(Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(20.dp))) {
                     Row(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                         listOf(Color(0xFF78A6C8), Color(0xFFE7A493), Color(0xFF8BBAA5)).forEachIndexed { index, color ->
@@ -299,15 +299,15 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
                     Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f).height(80.dp).sharedHazeDialogBackground(
-                            HarmonicTheme.colors.contentCardBackground, RoundedCornerShape(20.dp)),
+                            MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp)),
                             contentAlignment = Alignment.Center) {
-                            Text("Dialog preview", color = HarmonicTheme.colors.contentPrimary, fontWeight = FontWeight.Bold)
+                            Text("Dialog preview", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         }
                         Box(Modifier.width(96.dp).height(48.dp).sharedHazeBackground(
-                            hazeState, HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                            hazeState, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                             RoundedCornerShape(24.dp), glassAppearance = HazeGlassAppearance.FloatingButton),
                             contentAlignment = Alignment.Center) {
-                            Text("Button", color = HarmonicTheme.colors.overlayButtonContent, fontWeight = FontWeight.Bold)
+                            Text("Button", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

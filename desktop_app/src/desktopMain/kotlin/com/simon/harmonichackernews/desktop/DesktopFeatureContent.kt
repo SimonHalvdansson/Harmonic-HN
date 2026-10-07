@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.desktop
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -34,7 +35,6 @@ import com.simon.harmonichackernews.ui.common.TranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.EditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import com.simon.harmonichackernews.ui.submissions.SubmissionsRoute
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 @Composable
 internal fun DesktopSubmissionsContent(
@@ -78,7 +78,7 @@ internal fun DesktopSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(start = if (isSplitLayout) DesktopWidePaneHorizontalPadding else 0.dp)
                 // Opening a destination should not keyboard-focus Back and show its tooltip.
                 // The screen receives initial focus; Tab still reaches its controls normally.

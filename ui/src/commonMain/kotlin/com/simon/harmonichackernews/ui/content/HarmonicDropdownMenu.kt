@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -52,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private const val MenuRevealDurationMillis = 220
@@ -67,7 +67,7 @@ fun HarmonicDropdownMenu(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     shadowElevation: Dp = MenuDefaults.ShadowElevation,
-    containerColor: Color = HarmonicTheme.colors.popupMenuBackground,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
@@ -176,7 +176,7 @@ private data class MenuRevealShape(val progress: Float, val pivotY: Float) : Sha
 fun HarmonicMenuText(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = HarmonicTheme.colors.textPrimary,
+    color: Color = MaterialTheme.colorScheme.onSurface,
     fontFamily: FontFamily = ProductSansFontFamily,
     fontWeight: FontWeight = FontWeight.Normal,
     fontSize: TextUnit = 16.sp,

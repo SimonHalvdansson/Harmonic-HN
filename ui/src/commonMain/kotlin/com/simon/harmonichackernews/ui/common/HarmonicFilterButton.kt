@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -29,7 +30,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -45,12 +45,12 @@ data class HarmonicFilterButtonColors(
 
 @Composable
 fun harmonicFilterButtonColors(): HarmonicFilterButtonColors {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     return HarmonicFilterButtonColors(
         checkedBackground = colors.secondaryContainer,
         checkedText = colors.onSecondaryContainer,
         checkedStroke = colors.secondaryContainer,
-        uncheckedText = colors.textPrimary,
+        uncheckedText = colors.onSurface,
         uncheckedStroke = colors.outlineVariant,
     )
 }

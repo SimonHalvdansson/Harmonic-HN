@@ -27,7 +27,7 @@ class WebContentOverlayRenderingTest {
             val scene = ImageComposeScene(width = 400, height = 300)
             try {
                 scene.setContent {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         Box(Modifier.fillMaxSize().background(Color.White)) {
                             WebContentOverlay(state)
                         }

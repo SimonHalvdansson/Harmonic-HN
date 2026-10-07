@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -17,7 +18,6 @@ import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsIntent
 import com.simon.harmonichackernews.presentation.SubmissionsScrollRestoration
 import com.simon.harmonichackernews.ui.content.rememberSubmissionStoryRowModel
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Portable submissions Compose bridge; hosts provide only the final URL effect. */
 @Composable
@@ -47,7 +47,7 @@ fun SubmissionsRoute(
     SideEffect { previewResources.updateSettings(displaySettings) }
     val states by previewResources.statesFlow.collectAsStateWithLifecycle()
     DisposableEffect(previewResources) { onDispose(previewResources::dispose) }
-    val tintBaseColor = HarmonicTheme.colors.contentCardBackground.toArgb()
+    val tintBaseColor = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
     key(store) {
         SubmissionsScreen(
             userName = userName,

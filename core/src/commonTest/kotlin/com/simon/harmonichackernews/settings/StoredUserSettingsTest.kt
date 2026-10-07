@@ -9,6 +9,24 @@ import kotlin.test.assertTrue
 
 class StoredUserSettingsTest {
     @Test
+    fun oldMaterialSelectionsAndColorPreferencesSurviveReopening() {
+        val store = TestKeyValueStore(mapOf(
+            ThemePreferences.KEY to ThemePreferences.MATERIAL_FIXED_AUTO,
+            ThemePreferences.LIGHT_KEY to ThemePreferences.MATERIAL_FIXED_LIGHT,
+            ThemePreferences.DARK_KEY to ThemePreferences.MATERIAL_FIXED_DARK,
+            ThemePreferences.NIGHTTIME_KEY to ThemePreferences.MATERIAL_FIXED_DARK,
+            "pref_theme_accent" to "orange",
+        ))
+        val repository = AppSettingsRepository(store, emptyFlow())
+        val appearance = repository.snapshot().appearance
+        assertEquals(ColorSchemeSelection("orange", "orange", true, "orange"), appearance.colorSchemes)
+        assertTrue(appearance.followSystem)
+        repository.setColorScheme("dynamic", false)
+        assertEquals("dynamic", AppSettingsRepository(store, emptyFlow()).snapshot().appearance.colorSchemes.light)
+
+    }
+
+    @Test
     fun storyLoadFailureRateDefaultsOffAndPersistsWithinBounds() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, emptyFlow())
@@ -54,15 +72,15 @@ class StoredUserSettingsTest {
     }
 
     @Test
-    fun hackerOverridePreservesConfiguredFontForOtherThemePreviews() {
+    fun allColorSchemesPreserveTheConfiguredFont() {
         val settings = StoredUserSettings(
             TestKeyValueStore(mapOf(UserPreferenceKeys.FONT to "productsans")),
             emptyFlow(),
             theme = { "hacker" },
         )
 
-        assertEquals("jetbrainsmono", settings.story.font)
-        assertEquals("jetbrainsmono", settings.comments.font)
+        assertEquals("productsans", settings.story.font)
+        assertEquals("productsans", settings.comments.font)
         assertEquals("productsans", settings.appearance.font)
     }
 
@@ -73,12 +91,12 @@ class StoredUserSettingsTest {
         assertTrue(ThemePreferences.isDark(ThemePreferences.MATERIAL_FIXED_DARK))
         assertTrue(ThemePreferences.isDark("amoled"))
         assertEquals(
-            ThemePreferences.MATERIAL_FIXED_AUTO,
-            ThemePreferences.fixedMaterialEquivalent(ThemePreferences.DEFAULT),
+            ThemePreferences.DEFAULT,
+            ThemePreferences.canonicalTheme(ThemePreferences.MATERIAL_FIXED_AUTO),
         )
         assertEquals(
-            ThemePreferences.MATERIAL_FIXED_LIGHT,
-            ThemePreferences.fixedMaterialEquivalent("material_light"),
+            ThemePreferences.DEFAULT_LIGHT,
+            ThemePreferences.canonicalTheme(ThemePreferences.MATERIAL_FIXED_LIGHT),
         )
         assertEquals("gray", ThemePreferences.selectableNighttimeTheme("gray"))
         assertEquals(
@@ -116,13 +134,9 @@ class StoredUserSettingsTest {
         )
         assertEquals(20, settings.cache.storiesToCache)
         assertTrue(settings.general.bookmarksEnabled)
-        assertEquals(ThemePreferences.DEFAULT, settings.appearance.theme)
-        assertEquals(ThemePreferences.DEFAULT_NIGHTTIME, settings.appearance.nighttimeTheme)
+        assertEquals(ColorSchemeSelection(), settings.appearance.colorSchemes)
         assertTrue(settings.appearance.followSystem)
         assertFalse(settings.appearance.manualDark)
-        assertEquals(ThemePreferences.DEFAULT_LIGHT, settings.appearance.lightTheme)
-        assertEquals(ThemePreferences.DEFAULT_DARK, settings.appearance.darkTheme)
-        assertEquals(ThemePreferences.ACCENT_DEFAULT, settings.appearance.accentPreset)
         assertFalse(settings.debug.alwaysShowTapToRefresh)
         assertEquals(SurfaceEffectMode.Frosted, settings.appearance.surfaceEffectMode)
     }

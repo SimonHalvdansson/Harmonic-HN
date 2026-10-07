@@ -32,50 +32,29 @@ data class NighttimeSchedule(
     )
 }
 
-data class ThemeSelection(
-    val theme: String,
-    val dark: Boolean,
-    val accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
-)
+data class ThemeSelection(val colorScheme: String, val dark: Boolean, val colorStyle: ColorSchemeStyle = ColorSchemeStyle.Balanced) {
+    companion object {
+        fun forScheme(scheme: String, dark: Boolean, style: ColorSchemeStyle = ColorSchemeStyle.Balanced) =
+            ThemeSelection(ColorSchemePreferences.sanitize(scheme), dark, style)
+    }
+}
 
-/** Shared automatic/nighttime theme selection; hosts only supply system mode and local time. */
+/** Shared mode/nighttime selection; hosts supply only system appearance and local time. */
 object ThemeSelectionPolicy {
     fun select(
-        configuredTheme: String?,
-        nighttimeTheme: String?,
+        colorSchemes: ColorSchemeSelection,
+        followSystem: Boolean,
+        manualDark: Boolean,
+        systemDark: Boolean,
         useSpecialNighttimeTheme: Boolean,
         schedule: NighttimeSchedule,
         currentMinutesFromMidnight: Int,
-        systemDark: Boolean,
-        followSystem: Boolean = ThemePreferences.isAutomatic(configuredTheme),
-        manualDark: Boolean = ThemePreferences.isDark(configuredTheme),
-        lightTheme: String? = null,
-        darkTheme: String? = null,
-        accentPreset: String = ThemePreferences.ACCENT_DEFAULT,
     ): ThemeSelection {
-        val base = configuredTheme ?: ThemePreferences.DEFAULT
-        val selectedLight = ThemePreferences.selectableLightTheme(
-            lightTheme ?: ThemePreferences.pairedLightTheme(base),
-        )
-        val selectedDark = ThemePreferences.selectableDarkTheme(
-            darkTheme ?: ThemePreferences.pairedDarkTheme(base),
-        )
-        val selected = if (
-            useSpecialNighttimeTheme && schedule.containsMinutes(currentMinutesFromMidnight)
-        ) {
-            ThemePreferences.selectableNighttimeTheme(nighttimeTheme)
-        } else {
-            when {
-                followSystem && systemDark -> selectedDark
-                followSystem -> selectedLight
-                manualDark -> selectedDark
-                else -> selectedLight
-            }
-        }
-        return ThemeSelection(
-            theme = selected,
-            dark = ThemePreferences.isDark(selected),
-            accentPreset = ThemePreferences.sanitizeAccent(accentPreset),
+        val nighttime = useSpecialNighttimeTheme && schedule.containsMinutes(currentMinutesFromMidnight)
+        val dark = nighttime || if (followSystem) systemDark else manualDark
+        return ThemeSelection.forScheme(
+            if (nighttime) colorSchemes.nighttime else colorSchemes.forMode(dark), dark,
+            if (nighttime) colorSchemes.nighttimeStyle else colorSchemes.styleForMode(dark),
         )
     }
 
@@ -154,11 +133,6 @@ class AppearanceRuntime(
     fun selection(): ThemeSelection {
         val useSpecialNighttimeTheme = settings.getBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false)
         return ThemeSelectionPolicy.select(
-            configuredTheme = settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
-            nighttimeTheme = settings.getString(
-                ThemePreferences.NIGHTTIME_KEY,
-                ThemePreferences.DEFAULT_NIGHTTIME,
-            ),
             useSpecialNighttimeTheme = useSpecialNighttimeTheme,
             // The policy ignores these inputs when nighttime mode is off. Avoid loading its
             // persisted schedule and asking the host to allocate a calendar on the default path.
@@ -179,12 +153,7 @@ class AppearanceRuntime(
                     settings.getString(ThemePreferences.KEY, ThemePreferences.DEFAULT),
                 )
             },
-            lightTheme = settings.getString(ThemePreferences.LIGHT_KEY),
-            darkTheme = settings.getString(ThemePreferences.DARK_KEY),
-            accentPreset = settings.getString(
-                ThemePreferences.ACCENT_KEY,
-                ThemePreferences.ACCENT_DEFAULT,
-            ) ?: ThemePreferences.ACCENT_DEFAULT,
+            colorSchemes = ColorSchemePreferences.read(settings),
         )
     }
 

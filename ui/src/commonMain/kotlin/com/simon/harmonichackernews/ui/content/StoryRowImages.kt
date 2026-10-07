@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -30,7 +31,6 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -155,7 +155,7 @@ internal fun StoryFavicon(
             Icon(
                 painter = painterResource(model.faviconFallback),
                 contentDescription = null,
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
@@ -194,7 +194,7 @@ internal fun StoryFavicon(
             Icon(
                 painter = fallbackPainter,
                 contentDescription = null,
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(end = 4.dp).size(17.dp),
             )
         } else {

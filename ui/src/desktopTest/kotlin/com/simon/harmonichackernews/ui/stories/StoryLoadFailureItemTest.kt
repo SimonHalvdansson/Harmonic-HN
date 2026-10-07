@@ -23,7 +23,7 @@ class StoryLoadFailureItemTest {
             var retries = 0
             val scene = ImageComposeScene(320, 400, Density(1f, fontScale)) {
                 val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "light", dark)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     StoryLoadFailureItem(
                         onRetry = { retries++ },
                         modifier = Modifier.onGloballyPositioned { bounds = it.boundsInRoot() },

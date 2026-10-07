@@ -167,7 +167,7 @@ fun ManageFrontpagesSettingsScreen(
     val density = LocalDensity.current
     var resetButtonHeight by remember { mutableStateOf(56.dp) }
     val selectedBackground = frontpageSelectionColor(
-        pageBackground = HarmonicTheme.colors.background,
+        pageBackground = MaterialTheme.colorScheme.surface,
         selectedContainer = MaterialTheme.colorScheme.secondaryContainer,
     )
     // Persisting a drop must not replace the state that is still animating that drop.
@@ -245,7 +245,7 @@ fun ManageFrontpagesSettingsScreen(
                 Text(
                     text = "Drag to reorder",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    color = HarmonicTheme.colors.textSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -265,8 +265,8 @@ fun ManageFrontpagesSettingsScreen(
                 val selectedContent = frontpageSelectionContentColor(
                     selectedBackground, MaterialTheme.colorScheme.onSecondaryContainer,
                 )
-                val textColor = if (selected) selectedContent else HarmonicTheme.colors.textPrimary
-                val iconColor = if (selected) selectedContent else HarmonicTheme.colors.iconTint
+                val textColor = if (selected) selectedContent else MaterialTheme.colorScheme.onSurface
+                val iconColor = if (selected) selectedContent else MaterialTheme.colorScheme.onSurfaceVariant
                 val borderColor = accent.copy(alpha = maxOf(
                     if (selected) 0.35f else 0f,
                     if (type == focusFrontpage) 0.8f * focusPulse.value else 0f,
@@ -414,7 +414,7 @@ fun ManageFrontpagesSettingsScreen(
                         text = "Add frontpage",
                         modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
                             .semantics { heading() },
-                        color = HarmonicTheme.colors.textSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -453,13 +453,13 @@ fun ManageFrontpagesSettingsScreen(
                             painterResource(type.menuIcon),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = type.label,
                             modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 16.sp,
                             lineHeight = 20.sp,
@@ -498,7 +498,7 @@ fun ManageFrontpagesSettingsScreen(
                 .sharedHazeBackground(
                     glassAppearance = HazeGlassAppearance.FloatingButton,
                     hazeState = hazeState,
-                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                     shape = resetButtonShape,
                 )
                 .semantics { contentDescription = "Reset frontpage order and default" },
@@ -510,7 +510,7 @@ fun ManageFrontpagesSettingsScreen(
                 focusedElevation = 0.dp,
                 hoveredElevation = 0.dp,
             ),
-            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
             text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
         )

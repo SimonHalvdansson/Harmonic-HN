@@ -98,7 +98,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.navigation.EditorType
@@ -249,7 +248,7 @@ fun EditorScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background)
+            .background(MaterialTheme.colorScheme.surface)
             .testTag("compose_editor_container")
             .windowInsetsPadding(topAndSideInsets.union(bottomInsets)),
     ) {
@@ -392,7 +391,7 @@ private fun EditorMessageActionDialog(
                 if (keepImeVisible) EditorInformationDialogImeBehavior()
                 Text(
                     text = value,
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                 )
             }
@@ -405,7 +404,7 @@ private fun EditorMessageActionDialog(
                 } else {
                     Modifier
                 }).verticalScroll(rememberScrollState()),
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -457,7 +456,7 @@ private fun ComposeEditorTopBar(
                 painter = painterResource(Res.drawable.ic_close),
                 contentDescription = "Close",
                 modifier = Modifier.size(24.dp),
-                tint = HarmonicTheme.colors.contentPrimary,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         Column(
@@ -469,7 +468,7 @@ private fun ComposeEditorTopBar(
         ) {
             Text(
                 text = title,
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 22.sp,
                 lineHeight = 28.sp,
@@ -480,7 +479,7 @@ private fun ComposeEditorTopBar(
             if (!subtitle.isNullOrEmpty()) {
                 Text(
                     text = subtitle,
-                    color = HarmonicTheme.colors.textSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -519,7 +518,7 @@ private fun ReplyPreview(
         )
         ScrollableTextDecorations(
             state = scrollState,
-            containerColor = HarmonicTheme.colors.background,
+            containerColor = MaterialTheme.colorScheme.surface,
             modifier = Modifier.matchParentSize(),
         )
     }
@@ -531,7 +530,7 @@ private fun OriginalCommentText(
     onOpenLink: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val linkColor = HarmonicTheme.colors.link
+    val linkColor = MaterialTheme.colorScheme.primary
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { annotation ->
             if (annotation is LinkAnnotation.Url) {
@@ -547,7 +546,7 @@ private fun OriginalCommentText(
         Text(
             text = formattedParent,
             modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontSize = 15.sp,
             lineHeight = 20.sp,
@@ -694,7 +693,7 @@ private fun ComposeEditorActionBar(
                 .height(if (compact) 48.dp else 64.dp)
                 .testTag("compose_editor_formatting_toolbar"),
             shape = RoundedCornerShape(32.dp),
-            color = if (compact) Color.Transparent else HarmonicTheme.colors.mutedSurface,
+            color = if (compact) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
             shadowElevation = if (compact) 0.dp else 4.dp,
         ) {
             Row(
@@ -749,7 +748,7 @@ private fun FormattingButton(
                 painter = painterResource(icon),
                 contentDescription = description,
                 modifier = Modifier.size(24.dp),
-                tint = HarmonicTheme.colors.iconTint.copy(alpha = if (enabled) 1f else 0.38f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f),
             )
         }
     }
@@ -786,9 +785,9 @@ private fun SubmitButton(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val colors = HarmonicTheme.colors
-    val enabledBackground = colors.accent
-    val isDarkTheme = colors.background.luminance() < colors.onSurface.luminance()
+    val colors = MaterialTheme.colorScheme
+    val enabledBackground = colors.primary
+    val isDarkTheme = colors.surface.luminance() < colors.onSurface.luminance()
     val disabledTarget = if (isDarkTheme) Color.Black else Color.White
     val disabledBackground = lerp(enabledBackground, disabledTarget, 0.72f)
     val background by androidx.compose.animation.animateColorAsState(

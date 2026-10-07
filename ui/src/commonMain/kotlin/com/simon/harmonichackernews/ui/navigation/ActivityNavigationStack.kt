@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
@@ -29,7 +30,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlinx.coroutines.flow.first
 
 /** Identities are captured at gesture start, so a committed pop cannot move the new top away. */
@@ -116,7 +116,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
             it.isIdle && it.currentState && it.targetState
         } == true
     val rootIsPreviewParent = preview != null && preview.parent == null
-    val background = HarmonicTheme.colors.background
+    val background = MaterialTheme.colorScheme.surface
     Box(modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxSize()

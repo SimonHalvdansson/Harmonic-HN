@@ -307,10 +307,6 @@ class StoredUserSettings(
         get() {
             val legacyTheme = string(ThemePreferences.KEY, ThemePreferences.DEFAULT)
             return AppearancePreferences(
-                theme = legacyTheme,
-                nighttimeTheme = ThemePreferences.selectableNighttimeTheme(
-                    string(ThemePreferences.NIGHTTIME_KEY, ThemePreferences.DEFAULT_NIGHTTIME),
-                ),
                 followSystem = if (store.contains(ThemePreferences.FOLLOW_SYSTEM_KEY)) {
                     boolean(ThemePreferences.FOLLOW_SYSTEM_KEY, true)
                 } else {
@@ -321,21 +317,7 @@ class StoredUserSettings(
                 } else {
                     ThemePreferences.isDark(legacyTheme)
                 },
-                lightTheme = ThemePreferences.selectableLightTheme(
-                    string(
-                        ThemePreferences.LIGHT_KEY,
-                        ThemePreferences.pairedLightTheme(legacyTheme),
-                    ),
-                ),
-                darkTheme = ThemePreferences.selectableDarkTheme(
-                    string(
-                        ThemePreferences.DARK_KEY,
-                        ThemePreferences.pairedDarkTheme(legacyTheme),
-                    ),
-                ),
-                accentPreset = ThemePreferences.sanitizeAccent(
-                    string(ThemePreferences.ACCENT_KEY, ThemePreferences.ACCENT_DEFAULT),
-                ),
+                colorSchemes = ColorSchemePreferences.read(store),
                 font = configuredFont(),
                 portraitSplitRatio = SplitRatioPreferences.sanitize(
                     store.getFloat(UserPreferenceKeys.SPLIT_RATIO_PORTRAIT, Float.NaN),
@@ -407,11 +389,7 @@ class StoredUserSettings(
         ),
     )
 
-    private fun preferredFont(): String = if (theme() == "hacker") {
-        "jetbrainsmono"
-    } else {
-        configuredFont()
-    }
+    private fun preferredFont(): String = configuredFont()
 
     private fun configuredFont(): String =
         TextPreferences.sanitizeFont(string(UserPreferenceKeys.FONT, "googlesansflexrounded"))

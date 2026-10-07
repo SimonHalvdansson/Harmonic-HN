@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import androidx.compose.animation.AnimatedVisibility
@@ -217,7 +218,7 @@ fun CommentsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background),
+                .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center,
         ) {
             HarmonicLoadingIndicator(Modifier.size(42.dp))
@@ -225,7 +226,7 @@ fun CommentsScreen(
         return
     }
 
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val commentsHazeState = currentCommentsHazeState()
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
@@ -420,7 +421,7 @@ fun CommentsScreen(
                 // Capture an opaque backdrop as well as the rows. Blurring transparent gaps
                 // around depth rails otherwise lets the original sharp lines show through.
                 .commentsHazeSource(commentsHazeState)
-                .background(HarmonicTheme.colors.background)
+                .background(MaterialTheme.colorScheme.surface)
                 // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
                     alpha = if (
@@ -445,14 +446,14 @@ fun CommentsScreen(
                         AlgoliaFallbackNotice()
                     }
                     if (showCachedBadge) {
-                        val badgeColors = HarmonicTheme.colors
+                        val badgeColors = MaterialTheme.colorScheme
                         val badgeBackground = if (HarmonicTheme.isDark) {
                             badgeColors.surfaceContainerHigh
                         } else {
                             badgeColors.secondaryContainer
                         }
                         val badgeText = if (HarmonicTheme.isDark) {
-                            badgeColors.textSecondary
+                            badgeColors.onSurfaceVariant
                         } else {
                             badgeColors.onSecondaryContainer
                         }
@@ -566,9 +567,9 @@ fun CommentsScreen(
                             sourceBounds = bounds,
                             sourceCommentId = item.comment.id,
                             sourceContainerColor = if (settings.hasBackground) {
-                                colors.contentCardBackground
+                                colors.surfaceContainerLow
                             } else {
-                                colors.background
+                                colors.surface
                             },
                             sourceContentLayer = sourceContentLayer,
                         )
@@ -636,7 +637,7 @@ fun CommentsScreen(
             exit = fadeOut(),
         ) {
             val scrollTopShape = RoundedCornerShape(16.dp)
-            val scrollTopSurface = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
+            val scrollTopSurface = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
             ExtendedFloatingActionButton(
                 onClick = {
                     if (smoothScroll) {
@@ -650,7 +651,7 @@ fun CommentsScreen(
                     Icon(
                         painterResource(Res.drawable.ic_arrow_upward),
                         contentDescription = null,
-                        tint = HarmonicTheme.colors.overlayButtonContent.copy(alpha = 0.8f),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     )
                 },
                 text = {
@@ -675,7 +676,7 @@ fun CommentsScreen(
                     ),
                 shape = scrollTopShape,
                 containerColor = Color.Transparent,
-                contentColor = HarmonicTheme.colors.overlayButtonContent,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 // Keep the shadow present but constant. AnimatedVisibility owns the appearance
                 // transition, so Material's interaction elevation cannot flash it on entry.
                 elevation = FloatingActionButtonDefaults.elevation(
@@ -739,8 +740,8 @@ fun BoxScope.CommentNavigationControls(
 
 @Composable
 private fun AlgoliaFallbackNotice() {
-    val colors = HarmonicTheme.colors
-    val containerColor = if (colors.background.luminance() > colors.onSurface.luminance()) {
+    val colors = MaterialTheme.colorScheme
+    val containerColor = if (colors.surface.luminance() > colors.onSurface.luminance()) {
         colors.surfaceContainerHighest
     } else {
         colors.surfaceContainerHigh
@@ -753,7 +754,7 @@ private fun AlgoliaFallbackNotice() {
     ) {
         Text(
             text = stringResource(Res.string.comments_algolia_fallback),
-            color = colors.textSecondary,
+            color = colors.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
@@ -770,7 +771,7 @@ private fun AlgoliaFallbackNotice() {
 @Composable
 private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifier) {
     val indicator = state.scrollIndicatorState ?: return
-    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
+    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
     val density = LocalDensity.current
     Canvas(modifier = modifier) {
         val currentMetrics = commentsScrollbarMetrics(
@@ -801,7 +802,7 @@ fun EmptyCommentsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
+            .background(MaterialTheme.colorScheme.surface),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -811,11 +812,11 @@ fun EmptyCommentsScreen() {
             modifier = Modifier
                 .padding(bottom = 6.dp)
                 .size(48.dp),
-            tint = HarmonicTheme.colors.iconTint,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             "Open a story",
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
@@ -870,7 +871,7 @@ private fun CommentNavigationButtons(
     val shape = RoundedCornerShape(28.dp)
     val navigationRipple = ripple(bounded = true, radius = 48.dp)
     val hazeState = currentCommentsHazeState()
-    val surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f)
+    val surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
 
     Box {
         Row(
@@ -904,7 +905,7 @@ private fun CommentNavigationButtons(
                 Icon(
                     painterResource(Res.drawable.ic_keyboard_arrow_up_dark),
                     "Previous top-level comment",
-                    tint = HarmonicTheme.colors.overlayButtonContent,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             Box(
@@ -917,7 +918,7 @@ private fun CommentNavigationButtons(
                     painterResource(Res.drawable.ic_explore_dark),
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
-                    tint = HarmonicTheme.colors.overlayButtonContent,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             Box(
@@ -940,7 +941,7 @@ private fun CommentNavigationButtons(
                 Icon(
                     painterResource(Res.drawable.ic_keyboard_arrow_down_dark),
                     "Next top-level comment",
-                    tint = HarmonicTheme.colors.overlayButtonContent,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }

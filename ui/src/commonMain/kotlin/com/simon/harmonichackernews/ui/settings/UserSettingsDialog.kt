@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import com.simon.harmonichackernews.resources.*
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.content.UserAvatar
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.common.TextButton
@@ -104,13 +104,13 @@ fun UserSettingsDialog(
                             Icon(
                                 painter = painterResource(Res.drawable.ic_account_circle),
                                 contentDescription = null,
-                                tint = HarmonicTheme.colors.contentPrimary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(end = 8.dp).size(28.dp),
                             )
                         }
                         Text(
                             text = userName,
-                            color = HarmonicTheme.colors.contentPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 28.sp,
@@ -168,7 +168,7 @@ private fun UserLoadingPlaceholder() {
                     .width(width)
                     .height(16.dp)
                     .alpha(shimmerAlpha)
-                    .background(HarmonicTheme.colors.mutedText, RoundedCornerShape(8.dp)),
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(8.dp)),
             )
         }
     }
@@ -185,7 +185,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
         Text(
             text = "Loading failed",
             modifier = Modifier.padding(bottom = 6.dp),
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontSize = 16.sp,
         )
@@ -222,7 +222,7 @@ private fun UserLoadedContent(
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
-    val linkColor = HarmonicTheme.colors.link
+    val linkColor = MaterialTheme.colorScheme.primary
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { annotation ->
             if (annotation is LinkAnnotation.Url) onOpenLink(annotation.url)
@@ -239,7 +239,7 @@ private fun UserLoadedContent(
         Text(
             text = user.meta,
             modifier = Modifier.padding(bottom = 4.dp),
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
@@ -248,7 +248,7 @@ private fun UserLoadedContent(
             SelectionContainer {
                 Text(
                     text = formattedAbout,
-                    color = HarmonicTheme.colors.mutedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -311,7 +311,7 @@ private fun UserOutlinedAction(
         Text(
             text = label,
             modifier = Modifier.padding(start = 8.dp),
-            color = HarmonicTheme.colors.contentPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
@@ -336,7 +336,7 @@ private fun UserIconAction(
             Text(
                 text = label,
                 modifier = Modifier.padding(top = 4.dp),
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,

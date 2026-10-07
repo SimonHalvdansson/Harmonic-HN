@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.CommentBooleanPreference
@@ -102,7 +102,7 @@ fun CommentsSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            Box(Modifier.fillMaxWidth().background(HarmonicTheme.colors.background)) {
+            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
                 CommentRow(
                     model = SettingsCommentPreviewModel,
                     style = state.toPreviewCommentRowStyle(),

@@ -32,7 +32,6 @@ import com.simon.harmonichackernews.presentation.NotificationsSettingsRuntime
 import com.simon.harmonichackernews.presentation.NotificationsSettingsState
 import com.simon.harmonichackernews.settings.ReplyNotificationFrequency
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -123,7 +122,7 @@ fun NotificationsSettingsScreen(
             Column(Modifier.fillMaxWidth().animateContentSize().padding(horizontal = 24.dp)) {
                 Text(
                     text = "Get notified when someone replies to your comments or comments on your stories.",
-                    color = HarmonicTheme.colors.textSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -146,7 +145,7 @@ fun NotificationsSettingsScreen(
                         color = if (state.isError || !deliveryAllowed && state.enabled && !busy) {
                             MaterialTheme.colorScheme.error
                         } else {
-                            HarmonicTheme.colors.textSecondary
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         fontFamily = ProductSansFontFamily,
                         fontSize = 14.sp,

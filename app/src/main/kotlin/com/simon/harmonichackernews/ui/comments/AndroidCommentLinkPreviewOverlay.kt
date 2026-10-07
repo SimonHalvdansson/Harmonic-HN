@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -36,7 +37,6 @@ import com.simon.harmonichackernews.network.networkHeader
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.link_summary_collapse_image
 import com.simon.harmonichackernews.resources.link_summary_expand_image
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.AndroidDisplay
 import org.jetbrains.compose.resources.stringResource
 
@@ -122,7 +122,7 @@ private fun ReferencePreviewImage(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(HarmonicTheme.colors.surfaceContainerHighest)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(enabled = imageUrl != null, onClick = onClick),
     ) {
         if (loading) LinkPreviewShimmer(Modifier.fillMaxSize())

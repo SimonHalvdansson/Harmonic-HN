@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.download_file
 import com.simon.harmonichackernews.resources.ic_file_download
@@ -83,7 +82,7 @@ fun WebContentOverlay(state: WebContentOverlayState, modifier: Modifier = Modifi
         state.onDownload?.let { onDownload ->
             OutlinedButton(
                 onClick = onDownload,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = HarmonicTheme.colors.contentPrimary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.align(Alignment.Center).testTag("webview_download"),
             ) {
                 Icon(

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -11,7 +12,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 /** Compose replacement for the selectable message in the legacy Android failure dialog. */
@@ -35,7 +35,7 @@ fun FailureDetailDialog(
                 ) {
                     Text(
                         text = value,
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 16.sp,
                         lineHeight = 20.sp,

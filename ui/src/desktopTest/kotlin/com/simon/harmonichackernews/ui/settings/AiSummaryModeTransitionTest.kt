@@ -69,7 +69,7 @@ class AiSummaryModeTransitionTest {
         val directive = PaneScaffoldDirective(2, 24.dp, 1, 0.dp, 360.dp, emptyList())
         val scene = ImageComposeScene((1200 * density.density).roundToInt(), (750 * density.density).roundToInt(), density) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner) {
                     SettingsNavigationShell(
                         navigation, directive, false, 24.dp, {}, {},

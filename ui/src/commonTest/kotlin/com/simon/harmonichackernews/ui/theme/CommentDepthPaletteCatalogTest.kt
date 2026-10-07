@@ -8,6 +8,21 @@ import kotlin.test.assertTrue
 
 class CommentDepthPaletteCatalogTest {
     @Test
+    fun materialDepthColorsFollowTheActiveScheme() {
+        val scheme = androidx.compose.material3.lightColorScheme(
+            primary = Color.Red, secondary = Color.Green, tertiary = Color.Blue,
+        )
+        for (mode in listOf(CommentDepthPreferences.THEME_DEFAULT, CommentDepthPreferences.MATERIAL_YOU)) {
+            val colors = CommentDepthPaletteCatalog.colors(mode, "material_light", false, scheme)
+            assertEquals(listOf(Color.Red, Color.Green, Color.Blue), colors.take(3))
+            val depths = (0..14).map {
+                CommentDepthPaletteCatalog.color(mode, "material_light", false, it, scheme = scheme)
+            }
+            assertTrue(depths.zipWithNext().all { (current, next) -> current != next })
+        }
+    }
+
+    @Test
     fun authorColorsStayStableAcrossDepthAndTheme() {
         for (theme in listOf("light", "dark", "material_dark")) {
             for (depth in listOf(0, 1, 6, 7, 100)) {

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.material3.MaterialTheme
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -207,7 +208,7 @@ private fun MainNavigation(
     val scenePlan = mainNavigationScenePlan(
         navigationSnapshot, isTwoPane, controller.externalStoryEntrySerial,
     )
-    val paneStatusBarColor = HarmonicTheme.colors.background
+    val paneStatusBarColor = MaterialTheme.colorScheme.surface
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     LaunchedEffect(navigationSnapshot.closeRequest) {
@@ -413,7 +414,7 @@ private fun MainNavigation(
             submissionsPredictiveBack.completedRequestKey,
             editorPredictiveBack.completedRequestKey,
         ),
-        modifier = Modifier.background(HarmonicTheme.colors.background)
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
             .semantics { testTagsAsResourceId = true },
         stories = { detail, paneComments ->
             val stories: @Composable () -> Unit = {
@@ -524,7 +525,7 @@ private fun MainNavigation(
                         onBack = ::popMainBackStack,
                         stories = submissionsContent,
                         emptyDetail = { EmptyCommentsScreen() },
-                        modifier = Modifier.background(HarmonicTheme.colors.background),
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                         comments = paneComments,
                     )
                 } else {

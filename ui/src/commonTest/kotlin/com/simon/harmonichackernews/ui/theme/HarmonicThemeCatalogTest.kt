@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.ColorSchemeStyle
+import com.simon.harmonichackernews.settings.ColorSchemePreferences
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -10,60 +12,127 @@ import kotlin.test.assertTrue
 
 class HarmonicThemeCatalogTest {
     @Test
-    fun classicDarkUpdateButtonHasReadableTextContrast() {
-        val colors = HarmonicThemeCatalog.resolve("dark", systemDark = true).colors
-        val foreground = colors.overlayButtonContent.luminance()
-        val background = colors.overlayButton.luminance()
-        val contrast = (maxOf(foreground, background) + 0.05f) /
-            (minOf(foreground, background) + 0.05f)
-
-        assertTrue(contrast >= 4.5f, "Update button text contrast was $contrast:1")
-    }
-
-    @Test
-    fun changingPageBackgroundDoesNotChangeReaderBackground() {
-        val light = HarmonicThemeCatalog.resolve("light", systemDark = false)
-        val changedPage = light.colors.copy(background = Color.Magenta)
-        assertEquals(
-            ReaderModeThemeFactory.create(light.colors, light = true, font = null, fontSizePx = 16).backgroundColor,
-            ReaderModeThemeFactory.create(changedPage, light = true, font = null, fontSizePx = 16).backgroundColor,
-        )
-    }
-
-    @Test
-    fun fixedMaterialAutoFollowsSystemDarkMode() {
-        for (systemDark in listOf(false, true)) {
-            val palette = HarmonicThemeCatalog.resolve(
-                theme = ThemePreferences.MATERIAL_FIXED_AUTO,
-                systemDark = systemDark,
-            )
-            assertEquals(systemDark, palette.dark)
+    fun presetsChangeEveryColorFamilyAndNeutralSurfacesInBothModes() {
+        for (dark in listOf(false, true)) {
+            val schemes = ColorSchemeCatalog.options.filter { it.value in listOf("orange", "blue", "violet", "teal", "rose", "green", "amber", "slate") }
+                .map { HarmonicThemeCatalog.scheme(it.value, dark).colorScheme }
+            for (role in listOf<(androidx.compose.material3.ColorScheme) -> Color>(
+                { it.primary }, { it.secondary }, { it.tertiary }, { it.surface },
+                { it.surfaceContainerLow }, { it.outlineVariant },
+            )) {
+                assertEquals(schemes.size, schemes.map(role).distinct().size)
+            }
+            for (scheme in schemes) {
+                assertNotEquals(scheme.primary, scheme.secondary)
+                assertNotEquals(scheme.secondary, scheme.tertiary)
+            }
         }
     }
 
     @Test
-    fun accentPresetOverridesInteractiveColorsWithoutReplacingSurfaces() {
-        val base = HarmonicThemeCatalog.resolve("light", systemDark = false)
-        val accented = HarmonicThemeCatalog.resolve(
-            "light",
-            systemDark = false,
-            accentPreset = ThemePreferences.ACCENT_ORANGE,
-        )
-
-        assertEquals(base.colors.background, accented.colors.background)
-        assertNotEquals(base.colors.accent, accented.colors.accent)
-        assertEquals(accented.colors.accent, accented.colorScheme.primary)
+    fun allThemesUseReadableMaterialRolePairs() {
+        for (option in ColorSchemeCatalog.options) for (dark in listOf(false, true)) for (style in ColorSchemeStyle.entries) {
+            val scheme = HarmonicThemeCatalog.scheme(option.value, dark, style).colorScheme
+            val pairs = listOf(
+                scheme.primary to scheme.onPrimary, scheme.primaryContainer to scheme.onPrimaryContainer,
+                scheme.secondary to scheme.onSecondary, scheme.secondaryContainer to scheme.onSecondaryContainer,
+                scheme.tertiary to scheme.onTertiary, scheme.tertiaryContainer to scheme.onTertiaryContainer,
+                scheme.error to scheme.onError, scheme.errorContainer to scheme.onErrorContainer,
+                scheme.surface to scheme.onSurface, scheme.surfaceContainerLow to scheme.onSurfaceVariant,
+                scheme.surfaceContainerHighest to scheme.onSurfaceVariant,
+                scheme.inverseSurface to scheme.inverseOnSurface,
+            )
+            for ((background, foreground) in pairs) {
+                val contrast = (maxOf(background.luminance(), foreground.luminance()) + 0.05f) /
+                    (minOf(background.luminance(), foreground.luminance()) + 0.05f)
+                assertTrue(contrast >= 4.5f, "${option.value}/$dark/$style: $background / $foreground = $contrast")
+            }
+        }
     }
 
     @Test
-    fun accentPaletteDoesNotDependOnPageBackground() {
-        val base = HarmonicThemeCatalog.resolve("light", systemDark = false)
-        val changedPage = base.copy(colors = base.colors.copy(background = Color.Magenta))
-
-        val originalAccent = ThemeAccentCatalog.apply(base, ThemePreferences.ACCENT_ORANGE)
-        val changedPageAccent = ThemeAccentCatalog.apply(changedPage, ThemePreferences.ACCENT_ORANGE)
-
-        assertEquals(originalAccent.colors.settingsMainToggle, changedPageAccent.colors.settingsMainToggle)
-        assertEquals(originalAccent.colorScheme.primaryContainer, changedPageAccent.colorScheme.primaryContainer)
+    fun nonMaterialThemesIgnoreMaterialColorSelection() {
+        for (theme in listOf("light", "dark", "white", "amoled", "gray", "hacker", "hacker_news")) {
+            val base = HarmonicThemeCatalog.resolve(theme, false).colorScheme
+            for (option in ColorSchemeCatalog.options) {
+                assertEquals(base, HarmonicThemeCatalog.resolve(theme, false, option.value).colorScheme)
+            }
+        }
     }
+
+    @Test
+    fun legacyMaterialIdsResolveToTheConsolidatedTheme() {
+        for (dark in listOf(false, true)) {
+            assertEquals(dark, HarmonicThemeCatalog.resolve(ThemePreferences.MATERIAL_FIXED_AUTO, dark).dark)
+            assertEquals(
+                HarmonicThemeCatalog.resolve(ThemePreferences.DEFAULT, dark).colorScheme,
+                HarmonicThemeCatalog.resolve(ThemePreferences.MATERIAL_FIXED_AUTO, dark).colorScheme,
+            )
+        }
+    }
+
+    @Test
+    fun readerUsesSurfaceTextLinkAndDividerRolesFromTheSameScheme() {
+        val scheme = HarmonicThemeCatalog.scheme("blue", false).colorScheme.copy(
+            surface = Color(0xFF123456), onSurface = Color(0xFF234567),
+            primary = Color(0xFF345678), outlineVariant = Color(0xFF456789),
+        )
+        val reader = ReaderModeThemeFactory.create(scheme, true, null, 16)
+        assertEquals("#123456", reader.backgroundColor)
+        assertEquals("#234567", reader.textColor)
+        assertEquals("#345678", reader.linkColor)
+        assertEquals("#456789", reader.dividerColor)
+    }
+    @Test
+    fun rainbowUsesGraySurfacesAndEachRecipeHasItsOwnColorFamilies() {
+        for (base in ColorSchemePreferences.generatedValues) for (dark in listOf(false, true)) {
+            val neutral = HarmonicThemeCatalog.scheme(base, dark, ColorSchemeStyle.NeutralSurfaces).colorScheme
+            for (color in listOf(neutral.surface, neutral.surfaceDim, neutral.surfaceBright,
+                neutral.surfaceContainerLowest, neutral.surfaceContainerLow, neutral.surfaceContainer,
+                neutral.surfaceContainerHigh, neutral.surfaceContainerHighest, neutral.onSurface,
+                neutral.onSurfaceVariant, neutral.outline, neutral.outlineVariant)) {
+                assertEquals(color.red, color.green, "$base/$dark: $color")
+                assertEquals(color.green, color.blue, "$base/$dark: $color")
+            }
+            val balanced = HarmonicThemeCatalog.scheme(base, dark, ColorSchemeStyle.Balanced).colorScheme
+            val vibrant = HarmonicThemeCatalog.scheme(base, dark, ColorSchemeStyle.Vibrant).colorScheme
+            assertNotEquals(balanced.secondary, vibrant.secondary)
+            assertNotEquals(balanced.tertiary, vibrant.tertiary)
+            assertNotEquals(neutral.surfaceContainer, balanced.surfaceContainer)
+            assertNotEquals(balanced.surfaceContainer, vibrant.surfaceContainer)
+        }
+    }
+
+    @Test
+    fun dynamicFallbackAndCuratedSchemesIgnoreGeneratedStyles() {
+        for (option in ColorSchemeCatalog.options.filterNot { ColorSchemePreferences.supportsStyle(it.value) }) {
+            for (dark in listOf(false, true)) for (style in ColorSchemeStyle.entries) {
+                assertEquals(HarmonicThemeCatalog.scheme(option.value, dark).colorScheme,
+                    HarmonicThemeCatalog.scheme(option.value, dark, style).colorScheme)
+            }
+        }
+    }
+
+    @Test
+    fun blueRecipesMatchMaterialColorUtilitiesReferenceRoles() {
+        // MCU 0.3.0, source #365FB5, standard contrast. Dark primary can converge at the gamut
+        // boundary even when recipes differ; secondary/tertiary and neutral roles still differ.
+        val expected = listOf(
+            listOf(0xFF385BA9, 0xFF585E71, 0xFF725572, 0xFFF9F9F9, 0xFF1B1B1B, 0xFFE2E2E2, 0xFF474747),
+            listOf(0xFFB1C6FF, 0xFFC0C6DC, 0xFFE0BBDD, 0xFF131313, 0xFFE2E2E2, 0xFF353535, 0xFFC6C6C6),
+            listOf(0xFF475D92, 0xFF585E71, 0xFF725572, 0xFFFAF8FF, 0xFF1A1B21, 0xFFE2E2E9, 0xFF44464F),
+            listOf(0xFFB1C6FF, 0xFFC0C6DC, 0xFFE0BBDD, 0xFF121318, 0xFFE2E2E9, 0xFF33343A, 0xFFC5C6D0),
+            listOf(0xFF0057CD, 0xFF5B5B7E, 0xFF645788, 0xFFFAF8FF, 0xFF181B25, 0xFFE0E2EF, 0xFF424654),
+            listOf(0xFFB1C6FF, 0xFFC3C3EB, 0xFFCFBEF7, 0xFF10131C, 0xFFE0E2EF, 0xFF31343F, 0xFFC2C6D6),
+        )
+        ColorSchemeStyle.entries.forEachIndexed { index, style ->
+            for (dark in listOf(false, true)) {
+                val scheme = HarmonicThemeCatalog.scheme("blue", dark, style).colorScheme
+                assertEquals(expected[index * 2 + if (dark) 1 else 0].map { Color(it) },
+                    listOf(scheme.primary, scheme.secondary, scheme.tertiary, scheme.surface,
+                        scheme.onSurface, scheme.surfaceContainerHighest, scheme.onSurfaceVariant))
+            }
+        }
+    }
+
 }

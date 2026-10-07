@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -64,7 +65,6 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.settings.SplitOrientation
 import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import kotlin.math.roundToInt
 
 internal data class SplitPaneLayout(
@@ -169,7 +169,7 @@ internal fun SplitPaneViewport(
     CompositionLocalProvider(
         LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation, snapToCenter),
     ) {
-        Box(modifier.fillMaxSize().background(HarmonicTheme.colors.background).onSizeChanged { width = it.width }) {
+        Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).onSizeChanged { width = it.width }) {
             content(expansion)
             AnimatedVisibility(
                 visible = twoPane && settings.appearance.allowSplitAdjustment,
@@ -196,7 +196,7 @@ internal fun SplitPaneViewport(
                         tween(150, easing = FastOutSlowInEasing),
                     )
                     val handleColor by animateColorAsState(
-                        if (active) HarmonicTheme.colors.accent else HarmonicTheme.colors.textSecondary,
+                        if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         tween(150, easing = FastOutSlowInEasing),
                     )
                     // The visual grip is small; its 48dp touch target overlaps both sides of the gap.

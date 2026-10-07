@@ -36,7 +36,7 @@ class CommentFeedItemTest {
         var repliesOpened = 0
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("dark", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CommentFeedItem(
                     rootStoryTitle = title.value,
                     timeText = "1h",

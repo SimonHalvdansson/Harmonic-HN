@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import kotlin.math.absoluteValue
@@ -11,22 +12,25 @@ object CommentDepthPaletteCatalog {
         Color(0xFF5E97F6), Color(0xFF9CCC65), Color(0xFFFFB74D), Color(0xFFBA68C8),
         Color(0xFF4DD0E1), Color(0xFFEF5350), Color(0xFFFFD54F),
     )
-    private val material = listOf(
-        Color(0xFF526A78), Color(0xFF7B94A2), Color(0xFF6D7F89), Color(0xFF8DA5B2),
-        Color(0xFF9AAEBB), Color(0xFF41545F), Color(0xFF72828B),
+    private fun material(scheme: ColorScheme) = listOf(
+        scheme.primary, scheme.secondary, scheme.tertiary,
     )
     private val monochrome = List(colorCount) { Color(0xFF808080) }
 
-    fun colors(mode: String, theme: String?, darkTheme: Boolean): List<Color> = when (
+    fun colors(
+        mode: String,
+        theme: String?,
+        darkTheme: Boolean,
+        scheme: ColorScheme = HarmonicThemeCatalog.scheme(theme ?: "dynamic", darkTheme).colorScheme,
+    ): List<Color> = when (
         CommentDepthPreferences.sanitizeMode(mode)
     ) {
         CommentDepthPreferences.MONOCHROME -> monochrome
-        CommentDepthPreferences.MATERIAL_YOU -> material
+        CommentDepthPreferences.MATERIAL_YOU -> material(scheme)
         CommentDepthPreferences.COLORS -> colors
-        CommentDepthPreferences.AUTHOR -> previewColors(mode, theme, darkTheme)
+        CommentDepthPreferences.AUTHOR -> previewColors(mode, theme, darkTheme, scheme)
         CommentDepthPreferences.NONE -> emptyList()
-        else -> if (theme?.startsWith("material") == true) material
-        else colors
+        else -> material(scheme)
     }
 
     fun color(
@@ -35,9 +39,10 @@ object CommentDepthPaletteCatalog {
         darkTheme: Boolean,
         depth: Int,
         author: String = "",
+        scheme: ColorScheme = HarmonicThemeCatalog.scheme(theme ?: "dynamic", darkTheme).colorScheme,
     ): Color {
         if (mode == CommentDepthPreferences.AUTHOR) return authorColor(author)
-        val palette = colors(mode, theme, darkTheme)
+        val palette = colors(mode, theme, darkTheme, scheme)
         return if (palette.isEmpty()) Color.Transparent
         else palette[(depth % palette.size).absoluteValue]
     }
@@ -57,8 +62,13 @@ object CommentDepthPaletteCatalog {
     // Fixed words keep the examples stable across recompositions and dialog openings.
     private val previewAuthors = listOf("willow", "lantern", "pebble", "pixel", "atlas", "robin", "compass")
 
-    fun previewColors(mode: String, theme: String?, darkTheme: Boolean): List<Color> =
-        previewAuthors.mapIndexed { depth, author -> color(mode, theme, darkTheme, depth, author) }
+    fun previewColors(
+        mode: String,
+        theme: String?,
+        darkTheme: Boolean,
+        scheme: ColorScheme = HarmonicThemeCatalog.scheme(theme ?: "dynamic", darkTheme).colorScheme,
+    ): List<Color> =
+        previewAuthors.mapIndexed { depth, author -> color(mode, theme, darkTheme, depth, author, scheme) }
 
     // Explicit FNV-1a over UTF-16 code units keeps the mapping identical on every host.
     // Unsigned arithmetic also handles overflow without negative palette indices.

@@ -35,7 +35,6 @@ import com.simon.harmonichackernews.format.ChangelogBlock
 import com.simon.harmonichackernews.format.parseChangelogMarkdown
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private const val CHANGELOG_RESOURCE = "files/changelog.md"
@@ -100,7 +99,7 @@ private fun ChangelogMarkdown(
             when (block) {
                 is ChangelogBlock.Heading -> {
                     if (index != firstHeadingIndex) {
-                        HorizontalDivider(color = HarmonicTheme.colors.outlineVariant)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.height(12.dp))
                     }
                     ChangelogHeading(block.text, latest = index == firstHeadingIndex)
@@ -118,7 +117,7 @@ private fun ChangelogHeading(text: String, latest: Boolean) {
         Text(
             text = text,
             modifier = Modifier.weight(1f).semantics { heading() },
-            color = HarmonicTheme.colors.textPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleLarge.copy(
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
@@ -142,7 +141,7 @@ private fun ChangelogHeading(text: String, latest: Boolean) {
 private fun ChangelogBodyText(text: String) {
     Text(
         text = text,
-        color = HarmonicTheme.colors.textPrimary,
+        color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.bodyLarge.copy(
             fontFamily = ProductSansFontFamily,
             fontSize = ChangelogBodyFontSize,
@@ -158,7 +157,7 @@ private fun ChangelogBullet(text: String) {
             modifier = Modifier.width(12.dp).height(19.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.size(4.dp).background(HarmonicTheme.colors.accent, CircleShape))
+            Box(Modifier.size(4.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
         }
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) { ChangelogBodyText(text) }

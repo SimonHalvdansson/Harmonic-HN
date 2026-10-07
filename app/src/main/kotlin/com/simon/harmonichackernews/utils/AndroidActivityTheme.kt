@@ -11,7 +11,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.ThemePreferences
+import com.simon.harmonichackernews.settings.ThemeSelection
+import com.simon.harmonichackernews.settings.ColorSchemePreferences
 import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
 
 object AndroidActivityTheme {
@@ -35,14 +36,12 @@ object AndroidActivityTheme {
     private val defaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
     fun setupTheme(activity: ComponentActivity) {
         val selection = activity.harmonicAppComposition.appearance.selection()
-        activity.setTheme(themeResource(selection.theme, uiModeNight(activity)))
+        activity.setTheme(themeResource(selection))
 
         val window = activity.getWindow()
-        if (selection.theme.startsWith("material")) {
-            val background = harmonicThemePalette(activity, selection).colors.background.toArgb()
-            window.setBackgroundDrawable(ColorDrawable(background))
-            window.statusBarColor = background
-        }
+        val background = harmonicThemePalette(activity, selection).colorScheme.surface.toArgb()
+        window.setBackgroundDrawable(ColorDrawable(background))
+        window.statusBarColor = background
         val insetsController = WindowCompat.getInsetsController(window, window.getDecorView())
         insetsController.setAppearanceLightStatusBars(!selection.dark)
         insetsController.setAppearanceLightNavigationBars(!selection.dark)
@@ -62,12 +61,7 @@ object AndroidActivityTheme {
         }
     }
 
-    fun isDarkMode(ctx: Context, theme: String?): Boolean {
-        return if (ThemePreferences.isAutomatic(theme)) uiModeNight(ctx)
-        else ThemePreferences.isDark(theme)
-    }
-
-    fun isDarkMode(ctx: Context): Boolean = isDarkMode(ctx, getPreferredTheme(ctx))
+    fun isDarkMode(ctx: Context): Boolean = ctx.harmonicAppComposition.appearance.selection().dark
 
     fun isLightMode(ctx: Context): Boolean = !isDarkMode(ctx)
 
@@ -78,34 +72,13 @@ object AndroidActivityTheme {
     @ColorInt
     fun getPageBackgroundColor(ctx: Context): Int {
         val selection = ctx.harmonicAppComposition.appearance.selection()
-        return harmonicThemePalette(ctx, selection).colors.background.toArgb()
+        return harmonicThemePalette(ctx, selection).colorScheme.surface.toArgb()
     }
 
-    fun getPreferredTheme(ctx: Context): String {
-        return ctx.harmonicAppComposition.appearance.selection().theme
-    }
-
-    fun themeResource(theme: String, systemDark: Boolean): Int = when (theme) {
-        ThemePreferences.DEFAULT -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            R.style.AppThemeMaterialFixedDayNight
-        } else materialTheme(dynamic = true, dark = systemDark)
-        ThemePreferences.MATERIAL_FIXED_AUTO -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            R.style.AppThemeMaterialFixedDayNight
-        } else materialTheme(dynamic = false, dark = systemDark)
-        "darklight_daynight" -> R.style.AppThemeDarkLightDayNight
-        "amoledwhite_daynight" -> R.style.AppThemeAmoledWhiteDayNight
-        "material_dark" -> materialTheme(dynamic = true, dark = true)
-        ThemePreferences.MATERIAL_FIXED_DARK -> materialTheme(dynamic = false, dark = true)
-        "amoled" -> R.style.AppThemeAmoledDark
-        "hacker" -> R.style.AppThemeHacker
-        "gray" -> R.style.AppThemeGray
-        "light" -> R.style.AppThemeLight
-        "hacker_news" -> R.style.AppThemeHackerNews
-        "material_light" -> materialTheme(dynamic = true, dark = false)
-        ThemePreferences.MATERIAL_FIXED_LIGHT -> materialTheme(dynamic = false, dark = false)
-        "white" -> R.style.AppThemeWhite
-        else -> R.style.AppTheme
-    }
+    fun themeResource(selection: ThemeSelection): Int = materialTheme(
+        dynamic = selection.colorScheme == ColorSchemePreferences.DYNAMIC,
+        dark = selection.dark,
+    )
 
     private fun materialTheme(dynamic: Boolean, dark: Boolean): Int {
         val useDynamic = dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

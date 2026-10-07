@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +38,8 @@ class AskErrorRenderingTest {
                 var clicks = 0
                 val scene = ImageComposeScene(320, 500, Density(1f, fontScale)) {
                     val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-                        Box(Modifier.fillMaxSize().background(HarmonicTheme.colors.background).padding(16.dp)) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
                             AskErrorCard(
                                 discussionErrorPresentation(error, contextLimit), true, { clicks++ },
                                 Modifier.onGloballyPositioned { bounds = it.boundsInRoot() },

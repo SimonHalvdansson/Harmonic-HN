@@ -50,7 +50,7 @@ class DialogSurfaceRegressionTest {
         var visible by mutableStateOf(false)
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.fillMaxSize().background(Color.White))
                 if (visible) PredictiveBackDialog(onDismissRequest = { visible = false }) {
                     Box(Modifier.size(100.dp).background(Color.Red)) { Text("Dialog") }
@@ -80,7 +80,7 @@ class DialogSurfaceRegressionTest {
         var modal by mutableStateOf(false)
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(
                     LocalHazePreferences provides SurfaceEffectPreferences(mode = mode),
                     LocalHazeGlassEnabled provides (mode == SurfaceEffectMode.Glass),

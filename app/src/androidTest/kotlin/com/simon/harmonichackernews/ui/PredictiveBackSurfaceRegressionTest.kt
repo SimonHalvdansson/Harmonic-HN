@@ -121,7 +121,7 @@ class PredictiveBackSurfaceRegressionTest {
             val snapshot by navigation.state.collectAsState()
             val plan = mainNavigationScenePlan(snapshot, twoPane)
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 HarmonicAppRoot(
                     plan = plan,
                     stories = { detail, paneComments -> if (detail != null) paneComments(detail) },
@@ -315,7 +315,7 @@ class PredictiveBackSurfaceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
                     .copy(maxHorizontalPartitions = 2)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     SettingsNavigationShell(
                         navigation = navigation,
                         directive = directive,
@@ -375,7 +375,7 @@ class PredictiveBackSurfaceRegressionTest {
                 val palette = HarmonicThemeCatalog.resolve("light", false)
                 val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
                     .copy(maxHorizontalPartitions = 1)
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     SettingsNavigationShell(
                         navigation = navigation,
                         directive = directive,
@@ -559,7 +559,7 @@ class PredictiveBackSurfaceRegressionTest {
         var lastSource by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
         SideEffect { if (preview != null) lastSource = preview.source }
         val palette = HarmonicThemeCatalog.resolve("light", false)
-        HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+        HarmonicTheme(palette.colorScheme, palette.dark) {
             HarmonicAppRoot(
                 plan = plan, preview = preview,
                 completedPredictiveBack = if (completed) setOfNotNull(lastSource) else emptySet(),

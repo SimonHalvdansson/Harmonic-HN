@@ -96,7 +96,7 @@ class ActivityNavigationRenderingTest {
                     LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
                     LocalHazePreferences provides SurfaceEffectPreferences(mode = mode),
                 ) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         Box(Modifier.fillMaxWidth().height(600.dp).testTag("transition-comparison")) {
                             ActivityNavigationStack(
                                 entries = entries,

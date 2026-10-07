@@ -29,7 +29,6 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_info
 import com.simon.harmonichackernews.resources.ic_key
 import com.simon.harmonichackernews.resources.ic_settings
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -109,10 +108,10 @@ internal fun AskErrorCard(
                     modifier = Modifier.size(22.dp), tint = accent)
             }
             Column(Modifier.weight(1f)) {
-                Text(presentation.title, color = HarmonicTheme.colors.contentPrimary,
+                Text(presentation.title, color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
                 Text(presentation.message, Modifier.padding(top = 4.dp),
-                    color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     fontSize = 14.sp, lineHeight = 20.sp)
             }
         }

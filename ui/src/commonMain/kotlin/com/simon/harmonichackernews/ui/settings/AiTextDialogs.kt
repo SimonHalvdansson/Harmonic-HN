@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.launch
 
@@ -174,7 +173,7 @@ fun AiSummaryBaseUrlDialog(
                 Text(
                     text = "Presets",
                     modifier = Modifier.padding(top = 4.dp),
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

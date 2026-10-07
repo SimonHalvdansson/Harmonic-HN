@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -61,7 +62,6 @@ import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.content.FontMetrics
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
@@ -110,14 +110,14 @@ fun FontSelectionDialog(
                         ) {
                             Text(
                                 text = label,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = fontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                             )
                             Text(
                                 text = "205 points · science.org · 8h",
-                                color = HarmonicTheme.colors.mutedText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = fontFamily,
                                 fontSize = FontMetrics.forFont(value.storedValue).storyMeta.sp,
                             )
@@ -197,7 +197,7 @@ private fun PreloadPolicyDialog(
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Text(
                     text = description,
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -321,7 +321,7 @@ fun StringListEditorDialog(
                 Text(
                     text = subtitle,
                     modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
@@ -357,9 +357,9 @@ fun StringListEditorDialog(
                             painter = painterResource(Res.drawable.ic_add),
                             contentDescription = "Add",
                             tint = if (canAdd) {
-                                HarmonicTheme.colors.iconTint
+                                MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
-                                HarmonicTheme.colors.iconTint.copy(alpha = 0.38f)
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                             },
                         )
                     }
@@ -376,7 +376,7 @@ fun StringListEditorDialog(
                             ) {
                                 Text(
                                     text = emptyMessage,
-                                    color = HarmonicTheme.colors.mutedText,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontFamily = ProductSansFontFamily,
                                     fontSize = 15.sp,
                                 )
@@ -401,7 +401,7 @@ fun StringListEditorDialog(
                                 Text(
                                     text = item,
                                     modifier = Modifier.weight(1f),
-                                    color = HarmonicTheme.colors.textPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontFamily = ProductSansFontFamily,
                                     fontSize = 16.sp,
                                     maxLines = 2,
@@ -414,7 +414,7 @@ fun StringListEditorDialog(
                                     Icon(
                                         painter = painterResource(Res.drawable.ic_close),
                                         contentDescription = "Remove $item",
-                                        tint = HarmonicTheme.colors.iconTint,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -426,7 +426,7 @@ fun StringListEditorDialog(
                     Text(
                         text = suggestionsLabel,
                         modifier = Modifier.padding(top = 18.dp),
-                        color = HarmonicTheme.colors.contentPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,

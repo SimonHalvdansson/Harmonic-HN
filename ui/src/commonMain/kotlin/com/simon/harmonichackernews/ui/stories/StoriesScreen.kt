@@ -6,6 +6,7 @@ package com.simon.harmonichackernews.ui.stories
 
 
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedVisibility
@@ -63,7 +64,6 @@ import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.rememberHazeState
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
@@ -213,7 +213,7 @@ fun StoriesScreen(
         suppressSearchAutoFocus = controller.suppressSearchAutoFocus,
         predictiveBackActive = controller.predictiveBackActive,
         predictiveBackProgress = controller.predictiveBackProgress,
-        backgroundColor = HarmonicTheme.colors.background,
+        backgroundColor = MaterialTheme.colorScheme.surface,
         mainLayer = {
             Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
                 StoriesList(
@@ -320,7 +320,7 @@ fun BoxScope.StoryTapToUpdateButton(
                     .sharedHazeBackground(
                         glassAppearance = HazeGlassAppearance.FloatingButton,
                         hazeState = hazeState,
-                        surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                        surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                         shape = shape,
                     )
                     .semantics { contentDescription = "Tap to update" },
@@ -332,7 +332,7 @@ fun BoxScope.StoryTapToUpdateButton(
                     focusedElevation = 0.dp,
                     hoveredElevation = 0.dp,
                 ),
-                contentColor = HarmonicTheme.colors.overlayButtonContent,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 icon = {
                     Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                 },

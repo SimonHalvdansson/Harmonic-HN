@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,7 +28,6 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 
@@ -77,7 +77,7 @@ fun CacheStoriesDialog(
                         end = HarmonicDimens.compose_settings_dialog_content_padding,
                         bottom = HarmonicDimens.cache_stories_explanation_bottom_padding,
                     ),
-                    color = HarmonicTheme.colors.textPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                     fontFamily = ProductSansFontFamily,
                 )
@@ -103,7 +103,7 @@ fun CacheStoriesDialog(
                         Text(
                             text = stringResource(Res.string.cache_stories_webview_contents),
                             modifier = Modifier.weight(1f).padding(start = 8.dp),
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                             fontFamily = ProductSansFontFamily,
                         )
@@ -120,7 +120,7 @@ fun CacheStoriesDialog(
                     Text(
                         text = stringResource(Res.string.cache_stories_count_label),
                         modifier = Modifier.weight(1f),
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                         fontFamily = ProductSansFontFamily,
                     )
@@ -131,7 +131,7 @@ fun CacheStoriesDialog(
                     )
                     Text(
                         text = sanitizedStoryCount.toString(),
-                        color = HarmonicTheme.colors.textPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,

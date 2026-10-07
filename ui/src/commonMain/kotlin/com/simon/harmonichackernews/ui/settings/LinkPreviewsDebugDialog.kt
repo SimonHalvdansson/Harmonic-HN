@@ -47,7 +47,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatformProvider
 import com.simon.harmonichackernews.ui.comments.LinkPreviewContent
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.CancellationException
@@ -184,7 +183,7 @@ private fun DebugLinkPreviewSampleRow(
         Text(
             text = sample.type.title,
             modifier = Modifier.padding(horizontal = 24.dp),
-            color = HarmonicTheme.colors.textPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
@@ -196,7 +195,7 @@ private fun DebugLinkPreviewSampleRow(
                 .fillMaxWidth()
                 .clickable { onOpenLink(sample.hnUrl) }
                 .padding(horizontal = 24.dp, vertical = 5.dp),
-            color = HarmonicTheme.colors.link,
+            color = MaterialTheme.colorScheme.primary,
             fontFamily = ProductSansFontFamily,
             fontSize = 14.sp,
             lineHeight = 18.sp,

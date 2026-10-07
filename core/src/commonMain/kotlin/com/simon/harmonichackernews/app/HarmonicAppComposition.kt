@@ -85,7 +85,7 @@ class HarmonicAppComposition(
     val userSettings: UserSettings = StoredUserSettings(
         store = host.settingsStore,
         changes = host.settingsChanges,
-        theme = { appearance.selection().theme },
+        theme = { appearance.selection().colorScheme },
         showCommentsUpButtonByDefault = host.showCommentsUpButtonByDefault,
         preloadCommentsFromStoriesByDefault = host.preloadCommentsFromStoriesByDefault,
         defaultSurfaceEffectMode = host.defaultSurfaceEffectMode,

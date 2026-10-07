@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateDpAsState
@@ -20,7 +21,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 
 private const val ContentAnimationDuration = 220
@@ -56,7 +56,7 @@ internal fun rememberStoryRowPresentation(
     onPreviewTintExtracted: ((Int) -> Unit)?,
     onFaviconTintExtracted: ((Int) -> Unit)?,
 ): StoryRowPresentation {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val dimAlpha = if (animate) {
         val animatedDimAlpha by animateFloatAsState(
             targetValue = if (style.dimmed) DimmedStoryAlpha else 1f,
@@ -131,7 +131,7 @@ internal fun rememberStoryRowPresentation(
             }
         }
     }
-    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.contentCardBackground
+    val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.surfaceContainerLow
     val tintBaseColorArgb = tintFallback.toArgb()
     var extractedPreviewTint by remember(
         model.previewImageUrl,
@@ -170,7 +170,7 @@ internal fun rememberStoryRowPresentation(
     val tint = rememberStoryTintColor(rawTint, style.paletteTintConfigKey, pageBackground)
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
-        style.hasBackground -> colors.contentCardBackground
+        style.hasBackground -> colors.surfaceContainerLow
         else -> pageBackground
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old

@@ -45,7 +45,7 @@ class SettingsPreviewResizeTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale.floatValue)) {
-                HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                HarmonicTheme(palette.colorScheme, palette.dark) {
                     Box(Modifier.size(width.value, height.value)) {
                         list = rememberLazyListState()
                         SettingsPage(

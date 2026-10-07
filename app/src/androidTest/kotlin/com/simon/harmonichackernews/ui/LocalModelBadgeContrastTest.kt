@@ -77,9 +77,9 @@ class LocalModelBadgeContrastTest {
             } else {
                 palette.colorScheme
             }
-            HarmonicTheme(palette.colors, colorScheme, palette.dark) {
+            HarmonicTheme(colorScheme, palette.dark) {
                 Column(
-                    Modifier.fillMaxWidth().background(palette.colors.itemBackground)
+                    Modifier.fillMaxWidth().background(palette.colorScheme.surfaceContainerLow)
                         .testTag("local-model-fixture").padding(vertical = 24.dp),
                 ) {
                     Text("Local model badge contrast", Modifier.padding(horizontal = 24.dp))

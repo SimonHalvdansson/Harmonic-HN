@@ -56,7 +56,6 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.resources.ic_refresh
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import java.awt.Canvas
 import java.awt.EventQueue
 import java.awt.event.ComponentAdapter
@@ -219,7 +218,7 @@ internal fun DesktopCommentsWebViewScaffold(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(HarmonicTheme.colors.background),
+                .background(MaterialTheme.colorScheme.surface),
         ) {
             if (browserStarted) {
                 DesktopEmbeddedBrowserSurface(
@@ -688,7 +687,7 @@ private fun DesktopWebViewToolbar(
             .orEmpty()
     }
     Surface(
-        color = HarmonicTheme.colors.background,
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(

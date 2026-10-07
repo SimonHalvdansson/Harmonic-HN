@@ -159,17 +159,13 @@ fun main() {
                     initial = bootstrap.app.appearance.selection(),
                 )
                 val palette = remember(selection) {
-                    HarmonicThemeCatalog.resolve(
-                        selection.theme,
-                        selection.dark,
-                        selection.accentPreset,
-                    )
+                    HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
                 }
-                LaunchedEffect(window, selection.dark, palette.colors.background) {
+                LaunchedEffect(window, selection.dark, palette.colorScheme.surface) {
                     DesktopWindowAppearance.apply(
                         window = window,
                         dark = selection.dark,
-                        backgroundArgb = palette.colors.background.toArgb(),
+                        backgroundArgb = palette.colorScheme.surface.toArgb(),
                     )
                 }
                 LaunchedEffect(bootstrap.app.launchState) {
@@ -188,10 +184,10 @@ fun main() {
                 ProvideHarmonicUiDependencies(
                     HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
                 ) {
-                    HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
                         Surface(
                             modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
-                            color = palette.colors.background,
+                            color = palette.colorScheme.surface,
                         ) {
                             // Reserve the native controls/drag area on every screen. Windows
                             // branding shares the app surface with no separate strip or divider.

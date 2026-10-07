@@ -76,7 +76,6 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.DrawableResource
@@ -125,7 +124,7 @@ fun CommentsHeader(
             )
         }
     }
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val headerTypography = rememberContentTypography(
         preferredFont = settings.font,
         commentTextSize = settings.preferredTextSize,
@@ -134,7 +133,7 @@ fun CommentsHeader(
     var loadedTint by remember(story.id, contentVersion, initialTint) {
         mutableStateOf(initialTint)
     }
-    val normalBackground = colors.background
+    val normalBackground = colors.surface
     val correctedTint = rememberStoryTintColor(loadedTint, settings.paletteTintMode)
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
         correctedTint ?: Color(tintBaseColor)
@@ -275,7 +274,7 @@ fun CommentsHeader(
                                             end = 16.dp,
                                         )
                                         .semantics { heading() },
-                                    color = colors.contentPrimary,
+                                    color = colors.onSurface,
                                     fontFamily = headerTypography.family,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = headerTypography.commentsHeaderTitleSize.sp,
@@ -351,8 +350,8 @@ fun CommentsHeader(
                                                 bottomEnd = if (index == actions.lastIndex) 24.dp else 8.dp,
                                             ),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = HarmonicTheme.colors.secondaryContainer,
-                                                contentColor = HarmonicTheme.colors.onSecondaryContainer,
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                             ),
                                         ) {
                                             Icon(painterResource(icon), null, Modifier.size(18.dp))
@@ -481,7 +480,7 @@ private fun CommentsSheetControls(
     onBrowserBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val collapsedProgress = progress.coerceIn(0f, 1f)
     val navigationBarClearance = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
@@ -493,7 +492,7 @@ private fun CommentsSheetControls(
                 .align(Alignment.CenterHorizontally)
                 .size(width = 50.dp, height = CommentsSheetHandleHeight)
                 .clip(RoundedCornerShape(3.dp))
-                .background(colors.mutedText.copy(alpha = 0.6f)),
+                .background(colors.onSurfaceVariant.copy(alpha = 0.6f)),
         )
         val actionAlpha = collapsedProgress * collapsedProgress * collapsedProgress
         Row(
@@ -528,7 +527,7 @@ private fun CommentsSheetControls(
                 ReaderModeSheetButton(
                     visible = readerModeAvailable,
                     enabled = readerModeEnabled,
-                    tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.iconTint,
+                    tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.onSurfaceVariant,
                     onClick = { onAction(CommentsSheetAction.READER) },
                 )
             }
@@ -548,7 +547,7 @@ private fun CommentsSheetControls(
 private fun RowScope.SheetButtonSlot(
     icon: DrawableResource,
     description: String,
-    tint: Color = HarmonicTheme.colors.iconTint,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: () -> Unit,
 ) {
     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -598,7 +597,7 @@ private fun ReaderModeSheetButton(
 
 @Composable
 private fun CommentsHeaderShimmer() {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()

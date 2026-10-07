@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,9 +51,9 @@ class AskMotionTest {
         )
         val scene = ImageComposeScene(680, 920, Density(1f)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
-                    Box(Modifier.fillMaxSize().background(HarmonicTheme.colors.background)) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                         CommentActionOverlay(controller, settings, false, true, TextStyle.Default, {})
                     }
                 }

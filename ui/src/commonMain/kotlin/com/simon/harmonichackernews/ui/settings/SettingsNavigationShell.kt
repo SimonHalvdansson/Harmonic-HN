@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,7 +35,6 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionOffset
 import com.simon.harmonichackernews.ui.navigation.activityNavigationOpenContentTransform
 import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTransform
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** The retained destination keeps its own navigation origin, including in two-pane layouts. */
 internal val LocalSettingsParentSection = staticCompositionLocalOf<SettingsSection?> { null }
@@ -104,7 +104,7 @@ fun SettingsNavigationShell(
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
         snapToCenter = snapToCenter,
-        modifier = modifier.fillMaxSize().background(HarmonicTheme.colors.background)
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState ->
         val navigationState by navigation.state.collectAsStateWithLifecycle()
@@ -252,7 +252,7 @@ private fun SinglePaneSettingsNavigation(
         },
         modifier = modifier,
         root = {
-            Box(Modifier.fillMaxSize().background(HarmonicTheme.colors.background)) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                 renderList(selectedSection, false, onBackFromSettings) { onNavigateTo(it, false) }
             }
         },

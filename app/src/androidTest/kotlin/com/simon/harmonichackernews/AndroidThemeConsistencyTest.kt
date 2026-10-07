@@ -21,23 +21,34 @@ class AndroidThemeConsistencyTest {
     @Test
     fun lightSelectionMustNotReadDarkHostAttributes() = checkHostMismatch(dark = false)
 
+    @Test
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 31)
+    fun dynamicUsesEverySystemRoleInBothAppearances() {
+        for (dark in listOf(false, true)) {
+            val actual = harmonicThemePalette(context, ThemeSelection.forScheme("dynamic", dark)).colorScheme
+            val expected = if (dark) androidx.compose.material3.dynamicDarkColorScheme(context)
+                else androidx.compose.material3.dynamicLightColorScheme(context)
+            assertEquals(expected.toString(), actual.toString())
+        }
+    }
+
     private fun checkHostMismatch(dark: Boolean) {
-        val selection = ThemeSelection(if (dark) "material_dark" else "material_light", dark)
-        val staleSelection = ThemeSelection(if (dark) "material_light" else "material_dark", !dark)
+        val selection = ThemeSelection.forScheme("dynamic", dark)
+        val staleSelection = ThemeSelection.forScheme("dynamic", !dark)
         val expectedContext = ContextThemeWrapper(
             context,
-            AndroidActivityTheme.themeResource(selection.theme, selection.dark),
+            AndroidActivityTheme.themeResource(selection),
         )
         val staleContext = ContextThemeWrapper(
             context,
-            AndroidActivityTheme.themeResource(staleSelection.theme, staleSelection.dark),
+            AndroidActivityTheme.themeResource(staleSelection),
         )
         val expected = harmonicThemePalette(expectedContext, selection)
         val actual = harmonicThemePalette(staleContext, selection)
         assertEquals(
             "Palette must follow its selection even when the host theme is stale",
-            expected.colors,
-            actual.colors,
+            expected.colorScheme.toString(),
+            actual.colorScheme.toString(),
         )
     }
 }

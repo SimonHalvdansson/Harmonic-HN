@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
+import com.simon.harmonichackernews.settings.ColorSchemeStyle
 import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.ThemeSelection
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
@@ -30,7 +31,7 @@ fun AndroidAppearanceSettingsScreen(
         repository = repository,
         labels = AppearanceRouteLabels(
             showTransparentStatusBar = resources.getBoolean(R.bool.before_android_15),
-            materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+            dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
             showExtraSidePadding = dimensionResource(R.dimen.extra_pane_padding) > 0.dp,
         ),
         showNavigation = showNavigation,
@@ -39,20 +40,6 @@ fun AndroidAppearanceSettingsScreen(
         onThemeChanged = onThemeChanged,
         dialogContent = { dialog, _, dismiss ->
             when (dialog) {
-                AppearanceSettingsDialog.Theme -> AndroidThemeSelectionDialog(
-                    nighttime = false,
-                    onDismiss = dismiss,
-                    onThemeChanged = onThemeChanged,
-                )
-                AppearanceSettingsDialog.NighttimeTheme -> AndroidThemeSelectionDialog(
-                    nighttime = true,
-                    onDismiss = dismiss,
-                    onThemeChanged = onThemeChanged,
-                )
-                AppearanceSettingsDialog.NighttimeRange -> AndroidNighttimeRangeDialog(
-                    onDismiss = dismiss,
-                    onRangeSelected = onThemeChanged,
-                )
                 AppearanceSettingsDialog.Font -> FontSelectionRoute(
                     readerMode = false,
                     onDismiss = dismiss,
@@ -75,10 +62,10 @@ fun AndroidThemeSettingsScreen(
     val context = LocalContext.current
     val currentConfiguration = LocalConfiguration.current
     val previewThemes = remember(context, currentConfiguration) {
-        mutableMapOf<Triple<String, Boolean, String>, HarmonicThemePalette>()
+        mutableMapOf<Triple<String, Boolean, ColorSchemeStyle>, HarmonicThemePalette>()
     }
     val app = LocalHarmonicUiDependencies.current
-    val materialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     ThemeSettingsRoute(
         repository = app.settings,
         labels = ThemeRouteLabels(
@@ -86,75 +73,19 @@ fun AndroidThemeSettingsScreen(
                 app.appearance.schedule,
                 app.platform.timeFormatting.uses24HourClock(),
             ),
-            activeTheme = app.appearance.selection().theme,
-            materialYouAvailable = materialYouAvailable,
+            activeDark = app.appearance.selection().dark,
+            dynamicColorAvailable = dynamicColorAvailable,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onThemeChanged = onThemeChanged,
-        resolvePreviewTheme = { theme, dark, accent ->
-            previewThemes.getOrPut(Triple(theme, dark, accent)) {
-                harmonicThemePalette(context, ThemeSelection(theme, dark, accent))
+        resolvePreviewScheme = { scheme, dark, style ->
+            previewThemes.getOrPut(Triple(scheme, dark, style)) {
+                harmonicThemePalette(context, ThemeSelection.forScheme(scheme, dark, style))
             }
         },
         dialogContent = { dialog, presenter, dismiss ->
             when (dialog) {
-                ThemeSettingsDialog.LightTheme -> ThemeSelectionDialog(
-                    nighttime = false,
-                    selected = presenter.snapshot.appearance.lightTheme,
-                    materialYouAvailable = materialYouAvailable,
-                    selectionKind = ThemeSelectionKind.Light,
-                    title = "Light theme",
-                    onThemeSelected = { theme ->
-                        presenter.setLightTheme(theme)
-                        onThemeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(
-                            it,
-                            presenter.snapshot.appearance.accentPreset,
-                        )
-                    },
-                )
-                ThemeSettingsDialog.DarkTheme -> ThemeSelectionDialog(
-                    nighttime = false,
-                    selected = presenter.snapshot.appearance.darkTheme,
-                    materialYouAvailable = materialYouAvailable,
-                    selectionKind = ThemeSelectionKind.Dark,
-                    title = "Dark theme",
-                    onThemeSelected = { theme ->
-                        presenter.setDarkTheme(theme)
-                        onThemeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(
-                            it,
-                            presenter.snapshot.appearance.accentPreset,
-                        )
-                    },
-                )
-                ThemeSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
-                    nighttime = true,
-                    selected = presenter.snapshot.appearance.nighttimeTheme,
-                    materialYouAvailable = materialYouAvailable,
-                    selectionKind = ThemeSelectionKind.Dark,
-                    onThemeSelected = { theme ->
-                        presenter.setTheme(theme, nighttime = true)
-                        onThemeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(
-                            it,
-                            presenter.snapshot.appearance.accentPreset,
-                        )
-                    },
-                )
                 ThemeSettingsDialog.NighttimeRange -> AndroidNighttimeRangeDialog(
                     onDismiss = dismiss,
                     onRangeSelected = onThemeChanged,

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
@@ -39,16 +39,16 @@ internal fun StoryTypeDropdownMenu(
             val isSelected = type == selectedType
             DropdownMenuItem(
                 modifier = Modifier.padding(horizontal = 8.dp).clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) HarmonicTheme.colors.accent.copy(alpha = 0.08f) else Color.Transparent)
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent)
                     .semantics { selected = isSelected },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 text = {
-                    HarmonicMenuText(type.label, color = HarmonicTheme.colors.contentPrimary,
+                    HarmonicMenuText(type.label, color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = fontSize)
                 },
                 onClick = { onSelected(type) },
                 leadingIcon = {
-                    Icon(painterResource(type.menuIcon), null, Modifier.size(24.dp), tint = HarmonicTheme.colors.iconTint)
+                    Icon(painterResource(type.menuIcon), null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 },
             )
         }

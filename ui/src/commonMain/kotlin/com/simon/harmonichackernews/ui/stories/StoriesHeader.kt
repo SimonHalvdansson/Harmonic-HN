@@ -4,6 +4,7 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.presentation.NewStoriesFilter
 
 import org.jetbrains.compose.resources.DrawableResource
@@ -97,7 +98,6 @@ import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.first
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -148,7 +148,7 @@ internal fun StoriesHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HarmonicTheme.colors.background)
+                .background(MaterialTheme.colorScheme.surface)
                 // Inset the viewport, so scrolling chips cannot pass beneath side system UI.
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(top = topInset + topSpacing),
@@ -292,7 +292,7 @@ internal fun StoriesHeader(
                 ) {
                     Text(
                         text = lastUpdated.orEmpty(),
-                        color = HarmonicTheme.colors.mutedText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = ProductSansFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -357,7 +357,7 @@ internal fun StoriesHeader(
                     ) { status ->
                         Text(
                             text = status,
-                            color = HarmonicTheme.colors.mutedText,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -492,7 +492,7 @@ private fun MainHeader(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = visibleTitle,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = with(density) {
@@ -511,7 +511,7 @@ private fun MainHeader(
                             painterResource(Res.drawable.ic_keyboard_arrow_down),
                             contentDescription = "Choose story list",
                             modifier = Modifier.size(24.dp),
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -535,7 +535,7 @@ private fun MainHeader(
                     Icon(
                         painterResource(Res.drawable.ic_search),
                         "Search",
-                        tint = HarmonicTheme.colors.iconTint,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -547,7 +547,7 @@ private fun MainHeader(
                         Icon(
                             painterResource(Res.drawable.ic_more_vert),
                             "More options",
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -591,7 +591,7 @@ private fun SearchHeader(
     sideStart: androidx.compose.ui.unit.Dp,
     sideEnd: androidx.compose.ui.unit.Dp,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     StorySearchHeader(
         state = StorySearchPresentationState(
             active = controller.searching,
@@ -609,9 +609,9 @@ private fun SearchHeader(
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
-        iconColor = colors.iconTint,
-        menuColor = colors.popupMenuBackground,
-        menuTextColor = colors.textPrimary,
+        iconColor = colors.onSurfaceVariant,
+        menuColor = colors.surfaceContainer,
+        menuTextColor = colors.onSurface,
         fontFamily = ProductSansFontFamily,
         onDraftChanged = controller::updateSearchDraft,
         onSearch = controller.listener::onSearch,
@@ -707,7 +707,7 @@ private fun MoreItem(
 
 @Composable
 private fun StoriesMenuIcon(icon: DrawableResource) {
-    Icon(painterResource(icon), contentDescription = null, tint = HarmonicTheme.colors.iconTint)
+    Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
@@ -738,13 +738,13 @@ internal fun HeaderStatus(
     centerFailure: Boolean = false,
     showFailure: Boolean = true,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     if (!searchMode && controller.canFilterNewStories && controller.newStoriesFilter.active &&
         controller.mainStories.isEmpty() && !controller.loading && !controller.loadingFailed
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
-            Text("No stories match these filters", color = colors.textPrimary, fontFamily = ProductSansFontFamily)
-            Text("Try lower minimums or clear the filters.", color = colors.textSecondary, fontFamily = ProductSansFontFamily)
+            Text("No stories match these filters", color = colors.onSurface, fontFamily = ProductSansFontFamily)
+            Text("Try lower minimums or clear the filters.", color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily)
         }
     }
     StoryListStatus(
@@ -760,8 +760,8 @@ internal fun HeaderStatus(
             showEmptySearch = controller.showEmptySearch,
         ),
         searchMode = searchMode,
-        normalColor = colors.contentPrimary,
-        disabledColor = colors.mutedText,
+        normalColor = colors.onSurface,
+        disabledColor = colors.onSurfaceVariant,
         fontFamily = ProductSansFontFamily,
         loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
         centerFailure = centerFailure,

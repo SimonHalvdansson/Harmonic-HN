@@ -70,7 +70,6 @@ import com.simon.harmonichackernews.network.AiModelCatalogSort
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.CancellationException
@@ -204,7 +203,7 @@ fun AiModelSelectorDialog(
             Text(
                 text = stringResource(Res.string.ai_model_choose_title),
                 modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
-                color = HarmonicTheme.colors.contentPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 26.sp,
@@ -252,7 +251,7 @@ fun AiModelSelectorDialog(
                         pluralStringResource(Res.plurals.ai_model_count, it, it)
                     } ?: stringResource(Res.string.ai_model_suggestions),
                     modifier = Modifier.weight(1f),
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
@@ -408,7 +407,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
                         text = "${price.model.formattedInputPrice()} / " +
                             price.model.formattedOutputPrice(),
                         modifier = Modifier.alignByBaseline(),
-                        color = HarmonicTheme.colors.contentPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -447,7 +446,7 @@ private fun AiModelRow(
         }
     }
     val rowShape = RoundedCornerShape(18.dp)
-    val normalContainer = HarmonicTheme.colors.surfaceContainerHigh
+    val normalContainer = MaterialTheme.colorScheme.surfaceContainerHigh
     val darkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val priceChipContainer = if (darkSurface) Color(0xFF244C3B) else Color(0xFFD7EBDD)
     val priceChipContent = if (darkSurface) Color(0xFFB8E6CD) else Color(0xFF245B46)
@@ -485,7 +484,7 @@ private fun AiModelRow(
             Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
                 Text(
                     text = model.displayName(),
-                    color = HarmonicTheme.colors.contentPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,

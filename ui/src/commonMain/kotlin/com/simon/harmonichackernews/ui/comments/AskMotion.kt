@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.State
@@ -51,7 +52,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 // Material emphasized easing. One timeline drives bounds, uniform content scale and fade-through.
 internal val AskEasing = activityNavigationEasing()
@@ -120,7 +120,7 @@ internal fun AskContainer(
             // The summary starts as a flat, opaque card. Match its border and fill at
             // the handoff rather than briefly substituting the comment dialog's glass/shadow.
             Modifier.background(color, shape).border(1.dp,
-                HarmonicTheme.colors.commentDivider.copy(alpha = HarmonicTheme.colors.commentDivider.alpha * (1f - p)), shape)
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = MaterialTheme.colorScheme.outlineVariant.alpha * (1f - p)), shape)
         } else {
             Modifier.shadow((8f * (1f - p)).dp, shape, clip = false)
                 .sharedHazeDialogBackground(color, shape, revealProgress = 1f - p)

@@ -28,7 +28,7 @@ class LicensesScreenTest {
         val opened = mutableListOf<String>()
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("dark", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 LicensesScreen(entries, onBack = {}, onOpenLicense = opened::add)
             }
         }

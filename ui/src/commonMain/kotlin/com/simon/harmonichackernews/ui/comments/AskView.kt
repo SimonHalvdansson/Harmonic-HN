@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -49,7 +50,6 @@ import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -154,7 +154,7 @@ internal fun AskSurface(
                     onBack = controller::closeAsk,
                     navigationContentDescription = if (post != null) "Back to summary" else "Back to comment",
                     toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
-                    navigationContainerColor = lerp(color, HarmonicTheme.colors.onSurface, 0.06f),
+                    navigationContainerColor = lerp(color, MaterialTheme.colorScheme.onSurface, 0.06f),
                 )
             },
             composer = { modifier ->
@@ -180,7 +180,7 @@ internal fun AskSurface(
                 }.verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, bottom = composerHeight),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                val linkColor = HarmonicTheme.colors.link
+                val linkColor = MaterialTheme.colorScheme.primary
                 val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
                     htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
                         LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
@@ -191,7 +191,7 @@ internal fun AskSurface(
                 )
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                        .background(HarmonicTheme.colors.contentPrimary.copy(alpha = 0.05f))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
                         .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
                         .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
                         .animateContentSize(tween(300, easing = AskEasing))
@@ -205,26 +205,26 @@ internal fun AskSurface(
                         }
                         if (post != null) {
                             Icon(painterResource(Res.drawable.ic_auto_awesome), null, Modifier.size(18.dp),
-                                tint = HarmonicTheme.colors.link)
+                                tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
                         }
                         Text(if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
-                            color = HarmonicTheme.colors.link, fontFamily = typography.family,
+                            color = MaterialTheme.colorScheme.primary, fontFamily = typography.family,
                             fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Icon(painterResource(Res.drawable.ic_keyboard_arrow_down), null,
                             Modifier.size(20.dp).graphicsLayer { rotationZ = caretRotation },
-                            tint = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.65f))
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                     }
                     Spacer(Modifier.height(6.dp))
                     if (post != null) {
                         Text(subject.story.title.orEmpty(), fontFamily = typography.family,
                             fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium,
-                            color = HarmonicTheme.colors.contentPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Spacer(Modifier.height(6.dp))
                         SummaryMarkdownText(
                             markdown = post.summary,
-                            color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                             linkColor = linkColor, fontFamily = typography.family,
                             fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
                             baseUrl = baseUrl, maxLines = if (expanded) Int.MAX_VALUE else 3,
@@ -232,7 +232,7 @@ internal fun AskSurface(
                             enableBoldFormatting = settings.enableSummaryBoldFormatting,
                         )
                     } else {
-                        Text(body, color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.8f),
+                        Text(body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                             fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
                             maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
                     }
@@ -248,12 +248,12 @@ internal fun AskSurface(
                         }
                     }
                     Text(contextNotice,
-                        color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         fontSize = 13.sp, lineHeight = 18.sp)
                 }
                 if (state.omittedTurns > 0) {
                     Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
-                        color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         fontSize = 13.sp, lineHeight = 18.sp)
                 }
                 AnimatedVisibility(
@@ -265,7 +265,7 @@ internal fun AskSurface(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("What would you like to understand?",
                             modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                            color = HarmonicTheme.colors.contentPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.titleMedium)
                         questions.forEachIndexed { index, question ->
                             DiscussionQuestionButton(
@@ -329,8 +329,8 @@ internal fun AskSurface(
                                 verticalAlignment = Alignment.Top) {
                                 Text(turn.question, Modifier.weight(1f, fill = false)
                                     .clip(RoundedCornerShape(18.dp))
-                                    .background(HarmonicTheme.colors.overlayButton).padding(horizontal = 14.dp, vertical = 10.dp),
-                                    color = HarmonicTheme.colors.overlayButtonContent,
+                                    .background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 14.dp, vertical = 10.dp),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontFamily = typography.family,
                                     fontSize = typography.commentTextSize.sp,
                                     lineHeight = (typography.commentTextSize + 2f).sp)
@@ -342,8 +342,8 @@ internal fun AskSurface(
                         SelectionContainer {
                             SummaryMarkdownText(
                                 markdown = turn.answer,
-                                color = HarmonicTheme.colors.contentPrimary,
-                                linkColor = HarmonicTheme.colors.link,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                linkColor = MaterialTheme.colorScheme.primary,
                                 fontFamily = typography.family,
                                 fontSize = typography.commentTextSize.sp,
                                 lineHeight = (typography.commentTextSize + 2f).sp,
@@ -361,7 +361,7 @@ internal fun AskSurface(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
                         Text("Thinking…", Modifier.padding(start = 10.dp),
-                            color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.65f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                             fontSize = 13.sp)
                     }
                 }
@@ -389,7 +389,7 @@ internal fun AskSurface(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("More questions", Modifier.padding(top = 4.dp, bottom = 6.dp),
-                            color = HarmonicTheme.colors.contentPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.titleMedium)
                         remainingQuestions.forEachIndexed { index, question ->
                             key(question) {
@@ -448,7 +448,7 @@ private fun DiscussionQuestionButton(
         },
         shape = RoundedCornerShape(16.dp),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = HarmonicTheme.colors.contentPrimary),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
         val questionIcon = when {
             generated || question == "Explain this comment" -> Res.drawable.ic_auto_awesome

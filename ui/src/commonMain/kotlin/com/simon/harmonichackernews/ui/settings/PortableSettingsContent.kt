@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -30,7 +31,6 @@ import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_android
@@ -241,36 +241,6 @@ private fun PortableAppearanceSettings(
         onThemeChanged = ::themeChanged,
         dialogContent = { dialog, presenter, dismiss ->
             when (dialog) {
-                AppearanceSettingsDialog.Theme,
-                AppearanceSettingsDialog.NighttimeTheme -> {
-                    val nighttime = dialog == AppearanceSettingsDialog.NighttimeTheme
-                    ThemeSelectionDialog(
-                        nighttime = nighttime,
-                        selected = if (nighttime) {
-                            presenter.snapshot.appearance.nighttimeTheme
-                        } else {
-                            presenter.snapshot.appearance.theme
-                        },
-                        onThemeSelected = { value ->
-                            presenter.setTheme(value, nighttime)
-                            themeChanged()
-                            dismiss()
-                        },
-                        onDismiss = dismiss,
-                        previewPalettes = { ThemePreviewCatalog.palettes(it) },
-                    )
-                }
-                AppearanceSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
-                    initialHours = app.appearance.schedule.toIntArray(),
-                    is24Hour = app.platform.timeFormatting.uses24HourClock(),
-                    onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-                        app.appearance.saveSchedule(
-                            NighttimeSchedule(fromHour, fromMinute, toHour, toMinute),
-                        )
-                        themeChanged()
-                    },
-                    onDismiss = dismiss,
-                )
                 AppearanceSettingsDialog.Font -> FontSelectionRoute(
                     readerMode = false,
                     onDismiss = dismiss,
@@ -315,58 +285,14 @@ private fun PortableThemeSettings(
                 app.appearance.schedule,
                 app.platform.timeFormatting.uses24HourClock(),
             ),
-            activeTheme = app.appearance.selection().theme,
+            activeDark = app.appearance.selection().dark,
+            dynamicColorAvailable = false,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onThemeChanged = ::themeChanged,
         dialogContent = { dialog, presenter, dismiss ->
-            val appearance = presenter.snapshot.appearance
             when (dialog) {
-                ThemeSettingsDialog.LightTheme -> ThemeSelectionDialog(
-                    nighttime = false,
-                    selected = appearance.lightTheme,
-                    selectionKind = ThemeSelectionKind.Light,
-                    title = "Light theme",
-                    onThemeSelected = { value ->
-                        presenter.setLightTheme(value)
-                        themeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
-                    },
-                )
-                ThemeSettingsDialog.DarkTheme -> ThemeSelectionDialog(
-                    nighttime = false,
-                    selected = appearance.darkTheme,
-                    selectionKind = ThemeSelectionKind.Dark,
-                    title = "Dark theme",
-                    onThemeSelected = { value ->
-                        presenter.setDarkTheme(value)
-                        themeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
-                    },
-                )
-                ThemeSettingsDialog.NighttimeTheme -> ThemeSelectionDialog(
-                    nighttime = true,
-                    selected = appearance.nighttimeTheme,
-                    selectionKind = ThemeSelectionKind.Dark,
-                    onThemeSelected = { value ->
-                        presenter.setTheme(value, nighttime = true)
-                        themeChanged()
-                        dismiss()
-                    },
-                    onDismiss = dismiss,
-                    previewPalettes = {
-                        ThemePreviewCatalog.palettes(it, appearance.accentPreset)
-                    },
-                )
                 ThemeSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
                     initialHours = app.appearance.schedule.toIntArray(),
                     is24Hour = app.platform.timeFormatting.uses24HourClock(),
@@ -394,7 +320,7 @@ private fun PortableStoriesSettings(
     StoriesSettingsRoute(
         repository = app.settings,
         previewModel = SettingsStoryPreviewModel.copy(
-            tintFallbackArgb = HarmonicTheme.colors.contentCardBackground.toArgb(),
+            tintFallbackArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgb(),
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,

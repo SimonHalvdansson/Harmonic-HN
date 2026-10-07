@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.animation.AnimatedContent
@@ -37,17 +38,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-
-/** Preserve the legacy white label when readable, including custom and dynamic accent colors. */
-internal fun commentCountContentColor(background: Color): Color =
-    if (1.05f / (background.luminance() + 0.05f) >= 4.5f) Color.White else Color.Black
 
 @Composable
 internal fun CommentMeta(
@@ -66,12 +61,12 @@ internal fun CommentMeta(
     animateChanges: Boolean,
     isNew: Boolean = false,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val metaColor = when {
-        byUser -> colors.accent
-        byOp -> colors.link
-        emphasized -> colors.contentPrimary
-        else -> colors.mutedText
+        byUser -> colors.primary
+        byOp -> colors.primary
+        emphasized -> colors.onSurface
+        else -> colors.onSurfaceVariant
     }
     val metaRadius by animateDpAsState(
         if (emphasized) 12.dp else 0.dp,
@@ -129,7 +124,7 @@ internal fun CommentMeta(
             modifier = Modifier
                 .clip(metaShape)
                 .background(metaBackground)
-                .border(1.dp, colors.commentDivider.copy(alpha = metaBorderAlpha), metaShape)
+                .border(1.dp, colors.outlineVariant.copy(alpha = metaBorderAlpha), metaShape)
                 .padding(horizontal = metaHorizontalPadding, vertical = metaVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -162,7 +157,7 @@ internal fun CommentMeta(
             Text(
                 hiddenPreview,
                 modifier = Modifier.weight(1f).padding(start = 6.dp),
-                color = colors.mutedText,
+                color = colors.onSurfaceVariant,
                 fontFamily = fontFamily,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -179,7 +174,7 @@ internal fun CommentMeta(
         ) {
             Box(
                 Modifier.size(6.dp)
-                    .background(colors.accent, RoundedCornerShape(50))
+                    .background(colors.primary, RoundedCornerShape(50))
                     .semantics { contentDescription = "New comment" },
             )
         }
@@ -190,12 +185,12 @@ internal fun CommentMeta(
                     .padding(start = if (isNew) 6.dp else 0.dp)
                     .graphicsLayer { alpha = hiddenReplyCountAlpha }
                     .clip(RoundedCornerShape(7.dp))
-                    .background(colors.commentCountIndicator)
+                    .background(colors.tertiary)
                     .padding(horizontal = 5.dp, vertical = 1.dp)
                     .then(
                         if (showHiddenReplyCount) Modifier else Modifier.clearAndSetSemantics { },
                     ),
-                color = commentCountContentColor(colors.commentCountIndicator),
+                color = colors.onTertiary,
                 fontFamily = fontFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,

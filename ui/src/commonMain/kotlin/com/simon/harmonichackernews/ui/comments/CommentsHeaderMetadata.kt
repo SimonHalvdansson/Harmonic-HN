@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 
+import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -25,7 +26,6 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -69,7 +69,7 @@ fun CommentsHeaderMetadata(
                 painterResource(Res.drawable.ic_link),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = HarmonicTheme.colors.iconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -87,12 +87,12 @@ private fun HeaderMetaItem(
             painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = HarmonicTheme.colors.iconTint,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             label,
             modifier = Modifier.padding(start = 3.dp),
-            color = HarmonicTheme.colors.mutedText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = typography.family,
             fontSize = typography.commentsHeaderMetaSize.sp,
             style = textStyle,

@@ -38,7 +38,7 @@ class StoryAiSummaryTest {
         val opened = mutableListOf<String>()
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 // The header places summary text outside its preview CompositionLocal scope.
                 StoryAiSummary(story.value, settings, onOpenLink = { opened += it })
             }

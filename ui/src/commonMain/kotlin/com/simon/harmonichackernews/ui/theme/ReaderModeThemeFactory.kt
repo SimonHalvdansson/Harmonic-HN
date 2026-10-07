@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.presentation.ReaderModeSourceAssembler
 import com.simon.harmonichackernews.presentation.ReaderModeTheme
@@ -19,19 +20,19 @@ data class ReaderModeFontData(
 /** Converts shared UI tokens and host-loaded font bytes into the common reader-mode protocol. */
 object ReaderModeThemeFactory {
     fun create(
-        colors: HarmonicColors,
+        colors: ColorScheme,
         light: Boolean,
         font: String?,
         fontSizePx: Int,
         fontData: ReaderModeFontData? = null,
     ): ReaderModeTheme = ReaderModeTheme(
         light = light,
-        backgroundColor = css(colors.readerModeBackground.toArgb()),
-        textColor = css(colors.textPrimary.toArgb()),
-        headingColor = css(colors.contentPrimary.toArgb()),
-        secondaryTextColor = css(colors.textSecondary.toArgb()),
-        linkColor = css(colors.link.toArgb()),
-        dividerColor = css(colors.commentDivider.toArgb()),
+        backgroundColor = css(colors.surface.toArgb()),
+        textColor = css(colors.onSurface.toArgb()),
+        headingColor = css(colors.onSurface.toArgb()),
+        secondaryTextColor = css(colors.onSurfaceVariant.toArgb()),
+        linkColor = css(colors.primary.toArgb()),
+        dividerColor = css(colors.outlineVariant.toArgb()),
         codeBackgroundColor = css(colors.surfaceContainerHigh.toArgb()),
         fontFaceCss = fontData?.fontFaceCss.orEmpty(),
         font = font,

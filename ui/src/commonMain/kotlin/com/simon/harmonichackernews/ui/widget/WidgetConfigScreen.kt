@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.widget
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -39,7 +40,6 @@ import com.simon.harmonichackernews.settings.SurfaceEffectPreferences
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.stories.StoryTypeDropdownMenu
 import com.simon.harmonichackernews.ui.settings.*
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.LocalHazePreferences
@@ -99,7 +99,7 @@ fun WidgetConfigScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .then(if (pinPreview) Modifier.weight(1f) else Modifier)
-                        .background(HarmonicTheme.colors.background)
+                        .background(MaterialTheme.colorScheme.surface)
                         .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                         .padding(bottom = 112.dp),
@@ -167,13 +167,13 @@ fun WidgetConfigScreen(
                 .shadow(if (LocalHazeGlassEnabled.current) 2.dp else 6.dp, buttonShape, clip = false)
                 .sharedHazeBackground(
                     hazeState = hazeState,
-                    surfaceColor = HarmonicTheme.colors.overlayButton.copy(alpha = 0.8f),
+                    surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                     shape = buttonShape,
                     glassAppearance = HazeGlassAppearance.FloatingButton,
                 ),
             shape = buttonShape,
             containerColor = Color.Transparent,
-            contentColor = HarmonicTheme.colors.overlayButtonContent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
         ) {
             Icon(painterResource(Res.drawable.ic_check), null)
@@ -246,21 +246,21 @@ private val WidgetPreviewStories = listOf(
 /** Fixed widget viewport with animated Glance-equivalent rows and an independent scroll boundary. */
 @Composable
 private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, paletteTintConfigKey: String, fontFamily: FontFamily) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     Column(
         Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
-            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.background),
+            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.surface),
     ) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
             Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->
-                Text(feed.label, color = colors.textPrimary, fontWeight = FontWeight.Bold, fontFamily = family, fontSize = WidgetTypography.HEADER_SIZE.sp,
+                Text(feed.label, color = colors.onSurface, fontWeight = FontWeight.Bold, fontFamily = family, fontSize = WidgetTypography.HEADER_SIZE.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, style = LocalWidgetTextStyle.current)
             }
             Crossfade(fontFamily, label = "Widget status font") { family ->
-                Text("Updated just now", Modifier.padding(start = 8.dp), color = colors.textSecondary,
+                Text("Updated just now", Modifier.padding(start = 8.dp), color = colors.onSurfaceVariant,
                     fontFamily = family, fontSize = WidgetTypography.METADATA_SIZE.sp, maxLines = 1, style = LocalWidgetTextStyle.current)
             }
-            Icon(painterResource(Res.drawable.ic_refresh), null, Modifier.size(48.dp).padding(12.dp), tint = colors.textPrimary)
+            Icon(painterResource(Res.drawable.ic_refresh), null, Modifier.size(48.dp).padding(12.dp), tint = colors.onSurface)
         }
         LazyColumn(Modifier.fillMaxWidth().weight(1f).nestedScroll(PreviewScrollBoundary)
             .semantics { contentDescription = "Widget preview" }, contentPadding = PaddingValues(bottom = WidgetDimensions.listBottomPadding)) {

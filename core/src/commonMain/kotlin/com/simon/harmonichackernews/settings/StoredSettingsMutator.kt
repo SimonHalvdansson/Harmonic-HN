@@ -204,56 +204,46 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.STORY_LIST_SELECTOR, value.storedValue)
     }
 
-    fun setTheme(value: String) {
-        store.update {
-            putString(ThemePreferences.KEY, value)
-            putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, ThemePreferences.isAutomatic(value))
-            if (ThemePreferences.isAutomatic(value)) {
-                putString(ThemePreferences.LIGHT_KEY, ThemePreferences.pairedLightTheme(value))
-                putString(ThemePreferences.DARK_KEY, ThemePreferences.pairedDarkTheme(value))
-            } else if (ThemePreferences.isDark(value)) {
-                putBoolean(ThemePreferences.MANUAL_DARK_KEY, true)
-                putString(ThemePreferences.DARK_KEY, ThemePreferences.selectableDarkTheme(value))
-            } else {
-                putBoolean(ThemePreferences.MANUAL_DARK_KEY, false)
-                putString(ThemePreferences.LIGHT_KEY, ThemePreferences.selectableLightTheme(value))
-            }
-        }
+    fun setColorScheme(value: String, dark: Boolean) {
+        val current = ColorSchemePreferences.read(store)
+        val scheme = ColorSchemePreferences.sanitize(value)
+        ColorSchemePreferences.write(store, when {
+            current.coupled -> current.copy(light = scheme, dark = scheme)
+            dark -> current.copy(dark = scheme)
+            else -> current.copy(light = scheme)
+        })
     }
+
+    fun setColorStyle(value: ColorSchemeStyle, dark: Boolean) {
+        val current = ColorSchemePreferences.read(store)
+        ColorSchemePreferences.write(store, when {
+            current.coupled -> current.copy(lightStyle = value, darkStyle = value)
+            dark -> current.copy(darkStyle = value)
+            else -> current.copy(lightStyle = value)
+        })
+    }
+
+    fun setColorSchemesCoupled(value: Boolean, displayedDark: Boolean) {
+        val current = ColorSchemePreferences.read(store)
+        val scheme = current.forMode(displayedDark)
+        val style = current.styleForMode(displayedDark)
+        ColorSchemePreferences.write(store, if (value) current.copy(
+            light = scheme, dark = scheme, lightStyle = style, darkStyle = style, coupled = true,
+        ) else current.copy(coupled = false))
+    }
+
+    fun setNighttimeColorStyle(value: ColorSchemeStyle) = ColorSchemePreferences.write(
+        store, ColorSchemePreferences.read(store).copy(nighttimeStyle = value),
+    )
+
+    fun setNighttimeColorScheme(value: String) = ColorSchemePreferences.write(
+        store, ColorSchemePreferences.read(store).copy(nighttime = ColorSchemePreferences.sanitize(value)),
+    )
 
     fun setFollowSystem(value: Boolean) =
         store.putBoolean(ThemePreferences.FOLLOW_SYSTEM_KEY, value)
 
     fun setManualDark(value: Boolean) = store.putBoolean(ThemePreferences.MANUAL_DARK_KEY, value)
-
-    fun setLightTheme(value: String) =
-        store.putString(ThemePreferences.LIGHT_KEY, ThemePreferences.selectableLightTheme(value))
-
-    fun setDarkTheme(value: String) =
-        store.putString(ThemePreferences.DARK_KEY, ThemePreferences.selectableDarkTheme(value))
-
-    fun setAccentPreset(value: String) =
-        store.putString(ThemePreferences.ACCENT_KEY, ThemePreferences.sanitizeAccent(value))
-
-    fun setThemePair(lightTheme: String, darkTheme: String) {
-        store.update {
-            putString(
-                ThemePreferences.LIGHT_KEY,
-                ThemePreferences.selectableLightTheme(lightTheme),
-            )
-            putString(
-                ThemePreferences.DARK_KEY,
-                ThemePreferences.selectableDarkTheme(darkTheme),
-            )
-        }
-    }
-
-    fun setNighttimeTheme(value: String) {
-        store.putString(
-            ThemePreferences.NIGHTTIME_KEY,
-            ThemePreferences.selectableNighttimeTheme(value),
-        )
-    }
 
     fun setGeneralBoolean(preference: GeneralBooleanPreference, value: Boolean) {
         store.putBoolean(preference.storageKey, value)

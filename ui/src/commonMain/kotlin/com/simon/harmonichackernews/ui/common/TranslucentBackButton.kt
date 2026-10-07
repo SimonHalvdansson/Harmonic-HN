@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.painterResource
 import dev.chrisbanes.haze.HazeSourceSelection
 
@@ -59,7 +58,7 @@ fun TranslucentBackButton(
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     // Read in composition so each frame supplies a new immutable shape. Shadow renderers cache
@@ -161,7 +160,7 @@ fun TranslucentBackButton(
                                 painter = painterResource(Res.drawable.ic_arrow_back),
                                 contentDescription = "Back",
                                 modifier = Modifier.size(20.dp),
-                                colorFilter = ColorFilter.tint(colors.iconTint),
+                                colorFilter = ColorFilter.tint(colors.onSurfaceVariant),
                             )
                         }
                         ModalControlScrim(0f, shape, modalScrimActive)

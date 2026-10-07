@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -68,7 +69,6 @@ import com.simon.harmonichackernews.resources.web_preview
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.math.roundToInt
 
@@ -187,14 +187,14 @@ fun StoryRow(
     onPreviewLoadFailed: (() -> Unit)? = null,
     onPreviewTintExtracted: ((Int) -> Unit)? = null,
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
-    pageBackground: Color = HarmonicTheme.colors.background,
+    pageBackground: Color = MaterialTheme.colorScheme.surface,
     typographyOverride: ContentTypography? = null,
     cardPadding: PaddingValues = PaddingValues(
         horizontal = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
         vertical = 4.dp,
     ),
 ) {
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val typography = typographyOverride ?: rememberContentTypography(
         preferredFont = style.preferredFont,
         storyTextSize = style.textSize,
@@ -610,8 +610,8 @@ private fun StoryMainContent(
     modifier: Modifier,
 ) {
     val foreground = readStateForeground(
-        HarmonicTheme.colors.contentPrimary,
-        HarmonicTheme.colors.mutedText,
+        MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.onSurfaceVariant,
         dimAlpha,
     )
     val titleSize = if (animateChanges) {
@@ -746,7 +746,7 @@ private fun StoryMainContent(
                                 onPositioned = { itemGeometry.summaryCoordinates = it },
                                 onLayerChanged = { itemGeometry.summaryLayer = it },
                             ),
-                        color = HarmonicTheme.colors.mutedText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = typography.family,
                         fontSize = summarySize.sp,
                         maxLines = 3,

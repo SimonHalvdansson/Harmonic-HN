@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.material3.Surface
@@ -187,10 +188,10 @@ private fun IosApp(
         initial = bootstrap.app.appearance.selection(),
     )
     val palette = remember(selection) {
-        HarmonicThemeCatalog.resolve(selection.theme, selection.dark, selection.accentPreset)
+        HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
     }
     SideEffect {
-        appearance.setAppearance(selection.dark, palette.colors.background.toArgb())
+        appearance.setAppearance(selection.dark, palette.colorScheme.surface.toArgb())
     }
     LaunchedEffect(bootstrap.app.launchState) {
         when (
@@ -288,8 +289,8 @@ private fun IosApp(
     ProvideHarmonicUiDependencies(
         HarmonicUiDependencies(bootstrap.app, scene),
     ) {
-        HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
-            Surface(Modifier.fillMaxSize(), color = HarmonicTheme.colors.background) {
+        HarmonicTheme(palette.colorScheme, palette.dark) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                 IosAppContent(
                     app = bootstrap.app,
                     scene = scene,
@@ -604,7 +605,7 @@ private fun IosStoriesContent(
         created
     }
     val state by store.state.collectAsState()
-    val colors = HarmonicTheme.colors
+    val colors = MaterialTheme.colorScheme
     val filterColors = harmonicFilterButtonColors()
 
     SideEffect { onControllerChanged(controller) }
@@ -682,7 +683,7 @@ private fun IosStoriesContent(
     Box(
         Modifier
             .fillMaxSize()
-            .background(HarmonicTheme.colors.background),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         StoriesRoute(
             controller = controller,
@@ -690,7 +691,7 @@ private fun IosStoriesContent(
             filterColors = filterColors,
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
-        IosStatusBarProtection(HarmonicTheme.colors.background)
+        IosStatusBarProtection(MaterialTheme.colorScheme.surface)
         if (controller.isStoryPreviewShowing()) {
             IosStoryPreviewOverlay(app, controller)
         }

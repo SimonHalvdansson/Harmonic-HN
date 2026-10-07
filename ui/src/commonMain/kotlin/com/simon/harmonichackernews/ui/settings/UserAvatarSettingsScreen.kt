@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -49,7 +50,6 @@ import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.CommentRowModel
 import com.simon.harmonichackernews.ui.content.UserAvatar
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -144,7 +144,7 @@ fun UserAvatarSettingsScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         style.label, modifier = Modifier.weight(1f),
-                                        color = HarmonicTheme.colors.textPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontFamily = ProductSansFontFamily, fontSize = 16.sp,
                                     )
                                     Checkbox(checked = selected, onCheckedChange = null, enabled = canToggle)

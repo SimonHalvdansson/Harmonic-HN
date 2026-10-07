@@ -117,7 +117,7 @@ fun CommentsSearchContent(
     CommentSearchScreen(
         searchTerm = searchTerm,
         visibleComments = visibleComments,
-        mutedColor = HarmonicTheme.colors.mutedText,
+        mutedColor = MaterialTheme.colorScheme.onSurfaceVariant,
         fontFamily = ProductSansFontFamily,
         onSearchTermChanged = onSearchTermChanged,
         requestFocus = requestFocus,

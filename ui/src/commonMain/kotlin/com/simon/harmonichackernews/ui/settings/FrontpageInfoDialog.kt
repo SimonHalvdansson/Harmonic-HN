@@ -45,14 +45,13 @@ import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.common.platformDialogPredictiveBackSupported
 import com.simon.harmonichackernews.ui.common.platformDialogProperties
 import com.simon.harmonichackernews.ui.stories.menuIcon
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 internal fun FrontpageInfoButton(
     type: StoryType,
-    tint: Color = HarmonicTheme.colors.iconTint,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     isTransformSource: Boolean = false,
     onClick: () -> Unit,
 ) {
@@ -164,13 +163,13 @@ internal fun FrontpageInfoDialog(
                                 painterResource(type.menuIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp),
-                                tint = HarmonicTheme.colors.iconTint,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             SettingsDialogTitle(type.label)
                         }
                         Text(
                             text = description,
-                            color = HarmonicTheme.colors.textPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = ProductSansFontFamily,
                             fontSize = 16.sp,
                             lineHeight = 24.sp,

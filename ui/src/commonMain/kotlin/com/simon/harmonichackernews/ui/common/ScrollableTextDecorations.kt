@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
@@ -14,7 +15,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 /** Apply before verticalScroll, to the content viewport only, never its translucent background. */
 internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
@@ -55,7 +55,7 @@ internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
 
 @Composable
 internal fun ScrollableTextScrollbar(state: ScrollState, modifier: Modifier = Modifier) {
-    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
+    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
     Canvas(modifier) { drawScrollThumb(state, thumbColor) }
 }
 
@@ -69,7 +69,7 @@ internal fun ScrollableTextDecorations(
     val viewportSize = state.viewportSize
     if (maxValue <= 0 || viewportSize <= 0) return
 
-    val thumbColor = HarmonicTheme.colors.mutedText.copy(alpha = 0.55f)
+    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
     val density = LocalDensity.current
     Canvas(modifier = modifier) {
         val fadeLengthPx = with(density) {

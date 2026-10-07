@@ -26,7 +26,7 @@ class SettingsListEditorRegressionTest {
         var savedItems: List<String>? = null
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 StringListEditorDialog(
                     title = "Filter by story title",
                     subtitle = "Hide stories containing these words",

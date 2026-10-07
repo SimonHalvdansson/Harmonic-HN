@@ -56,8 +56,8 @@ class NighttimeScheduleStoreTest {
 
         val selections = runtime.selections.take(2).toList()
 
-        assertEquals(ThemePreferences.DEFAULT_LIGHT, selections.first().theme)
-        assertEquals("amoled", selections.last().theme)
+        assertEquals("dynamic", selections.first().colorScheme)
+        assertEquals("pure", selections.last().colorScheme)
         assertEquals(true, selections.last().dark)
     }
 
@@ -100,7 +100,7 @@ class NighttimeScheduleStoreTest {
             systemDark = { false },
         )
 
-        assertEquals("white", runtime.selection().theme)
+        assertEquals("pure", runtime.selection().colorScheme)
         assertEquals(false, runtime.selection().dark)
     }
 
@@ -123,53 +123,32 @@ class NighttimeScheduleStoreTest {
             systemDark = { false },
         )
 
-        assertEquals("white", runtime.selection().theme)
+        assertEquals("pure", runtime.selection().colorScheme)
         assertEquals(0, clockReads)
         settings.putBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, true)
-        assertEquals("gray", runtime.selection().theme)
+        assertEquals("gray", runtime.selection().colorScheme)
         schedules.save(NighttimeSchedule(fromHour = 22))
-        assertEquals("white", runtime.selection().theme)
+        assertEquals("pure", runtime.selection().colorScheme)
         minutes = 23 * 60
-        assertEquals("gray", runtime.selection().theme)
+        assertEquals("gray", runtime.selection().colorScheme)
         minutes = 6 * 60
-        assertEquals("white", runtime.selection().theme)
+        assertEquals("pure", runtime.selection().colorScheme)
         assertEquals(4, clockReads)
         settings.putBoolean(UserPreferenceKeys.SPECIAL_NIGHTTIME, false)
-        assertEquals("white", runtime.selection().theme)
+        assertEquals("pure", runtime.selection().colorScheme)
         assertEquals(4, clockReads)
     }
 
     @Test
     fun manualAndScheduledSelectionsUseTheirDedicatedPalettes() {
-        val manual = ThemeSelectionPolicy.select(
-            configuredTheme = ThemePreferences.DEFAULT,
-            nighttimeTheme = "gray",
-            useSpecialNighttimeTheme = false,
-            schedule = NighttimeSchedule(),
-            currentMinutesFromMidnight = 12 * 60,
-            systemDark = true,
-            followSystem = false,
-            manualDark = false,
-            lightTheme = "white",
-            darkTheme = "amoled",
-            accentPreset = ThemePreferences.ACCENT_ROSE,
-        )
-        val scheduled = ThemeSelectionPolicy.select(
-            configuredTheme = ThemePreferences.DEFAULT,
-            nighttimeTheme = "gray",
-            useSpecialNighttimeTheme = true,
-            schedule = NighttimeSchedule(),
-            currentMinutesFromMidnight = 23 * 60,
-            systemDark = false,
-            followSystem = true,
-            lightTheme = "white",
-            darkTheme = "amoled",
-        )
-
-        assertEquals("white", manual.theme)
+        val schemes = ColorSchemeSelection("pure", "classic", false, "gray")
+        val manual = ThemeSelectionPolicy.select(schemes, false, false, true,
+            false, NighttimeSchedule(), 12 * 60)
+        val scheduled = ThemeSelectionPolicy.select(schemes, true, false, false,
+            true, NighttimeSchedule(), 23 * 60)
+        assertEquals("pure", manual.colorScheme)
         assertEquals(false, manual.dark)
-        assertEquals(ThemePreferences.ACCENT_ROSE, manual.accentPreset)
-        assertEquals("gray", scheduled.theme)
+        assertEquals("gray", scheduled.colorScheme)
         assertEquals(true, scheduled.dark)
     }
 }

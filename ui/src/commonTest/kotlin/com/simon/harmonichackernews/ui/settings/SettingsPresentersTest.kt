@@ -125,9 +125,9 @@ class SettingsPresentersTest {
         )
         assertEquals(
             setOf(SettingsPlatformEffect.ThemeChanged),
-            presenter.setTheme("amoled", nighttime = false),
+            presenter.setColorScheme("pure", dark = true),
         )
-        assertEquals("amoled", presenter.snapshot.appearance.theme)
+        assertEquals("pure", presenter.snapshot.appearance.colorSchemes.dark)
     }
 
     @Test

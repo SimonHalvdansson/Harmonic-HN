@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
@@ -79,7 +79,7 @@ fun FaviconProviderDialog(
                         Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(
                                 text = provider.label,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = ProductSansFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -87,7 +87,7 @@ fun FaviconProviderDialog(
                             )
                             Text(
                                 text = provider.urlTemplate,
-                                color = HarmonicTheme.colors.mutedText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = GoogleSansCodeFontFamily,
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
@@ -144,7 +144,7 @@ fun CommentsProviderDialog(
                         Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                             Text(
                                 text = provider.label,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = ProductSansFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -156,7 +156,7 @@ fun CommentsProviderDialog(
                                 } else {
                                     "Fast threaded results from Algolia's HN search API"
                                 },
-                                color = HarmonicTheme.colors.mutedText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 12.sp,
                                 lineHeight = 15.sp,

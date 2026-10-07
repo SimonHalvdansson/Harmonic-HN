@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.ColorSchemeStyle
+
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
@@ -273,46 +275,32 @@ class AppearanceSettingsPresenter(
         }
     }
 
-    fun setTheme(value: String, nighttime: Boolean): Set<SettingsPlatformEffect> {
-        if (nighttime) repository.setNighttimeTheme(value) else repository.setTheme(value)
-        return setOf(SettingsPlatformEffect.ThemeChanged)
-    }
-
     fun themeState(
         nighttimeRangeLabel: String,
-        activeTheme: String,
-        materialYouAvailable: Boolean,
+        activeDark: Boolean,
+        dynamicColorAvailable: Boolean,
         settings: AppSettings = repository.snapshot(),
     ): ThemeSettingsUiState = ThemeSettingsUiState(
         followSystem = settings.appearance.followSystem,
         manualDark = settings.appearance.manualDark,
-        lightTheme = settings.appearance.lightTheme,
-        darkTheme = settings.appearance.darkTheme,
-        accentPreset = settings.appearance.accentPreset,
+        schemes = settings.appearance.colorSchemes,
+        activeDark = activeDark,
         specialNighttime = settings.general.specialNighttimeTheme,
         nighttimeRangeLabel = nighttimeRangeLabel,
-        nighttimeTheme = settings.appearance.nighttimeTheme,
-        activeTheme = activeTheme,
-        materialYouAvailable = materialYouAvailable,
+        dynamicColorAvailable = dynamicColorAvailable,
     )
 
-    fun setFollowSystem(value: Boolean) = themeEffect {
-        repository.setFollowSystemTheme(value)
+    fun setFollowSystem(value: Boolean) = themeEffect { repository.setFollowSystemTheme(value) }
+    fun setManualDark(value: Boolean) = themeEffect { repository.setManualDarkTheme(value) }
+    fun setColorScheme(value: String, dark: Boolean) = themeEffect { repository.setColorScheme(value, dark) }
+    fun setCoupled(value: Boolean, activeDark: Boolean) = themeEffect {
+        repository.setColorSchemesCoupled(value, activeDark)
     }
-
-    fun setManualDark(value: Boolean) = themeEffect {
-        repository.setManualDarkTheme(value)
-    }
-
-    fun setLightTheme(value: String) = themeEffect { repository.setLightTheme(value) }
-    fun setDarkTheme(value: String) = themeEffect { repository.setDarkTheme(value) }
-    fun setAccent(value: String) = themeEffect { repository.setThemeAccent(value) }
+    fun setColorStyle(value: ColorSchemeStyle, dark: Boolean) = themeEffect { repository.setColorStyle(value, dark) }
+    fun setNighttimeColorStyle(value: ColorSchemeStyle) = themeEffect { repository.setNighttimeColorStyle(value) }
+    fun setNighttimeColorScheme(value: String) = themeEffect { repository.setNighttimeColorScheme(value) }
     fun setSpecialNighttime(value: Boolean) = themeEffect {
         repository.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, value)
-    }
-
-    fun setPair(pair: ThemePairPreset) = themeEffect {
-        repository.setThemePair(pair.lightTheme, pair.darkTheme)
     }
 
     private inline fun themeEffect(change: () -> Unit): Set<SettingsPlatformEffect> {

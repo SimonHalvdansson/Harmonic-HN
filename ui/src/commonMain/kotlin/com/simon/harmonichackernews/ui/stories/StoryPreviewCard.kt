@@ -85,7 +85,6 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.NetworkImage
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -294,7 +293,7 @@ fun StoryPreviewCard(
                             StoryTitleText(
                                 text = currentTitle,
                                 badge = storyTitle.badge,
-                                color = HarmonicTheme.colors.contentPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = typography.family,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = (typography.storyTitleSize + 2.5f).sp,
@@ -314,22 +313,22 @@ fun StoryPreviewCard(
                                     modifier = Modifier.size(17.dp),
                                     placeholder = tintedPainterResource(
                                         Res.drawable.ic_public,
-                                        HarmonicTheme.colors.iconTint,
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
                                     ),
                                     error = tintedPainterResource(
                                         Res.drawable.ic_public,
-                                        HarmonicTheme.colors.iconTint,
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
                                     ),
                                     fallback = tintedPainterResource(
                                         Res.drawable.ic_public,
-                                        HarmonicTheme.colors.iconTint,
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
                                     ),
                                 )
                                 Spacer(Modifier.width(4.dp))
                             }
                             Text(
                                 text = meta,
-                                color = HarmonicTheme.colors.mutedText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = typography.storyMetaFamily,
                                 fontSize = typography.storyMetaSize.sp,
                                 lineHeight = (typography.storyMetaSize + 3f).sp,
@@ -360,7 +359,7 @@ fun StoryPreviewCard(
                                 SelectionContainer {
                                     Text(
                                         text = currentDescription,
-                                        color = HarmonicTheme.colors.contentPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontFamily = typography.family,
                                         fontSize = typography.commentTextSize.sp,
                                         lineHeight = (typography.commentTextSize + 2f).sp,
@@ -380,7 +379,7 @@ fun StoryPreviewCard(
                     Column(Modifier.fillMaxWidth()) {
                         HorizontalDivider(
                             modifier = Modifier.padding(top = 10.dp),
-                            color = HarmonicTheme.colors.contentPrimary.copy(alpha = 0.35f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                         )
                         Row(
                             modifier = Modifier
@@ -483,7 +482,7 @@ fun StoryPreviewCard(
                                     colors = ButtonDefaults.elevatedButtonColors(
                                         containerColor =
                                             MaterialTheme.colorScheme.surfaceContainerLow,
-                                        contentColor = HarmonicTheme.colors.contentPrimary,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                                 ) {
                                     Icon(
@@ -629,7 +628,7 @@ private fun RowScope.StoryPreviewActionIcon(
                         Icon(
                             painterResource(visual.icon),
                             contentDescription = visual.description,
-                            tint = HarmonicTheme.colors.iconTint,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -690,8 +689,8 @@ private fun StoryPreviewShimmer(modifier: Modifier = Modifier) {
         ),
         label = "story preview shimmer progress",
     )
-    val base = HarmonicTheme.colors.mutedText.copy(alpha = 0.14f)
-    val highlight = HarmonicTheme.colors.mutedText.copy(alpha = 0.25f)
+    val base = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)
+    val highlight = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
     Box(
         modifier.background(
             Brush.horizontalGradient(

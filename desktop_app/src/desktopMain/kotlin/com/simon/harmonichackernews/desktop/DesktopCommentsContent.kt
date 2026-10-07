@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.desktop
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,6 @@ import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 private class DesktopCommentsHost(
@@ -311,8 +311,8 @@ private fun DesktopCommentsHeader(
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
 ) {
-    val colors = HarmonicTheme.colors
-    val tintBase = colors.contentCardBackground.toArgb()
+    val colors = MaterialTheme.colorScheme
+    val tintBase = colors.surfaceContainerLow.toArgb()
     val presentation = remember(
         controller.story,
         controller.contentVersion,
@@ -485,7 +485,7 @@ private fun DesktopReferencePreview(
                         else Modifier.size(104.dp),
                     )
                     .clip(shape)
-                    .background(HarmonicTheme.colors.surfaceContainerHighest)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .clickable(enabled = imageUrl != null, onClick = onClick),
             ) {
                 if (loading) LinkPreviewShimmer(Modifier.fillMaxSize())

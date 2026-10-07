@@ -202,15 +202,15 @@ class AppSettingsRepository(
 
     fun setStoryListSelector(value: StoryListSelector) = mutator.setStoryListSelector(value)
 
-    fun setTheme(value: String) = mutator.setTheme(value)
-    fun setNighttimeTheme(value: String) = mutator.setNighttimeTheme(value)
+    fun setColorScheme(value: String, dark: Boolean) = mutator.setColorScheme(value, dark)
+    fun setColorSchemesCoupled(value: Boolean, displayedDark: Boolean) =
+        mutator.setColorSchemesCoupled(value, displayedDark)
+    fun setColorStyle(value: ColorSchemeStyle, dark: Boolean) = mutator.setColorStyle(value, dark)
+    fun setNighttimeColorStyle(value: ColorSchemeStyle) = mutator.setNighttimeColorStyle(value)
+    fun setNighttimeColorScheme(value: String) = mutator.setNighttimeColorScheme(value)
     fun setFollowSystemTheme(value: Boolean) = mutator.setFollowSystem(value)
     fun setManualDarkTheme(value: Boolean) = mutator.setManualDark(value)
-    fun setLightTheme(value: String) = mutator.setLightTheme(value)
-    fun setDarkTheme(value: String) = mutator.setDarkTheme(value)
-    fun setThemeAccent(value: String) = mutator.setAccentPreset(value)
-    fun setThemePair(lightTheme: String, darkTheme: String) =
-        mutator.setThemePair(lightTheme, darkTheme)
+
 
     fun setGeneralBoolean(preference: GeneralBooleanPreference, value: Boolean) =
         mutator.setGeneralBoolean(preference, value)

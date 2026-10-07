@@ -70,7 +70,7 @@ class WidgetPreviewParityTest {
                 override suspend fun provideGlance(context: Context, id: GlanceId) {
                     provideContent {
                         WidgetStoryRow(context, WidgetEntry(story.toDestination(true), null, null, null), 0,
-                            configuration, WidgetColors(HarmonicThemeCatalog.resolve("light", false).colors),
+                            configuration, WidgetColors(HarmonicThemeCatalog.resolve("light", false).colorScheme),
                             WidgetVisual(image.takeIf { hasImage }, null, null))
                     }
                 }
@@ -79,9 +79,9 @@ class WidgetPreviewParityTest {
         var nativeRoot: View? = null
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalWidgetTextStyle provides TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))) {
-                    Column(Modifier.width(360.dp).background(palette.colors.background)) {
+                    Column(Modifier.width(360.dp).background(palette.colorScheme.surface)) {
                         Text("Configuration preview")
                         WidgetPreviewStoryRow(SettingsStoryPreviewModel.copy(index = "1.", title = "Patterns", points = 291,
                             commentCount = 108, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,

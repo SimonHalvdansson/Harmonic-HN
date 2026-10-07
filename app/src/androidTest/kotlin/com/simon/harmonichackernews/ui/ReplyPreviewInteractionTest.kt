@@ -39,7 +39,7 @@ class ReplyPreviewInteractionTest {
     @Test fun originalCommentSupportsSelectionBelowTheCompactReplyToolbar() {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 EditorScreen(
                     type = EditorType.COMMENT_REPLY,
                     parentText = "Selectable original comment.<p>More context.</p>".repeat(12),
@@ -66,7 +66,7 @@ class ReplyPreviewInteractionTest {
         val scroll = ScrollState(0)
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colors, palette.colorScheme, palette.dark) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.size(160.dp, 100.dp).background(Color.White).testTag("fade")) {
                     Box(Modifier.verticalScroll(scroll)) {
                         Box(Modifier.fillMaxWidth().height(400.dp).background(Color.Black))

@@ -50,7 +50,7 @@ import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.ThemeSelection
-import com.simon.harmonichackernews.ui.theme.HarmonicColors
+import androidx.compose.material3.ColorScheme
 import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
 import com.simon.harmonichackernews.ui.widget.WidgetTypography
 import com.simon.harmonichackernews.ui.widget.WidgetDimensions
@@ -87,8 +87,8 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 )
                 if (settings.appearance.followSystem && !scheduledNight) {
                     WidgetColors(
-                        widgetPalette(context, selection.copy(theme = settings.appearance.lightTheme, dark = false)),
-                        widgetPalette(context, selection.copy(theme = settings.appearance.darkTheme, dark = true)),
+                        widgetPalette(context, ThemeSelection.forScheme(settings.appearance.colorSchemes.light, false, settings.appearance.colorSchemes.lightStyle)),
+                        widgetPalette(context, ThemeSelection.forScheme(settings.appearance.colorSchemes.dark, true, settings.appearance.colorSchemes.darkStyle)),
                     )
                 } else WidgetColors(widgetPalette(context, selection))
             }
@@ -109,10 +109,10 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                             sample.getPixels(pixels, 0, 48, 0, 0, 48, 48)
                             HarmonicPaletteExtractor(pixels.size).extract(pixels).toPreviewTintPalette()
                         }
-                        fun tint(theme: HarmonicColors) = palette?.let {
+                        fun tint(theme: ColorScheme) = palette?.let {
                             val config = app.userSettings.story.paletteTintConfigKey
-                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.contentCardBackground.toArgb(), it, config)
-                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.background.toArgb(), config)
+                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.surfaceContainerLow.toArgb(), it, config)
+                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.surface.toArgb(), config)
                         }
                         entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
                             entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night))
@@ -177,20 +177,20 @@ class StoriesGlanceWidget : GlanceAppWidget() {
 internal data class WidgetVisual(val image: Bitmap?, val tint: Int?, val favicon: Bitmap?, val nightTint: Int? = tint)
 
 /** Day/night colors are resolved by the launcher even while the application process is stopped. */
-internal data class WidgetColors(val day: HarmonicColors, val night: HarmonicColors = day) {
-    val background = ColorProvider(day.background, night.background)
-    val contentCardBackground = ColorProvider(day.contentCardBackground, night.contentCardBackground)
-    val textPrimary = ColorProvider(day.textPrimary, night.textPrimary)
-    val contentPrimary = ColorProvider(day.contentPrimary, night.contentPrimary)
-    val textSecondary = ColorProvider(day.textSecondary, night.textSecondary)
+internal data class WidgetColors(val day: ColorScheme, val night: ColorScheme = day) {
+    val background = ColorProvider(day.surface, night.surface)
+    val contentCardBackground = ColorProvider(day.surfaceContainerLow, night.surfaceContainerLow)
+    val textPrimary = ColorProvider(day.onSurface, night.onSurface)
+    val contentPrimary = ColorProvider(day.onSurface, night.onSurface)
+    val textSecondary = ColorProvider(day.onSurfaceVariant, night.onSurfaceVariant)
     val outlineVariant = ColorProvider(day.outlineVariant, night.outlineVariant)
     val raisedFrame = ColorProvider(day.outlineVariant.copy(alpha = 0.5f), night.outlineVariant.copy(alpha = 0.5f))
-    val metricBackground = ColorProvider(day.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha), night.contentCardBackground.copy(alpha = WidgetDimensions.metricBackgroundAlpha))
+    val metricBackground = ColorProvider(day.surfaceContainerLow.copy(alpha = WidgetDimensions.metricBackgroundAlpha), night.surfaceContainerLow.copy(alpha = WidgetDimensions.metricBackgroundAlpha))
     val standaloneMetricBackground = ColorProvider(day.surfaceContainerHighest, night.surfaceContainerHighest)
 }
 
-private fun widgetPalette(context: Context, selection: ThemeSelection): HarmonicColors =
-    harmonicThemePalette(context, selection).colors
+private fun widgetPalette(context: Context, selection: ThemeSelection): ColorScheme =
+    harmonicThemePalette(context, selection).colorScheme
 
 @Composable
 internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, configuration: WidgetConfiguration, colors: WidgetColors, visual: WidgetVisual?, availableWidth: Int = 360, fontFamily: FontFamily = FontFamily.SansSerif, isLast: Boolean = false) {
@@ -356,7 +356,7 @@ internal fun widgetFailureDescription(error: Throwable?): String = error?.let {
 internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable): RemoteViews {
     val app = context.harmonicAppComposition
     val selection = app.appearance.selection()
-    val colors = harmonicThemePalette(context, selection).colors
+    val colors = harmonicThemePalette(context, selection).colorScheme
     val message = if (app.userSettings.debug.showWidgetDebugInfo) {
         "Widget $widgetId could not render\n${widgetFailureDescription(error)}\nTap to retry."
     } else "Could not display stories. Tap to retry."
@@ -365,8 +365,8 @@ internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable)
         .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(widgetId))
     return RemoteViews(context.packageName, R.layout.widget_error).apply {
         setTextViewText(R.id.widget_error_message, message)
-        setTextColor(R.id.widget_error_message, colors.textPrimary.toArgb())
-        setInt(R.id.widget_error_message, "setBackgroundColor", colors.background.toArgb())
+        setTextColor(R.id.widget_error_message, colors.onSurface.toArgb())
+        setInt(R.id.widget_error_message, "setBackgroundColor", colors.surface.toArgb())
         setOnClickPendingIntent(R.id.widget_error_message,
             PendingIntent.getBroadcast(context, widgetId, retry, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }

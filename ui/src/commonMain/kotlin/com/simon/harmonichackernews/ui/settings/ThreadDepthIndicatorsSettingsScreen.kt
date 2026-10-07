@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,7 +28,6 @@ import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.ui.content.CommentRow
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
@@ -195,7 +195,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                             Text(
                                 text = CommentDepthPreferences.modeLabel(option),
                                 modifier = Modifier.padding(start = 4.dp),
-                                color = HarmonicTheme.colors.textPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = ProductSansFontFamily,
                                 fontSize = 16.sp,
                             )

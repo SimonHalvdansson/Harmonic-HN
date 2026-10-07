@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -37,7 +38,6 @@ import com.simon.harmonichackernews.ui.common.TranslucentBackButton
 import com.simon.harmonichackernews.ui.editor.EditorScreen
 import com.simon.harmonichackernews.ui.session.EditorScreenSession
 import com.simon.harmonichackernews.ui.submissions.SubmissionsRoute
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 @Composable
 internal fun IosSubmissionsContent(
@@ -78,7 +78,7 @@ internal fun IosSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(HarmonicTheme.colors.background)
+                .background(MaterialTheme.colorScheme.surface)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(
                         WindowInsetsSides.Horizontal,
@@ -96,7 +96,7 @@ internal fun IosSubmissionsContent(
                 reserveBackButtonSpace = true,
                 onOpenLink = { scene.links.open(it) },
             )
-            IosStatusBarProtection(HarmonicTheme.colors.background)
+            IosStatusBarProtection(MaterialTheme.colorScheme.surface)
             TranslucentBackButton(
                 onClick = scene.navigation::closeSubmissions,
                 modifier = Modifier
