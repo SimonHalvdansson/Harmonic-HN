@@ -81,8 +81,8 @@ internal fun AskComposer(
     Row(
         modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
             .dropShadow(fieldShape, Shadow(
-                radius = 8.dp,
-                spread = 0.dp,
+                radius = 12.dp,
+                spread = 2.dp,
                 color = Color.Black.copy(alpha = 0.18f),
                 offset = DpOffset(0.dp, 2.dp),
             ))
