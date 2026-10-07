@@ -147,14 +147,14 @@ fun DataSettingsScreen(
             SettingsCategory("Settings") {
                 SettingRow(
                     title = "Export settings",
-                    summary = "Save a JSON backup. Accounts, AI connections and downloaded models are not included.",
+                    summary = "Save as JSON",
                     icon = Res.drawable.ic_system_update_alt,
                     onClick = { onAction(DataSettingsAction.ExportSettings) },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Import settings",
-                    summary = "Restore compatible settings from a JSON backup",
+                    summary = "Restore from JSON",
                     icon = Res.drawable.ic_settings,
                     onClick = { onAction(DataSettingsAction.ImportSettings) },
                 )
