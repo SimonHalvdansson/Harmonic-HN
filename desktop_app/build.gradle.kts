@@ -316,6 +316,12 @@ compose.desktop {
                 bundleID = "com.simon.harmonichackernews.desktop"
             }
             windows {
+                // MSI requires three version components, even for releases named MAJOR.MINOR.
+                packageVersion = if (desktopVersionName.count { it == '.' } == 1) {
+                    "$desktopVersionName.0"
+                } else {
+                    desktopVersionName
+                }
                 iconFile.set(project.layout.projectDirectory.file("icons/harmonic.ico"))
             }
             linux {
