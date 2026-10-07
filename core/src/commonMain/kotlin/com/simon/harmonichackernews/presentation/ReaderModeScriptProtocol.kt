@@ -14,6 +14,7 @@ data class ReaderModeTheme(
     val fontFaceCss: String = "",
     val font: String? = null,
     val fontSizePx: Int,
+    val lineHeight: Double = 1.68,
 )
 
 /** Shared reader-mode JavaScript protocol and theme serialization. */
@@ -70,6 +71,7 @@ object ReaderModeScriptProtocol {
             if (includeFont) append(",\"fontFaceCss\":").append(json(theme.fontFaceCss))
             append(",\"fontFamily\":").append(json(family))
             append(",\"headingFontFamily\":").append(json(family))
+            append(",\"lineHeight\":").append(theme.lineHeight)
             append(",\"fontSizePx\":").append(theme.fontSizePx).append('}')
         }
     }

@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 11) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 12) {
         return;
     }
 
@@ -556,7 +556,8 @@
             fontFaceCss: sanitizeCssText(configured.fontFaceCss, ""),
             fontFamily: sanitizeCssText(configured.fontFamily, "Georgia,'Times New Roman',serif"),
             headingFontFamily: sanitizeCssText(configured.headingFontFamily, "Georgia,'Times New Roman',serif"),
-            fontSizePx: sanitizeFontSize(configured.fontSizePx, 17)
+            fontSizePx: sanitizeFontSize(configured.fontSizePx, 17),
+            lineHeight: [1.4, 1.68, 2].indexOf(configured.lineHeight) >= 0 ? configured.lineHeight : 1.68
         };
     }
 
@@ -565,6 +566,14 @@
     function setTheme(theme, fontToken) {
         window[THEME_KEY] = theme || {};
         installedFontToken = fontToken || null;
+        if (window[STATE_KEY] && window[STATE_KEY].enabled) {
+            var oldStyle = document.getElementById("harmonic-reader-style");
+            if (oldStyle) {
+                var styles = document.createElement("div");
+                styles.innerHTML = readerStyles();
+                oldStyle.replaceWith(styles.firstElementChild);
+            }
+        }
         return "theme_set";
     }
 
@@ -588,7 +597,7 @@
             "<style id=\"harmonic-reader-style\">",
             theme.fontFaceCss,
             "html[data-harmonic-reader='true']{width:100%!important;min-width:0!important;overflow-x:hidden!important;}",
-            "body[data-harmonic-reader='true']{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:hidden!important;margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:1.68!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;visibility:visible!important;opacity:1!important;}",
+            "body[data-harmonic-reader='true']{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:hidden!important;margin:0!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;font-family:" + theme.fontFamily + "!important;line-height:" + theme.lineHeight + "!important;font-size:" + bodyFontSize + "px!important;-webkit-text-size-adjust:100%!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-mode{display:block!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:760px!important;margin:0 auto!important;padding:32px 20px 96px!important;background:" + theme.backgroundColor + "!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-mode *{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;}",
             "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
@@ -596,7 +605,7 @@
             "#harmonic-reader-byline{font:500 " + bylineFontSize + "px/1.5 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
             "#harmonic-reader-article,#harmonic-reader-article section,#harmonic-reader-article div,#harmonic-reader-article figure{overflow-wrap:anywhere!important;background:transparent!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-article *{background:transparent!important;visibility:visible!important;opacity:1!important;}",
-            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:1.68!important;color:" + theme.textColor + "!important;}",
+            "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:" + theme.lineHeight + "!important;color:" + theme.textColor + "!important;}",
             "#harmonic-reader-article span,#harmonic-reader-article strong,#harmonic-reader-article em,#harmonic-reader-article small{color:inherit!important;}",
             "#harmonic-reader-article p{margin:0 0 1.05em!important;}",
             "#harmonic-reader-article ul,#harmonic-reader-article ol{display:block!important;margin:0 0 1.05em!important;padding-left:1.4em!important;list-style-position:outside!important;color:" + theme.textColor + "!important;}",
@@ -917,7 +926,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 11,
+        version: 12,
         setTheme: setTheme,
         updateTheme: updateTheme,
         isAvailable: isAvailable,

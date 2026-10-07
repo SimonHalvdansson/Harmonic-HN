@@ -149,6 +149,10 @@ class StoredSettingsMutator(
         }
     }
 
+    fun setReaderModeLineHeight(value: ReaderLineHeight) {
+        store.putString(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, value.storedValue)
+    }
+
     fun setReaderModeFontSize(value: Int) {
         store.putInt(
             UserPreferenceKeys.READER_MODE_FONT_SIZE,

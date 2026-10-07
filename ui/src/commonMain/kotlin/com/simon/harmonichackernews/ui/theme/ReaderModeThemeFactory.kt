@@ -9,7 +9,7 @@ data class ReaderModeFontData(
     val regularBase64: String,
     val boldBase64: String,
 ) {
-    internal val fontFaceCss: String by lazy {
+    val fontFaceCss: String by lazy {
         ReaderModeSourceAssembler.fontFaceCss(
             ReaderModeSourceAssembler.fontDataUrl(regularBase64),
             ReaderModeSourceAssembler.fontDataUrl(boldBase64),
@@ -25,6 +25,7 @@ object ReaderModeThemeFactory {
         font: String?,
         fontSizePx: Int,
         fontData: ReaderModeFontData? = null,
+        lineHeight: Double = 1.68,
     ): ReaderModeTheme = ReaderModeTheme(
         light = light,
         backgroundColor = css(colors.pageBackground.toArgb()),
@@ -37,6 +38,7 @@ object ReaderModeThemeFactory {
         fontFaceCss = fontData?.fontFaceCss.orEmpty(),
         font = font,
         fontSizePx = fontSizePx,
+        lineHeight = lineHeight,
     )
 
     private fun css(argb: Int): String = ReaderModeSourceAssembler.cssColor(argb)

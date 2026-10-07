@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppFont
+import com.simon.harmonichackernews.settings.ReaderLineHeight
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
@@ -76,6 +77,14 @@ fun ReaderModeSettingsRoute(
                     enabled = controlsEnabled,
                     onValueChange = { repository.setReaderModeFontSize(it.toInt()) },
                 )
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "Line height",
+                    options = ReaderLineHeight.entries.map { it to it.label },
+                    selected = reading.readerModeLineHeight,
+                    enabled = controlsEnabled,
+                    onSelected = repository::setReaderModeLineHeight,
+                )
             }
         }
     }
@@ -104,7 +113,7 @@ private fun ReaderModeTextPreview(reading: ReadingPreferences) {
             color = MaterialTheme.colorScheme.onSurface)
         Text(ReaderPreviewText, modifier = Modifier.padding(top = 12.dp), fontFamily = family,
             fontSize = with(density) { reading.readerModeFontSize.dp.toSp() },
-            lineHeight = with(density) { (reading.readerModeFontSize * 1.68f).dp.toSp() },
+            lineHeight = with(density) { (reading.readerModeFontSize * reading.readerModeLineHeight.multiplier).toFloat().dp.toSp() },
             color = MaterialTheme.colorScheme.onSurface)
     }
 }

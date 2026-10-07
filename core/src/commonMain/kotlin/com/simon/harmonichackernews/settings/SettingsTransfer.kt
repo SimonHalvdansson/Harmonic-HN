@@ -137,6 +137,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
                     AiSummaryPreferenceKeys.ENABLE_BOLD_FORMATTING, AiSummaryPreferenceKeys.SHOW_ADDITIONAL_INFO,
                 )).forEach { put(it, booleanRule) }
             put(UserPreferenceKeys.FONT, choice(AppFont.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, choice(ReaderLineHeight.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_FONT, choice(AppFont.entries.map { it.storedValue }))
             put(UserPreferenceKeys.STORY_TEXT_SIZE, numberString(TextPreferences.MIN_STORY_TEXT_SIZE..TextPreferences.MAX_STORY_TEXT_SIZE))
             put(UserPreferenceKeys.COMMENT_TEXT_SIZE, numberString(TextPreferences.MIN_COMMENT_TEXT_SIZE..TextPreferences.MAX_COMMENT_TEXT_SIZE))

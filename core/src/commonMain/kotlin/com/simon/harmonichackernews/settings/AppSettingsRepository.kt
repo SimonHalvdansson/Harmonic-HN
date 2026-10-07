@@ -181,6 +181,7 @@ class AppSettingsRepository(
     fun setLinkPreviewEnabled(type: LinkPreviewType, enabled: Boolean) =
         mutator.setLinkPreviewEnabled(type, enabled)
 
+    fun setReaderModeLineHeight(value: ReaderLineHeight) = mutator.setReaderModeLineHeight(value)
     fun setReaderModeFontSize(value: Int) = mutator.setReaderModeFontSize(value)
     fun setReaderModeFont(value: String) = mutator.setReaderModeFont(value)
     fun setReaderModeFont(value: AppFont) = mutator.setReaderModeFont(value)

@@ -24,11 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.simon.harmonichackernews.AndroidReaderModeResources
-import com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol
-import com.simon.harmonichackernews.presentation.ReaderModeSourceAssembler
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.ui.theme.cardBackground
-import kotlin.math.roundToInt
 
 /** A local document uses browser CSS pixels and the same font bytes as the article reader. */
 @SuppressLint("SetJavaScriptEnabled")
@@ -40,31 +37,14 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
     val foreground = colors.onSurface.toArgb()
     var html by remember { mutableStateOf<String?>(null) }
     var height by remember { mutableStateOf(240.dp) }
-    val fontSize by rememberUpdatedState(reading.readerModeFontSize)
+    val currentReading by rememberUpdatedState(reading)
 
     LaunchedEffect(reading.readerModeFont, background, foreground) {
         val theme = AndroidReaderModeResources.theme(context, reading)
-        val fallback = ReaderModeScriptProtocol.fontFamily(reading.readerModeFont.storedValue)
-        val family = if (theme.fontFaceCss.isBlank()) fallback else "'HarmonicReaderFont', $fallback"
-        html = """
-            <!doctype html><html><head>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-            ${theme.fontFaceCss}
-            html,body{margin:0;padding:0;background:${ReaderModeSourceAssembler.cssColor(background)};
-                color:${ReaderModeSourceAssembler.cssColor(foreground)};-webkit-text-size-adjust:100%;}
-            #preview{padding:20px;overflow-wrap:anywhere;font-family:$family;}
-            h1{font:700 var(--reader-title,32px)/1.15 $family;margin:0 0 12px;}
-            p{font-size:var(--reader-size,18px);line-height:1.68;margin:0;}
-            </style></head><body><main id="preview">
-            <h1>Article preview</h1>
-            <p>Reader mode brings the words into focus. Adjust the font and text size to find a comfortable way to read your next story.</p>
-            </main><script>
-            new ResizeObserver(function(){
-                PreviewSize.changed(document.getElementById('preview').getBoundingClientRect().height);
-            }).observe(document.getElementById('preview'));
-            </script></body></html>
-        """.trimIndent()
+        html = com.simon.harmonichackernews.ui.reader.ReaderPreviewDocument.html(
+            reading.readerModeFont.storedValue, theme.fontFaceCss, background, foreground,
+            "PreviewSize.changed(height);",
+        )
     }
     AndroidView(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -84,7 +64,7 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
                 }, "PreviewSize")
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
-                    override fun onPageFinished(view: WebView, url: String) = view.updateReaderSize(fontSize)
+                    override fun onPageFinished(view: WebView, url: String) = view.updateReaderSize(currentReading)
                 }
             }
         },
@@ -95,7 +75,7 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
                 view.tag = document
                 view.loadDataWithBaseURL("https://reader-preview.invalid/", document, "text/html", "UTF-8", null)
             }
-            view.updateReaderSize(fontSize)
+            view.updateReaderSize(currentReading)
         },
         onRelease = { view ->
             view.tag = null
@@ -106,11 +86,10 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
     )
 }
 
-private fun WebView.updateReaderSize(size: Int) {
-    evaluateJavascript("""
-        document.documentElement.style.setProperty('--reader-size', '${size}px');
-        document.documentElement.style.setProperty('--reader-title', '${(size * 1.78).roundToInt()}px');
-    """.trimIndent(), null)
+private fun WebView.updateReaderSize(reading: ReadingPreferences) {
+    evaluateJavascript(com.simon.harmonichackernews.ui.reader.ReaderPreviewDocument.sizeScript(
+        reading.readerModeFontSize, reading.readerModeLineHeight.multiplier,
+    ), null)
 }
 
 private class PreviewSize(private val onChanged: (Double) -> Unit) {

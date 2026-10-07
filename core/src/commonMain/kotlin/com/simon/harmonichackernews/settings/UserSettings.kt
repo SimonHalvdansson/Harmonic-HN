@@ -129,6 +129,7 @@ data class ReadingPreferences(
     val archiveRedirectDomains: List<String>,
     val enabledLinkPreviews: Set<LinkPreviewType>,
     val nitterInstanceUrl: String = NitterInstance.DEFAULT_URL,
+    val readerModeLineHeight: ReaderLineHeight = ReaderLineHeight.STANDARD,
 ) {
     val commentsProvider: CommentsProvider
         get() = if (useAlgoliaApi) CommentsProvider.ALGOLIA else CommentsProvider.OFFICIAL

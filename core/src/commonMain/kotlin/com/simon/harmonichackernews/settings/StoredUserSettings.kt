@@ -90,6 +90,7 @@ object UserPreferenceKeys {
     const val COMMENTS_PROVIDER = "pref_comments_provider"
     const val STORIES_TO_CACHE = "pref_stories_to_cache"
     const val READER_MODE_FONT = "pref_webview_reader_mode_font"
+    const val READER_MODE_LINE_HEIGHT = "pref_webview_reader_mode_line_height"
     const val READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size"
     const val EXTERNAL_BROWSER = "pref_external_browser"
     const val REDIRECT_NITTER = "pref_redirect_nitter"
@@ -269,6 +270,9 @@ class StoredUserSettings(
                 ) == CommentsProvider.ALGOLIA,
                 readerModeFont = AppFont.fromStored(
                     string(UserPreferenceKeys.READER_MODE_FONT, "googlesansflexrounded"),
+                ),
+                readerModeLineHeight = ReaderLineHeight.fromStored(
+                    string(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, ReaderLineHeight.STANDARD.storedValue),
                 ),
                 readerModeFontSize = TextPreferences.clampReaderModeFontSize(
                     integer(UserPreferenceKeys.READER_MODE_FONT_SIZE, TextPreferences.DEFAULT_READER_MODE_FONT_SIZE),

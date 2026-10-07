@@ -54,6 +54,7 @@ internal object AndroidReaderModeResources {
             light = AndroidActivityTheme.isLightMode(context),
             font = preferences.readerModeFont.storedValue,
             fontSizePx = preferences.readerModeFontSize,
+            lineHeight = preferences.readerModeLineHeight.multiplier,
             fontData = fontData,
         )
     }

@@ -19,6 +19,17 @@ enum class AppFont(val storedValue: String, val label: String) {
     }
 }
 
+enum class ReaderLineHeight(val storedValue: String, val label: String, val multiplier: Double) {
+    COMPACT("compact", "Compact", 1.4),
+    STANDARD("standard", "Standard", 1.68),
+    RELAXED("relaxed", "Relaxed", 2.0);
+
+    companion object {
+        fun fromStored(value: String?): ReaderLineHeight =
+            entries.firstOrNull { it.storedValue == value } ?: STANDARD
+    }
+}
+
 object TextPreferences {
     const val DEFAULT_STORY_TEXT_SIZE = 17.5f
     const val DEFAULT_COMMENT_TEXT_SIZE = 15f

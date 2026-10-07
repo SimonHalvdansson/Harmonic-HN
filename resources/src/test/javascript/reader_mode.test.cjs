@@ -66,6 +66,30 @@ async function countDocumentClones(page) {
     });
 }
 
+test('reader uses the new default, supports 13px, and updates line height without replacing article content', async () => {
+    const page = await article(true);
+    try {
+        await enable(page);
+        const typography = () => page.evaluate(() => {
+            const style = getComputedStyle(document.querySelector('#harmonic-reader-article p'));
+            return [style.fontSize, style.lineHeight];
+        });
+        assert.deepEqual(await typography(), ['17px', '28.56px']);
+        await page.evaluate(() => {
+            window.readerParagraph = document.querySelector('#harmonic-reader-article p');
+            HarmonicReaderMode.setTheme({fontSizePx: 13, lineHeight: 1.4});
+        });
+        assert.deepEqual(await typography(), ['13px', '18.2px']);
+        await page.evaluate(() => HarmonicReaderMode.setTheme({fontSizePx: 17, lineHeight: 2}));
+        assert.deepEqual(await typography(), ['17px', '34px']);
+        assert.equal(await page.evaluate(() => readerParagraph === document.querySelector('#harmonic-reader-article p')), true);
+        await page.evaluate(() => HarmonicReaderMode.setTheme({fontSizePx: -100, lineHeight: 'invalid'}));
+        assert.deepEqual(await typography(), ['13px', '21.84px']);
+        await disable(page);
+        assert.equal(await page.inputValue('#draft'), 'unsaved typing');
+    } finally { await page.close(); }
+});
+
 test('availability reuses its extraction on enable without changing article output', async () => {
     const page = await article(true);
     try {
