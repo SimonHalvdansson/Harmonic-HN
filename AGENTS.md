@@ -1,14 +1,13 @@
 # Agent Guidelines
 
 This repository contains the Kotlin Multiplatform Harmonic for Hacker News app. Android is the
-main distribution and the default target when the user does not specify a platform. The iOS and
-desktop hosts are ready but have not been released. Core logic and Compose UI have automated
+main distribution and the default target when the user does not specify a platform. Core logic and Compose UI have automated
 Kotlin tests, and Android release builds are checked by GitHub Actions.
 
 General tips:
 - `app/` is the Android application shell. Portable application logic belongs in `core/`,
   Compose UI belongs in `ui/`, portable assets belong in `resources/`, and
-  `ios_app/` and `desktop_app/` are the ready, unreleased iOS and desktop hosts.
+  `ios_app/` and `desktop_app/` are the iOS and desktop hosts.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
 - Keep generated build logs, benchmark output, diagnostic captures, and temporary research or
@@ -23,9 +22,6 @@ General tips:
 - If Git reports dubious ownership because Codex is running as a sandbox user, use a per-command safe-directory override such as `git -c safe.directory=C:/Users/Simon/Documents/GitHub/Harmonic-HN status --short` instead of changing global Git config.
 
 ## Kotlin Multiplatform Boundaries
-
-For changes to state ownership, feature stores, or platform boundaries, consult
-[KMP architecture](docs/architecture/KMP_ARCHITECTURE.md).
 
 - `core/` targets Android, iOS, and desktop. It owns platform-neutral models, parsing,
   filtering, formatting, repositories, state machines, settings contracts, suspend-first networking,
