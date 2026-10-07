@@ -30,7 +30,7 @@ val ColorScheme.pageBackground: Color
 
 /** Light-mode cards follow Android Settings' expressive preference surfaces. */
 val ColorScheme.cardBackground: Color
-    get() = if (surface.luminance() > onSurface.luminance()) surfaceBright else surfaceContainerLow
+    get() = if (surface.luminance() > onSurface.luminance()) surfaceBright else surfaceContainer
 
 private val LocalHarmonicDarkTheme = staticCompositionLocalOf { false }
 private val LocalTargetColorScheme = staticCompositionLocalOf<ColorScheme?> { null }

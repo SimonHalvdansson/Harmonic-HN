@@ -21,7 +21,7 @@ class HarmonicThemeCatalogTest {
             )
             if (dark) {
                 assertEquals(colors.surface, colors.pageBackground)
-                assertEquals(colors.surfaceContainerLow, colors.cardBackground)
+                assertEquals(colors.surfaceContainer, colors.cardBackground)
             } else {
                 assertEquals(colors.surfaceContainer, colors.pageBackground)
                 assertEquals(colors.surfaceBright, colors.cardBackground)
