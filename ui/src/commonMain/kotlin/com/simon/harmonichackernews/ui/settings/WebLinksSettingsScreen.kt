@@ -132,21 +132,17 @@ fun WebLinksSettingsScreen(
                 }
             }
         }
-        if (capabilities.integratedWebView && capabilities.readerMode) {
-            item {
-                SettingsCategory("Reading") {
+        item {
+            SettingsCategory("Browser and links") {
+                if (capabilities.integratedWebView && capabilities.readerMode) {
                     SettingRow(
                         title = "Reader mode",
-                        summary = if (state.readerModeEnabled) "On · ${state.readerModeFontLabel}" else "Off",
                         icon = Res.drawable.ic_chrome_reader_mode,
                         enabled = state.integratedWebView,
                         onClick = onReaderModeRequested,
                     )
+                    SettingsDivider()
                 }
-            }
-        }
-        item {
-            SettingsCategory("Browser and links") {
                 BooleanSettingRow(
                     title = "Use external browser",
                     icon = Res.drawable.ic_open_in_browser,
