@@ -100,7 +100,9 @@ fun PortableSettingsDetail(
             capabilities = webLinksCapabilities,
             showNavigation = singlePane,
             onBack = onBack,
+            onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
         )
+        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(app.settings, onBack)
         SettingsSection.FiltersTags -> FiltersTagsSettingsRoute(
             settings = app.settings,
             filters = app.contentFilters,
@@ -155,6 +157,7 @@ private fun PortableWebLinksSettings(
     capabilities: WebLinksSettingsCapabilities,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onReaderModeRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(app.settings) { WebLinksSettingsPresenter(app.settings) }
@@ -167,7 +170,7 @@ private fun PortableWebLinksSettings(
         showNavigation = showNavigation,
         onBack = onBack,
         onBooleanChanged = presenter::setBoolean,
-        onReaderFontSizeChanged = presenter::setReaderFontSize,
+        onReaderModeRequested = onReaderModeRequested,
         onDialogRequested = { requested ->
             if (
                 requested == WebLinksSettingsDialog.Preload ||

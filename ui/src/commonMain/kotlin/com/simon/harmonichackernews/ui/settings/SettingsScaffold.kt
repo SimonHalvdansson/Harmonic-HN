@@ -167,6 +167,8 @@ fun SettingsListScreen(
                             entry.section == SettingsSection.Comments &&
                             (selectedSection == SettingsSection.ThreadDepth ||
                                 selectedSection == SettingsSection.UserAvatars) ||
+                            entry.section == SettingsSection.WebLinks &&
+                            selectedSection == SettingsSection.ReaderMode ||
                             entry.section == SettingsSection.Stories &&
                             selectedSection == SettingsSection.Frontpages ||
                             entry.section == SettingsSection.About &&

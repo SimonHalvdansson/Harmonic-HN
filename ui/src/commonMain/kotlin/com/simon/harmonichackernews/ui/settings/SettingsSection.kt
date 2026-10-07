@@ -19,6 +19,7 @@ import com.simon.harmonichackernews.resources.settings_section_notifications
 import com.simon.harmonichackernews.resources.settings_section_palette_tint
 import com.simon.harmonichackernews.resources.settings_section_theme
 import com.simon.harmonichackernews.resources.settings_section_web_links
+import com.simon.harmonichackernews.resources.settings_section_reader_mode
 import org.jetbrains.compose.resources.StringResource
 
 enum class SettingsSection(
@@ -34,6 +35,7 @@ enum class SettingsSection(
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
     UserAvatars("user_avatars", Res.string.settings_section_user_avatars),
     WebLinks("web_links", Res.string.settings_section_web_links),
+    ReaderMode("reader_mode", Res.string.settings_section_reader_mode),
     FiltersTags("filters_tags", Res.string.settings_section_filters_tags),
     AiSummary("ai_summary", Res.string.settings_section_ai_summary),
     Notifications("notifications", Res.string.settings_section_notifications),

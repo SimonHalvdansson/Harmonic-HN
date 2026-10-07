@@ -558,6 +558,7 @@ fun WebLinksSettingsRoute(
     repository: AppSettingsRepository,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onReaderModeRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(repository) { WebLinksSettingsPresenter(repository) }
@@ -568,7 +569,7 @@ fun WebLinksSettingsRoute(
         showNavigation = showNavigation,
         onBack = onBack,
         onBooleanChanged = presenter::setBoolean,
-        onReaderFontSizeChanged = presenter::setReaderFontSize,
+        onReaderModeRequested = onReaderModeRequested,
         onDialogRequested = { dialog = it },
         contentVersion = settings.hashCode(),
     )
