@@ -58,7 +58,7 @@ internal fun IosSettingsDetail(
         appIcon = appIcon,
         webLinksCapabilities = WebLinksSettingsCapabilities(
             adBlocking = false,
-            readerMode = false,
+            readerMode = true,
             closeWebViewOnBack = false,
         ),
         aboutBody = "Harmonic is an open-source Hacker News client. " +
@@ -73,6 +73,7 @@ internal fun IosSettingsDetail(
             "Reply notifications and Android notification fixtures do not apply to iOS.",
         aiSettings = { IosAiSettings(app, scene, singlePane, onBack) },
         dataSettings = { IosDataSettings(app, scene, singlePane, onBack) },
+        readerPreview = { reading, _ -> IosReaderModePreview(reading) },
     )
 }
 

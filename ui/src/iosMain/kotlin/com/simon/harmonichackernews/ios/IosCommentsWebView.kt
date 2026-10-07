@@ -86,6 +86,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import com.simon.harmonichackernews.presentation.NativeReaderModeSession
 
 /**
  * Lightweight destination owner; the native browser is created only when loading is requested.
@@ -107,6 +108,7 @@ class IosCommentsWebView(
     private var recoveringProcess = false
     private val delegate = IosBrowserDelegate(this)
     var prepareLoad: (String) -> String = { it }
+    var reader: NativeReaderModeSession? = null
     var onPageFinished: (String?) -> Unit = {}
     var onLoadFailed: () -> Unit = {}
     var visible: Boolean = false
@@ -259,6 +261,7 @@ class IosCommentsWebView(
     internal fun navigationStarted(url: String?) {
         if (disposed) return
         generation++
+        reader?.navigationStarted(url)
         loading = true
         failure = null
         if (url != null) loadedUrl = url
@@ -273,11 +276,13 @@ class IosCommentsWebView(
         if (url != null) loadedUrl = url
         if (inverted) applyInversion()
         onPageFinished(url)
+        reader?.pageFinished(url)
     }
 
     internal fun navigationFailed(message: String) {
         if (disposed) return
         generation++
+        reader?.navigationStarted(null)
         loading = false
         failure = message
         finishDialog(null)
@@ -344,8 +349,10 @@ class IosCommentsWebView(
     }
 
     fun dispose() {
+        reader?.dispose()
         disposed = true
         generation++
+        reader?.navigationStarted(null)
         loading = false
         finishDialog(null)
         view?.let {

@@ -91,6 +91,8 @@ import com.simon.harmonichackernews.network.StoryLinkPreviewSession
 import com.simon.harmonichackernews.network.WebPageExtractor
 import com.simon.harmonichackernews.network.NitterPreview
 import com.simon.harmonichackernews.data.NitterInfo
+import com.simon.harmonichackernews.presentation.NativeReaderModeSession
+import com.simon.harmonichackernews.ui.reader.ReaderModeResources
 
 private class IosCommentsHost(
     val binding: CommentsFeatureBinding,
@@ -158,7 +160,11 @@ internal fun IosCommentsContent(
                     url,
                     archiveDomains = { app.userSettings.reading.archiveRedirectDomains },
                     openExternal = { scene.links.open(it, preferInApp = false) },
-                )
+                ).also { browser ->
+                    browser.reader = NativeReaderModeSession(
+                        scope, browser::evaluate, script = ReaderModeResources::script, onMessage = { scene.userMessages.show(it) },
+                    )
+                }
             },
             scope = scope,
         ).also { createdHost ->
@@ -244,15 +250,22 @@ internal fun IosCommentsContent(
         }
     }
     val appearance by app.appearance.selections.collectAsState(app.appearance.selection())
+    val readerState = host.webView?.reader?.state?.collectAsState()?.value
+    val readerColors = MaterialTheme.colorScheme
+    LaunchedEffect(host.webView, reading, readerColors, appearance.dark) {
+        if (reading != null) host.webView?.reader?.configure(reading) {
+            ReaderModeResources.theme(readerColors, !appearance.dark, reading)
+        }
+    }
     LaunchedEffect(appearance, reading?.matchWebViewTheme, host, host.webView) {
         host.webView?.updateAppearance(appearance.dark, reading?.matchWebViewTheme == true)
     }
-    LaunchedEffect(featureState, host.controller, contentInsetLeft, contentInsetRight) {
+    LaunchedEffect(featureState, host.controller, contentInsetLeft, contentInsetRight, readerState) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
-                readerModeAvailable = false,
-                readerModeEnabled = false,
+                readerModeAvailable = readerState?.available == true,
+                readerModeEnabled = readerState?.enabled == true,
                 topInsetPx = 0,
                 contentInsetLeftPx = contentInsetLeft,
                 contentInsetRightPx = contentInsetRight,
@@ -462,7 +475,7 @@ private fun handleIosCommentsPlatformEffect(
             host.webView?.currentUrl()?.let { scene.links.open(it, preferInApp = false) }
         CommentsPlatformEffect.ExpandSheet -> host.controller.requestExpandSheet()
         CommentsPlatformEffect.ToggleReaderMode ->
-            scene.userMessages.show("Reader mode isn't available in the iOS in-app browser yet")
+            host.webView?.reader?.toggle()
         CommentsPlatformEffect.ToggleDarkMode -> host.webView?.toggleInversion()
     }
 }

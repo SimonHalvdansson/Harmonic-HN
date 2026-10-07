@@ -20,7 +20,7 @@ class DesktopCommentsWebViewTest {
         listOf("Windows 11", "Mac OS X").forEach { os ->
             val capabilities = desktopWebLinksSettingsCapabilities(desktopEmbeddedBrowserBackend(os))
             assertTrue(capabilities.integratedWebView)
-            assertFalse(capabilities.readerMode)
+            assertTrue(capabilities.readerMode)
             assertFalse(capabilities.adBlocking)
             assertFalse(capabilities.preloadWebsites)
             assertFalse(capabilities.closeWebViewOnBack)

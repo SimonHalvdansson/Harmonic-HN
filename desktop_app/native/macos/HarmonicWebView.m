@@ -209,6 +209,29 @@ void harmonic_webview_evaluate_javascript(void *hostPointer, const char *script)
 }
 
 __attribute__((visibility("default")))
+void harmonic_webview_load_html(void *hostPointer, const char *html) {
+    if (hostPointer == NULL || html == NULL) return;
+    NSString *document = [NSString stringWithUTF8String:html];
+    HarmonicOnMainSync(^{
+        [HarmonicHost(hostPointer).webView loadHTMLString:document baseURL:nil];
+    });
+}
+
+__attribute__((visibility("default")))
+void harmonic_webview_evaluate_result(void *hostPointer, const char *script,
+    int64_t requestId, void (*callback)(int64_t, const char *)) {
+    if (hostPointer == NULL || script == NULL || callback == NULL) return;
+    NSString *source = [NSString stringWithUTF8String:script];
+    HarmonicOnMainSync(^{
+        [HarmonicHost(hostPointer).webView evaluateJavaScript:source
+            completionHandler:^(id value, NSError *error) {
+                NSString *text = error == nil && [value isKindOfClass:[NSString class]] ? value : nil;
+                callback(requestId, text.UTF8String);
+            }];
+    });
+}
+
+__attribute__((visibility("default")))
 void harmonic_webview_snapshot(
     void *hostPointer,
     int *state,

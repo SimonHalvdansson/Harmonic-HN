@@ -61,13 +61,15 @@ import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.utils.HtmlTextUtils
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 private class DesktopCommentsHost(
     val binding: CommentsFeatureBinding,
 ) {
     val store get() = binding.store
     val controller get() = binding.controller
-    var webViewSession: DesktopCommentsWebViewSession? = null
+    var webViewSession: DesktopCommentsWebViewSession? by mutableStateOf(null)
     var externalArticleOpened = false
 }
 
@@ -96,6 +98,7 @@ internal fun DesktopCommentsContent(
         )
     }
     val featureState by host.store.state.collectAsState()
+    val readerState = host.webViewSession?.reader?.state?.collectAsState()?.value
     val contentInsetRightPx = with(LocalDensity.current) {
         if (showNavigation) 0 else DesktopWidePaneHorizontalPadding.roundToPx()
     }
@@ -107,12 +110,12 @@ internal fun DesktopCommentsContent(
             host.binding.close()
         }
     }
-    LaunchedEffect(featureState, host.controller, contentInsetRightPx) {
+    LaunchedEffect(featureState, host.controller, contentInsetRightPx, readerState) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
-                readerModeAvailable = false,
-                readerModeEnabled = false,
+                readerModeAvailable = readerState?.available == true,
+                readerModeEnabled = readerState?.enabled == true,
                 showSheetControls = false,
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
@@ -243,6 +246,8 @@ internal fun DesktopCommentsContent(
                 matchTheme = featureState.settings?.reading?.matchWebViewTheme == true,
                 nativeSurfaceAllowed = webViewForegroundAllowed,
                 onSessionChanged = { host.webViewSession = it },
+                reading = featureState.settings?.reading ?: app.userSettings.reading,
+                onReaderMessage = { scene.userMessages.show(it) },
                 onOpenExternal = { scene.links.open(it, preferInApp = false) },
                 comments = comments,
             )
@@ -300,7 +305,7 @@ private fun handleDesktopCommentsPlatformEffect(
             }
         CommentsPlatformEffect.ExpandSheet -> host.controller.requestExpandSheet()
         CommentsPlatformEffect.ToggleReaderMode ->
-            scene.userMessages.show("Reader mode requires an embedded desktop browser")
+            host.webViewSession?.reader?.toggle()
         CommentsPlatformEffect.ToggleDarkMode -> host.webViewSession?.toggleInversion()
     }
 }

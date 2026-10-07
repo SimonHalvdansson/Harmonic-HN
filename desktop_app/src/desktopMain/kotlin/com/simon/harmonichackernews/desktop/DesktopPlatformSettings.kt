@@ -86,6 +86,7 @@ internal fun DesktopSettingsDetail(
             "Reply notifications and Android notification fixtures do not apply to desktop.",
         aiSettings = { DesktopAiSettings(app, scene, singlePane, onBack) },
         dataSettings = { DesktopDataSettings(app, scene, singlePane, onBack) },
+        readerPreview = { reading, visible -> DesktopReaderModePreview(reading, visible) },
         webLinksCapabilities = desktopWebLinksSettingsCapabilities(),
     )
 }
@@ -95,7 +96,7 @@ internal fun desktopWebLinksSettingsCapabilities(
 ) = WebLinksSettingsCapabilities(
     integratedWebView = backend != DesktopEmbeddedBrowserBackend.UNSUPPORTED,
     adBlocking = false,
-    readerMode = false,
+    readerMode = backend != DesktopEmbeddedBrowserBackend.UNSUPPORTED,
     closeWebViewOnBack = false,
     preloadWebsites = false,
 )

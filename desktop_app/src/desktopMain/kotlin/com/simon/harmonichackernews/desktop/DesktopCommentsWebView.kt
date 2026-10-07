@@ -77,6 +77,15 @@ import org.eclipse.swt.browser.TitleListener
 import org.eclipse.swt.layout.FillLayout
 import org.eclipse.swt.widgets.Display
 import org.eclipse.swt.widgets.Shell
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.simon.harmonichackernews.presentation.NativeReaderModeSession
+import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
+import com.simon.harmonichackernews.settings.ReadingPreferences
+import com.simon.harmonichackernews.ui.reader.ReaderModeResources
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonPrimitive
 
 internal data class DesktopBrowserSnapshot(
     val url: String,
@@ -88,6 +97,8 @@ internal data class DesktopBrowserSnapshot(
 
 internal interface DesktopBrowserHost {
     fun loadUrl(url: String)
+    fun loadHtml(html: String)
+    fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit)
     fun navigateBack()
     fun navigateForward()
     fun reload(fallbackUrl: String)
@@ -100,6 +111,22 @@ internal class DesktopCommentsWebViewSession(
     initialUrl: String,
 ) {
     private var browserHost: DesktopBrowserHost? = null
+    var reader: NativeReaderModeSession? = null
+    private var documentGeneration = 0
+
+    suspend fun evaluateResult(script: String): String? {
+        val host = browserHost ?: return null
+        val expectedGeneration = documentGeneration
+        return withTimeoutOrNull(10_000) {
+            suspendCancellableCoroutine { continuation ->
+                host.evaluateJavaScriptResult(script) { result ->
+                    if (continuation.isActive) continuation.resumeWith(Result.success(
+                        result.takeIf { browserHost === host && documentGeneration == expectedGeneration },
+                    ))
+                }
+            }
+        }
+    }
 
     var currentPageUrl by mutableStateOf(initialUrl)
         private set
@@ -118,11 +145,16 @@ internal class DesktopCommentsWebViewSession(
 
     fun attach(browserHost: DesktopBrowserHost) {
         this.browserHost = browserHost
+        reader?.navigationStarted(currentPageUrl)
         browserHost.loadUrl(currentPageUrl)
     }
 
     fun detach(browserHost: DesktopBrowserHost) {
-        if (this.browserHost === browserHost) this.browserHost = null
+        if (this.browserHost === browserHost) {
+            this.browserHost = null
+            documentGeneration++
+            reader?.navigationStarted(null)
+        }
     }
 
     fun updateFromBrowser(
@@ -131,6 +163,13 @@ internal class DesktopCommentsWebViewSession(
     ) {
         if (this.browserHost !== browserHost) return
         val navigatedUrl = snapshot.url.takeUnless(::isTransientBrowserUrl)
+        val started = (snapshot.isLoading && !isLoading) ||
+            (navigatedUrl != null && navigatedUrl != currentPageUrl)
+        val finished = !snapshot.isLoading && (isLoading || started)
+        if (started) {
+            documentGeneration++
+            reader?.navigationStarted(navigatedUrl)
+        }
         navigatedUrl?.let { currentPageUrl = it }
         snapshot.title
             ?.takeIf { it.isNotBlank() && !isTransientBrowserUrl(it) }
@@ -139,6 +178,7 @@ internal class DesktopCommentsWebViewSession(
         isLoading = snapshot.isLoading || (!hasLoadedContent && navigatedUrl == null)
         canGoBack = snapshot.canGoBack
         canGoForward = snapshot.canGoForward
+        if (finished && navigatedUrl != null) reader?.pageFinished(navigatedUrl)
     }
 
     fun currentUrl(): String = currentPageUrl
@@ -148,6 +188,8 @@ internal class DesktopCommentsWebViewSession(
     fun navigateForward() = browserHost?.navigateForward() ?: Unit
 
     fun reload() {
+        documentGeneration++
+        reader?.navigationStarted(currentPageUrl)
         isLoading = true
         browserHost?.reload(currentPageUrl)
     }
@@ -173,17 +215,33 @@ internal fun DesktopCommentsWebViewScaffold(
     matchTheme: Boolean,
     nativeSurfaceAllowed: Boolean,
     onSessionChanged: (DesktopCommentsWebViewSession?) -> Unit,
+    reading: ReadingPreferences,
+    onReaderMessage: (String) -> Unit,
     onOpenExternal: (String) -> Unit,
     comments: @Composable () -> Unit,
 ) {
-    val session = remember(initialUrl) { DesktopCommentsWebViewSession(initialUrl) }
+    val scope = rememberCoroutineScope()
+    val readerMessage by rememberUpdatedState(onReaderMessage)
+    val session = remember(initialUrl) {
+        DesktopCommentsWebViewSession(initialUrl).also { browser ->
+            browser.reader = NativeReaderModeSession(
+                scope, browser::evaluateResult, script = ReaderModeResources::script, onMessage = { readerMessage(it) },
+            )
+        }
+    }
+    val colors = MaterialTheme.colorScheme
+    LaunchedEffect(session, reading, colors, dark) {
+        session.reader?.configure(reading) {
+            ReaderModeResources.theme(colors, !dark, reading)
+        }
+    }
     var showWebsite by remember(controller) { mutableStateOf(controller.initialShowWebsite) }
     var browserStarted by remember(controller) { mutableStateOf(showWebsite) }
     val currentSessionCallback by rememberUpdatedState(onSessionChanged)
 
     DisposableEffect(session) {
         currentSessionCallback(session)
-        onDispose { currentSessionCallback(null) }
+        onDispose { session.reader?.dispose(); currentSessionCallback(null) }
     }
 
     LaunchedEffect(controller) {
@@ -501,6 +559,13 @@ internal class SwtEdgeBrowserCanvas(
 
     override fun loadUrl(url: String) = withBrowser { it.setUrl(url) }
 
+    override fun loadHtml(html: String) = withBrowser { it.setText(html, true) }
+
+    override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = withBrowser {
+        val value = runCatching { it.evaluate("return eval(" + JsonPrimitive(script).toString() + ");")?.toString() }.getOrNull()
+        EventQueue.invokeLater { if (!disposed.get()) result(value) }
+    }
+
     override fun navigateBack() = withBrowser { if (it.isBackEnabled) it.back() }
 
     override fun navigateForward() = withBrowser { if (it.isForwardEnabled) it.forward() }
@@ -681,6 +746,7 @@ private fun DesktopWebViewToolbar(
     val openInBrowserInteractions = remember { MutableInteractionSource() }
     val openInBrowserHovered by openInBrowserInteractions.collectIsHoveredAsState()
     val openInBrowserFocused by openInBrowserInteractions.collectIsFocusedAsState()
+    val readerState = session.reader?.state?.collectAsState()?.value
     val pageHost = remember(session.currentPageUrl) {
         runCatching { URI(session.currentPageUrl).host }
             .getOrNull()
@@ -784,6 +850,13 @@ private fun DesktopWebViewToolbar(
                     }
                 }
 
+                if (showWebsite && readerState?.available == true) {
+                    DesktopWebViewIconButton(
+                        icon = Res.drawable.ic_chrome_reader_mode,
+                        description = if (readerState.enabled) "Exit reader mode" else "Reader mode",
+                        onClick = { session.reader?.toggle() },
+                    )
+                }
                 if (showWebsite) {
                     FilledTonalIconButton(
                         onClick = onOpenExternal,

@@ -37,6 +37,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_android
 import org.jetbrains.compose.resources.DrawableResource
 import kotlinx.coroutines.launch
+import com.simon.harmonichackernews.settings.ReadingPreferences
 
 private const val OpenWithoutCacheStoryId = 49089500
 
@@ -55,6 +56,7 @@ fun PortableSettingsDetail(
     debugNotificationsMessage: String,
     aiSettings: @Composable () -> Unit,
     dataSettings: @Composable () -> Unit,
+    readerPreview: @Composable (ReadingPreferences, Boolean) -> Unit,
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
     debugPlatformLabel: String = "Android version",
     debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
@@ -102,7 +104,7 @@ fun PortableSettingsDetail(
             onBack = onBack,
             onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
         )
-        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(app.settings, onBack)
+        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(app.settings, onBack, readerPreview)
         SettingsSection.FiltersTags -> FiltersTagsSettingsRoute(
             settings = app.settings,
             filters = app.contentFilters,

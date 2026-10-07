@@ -79,6 +79,15 @@ internal class MacWkWebViewCanvas(
         super.removeNotify()
     }
 
+    override fun loadHtml(html: String) = withHost { native, pointer ->
+        native.harmonic_webview_load_html(pointer, html)
+    }
+
+    override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = withHost { native, pointer ->
+        val id = MacJavaScriptResults.register(this, result)
+        native.harmonic_webview_evaluate_result(pointer, script, id, MacJavaScriptResults.callback)
+    }
+
     override fun loadUrl(url: String) = withHost { native, pointer ->
         if (url.isNotBlank()) native.harmonic_webview_load_url(pointer, url)
     }
@@ -117,6 +126,7 @@ internal class MacWkWebViewCanvas(
 
     override fun disposeBrowser() {
         if (!disposed.compareAndSet(false, true)) return
+        MacJavaScriptResults.cancel(this)
         if (EventQueue.isDispatchThread()) {
             resizeSettleTimer.stop()
         } else {
@@ -293,6 +303,8 @@ internal interface MacWebViewApi : Library {
     ): Pointer?
     fun harmonic_webview_destroy(host: Pointer)
     fun harmonic_webview_load_url(host: Pointer, url: String)
+    fun harmonic_webview_load_html(host: Pointer, html: String)
+    fun harmonic_webview_evaluate_result(host: Pointer, script: String, id: Long, callback: MacJavaScriptCallback)
     fun harmonic_webview_go_back(host: Pointer)
     fun harmonic_webview_go_forward(host: Pointer)
     fun harmonic_webview_reload(host: Pointer, fallbackUrl: String)
