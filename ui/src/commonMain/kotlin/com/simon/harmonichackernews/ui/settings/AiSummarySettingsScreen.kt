@@ -1,6 +1,12 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -53,11 +59,19 @@ fun AiSummarySettingsScreen(
     ) {
         item {
             SettingsMainToggle(
-                title = "Use AI summarization",
+                title = "Use AI summarization and Ask",
                 checked = state.enabled,
                 enabled = state.configurationComplete,
                 onCheckedChange = onEnabledChanged,
                 summary = state.disabledReason.takeIf { !state.configurationComplete },
+            )
+            Text(
+                text = "Summarize articles and use Ask to ask questions about articles and comments with your selected AI model.",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = ProductSansFontFamily,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
             )
         }
 
