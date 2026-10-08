@@ -11,6 +11,28 @@ import com.simon.harmonichackernews.network.AlgoliaCommentsParser
 
 class StoryCacheRepositoryTest {
     @Test
+    fun downloadedCommentsAreUnviewedUntilDisplayedAndVisitMetadataFollowsCacheLifetime() {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val cache = StoryCacheRepository(files, metadata, maximumStories = 1)
+        cache.storeStory(42, storyJson(42, "Downloaded"), 1_000)
+        assertFalse(cache.hasViewedComments(42))
+        cache.markCommentsViewed(42)
+        assertTrue(StoryCacheRepository(files, metadata).hasViewedComments(42))
+        cache.storeStory(42, storyJson(42, "Recached"), 2_000)
+        assertTrue(cache.hasViewedComments(42))
+        cache.storeStory(43, storyJson(43, "Other"), 3_000)
+        assertFalse(cache.hasViewedComments(42), "Eviction clears the visit record")
+        cache.markCommentsViewed(43)
+        cache.remove(43)
+        assertFalse(cache.hasViewedComments(43))
+        cache.storeStory(44, storyJson(44, "Last"), 4_000)
+        cache.markCommentsViewed(44)
+        cache.clear()
+        assertFalse(cache.hasViewedComments(44))
+    }
+
+    @Test
     fun readerCannotDeleteAFileAwaitingCommitMetadata() {
         val files = FakeFiles()
         val metadata = FakeMetadata()

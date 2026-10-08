@@ -140,6 +140,7 @@ class InMemoryStoryCacheMetadataStore : StoryCacheMetadataStore {
 
 object StoryCacheKeys {
     const val INDEX = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
+    const val COMMENTS_VIEWED = "com.simon.harmonichackernews.KEY_CACHED_COMMENTS_VIEWED"
     const val ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
     const val ARTICLE_ORIGIN_VERSION = "com.simon.harmonichackernews.KEY_CACHED_ARTICLE_ORIGIN_VERSION"
     const val ARTICLE_CHARSET =
@@ -150,6 +151,7 @@ object StoryCacheKeys {
     const val PREPARED_NAMESPACE = "story_cache/prepared"
     const val ARTICLE_NAMESPACE = "article_cache"
 
+    fun commentsViewedKey(storyId: Int): String = COMMENTS_VIEWED + storyId
     fun storyFile(storyId: Int): String = "$storyId.json"
     fun articleFile(storyId: Int): String = "$storyId.html"
     fun articleUrlKey(storyId: Int): String = ARTICLE_URL + storyId
@@ -222,6 +224,7 @@ class StoryCacheRepository(
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
             update.evictedStoryIds.forEach { evictedStoryId ->
+                remove(StoryCacheKeys.commentsViewedKey(evictedStoryId))
                 remove(StoryCacheKeys.articleUrlKey(evictedStoryId))
                 remove(StoryCacheKeys.articleCharsetKey(evictedStoryId))
                 remove(StoryCacheKeys.articleOriginVersionKey(evictedStoryId))
@@ -244,6 +247,14 @@ class StoryCacheRepository(
 
     fun loadStoryPayload(storyId: Int): String? = storyId.takeIf { it > 0 }?.let {
         files.readText(StoryCacheKeys.FULL_NAMESPACE, StoryCacheKeys.storyFile(it))
+    }
+
+    // Downloading/preloading a thread does not mean its comments have been displayed.
+    fun hasViewedComments(storyId: Int): Boolean =
+        storyId > 0 && metadata.getString(StoryCacheKeys.commentsViewedKey(storyId)) == "1"
+
+    fun markCommentsViewed(storyId: Int) {
+        if (hasStoryPayload(storyId)) metadata.putString(StoryCacheKeys.commentsViewedKey(storyId), "1")
     }
 
     fun hasStoryPayload(storyId: Int): Boolean = storyId > 0 && storyId in indexedStoryIds()
@@ -328,6 +339,7 @@ class StoryCacheRepository(
         val updatedIndex = StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId)
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, updatedIndex)
+            remove(StoryCacheKeys.commentsViewedKey(storyId))
             remove(StoryCacheKeys.articleUrlKey(storyId))
             remove(StoryCacheKeys.articleCharsetKey(storyId))
             remove(StoryCacheKeys.articleOriginVersionKey(storyId))
@@ -345,6 +357,7 @@ class StoryCacheRepository(
         files.clear(StoryCacheKeys.ARTICLE_NAMESPACE)
         val cacheMetadataKeys = metadata.keys().filter { key ->
             if (key == StoryCacheKeys.INDEX ||
+                key.startsWith(StoryCacheKeys.COMMENTS_VIEWED) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_URL) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_CHARSET) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_ORIGIN_VERSION)

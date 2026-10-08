@@ -149,6 +149,12 @@ class StoryCacheService(
 
     fun loadStoryPayload(storyId: Int): String? = repository.loadStoryPayload(storyId)
 
+    fun hasViewedComments(storyId: Int): Boolean = repository.hasViewedComments(storyId)
+
+    suspend fun markCommentsViewed(storyId: Int) = withContext(Dispatchers.Default) {
+        writeMutex.withLock { repository.markCommentsViewed(storyId) }
+    }
+
     fun hasStoryPayload(storyId: Int): Boolean = repository.hasStoryPayload(storyId)
 
     fun loadArticle(storyId: Int): String? = repository.loadArticle(storyId, nowMillis())

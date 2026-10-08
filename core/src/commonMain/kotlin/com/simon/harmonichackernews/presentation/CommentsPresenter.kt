@@ -109,6 +109,8 @@ sealed interface CommentsAction {
         val loadPreparedThread: (suspend () -> PreparedCommentThread?)? = null,
         val openingRequest: AlgoliaCommentRequest? = null,
         val userInitiated: Boolean = false,
+        /** Background downloads are not evidence that the cached comments were read. */
+        val cachedCommentsPreviouslyViewed: Boolean = false,
     ) : CommentsAction
     data class LoadPollOptions(val story: Story, val forceRefresh: Boolean = false) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
@@ -476,6 +478,9 @@ class CommentsPresenter(
             null
         }
         threadLoadJob = scope.launch {
+            // Freeze the baseline policy for this request. Publishing provisional content must
+            // not turn the rest of the same initial load into a refresh.
+            var extendInitialBaseline = !thread.hasLoadedComments
             var topLevelCommentIds = knownTopLevelCommentIds
             val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
@@ -490,7 +495,7 @@ class CommentsPresenter(
             preloadedAlgolia?.let { prepared ->
                 val original = CommentThreadLoadResult.Algolia(prepared.response, prepared.parsed)
                 var partialApplied = false
-                val reconciled = reconcileAlgoliaThread(action, requestId, original, topLevelCommentIds) {
+                val reconciled = reconcileAlgoliaThread(action, requestId, original, topLevelCommentIds, extendInitialBaseline) {
                     partialApplied = true
                 }
                 if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
@@ -500,6 +505,7 @@ class CommentsPresenter(
                     networkCompleted = true,
                     responseToCache = reconciled.response.takeIf { reconciled !== original },
                     restoreScroll = action.restoreScrollFromCache && !partialApplied,
+                    extendInitialBaseline = extendInitialBaseline,
                     broadcastStoryUpdate = true,
                 )
                 return@launch
@@ -520,6 +526,7 @@ class CommentsPresenter(
                     officialStory = prepared.story,
                     comments = prepared.comments,
                     usedAsFallback = prepared.usedAsFallback,
+                    extendInitialBaseline = extendInitialBaseline,
                 )
                 return@launch
             }
@@ -587,8 +594,10 @@ class CommentsPresenter(
                             broadcastStoryUpdate = false,
                             prepared = prepared,
                             fromCache = true,
+                            extendInitialBaseline = extendInitialBaseline,
                         )
                     }
+                    if (action.cachedCommentsPreviouslyViewed) extendInitialBaseline = false
                 }
             }
             // Display disk-cached comments before joining an unfinished network preload. Large
@@ -621,7 +630,7 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
-                    val reconciled = reconcileAlgoliaThread(action, requestId, result, topLevelCommentIds)
+                    val reconciled = reconcileAlgoliaThread(action, requestId, result, topLevelCommentIds, extendInitialBaseline)
                     // A joined preload may publish before its cache hash is ready. Only a screen
                     // with an existing prepared cache needs to complete that comparison now.
                     val pending = reconciled.parsed.cacheSummary?.preparedThread
@@ -644,6 +653,7 @@ class CommentsPresenter(
                             parsed = parsed,
                             networkCompleted = true,
                             responseToCache = reconciled.response,
+                            extendInitialBaseline = extendInitialBaseline,
                             restoreScroll = false,
                             broadcastStoryUpdate = true,
                         )
@@ -669,6 +679,7 @@ class CommentsPresenter(
                         officialStory = result.story,
                         comments = result.comments,
                         usedAsFallback = result.usedAsFallback,
+                        extendInitialBaseline = extendInitialBaseline,
                     )
                 }
                 is CommentThreadLoadResult.Failure -> {
@@ -700,6 +711,7 @@ class CommentsPresenter(
         requestId: Int,
         result: CommentThreadLoadResult.Algolia,
         topLevelCommentIds: List<Int>,
+        extendInitialBaseline: Boolean,
         onPartialApplied: () -> Unit = {},
     ): CommentThreadLoadResult.Algolia = commentThreadRepository.reconcileMissingTopLevelComments(
         result, topLevelCommentIds, action.filteredUsers,
@@ -708,6 +720,7 @@ class CommentsPresenter(
             applyAlgoliaThread(
                 action, requestId, result.parsed, networkCompleted = false,
                 responseToCache = null, restoreScroll = action.restoreScrollFromCache,
+                extendInitialBaseline = extendInitialBaseline,
                 broadcastStoryUpdate = false,
             )
             onPartialApplied()
@@ -733,9 +746,10 @@ class CommentsPresenter(
         officialStory: Story,
         comments: MutableList<Comment>,
         usedAsFallback: Boolean,
+        extendInitialBaseline: Boolean,
     ) {
         CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, officialStory)
-        if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = false)) return
+        if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = false, extendInitialBaseline)) return
         publish(loaded = true, refreshing = false, failure = null, showingCached = false)
         mutableEffects.emit(
             CommentsPresenterEffect.ThreadApplied(
@@ -836,6 +850,7 @@ class CommentsPresenter(
         broadcastStoryUpdate: Boolean,
         prepared: CachedThreadPreparation? = null,
         fromCache: Boolean = false,
+        extendInitialBaseline: Boolean = false,
     ) {
         val headerChanged = prepared?.headerChanged ?: parsed.updateStoryInformation(
             action.story,
@@ -851,7 +866,7 @@ class CommentsPresenter(
         if (initialThread != null) prepareInitialContent(initialThread.state)
         if (!threadLoadSession.isCurrent(requestId, action.story.id)) return
         if (initialThread == null) {
-            if (!applyPreparedUpdate(action, requestId, parsed.comments, preserveExisting = true)) return
+            if (!applyPreparedUpdate(action, requestId, parsed.comments, preserveExisting = true, extendInitialBaseline)) return
         } else {
             thread.commitPreparedInitialComments(action.story, initialThread, thread.state.value.sorting)
         }
@@ -881,12 +896,15 @@ class CommentsPresenter(
         requestId: Int,
         comments: List<Comment>,
         preserveExisting: Boolean,
+        extendInitialBaseline: Boolean,
     ): Boolean {
         while (threadLoadSession.isCurrent(requestId, action.story.id)) {
             val input = thread.capturePreparationInput()
             val story = action.story.toSnapshot()
             val prepared = withContext(threadPreparationDispatcher) {
-                CommentThreadStore.prepareUpdate(input, story, comments, action.collapseTopLevel, preserveExisting)
+                CommentThreadStore.prepareUpdate(
+                    input, story, comments, action.collapseTopLevel, preserveExisting, extendInitialBaseline,
+                )
             }
             if (!thread.hasLoadedComments) prepareInitialContent(prepared.state)
             if (!threadLoadSession.isCurrent(requestId, action.story.id)) return false

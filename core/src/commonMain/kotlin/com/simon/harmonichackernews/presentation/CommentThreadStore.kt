@@ -87,7 +87,7 @@ class CommentThreadStore {
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
-    // The first successful load (including an empty cached thread) is this visit's baseline.
+    // The presenter may extend this baseline while completing an unviewed initial load.
     private var initialCommentIds: Set<Int>? = null
     internal val hasLoadedComments: Boolean get() = initialCommentIds != null
     private var hideDelayedComments = false
@@ -208,11 +208,14 @@ class CommentThreadStore {
             parsedComments: List<Comment>,
             collapseTopLevel: Boolean,
             preserveExisting: Boolean,
+            extendInitialBaseline: Boolean = false,
         ): PreparedInitialCommentThread {
             val detachedStory = Story().applySnapshot(story)
             val prepared = CommentThreadStore()
             prepared.currentStory = detachedStory
-            prepared.initialCommentIds = input.initialCommentIds
+            prepared.initialCommentIds = if (extendInitialBaseline) {
+                input.initialCommentIds.orEmpty() + parsedComments.map { it.id }
+            } else input.initialCommentIds
             prepared.hideDelayedComments = input.hideDelayedComments
             prepared.mutableState.value = input.state
             prepared.snapshotReuseCandidates = input.state.allComments.associateBy { it.id }

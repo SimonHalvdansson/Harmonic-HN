@@ -147,36 +147,78 @@ class CommentsPresenterTest {
     @Test
     fun existingAlgoliaCommentsAppearWhileMissingRootIsLoading() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
-        val recovered = CompletableDeferred<Comment>()
-        val source = FakeAlgoliaRepository(sortingResponse)
-        val official = object : HackerNewsRepository {
-            override suspend fun getStory(id: Int): Story? = error("Unused")
-            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
-            override suspend fun getComment(id: Int) = recovered.await()
+        for (preloaded in listOf(false, true)) {
+            val recovered = CompletableDeferred<Comment>()
+            val source = FakeAlgoliaRepository(sortingResponse)
+            val official = object : HackerNewsRepository {
+                override suspend fun getStory(id: Int): Story? = error("Unused")
+                override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+                override suspend fun getComment(id: Int) = recovered.await()
+            }
+            val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+            val preloads = CommentsPreloadRepository(source, parser = parser, nowMillis = { 0L }, requestDispatcher = dispatcher)
+            if (preloaded) preloads.preload(42, listOf(3, 1, 2))
+            val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
+                CommentThreadRepository(source, official, parser, preloads, requestDispatcher = dispatcher),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher)
+            val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
+            backgroundScope.launch(dispatcher) {
+                presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it }
+            }
+            val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(3, 1, 2) }
+            presenter.thread.reset(story)
+            presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false, null, true))
+            runCurrent()
+            assertTrue(presenter.state.value.loaded)
+            assertNotNull(presenter.thread.findComment(1))
+            assertNull(presenter.thread.findComment(3))
+            presenter.dispatch(CommentsAction.ToggleExpanded(1))
+            recovered.complete(Comment().apply { id = 3; parent = 42; by = "reader"; text = "Recovered" })
+            runCurrent()
+            assertEquals(listOf(0, 3, 1, 2), presenter.thread.allComments.map { it.id })
+            assertTrue(presenter.thread.state.value.allComments.none { it.isNew }, "Initial recovery, preloaded=$preloaded")
+            assertFalse(presenter.thread.findComment(1)!!.expanded)
+            assertEquals(listOf(true, false), effects.map { it.restoreScroll }, "Recovery must not restore scroll twice")
         }
-        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
-        val preloads = CommentsPreloadRepository(source, parser = parser, nowMillis = { 0L }, requestDispatcher = dispatcher)
-        preloads.preload(42, listOf(3, 1, 2))
-        val presenter = CommentsPresenter(backgroundScope, CommentsSessionState(),
-            CommentThreadRepository(source, official, parser, preloads, requestDispatcher = dispatcher),
-            UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher)
-        val effects = mutableListOf<CommentsPresenterEffect.ThreadApplied>()
-        backgroundScope.launch(dispatcher) {
-            presenter.effects.filterIsInstance<CommentsPresenterEffect.ThreadApplied>().collect { effects += it }
+    }
+
+    @Test
+    fun cacheOnlyCreatesNewMarkersAfterCommentsWereViewedAndRefreshStillMarksArrivals() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        for (preparedCache in listOf(false, true)) {
+            for (previouslyViewed in listOf(false, true)) {
+                val cached = """{"id":42,"title":"Discussion","children":[{"id":1,"author":"alice","text":"Old"}]}"""
+                val source = FakeAlgoliaRepository(sortingResponse)
+                val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+                val cache = StoryCacheRepository(InMemoryStoryCacheFileStore(), InMemoryStoryCacheMetadataStore())
+                cache.storeStory(42, cached, 1_000)
+                if (previouslyViewed) cache.markCommentsViewed(42)
+                val session = CommentsSessionState()
+                val presenter = CommentsPresenter(backgroundScope, session,
+                    CommentThreadRepository(source, UnusedHackerNewsRepository, parser, requestDispatcher = dispatcher),
+                    UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher)
+                val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter,
+                    nowMillis = { 2_000L },
+                    hasViewedComments = cache::hasViewedComments,
+                    markCommentsViewed = cache::markCommentsViewed,
+                    loadCachedThread = { cache.loadStoryPayload(it) },
+                    loadPreparedThread = { if (preparedCache) parser.prepare(cached, listOf(1, 2)) else null },
+                    storeCachedThread = { id, response, summary -> cache.storeStory(id, response, 2_000, summary) })
+                val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
+                runtime.initialize(story, false, -1, "Default", false)
+                runtime.loadInitial(false)
+                runCurrent()
+                fun newIds() = presenter.thread.state.value.allComments.filter { it.isNew }.map { it.id }.toSet()
+                assertEquals(if (previouslyViewed) setOf(2) else emptySet(), newIds(),
+                    "prepared=$preparedCache, previouslyViewed=$previouslyViewed")
+                assertTrue(cache.hasViewedComments(42), "Displaying comments records a visit")
+                source.response = sortingResponse.replace("\"id\":2", "\"id\":3")
+                story.kids = intArrayOf(1, 3)
+                runtime.retry()
+                runCurrent()
+                assertTrue(3 in newIds(), "A later refresh must still mark arrivals")
+            }
         }
-        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(3, 1, 2) }
-        presenter.thread.reset(story)
-        presenter.dispatch(CommentsAction.LoadThread(story, true, emptySet(), "Default", false, null, true))
-        runCurrent()
-        assertTrue(presenter.state.value.loaded)
-        assertNotNull(presenter.thread.findComment(1))
-        assertNull(presenter.thread.findComment(3))
-        presenter.dispatch(CommentsAction.ToggleExpanded(1))
-        recovered.complete(Comment().apply { id = 3; parent = 42; by = "reader"; text = "Recovered" })
-        runCurrent()
-        assertEquals(listOf(0, 3, 1, 2), presenter.thread.allComments.map { it.id })
-        assertFalse(presenter.thread.findComment(1)!!.expanded)
-        assertEquals(listOf(true, false), effects.map { it.restoreScroll }, "Recovery must not restore scroll twice")
     }
 
     @Test
@@ -1720,7 +1762,7 @@ class CommentsPresenterTest {
     }
 
     private class FakeAlgoliaRepository(
-        private val response: String,
+        var response: String,
     ) : AlgoliaRepository {
         var itemRequests = 0
 

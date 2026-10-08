@@ -318,10 +318,9 @@ internal fun widgetStoryIntent(context: Context, destination: StoryDestination):
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         // Distinct identities prevent one row's pending intent from overwriting another's.
         data = Uri.parse("harmonic-widget://story/${destination.storyId}/${destination.showWebsite}")
-        // A widget needs only a compact navigation seed. Repeating full comment trees and legacy
-        // bundles in every collection click can overflow the launcher's asynchronous Binder budget.
+        // Keep ranked comment and poll option IDs; omit large story text from the navigation seed.
         val compact = destination.copy(seed = destination.seed?.let { seed ->
-            seed.copy(story = seed.story.copy(text = null, childIds = emptyList(), pollOptionIds = emptyList()))
+            seed.copy(story = seed.story.copy(text = null))
         })
         putExtra(AppDestinationCodec.ANDROID_PAYLOAD_EXTRA, AppDestinationCodec.encode(compact))
         putExtra(CommentsIntentExtras.EXTRA_ID, destination.storyId)

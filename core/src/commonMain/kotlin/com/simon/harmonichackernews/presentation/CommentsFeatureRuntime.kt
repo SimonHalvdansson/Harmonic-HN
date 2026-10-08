@@ -99,6 +99,8 @@ class CommentsFeatureRuntime(
     private val summaryRuntime: StorySummaryRuntime? = null,
     private val canLoadArticleTextOnDemand: Boolean = false,
     private val loadCachedStoryHeader: suspend (Int) -> CachedStoryHeader? = { null },
+    private val hasViewedComments: (Int) -> Boolean = { false },
+    private val markCommentsViewed: suspend (Int) -> Unit = {},
     private val isThreadCached: (Int) -> Boolean = { false },
     private val loadCachedThread: suspend (Int) -> String? = { null },
     private val loadPreparedThread: (suspend (Int) -> PreparedCommentThread?)? = null,
@@ -406,6 +408,7 @@ class CommentsFeatureRuntime(
                 loadPreparedThread = loadPreparedResponse,
                 openingRequest = initialRequest,
                 userInitiated = refreshing,
+                cachedCommentsPreviouslyViewed = hasViewedComments(story.id),
             ),
         )
         presenter.dispatch(CommentsAction.LoadPollOptions(story, forceRefresh = refreshing))
@@ -747,6 +750,7 @@ class CommentsFeatureRuntime(
                 effect.responseToCache?.let { response ->
                     storeCachedThread(effect.storyId, response, effect.cacheSummary)
                 }
+                if (effect.contentApplied) markCommentsViewed(effect.storyId)
             }
             is CommentsPresenterEffect.ThreadFailed -> {
                 mutableEffects.tryEmit(

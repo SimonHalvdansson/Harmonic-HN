@@ -218,6 +218,8 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         loadCachedStoryHeader = { storyCache.loadStoryHeader(it) },
         isThreadCached = storyCache::hasStoryPayload,
+        hasViewedComments = storyCache::hasViewedComments,
+        markCommentsViewed = storyCache::markCommentsViewed,
         loadPreparedThread = storyCache::loadPreparedThread,
         loadCachedThread = { storyId ->
             withContext(Dispatchers.Default) { storyCache.loadStoryPayload(storyId) }
