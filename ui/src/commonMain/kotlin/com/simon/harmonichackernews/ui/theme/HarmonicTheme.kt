@@ -28,6 +28,10 @@ import androidx.compose.ui.graphics.colorspace.ColorSpaces
 val ColorScheme.pageBackground: Color
     get() = if (surface.luminance() > onSurface.luminance()) surfaceContainer else surface
 
+/** Menus stay distinct from the page canvas in both light and dark themes. */
+val ColorScheme.menuBackground: Color
+    get() = if (surface.luminance() > onSurface.luminance()) surfaceContainerLow else surfaceContainer
+
 /** Light-mode cards follow Android Settings' expressive preference surfaces. */
 val ColorScheme.cardBackground: Color
     get() = if (surface.luminance() > onSurface.luminance()) surfaceBright else surfaceContainer

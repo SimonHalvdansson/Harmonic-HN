@@ -6,6 +6,7 @@ package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.pageBackground
+import com.simon.harmonichackernews.ui.theme.menuBackground
 import com.simon.harmonichackernews.presentation.NewStoriesFilter
 
 import org.jetbrains.compose.resources.DrawableResource
@@ -611,7 +612,7 @@ private fun SearchHeader(
         sideStart = sideStart,
         sideEnd = sideEnd,
         iconColor = colors.onSurfaceVariant,
-        menuColor = colors.surfaceContainer,
+        menuColor = colors.menuBackground,
         menuTextColor = colors.onSurface,
         fontFamily = ProductSansFontFamily,
         onDraftChanged = controller::updateSearchDraft,

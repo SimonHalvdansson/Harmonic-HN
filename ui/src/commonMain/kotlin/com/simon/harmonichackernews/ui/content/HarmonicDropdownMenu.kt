@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.menuBackground
 
 private const val MenuRevealDurationMillis = 220
 private const val MenuDismissDurationMillis = 150
@@ -67,7 +68,7 @@ fun HarmonicDropdownMenu(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     shadowElevation: Dp = MenuDefaults.ShadowElevation,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = MaterialTheme.colorScheme.menuBackground,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
