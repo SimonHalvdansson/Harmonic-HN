@@ -197,20 +197,21 @@ internal fun CommentsPane(
                 }
                 val showStatusBarProtection = drawStatusBarProtection &&
                     !(commentsController.integratedWebView && commentsController.isScrolledToTop)
+                // Ask lifts the overlay above the persistent controls and status bar protection.
+                // Its scrim already dims them throughout the morph in both directions.
+                val persistentControlScrimAlpha = if (commentsController.askSurfaceVisible) 0f
+                    else modalScrimAlpha
                 if (showStatusBarProtection) {
                     StatusBarProtection(
                         color = statusBarColor,
                         statusBarHeight = statusBarHeight,
-                        // Ask lifts the entire overlay above this protection, so its scrim
-                        // already dims the bar. Tinting it as well would apply the dim twice.
-                        modalScrimAlpha = if (commentsController.askSurfaceVisible) 0f
-                            else modalScrimAlpha,
+                        modalScrimAlpha = persistentControlScrimAlpha,
                     )
                 }
                 if (showFloatingUpButton) {
                     CommentsUpButton(
                         onClick = controller::closeStory,
-                        modalScrimAlpha = modalScrimAlpha,
+                        modalScrimAlpha = persistentControlScrimAlpha,
                         modalScrimActive = modalOverlayVisible,
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -248,7 +249,7 @@ internal fun CommentsPane(
                                     1f - commentsController.sheetSlideOffset.coerceIn(0f, 1f)
                                 ) * sheetTravelPx
                             },
-                        modalScrimAlpha = modalScrimAlpha,
+                        modalScrimAlpha = persistentControlScrimAlpha,
                         modalScrimActive = modalOverlayVisible,
                     )
                 }
