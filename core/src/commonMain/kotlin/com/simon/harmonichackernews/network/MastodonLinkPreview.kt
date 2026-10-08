@@ -50,7 +50,7 @@ internal object MastodonLinkPreview {
         )
     }
 
-    private const val MASTODON_DESCRIPTION_MAX_CHARS = 600
+    private const val MASTODON_DESCRIPTION_MAX_CHARS = 1200
 }
 
 internal suspend fun HttpClient.loadMastodonPreview(url: String): LinkPreviewInfo {
