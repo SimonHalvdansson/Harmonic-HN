@@ -79,12 +79,14 @@ private fun ThreadDepthIndicatorsSettingsScreen(
         }
     }
     val modes = listOf(
-        CommentDepthPreferences.THEME_DEFAULT,
         CommentDepthPreferences.MATERIAL_YOU,
         CommentDepthPreferences.COLORS,
         CommentDepthPreferences.AUTHOR,
         CommentDepthPreferences.MONOCHROME,
     )
+    val selectedMode = CommentDepthPreferences.sanitizeMode(state.depthMode).let {
+        if (it == CommentDepthPreferences.THEME_DEFAULT) CommentDepthPreferences.MATERIAL_YOU else it
+    }
     val indicatorsEnabled = CommentDepthPreferences.shouldShowIndicators(state.depthMode)
     SettingsPage(
         title = stringResource(Res.string.settings_section_thread_depth),
@@ -177,7 +179,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                         .selectableGroup(),
                 ) {
                     modes.forEachIndexed { index, option ->
-                        val selected = CommentDepthPreferences.sanitizeMode(state.depthMode) == option
+                        val selected = selectedMode == option
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -14,6 +14,7 @@ object CommentDepthPaletteCatalog {
     )
     private fun material(scheme: ColorScheme) = listOf(
         scheme.primary, scheme.secondary, scheme.tertiary,
+        scheme.primaryContainer, scheme.tertiaryContainer,
     )
     private val monochrome = List(colorCount) { Color(0xFF808080) }
 

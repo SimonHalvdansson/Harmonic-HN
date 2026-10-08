@@ -286,7 +286,7 @@ object CommentDepthPreferences {
         AUTHOR -> "Author"
         MONOCHROME -> "Monochrome"
         NONE -> "None"
-        else -> "Theme default"
+        else -> "Theme colors"
     }
 }
 

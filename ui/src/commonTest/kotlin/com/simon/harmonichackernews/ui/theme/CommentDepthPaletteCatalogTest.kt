@@ -11,14 +11,16 @@ class CommentDepthPaletteCatalogTest {
     fun materialDepthColorsFollowTheActiveScheme() {
         val scheme = androidx.compose.material3.lightColorScheme(
             primary = Color.Red, secondary = Color.Green, tertiary = Color.Blue,
+            primaryContainer = Color.Cyan, secondaryContainer = Color.Magenta, tertiaryContainer = Color.Yellow,
         )
+        val expected = listOf(Color.Red, Color.Green, Color.Blue, Color.Cyan, Color.Yellow)
         for (mode in listOf(CommentDepthPreferences.THEME_DEFAULT, CommentDepthPreferences.MATERIAL_YOU)) {
             val colors = CommentDepthPaletteCatalog.colors(mode, "material_light", false, scheme)
-            assertEquals(listOf(Color.Red, Color.Green, Color.Blue), colors.take(3))
+            assertEquals(expected, colors)
             val depths = (0..14).map {
                 CommentDepthPaletteCatalog.color(mode, "material_light", false, it, scheme = scheme)
             }
-            assertTrue(depths.zipWithNext().all { (current, next) -> current != next })
+            assertEquals(List(15) { expected[it % expected.size] }, depths)
         }
     }
 
