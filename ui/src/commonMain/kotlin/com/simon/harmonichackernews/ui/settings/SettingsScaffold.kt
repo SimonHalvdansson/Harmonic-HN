@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -222,8 +223,8 @@ private fun SettingsNavigationRow(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(40.dp)
+                .clip(CircleShape)
                 .background(colors.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -246,7 +247,7 @@ private fun SettingsNavigationRow(
             )
             Text(
                 text = summary,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 1.dp),
                 color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
