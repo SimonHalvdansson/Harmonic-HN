@@ -88,6 +88,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
+import dev.chrisbanes.haze.HazeSourceSelection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
@@ -874,6 +875,8 @@ private fun CommentNavigationButtons(
     val navigationRipple = ripple(bounded = true, radius = 48.dp)
     val hazeState = currentCommentsHazeState()
     val surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+    // Keep the backdrop stable when a modal moves above or below the persistent controls.
+    val backdropSelection = remember { HazeSourceSelection.Behind.where { it.zIndex <= 0f } }
 
     Box {
         Row(
@@ -884,6 +887,7 @@ private fun CommentNavigationButtons(
                     hazeState = hazeState,
                     surfaceColor = surfaceColor,
                     shape = shape,
+                    sourceSelection = backdropSelection,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
