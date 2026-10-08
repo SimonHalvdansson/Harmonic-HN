@@ -25,7 +25,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.cancel
 import io.ktor.utils.io.charsets.Charset
 import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.io.readByteArray
 
@@ -324,7 +324,7 @@ class HttpResponseBody internal constructor(
         require(maxBytes > 0) { "maxBytes must be positive" }
         val declaredLength = contentLength()
         if (declaredLength > maxBytes) throw HttpBodyLimitException(maxBytes, declaredLength)
-        val bytes = channel.readRemaining(maxBytes.toLong() + 1L).readByteArray()
+        val bytes = channel.readBuffer(maxBytes.toLong() + 1L).readByteArray()
         // Ktor's bounded read can finish without throwing an already-closed channel's error.
         channel.closedCause?.let { throw it }
         if (bytes.size > maxBytes) throw HttpBodyLimitException(maxBytes, bytes.size.toLong())

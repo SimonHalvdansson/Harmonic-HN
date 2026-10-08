@@ -17,7 +17,7 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import io.ktor.utils.io.cancel
 import kotlinx.io.readByteArray
 import kotlinx.io.IOException
@@ -118,7 +118,7 @@ private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {
             if (declaredLength != null && declaredLength > DEFAULT_MAX_BUFFERED_BODY_BYTES) {
                 throw HttpBodyLimitException(DEFAULT_MAX_BUFFERED_BODY_BYTES, declaredLength)
             }
-            val bytes = channel.readRemaining(DEFAULT_MAX_BUFFERED_BODY_BYTES + 1L).readByteArray()
+            val bytes = channel.readBuffer(DEFAULT_MAX_BUFFERED_BODY_BYTES + 1L).readByteArray()
             // Ktor's bounded read can finish without throwing an already-closed channel's error.
             channel.closedCause?.let { throw it }
             if (bytes.size > DEFAULT_MAX_BUFFERED_BODY_BYTES) {
