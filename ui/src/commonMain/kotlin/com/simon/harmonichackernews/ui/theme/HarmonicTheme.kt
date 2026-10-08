@@ -90,7 +90,7 @@ internal fun animateThemeColorScheme(target: ColorScheme): ColorScheme {
     return displayed
 }
 
-private fun ColorScheme.colors(): List<Color> = buildList {
+internal fun ColorScheme.colors(): List<Color> = buildList {
     mapColors { color -> color.also { add(it) } }
 }
 

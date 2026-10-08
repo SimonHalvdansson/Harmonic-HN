@@ -76,7 +76,12 @@ class HarmonicThemeCatalogTest {
         for (theme in listOf("light", "dark", "white", "amoled", "gray", "hacker", "hacker_news")) {
             val base = HarmonicThemeCatalog.resolve(theme, false).colorScheme
             for (option in ColorSchemeCatalog.options) {
-                assertEquals(base, HarmonicThemeCatalog.resolve(theme, false, option.value).colorScheme)
+                // ColorScheme uses referential equality; curated schemes can return fresh copies.
+                assertEquals(
+                    base.colors(),
+                    HarmonicThemeCatalog.resolve(theme, false, option.value).colorScheme.colors(),
+                    "$theme should ignore material color ${option.value}",
+                )
             }
         }
     }
