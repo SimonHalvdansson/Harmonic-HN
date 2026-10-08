@@ -237,7 +237,6 @@ private fun ColorSchemePicker(
                 options = listOf(ColorSchemeStyle.NeutralSurfaces to "Neutral",
                     ColorSchemeStyle.Balanced to "Balanced", ColorSchemeStyle.Vibrant to "Vibrant"),
                 selected = style,
-                buttonHeight = 52.dp,
                 optionContent = { value, checked ->
                     Text(
                         when (value) {

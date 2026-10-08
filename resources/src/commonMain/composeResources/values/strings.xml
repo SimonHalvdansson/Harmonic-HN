@@ -24,7 +24,7 @@
     <string name="settings_section_reader_mode">Reader mode</string>
     <string name="settings_section_web_links">Web and links</string>
     <string name="settings_section_filters_tags">Filters and tags</string>
-    <string name="settings_section_ai_summary">AI summarization</string>
+    <string name="settings_section_ai_summary">AI features</string>
     <string name="settings_section_notifications">Notifications</string>
     <string name="settings_section_data">Data</string>
     <string name="settings_section_debug">Debug</string>

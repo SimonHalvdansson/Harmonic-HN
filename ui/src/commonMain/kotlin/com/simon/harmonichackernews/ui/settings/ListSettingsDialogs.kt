@@ -141,7 +141,7 @@ fun PreloadWebViewDialog(
     PreloadPolicyDialog(
         title = "Preload websites",
         description = "When you open comments for a link, Harmonic can load the website " +
-            "WebView in the background while you read. This makes switching to the website " +
+            "in the background while you read. This makes switching to the website " +
             "faster, but uses network data, CPU, memory, and battery.",
         initialMode = initialMode,
         initialBattery = initialBattery,

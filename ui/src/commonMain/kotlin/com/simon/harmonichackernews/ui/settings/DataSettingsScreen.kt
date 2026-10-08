@@ -116,7 +116,7 @@ fun DataSettingsScreen(
         item {
             SettingsCategory("Storage") {
                 SettingRow(
-                    title = "Clear clicked stories (${state.historyCount})",
+                    title = "Clear reading history (${state.historyCount})",
                     icon = Res.drawable.ic_close,
                     onClick = { onAction(DataSettingsAction.ClearHistory) },
                 )

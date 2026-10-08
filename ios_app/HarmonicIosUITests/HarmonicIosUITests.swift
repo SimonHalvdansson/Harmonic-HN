@@ -27,7 +27,7 @@ final class IosLiteRtSettingsUITests: XCTestCase {
         XCTAssertTrue(more.waitForExistence(timeout: 20))
         more.tap()
         app.buttons["Settings"].tap()
-        let ai = app.buttons["AI summarization"]
+        let ai = app.buttons["AI features"]
         for _ in 0..<4 where !ai.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(ai.waitForExistence(timeout: 10))
         ai.tap()
@@ -199,7 +199,7 @@ final class HarmonicIosUITests: XCTestCase {
         openSettings()
         app.buttons["Web and links"].tap()
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Preload websites")).firstMatch.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Go back to comments")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Hide browser on back")).firstMatch.exists)
         keepScreenshot("iOS web settings")
     }
 
@@ -790,11 +790,11 @@ final class HarmonicIosSettingsTests: XCTestCase {
     func testWebSettingsAndLandscape() {
         settings("Web and links")
         record("Web settings supported features")
-        XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Block WebView ads")).firstMatch.exists)
+        XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Block in-app browser ads")).firstMatch.exists)
         XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Enable reader mode")).firstMatch.exists)
         app.swipeUp()
         record("Web settings links")
-        XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Block WebView ads")).firstMatch.exists)
+        XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Block in-app browser ads")).firstMatch.exists)
         XCTAssertFalse(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Enable reader mode")).firstMatch.exists)
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 4)

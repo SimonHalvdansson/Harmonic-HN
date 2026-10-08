@@ -146,7 +146,7 @@ fun CommentsSettingsScreen(
                     onSelected = onCollectedLinksModeChanged,
                 )
                 SettingsDivider()
-                BooleanRow("Emphasize meta", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
+                BooleanRow("Emphasize username and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
                 SettingsDivider()
                 SettingRow(
                     title = "User profile images",

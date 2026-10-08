@@ -111,7 +111,7 @@ fun AppearanceSettingsScreen(
                 }
                 SettingsDivider()
                 SegmentedSetting(
-                    title = "Story list selector",
+                    title = "Frontpage selector",
                     options = listOf(
                         StoryListSelector.DROPDOWN to "Dropdown",
                         StoryListSelector.CHIPS to "Chips",
@@ -122,7 +122,7 @@ fun AppearanceSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Compact header",
-                    summary = "Smaller margins for 'Top stories' header",
+                    summary = "Reduce spacing around the frontpage header",
                     icon = Res.drawable.ic_horizontal_split,
                     checked = state.compactHeader,
                     onCheckedChange = {

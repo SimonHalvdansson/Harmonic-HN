@@ -8,7 +8,7 @@ class AskErrorTest {
     fun setupErrorsOfferSettingsInsteadOfRetry() {
         listOf(
             "API Key missing",
-            "Model missing. Open AI summarization settings and choose a model.",
+            "Model missing. Open AI features settings and choose a model.",
             "No local AI model is available. Configure AI in Settings.",
             "Local summarization failed: Download the selected local model before using it",
             "Local summarization failed: Install the selected model runtime before using it",

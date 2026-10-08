@@ -94,7 +94,7 @@ class KtorCloudSummaryRepository(
         val model = AiSummaryProviders.getModelForRequest(config.baseUrl, config.model)
         if (model.isBlank()) {
             throw CloudSummaryException(
-                "Model missing. Open AI summarization settings and choose a model.",
+                "Model missing. Open AI features settings and choose a model.",
             )
         }
         send(CloudSummaryEvent.DebugInfo("$model · load —"))

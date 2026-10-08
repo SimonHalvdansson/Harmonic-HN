@@ -78,10 +78,10 @@ fun WebLinksSettingsScreen(
         contentVersion = contentVersion,
     ) {
         if (capabilities.integratedWebView) item {
-            SettingsCategory("WebView") {
+            SettingsCategory("In-app browser") {
                 BooleanSettingRow(
-                    title = "Integrated WebView",
-                    summary = "Opens websites in the app which has a hit on performance",
+                    title = "In-app browser",
+                    summary = "Open websites inside Harmonic. May reduce performance.",
                     icon = Res.drawable.ic_web_asset,
                     checked = state.integratedWebView,
                     setting = WebLinksBooleanSetting.IntegratedWebView,
@@ -90,8 +90,8 @@ fun WebLinksSettingsScreen(
                 if (capabilities.closeWebViewOnBack) {
                     SettingsDivider()
                     BooleanSettingRow(
-                        title = "Go back to comments",
-                        summary = "Back navigation closes integrated WebView",
+                        title = "Hide browser on back",
+                        summary = "Return to comments instead of the previous webpage.",
                         icon = Res.drawable.ic_arrow_back,
                         checked = state.closeWebViewOnBack,
                         setting = WebLinksBooleanSetting.CloseWebViewOnBack,
@@ -111,7 +111,7 @@ fun WebLinksSettingsScreen(
                 }
                 SettingsDivider()
                 BooleanSettingRow(
-                    title = "Match WebView dark mode to theme",
+                    title = "Match in-app browser dark mode to theme",
                     icon = Res.drawable.ic_invert_colors,
                     checked = state.matchWebViewTheme,
                     setting = WebLinksBooleanSetting.MatchWebViewTheme,
@@ -121,7 +121,7 @@ fun WebLinksSettingsScreen(
                 if (capabilities.adBlocking) {
                     SettingsDivider()
                     BooleanSettingRow(
-                        title = "Block WebView ads",
+                        title = "Block in-app browser ads",
                         summary = "May cause some sites to stop working and has a small performance penalty",
                         icon = Res.drawable.ic_block,
                         checked = state.blockWebViewAds,

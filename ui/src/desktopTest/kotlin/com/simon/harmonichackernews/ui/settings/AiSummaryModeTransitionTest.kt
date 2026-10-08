@@ -75,7 +75,7 @@ class AiSummaryModeTransitionTest {
                         navigation, directive, false, 24.dp, {}, {},
                         renderList = { _, _, _, _ -> },
                         renderDetail = { _, _, _, _ ->
-                            SettingsPage("AI summarization", false, {}) {
+                            SettingsPage("AI features", false, {}) {
                                 item {
                                     SettingsCategory("Model") {
                                         SegmentedSetting(

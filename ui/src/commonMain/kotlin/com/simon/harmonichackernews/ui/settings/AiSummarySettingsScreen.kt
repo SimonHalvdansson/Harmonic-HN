@@ -59,7 +59,7 @@ fun AiSummarySettingsScreen(
     ) {
         item {
             SettingsMainToggle(
-                title = "Use AI summarization and Ask",
+                title = "Enable AI features",
                 checked = state.enabled,
                 enabled = state.configurationComplete,
                 onCheckedChange = onEnabledChanged,

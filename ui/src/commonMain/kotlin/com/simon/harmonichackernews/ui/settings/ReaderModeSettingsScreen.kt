@@ -35,7 +35,7 @@ fun ReaderModeSettingsRoute(
                 title = "Use reader mode",
                 checked = reading.readerModeEnabled,
                 enabled = reading.integratedWebView,
-                summary = if (reading.integratedWebView) null else "Enable the integrated browser to use reader mode",
+                summary = if (reading.integratedWebView) null else "Enable the in-app browser to use reader mode",
                 onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_ENABLED, it) },
             )
         }

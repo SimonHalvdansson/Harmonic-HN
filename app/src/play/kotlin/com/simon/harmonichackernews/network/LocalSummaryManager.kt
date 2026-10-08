@@ -336,7 +336,7 @@ internal class AndroidLocalSummaryBackend(
             when (val featureStatus = generativeModel.checkStatus()) {
                 FeatureStatus.UNAVAILABLE -> error(
                     "Gemini Nano's custom prompt feature is unavailable on this device. " +
-                        "Choose the 3-bullet summarizer in AI summarization settings.",
+                        "Choose the 3-bullet summarizer in AI features settings.",
                 )
                 FeatureStatus.DOWNLOADABLE,
                 FeatureStatus.DOWNLOADING,
