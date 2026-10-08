@@ -67,23 +67,26 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
+private enum class SettingsListGroup { Reading, Tools, App }
+
 private data class SettingsListEntry(
+    val group: SettingsListGroup,
     val section: SettingsSection,
     val icon: DrawableResource,
     val summary: StringResource,
 )
 
 private val MainSettingsEntries = listOf(
-    SettingsListEntry(SettingsSection.Appearance, Res.drawable.ic_style, Res.string.settings_summary_appearance),
-    SettingsListEntry(SettingsSection.Stories, Res.drawable.ic_newspaper, Res.string.settings_summary_stories),
-    SettingsListEntry(SettingsSection.Comments, Res.drawable.ic_comment, Res.string.settings_summary_comments),
-    SettingsListEntry(SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
-    SettingsListEntry(SettingsSection.FiltersTags, Res.drawable.ic_filter_list, Res.string.settings_summary_filters_tags),
-    SettingsListEntry(SettingsSection.AiSummary, Res.drawable.ic_auto_awesome, Res.string.settings_summary_ai_summary),
-    SettingsListEntry(SettingsSection.Notifications, Res.drawable.ic_notifications, Res.string.settings_summary_notifications),
-    SettingsListEntry(SettingsSection.Data, Res.drawable.ic_data_table, Res.string.settings_summary_data),
-    SettingsListEntry(SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
-    SettingsListEntry(SettingsSection.About, Res.drawable.ic_info, Res.string.settings_summary_about),
+    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Appearance, Res.drawable.ic_style, Res.string.settings_summary_appearance),
+    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Stories, Res.drawable.ic_newspaper, Res.string.settings_summary_stories),
+    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Comments, Res.drawable.ic_comment, Res.string.settings_summary_comments),
+    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
+    SettingsListEntry(SettingsListGroup.Tools, SettingsSection.FiltersTags, Res.drawable.ic_filter_list, Res.string.settings_summary_filters_tags),
+    SettingsListEntry(SettingsListGroup.Tools, SettingsSection.AiSummary, Res.drawable.ic_auto_awesome, Res.string.settings_summary_ai_summary),
+    SettingsListEntry(SettingsListGroup.Tools, SettingsSection.Notifications, Res.drawable.ic_notifications, Res.string.settings_summary_notifications),
+    SettingsListEntry(SettingsListGroup.App, SettingsSection.Data, Res.drawable.ic_data_table, Res.string.settings_summary_data),
+    SettingsListEntry(SettingsListGroup.App, SettingsSection.About, Res.drawable.ic_info, Res.string.settings_summary_about),
+    SettingsListEntry(SettingsListGroup.App, SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
 )
 
 @Composable
@@ -118,10 +121,10 @@ fun SettingsListScreen(
     val settingsCardShape = RoundedCornerShape(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
-    val visibleEntries = MainSettingsEntries.filter {
+    val visibleGroups = MainSettingsEntries.filter {
         (it.section != SettingsSection.Debug || showDebugSettings) &&
             (it.section != SettingsSection.Notifications || loggedIn)
-    }
+    }.groupBy { it.group }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -143,6 +146,7 @@ fun SettingsListScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(
                 start = HarmonicDimens.settings_list_segment_horizontal_margin,
                 top = HarmonicDimens.settings_list_first_segment_top_margin,
@@ -151,38 +155,48 @@ fun SettingsListScreen(
                     navigationBarPadding,
             ),
         ) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(settingsCardShape),
-                ) {
-                    visibleEntries.forEachIndexed { index, entry ->
-                        val isSelected = selectedSection == entry.section ||
-                            entry.section == SettingsSection.Appearance &&
-                            (selectedSection == SettingsSection.Theme ||
-                                selectedSection == SettingsSection.PaletteTint) ||
-                            entry.section == SettingsSection.Debug &&
-                            (selectedSection == SettingsSection.DebugLinkPreviews ||
-                                selectedSection == SettingsSection.Glass) ||
-                            entry.section == SettingsSection.Comments &&
-                            (selectedSection == SettingsSection.ThreadDepth ||
-                                selectedSection == SettingsSection.UserAvatars) ||
-                            entry.section == SettingsSection.WebLinks &&
-                            selectedSection == SettingsSection.ReaderMode ||
-                            entry.section == SettingsSection.Stories &&
-                            selectedSection == SettingsSection.Frontpages ||
-                            entry.section == SettingsSection.About &&
-                            selectedSection == SettingsSection.Licenses
-                        SettingsNavigationRow(
-                            title = stringResource(entry.section.titleResource),
-                            summary = stringResource(entry.summary),
-                            icon = entry.icon,
-                            selected = showSelection && isSelected,
-                            onClick = { onSectionSelected(entry.section) },
-                        )
-                        if (index != visibleEntries.lastIndex) {
-                            SettingsDivider()
+            visibleGroups.forEach { (group, visibleEntries) ->
+                item(key = group.name) {
+                    val colors = MaterialTheme.colorScheme
+                    val (iconContainerColor, iconContentColor) = when (group) {
+                        SettingsListGroup.Reading -> colors.primaryContainer to colors.onPrimaryContainer
+                        SettingsListGroup.Tools -> colors.tertiaryContainer to colors.onTertiaryContainer
+                        SettingsListGroup.App -> colors.secondaryContainer to colors.onSecondaryContainer
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(settingsCardShape),
+                    ) {
+                        visibleEntries.forEachIndexed { index, entry ->
+                            val isSelected = selectedSection == entry.section ||
+                                entry.section == SettingsSection.Appearance &&
+                                (selectedSection == SettingsSection.Theme ||
+                                    selectedSection == SettingsSection.PaletteTint) ||
+                                entry.section == SettingsSection.Debug &&
+                                (selectedSection == SettingsSection.DebugLinkPreviews ||
+                                    selectedSection == SettingsSection.Glass) ||
+                                entry.section == SettingsSection.Comments &&
+                                (selectedSection == SettingsSection.ThreadDepth ||
+                                    selectedSection == SettingsSection.UserAvatars) ||
+                                entry.section == SettingsSection.WebLinks &&
+                                selectedSection == SettingsSection.ReaderMode ||
+                                entry.section == SettingsSection.Stories &&
+                                selectedSection == SettingsSection.Frontpages ||
+                                entry.section == SettingsSection.About &&
+                                selectedSection == SettingsSection.Licenses
+                            SettingsNavigationRow(
+                                title = stringResource(entry.section.titleResource),
+                                summary = stringResource(entry.summary),
+                                icon = entry.icon,
+                                iconContainerColor = iconContainerColor,
+                                iconContentColor = iconContentColor,
+                                selected = showSelection && isSelected,
+                                onClick = { onSectionSelected(entry.section) },
+                            )
+                            if (index != visibleEntries.lastIndex) {
+                                SettingsDivider()
+                            }
                         }
                     }
                 }
@@ -196,6 +210,8 @@ private fun SettingsNavigationRow(
     title: String,
     summary: String,
     icon: DrawableResource,
+    iconContainerColor: Color,
+    iconContentColor: Color,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -225,14 +241,14 @@ private fun SettingsNavigationRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(colors.secondaryContainer),
+                .background(iconContainerColor),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = colors.onSecondaryContainer,
+                tint = iconContentColor,
             )
         }
         Spacer(Modifier.width(16.dp))
