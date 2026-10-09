@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -45,6 +46,11 @@ import com.simon.harmonichackernews.ui.comments.AndroidCommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.comments.CommentNavigationControls
 import com.simon.harmonichackernews.ui.comments.CommentsScaffold
+import com.simon.harmonichackernews.ui.comments.AndroidCommentsScreen
+import com.simon.harmonichackernews.ui.comments.CommentsScreenController
+import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
+import com.simon.harmonichackernews.ui.comments.rememberSideBySideCommentsContent
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
@@ -165,7 +171,7 @@ internal fun CommentsPane(
         label = "story ${request.serial} status bar",
     )
     CommentsHazeHost {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize().testTag("comments-story-pane-${request.serial}")) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { activeCoordinator.webViewRoot },
@@ -189,10 +195,30 @@ internal fun CommentsPane(
                 LaunchedEffect(modalOverlayVisible) {
                     if (!modalOverlayVisible) modalScrimAlpha = 0f
                 }
+                val portal = LocalSideBySideCommentsPortal.current
+                val settingsRepository = LocalHarmonicUiDependencies.current.settings
+                val appSettings by settingsRepository.updates.collectAsStateWithLifecycle(
+                    initialValue = settingsRepository.snapshot(),
+                )
+                SideEffect {
+                    commentsController.updateSideBySideAvailability(
+                        portal != null && appSettings.appearance.sideBySideEnabled &&
+                            commentsController.integratedWebView && commentsController.story.isLink,
+                    )
+                }
+                DisposableEffect(portal, commentsController) {
+                    onDispose { commentsController.leaveSideBySideHost() }
+                }
+                val retainedContent = if (portal != null) {
+                    rememberSideBySideCommentsContent(commentsController) {
+                        TwoPaneCommentsSurface(commentsController, statusBarColor, statusBarHeight)
+                    }
+                } else null
                 if (!commentsController.webViewFullscreen) {
                     CommentsScaffold(
                         controller = commentsController,
                         reserveUpButtonInset = showFloatingUpButton,
+                        retainedContent = retainedContent,
                     )
                 }
                 val showStatusBarProtection = drawStatusBarProtection &&
@@ -201,7 +227,7 @@ internal fun CommentsPane(
                 // Its scrim already dims them throughout the morph in both directions.
                 val persistentControlScrimAlpha = if (commentsController.askSurfaceVisible) 0f
                     else modalScrimAlpha
-                if (showStatusBarProtection) {
+                if (showStatusBarProtection && portal == null) {
                     StatusBarProtection(
                         color = statusBarColor,
                         statusBarHeight = statusBarHeight,
@@ -220,7 +246,7 @@ internal fun CommentsPane(
                             .zIndex(101f),
                     )
                 }
-                if (modalOverlayVisible) {
+                if (modalOverlayVisible && portal == null) {
                     Box(Modifier.fillMaxSize().zIndex(
                         if (commentsController.askSurfaceVisible) 102f else 100f,
                     )) {
@@ -237,7 +263,7 @@ internal fun CommentsPane(
                         }
                     }
                 }
-                if (!commentsController.webViewFullscreen) {
+                if (!commentsController.webViewFullscreen && portal == null) {
                     CommentNavigationControls(
                         controller = commentsController,
                         modifier = Modifier
@@ -254,6 +280,45 @@ internal fun CommentsPane(
                     )
                 }
             }
+        }
+    }
+}
+
+/** All comments-local UI travels with the retained list, including menus and long-press overlays. */
+@Composable
+private fun TwoPaneCommentsSurface(
+    controller: CommentsScreenController,
+    statusBarColor: Color,
+    statusBarHeight: Dp,
+) {
+    CommentsHazeHost {
+        Box(Modifier.fillMaxSize()) {
+            var scrim by remember(controller) { mutableFloatStateOf(0f) }
+            val modalVisible = !controller.searchDialogVisible &&
+                (controller.linkPreviewOverlay != null || controller.isCommentActionOverlayShowing())
+            LaunchedEffect(modalVisible) { if (!modalVisible) scrim = 0f }
+            AndroidCommentsScreen(controller, reserveUpButtonInset = false)
+            if (controller.sideBySideActive || !(controller.integratedWebView && controller.isScrolledToTop)) {
+                StatusBarProtection(
+                    color = statusBarColor,
+                    statusBarHeight = statusBarHeight,
+                    modalScrimAlpha = if (controller.askSurfaceVisible) 0f else scrim,
+                )
+            }
+            if (modalVisible) {
+                Box(Modifier.fillMaxSize().zIndex(if (controller.askSurfaceVisible) 102f else 100f)) {
+                    AndroidCommentLinkPreviewOverlay(controller, onScrimAlphaChanged = { scrim = it })
+                    controller.displaySettings?.let { settings ->
+                        AndroidCommentActionOverlay(controller, settings, onScrimAlphaChanged = { scrim = it })
+                    }
+                }
+            }
+            CommentNavigationControls(
+                controller = controller,
+                modifier = Modifier.zIndex(101f),
+                modalScrimAlpha = if (controller.askSurfaceVisible) 0f else scrim,
+                modalScrimActive = modalVisible,
+            )
         }
     }
 }

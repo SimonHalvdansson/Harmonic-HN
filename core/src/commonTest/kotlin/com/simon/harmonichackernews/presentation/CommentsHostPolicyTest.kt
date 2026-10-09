@@ -16,6 +16,28 @@ class CommentsHostPolicyTest {
     )
 
     @Test
+    fun sideBySideReturnsToCommentsWhenHistoryIsExhaustedRegardlessOfPreference() {
+        for (close in listOf(false, true)) {
+            assertEquals(CommentsBackTarget.CLOSE_WEBSITE, CommentsBackPolicy.target(
+                readingWebsite.copy(sideBySideActive = true, closeWebsiteOnBack = close),
+            ))
+        }
+    }
+
+    @Test
+    fun sideBySideHonorsGoBackToCommentsBeforeWebHistory() {
+        assertEquals(CommentsBackTarget.CLOSE_WEBSITE, CommentsBackPolicy.target(
+            readingWebsite.copy(sideBySideActive = true, webHistoryAvailable = true, closeWebsiteOnBack = true),
+        ))
+        assertEquals(CommentsBackTarget.WEB_HISTORY, CommentsBackPolicy.target(
+            readingWebsite.copy(sideBySideActive = true, webHistoryAvailable = true, closeWebsiteOnBack = false),
+        ))
+        assertEquals(CommentsBackTarget.LINK_PREVIEW, CommentsBackPolicy.target(
+            readingWebsite.copy(sideBySideActive = true, linkPreviewVisible = true),
+        ))
+    }
+
+    @Test
     fun defaultReaderModeLetsBackLeaveTheStory() {
         assertEquals(CommentsBackTarget.NONE, CommentsBackPolicy.target(readingWebsite))
     }

@@ -14,6 +14,21 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun sideBySideDefaultsOnAndPersistsWithoutChangingBrowserPreferences() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertTrue(repository.snapshot().appearance.sideBySideEnabled)
+        repository.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, false)
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(restored.snapshot().appearance.sideBySideEnabled)
+        assertTrue(restored.snapshot().reading.integratedWebView)
+        restored.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, false)
+        restored.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, true)
+        assertTrue(restored.snapshot().appearance.sideBySideEnabled)
+        assertFalse(restored.snapshot().reading.integratedWebView)
+    }
+
+    @Test
     fun depthIndicatorSwitchRestoresColorsAcrossRepositoryRecreation() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

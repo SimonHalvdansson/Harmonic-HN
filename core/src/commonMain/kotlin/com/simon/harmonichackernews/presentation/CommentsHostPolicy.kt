@@ -20,6 +20,7 @@ data class CommentsBackContext(
     val webHistoryAvailable: Boolean,
     val closeWebsiteOnBack: Boolean,
     val readerModeDefault: Boolean = false,
+    val sideBySideActive: Boolean = false,
 )
 
 /** Back priority shared by native comments hosts, including predictive-back eligibility. */
@@ -29,6 +30,8 @@ object CommentsBackPolicy {
         context.linkPreviewVisible -> CommentsBackTarget.LINK_PREVIEW
         context.commentActionVisible -> CommentsBackTarget.COMMENT_ACTION
         context.customWebContentVisible -> CommentsBackTarget.CUSTOM_WEB_CONTENT
+        context.websiteVisible && context.sideBySideActive &&
+            (context.closeWebsiteOnBack || !context.webHistoryAvailable) -> CommentsBackTarget.CLOSE_WEBSITE
         context.websiteVisible && context.readerModeEnabled && !context.readerModeDefault ->
             CommentsBackTarget.READER_MODE
         context.websiteVisible && !context.webHistoryAvailable && context.closeWebsiteOnBack ->

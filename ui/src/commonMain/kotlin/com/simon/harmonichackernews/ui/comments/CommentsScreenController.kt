@@ -138,6 +138,47 @@ class CommentsScreenController private constructor(
         private set
     var headerMenuDismissRequestVersion by mutableIntStateOf(0)
         private set
+    /** The Android two-pane host supplies this capability; other hosts retain their own layouts. */
+    var sideBySideAvailable by mutableStateOf(false)
+        private set
+    var sideBySideActive by mutableStateOf(false)
+        private set
+    private var retainedListState: LazyListState? = null
+
+    /** Retain the reading position if a fold changes the host as well as the pane allocation. */
+    fun retainListState(initial: LazyListState): LazyListState =
+        retainedListState ?: initial.also { retainedListState = it }
+
+    private var sideBySideLeftExpandedSheet = false
+    var committedSheetBackProgress by mutableFloatStateOf(0f)
+        private set
+
+    fun updateSideBySideAvailability(available: Boolean) {
+        val next = available && integratedWebView
+        if (sideBySideAvailable == next) return
+        sideBySideAvailable = next
+        if (!next && sideBySideActive) requestExpandSheet()
+    }
+
+    fun toggleSideBySide() {
+        if (sideBySideActive) {
+            requestExpandSheet()
+        } else if (sideBySideAvailable) {
+            sideBySideActive = true
+            sideBySideLeftExpandedSheet = sheetSlideOffset < 0.999f
+            // Unlike opening the website from the story title, this must not scroll to the header.
+            listener.onCollapseSheetForWebsite()
+        }
+    }
+
+    fun leaveSideBySideHost() {
+        sideBySideAvailable = false
+        if (sideBySideActive) {
+            sideBySideActive = false
+            requestExpandSheet()
+        }
+    }
+
     var webViewFullscreen by mutableStateOf(false)
         private set
     var isScrolledToTop by mutableStateOf(true)
@@ -321,6 +362,11 @@ class CommentsScreenController private constructor(
 
     fun updateSheet(slideOffset: Float, topInsetPx: Int) {
         interactionStore.updateSheet(slideOffset, topInsetPx)
+        if (slideOffset >= 0.999f) committedSheetBackProgress = 0f
+        if (sideBySideActive) {
+            if (slideOffset < 0.999f) sideBySideLeftExpandedSheet = true
+            else if (sideBySideLeftExpandedSheet) sideBySideActive = false
+        }
         syncInteractionState()
     }
 
@@ -333,6 +379,7 @@ class CommentsScreenController private constructor(
     }
 
     fun requestExpandSheet() {
+        if (sideBySideActive && predictiveBackActive) committedSheetBackProgress = predictiveBackProgress
         interactionStore.requestSheet(expanded = true)
         syncInteractionState()
     }

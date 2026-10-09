@@ -312,6 +312,8 @@ fun AppearanceSettingsRoute(
             splitRatio = splitLayout.ratio,
             splitOrientation = splitLayout.orientation,
             allowSplitAdjustment = settings.appearance.allowSplitAdjustment,
+            sideBySideEnabled = settings.appearance.sideBySideEnabled,
+            integratedBrowserEnabled = settings.reading.integratedWebView,
             showExtraSidePadding = labels.showExtraSidePadding,
             extraSidePadding = settings.appearance.extraSidePadding,
         ),

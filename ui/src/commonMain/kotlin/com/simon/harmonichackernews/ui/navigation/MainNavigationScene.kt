@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
@@ -43,6 +44,7 @@ fun MainNavigationScene(
     modifier: Modifier = Modifier,
     isFoldable: Boolean = false,
     snapToCenter: Boolean = isFoldable,
+    listPaneOverlay: @Composable () -> Unit = {},
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
     SplitPaneViewport(
@@ -91,7 +93,7 @@ fun MainNavigationScene(
                         }
                     },
                 ),
-            ) { stories() }
+            ) { Box(Modifier.fillMaxSize()) { stories(); listPaneOverlay() } }
             entry<CommentsDestination>(
                 metadata = ListDetailSceneStrategy.detailPane(),
             ) { destination ->

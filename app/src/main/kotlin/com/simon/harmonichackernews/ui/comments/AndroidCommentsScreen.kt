@@ -20,6 +20,8 @@ import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -51,12 +53,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 internal fun CommentsScaffold(
     controller: CommentsScreenController,
     reserveUpButtonInset: Boolean,
+    retainedContent: (@Composable () -> Unit)? = null,
 ) {
+    val portal = LocalSideBySideCommentsPortal.current
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
     val sheetState = rememberBottomSheetState(
-        initialValue = if (controller.initialShowWebsite) {
+        initialValue = if (!controller.isSheetExpanded()) {
             SheetValue.PartiallyExpanded
         } else {
             SheetValue.Expanded
@@ -68,16 +72,27 @@ internal fun CommentsScaffold(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
         val travelPx = with(density) { (fullHeight - peekHeight).toPx().coerceAtLeast(1f) }
-        val backPreviewLiftPx = with(density) { 48.dp.toPx() }.coerceAtMost(travelPx)
+        val backPreviewLiftPx = if (controller.sideBySideActive) travelPx * 0.35f
+            else with(density) { 48.dp.toPx() }.coerceAtMost(travelPx)
         val backPreviewLift = animateFloatAsState(
             targetValue = if (controller.predictiveBackActive) {
                 backPreviewLiftPx * controller.predictiveBackProgress.coerceIn(0f, 1f)
             } else {
-                0f
+                backPreviewLiftPx * controller.committedSheetBackProgress
             },
-            animationSpec = if (controller.predictiveBackActive) snap() else tween(200),
+            animationSpec = if (controller.predictiveBackActive || controller.committedSheetBackProgress > 0f) snap() else tween(200),
             label = "comments sheet back preview",
         )
+
+        val visualExpansion = {
+            val offset = runCatching { sheetState.requireOffset() }.getOrDefault(
+                if (controller.isSheetExpanded()) 0f else travelPx,
+            )
+            (1f - ((offset - backPreviewLift.value).coerceAtLeast(0f) / travelPx)).coerceIn(0f, 1f)
+        }
+        LaunchedEffect(portal, sheetState, travelPx) {
+            snapshotFlow { visualExpansion() }.collect { portal?.sheetExpansion = it }
+        }
 
         LaunchedEffect(controller.sheetRequest) {
             val request = controller.sheetRequest ?: return@LaunchedEffect
@@ -134,7 +149,28 @@ internal fun CommentsScaffold(
                         .fillMaxWidth()
                         .height(fullHeight),
                 ) {
-                    AndroidCommentsScreen(controller, reserveUpButtonInset)
+                    if (controller.sideBySideActive && portal != null && retainedContent != null) {
+                        SideBySideCommentsSheetMirror(portal, with(density) { peekHeight.toPx() })
+                        Column {
+                            Spacer(Modifier.height(with(density) { controller.topInsetPx.toDp() } * portal.sheetExpansion))
+                            CommentsSheetControls(
+                                readerModeAvailable = controller.readerModeAvailable,
+                                readerModeEnabled = controller.readerModeEnabled,
+                                sideBySideAvailable = controller.sideBySideAvailable,
+                                sideBySideActive = true,
+                                onSideBySide = controller::toggleSideBySide,
+                                showInvert = controller.displaySettings?.showInvert == true,
+                                progress = 1f - portal.sheetExpansion,
+                                contentAlpha = 1f,
+                                onAction = controller.listener::onSheetAction,
+                                onBrowserBack = null,
+                            )
+                        }
+                    } else if (retainedContent != null) {
+                        retainedContent()
+                    } else {
+                        AndroidCommentsScreen(controller, reserveUpButtonInset)
+                    }
                 }
             },
             content = {},
@@ -148,9 +184,12 @@ internal fun AndroidCommentsScreen(
     reserveUpButtonInset: Boolean,
 ) {
     val nestedScrollInterop = rememberNestedScrollInteropConnection()
+    val initialListState = rememberCommentsListState()
+    val listState = remember(controller) { controller.retainListState(initialListState) }
     CommentsRoute(
         controller = controller,
         listModifier = Modifier.nestedScroll(nestedScrollInterop),
+        listState = listState,
         reserveUpButtonInset = reserveUpButtonInset,
         // The pane host draws these after its long-press overlays so the transition content stays
         // behind both the back button and the bottom navigation controls.

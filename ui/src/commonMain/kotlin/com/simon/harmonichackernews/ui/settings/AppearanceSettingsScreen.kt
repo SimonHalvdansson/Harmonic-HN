@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_horizontal_split
 import com.simon.harmonichackernews.resources.ic_open_in_new
 import com.simon.harmonichackernews.resources.ic_palette
+import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
 import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
@@ -36,6 +37,8 @@ data class AppearanceSettingsUiState(
     val splitRatio: Float = 0.5f,
     val splitOrientation: SplitOrientation = SplitOrientation.Portrait,
     val allowSplitAdjustment: Boolean = true,
+    val sideBySideEnabled: Boolean = true,
+    val integratedBrowserEnabled: Boolean = true,
     val showExtraSidePadding: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,
@@ -44,6 +47,7 @@ data class AppearanceSettingsUiState(
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
     AllowSplitAdjustment(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT),
+    SideBySideEnabled(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED),
     SpecialNighttime(AppearanceBooleanPreference.SPECIAL_NIGHTTIME),
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
@@ -135,7 +139,7 @@ fun AppearanceSettingsScreen(
         }
         if (state.showSplitRatio) {
             item {
-                SettingsCategory("Split ratio") {
+                SettingsCategory("Two panes") {
                     key(state.splitOrientation) {
                         SliderSetting(
                             title = when (state.splitOrientation) {
@@ -159,6 +163,15 @@ fun AppearanceSettingsScreen(
                         onCheckedChange = {
                             onBooleanChanged(AppearanceBooleanSetting.AllowSplitAdjustment, it)
                         },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Enable side by side",
+                        summary = "Read articles and comments in separate panes with the in-app browser",
+                        icon = Res.drawable.ic_chrome_reader_mode,
+                        checked = state.sideBySideEnabled,
+                        enabled = state.integratedBrowserEnabled,
+                        onCheckedChange = { onBooleanChanged(AppearanceBooleanSetting.SideBySideEnabled, it) },
                     )
                     if (state.showExtraSidePadding) {
                         SettingsDivider()

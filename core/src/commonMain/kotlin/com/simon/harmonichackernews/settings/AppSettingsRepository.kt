@@ -62,6 +62,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
 }
 
 enum class AppearanceBooleanPreference(internal val storageKey: String) {
+    SIDE_BY_SIDE_ENABLED(UserPreferenceKeys.SIDE_BY_SIDE_ENABLED),
     ALLOW_SPLIT_ADJUSTMENT(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT),
     SPECIAL_NIGHTTIME(UserPreferenceKeys.SPECIAL_NIGHTTIME),
     TRANSPARENT_STATUS_BAR(UserPreferenceKeys.TRANSPARENT_STATUS_BAR),

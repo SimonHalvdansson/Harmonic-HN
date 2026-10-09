@@ -133,7 +133,8 @@ fun CommentsHeaderActions(
         if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsHeaderAction.SUMMARIZE, controller.storySummaryLoading))
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val actionCount = actions.size + if (hasAccount) 2 else 3
+        val actionCount = actions.size + (if (hasAccount) 2 else 3) +
+            if (!hasAccount && controller.sideBySideAvailable) 1 else 0
         val actionHorizontalPadding = commentActionPadding(maxWidth.value, actionCount).dp
         val actionButtonModifier = Modifier
             .width(commentActionButtonWidth(maxWidth.value, actionCount).dp)
@@ -205,6 +206,19 @@ fun CommentsHeaderActions(
                                 )
                             }
                         }
+                    }
+                }
+            }
+            if (!hasAccount && controller.sideBySideAvailable) {
+                CommentsTooltip(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") {
+                    IconButton(onClick = controller::toggleSideBySide, modifier = actionButtonModifier) {
+                        Icon(
+                            painterResource(Res.drawable.ic_chrome_reader_mode),
+                            contentDescription = if (controller.sideBySideActive) "Exit side by side" else "Read side by side",
+                            modifier = Modifier.size(24.dp),
+                            tint = if (controller.sideBySideActive) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -483,6 +497,13 @@ private fun MoreMenu(
                     }
 
                     MoreMenuPage.Root -> {
+                        if (settings.hasAccountDetails && controller.sideBySideAvailable) {
+                            DropdownMenuItem(
+                                text = { CommentsMenuText(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") },
+                                leadingIcon = { Icon(painterResource(Res.drawable.ic_chrome_reader_mode), null) },
+                                onClick = { onDismiss(); controller.toggleSideBySide() },
+                            )
+                        }
                         @Composable fun action(
                             label: String,
                             icon: DrawableResource,

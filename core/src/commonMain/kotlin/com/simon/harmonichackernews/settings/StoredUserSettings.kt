@@ -11,6 +11,7 @@ object UserPreferenceKeys {
     const val STORY_LOAD_FAILURE_PERCENT = "debug_story_load_failure_percent"
     const val SPLIT_RATIO_PORTRAIT = "pref_split_ratio_portrait"
     const val SPLIT_RATIO_LANDSCAPE = "pref_split_ratio_landscape"
+    const val SIDE_BY_SIDE_ENABLED = "pref_side_by_side_enabled"
     const val ALLOW_SPLIT_ADJUSTMENT = "pref_allow_split_adjustment"
     const val EXTRA_SIDE_PADDING = "pref_extra_side_padding"
     const val SHOW_POINTS = "pref_show_points"
@@ -330,6 +331,7 @@ class StoredUserSettings(
                     store.getFloat(UserPreferenceKeys.SPLIT_RATIO_LANDSCAPE, Float.NaN),
                 ),
                 allowSplitAdjustment = boolean(UserPreferenceKeys.ALLOW_SPLIT_ADJUSTMENT, true),
+                sideBySideEnabled = boolean(UserPreferenceKeys.SIDE_BY_SIDE_ENABLED, true),
                 surfaceEffectMode = SurfaceEffectMode.fromStored(
                     store.getString(SurfaceEffectMode.STORAGE_KEY),
                     defaultSurfaceEffectMode,

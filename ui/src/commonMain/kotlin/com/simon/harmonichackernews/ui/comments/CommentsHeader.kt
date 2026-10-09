@@ -61,9 +61,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
@@ -106,6 +108,7 @@ fun CommentsHeader(
     onBrowserBack: (() -> Unit)? = null,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
+    val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
     val story = remember(controller.story, contentVersion) { controller.story }
@@ -148,7 +151,7 @@ fun CommentsHeader(
     val visibleHeaderBackground = lerpCommentsColor(
         normalBackground,
         headerBackground,
-        controller.sheetSlideOffset,
+        headerSheetProgress,
     )
     val summaryContainerColor = if (settings.tintHeader) {
         lerpCommentsColor(colors.surfaceContainerHigh, visibleHeaderBackground, 0.52f)
@@ -161,7 +164,7 @@ fun CommentsHeader(
     }
     val topSpacer = if (includeStatusBarSpacer) {
         with(density) {
-            (WindowInsets.statusBars.getTop(this) * controller.sheetSlideOffset).roundToInt().toDp()
+            (WindowInsets.statusBars.getTop(this) * headerSheetProgress).roundToInt().toDp()
         }
     } else {
         0.dp
@@ -197,18 +200,30 @@ fun CommentsHeader(
             Spacer(Modifier.height(topSpacer))
             if (controller.integratedWebView && controller.showSheetControls) {
                 CommentsSheetControls(
+                    sideBySideAvailable = controller.sideBySideAvailable,
+                    sideBySideActive = controller.sideBySideActive,
+                    onSideBySide = controller::toggleSideBySide,
                     readerModeAvailable = controller.readerModeAvailable,
                     readerModeEnabled = controller.readerModeEnabled,
                     showInvert = settings.showInvert,
-                    progress = 1f - controller.sheetSlideOffset,
-                    contentAlpha = if (controller.predictiveBackActive) {
+                    progress = 1f - headerSheetProgress,
+                    contentAlpha = if (controller.predictiveBackActive && !controller.sideBySideActive) {
                         1f - controller.predictiveBackProgress * 0.7f
                     } else {
                         1f
                     },
                     onAction = controller.listener::onSheetAction,
                     onBrowserBack = onBrowserBack,
-                    modifier = Modifier.padding(start = sideMarginStart, end = sideMarginEnd),
+                    modifier = Modifier.padding(start = sideMarginStart, end = sideMarginEnd)
+                        .graphicsLayer { alpha = if (controller.sideBySideActive) 0f else 1f }
+                        .then(if (controller.sideBySideActive) Modifier.clearAndSetSemantics { } else Modifier)
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            val height = if (controller.sideBySideActive) {
+                                (placeable.height * controller.sheetSlideOffset).roundToInt()
+                            } else placeable.height
+                            layout(placeable.width, height) { placeable.place(0, 0) }
+                        },
                 )
             }
 
@@ -221,7 +236,7 @@ fun CommentsHeader(
                 AnimatedContent(
                     targetState = showHeaderShimmer,
                     modifier = Modifier.graphicsLayer(
-                        alpha = if (controller.predictiveBackActive) {
+                        alpha = if (controller.predictiveBackActive && !controller.sideBySideActive) {
                             controller.predictiveBackProgress * 0.7f
                         } else {
                             1f
@@ -471,9 +486,12 @@ internal fun StoryHeaderClickArea(
 }
 
 @Composable
-private fun CommentsSheetControls(
+fun CommentsSheetControls(
     readerModeAvailable: Boolean,
     readerModeEnabled: Boolean,
+    sideBySideAvailable: Boolean = false,
+    sideBySideActive: Boolean = false,
+    onSideBySide: () -> Unit = {},
     showInvert: Boolean,
     progress: Float,
     contentAlpha: Float,
@@ -489,6 +507,7 @@ private fun CommentsSheetControls(
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
+                .testTag("comments-sheet-handle")
                 .padding(top = CommentsSheetHandleTopPadding, bottom = CommentsSheetHandleBottomPadding)
                 .align(Alignment.CenterHorizontally)
                 .size(width = 50.dp, height = CommentsSheetHandleHeight)
@@ -500,18 +519,29 @@ private fun CommentsSheetControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(CommentsSheetButtonSize * collapsedProgress)
+                .then(if (collapsedProgress < 0.001f) Modifier.clearAndSetSemantics { } else Modifier)
                 .graphicsLayer(alpha = actionAlpha * contentAlpha)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (sideBySideAvailable) {
+                SheetButtonSlot(
+                    Res.drawable.ic_chrome_reader_mode,
+                    if (sideBySideActive) "Exit side by side" else "Read side by side",
+                    tint = if (sideBySideActive) colors.primary else colors.onSurfaceVariant,
+                    onClick = onSideBySide,
+                )
+            }
             if (onBrowserBack != null) {
                 SheetButtonSlot(Res.drawable.ic_arrow_back, "Back") { onBrowserBack() }
             }
             SheetButtonSlot(Res.drawable.ic_refresh, "Refresh website") {
                 onAction(CommentsSheetAction.REFRESH)
             }
-            SheetButtonSlot(Res.drawable.ic_arrow_upward, "Show comments") {
-                onAction(CommentsSheetAction.EXPAND)
+            if (!sideBySideAvailable) {
+                SheetButtonSlot(Res.drawable.ic_arrow_upward, "Show comments") {
+                    onAction(CommentsSheetAction.EXPAND)
+                }
             }
             SheetButtonSlot(Res.drawable.ic_public, "Open in browser") {
                 onAction(CommentsSheetAction.BROWSER)
@@ -588,7 +618,7 @@ private fun ReaderModeSheetButton(
         exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
     ) {
         SheetButtonContent(
-            Res.drawable.ic_chrome_reader_mode,
+            Res.drawable.ic_book_ribbon,
             if (enabled) "Reader mode on" else "Reader mode",
             tint,
             onClick,

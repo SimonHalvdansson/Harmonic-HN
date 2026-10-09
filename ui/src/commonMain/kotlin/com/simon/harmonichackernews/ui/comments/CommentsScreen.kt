@@ -618,7 +618,7 @@ fun CommentsScreen(
 
         if (showNavigationControls) CommentNavigationControls(controller)
 
-        if (showScrollbar && controller.isSheetExpanded()) {
+        if (showScrollbar && (controller.isSheetExpanded() || controller.sideBySideActive)) {
             CommentsScrollbar(
                 state = listState,
                 modifier = Modifier

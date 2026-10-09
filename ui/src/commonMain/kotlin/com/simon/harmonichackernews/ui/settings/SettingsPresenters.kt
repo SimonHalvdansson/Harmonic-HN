@@ -267,7 +267,8 @@ class AppearanceSettingsPresenter(
     ): Set<SettingsPlatformEffect> {
         repository.setAppearanceBoolean(setting.preference, value)
         return if (setting == AppearanceBooleanSetting.CompactHeader ||
-            setting == AppearanceBooleanSetting.AllowSplitAdjustment
+            setting == AppearanceBooleanSetting.AllowSplitAdjustment ||
+            setting == AppearanceBooleanSetting.SideBySideEnabled
         ) {
             emptySet()
         } else {

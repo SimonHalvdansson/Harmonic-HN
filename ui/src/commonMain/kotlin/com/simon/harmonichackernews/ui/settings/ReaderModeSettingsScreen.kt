@@ -45,7 +45,7 @@ fun ReaderModeSettingsRoute(
                 SwitchSettingRow(
                     title = "Activate automatically",
                     summary = "On page load, when available",
-                    icon = Res.drawable.ic_chrome_reader_mode,
+                    icon = Res.drawable.ic_book_ribbon,
                     checked = reading.readerModeDefault,
                     enabled = controlsEnabled,
                     onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, it) },

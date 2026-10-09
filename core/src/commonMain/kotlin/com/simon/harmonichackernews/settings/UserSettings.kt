@@ -157,6 +157,7 @@ data class AppearancePreferences(
     val portraitSplitRatio: Float? = null,
     val landscapeSplitRatio: Float? = null,
     val allowSplitAdjustment: Boolean = true,
+    val sideBySideEnabled: Boolean = true,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val surfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
 ) {

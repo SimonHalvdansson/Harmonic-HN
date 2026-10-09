@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,6 +47,8 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.HarmonicSceneViewModel
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.AndroidStoriesCoordinator
+import com.simon.harmonichackernews.ui.comments.SideBySideCommentsHost
+import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.common.CaptchaDialog
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
@@ -427,28 +430,55 @@ private fun MainNavigation(
                 )
             }
             if (isTwoPane) {
-                MainNavigationScene(
-                    storyRequest = detail,
-                    directive = directive,
-                    paneProportion = paneProportion,
-                    isFoldable = isFoldable,
-                    onBack = ::popMainBackStack,
-                    stories = stories,
-                    emptyDetail = { EmptyCommentsScreen() },
-                    comments = paneComments,
-                )
+                SideBySideCommentsHost { listOverlay ->
+                    MainNavigationScene(
+                        listPaneOverlay = listOverlay,
+                        storyRequest = detail,
+                        directive = directive,
+                        paneProportion = paneProportion,
+                        isFoldable = isFoldable,
+                        onBack = ::popMainBackStack,
+                        stories = stories,
+                        emptyDetail = { EmptyCommentsScreen() },
+                        comments = paneComments,
+                    )
+                }
             } else {
                 stories()
             }
         },
         comments = { request, fullScreen ->
-            CommentsPane(
-                request = request,
-                controller = controller,
-                showUpButton = fullScreen,
-                statusBarHeight = statusBarHeight,
-                drawStatusBarProtection = true,
-            )
+            // External links and nested stories retain their own navigation surface. They can
+            // temporarily use both panes without introducing a synthetic story list underneath.
+            if (fullScreen && isTwoPane) {
+                SideBySideCommentsHost { listOverlay ->
+                    val split = LocalSideBySideCommentsPortal.current?.controller?.sideBySideActive == true
+                    val comments = remember(request.serial) {
+                        movableContentOf { showUp: Boolean ->
+                            CommentsPane(request, controller, showUp, statusBarHeight, true)
+                        }
+                    }
+                    MainNavigationScene(
+                        storyRequest = request,
+                        directive = directive.copy(maxHorizontalPartitions = if (split) 2 else 1),
+                        paneProportion = paneProportion,
+                        isFoldable = isFoldable,
+                        onBack = ::popMainBackStack,
+                        stories = {},
+                        emptyDetail = {},
+                        listPaneOverlay = listOverlay,
+                        comments = { comments(!split) },
+                    )
+                }
+            } else {
+                CommentsPane(
+                    request = request,
+                    controller = controller,
+                    showUpButton = fullScreen,
+                    statusBarHeight = statusBarHeight,
+                    drawStatusBarProtection = true,
+                )
+            }
         },
         settings = { request ->
             ProvideSettingsPlatformStyle(
@@ -518,17 +548,20 @@ private fun MainNavigation(
                     }
                 }
                 if (isTwoPane) {
-                    MainNavigationScene(
-                        storyRequest = detail,
-                        directive = directive,
-                        paneProportion = paneProportion,
-                        isFoldable = isFoldable,
-                        onBack = ::popMainBackStack,
-                        stories = submissionsContent,
-                        emptyDetail = { EmptyCommentsScreen() },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground),
-                        comments = paneComments,
-                    )
+                    SideBySideCommentsHost { listOverlay ->
+                        MainNavigationScene(
+                            listPaneOverlay = listOverlay,
+                            storyRequest = detail,
+                            directive = directive,
+                            paneProportion = paneProportion,
+                            isFoldable = isFoldable,
+                            onBack = ::popMainBackStack,
+                            stories = submissionsContent,
+                            emptyDetail = { EmptyCommentsScreen() },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground),
+                            comments = paneComments,
+                        )
+                    }
                 } else {
                     submissionsContent()
                 }

@@ -80,7 +80,7 @@ import org.eclipse.swt.widgets.Shell
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import com.simon.harmonichackernews.presentation.NativeReaderModeSession
-import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
+import com.simon.harmonichackernews.resources.ic_book_ribbon
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.ui.reader.ReaderModeResources
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -852,7 +852,7 @@ private fun DesktopWebViewToolbar(
 
                 if (showWebsite && readerState?.available == true) {
                     DesktopWebViewIconButton(
-                        icon = Res.drawable.ic_chrome_reader_mode,
+                        icon = Res.drawable.ic_book_ribbon,
                         description = if (readerState.enabled) "Exit reader mode" else "Reader mode",
                         onClick = { session.reader?.toggle() },
                     )

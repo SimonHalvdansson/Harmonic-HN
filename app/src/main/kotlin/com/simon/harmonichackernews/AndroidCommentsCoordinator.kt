@@ -748,8 +748,8 @@ class AndroidCommentsCoordinator(
     private fun commentsBackTarget(): CommentsBackTarget {
         val commentsController = composeController
         val websiteController = webViewController
-        val websiteVisible = websiteController?.hasWebView() == true &&
-            commentsController?.isWebsiteVisible() == true
+        val websiteVisible = commentsController?.isWebsiteVisible() == true &&
+            (websiteController?.hasWebView() == true || commentsController.sideBySideActive)
         return CommentsBackPolicy.target(
             CommentsBackContext(
                 hostActive = hostActive,
@@ -760,6 +760,7 @@ class AndroidCommentsCoordinator(
                 readerModeDefault =
                     commentsStore.state.value.settings?.reading?.readerModeDefault == true,
                 websiteVisible = websiteVisible,
+                sideBySideActive = commentsController?.sideBySideActive == true,
                 webHistoryAvailable = websiteController?.canGoBack() == true,
                 closeWebsiteOnBack =
                     commentsStore.state.value.settings?.reading?.closeWebViewOnBack == true,
@@ -834,7 +835,7 @@ class AndroidCommentsCoordinator(
         get() = composeController?.isSheetExpanded() == true
 
     internal fun canNavigateCommentsWithVolumeButtons(): Boolean =
-        isActive && hostActive && isBottomSheetFullyExpanded
+        isActive && hostActive && (isBottomSheetFullyExpanded || composeController?.sideBySideActive == true)
 
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
         if (!isActive || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {

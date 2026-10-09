@@ -6,7 +6,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.resources.ic_block
 import com.simon.harmonichackernews.resources.ic_cached
-import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
+import com.simon.harmonichackernews.resources.ic_book_ribbon
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_invert_colors
 import com.simon.harmonichackernews.resources.ic_link_preview_x
@@ -137,7 +137,7 @@ fun WebLinksSettingsScreen(
                 if (capabilities.integratedWebView && capabilities.readerMode) {
                     SettingRow(
                         title = "Reader mode",
-                        icon = Res.drawable.ic_chrome_reader_mode,
+                        icon = Res.drawable.ic_book_ribbon,
                         enabled = state.integratedWebView,
                         onClick = onReaderModeRequested,
                     )
