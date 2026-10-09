@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.resources.Res
@@ -137,6 +138,7 @@ fun FiltersTagsSettingsScreen(
                                                 Icon(
                                                     painter = painterResource(Res.drawable.ic_edit),
                                                     contentDescription = "Edit tag",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                             IconButton(
@@ -145,6 +147,7 @@ fun FiltersTagsSettingsScreen(
                                                 Icon(
                                                     painter = painterResource(Res.drawable.ic_delete),
                                                     contentDescription = "Delete tag",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                         }
