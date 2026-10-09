@@ -73,7 +73,7 @@ private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val surface = if (dark) Color(0xFF252525) else Color(0xFFF5F5F5)
     val backdrop = if (selected) MaterialTheme.colorScheme.secondaryContainer
-        else MaterialTheme.colorScheme.surfaceContainerLow
+        else itemBackgroundColor()
     val outline = MaterialTheme.colorScheme.outlineVariant
     val sample = SurfaceEffectPreferences(mode = mode)
     CompositionLocalProvider(
@@ -91,14 +91,14 @@ private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
                         rotate(-28f) {
                             drawRoundRect(
                                 if (dark) Color(0xFF38C7EF) else Color(0xFF006C9C),
-                                Offset(size.width * 0.2f, size.height * 0.04f),
-                                Size(size.width * 0.23f, size.height * 0.92f),
+                                Offset(size.width * 0.2575f, size.height * 0.04f),
+                                Size(size.width * 0.115f, size.height * 0.92f),
                                 CornerRadius(3.dp.toPx()),
                             )
                             drawRoundRect(
                                 if (dark) Color(0xFFFFB36A) else Color(0xFFBA4400),
-                                Offset(size.width * 0.57f, size.height * 0.04f),
-                                Size(size.width * 0.23f, size.height * 0.92f),
+                                Offset(size.width * 0.6275f, size.height * 0.04f),
+                                Size(size.width * 0.115f, size.height * 0.92f),
                                 CornerRadius(3.dp.toPx()),
                             )
                         }
