@@ -12,12 +12,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.summary.AskSource
 
-/** The summary snapshot is fixed; its live bounds can change with rotation or window resizing. */
+/** The conversation context is fixed; source pixels, bounds and color follow the live summary. */
 data class PostAskState(
     val subject: AskSource.Post,
     val source: GraphicsLayer,
     val bounds: () -> Rect?,
-    val color: Color,
+    val color: () -> Color,
 ) {
     var coveringSource by mutableStateOf(false)
         internal set
@@ -50,7 +50,7 @@ internal fun PostAskOverlay(
             progress = progress,
             source = state.source,
             settings = settings,
-            color = state.color,
+            color = state.color(),
             onOpenLink = onOpenLink,
         )
     }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -36,8 +37,9 @@ import kotlin.test.*
 
 class PostAskMotionTest {
     @Test
-    fun summaryButtonMorphsIntoAskAndBackRestoresTheSummary() = SwingUtilities.invokeAndWait {
-        for (dark in listOf(false, true)) {
+    fun summaryButtonMorphsIntoAskAndBackRestoresTheCurrentlyThemedSummary() = SwingUtilities.invokeAndWait {
+        for (dark in listOf(false, true)) for (changeTheme in listOf(false, true)) {
+            val darkTheme = mutableStateOf(dark)
             val bootstrap = DesktopHarmonicAppBootstrap.inMemory("PostAskMotionTest")
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
             bootstrap.scene.navigation.openStory(StoryRoute(42))
@@ -53,7 +55,7 @@ class PostAskMotionTest {
                 StoryPresentationSnapshot(aiSummaryText = summary, summaryGeneratedSuccessfully = true,
                     aiSummarySourceText = "The original article, including the test methods and measurements."))
             val scene = ImageComposeScene(400, 800, Density(1f)) {
-                val palette = HarmonicThemeCatalog.resolve(if (dark) "dark" else "material_light", dark)
+                val palette = HarmonicThemeCatalog.resolve(if (darkTheme.value) "dark" else "material_light", darkTheme.value)
                 HarmonicTheme(palette.colorScheme, palette.dark) {
                     CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
                         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
@@ -68,7 +70,7 @@ class PostAskMotionTest {
             var time = 0L
             fun frame(name: String? = null) = scene.render(time.also { time += 16_000_000 }).use { image ->
                 if (name != null && evidence != null) image.encodeToData(EncodedImageFormat.PNG)!!.use {
-                    File(evidence, "$name-${if (dark) "dark" else "light"}.png").writeBytes(it.bytes)
+                    File(evidence, "$name-${if (dark) "dark" else "light"}-${if (changeTheme) "rethemed" else "unchanged"}.png").writeBytes(it.bytes)
                 }
                 image.toComposeImageBitmap().toPixelMap()
             }
@@ -80,7 +82,14 @@ class PostAskMotionTest {
             try {
                 repeat(35) { frame() }
                 val before = frame("summary")
-                val cardColor = before[22, 70]
+                // Capture the destination palette before opening, then switch while Ask is
+                // visible. Its return must match a freshly rendered summary in that palette.
+                darkTheme.value = if (changeTheme) !dark else dark
+                repeat(35) { frame() }
+                val expected = frame()
+                darkTheme.value = dark
+                repeat(35) { frame() }
+                var cardColor = before[22, 70]
                 fun assertCardNeverDisappears(pixels: androidx.compose.ui.graphics.PixelMap) {
                     val actual = pixels[22, 70]
                     val difference = abs(actual.red - cardColor.red) + abs(actual.green - cardColor.green) +
@@ -95,6 +104,13 @@ class PostAskMotionTest {
                 frame("opening")
                 repeat(55) { frame() }
                 frame("ask")
+                if (changeTheme) {
+                    darkTheme.value = !dark
+                    repeat(35) { frame() }
+                    cardColor = expected[22, 70]
+                    assertCardNeverDisappears(frame("ask-rethemed"))
+                    assertTrue(controller.askOpen, "Changing theme must retain the conversation")
+                }
                 assertTrue(controller.askSurfaceVisible)
                 controller.updateCommentActionPredictiveBack(0.8f, 0, 400f)
                 repeat(3) { frame() }
@@ -107,15 +123,29 @@ class PostAskMotionTest {
                 click(40f, 32f)
                 assertFalse(controller.askOpen)
                 assertNotNull(controller.postAsk, "Retain the source through the reverse animation")
-                repeat(35) { assertCardNeverDisappears(frame()) }
+                var lastOverlayFrame = frame()
+                repeat(35) {
+                    val overlayPresent = controller.postAsk != null
+                    val pixels = frame()
+                    assertCardNeverDisappears(pixels)
+                    if (overlayPresent && controller.postAsk != null) lastOverlayFrame = pixels
+                }
+                var handoffDifference = 0.0
+                for (y in 0 until 250) for (x in 0 until 400) {
+                    handoffDifference += abs(expected[x, y].red - lastOverlayFrame[x, y].red) +
+                        abs(expected[x, y].green - lastOverlayFrame[x, y].green) +
+                        abs(expected[x, y].blue - lastOverlayFrame[x, y].blue)
+                }
+                assertTrue(handoffDifference / (400 * 250) < 0.01,
+                    "The returning foreground must already use the current theme before the source is revealed")
                 val after = frame("restored")
                 assertNull(controller.postAsk)
                 assertFalse(controller.isCommentActionOverlayShowing())
                 assertFalse(controller.askSurfaceVisible)
                 var difference = 0.0
                 for (y in 0 until 800) for (x in 0 until 400) {
-                    difference += abs(before[x, y].red - after[x, y].red) +
-                        abs(before[x, y].green - after[x, y].green) + abs(before[x, y].blue - after[x, y].blue)
+                    difference += abs(expected[x, y].red - after[x, y].red) +
+                        abs(expected[x, y].green - after[x, y].green) + abs(expected[x, y].blue - after[x, y].blue)
                 }
                 assertTrue(difference / (400 * 800) < 0.01, "Returning must restore the same summary pixels")
             } finally {

@@ -34,12 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -73,6 +75,7 @@ fun StoryAiSummary(
 ) {
     val summary = story.aiSummaryText.orEmpty()
     val sourceLayer = rememberGraphicsLayer()
+    val currentContainerColor by rememberUpdatedState(containerColor)
     var sourceCoordinates by remember(story.id) { mutableStateOf<LayoutCoordinates?>(null) }
     var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
@@ -95,12 +98,17 @@ fun StoryAiSummary(
                     alignment = Alignment.TopStart,
                 )
                 .onGloballyPositioned { sourceCoordinates = it }
-                .graphicsLayer { alpha = if (askVisible) 0f else 1f }
+                .drawWithContent {
+                    // Keep recording the themed foreground while Ask owns the visible surface,
+                    // so the reverse transform returns to the current summary without a flash.
+                    if (askVisible) clipRect(0f, 0f, 0f, 0f) { this@drawWithContent.drawContent() }
+                    else drawContent()
+                }
                 .clip(RoundedCornerShape(14.dp))
                 .background(containerColor)
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                 .drawWithContent {
-                    if (!askVisible) sourceLayer.record { this@drawWithContent.drawContent() }
+                    sourceLayer.record { this@drawWithContent.drawContent() }
                     drawLayer(sourceLayer)
                 }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -140,7 +148,7 @@ fun StoryAiSummary(
                             subject = AskSource.Post(story, summary, story.aiSummarySourceText),
                             source = sourceLayer,
                             bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
-                            color = containerColor,
+                            color = { currentContainerColor },
                         ))
                     }) {
                         Text("Ask", fontFamily = typography.family, fontWeight = FontWeight.Bold)
