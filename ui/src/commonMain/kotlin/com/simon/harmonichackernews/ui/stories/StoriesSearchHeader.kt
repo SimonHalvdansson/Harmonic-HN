@@ -132,19 +132,21 @@ fun StorySearchHeader(
                     Icon(painterResource(Res.drawable.ic_arrow_back), "Back", tint = iconColor)
                 }
             },
-            trailingIcon = {
-                IconButton(
-                    onClick = {
-                        submission.startEditing()
-                        submission.updateDraft("")
-                        onDraftChanged("")
-                        focusRequester.requestFocus()
-                        keyboard?.show()
-                    },
-                ) {
-                    Icon(painterResource(Res.drawable.ic_close), "Clear search", tint = iconColor)
+            trailingIcon = if (state.draft.isNotEmpty()) {
+                {
+                    IconButton(
+                        onClick = {
+                            submission.startEditing()
+                            submission.updateDraft("")
+                            onDraftChanged("")
+                            focusRequester.requestFocus()
+                            keyboard?.show()
+                        },
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_close), "Clear search", tint = iconColor)
+                    }
                 }
-            },
+            } else null,
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
