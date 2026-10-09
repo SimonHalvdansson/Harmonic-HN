@@ -7,8 +7,15 @@ import com.simon.harmonichackernews.data.OpenRouterModelInfo
 import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.loadedLinkPreviewType
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -140,6 +147,118 @@ class LinkPreviewRuntimeTest {
 
         assertFalse(runtime.state.value.loading)
         assertEquals("Preview timed out", runtime.state.value.failure)
+        assertFalse(runtime.load(
+            "https://doi.org/10.1000/example",
+            LinkPreviewPreferences(setOf(LinkPreviewType.CROSSREF_ARTICLE)),
+            alreadyLoaded = false,
+        ))
+    }
+
+    @Test
+    fun transientRetriesKeepPreviewLoadingUntilSuccess() = runTest {
+        val loadingStates = mutableListOf<Boolean>()
+        var attempts = 0
+        val client = HttpClient(MockEngine) {
+            engine {
+                dispatcher = StandardTestDispatcher(testScheduler)
+                addHandler {
+                    if (++attempts < 3) respond("unavailable", HttpStatusCode.ServiceUnavailable)
+                    else respond("""{"name":"project"}""")
+                }
+            }
+        }
+        try {
+            val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(
+                KtorLinkPreviewRepository(client, StandardTestDispatcher(testScheduler)),
+            ))
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                runtime.state.collect { loadingStates += it.loading }
+            }
+
+            assertTrue(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+            // Comment updates while a request is in flight must not start another request.
+            assertFalse(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+            advanceUntilIdle()
+
+            assertEquals(3, attempts)
+            assertEquals(listOf(false, true, false), loadingStates)
+            assertIs<LinkPreviewData.GitHub>(runtime.state.value.preview)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun rateLimitsAreNotRetriedByTransportOrLaterThreadUpdates() = runTest {
+        for (status in listOf(HttpStatusCode.Forbidden, HttpStatusCode.TooManyRequests)) {
+            var attempts = 0
+            val client = HttpClient(MockEngine) {
+                engine {
+                    dispatcher = StandardTestDispatcher(testScheduler)
+                    addHandler { request ->
+                        if (request.url.host == "api.github.com") {
+                            attempts++
+                            respond("rate limited", status)
+                        } else {
+                            respond("page unavailable", HttpStatusCode.NotFound)
+                        }
+                    }
+                }
+            }
+            try {
+                val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(
+                    KtorLinkPreviewRepository(client, StandardTestDispatcher(testScheduler)),
+                ))
+                assertTrue(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+                advanceUntilIdle()
+                val failedState = runtime.state.value
+
+                repeat(3) {
+                    assertFalse(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+                    advanceUntilIdle()
+                }
+
+                assertEquals(1, attempts, "HTTP ${status.value}")
+                assertFalse(failedState.loading)
+                assertTrue(failedState.failure != null)
+                assertEquals(failedState, runtime.state.value)
+            } finally { client.close() }
+        }
+    }
+
+    @Test
+    fun exhaustedTransientRetriesStayHiddenButDoNotBlockAnotherUrl() = runTest {
+        val loadingStates = mutableListOf<Boolean>()
+        var attempts = 0
+        val client = HttpClient(MockEngine) {
+            engine {
+                dispatcher = StandardTestDispatcher(testScheduler)
+                addHandler { request ->
+                    attempts++
+                    if (request.url.encodedPath.endsWith("/other")) respond("""{"name":"other"}""")
+                    else respond("unavailable", HttpStatusCode.ServiceUnavailable)
+                }
+            }
+        }
+        try {
+            val runtime = LinkPreviewRuntime(this, LinkPreviewUseCase(
+                KtorLinkPreviewRepository(client, StandardTestDispatcher(testScheduler)),
+            ))
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                runtime.state.collect { loadingStates += it.loading }
+            }
+            assertTrue(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+            advanceUntilIdle()
+
+            assertEquals(3, attempts)
+            assertEquals(listOf(false, true, false), loadingStates)
+            assertTrue(runtime.state.value.failure != null)
+            assertFalse(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+            assertTrue(runtime.load("https://github.com/example/other", preferences(github = true), alreadyLoaded = false))
+            advanceUntilIdle()
+
+            assertEquals(4, attempts)
+            assertIs<LinkPreviewData.GitHub>(runtime.state.value.preview)
+            assertFalse(runtime.load(GITHUB_URL, preferences(github = true), alreadyLoaded = false))
+        } finally { client.close() }
     }
 
     private fun preferences(
@@ -168,5 +287,9 @@ class LinkPreviewRuntimeTest {
         }
 
         override suspend fun getArchiveUrl(url: String) = error("Unexpected provider")
+    }
+
+    private companion object {
+        const val GITHUB_URL = "https://github.com/example/project"
     }
 }

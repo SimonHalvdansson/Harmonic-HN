@@ -20,7 +20,10 @@ class RichLinkPreviewRepositoryTest {
         val issueUrl = "https://github.com/ankidroid/Anki-Android/issues/21656"
         val client = HttpClient(MockEngine { request ->
             if (request.url.host == "api.github.com") {
-                respond("rate limited", status = HttpStatusCode.Forbidden)
+                respond(
+                    "rate limited", status = HttpStatusCode.Forbidden,
+                    headers = headersOf("x-ratelimit-remaining", "0"),
+                )
             } else {
                 respond(
                     """

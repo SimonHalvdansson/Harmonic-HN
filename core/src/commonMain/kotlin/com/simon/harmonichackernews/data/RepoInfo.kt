@@ -11,12 +11,14 @@ data class RepoInfo(
     val website: String? = null,
     val license: String? = null,
     val language: String? = null,
-    val stars: Int = 0,
-    val watching: Int = 0,
-    val forks: Int = 0,
+    val stars: Int? = null,
+    val watching: Int? = null,
+    val forks: Int? = null,
+    val pageTitle: String? = null,
+    val imageUrl: String? = null,
 ) {
-    fun formatStars(): String = LinkPreviewDisplayFormatter.formatCount(stars, "star", "stars")
-    fun formatWatching(): String = "${LinkPreviewDisplayFormatter.formatCompactCount(watching)} watching"
-    fun formatForks(): String = LinkPreviewDisplayFormatter.formatCount(forks, "fork", "forks")
+    fun formatStars(): String? = stars?.let { LinkPreviewDisplayFormatter.formatCount(it, "star", "stars") }
+    fun formatWatching(): String? = watching?.let { "${LinkPreviewDisplayFormatter.formatCompactCount(it)} watching" }
+    fun formatForks(): String? = forks?.let { LinkPreviewDisplayFormatter.formatCount(it, "fork", "forks") }
     val shortenedUrl: String? get() = LinkPreviewDisplayFormatter.formatDisplayUrl(website)
 }

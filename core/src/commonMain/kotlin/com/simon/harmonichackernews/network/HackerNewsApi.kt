@@ -86,6 +86,8 @@ class HttpStatusException(
     val statusCode: Int,
     statusMessage: String,
     url: String,
+    val headers: io.ktor.http.Headers = io.ktor.http.Headers.Empty,
+    val responseBody: String? = null,
 ) : Exception("HTTP $statusCode $statusMessage for $url")
 
 class ApiDecodingException(message: String, cause: Throwable) : Exception(message, cause)

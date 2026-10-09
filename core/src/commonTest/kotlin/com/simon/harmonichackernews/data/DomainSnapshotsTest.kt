@@ -454,7 +454,7 @@ class DomainSnapshotsTest {
         assertEquals(setOf("repoInfo"), encoded.keys.intersect(setOf("repoInfo", "gitHubRepoInfo")))
         assertEquals(emptySet(), encoded.keys.intersect(setOf("isRead", "aiSummaryText", "rootStory")))
         assertEquals(
-            RepoInfo(name = "repo", owner = "owner", language = "Kotlin", stars = 12, forks = 2),
+            RepoInfo(name = "repo", owner = "owner", language = "Kotlin", stars = 12, watching = 0, forks = 2),
             presentation.gitHubRepoInfo,
         )
         assertEquals(listOf("Author", null), presentation.arxivInfo?.authors)

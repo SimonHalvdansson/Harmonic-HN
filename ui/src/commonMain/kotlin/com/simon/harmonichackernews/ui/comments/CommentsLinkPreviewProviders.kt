@@ -55,7 +55,7 @@ internal fun GitHubPreview(story: StoryListItemSnapshot) {
     val info = story.gitHubRepoInfo ?: return
     Column {
         PreviewHeader(
-            text = "${info.owner} / ${info.name}",
+            text = info.pageTitle ?: "${info.owner} / ${info.name}",
             icon = Res.drawable.ic_link_preview_github,
             logoUrl = info.avatarUrl,
         )

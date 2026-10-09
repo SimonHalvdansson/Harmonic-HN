@@ -33,11 +33,17 @@ interface LinkPreviewRepository {
 class KtorLinkPreviewRepository(
     private val client: suspend () -> HttpClient,
     private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    nowMillis: () -> Long = { kotlin.time.Clock.System.now().toEpochMilliseconds() },
 ) : LinkPreviewRepository {
-    constructor(client: HttpClient, requestDispatcher: CoroutineDispatcher = Dispatchers.Default) :
-        this({ client }, requestDispatcher)
+    constructor(
+        client: HttpClient,
+        requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+        nowMillis: () -> Long = { kotlin.time.Clock.System.now().toEpochMilliseconds() },
+    ) : this({ client }, requestDispatcher, nowMillis)
+
+    private val github = GitHubPreviewLoader(nowMillis)
     override suspend fun load(type: LinkPreviewType, url: String): LinkPreviewData = withContext(requestDispatcher) {
-        LinkPreviewProviders.load(client(), type, url)
+        LinkPreviewProviders.load(client(), type, url, github)
     }
 
     override suspend fun getArchiveUrl(url: String): String = withContext(requestDispatcher) {

@@ -8,7 +8,7 @@ import io.ktor.client.HttpClient
 private data class LinkPreviewProvider(
     val types: Set<LinkPreviewType>,
     val classify: (String) -> LinkPreviewType?,
-    val load: suspend (HttpClient, LinkPreviewType, String) -> LinkPreviewData,
+    val load: suspend (HttpClient, LinkPreviewType, String, GitHubPreviewLoader) -> LinkPreviewData,
 )
 
 internal object LinkPreviewProviders {
@@ -27,13 +27,7 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.GITHUB_DISCUSSION,
             ),
             classify = { GitHubLinkPreview.githubTarget(it)?.type },
-            load = { client, type, url ->
-                if (type == LinkPreviewType.GITHUB_REPOSITORY) {
-                    LinkPreviewData.GitHub(client.loadGitHubInfo(url))
-                } else {
-                    LinkPreviewData.Rich(client.loadGitHubPreview(type, url))
-                }
-            },
+            load = { client, type, url, github -> github.load(client, type, url) },
         ),
         LinkPreviewProvider(
             types = setOf(
@@ -44,7 +38,7 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.HUGGING_FACE_COLLECTION,
             ),
             classify = { HuggingFaceLinkPreview.huggingFaceTarget(it)?.type },
-            load = { client, type, url ->
+            load = { client, type, url, _ ->
                 if (type == LinkPreviewType.HUGGING_FACE_MODEL) {
                     LinkPreviewData.HuggingFace(client.loadHuggingFaceInfo(url))
                 } else {
@@ -61,7 +55,7 @@ internal object LinkPreviewProviders {
                 LinkPreviewType.HOMEBREW_PACKAGE,
             ),
             classify = { PackageLinkPreview.packageTarget(it)?.type },
-            load = { client, type, url ->
+            load = { client, type, url, _ ->
                 LinkPreviewData.Rich(client.loadPackagePreview(type, url))
             },
         ),
@@ -167,13 +161,14 @@ internal object LinkPreviewProviders {
         client: HttpClient,
         type: LinkPreviewType,
         url: String,
+        github: GitHubPreviewLoader,
     ): LinkPreviewData {
         if (type in externalTypes) {
             throw LinkPreviewException("${type.title} uses the Nitter web runtime")
         }
         val provider = providersByType[type]
             ?: throw LinkPreviewException("${type.title} has no preview loader")
-        return provider.load(client, type, url)
+        return provider.load(client, type, url, github)
     }
 
     fun loaderCount(type: LinkPreviewType): Int = providers.count { type in it.types }
@@ -186,7 +181,7 @@ private fun singleTypeProvider(
 ) = LinkPreviewProvider(
     types = setOf(type),
     classify = { url -> type.takeIf { matches(url) } },
-    load = { client, _, url -> load(client, url) },
+    load = { client, _, url, _ -> load(client, url) },
 )
 
 private fun richProvider(

@@ -89,9 +89,9 @@ internal object GitHubLinkPreview {
                 if (it.optString("name") == "Other") "Other" else it.nullableString("spdx_id")
             },
             language = json.nullableString("language"),
-            stars = json.optInt("stargazers_count"),
-            watching = json.optInt("subscribers_count"),
-            forks = json.optInt("forks_count"),
+            stars = (json.opt("stargazers_count") as? Number)?.toInt(),
+            watching = (json.opt("subscribers_count") as? Number)?.toInt(),
+            forks = (json.opt("forks_count") as? Number)?.toInt(),
         )
     }
 
@@ -217,8 +217,8 @@ internal object GitHubLinkPreview {
     ): LinkPreviewInfo {
         val document = Ksoup.parse(response, baseUri = url)
         val repository = "${target.owner}/${target.repository}"
-        val rawTitle = document.selectFirst("meta[property=og:title]")?.attr("content")
-            .orEmpty()
+        val rawTitle = (document.selectFirst("meta[property=og:title]")?.attr("content")
+            ?.takeIf(String::isNotBlank) ?: document.title())
             .requiredPreviewTitle(type)
         val providerSuffix = " · $repository"
         val pageTitle = rawTitle.removeSuffix(providerSuffix).let { title ->
@@ -243,8 +243,21 @@ internal object GitHubLinkPreview {
             LinkPreviewType.GITHUB_RELEASE -> "GitHub release · $repoLabel"
             else -> repoLabel
         }
-        val description = document.selectFirst("meta[property=og:description]")?.attr("content")
+        val description = document.selectFirst("meta[property=og:description], meta[name=description]")?.attr("content")
             ?.let(HtmlTextUtils::plainText)
+            ?.let { text ->
+                if (type == LinkPreviewType.GITHUB_REPOSITORY) {
+                    text.replace(
+                        Regex(
+                            "(?:^|\\s+(?:-\\s+)?)Contribute to ${Regex.escape(repository)} development by creating an account on GitHub\\.?\\s*$",
+                            RegexOption.IGNORE_CASE,
+                        ),
+                        "",
+                    ).trimEnd()
+                } else {
+                    text
+                }
+            }
             ?.let {
                 HtmlTextUtils.normalizeAndTruncatePlainText(
                     it,
@@ -255,7 +268,7 @@ internal object GitHubLinkPreview {
         val author = document.selectFirst("meta[property=og:author:username]")
             ?.attr("content")
             ?.takeIf(String::isNotBlank)
-        val imageUrl = if (type == LinkPreviewType.GITHUB_RELEASE) {
+        val imageUrl = if (type == LinkPreviewType.GITHUB_RELEASE || type == LinkPreviewType.GITHUB_REPOSITORY) {
             document.selectFirst("meta[property=og:image], meta[name=twitter:image]")
                 ?.attr("content")
                 ?.let(LinkSummaryParser::normalizeHttpUrl)
@@ -341,10 +354,5 @@ internal suspend fun HttpClient.loadGitHubPreview(
         LinkPreviewType.GITHUB_DISCUSSION -> "$root/discussions/${target.identifier?.encodeURLPathPart()}"
         else -> error("Unexpected GitHub preview type")
     }
-    return try {
-        GitHubLinkPreview.parseGitHub(type, getTextOrThrow(endpoint), target, url)
-    } catch (error: HttpStatusException) {
-        if (error.statusCode != 403 && error.statusCode != 429) throw error
-        GitHubLinkPreview.parseGitHubPage(type, getTextOrThrow(url), target, url)
-    }
+    return GitHubLinkPreview.parseGitHub(type, getTextOrThrow(endpoint), target, url)
 }

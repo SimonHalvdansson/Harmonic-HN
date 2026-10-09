@@ -23,6 +23,7 @@ class LinkPreviewRuntime(
 ) {
     private val mutableState = MutableStateFlow(LinkPreviewRuntimeState())
     private var activeJob: Job? = null
+    private val failedUrls = mutableSetOf<String>()
 
     val state: StateFlow<LinkPreviewRuntimeState> = mutableState.asStateFlow()
 
@@ -32,6 +33,9 @@ class LinkPreviewRuntime(
         alreadyLoaded: Boolean,
     ): Boolean {
         if (url.isNullOrBlank() || alreadyLoaded || mutableState.value.loading) return false
+        // The transport owns bounded transient retries, keeping this request loading throughout.
+        // Later thread/cache updates must not restart a failed request (especially a rate limit).
+        if (url in failedUrls) return false
         val provider = useCase.selectProvider(url, preferences) ?: return false
         activeJob?.cancel()
         val generation = mutableState.value.generation + 1
@@ -47,6 +51,7 @@ class LinkPreviewRuntime(
                 }
             } catch (error: CancellationException) {
                 if (error is TimeoutCancellationException && mutableState.value.generation == generation) {
+                    failedUrls += url
                     mutableState.value = LinkPreviewRuntimeState(
                         failure = "Preview timed out",
                         generation = generation,
@@ -56,6 +61,7 @@ class LinkPreviewRuntime(
                 }
             } catch (error: Throwable) {
                 if (mutableState.value.generation == generation) {
+                    failedUrls += url
                     mutableState.value = LinkPreviewRuntimeState(
                         failure = error.message?.takeIf(String::isNotBlank) ?: "Preview failed",
                         generation = generation,

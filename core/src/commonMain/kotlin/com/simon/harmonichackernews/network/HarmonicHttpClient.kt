@@ -126,7 +126,11 @@ private suspend fun HttpClient.getTextOnceOrThrow(url: String): String {
             }
             val body = bytes.decodeToString()
             if (response.status.value !in 200..299) {
-                throw HttpStatusException(response.status.value, response.status.description, url)
+                throw HttpStatusException(
+                    response.status.value, response.status.description, url,
+                    headers = response.headers,
+                    responseBody = body.take(4_096),
+                )
             }
             body
         } finally {
