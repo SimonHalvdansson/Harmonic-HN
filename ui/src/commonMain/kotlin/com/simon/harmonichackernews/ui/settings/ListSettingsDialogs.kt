@@ -307,8 +307,6 @@ fun StringListEditorDialog(
         }
     }
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = true),
@@ -317,6 +315,11 @@ fun StringListEditorDialog(
         ),
         title = { SettingsDialogTitle(title) },
         text = {
+            // As in Set tag, register the dialog's animated insets before opening the keyboard.
+            LaunchedEffect(Unit) {
+                androidx.compose.runtime.withFrameNanos { }
+                focusRequester.requestFocus()
+            }
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = subtitle,
