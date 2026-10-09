@@ -9,16 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
@@ -63,7 +61,6 @@ import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 
 private class DesktopCommentsHost(
     val binding: CommentsFeatureBinding,
@@ -417,26 +414,6 @@ internal fun DesktopCommentLinkPreview(
         tablet = true,
         referenceContent = { state ->
             DesktopReferencePreview(app, scene, controller, state)
-        },
-        imageContent = { state ->
-            val imageRatio = state.imageAspectRatio ?: state.sourceBounds?.let { bounds ->
-                if (bounds.height > 0f) bounds.width / bounds.height else 16f / 9f
-            } ?: (16f / 9f)
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 720.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                AsyncImage(
-                    model = state.imageUrl,
-                    contentDescription = state.description,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(imageRatio.coerceIn(0.35f, 4f)),
-                    contentScale = ContentScale.Fit,
-                )
-            }
         },
     )
 }

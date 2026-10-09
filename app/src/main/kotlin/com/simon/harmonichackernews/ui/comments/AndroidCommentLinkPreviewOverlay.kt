@@ -4,20 +4,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
@@ -27,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -50,7 +41,6 @@ internal fun AndroidCommentLinkPreviewOverlay(
         tablet = controller.displaySettings?.isTablet == true ||
             AndroidDisplay.isTablet(LocalResources.current),
         referenceContent = { state -> ReferencePreviewCard(controller, state) },
-        imageContent = ::ImageOnlyPreviewCard,
         onScrimAlphaChanged = onScrimAlphaChanged,
     )
 }
@@ -150,43 +140,6 @@ private fun ReferencePreviewImage(
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun ImageOnlyPreviewCard(state: CommentLinkPreviewOverlayState.Image) {
-    val context = LocalContext.current
-    val appComposition = LocalHarmonicUiDependencies.current
-    var imageRatio by remember(state.imageUrl, state.sourceBounds, state.imageAspectRatio) {
-        mutableFloatStateOf(
-            state.imageAspectRatio ?: state.sourceBounds?.let { bounds ->
-                if (bounds.height > 0f) bounds.width / bounds.height else 16f / 9f
-            } ?: (16f / 9f),
-        )
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 720.dp)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(state.imageUrl)
-                .networkHeader("User-Agent", appComposition.network.userAgent)
-                .build(),
-            contentDescription = state.description,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(imageRatio.coerceIn(0.35f, 4f)),
-            contentScale = ContentScale.Fit,
-            onSuccess = { success ->
-                val image = success.result.image
-                if (image.width > 0 && image.height > 0) {
-                    imageRatio = image.width.toFloat() / image.height
-                }
-            },
-        )
     }
 }
 

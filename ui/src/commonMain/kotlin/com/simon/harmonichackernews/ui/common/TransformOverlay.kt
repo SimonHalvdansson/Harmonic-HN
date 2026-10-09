@@ -298,7 +298,7 @@ fun TransformOverlay(
             awaitEachGesture {
                 val down = awaitFirstDown(
                     requireUnconsumed = false,
-                    pass = PointerEventPass.Initial,
+                    pass = PointerEventPass.Main,
                 )
                 if (
                     transformProgress.value < 0.99f ||
@@ -315,7 +315,13 @@ fun TransformOverlay(
                 var draggingVertically = false
 
                 while (true) {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    // Image gestures get first refusal. Never treat a pinch or a zoomed pan
+                    // as a swipe to dismiss, including when a second finger joins a drag.
+                    if (event.changes.any { it.isConsumed } || event.changes.count { it.pressed } > 1) {
+                        if (draggingVertically) verticalSwipeSettleTarget = 0f
+                        return@awaitEachGesture
+                    }
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
                     val delta = change.position - previousPosition
                     previousPosition = change.position

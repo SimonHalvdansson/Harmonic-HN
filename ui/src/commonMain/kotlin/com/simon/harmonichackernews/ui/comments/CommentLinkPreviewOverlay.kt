@@ -95,7 +95,6 @@ fun CommentLinkPreviewOverlay(
     controller: CommentsScreenController,
     tablet: Boolean,
     referenceContent: @Composable (CommentLinkPreviewOverlayState.Reference) -> Unit,
-    imageContent: @Composable (CommentLinkPreviewOverlayState.Image) -> Unit,
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val state = controller.linkPreviewOverlay ?: return
@@ -180,7 +179,10 @@ fun CommentLinkPreviewOverlay(
     ) {
         when (state) {
             is CommentLinkPreviewOverlayState.Reference -> referenceContent(state)
-            is CommentLinkPreviewOverlayState.Image -> imageContent(state)
+            is CommentLinkPreviewOverlayState.Image -> ZoomablePreviewImage(
+                state = state,
+                onDismissRequest = controller::requestDismissLinkPreview,
+            )
         }
     }
 }
