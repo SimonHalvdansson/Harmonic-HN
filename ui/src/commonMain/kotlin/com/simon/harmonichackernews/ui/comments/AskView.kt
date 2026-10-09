@@ -194,7 +194,6 @@ internal fun AskSurface(
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
                         .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
                         .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
-                        .animateContentSize(tween(300, easing = AskEasing))
                         .padding(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -222,19 +221,23 @@ internal fun AskSurface(
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Spacer(Modifier.height(6.dp))
-                        SummaryMarkdownText(
-                            markdown = post.summary,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            linkColor = linkColor, fontFamily = typography.family,
-                            fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
-                            baseUrl = baseUrl, maxLines = if (expanded) Int.MAX_VALUE else 3,
-                            overflow = TextOverflow.Ellipsis,
-                            enableBoldFormatting = settings.enableSummaryBoldFormatting,
-                        )
+                        AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
+                            SummaryMarkdownText(
+                                markdown = post.summary,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                linkColor = linkColor, fontFamily = typography.family,
+                                fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
+                                baseUrl = baseUrl, maxLines = maxLines,
+                                overflow = TextOverflow.Ellipsis,
+                                enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                            )
+                        }
                     } else {
-                        Text(body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
-                            maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
+                        AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
+                            Text(body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
+                                maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
                 if (post != null) {
