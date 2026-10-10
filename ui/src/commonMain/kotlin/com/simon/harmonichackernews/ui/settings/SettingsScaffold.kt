@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -224,7 +225,7 @@ private fun SettingsNavigationRow(
             )
             .background(
                 if (selected) {
-                    colors.secondaryContainer
+                    colors.secondaryContainer.copy(alpha = 0.45f).compositeOver(itemBackgroundColor())
                 } else {
                     itemBackgroundColor()
                 },

@@ -11,9 +11,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -43,7 +40,13 @@ import com.simon.harmonichackernews.settings.ColorSchemeSelection
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 import com.simon.harmonichackernews.settings.ColorSchemePreferences
 import com.simon.harmonichackernews.settings.StoryPreviewMode
-import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.comments.CommentNavigationButtons
+import com.simon.harmonichackernews.ui.common.HazeHost
+import com.simon.harmonichackernews.ui.common.currentSharedHazeState
+import com.simon.harmonichackernews.ui.common.sharedHazeSource
+import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.CommentRowStyle
+import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyle
@@ -84,6 +87,7 @@ fun ThemeSettingsScreen(
     onDialogRequested: (ThemeSettingsDialog) -> Unit,
     resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette,
     previewStyle: StoryRowStyle,
+    commentPreviewStyle: CommentRowStyle,
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -91,7 +95,7 @@ fun ThemeSettingsScreen(
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,
-        pinnedContent = { ThemeLivePreview(state, previewStyle, resolvePreviewScheme) },
+        pinnedContent = { ThemeLivePreview(state, previewStyle, commentPreviewStyle, resolvePreviewScheme) },
     ) {
         item {
             SettingsCategory("Appearance") {
@@ -184,16 +188,14 @@ private fun ColorSchemePicker(
     onStyleSelected: (ColorSchemeStyle) -> Unit,
 ) {
     val options = ColorSchemeCatalog.options
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex =
-        (options.indexOfFirst { it.value == selected } - 1).coerceAtLeast(0))
-    LazyRow(
-        state = listState,
+    FlowRow(
         modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
-            .testTag(tag).selectableGroup(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .testTag(tag).selectableGroup()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(options, key = { it.value }) { option ->
+        options.forEach { option ->
             val checked = selected == option.value
             val targetScheme = resolveScheme(option.value, dark, style).colorScheme
             val scheme = targetScheme.copy(
@@ -209,7 +211,7 @@ private fun ColorSchemePicker(
                     .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(Modifier.size(68.dp)
+                Box(Modifier.size(60.dp)
                     .border(2.dp, if (checked) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
                     .padding(5.dp)) {
                     // Primary occupies the top half; secondary and tertiary share the bottom.
@@ -222,7 +224,7 @@ private fun ColorSchemePicker(
                         Modifier.align(Alignment.TopCenter).padding(top = 5.dp).size(20.dp),
                         tint = scheme.onPrimary)
                 }
-                Text(option.label, Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(top = 6.dp),
+                Text(option.label, Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(top = 4.dp),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
                     textAlign = TextAlign.Center,
@@ -261,6 +263,7 @@ private fun ColorSchemePicker(
 private fun ThemeLivePreview(
     state: ThemeSettingsUiState,
     style: StoryRowStyle,
+    commentStyle: CommentRowStyle,
     resolveScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette,
 ) {
     val lightFraction by animateFloatAsState(
@@ -268,12 +271,12 @@ private fun ThemeLivePreview(
         animationSpec = tween(250), label = "scheme preview split",
     )
     Box(Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
-        StoryThemePreview(resolveScheme(state.schemes.light, false, state.schemes.lightStyle), style,
+        StoryThemePreview(resolveScheme(state.schemes.light, false, state.schemes.lightStyle), style, commentStyle,
             Modifier.clip(GenericShape { size, _ ->
                 lineTo(size.width * lightFraction, 0f); lineTo(size.width * lightFraction, size.height)
                 lineTo(0f, size.height); close()
             }).then(if (state.manualDark && !state.followSystem) Modifier.clearAndSetSemantics {} else Modifier))
-        StoryThemePreview(resolveScheme(state.schemes.dark, true, state.schemes.darkStyle), style,
+        StoryThemePreview(resolveScheme(state.schemes.dark, true, state.schemes.darkStyle), style, commentStyle,
             Modifier.clip(GenericShape { size, _ ->
                 moveTo(size.width * lightFraction, 0f); lineTo(size.width, 0f)
                 lineTo(size.width, size.height); lineTo(size.width * lightFraction, size.height); close()
@@ -285,6 +288,7 @@ private fun ThemeLivePreview(
 private fun StoryThemePreview(
     palette: HarmonicThemePalette,
     style: StoryRowStyle,
+    commentStyle: CommentRowStyle,
     modifier: Modifier = Modifier,
 ) {
     // Extract against the destination palette, not every intermediate animation color. Keep the
@@ -303,37 +307,68 @@ private fun StoryThemePreview(
     HarmonicTheme(palette.colorScheme, palette.dark) {
         val colors = MaterialTheme.colorScheme
         val pageBackground = colors.pageBackground
-        Column(
-            modifier = modifier.fillMaxWidth().fillMaxHeight().background(pageBackground)
-                .padding(vertical = 6.dp),
-        ) {
-            StoryRow(
-                model = SettingsStoryPreviewModel.copy(
-                    faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
-                ),
-                // Keep the preview visible above the controls even with large image settings.
-                style = style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false),
-                pageBackground = pageBackground,
-                animateChanges = false,
-            )
-            Spacer(Modifier.weight(1f))
+        HazeHost {
+            val hazeState = currentSharedHazeState()
             Box(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                contentAlignment = Alignment.Center,
+                modifier = modifier.fillMaxWidth().fillMaxHeight().background(pageBackground),
             ) {
-                Button(
-                    onClick = {},
-                    modifier = Modifier.heightIn(min = 40.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.primaryContainer,
-                        contentColor = colors.onPrimaryContainer,
-                    ),
+                Column(
+                    Modifier.fillMaxWidth().sharedHazeSource(hazeState)
+                        .padding(top = 6.dp, bottom = 32.dp),
                 ) {
-                    Icon(painterResource(Res.drawable.ic_preview), null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Example", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        ThemePreviewPalettePills()
+                        ThemePreviewPalettePills()
+                    }
+                    StoryRow(
+                        model = SettingsStoryPreviewModel.copy(
+                            title = "A faster algorithm",
+                            faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
+                        ),
+                        // Keep the preview compact even with large image settings.
+                        style = style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false),
+                        pageBackground = pageBackground,
+                        animateChanges = false,
+                        cardPadding = PaddingValues(
+                            start = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
+                            top = 4.dp,
+                            end = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
+                            bottom = 0.dp,
+                        ),
+                    )
+                    CommentRow(
+                        model = SettingsCommentPreviewModel.copy(
+                            body = "A neat result.", referenceMarker = "", referenceUrl = "",
+                        ),
+                        style = commentStyle,
+                        verticalPadding = 2.dp,
+                    )
+                }
+                Box(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp)
+                        .clearAndSetSemantics { contentDescription = "Comment navigation preview" },
+                ) {
+                    CommentNavigationButtons(onPrevious = {}, onNext = {}, onFirst = {}, onLast = {})
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ThemePreviewPalettePills() {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.clearAndSetSemantics {
+            contentDescription = "Primary, secondary, and tertiary colors"
+        },
+    ) {
+        listOf(colors.primary, colors.secondary, colors.tertiary).forEach { color ->
+            Box(Modifier.size(width = 24.dp, height = 12.dp).background(color, CircleShape))
         }
     }
 }

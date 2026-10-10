@@ -863,7 +863,7 @@ private fun findNavigationTarget(
 }
 
 @Composable
-private fun CommentNavigationButtons(
+internal fun CommentNavigationButtons(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onFirst: () -> Unit,

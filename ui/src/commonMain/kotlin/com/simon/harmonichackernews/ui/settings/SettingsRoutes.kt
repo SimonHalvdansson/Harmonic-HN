@@ -428,6 +428,8 @@ fun ThemeSettingsRoute(
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
+        commentPreviewStyle = remember(repository) { CommentsSettingsPresenter(repository) }
+            .state(settings).toPreviewCommentRowStyle().copy(animateChanges = false),
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }
