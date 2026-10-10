@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneControls
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
@@ -106,6 +107,7 @@ fun CommentsHeader(
     includeStatusBarSpacer: Boolean = true,
     headerPreviewImageDisplayed: Boolean = false,
     onBrowserBack: (() -> Unit)? = null,
+    headerTintProgress: Float? = null,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
@@ -151,15 +153,15 @@ fun CommentsHeader(
     val visibleHeaderBackground = lerpCommentsColor(
         normalBackground,
         headerBackground,
-        headerSheetProgress,
+        headerTintProgress ?: headerSheetProgress,
     )
     val summaryContainerColor = if (settings.tintHeader) {
         lerpCommentsColor(colors.surfaceContainerHigh, visibleHeaderBackground, 0.52f)
     } else {
         colors.surfaceContainerHigh
     }
-    LaunchedEffect(visibleHeaderBackground) {
-        controller.updateStatusBarHeaderColor(visibleHeaderBackground)
+    LaunchedEffect(visibleHeaderBackground, headerBackground) {
+        controller.updateStatusBarHeaderColor(visibleHeaderBackground, headerBackground)
         controller.listener.onHeaderColorChanged(visibleHeaderBackground.toArgb())
     }
     val topSpacer = if (includeStatusBarSpacer) {
@@ -524,6 +526,13 @@ fun CommentsSheetControls(
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val paneControls = LocalBrowserPaneControls.current
+            AnimatedSheetButtonSlot(
+                visible = paneControls.restoreVisible,
+                icon = Res.drawable.ic_arrow_forward,
+                description = "Restore two panes",
+                onClick = paneControls.restore,
+            )
             if (sideBySideAvailable) {
                 SheetButtonSlot(
                     Res.drawable.ic_chrome_reader_mode,
@@ -546,22 +555,13 @@ fun CommentsSheetControls(
             SheetButtonSlot(Res.drawable.ic_public, "Open in browser") {
                 onAction(CommentsSheetAction.BROWSER)
             }
-            val readerModeSlotWeight by animateFloatAsState(
-                targetValue = if (readerModeAvailable) 1f else 0.001f,
-                animationSpec = tween(if (readerModeAvailable) 180 else 140),
-                label = "reader mode action slot width",
+            AnimatedSheetButtonSlot(
+                visible = readerModeAvailable,
+                icon = Res.drawable.ic_book_ribbon,
+                description = if (readerModeEnabled) "Reader mode on" else "Reader mode",
+                tint = if (readerModeEnabled) colors.secondary else colors.onSurfaceVariant,
+                onClick = { onAction(CommentsSheetAction.READER) },
             )
-            Box(
-                modifier = Modifier.weight(readerModeSlotWeight),
-                contentAlignment = Alignment.Center,
-            ) {
-                ReaderModeSheetButton(
-                    visible = readerModeAvailable,
-                    enabled = readerModeEnabled,
-                    tint = if (readerModeEnabled) MaterialTheme.colorScheme.secondary else colors.onSurfaceVariant,
-                    onClick = { onAction(CommentsSheetAction.READER) },
-                )
-            }
             if (showInvert) {
                 SheetButtonSlot(Res.drawable.ic_invert_colors, "Invert colors") {
                     onAction(CommentsSheetAction.INVERT)
@@ -606,23 +606,26 @@ private fun SheetButtonContent(
 }
 
 @Composable
-private fun ReaderModeSheetButton(
+private fun RowScope.AnimatedSheetButtonSlot(
     visible: Boolean,
-    enabled: Boolean,
-    tint: Color,
+    icon: DrawableResource,
+    description: String,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: () -> Unit,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.8f),
-        exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
-    ) {
-        SheetButtonContent(
-            Res.drawable.ic_book_ribbon,
-            if (enabled) "Reader mode on" else "Reader mode",
-            tint,
-            onClick,
-        )
+    val slotWeight by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.001f,
+        animationSpec = tween(if (visible) 180 else 140),
+        label = "browser action slot width",
+    )
+    Box(Modifier.weight(slotWeight), contentAlignment = Alignment.Center) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.8f),
+            exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
+        ) {
+            SheetButtonContent(icon, description, tint, onClick)
+        }
     }
 }
 
@@ -664,7 +667,8 @@ private fun CommentsHeaderShimmer() {
     }
 }
 
-private fun lerpCommentsColor(start: Color, end: Color, fraction: Float): Color = Color(
+/** Shared with platform sheet controls so adjoining surfaces use the same color interpolation. */
+fun lerpCommentsColor(start: Color, end: Color, fraction: Float): Color = Color(
     red = start.red + (end.red - start.red) * fraction,
     green = start.green + (end.green - start.green) * fraction,
     blue = start.blue + (end.blue - start.blue) * fraction,

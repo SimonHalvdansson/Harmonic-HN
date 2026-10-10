@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.navigation.BrowserPaneState
+import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -46,9 +48,13 @@ internal class SideBySideCommentsPortal {
 internal val LocalSideBySideCommentsPortal = compositionLocalOf<SideBySideCommentsPortal?> { null }
 
 @Composable
-internal fun SideBySideCommentsHost(content: @Composable (listOverlay: @Composable () -> Unit) -> Unit) {
+internal fun SideBySideCommentsHost(standalone: Boolean = false, content: @Composable (listOverlay: @Composable () -> Unit) -> Unit) {
     val portal = remember { SideBySideCommentsPortal() }
-    CompositionLocalProvider(LocalSideBySideCommentsPortal provides portal) {
+    val browserPane = remember(standalone) { BrowserPaneState(standalone) }
+    CompositionLocalProvider(
+        LocalSideBySideCommentsPortal provides portal,
+        LocalBrowserPaneState provides browserPane,
+    ) {
         content { SideBySideCommentsListPane(portal) }
     }
 }
@@ -57,6 +63,7 @@ internal fun SideBySideCommentsHost(content: @Composable (listOverlay: @Composab
 private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
     val controller = portal.controller ?: return
     if (!controller.sideBySideActive || controller.webViewFullscreen) return
+    val standalone = LocalBrowserPaneState.current?.standalone == true
     val reveal = remember(controller) { Animatable(if (portal.sheetExpansion < 0.001f) 0f else 1f) }
     LaunchedEffect(reveal, portal.liveInLeft) {
         if (portal.liveInLeft) reveal.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
@@ -64,7 +71,7 @@ private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
     Box(
         Modifier.fillMaxSize().zIndex(10f)
             .clipToBounds()
-            .graphicsLayer { translationX = size.width * (1f - reveal.value) }
+            .graphicsLayer { translationX = if (standalone) 0f else size.width * (1f - reveal.value) }
             .then(if (portal.sheetExpansion > 0.001f) {
                 Modifier.pointerInput(Unit) {
                     awaitPointerEventScope {
@@ -73,7 +80,7 @@ private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
                 }.clearAndSetSemantics { }
             } else Modifier)
             .drawWithContent {
-                clipRect(top = size.height * portal.sheetExpansion.coerceIn(0f, 1f)) {
+                clipRect(top = if (standalone) 0f else size.height * portal.sheetExpansion.coerceIn(0f, 1f)) {
                     this@drawWithContent.drawContent()
                 }
             },
@@ -108,7 +115,13 @@ internal fun rememberSideBySideCommentsContent(
         mutableStateOf(controller.sideBySideActive && controller.sheetSlideOffset > 0.001f)
     }
     val sheetCollapsed = controller.sheetSlideOffset <= 0.001f
-    SideEffect { if (sheetCollapsed) entering = false }
+    val leftSettled = portal?.liveInLeft == true && portal.sheetExpansion <= 0.001f
+    SideEffect {
+        if (sheetCollapsed) entering = false
+        // The departing sheet snapshot is only for lowering into split mode. Retaining it
+        // would flash its fully tinted header while the next pull captures the left pane.
+        if (sheetCollapsed && leftSettled) portal?.rightSnapshot = null
+    }
     val targetLeft = controller.sideBySideActive && (entering || (portal?.sheetExpansion ?: 1f) <= 0.001f)
     LaunchedEffect(portal, controller, targetLeft, controller.sideBySideActive) {
         if (portal == null) return@LaunchedEffect
@@ -120,7 +133,8 @@ internal fun rememberSideBySideCommentsContent(
         // Freeze the departing pane at its own width, then move the one live list to the
         // destination. A bitmap is intentional: a recorded layer would retain references to
         // child layers that reflow when the live composition changes panes.
-        if (controller.sideBySideActive && portal.contentSize != IntSize.Zero) {
+        // A fully collapsed pane has no drawable layer. It needs no departing snapshot.
+        if (controller.sideBySideActive && layer.size.width > 0 && layer.size.height > 0) {
             val snapshot = layer.toImageBitmap()
             if (portal.liveInLeft) {
                 portal.leftSnapshot = snapshot

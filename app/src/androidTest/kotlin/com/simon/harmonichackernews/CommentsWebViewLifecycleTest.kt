@@ -184,6 +184,75 @@ class CommentsWebViewLifecycleTest {
     }
 
     @Test
+    fun readerTransitionsKeepCustomScrollbarsQuietAndRestoreScrollAndLiveNodes() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            fixture(readerMode = true).use { browser ->
+                val paragraphs = (1..40).joinToString("") {
+                    "<p>Reader transition paragraph $it. " +
+                        "A detailed article must stay scrollable and preserve the original page when reading ends. ".repeat(4) + "</p>"
+                }
+                scenario.onActivity { activity ->
+                    (activity.window.decorView as ViewGroup).addView(browser.host.root,
+                        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                    browser.host.root.bringToFront()
+                    browser.controller.initializeForVisibleWebsite()
+                    browser.webView.loadDataWithBaseURL("https://example.invalid/reader-scrollbar", """
+                        <!doctype html><html><head><title>Scrollbar regression</title>
+                        <meta name="viewport" content="width=device-width,initial-scale=1">
+                        <style>html::-webkit-scrollbar{width:16px;background:black}
+                        html::-webkit-scrollbar-thumb{background:rgb(255,0,0);border-radius:8px}</style>
+                        </head><body><input id="draft" value="original"><article><h1>Scrollbar regression</h1>
+                        $paragraphs</article><script>
+                        window.originalInput = document.getElementById('draft');
+                        originalInput.value = 'Unsaved draft';
+                        </script></body></html>
+                    """.trimIndent(), "text/html", "UTF-8", null)
+                }
+                awaitTitle(browser.webView, "Scrollbar regression")
+                awaitJavascript(browser.webView, "document.documentElement.scrollHeight > innerHeight * 2")
+                val geometry = "JSON.stringify({width:document.documentElement.clientWidth,inner:innerWidth," +
+                    "scale:visualViewport.scale,scroll:scrollY,reader:!!document.getElementById('harmonic-reader-article')})"
+                // The first overview zoom can finish after onPageFinished on a visible WebView.
+                Thread.sleep(500)
+                evaluate(browser.webView, "window.scrollTo(0,400); window.sourceWidth = document.documentElement.clientWidth; true")
+                awaitJavascript(browser.webView, "scrollY === 400")
+                val originalGeometry = evaluate(browser.webView, geometry)
+                repeat(2) {
+                    onMain { browser.controller.toggleReaderMode() }
+                    awaitJavascript(browser.webView, "!!document.getElementById('harmonic-reader-transition-scrollbar')")
+                    awaitJavascript(browser.webView, "!!document.getElementById('harmonic-reader-article') && " +
+                        "!document.getElementById('harmonic-reader-transition-scrollbar')")
+                    onMain { assertTrue(browser.webView.canScrollVertically(1)) }
+                    swipeUp(browser.webView)
+                    awaitJavascript(browser.webView, "scrollY > 0")
+                    // Wait for the touch fling to settle before testing scroll restoration.
+                    var previousScroll: String? = null
+                    val scrollDeadline = SystemClock.uptimeMillis() + 5_000
+                    while (SystemClock.uptimeMillis() < scrollDeadline) {
+                        val scroll = evaluate(browser.webView, "scrollY")
+                        if (scroll == previousScroll) break
+                        previousScroll = scroll
+                        Thread.sleep(150)
+                    }
+                    onMain { browser.controller.disableReaderMode() }
+                    awaitJavascript(browser.webView, "!!document.getElementById('harmonic-reader-transition-scrollbar')")
+                    awaitJavascript(browser.webView, "!document.getElementById('harmonic-reader-transition-scrollbar') && " +
+                        "document.getElementById('draft') === originalInput")
+                    assertEquals("Original $originalGeometry; restored ${evaluate(browser.webView, geometry)}",
+                        "400", evaluate(browser.webView, "scrollY"))
+                    assertEquals("\"Unsaved draft\"", evaluate(browser.webView, "originalInput.value"))
+                    assertEquals(evaluate(browser.webView, "sourceWidth"),
+                        evaluate(browser.webView, "document.documentElement.clientWidth"))
+                    assertEquals("\"rgb(255, 0, 0)\"", evaluate(browser.webView,
+                        "getComputedStyle(document.documentElement, '::-webkit-scrollbar-thumb').backgroundColor"))
+                }
+                swipeUp(browser.webView)
+                awaitJavascript(browser.webView, "scrollY > 400")
+            }
+        }
+    }
+
+    @Test
     fun coveredPageStopsAnimatingAndResumesWithoutReloading() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             fixture().use { browser ->

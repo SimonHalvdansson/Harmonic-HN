@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 12) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 13) {
         return;
     }
 
@@ -17,6 +17,7 @@
     var TRANSITION_DURATION_MS = 180;
     var TRANSITION_FALLBACK_MS = TRANSITION_DURATION_MS + 320;
     var TRANSITION_TRANSLATE_Y = "12px";
+    var transitionScrollbarStyle = null;
     var DEFAULT_LIGHT_READER_THEME = {
         isLight: true,
         backgroundColor: "#fafafa",
@@ -720,7 +721,43 @@
 
     function nextTransitionId() {
         window[TRANSITION_KEY] = (window[TRANSITION_KEY] || 0) + 1;
+        hideTransitionScrollbar(window[TRANSITION_KEY]);
         return window[TRANSITION_KEY];
+    }
+
+    function restoreTransitionScrollbar(transitionId) {
+        if (isCurrentTransition(transitionId) && transitionScrollbarStyle) {
+            transitionScrollbarStyle.remove();
+            transitionScrollbarStyle = null;
+        }
+    }
+
+    function hideTransitionScrollbar(transitionId) {
+        if (transitionScrollbarStyle) transitionScrollbarStyle.remove();
+        var style = document.createElement("style");
+        style.id = "harmonic-reader-transition-scrollbar";
+        // A page's custom scrollbar can briefly become viewport-sized while its body is
+        // replaced. Suppress its paint, not scrolling or overflow. Retain a classic gutter's
+        // width so hiding it cannot rewrap the article or move the saved scroll position.
+        var gutter = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+        if (gutter > 0) {
+            style.textContent = "html,body{scrollbar-color:auto!important}" +
+                "html::-webkit-scrollbar,body::-webkit-scrollbar{width:" + gutter + "px!important}";
+        } else {
+            style.textContent = "html,body{scrollbar-color:transparent transparent!important}" +
+                "html::-webkit-scrollbar,body::-webkit-scrollbar{width:0!important;height:0!important}";
+        }
+        var parts = ["", "-thumb", "-track", "-track-piece", "-button", "-corner"];
+        var selectors = [];
+        for (var i = 0; i < parts.length; i++) {
+            selectors.push("html::-webkit-scrollbar" + parts[i], "body::-webkit-scrollbar" + parts[i]);
+        }
+        style.textContent += selectors.join(",") +
+            "{background:transparent!important;border-color:transparent!important;box-shadow:none!important}";
+        (document.head || document.documentElement).appendChild(style);
+        transitionScrollbarStyle = style;
+        // Also release on an interrupted/failed transition or a throttled background page.
+        setTimeout(function() { restoreTransitionScrollbar(transitionId); }, 2 * TRANSITION_FALLBACK_MS + 100);
     }
 
     function isCurrentTransition(transitionId) {
@@ -797,6 +834,7 @@
                 return;
             }
             restoreTransitionStyles(element, styles);
+            restoreTransitionScrollbar(transitionId);
             if (after) {
                 after();
             }
@@ -926,7 +964,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 12,
+        version: 13,
         setTheme: setTheme,
         updateTheme: updateTheme,
         isAvailable: isAvailable,

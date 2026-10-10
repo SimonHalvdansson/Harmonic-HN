@@ -20,6 +20,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -31,6 +32,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -74,6 +78,7 @@ internal data class SplitPaneLayout(
     val isFoldable: Boolean = false,
     val orientation: SplitOrientation = SplitOrientation.Portrait,
     val snapToCenter: Boolean = isFoldable,
+    val minimumListWidth: Int = 0,
 )
 internal val LocalSplitPaneLayout = compositionLocalOf { SplitPaneLayout() }
 internal val LocalSplitPaneAnimationEnabled = compositionLocalOf { true }
@@ -88,7 +93,7 @@ internal fun SplitPaneViewport(
     supportsTwoPane: Boolean = directive.maxHorizontalPartitions > 1,
     isFoldable: Boolean = false,
     snapToCenter: Boolean = isFoldable,
-    content: @Composable (PaneExpansionState) -> Unit,
+    content: @Composable (PaneExpansionState, PaneScaffoldDirective) -> Unit,
 ) {
     val repository = LocalHarmonicUiDependencies.current.settings
     val initialSettings = remember(repository) { repository.snapshot() }
@@ -100,7 +105,26 @@ internal fun SplitPaneViewport(
     var rawRatio by remember(orientation) { mutableFloatStateOf(savedRatio) }
     var dragging by remember(orientation) { mutableStateOf(false) }
     LaunchedEffect(savedRatio, orientation) { rawRatio = savedRatio }
-    val ratio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
+    val browser = LocalBrowserPaneState.current
+    val session = remember(browser?.owner, orientation) { BrowserSplitSession() }
+    val logicalExpansion = browser?.logicalExpansion ?: 1f
+    val opening = browser?.opening == true
+    val integrated = browser?.integrated == true
+    LaunchedEffect(session, savedRatio, integrated, opening, logicalExpansion) {
+        session.update(savedRatio, integrated, opening, logicalExpansion)
+    }
+    val temporary = session.openingRatio != null
+    val browserAdjustable = integrated && temporary && logicalExpansion <= 0.001f &&
+        settings.appearance.allowSplitAdjustment
+    val normalRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
+    val ratio = session.target(
+        normalRatio, browser?.standalone == true, browser?.sideBySide == true,
+        browser?.sheetExpansion ?: 1f,
+    ).let { target ->
+        if (temporary && !settings.appearance.allowSplitAdjustment &&
+            (browser?.standalone != true || browser.sideBySide)) session.openingRatio ?: normalRatio
+        else target
+    }.let { SplitRatioPreferences.snapToCenter(it, snapToCenter) }
     // Ratios are fractions: the default 0.01 threshold would end a crease animation
     // while it was still visibly several pixels away from the target.
     val animatedRatio = remember(orientation) { Animatable(ratio, visibilityThreshold = 0.0001f) }
@@ -125,7 +149,7 @@ internal fun SplitPaneViewport(
             // remaining crease correction eases away, so a moving finger cannot prolong the snap.
             if (!centered && !crossedCreaseBoundary) {
                 animatedRatio.snapTo(
-                    (animatedRatio.value + fingerMovement).coerceIn(SplitRatioPreferences.Range),
+                    (animatedRatio.value + fingerMovement).coerceIn(if (browserAdjustable) 0f..SplitRatioPreferences.Maximum else SplitRatioPreferences.Range),
                 )
             }
             animatedRatio.animateTo(
@@ -155,11 +179,25 @@ internal fun SplitPaneViewport(
     val twoPane = directive.maxHorizontalPartitions > 1
     var width by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
-    val gap = with(density) { directive.horizontalPartitionSpacerSize.toPx() }
+    val layoutDirective by remember(directive, animatedRatio) {
+        derivedStateOf {
+            // Shrink the gap together with the last part of the pane, so reaching zero
+            // never jumps by the spacer width.
+            directive.copy(horizontalPartitionSpacerSize = directive.horizontalPartitionSpacerSize *
+                (animatedRatio.value / SplitRatioPreferences.Minimum).coerceIn(0f, 1f))
+        }
+    }
+    val gap = with(density) { layoutDirective.horizontalPartitionSpacerSize.toPx() }
+    val normalGap = with(density) { directive.horizontalPartitionSpacerSize.toPx() }
     val targetWidth = with(density) { 48.dp.roundToPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     fun updateRatio(value: Float, persist: Boolean) {
+        if (browserAdjustable) {
+            session.adjust(value)
+            if (persist) session.settle()
+            return
+        }
         rawRatio = SplitRatioPreferences.sanitize(value) ?: rawRatio
         if (persist) {
             rawRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
@@ -168,12 +206,25 @@ internal fun SplitPaneViewport(
     }
 
     CompositionLocalProvider(
-        LocalSplitPaneLayout provides SplitPaneLayout(supportsTwoPane, ratio, isFoldable, orientation, snapToCenter),
+        LocalSplitPaneLayout provides SplitPaneLayout(
+            supportsTwoPane, ratio, isFoldable, orientation, snapToCenter,
+            ((width - normalGap) * SplitRatioPreferences.Minimum).roundToInt().coerceAtLeast(0),
+        ),
+        LocalBrowserPaneControls provides BrowserPaneControls(
+            restoreVisible = browserAdjustable && ratio == 0f &&
+                (browser?.standalone != true || browser.canShowSideBySide),
+            restore = {
+                session.adjust(SplitRatioPreferences.Minimum)
+                if (browser?.standalone == true && !browser.sideBySide) browser.showSideBySide()
+            },
+        ),
     ) {
         Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).onSizeChanged { width = it.width }) {
-            content(expansion)
+            content(expansion, layoutDirective)
             AnimatedVisibility(
-                visible = twoPane && settings.appearance.allowSplitAdjustment,
+                visible = twoPane && settings.appearance.allowSplitAdjustment && ratio > 0f &&
+                    (browser?.standalone != true || browser.sideBySide) &&
+                    (!temporary || browserAdjustable),
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
                 modifier = Modifier
@@ -207,7 +258,7 @@ internal fun SplitPaneViewport(
                             .semantics {
                                 contentDescription = "Adjust split ratio"
                                 stateDescription = "${(ratio * 100).roundToInt()}% list, ${(100 - ratio * 100).roundToInt()}% detail"
-                                progressBarRangeInfo = ProgressBarRangeInfo(ratio, SplitRatioPreferences.Range)
+                                progressBarRangeInfo = ProgressBarRangeInfo(ratio, if (browserAdjustable) 0f..SplitRatioPreferences.Maximum else SplitRatioPreferences.Range)
                                 setProgress { updateRatio(it, persist = true); true }
                             }
                             .onKeyEvent {
@@ -239,14 +290,14 @@ internal fun SplitPaneViewport(
                                 orientation = Orientation.Horizontal,
                                 reverseDirection = rtl,
                                 state = rememberDraggableState { delta ->
-                                    if (width > gap) updateRatio(rawRatio + delta / (width - gap), persist = false)
+                                    if (width > normalGap) updateRatio((if (browserAdjustable) session.ratio else rawRatio) + delta / (width - normalGap), persist = false)
                                 },
                                 onDragStarted = {
-                                    rawRatio = animatedRatio.value
+                                    if (browserAdjustable) session.adjust(animatedRatio.value) else rawRatio = animatedRatio.value
                                     dragging = true
                                 },
                                 onDragStopped = {
-                                    updateRatio(rawRatio, persist = true)
+                                    updateRatio(if (browserAdjustable) session.ratio else rawRatio, persist = true)
                                     dragging = false
                                 },
                             ),
@@ -266,3 +317,18 @@ internal fun SplitPaneViewport(
 /** Proportion applies to usable pane width; the handle is centered in the intervening spacer. */
 internal fun splitHandleOffset(width: Int, gap: Float, ratio: Float, targetWidth: Int): Int =
     ((width - gap).coerceAtLeast(0f) * ratio + gap / 2 - targetWidth / 2f).roundToInt()
+
+/** Keep the list readable while it slides out through the divider's collapse region. */
+@Composable
+internal fun SplitPaneListContent(content: @Composable () -> Unit) {
+    val minimumWidth = LocalSplitPaneLayout.current.minimumListWidth
+    // Resolve system insets at the stationary viewport, before translating its wider content.
+    // Recalculating inside the translated list would turn its negative x into extra left padding.
+    Box(Modifier.fillMaxSize().recalculateWindowInsets().clipToBounds().layout { measurable, constraints ->
+        val width = maxOf(constraints.maxWidth, minimumWidth)
+        val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.placeRelative(constraints.maxWidth - placeable.width, 0)
+        }
+    }) { content() }
+}

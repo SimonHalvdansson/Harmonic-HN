@@ -451,7 +451,7 @@ private fun MainNavigation(
             // External links and nested stories retain their own navigation surface. They can
             // temporarily use both panes without introducing a synthetic story list underneath.
             if (fullScreen && isTwoPane) {
-                SideBySideCommentsHost { listOverlay ->
+                SideBySideCommentsHost(standalone = true) { listOverlay ->
                     val split = LocalSideBySideCommentsPortal.current?.controller?.sideBySideActive == true
                     val comments = remember(request.serial) {
                         movableContentOf { showUp: Boolean ->
@@ -460,7 +460,7 @@ private fun MainNavigation(
                     }
                     MainNavigationScene(
                         storyRequest = request,
-                        directive = directive.copy(maxHorizontalPartitions = if (split) 2 else 1),
+                        directive = directive,
                         paneProportion = paneProportion,
                         isFoldable = isFoldable,
                         onBack = ::popMainBackStack,

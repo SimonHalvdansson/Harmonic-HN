@@ -85,6 +85,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
+import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
 private const val StoriesRowMotionDurationMillis = 350
 
@@ -183,9 +184,11 @@ internal fun StoriesList(
             .collect(onVisibleStoriesChanged)
     }
 
+    val paneInsetsHandled = LocalSplitPaneLayout.current.supportsTwoPane
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
-        // A list pane only needs the system insets that intersect its own bounds.
-        Box(Modifier.fillMaxSize().recalculateWindowInsets()) {
+        // SplitPaneListContent resolves insets before the pane slides off-screen. Recalculating
+        // them here would squeeze the list by the amount translated beyond the window edge.
+        Box(Modifier.fillMaxSize().then(if (paneInsetsHandled) Modifier else Modifier.recalculateWindowInsets())) {
             LookaheadScope {
                 LazyContentList(
                     contentGeneration = if (searchMode) 0 else controller.mainListGeneration,

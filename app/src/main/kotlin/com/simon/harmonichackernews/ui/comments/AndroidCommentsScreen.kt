@@ -46,6 +46,8 @@ import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.SideEffect
+import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneState
 
 /** Android shell for system insets, nested-scroll interop, and image/cache facilities. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +58,24 @@ internal fun CommentsScaffold(
     retainedContent: (@Composable () -> Unit)? = null,
 ) {
     val portal = LocalSideBySideCommentsPortal.current
+    val browserPane = LocalBrowserPaneState.current
+    val integratedBrowser = controller.integratedWebView
+    val browserOpening = controller.sheetRequest?.expanded == false
+    val sideBySide = controller.sideBySideActive
+    val sideBySideAvailable = controller.sideBySideAvailable
+    val logicalExpansion = controller.sheetSlideOffset
+    val background = MaterialTheme.colorScheme.pageBackground
+    SideEffect {
+        browserPane?.let {
+            it.owner = controller
+            it.integrated = integratedBrowser
+            it.opening = browserOpening
+            it.sideBySide = sideBySide
+            it.canShowSideBySide = sideBySideAvailable
+            it.logicalExpansion = logicalExpansion
+            it.showSideBySide = { if (!controller.sideBySideActive) controller.toggleSideBySide() }
+        }
+    }
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
@@ -91,7 +111,10 @@ internal fun CommentsScaffold(
             (1f - ((offset - backPreviewLift.value).coerceAtLeast(0f) / travelPx)).coerceIn(0f, 1f)
         }
         LaunchedEffect(portal, sheetState, travelPx) {
-            snapshotFlow { visualExpansion() }.collect { portal?.sheetExpansion = it }
+            snapshotFlow { visualExpansion() }.collect {
+                portal?.sheetExpansion = it
+                browserPane?.sheetExpansion = it
+            }
         }
 
         LaunchedEffect(controller.sheetRequest) {
@@ -135,7 +158,13 @@ internal fun CommentsScaffold(
             sheetPeekHeight = peekHeight,
             sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified,
             sheetShape = RectangleShape,
-            sheetContainerColor = MaterialTheme.colorScheme.pageBackground,
+            // Stay neutral when collapsed. Follow the incoming header's reveal directly,
+            // including predictive back, so its background and these controls meet seamlessly.
+            sheetContainerColor = if (sideBySide) lerpCommentsColor(
+                background,
+                controller.headerBackgroundColor ?: background,
+                controller.statusBarHeaderCoverage * (portal?.sheetExpansion ?: visualExpansion()),
+            ) else background,
             sheetContentColor = MaterialTheme.colorScheme.onSurface,
             // Only cast a shadow as the sheet lowers to expose the article underneath.
             sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
@@ -273,6 +302,7 @@ private fun AndroidCommentsHeader(
             plainText = HtmlTextUtils::plainText,
         )
     }
+    val portal = LocalSideBySideCommentsPortal.current
     CommentsHeader(
         controller = controller,
         settings = settings,
@@ -287,6 +317,11 @@ private fun AndroidCommentsHeader(
         previewPlatform = previewPlatform,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             tintPresentation.previewImageAvailable,
+        // The left pane stays fully tinted; the incoming sheet uses the normal reveal fade.
+        // Keep this independent of header geometry so the retained scroll position stays put.
+        headerTintProgress = if (controller.sideBySideActive && portal?.liveInLeft == false) {
+            portal.sheetExpansion
+        } else null,
     ) { visibleBackground, onTintLoaded ->
         val previewUrl = previewImageUrl
         HeaderPreviewImage(

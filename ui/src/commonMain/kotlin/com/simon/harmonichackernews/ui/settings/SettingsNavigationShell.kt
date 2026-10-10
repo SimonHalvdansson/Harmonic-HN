@@ -107,7 +107,7 @@ fun SettingsNavigationShell(
         snapToCenter = snapToCenter,
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
-    ) { paneExpansionState ->
+    ) { paneExpansionState, layoutDirective ->
         val navigationState by navigation.state.collectAsStateWithLifecycle()
         val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
             { section, singlePane, onBack, onNavigate ->
@@ -151,7 +151,7 @@ fun SettingsNavigationShell(
             )
         } else {
             val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
-                directive = directive,
+                directive = layoutDirective,
                 paneExpansionState = paneExpansionState,
             )
             val provider = entryProvider<NavKey> {

@@ -128,6 +128,9 @@ class CommentsScreenController private constructor(
     val contentInsetRightPx: Int get() = screenState.contentInsetRightPx
     var statusBarHeaderColor by mutableStateOf<Color?>(null)
         private set
+    /** Header color before the sheet reveal, shared with the detached browser controls. */
+    var headerBackgroundColor by mutableStateOf<Color?>(null)
+        private set
     var statusBarHeaderCoverage by mutableFloatStateOf(0f)
         private set
     var contentVersion by mutableIntStateOf(0)
@@ -370,8 +373,9 @@ class CommentsScreenController private constructor(
         syncInteractionState()
     }
 
-    fun updateStatusBarHeaderColor(color: Color) {
+    fun updateStatusBarHeaderColor(color: Color, backgroundColor: Color = color) {
         statusBarHeaderColor = color
+        headerBackgroundColor = backgroundColor
     }
 
     fun updateStatusBarHeaderCoverage(coverage: Float) {

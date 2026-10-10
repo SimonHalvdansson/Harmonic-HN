@@ -3,7 +3,11 @@ package com.simon.harmonichackernews.ui
 import android.webkit.WebView
 import androidx.activity.BackEventCompat
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.runtime.MutableIntState
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.AndroidCommentsCoordinator
@@ -136,9 +140,145 @@ class SideBySideNavigationTest {
         }
     }
 
+    @Test fun draggingToFullWidthAddsRestoreAndReturnsToTheMinimumSplit() = withStory { coordinator, _ ->
+        val pane = storyPane()
+        val rootWidth = compose.activity.window.decorView.width.toFloat()
+        val initialWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        val settings = compose.activity.harmonicAppComposition.settings
+        val originalRatios = settings.snapshot().appearance
+        val grip = compose.onNodeWithContentDescription("Adjust split ratio")
+        val bounds = grip.fetchSemanticsNode().boundsInRoot
+        grip.performTouchInput {
+            swipe(center, Offset(-bounds.left, center.y), durationMillis = 450)
+        }
+        compose.waitForIdle()
+        assertEquals(rootWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        val restoredWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        assertTrue(restoredWidth in rootWidth * 0.65f..rootWidth * 0.72f)
+        compose.onNodeWithContentDescription("Restore two panes").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(originalRatios, settings.snapshot().appearance) }
+        setSplit(0.65f)
+        compose.runOnIdle { requireNotNull(coordinator.composeUiController).requestExpandSheet() }
+        compose.waitForIdle()
+        assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+    }
+
+    @Test fun fullWidthBrowserWithoutSideBySideRestoresItsOpeningRatioOnSheetDrag() = withStory(splitOnOpen = false) { _, _ ->
+        val pane = storyPane()
+        val originalWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        setSplit(0f)
+        compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed()
+        compose.onNodeWithTag("comments-sheet-handle").performTouchInput {
+            swipe(center, Offset(center.x, -1700f), durationMillis = 550)
+        }
+        compose.waitForIdle()
+        assertEquals(originalWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.onNodeWithContentDescription("Restore two panes").assertDoesNotExist()
+    }
+
+    @Test fun predictiveBackFromFullWidthCanCancelThenRestoreTheOpeningRatio() = withStory { coordinator, _ ->
+        val pane = storyPane()
+        val initialWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        setSplit(0f)
+        compose.runOnIdle {
+            dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+            dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
+        }
+        compose.waitForIdle()
+        assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
+        compose.waitForIdle()
+        assertEquals(compose.activity.window.decorView.width.toFloat(), pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed()
+        compose.runOnIdle { dispatcher.onBackPressed() }
+        compose.waitForIdle()
+        assertFalse(requireNotNull(coordinator.composeUiController).sideBySideActive)
+        assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+    }
+
+    @Test fun disablingAdjustmentsRestoresAFullWidthBrowser() = withStory { _, _ ->
+        val originalWidth = storyPane().fetchSemanticsNode().boundsInRoot.width
+        setSplit(0f)
+        compose.runOnIdle {
+            compose.activity.harmonicAppComposition.settings
+                .setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, false)
+        }
+        compose.waitForIdle()
+        assertEquals(originalWidth, storyPane().fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.onNodeWithContentDescription("Restore two panes").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Adjust split ratio").assertDoesNotExist()
+    }
+
+    @Test fun standaloneSplitRevealsTheLeftPaneThroughTheDivider() = withStory(Entry.External, inspectOpening = true) { _, _ ->
+        setSplit(0f)
+        compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        assertTrue(storyPane().fetchSemanticsNode().boundsInRoot.width < compose.activity.window.decorView.width * 0.75f)
+    }
+
+    @Test fun storiesSlideOutWithoutRewrappingBelowTheMinimumSplit() = verifyListCollapse(Entry.Feed)
+
+    @Test fun submissionsSlideOutWithoutRewrappingBelowTheMinimumSplit() = verifyListCollapse(Entry.Submissions)
+
+    private fun verifyListCollapse(entry: Entry) = withStory(entry, splitOnOpen = false) { _, _ ->
+        val rootWidth = compose.activity.window.decorView.width.toFloat()
+        setSplit(0.3f)
+        val titles = SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult)
+        // Retained navigation surfaces may still contain text behind the submissions page.
+        // Select a title from the active, resized list rather than a background feed.
+        val inListPane = hasAnyAncestor(hasScrollAction() and SemanticsMatcher("minimum-width list") {
+            it.boundsInRoot.width in rootWidth * 0.28f..rootWidth * 0.31f
+        })
+        fun firstTitle(): String? = compose.onAllNodes(titles and inListPane, useUnmergedTree = true)
+            .fetchSemanticsNodes().firstOrNull {
+                it.boundsInRoot.right < rootWidth * 0.31f &&
+                    it.config[SemanticsProperties.Text].first().text.length > 20
+            }?.config?.get(SemanticsProperties.Text)?.first()?.text
+        compose.waitUntil(10_000) { firstTitle() != null }
+        val title = requireNotNull(firstTitle())
+        val text = compose.onNode(hasText(title) and titles, useUnmergedTree = true)
+        fun layout(): TextLayoutResult {
+            val results = mutableListOf<TextLayoutResult>()
+            text.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
+            return results.single()
+        }
+        val baseline = layout()
+        val initialLeft = text.getUnclippedBoundsInRoot().left
+        val grip = compose.onNodeWithContentDescription("Adjust split ratio")
+        grip.performTouchInput {
+            down(center)
+            moveBy(Offset(-rootWidth * 0.09f, 0f), delayMillis = 200)
+        }
+        try {
+            compose.waitForIdle()
+            val collapsed = layout()
+            assertEquals("Collapsing the list must not squeeze its titles", baseline.size.width, collapsed.size.width)
+            assertEquals("Collapsing the list must not add title lines", baseline.lineCount, collapsed.lineCount)
+            val collapsedLeft = text.getUnclippedBoundsInRoot().left
+            assertTrue("The list must translate toward the screen edge: '$title', $initialLeft -> $collapsedLeft",
+                collapsedLeft < initialLeft - with(compose.density) { (rootWidth * 0.05f).toDp() })
+        } finally {
+            grip.performTouchInput { up() }
+        }
+        compose.waitForIdle()
+        assertEquals(baseline.size, layout().size)
+    }
+
+    private fun storyPane() = compose.onNodeWithTag("comments-story-pane-${
+        requireNotNull(compose.activity.navigationController.navigationState.state.value.storyRequest).serial
+    }")
+
+    private fun setSplit(ratio: Float) {
+        compose.onNodeWithContentDescription("Adjust split ratio").performSemanticsAction(SemanticsActions.SetProgress) { it(ratio) }
+        compose.waitForIdle()
+    }
+
     private enum class Entry { Feed, External, Nested, Submissions }
 
-    private fun withStory(entry: Entry = Entry.Feed, test: (AndroidCommentsCoordinator, WebView) -> Unit) {
+    private fun withStory(entry: Entry = Entry.Feed, splitOnOpen: Boolean = true, inspectOpening: Boolean = false, test: (AndroidCommentsCoordinator, WebView) -> Unit) {
         val activity = compose.activity
         val navigation = activity.navigationController
         assumeTrue("Requires a two-pane emulator", navigation.isAdaptiveTwoPane())
@@ -155,6 +295,7 @@ class SideBySideNavigationTest {
                 settings.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, true)
                 settings.setReadingBoolean(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK, false)
                 settings.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, true)
+                settings.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
                 navigation.navigationState.returnToStories()
                 navigation.dismissWelcomeDialog()
                 navigation.dismissChangelogDialog()
@@ -183,8 +324,20 @@ class SideBySideNavigationTest {
                 assertEquals(compose.activity.window.decorView.width.toFloat(),
                     compose.onNodeWithTag("comments-story-pane-$serial").fetchSemanticsNode().boundsInRoot.width, 1f)
             }
-            compose.runOnIdle { controller.toggleSideBySide() }
+            var openingWidth: Float? = null
+            if (inspectOpening) compose.mainClock.autoAdvance = false
+            compose.runOnIdle { if (splitOnOpen) controller.toggleSideBySide() else controller.requestCollapseSheet() }
+            if (inspectOpening) {
+                compose.mainClock.advanceTimeBy(150)
+                compose.waitForIdle()
+                val duringWidth = storyPane().fetchSemanticsNode().boundsInRoot.width
+                val fullWidth = compose.activity.window.decorView.width.toFloat()
+                assertTrue("The divider must reveal the pane progressively: $duringWidth / $fullWidth", duringWidth in fullWidth * 0.31f..fullWidth * 0.99f)
+                openingWidth = duringWidth
+                compose.mainClock.autoAdvance = true
+            }
             compose.waitForIdle()
+            openingWidth?.let { assertTrue(storyPane().fetchSemanticsNode().boundsInRoot.width < it - 10f) }
             val webController = coordinator.field<Any>("viewSession").field<AndroidCommentsWebViewController>("webViewController")
             compose.waitUntil(10_000) { compose.runOnIdle { webController.hasWebView() } }
             val browser = compose.runOnIdle { webController.field<WebView>("webView") }
@@ -197,10 +350,12 @@ class SideBySideNavigationTest {
             compose.waitForIdle()
             test(coordinator, browser)
         } finally {
+            compose.mainClock.autoAdvance = true
             compose.runOnIdle {
                 navigation.navigationState.restore(originalNavigation)
                 externalEntry.intValue = originalExternalSerial
                 settings.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, originalSettings.appearance.sideBySideEnabled)
+                settings.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, originalSettings.appearance.allowSplitAdjustment)
                 settings.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, originalSettings.reading.integratedWebView)
                 settings.setReadingBoolean(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK, originalSettings.reading.closeWebViewOnBack)
             }

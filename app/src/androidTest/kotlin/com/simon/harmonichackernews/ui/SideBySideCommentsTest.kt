@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -15,8 +19,10 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.*
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.ui.comments.*
+import com.simon.harmonichackernews.ui.navigation.TwoPaneCommentsSurface
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -195,6 +201,73 @@ class SideBySideCommentsTest {
         compose.runOnIdle { assertTrue(controller.sideBySideActive) }
     }
 
+    @Test fun browserToolbarStaysNeutralUntilTheVisibleHeaderIsPulledUp() = withFixture {
+        visibleAction("Read side by side").performClick()
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertNull("A stale tinted sheet must not flash at the start of the next pull", portal.rightSnapshot)
+        }
+        val background = HarmonicThemeCatalog.resolve("light", false).colorScheme.pageBackground
+        val tint = compose.runOnIdle { requireNotNull(controller.headerBackgroundColor) }
+        assertNotEquals("The fixture needs a tinted header", background, tint)
+        // A visible (or partially visible) header must not tint the resting browser toolbar.
+        for (coverage in listOf(1f, 0.5f, 0f)) {
+            compose.runOnIdle { controller.updateStatusBarHeaderCoverage(coverage) }
+            compose.waitForIdle()
+            assertToolbarColor(background)
+            for (backProgress in listOf(0.3f, 0.8f)) {
+                compose.runOnIdle { controller.beginPredictiveBack(backProgress) }
+                compose.waitForIdle()
+                val reveal = compose.runOnIdle { portal.sheetExpansion }
+                assertTrue(reveal > 0f && reveal < 1f)
+                assertToolbarColor(tint.copy(alpha = coverage * reveal).compositeOver(background))
+                if (coverage == 1f) {
+                    val pixels = compose.onRoot().captureToImage().toPixelMap()
+                    val headerTop = (pixels.height * (1f - reveal)).toInt() + 3
+                    val incomingHeader = pixels[pixels.width - 4, headerTop].toArgb()
+                    assertSurfaceColor(tint.copy(alpha = reveal).compositeOver(background), incomingHeader,
+                        "The status-bar gradient must not leave a fully tinted strip below the controls")
+                }
+                compose.runOnIdle {
+                    assertEquals("The incoming header uses the same fade as a normal sheet",
+                        tint.copy(alpha = reveal).compositeOver(background).toArgb(), controller.statusBarHeaderColor?.toArgb())
+                }
+            }
+            compose.runOnIdle { controller.endPredictiveBack() }
+            compose.waitForIdle()
+            assertToolbarColor(background)
+            compose.runOnIdle { assertNull(portal.rightSnapshot) }
+        }
+        // Real scrolling must clear the tint without leaving split mode or losing position.
+        compose.runOnIdle { controller.scrollToComment(20, 0, false) }
+        compose.waitForIdle()
+        awaitScrollTo(20)
+        compose.runOnIdle { assertEquals(0f, controller.statusBarHeaderCoverage, 0.001f) }
+        assertToolbarColor(background)
+        val progress = scrollPosition()
+        compose.runOnIdle { controller.beginPredictiveBack(0.6f) }
+        compose.waitForIdle()
+        assertToolbarColor(background)
+        compose.runOnIdle { controller.endPredictiveBack() }
+        compose.waitForIdle()
+        assertEquals(progress, scrollPosition())
+    }
+
+    private fun assertToolbarColor(expected: Color) {
+        val button = visibleAction("Refresh website").fetchSemanticsNode().boundsInRoot
+        val image = compose.onRoot().captureToImage().toPixelMap()
+        val actual = image[image.width - 4, button.center.y.toInt()].toArgb()
+        assertSurfaceColor(expected, actual, "Toolbar")
+    }
+
+    private fun assertSurfaceColor(expected: Color, actual: Int, context: String) {
+        val wanted = expected.toArgb()
+        for (shift in listOf(0, 8, 16)) {
+            assertTrue("$context color ${Integer.toHexString(actual)} != ${Integer.toHexString(wanted)}",
+                kotlin.math.abs(((actual shr shift) and 255) - ((wanted shr shift) and 255)) <= 2)
+        }
+    }
+
     @Test fun draggingTheHandleReturnsCommentsWithoutResettingTheList() = withFixture {
         visibleAction("Read side by side").performClick()
         compose.waitForIdle()
@@ -301,7 +374,8 @@ class SideBySideCommentsTest {
             displaySettings = CommentDisplaySettings.from(
                 app.userSettings.comments, showInvert = true, isTablet = true,
                 hasAccountDetails = signedIn, canProvideSummary = false,
-            ).copy(showFavicons = false, showHeaderPreviewImage = false, showUpButton = false, showNavigationBar = false),
+            ).copy(showFavicons = false, showHeaderPreviewImage = false, showUpButton = false, showNavigationBar = false,
+                tintHeader = true),
         ))
         controller.updateSideBySideAvailability(true)
         try {
@@ -315,7 +389,11 @@ class SideBySideCommentsTest {
                                 Box(Modifier.weight(leftWeight).fillMaxHeight().background(Color.Green)) { overlay() }
                                 Box(Modifier.weight(1f - leftWeight).fillMaxHeight().background(Color.White)) {
                                     val retained = rememberSideBySideCommentsContent(controller) {
-                                        AndroidCommentsScreen(controller, false)
+                                        TwoPaneCommentsSurface(
+                                            controller,
+                                            controller.headerBackgroundColor ?: palette.colorScheme.pageBackground,
+                                            24.dp,
+                                        )
                                     }
                                     CommentsScaffold(controller, false, retained)
                                 }

@@ -50,6 +50,7 @@ import com.simon.harmonichackernews.ui.comments.AndroidCommentsScreen
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
 import com.simon.harmonichackernews.ui.comments.rememberSideBySideCommentsContent
+import com.simon.harmonichackernews.ui.comments.lerpCommentsColor
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.common.HazeHost
@@ -286,11 +287,14 @@ internal fun CommentsPane(
 
 /** All comments-local UI travels with the retained list, including menus and long-press overlays. */
 @Composable
-private fun TwoPaneCommentsSurface(
+internal fun TwoPaneCommentsSurface(
     controller: CommentsScreenController,
     statusBarColor: Color,
     statusBarHeight: Dp,
 ) {
+    val portal = LocalSideBySideCommentsPortal.current
+    val incomingSheet = controller.sideBySideActive && portal?.liveInLeft == false
+    val background = MaterialTheme.colorScheme.pageBackground
     CommentsHazeHost {
         Box(Modifier.fillMaxSize()) {
             var scrim by remember(controller) { mutableFloatStateOf(0f) }
@@ -298,9 +302,17 @@ private fun TwoPaneCommentsSurface(
                 (controller.linkPreviewOverlay != null || controller.isCommentActionOverlayShowing())
             LaunchedEffect(modalVisible) { if (!modalVisible) scrim = 0f }
             AndroidCommentsScreen(controller, reserveUpButtonInset = false)
-            if (controller.sideBySideActive || !(controller.integratedWebView && controller.isScrolledToTop)) {
+            if ((controller.sideBySideActive && !incomingSheet) ||
+                !(controller.integratedWebView && controller.isScrolledToTop)
+            ) {
                 StatusBarProtection(
-                    color = statusBarColor,
+                    // The incoming header already protects its top edge. When scrolled,
+                    // match the reveal directly instead of trailing it with a second fade.
+                    color = if (incomingSheet) lerpCommentsColor(
+                        background,
+                        controller.headerBackgroundColor ?: background,
+                        controller.statusBarHeaderCoverage * (portal?.sheetExpansion ?: 0f),
+                    ) else statusBarColor,
                     statusBarHeight = statusBarHeight,
                     modalScrimAlpha = if (controller.askSurfaceVisible) 0f else scrim,
                 )

@@ -49,9 +49,9 @@ fun MainNavigationScene(
     val isTwoPane = directive.maxHorizontalPartitions > 1
     SplitPaneViewport(
         directive, paneProportion, modifier, isFoldable = isFoldable, snapToCenter = snapToCenter,
-    ) { expansion ->
+    ) { expansion, layoutDirective ->
         val strategy = rememberListDetailSceneStrategy<NavKey>(
-            directive = directive,
+            directive = layoutDirective,
             paneExpansionState = expansion.takeIf { isTwoPane },
         )
         val backStack = remember {
@@ -93,7 +93,7 @@ fun MainNavigationScene(
                         }
                     },
                 ),
-            ) { Box(Modifier.fillMaxSize()) { stories(); listPaneOverlay() } }
+            ) { SplitPaneListContent { stories(); listPaneOverlay() } }
             entry<CommentsDestination>(
                 metadata = ListDetailSceneStrategy.detailPane(),
             ) { destination ->

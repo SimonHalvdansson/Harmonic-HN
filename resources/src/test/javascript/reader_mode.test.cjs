@@ -13,6 +13,7 @@ let browser;
 before(async () => {
     browser = await chromium.launch({
         headless: true,
+        ignoreDefaultArgs: ['--hide-scrollbars'],
         executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
     });
 });
@@ -65,6 +66,48 @@ async function countDocumentClones(page) {
         };
     });
 }
+
+for (const customScrollbar of [false, true]) {
+    test(`reader transition preserves scroll and scrollbar layout (${customScrollbar ? 'custom' : 'native'})`, async () => {
+        const page = await article(true);
+        try {
+            await page.addStyleTag({ content: `body { min-height: 5000px }
+                ${customScrollbar ? 'html::-webkit-scrollbar { width:24px; background:black } html::-webkit-scrollbar-thumb { background:red }' : ''}` });
+            const original = await page.evaluate(() => {
+                window.scrollTo(0, 600);
+                return { width: document.documentElement.clientWidth, scroll: window.scrollY };
+            });
+            await page.evaluate(() => HarmonicReaderMode.enable());
+            assert.equal(await page.evaluate(() => document.documentElement.clientWidth), original.width,
+                'Suppressing scrollbar paint must not change the source layout');
+            assert.equal(await page.evaluate(() => window.scrollY), original.scroll);
+            assert.equal(await page.locator('#harmonic-reader-transition-scrollbar').count(), 1);
+            await page.waitForSelector('#harmonic-reader-article');
+            await page.waitForFunction(() => !document.getElementById('harmonic-reader-transition-scrollbar'));
+            await disable(page);
+            assert.deepEqual(await page.evaluate(() => ({
+                width: document.documentElement.clientWidth, scroll: window.scrollY,
+            })), original);
+            assert.equal(await page.locator('#harmonic-reader-transition-scrollbar').count(), 0);
+            assert.equal(await page.inputValue('#draft'), 'unsaved typing');
+            await page.click('#action');
+            assert.equal(await page.evaluate(() => clicks), 1);
+        } finally { await page.close(); }
+    });
+}
+
+test('rapid reader cancellation restores scrollbar styles and the original document', async () => {
+    const page = await article(true);
+    try {
+        await page.evaluate(() => { HarmonicReaderMode.enable(); HarmonicReaderMode.disable(); });
+        await page.waitForFunction(() => !document.getElementById('harmonic-reader-transition-scrollbar'));
+        assert.equal(await page.locator('#harmonic-reader-article').count(), 0);
+        assert.equal(await page.evaluate(() => originalButton === document.getElementById('action')), true);
+        await enable(page);
+        await disable(page);
+        assert.equal(await page.locator('#harmonic-reader-transition-scrollbar').count(), 0);
+    } finally { await page.close(); }
+});
 
 test('reader uses the new default, supports 13px, and updates line height without replacing article content', async () => {
     const page = await article(true);
