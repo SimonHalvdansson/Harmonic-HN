@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -53,9 +52,7 @@ fun HarmonicTopAppBar(
     navigationHeight: Dp = 56.dp,
     navigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
-    navigationContainerColor: Color = lerp(
-        MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface, 0.04f,
-    ),
+    navigationContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
 ) {
     val colors = MaterialTheme.colorScheme
 
