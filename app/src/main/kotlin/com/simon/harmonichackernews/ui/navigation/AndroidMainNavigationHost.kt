@@ -440,6 +440,7 @@ private fun MainNavigation(
                         onBack = ::popMainBackStack,
                         stories = stories,
                         emptyDetail = { EmptyCommentsScreen() },
+                        animateDetailVisibilityChanges = true,
                         comments = paneComments,
                     )
                 }
@@ -558,6 +559,7 @@ private fun MainNavigation(
                             onBack = ::popMainBackStack,
                             stories = submissionsContent,
                             emptyDetail = { EmptyCommentsScreen() },
+                            animateDetailVisibilityChanges = true,
                             modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground),
                             comments = paneComments,
                         )

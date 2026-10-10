@@ -473,6 +473,7 @@ private fun IosAppContent(
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = stories,
                     emptyDetail = { EmptyCommentsScreen() },
+                    animateDetailVisibilityChanges = true,
                     comments = paneComments,
                 )
             } else {
@@ -500,6 +501,7 @@ private fun IosAppContent(
                     onBack = scene.navigation::detailRemovedFromBackStack,
                     stories = { IosSubmissionsContent(app, scene, request) },
                     emptyDetail = { EmptyCommentsScreen() },
+                    animateDetailVisibilityChanges = true,
                     comments = paneComments,
                 )
             } else {
