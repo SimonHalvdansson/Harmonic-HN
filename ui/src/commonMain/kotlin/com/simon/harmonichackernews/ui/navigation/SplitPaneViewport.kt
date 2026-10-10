@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -108,18 +109,22 @@ internal fun SplitPaneViewport(
     val browser = LocalBrowserPaneState.current
     val session = remember(browser?.owner, orientation) { BrowserSplitSession() }
     val logicalExpansion = browser?.logicalExpansion ?: 1f
+    val visualExpansion = browser?.sheetExpansion ?: 1f
     val opening = browser?.opening == true
     val integrated = browser?.integrated == true
     LaunchedEffect(session, savedRatio, integrated, opening, logicalExpansion) {
         session.update(savedRatio, integrated, opening, logicalExpansion)
     }
     val temporary = session.openingRatio != null
+    val sheetTransition = integrated && (opening ||
+        logicalExpansion > 0.001f && logicalExpansion < 0.999f ||
+        visualExpansion > 0.001f && visualExpansion < 0.999f)
     val browserAdjustable = integrated && temporary && logicalExpansion <= 0.001f &&
         settings.appearance.allowSplitAdjustment
     val normalRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
     val ratio = session.target(
         normalRatio, browser?.standalone == true, browser?.sideBySide == true,
-        browser?.sheetExpansion ?: 1f,
+        visualExpansion,
     ).let { target ->
         if (temporary && !settings.appearance.allowSplitAdjustment &&
             (browser?.standalone != true || browser.sideBySide)) session.openingRatio ?: normalRatio
@@ -191,8 +196,11 @@ internal fun SplitPaneViewport(
     val normalGap = with(density) { directive.horizontalPartitionSpacerSize.toPx() }
     val targetWidth = with(density) { 48.dp.roundToPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val adjustmentEnabled = !sheetTransition && (!temporary || browserAdjustable) &&
+        ratio > 0f && (browser?.standalone != true || browser.sideBySide)
 
     fun updateRatio(value: Float, persist: Boolean) {
+        if (!adjustmentEnabled) return
         if (browserAdjustable) {
             session.adjust(value)
             if (persist) session.settle()
@@ -222,9 +230,9 @@ internal fun SplitPaneViewport(
         Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).onSizeChanged { width = it.width }) {
             content(expansion, layoutDirective)
             AnimatedVisibility(
-                visible = twoPane && settings.appearance.allowSplitAdjustment && ratio > 0f &&
-                    (browser?.standalone != true || browser.sideBySide) &&
-                    (!temporary || browserAdjustable),
+                // Keep the grip attached to the visible divider while the sheet moves.
+                // Only the actual full-width layout removes it; input is gated separately.
+                visible = twoPane && settings.appearance.allowSplitAdjustment && animatedRatio.value > 0f,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
                 modifier = Modifier
@@ -238,6 +246,9 @@ internal fun SplitPaneViewport(
             ) {
                 key(orientation) {
                     var pressed by remember { mutableStateOf(false) }
+                    LaunchedEffect(adjustmentEnabled) {
+                        if (!adjustmentEnabled) pressed = false
+                    }
                     val active = pressed || dragging
                     val handleWidth by animateDpAsState(
                         if (active) 8.dp else 4.dp,
@@ -259,9 +270,12 @@ internal fun SplitPaneViewport(
                                 contentDescription = "Adjust split ratio"
                                 stateDescription = "${(ratio * 100).roundToInt()}% list, ${(100 - ratio * 100).roundToInt()}% detail"
                                 progressBarRangeInfo = ProgressBarRangeInfo(ratio, if (browserAdjustable) 0f..SplitRatioPreferences.Maximum else SplitRatioPreferences.Range)
-                                setProgress { updateRatio(it, persist = true); true }
+                                if (adjustmentEnabled) {
+                                    setProgress { updateRatio(it, persist = true); true }
+                                } else disabled()
                             }
                             .onKeyEvent {
+                                if (!adjustmentEnabled) return@onKeyEvent false
                                 if (it.type != KeyEventType.KeyDown) return@onKeyEvent false
                                 val direction = when (it.key) {
                                     Key.DirectionLeft -> -1
@@ -271,8 +285,9 @@ internal fun SplitPaneViewport(
                                 updateRatio(ratio + direction * (if (rtl) -0.05f else 0.05f), persist = true)
                                 true
                             }
-                            .focusable()
-                            .pointerInput(Unit) {
+                            .focusable(enabled = adjustmentEnabled)
+                            .pointerInput(adjustmentEnabled) {
+                                if (!adjustmentEnabled) return@pointerInput
                                 awaitEachGesture {
                                     // Observe touch-down before drag slop, without consuming the drag.
                                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -287,6 +302,7 @@ internal fun SplitPaneViewport(
                                 }
                             }
                             .draggable(
+                                enabled = adjustmentEnabled,
                                 orientation = Orientation.Horizontal,
                                 reverseDirection = rtl,
                                 state = rememberDraggableState { delta ->

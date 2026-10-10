@@ -153,6 +153,7 @@ class SideBySideNavigationTest {
         }
         compose.waitForIdle()
         assertEquals(rootWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        grip.assertDoesNotExist()
         compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed().performClick()
         compose.waitForIdle()
         val restoredWidth = pane.fetchSemanticsNode().boundsInRoot.width
@@ -163,6 +164,42 @@ class SideBySideNavigationTest {
         compose.runOnIdle { requireNotNull(coordinator.composeUiController).requestExpandSheet() }
         compose.waitForIdle()
         assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+    }
+
+    @Test fun dividerStaysVisibleButCannotResizeDuringSheetTransitions() = withStory { coordinator, _ ->
+        val controller = requireNotNull(coordinator.composeUiController)
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        val grip = compose.onNodeWithContentDescription("Adjust split ratio")
+        val initialWidth = storyPane().fetchSemanticsNode().boundsInRoot.width
+        grip.assertIsDisplayed().assertIsEnabled()
+        compose.runOnIdle {
+            dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+            dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
+        }
+        compose.waitForIdle()
+        grip.assertIsDisplayed().assertIsNotEnabled()
+        grip.performTouchInput { swipe(center, center + Offset(200f, 0f), durationMillis = 150) }
+        compose.waitForIdle()
+        assertEquals(initialWidth, storyPane().fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
+        compose.waitForIdle()
+        grip.assertIsDisplayed().assertIsEnabled()
+
+        for (expand in listOf(true, false)) {
+            compose.mainClock.autoAdvance = false
+            try {
+                compose.runOnIdle {
+                    if (expand) controller.requestExpandSheet() else controller.requestCollapseSheet()
+                }
+                compose.mainClock.advanceTimeBy(160)
+                compose.waitForIdle()
+                grip.assertIsDisplayed().assertIsNotEnabled()
+            } finally {
+                compose.mainClock.autoAdvance = true
+            }
+            compose.waitForIdle()
+            grip.assertIsDisplayed().assertIsEnabled()
+        }
     }
 
     @Test fun fullWidthBrowserWithoutSideBySideRestoresItsOpeningRatioOnSheetDrag() = withStory(splitOnOpen = false) { _, _ ->
