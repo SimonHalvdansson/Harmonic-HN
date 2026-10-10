@@ -96,7 +96,8 @@ class HarmonicAppComposition(
     }
     val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore))
     val contentFilters = ContentFilterRepository(host.settingsStore)
-    val userTags = UserTagsRepository(host.settingsStore)
+    // User tags share the persistent content store with bookmarks, including Android 3.1 data.
+    val userTags = UserTagsRepository(host.appDataStore)
     val savedItems = (host.savedItemsRepository ?: SavedItemsRepository(host.appDataStore)).also {
         // Account-state identity also changes for A -> B -> A when a flow collector skips B.
         it.bindAccountScope(accountSession = { platform.accounts.accountState.value }) {
