@@ -861,7 +861,11 @@ internal fun CommentNavigationButtons(
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
 ) {
     val shape = RoundedCornerShape(28.dp)
-    val navigationRipple = ripple(bounded = true, radius = 48.dp)
+    val navigationRipple = ripple(
+        bounded = true,
+        radius = 48.dp,
+        color = MaterialTheme.colorScheme.onPrimaryContainer,
+    )
     val hazeState = currentCommentsHazeState()
     val surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
     // Keep the backdrop stable when a modal moves above or below the persistent controls.

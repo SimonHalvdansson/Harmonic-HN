@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
@@ -68,6 +69,7 @@ fun HarmonicTheme(
     CompositionLocalProvider(
         LocalHarmonicDarkTheme provides darkTheme,
         LocalTargetColorScheme provides colorScheme,
+        LocalContentColor provides displayedScheme.onSurface,
     ) {
         MaterialTheme(colorScheme = displayedScheme, typography = typography, content = content)
     }
