@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.common
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -121,7 +124,6 @@ fun TranslucentBackButton(
                         )),
                 )
                 Surface(
-                    onClick = onClick,
                     // Multiply only the control's pixels. A black overlay dims the already-dimmed
                     // backdrop again through the translucent material. Keep the shadow outside
                     // this offscreen layer so its bounds cannot clip the shadow during a modal.
@@ -135,7 +137,6 @@ fun TranslucentBackButton(
                     color = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = colors.onSurface,
                     shadowElevation = 0.dp,
-                    interactionSource = interactionSource,
                 ) {
                     Box(
                         modifier = Modifier
@@ -153,7 +154,13 @@ fun TranslucentBackButton(
                             ),
                     ) {
                         Box(
-                            modifier = Modifier.size(48.dp),
+                            // Draw the ripple above the backdrop, inside the shared shape clip.
+                            modifier = Modifier.size(48.dp).clickable(
+                                interactionSource = interactionSource,
+                                indication = ripple(),
+                                role = Role.Button,
+                                onClick = onClick,
+                            ),
                             contentAlignment = Alignment.Center,
                         ) {
                             Image(
