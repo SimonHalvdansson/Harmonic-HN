@@ -232,30 +232,29 @@ private fun ColorSchemePicker(
             }
         }
     }
-    ThemeSettingsVisibility(visible = ColorSchemePreferences.supportsStyle(selected)) {
-        Box(Modifier.testTag("$tag style")) {
-            SegmentedSetting(
-                title = "Style",
-                options = listOf(ColorSchemeStyle.NeutralSurfaces to "Neutral",
-                    ColorSchemeStyle.Balanced to "Balanced", ColorSchemeStyle.Vibrant to "Vibrant"),
-                selected = style,
-                optionContent = { value, checked ->
-                    Text(
-                        when (value) {
-                            ColorSchemeStyle.NeutralSurfaces -> "Neutral"
-                            ColorSchemeStyle.Balanced -> "Balanced"
-                            ColorSchemeStyle.Vibrant -> "Vibrant"
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        color = if (checked) MaterialTheme.colorScheme.onSecondaryContainer
-                            else MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp, lineHeight = 18.sp, textAlign = TextAlign.Center,
-                    )
-                },
-                onSelected = onStyleSelected,
-            )
-        }
+    Box(Modifier.testTag("$tag style")) {
+        SegmentedSetting(
+            title = "Style",
+            options = listOf(ColorSchemeStyle.NeutralSurfaces to "Neutral",
+                ColorSchemeStyle.Balanced to "Balanced", ColorSchemeStyle.Vibrant to "Vibrant"),
+            selected = style,
+            enabled = ColorSchemePreferences.supportsStyle(selected),
+            optionContent = { value, checked ->
+                Text(
+                    when (value) {
+                        ColorSchemeStyle.NeutralSurfaces -> "Neutral"
+                        ColorSchemeStyle.Balanced -> "Balanced"
+                        ColorSchemeStyle.Vibrant -> "Vibrant"
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = if (checked) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurface,
+                    fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp, lineHeight = 18.sp, textAlign = TextAlign.Center,
+                )
+            },
+            onSelected = onStyleSelected,
+        )
     }
 }
 
