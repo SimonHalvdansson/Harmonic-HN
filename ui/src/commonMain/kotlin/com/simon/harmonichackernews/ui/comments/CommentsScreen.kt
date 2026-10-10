@@ -233,23 +233,12 @@ fun CommentsScreen(
     val commentsHazeState = currentCommentsHazeState()
     val pullToRefreshState = rememberPullToRefreshState()
     val visibleComments = controller.visibleComments
-    // Let the loading header settle before the first comments become readable. Keep one
-    // screen-level reveal so later scrolling, refreshes and subtree changes never replay it.
-    val initialCommentsReveal = remember(controller.story.id) {
-        Animatable(
-            if (!controller.initialThreadCached && visibleComments.isEmpty() && !controller.commentsLoaded) 0f else 1f,
-        )
-    }
-    LaunchedEffect(visibleComments.isNotEmpty(), animateComments) {
-        if (!animateComments) {
-            initialCommentsReveal.snapTo(1f)
-        } else if (visibleComments.isNotEmpty() && initialCommentsReveal.value < 1f) {
-            initialCommentsReveal.animateTo(
-                1f,
-                tween(220, delayMillis = CommentsHeaderRevealDurationMillis),
-            )
-        }
-    }
+    val initialCommentsReveal = rememberInitialCommentsReveal(
+        storyId = controller.story.id,
+        initiallyVisible = controller.initialThreadCached || visibleComments.isNotEmpty() || controller.commentsLoaded,
+        hasComments = visibleComments.isNotEmpty(),
+        animateComments = animateComments,
+    )
     val animatedRows = rememberAnimatedCommentRows(visibleComments, listState, animateComments)
     val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
     PrefetchCommentContent(

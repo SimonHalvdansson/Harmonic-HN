@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -184,7 +185,9 @@ internal fun <T, K : Any> ActivityNavigationStack(
                         Box(Modifier.fillMaxSize().background(background)) {
                             // An opaque surface alone does not consume taps in blank areas.
                             Box(Modifier.fillMaxSize().consumeAllPointerGestures())
-                            content(layer.entry)
+                            CompositionLocalProvider(LocalActivityNavigationTransition provides transition) {
+                                content(layer.entry)
+                            }
                         }
                     }
                     if (usesFade) {

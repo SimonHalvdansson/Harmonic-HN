@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Matrix
@@ -37,6 +38,10 @@ internal const val ActivityNavigationOpenFadeDelayMillis = 50
 internal const val ActivityNavigationCloseFadeDelayMillis = 35
 const val ActivityNavigationOpenContentOpaqueMillis =
     ActivityNavigationOpenFadeDelayMillis + ActivityNavigationFadeDurationMillis
+
+/** The containing page's live transition; absent when no navigation animation is used. */
+internal val LocalActivityNavigationTransition =
+    staticCompositionLocalOf<Transition<EnterExitState>?> { null }
 
 internal fun activityNavigationOpenContentTransform(
     transitionOffsetPx: Int,
