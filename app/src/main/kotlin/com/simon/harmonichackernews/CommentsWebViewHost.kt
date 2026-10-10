@@ -57,7 +57,11 @@ internal class CommentsWebViewHost(context: Context) {
             // lifecycle/recomposer. Only measure the overlay while attached to that window.
             visibility = View.GONE
             addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(view: View) { view.visibility = View.VISIBLE }
+                override fun onViewAttachedToWindow(view: View) {
+                    // Android 8 can search Compose's focus tree synchronously when a view becomes
+                    // visible during attachment, before its nodes finish attaching.
+                    view.post { if (view.isAttachedToWindow) view.visibility = View.VISIBLE }
+                }
                 override fun onViewDetachedFromWindow(view: View) { view.visibility = View.GONE }
             })
             setContent {

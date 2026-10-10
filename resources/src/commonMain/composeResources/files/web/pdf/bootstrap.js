@@ -17,7 +17,12 @@
     status.hidden = true;
   };
   window.addEventListener("error", function (event) {
-    if (event.target && event.target.tagName === "SCRIPT") window.harmonicPdfFailure();
+    // A module syntax error is reported against window, rather than its script element.
+    // Older WebViews must show the fallback immediately instead of waiting for the watchdog.
+    if ((event.target && event.target.tagName === "SCRIPT") ||
+        (event.filename && event.filename.indexOf("/harmonic-pdf/") !== -1)) {
+      window.harmonicPdfFailure();
+    }
   }, true);
   window.addEventListener("unhandledrejection", function () { window.harmonicPdfFailure(); });
   if (!("noModule" in document.createElement("script"))) window.harmonicPdfFailure();

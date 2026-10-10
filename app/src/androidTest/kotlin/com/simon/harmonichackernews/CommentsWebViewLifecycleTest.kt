@@ -192,6 +192,8 @@ class CommentsWebViewLifecycleTest {
                         "A detailed article must stay scrollable and preserve the original page when reading ends. ".repeat(4) + "</p>"
                 }
                 scenario.onActivity { activity ->
+                    activity.navigationController.dismissWelcomeDialog()
+                    activity.navigationController.dismissChangelogDialog()
                     (activity.window.decorView as ViewGroup).addView(browser.host.root,
                         ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                     browser.host.root.bringToFront()
@@ -336,6 +338,8 @@ class CommentsWebViewLifecycleTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 fixture().use { browser ->
                     scenario.onActivity { activity ->
+                        activity.navigationController.dismissWelcomeDialog()
+                        activity.navigationController.dismissChangelogDialog()
                         browser.host.root.setBackgroundColor(Color.WHITE)
                         (activity.window.decorView as ViewGroup).addView(browser.host.root,
                             // Keep both PDF pages taller than the viewport on large tablets too.
@@ -439,6 +443,27 @@ class CommentsWebViewLifecycleTest {
             fixture(blockAds = true).use { browser ->
                 onMain { browser.webView.loadUrl(server.url("/document.pdf")) }
                 awaitJavascript(browser.webView, paintedPage(1))
+            }
+        }
+    }
+
+    @Test
+    fun pdfModuleSyntaxFailureShowsAnActionableFallbackImmediately() {
+        TestServer().use { server ->
+            server.releasePdf.countDown()
+            fixture().use { browser ->
+                onMain { browser.webView.loadUrl(server.url("/document.pdf")) }
+                awaitJavascript(browser.webView, "typeof window.harmonicPdfFailure === 'function'")
+                evaluate(browser.webView, """
+                    window.dispatchEvent(new ErrorEvent('error', {
+                        message: 'Unexpected token',
+                        filename: 'https://appassets.androidplatform.net/harmonic-pdf/script.js'
+                    }));
+                """.trimIndent())
+                awaitJavascript(browser.webView,
+                    "document.documentElement.dataset.pdfState === 'error' && " +
+                        "!document.getElementById('pdfStatus').hidden && " +
+                        "document.getElementById('pdfStatus').textContent.includes('update Android System WebView')")
             }
         }
     }
