@@ -126,6 +126,8 @@ class StoriesScreenController private constructor(
     val loggedIn: Boolean get() = shellState.loggedIn
     val canCache: Boolean get() = shellState.canCache
     val canClearHistory: Boolean get() = shellState.canClearHistory
+    var canHidePosts by mutableStateOf(false)
+        private set
     val cacheProgressVisible: Boolean get() = shellState.cacheProgressVisible
     val cacheProgress: Int get() = shellState.cacheProgress
     val cacheProgressMax: Int get() = shellState.cacheProgressMax
@@ -223,6 +225,7 @@ class StoriesScreenController private constructor(
                 previousContent.previewFavoriteLoadingIds != state.previewFavoriteLoadingIds
         val structureChanged = !sameStoryIds(mainStoriesState, state.mainList.items) ||
             !sameStoryIds(searchStoriesState, state.searchList.items)
+        canHidePosts = state.canHidePosts
         newStoriesFilter = state.newStoriesFilter
         canFilterNewStories = !state.searching && state.currentType == StoryType.NEW_STORIES
         if (!canFilterNewStories) dismissNewStoriesFilterDialog()
@@ -728,6 +731,7 @@ class StoriesScreenController private constructor(
         fun onFrontDateSelected(day: Long)
         fun onMoreAction(action: StoriesMenuAction)
         fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean)
+        fun onHidePost(story: StoryListItemSnapshot) = Unit
         fun onLinkClick(story: StoryListItemSnapshot)
         fun onCommentClick(story: StoryListItemSnapshot)
         fun onCommentStoryClick(story: StoryListItemSnapshot)

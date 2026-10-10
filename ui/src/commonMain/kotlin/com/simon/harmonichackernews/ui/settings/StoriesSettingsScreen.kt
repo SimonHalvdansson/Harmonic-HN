@@ -41,6 +41,7 @@ data class StoriesSettingsUiState(
     val dimReadStories: Boolean,
     val faviconProvider: String,
     val faviconIcon: Painter,
+    val swipeToHide: Boolean = false,
 )
 
 enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
@@ -58,6 +59,7 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
     AlwaysOpenComments(StoryBooleanPreference.ALWAYS_OPEN_COMMENTS),
     Pagination(StoryBooleanPreference.PAGINATION),
     HideRead(StoryBooleanPreference.HIDE_CLICKED),
+    SwipeToHide(StoryBooleanPreference.SWIPE_TO_HIDE),
     DimReadStories(StoryBooleanPreference.GRAY_OUT_CLICKED),
 }
 
@@ -199,6 +201,8 @@ fun StoriesSettingsScreen(
                 BooleanRow("Always open comments", Res.drawable.ic_keyboard_double_arrow_right, state.alwaysOpenComments, StoriesBooleanSetting.AlwaysOpenComments, onBooleanChanged, summary = "Clicking a story takes you directly to the comments view")
                 SettingsDivider()
                 BooleanRow("Use pagination", Res.drawable.ic_swipe_vertical, state.pagination, StoriesBooleanSetting.Pagination, onBooleanChanged, summary = "Load 30 stories at a time")
+                SettingsDivider()
+                BooleanRow("Swipe to hide", Res.drawable.ic_visibility_off, state.swipeToHide, StoriesBooleanSetting.SwipeToHide, onBooleanChanged, summary = "Swipe left or right to hide posts from frontpages.")
                 SettingsDivider()
                 BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideRead, StoriesBooleanSetting.HideRead, onBooleanChanged)
                 SettingsDivider()

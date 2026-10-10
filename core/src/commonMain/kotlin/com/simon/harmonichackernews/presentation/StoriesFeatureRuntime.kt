@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.cache.StoryCacheRequest
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.HiddenPostsStore
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlin.math.max
 import kotlin.math.min
 
@@ -52,7 +54,11 @@ sealed interface StoriesFeatureEffect {
     data class Platform(val effect: StoriesPlatformEffect) : StoriesFeatureEffect
     data class StoryChanged(val storyId: Int? = null) : StoriesFeatureEffect
     data object LoginRequired : StoriesFeatureEffect
-    data class UserMessage(val message: String) : StoriesFeatureEffect
+    data class UserMessage(
+        val message: String,
+        val actionLabel: String? = null,
+        val onAction: (suspend () -> Unit)? = null,
+    ) : StoriesFeatureEffect
     data class SavedActionFailed(
         val presentation: ActionFailurePresentation,
     ) : StoriesFeatureEffect
@@ -111,6 +117,7 @@ class StoriesFeatureRuntime(
     previewResourceService: StoryPreviewResourceService? = null,
     storyResourceTints: StoryResourceTintStore = StoryResourceTintStore.None,
     private val cacheDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val hiddenPosts: HiddenPostsStore? = null,
 ) {
     private val mutableEffects = MutableSharedFlow<StoriesFeatureEffect>(extraBufferCapacity = 32)
     val effects: SharedFlow<StoriesFeatureEffect> = mutableEffects.asSharedFlow()
@@ -145,8 +152,10 @@ class StoriesFeatureRuntime(
     val previewResourceStates: Map<Int, StoryPreviewResourceState>
         get() = storyResources?.states().orEmpty()
 
+    private val pendingHiddenIds = mutableSetOf<Int>()
     private var paginationMode = false
     private var hideRead = false
+    private var swipeToHideEnabled = false
     private var alwaysOpenComments = false
     private var useIntegratedWebView = false
     private var activeLoadedThrough = -1
@@ -283,6 +292,7 @@ class StoriesFeatureRuntime(
     /** Applies all portable story/feed preferences and reports whether filtering changed. */
     fun configure(settings: UserSettings, filters: ContentFilters): Boolean {
         val story = settings.story
+        swipeToHideEnabled = story.swipeToHide
         configure(
             pagination = story.pagination,
             hideRead = story.hideRead,
@@ -290,6 +300,73 @@ class StoriesFeatureRuntime(
             useIntegratedWebView = settings.reading.integratedWebView,
         )
         return requests.configureVisibility(filters, story.hideJobs)
+    }
+
+    val hiddenPostIds get() = hiddenPosts?.ids
+
+    val canHidePosts: Boolean get() = userSettings.story.swipeToHide &&
+        !searching && HiddenStoryPolicy.supports(currentType)
+
+    suspend fun initializeHiddenPosts() { hiddenPosts?.initialize() }
+
+    fun hidePost(story: Story) {
+        if (!canHidePosts || !story.loaded || story.isComment || story.isFrontpageLink) return
+        val storage = hiddenPosts ?: return
+        if (!pendingHiddenIds.add(story.id)) return
+        syncHiddenPosts()
+        changed()
+        scope.launch {
+            try {
+                storage.hide(story.id)
+                pendingHiddenIds.remove(story.id)
+                syncHiddenPosts()
+                loadVisibleStories()
+                emit(StoriesFeatureEffect.UserMessage("Story hidden", "Undo") {
+                    try {
+                        // The snackbar host owns this action's lifetime. A recreated feature
+                        // observes the store, so Undo also survives destruction of this scope.
+                        storage.unhide(story.id)
+                        if (scope.isActive) {
+                            syncHiddenPosts()
+                            loadVisibleStories()
+                            changed()
+                        }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        emit(StoriesFeatureEffect.UserMessage("Could not restore post"))
+                    }
+                })
+                changed()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                pendingHiddenIds.remove(story.id)
+                emit(StoriesFeatureEffect.UserMessage("Could not hide post"))
+                changed()
+            }
+        }
+    }
+
+    fun syncHiddenPosts() {
+        val enabled = userSettings.story.swipeToHide &&
+            HiddenStoryPolicy.supports(sessionState.mainStoryType)
+        val ids = if (enabled) hiddenPostIds?.value.orEmpty() + pendingHiddenIds else emptySet()
+        val visible = sessionState.hiddenStoryRows.apply(mainStories, ids) { story ->
+            !(hideRead && historyStore.contains(story.id)) &&
+                !requests.shouldHideStory(story, sessionState.mainStoryType)
+        }
+        if (visible != mainStories) {
+            val visibleIds = visible.mapTo(mutableSetOf(), Story::id)
+            val removed = mainStories.filter { it.id !in visibleIds }
+            removed.forEach {
+                requests.cancelStoryRowLoad(it.id)
+                mainStore.finishNextPageStory(it.id, requests.storyLoadGeneration)
+            }
+            mainStore.mutateStories { clear(); addAll(visible) }
+            mainStore.markLoadedThrough(-1)
+            if (!searching) activeLoadedThrough = -1
+        }
     }
 
     fun initializeHistory() {
@@ -366,6 +443,7 @@ class StoriesFeatureRuntime(
         val nextDisplaySettings = StoryDisplaySettings.from(storyPreferences)
         val update = nextDisplaySettings.changesFrom(currentState.displaySettings)
         val hideReadChanged = hideRead != storyPreferences.hideRead
+        val swipeToHideChanged = swipeToHideEnabled != storyPreferences.swipeToHide
         val preferredStoryTypeChanged =
             preferredStoryTypeLabel != storyPreferences.preferredStoryType
         preferredStoryTypeLabel = storyPreferences.preferredStoryType
@@ -405,6 +483,11 @@ class StoriesFeatureRuntime(
         }
         if (sessionState.initialized && !feedRefreshStarted && filtersChanged) {
             refresh(showSwipeRefreshIndicator = false)
+        }
+        if (swipeToHideChanged) {
+            syncHiddenPosts()
+            if (!searching) loadVisibleStories()
+            changed()
         }
         if (update.previewImageModeChanged) prefetchVisibleStoryResources()
         evaluateUpdate(storyPreferences.alwaysShowTapToRefresh)
@@ -476,6 +559,9 @@ class StoriesFeatureRuntime(
     }
 
     fun selectType(target: StoryListTarget, type: StoryType) {
+        if (target == StoryListTarget.MAIN && type != sessionState.mainStoryType) {
+            sessionState.hiddenStoryRows.reset()
+        }
         if (type != currentType) visibleRanges.remove(store(target))
         when (target) {
             StoryListTarget.MAIN -> {
@@ -707,6 +793,7 @@ class StoriesFeatureRuntime(
     }
 
     fun loadVisibleStories(lastVisibleIndex: Int? = null, firstVisibleIndex: Int = 0) {
+        syncHiddenPosts()
         // Retained feed rows can outlive this runtime or a search generation. Their IDs are
         // already known; resume lazy cache preparation without enumerating the cache itself.
         if (feedCache == null && activeStories.isNotEmpty() && !searching && !currentType.isAlgolia &&
@@ -1085,6 +1172,7 @@ class StoriesFeatureRuntime(
         activeStore.setFailure(null)
         refreshIndicatorShowing = false
         rateLimited = false
+        sessionState.hiddenStoryRows.reset()
         val visibleStories = cachedStories.filterNot {
             sessionState.newStoriesFilter.shouldHide(it, currentType, searching)
         }
@@ -1221,6 +1309,7 @@ class StoriesFeatureRuntime(
         nextScrapedPageJob?.cancel()
         feedLoadJob = scope.launch {
             try {
+                hiddenPosts?.initialize()
                 val result = requests.loadFeed(storyType, frontDay)
                 if (!isCurrentFeed(storyType, generation)) return@launch
                 val ids = when (result) {
@@ -1232,6 +1321,7 @@ class StoriesFeatureRuntime(
                 prepareFeedCache(ids, storyType, generation, commentIds) { cached ->
                     refreshIndicatorShowing = false
                     rateLimited = false
+                    sessionState.hiddenStoryRows.reset()
                     val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
                     if (application.applied && minimumVisibleCount > 0) {
                         activeStore.setVisibleStoryCount(max(
@@ -1450,6 +1540,9 @@ class StoriesFeatureRuntime(
             StorySearchMode.TOP_STORIES -> mainStore
             StorySearchMode.NONE -> return
         }
+        if (state.mode == StorySearchMode.TOP_STORIES && !state.loading && state.failure == null) {
+            sessionState.hiddenStoryRows.reset()
+        }
         val application = searchRuntime.apply(
             store = targetStore,
             state = state,
@@ -1463,6 +1556,7 @@ class StoriesFeatureRuntime(
         if (!application.consumed) return
         if (application.completed) refreshIndicatorShowing = false
         if (application.contentApplied) {
+            syncHiddenPosts()
             targetStore.stories.filter(Story::loaded).forEach(::prefetch)
         }
         targetStore.contentChanged()
@@ -1754,6 +1848,7 @@ class StoriesFeatureRuntime(
     private fun prefetch(story: Story) = storyResources?.prefetchStory(story, activeStories)
 
     private fun changed(story: Story? = null) {
+        syncHiddenPosts()
         when {
             story == null -> activeStore.contentChanged()
             mainStories.contains(story) -> mainStore.contentChanged(story)

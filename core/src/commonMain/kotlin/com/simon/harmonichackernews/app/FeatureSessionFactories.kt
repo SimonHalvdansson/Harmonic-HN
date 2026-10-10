@@ -143,6 +143,7 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
         savedItems = savedItems,
         savedItemActions = actions,
         historyStore = host.platform.history,
+        hiddenPosts = hiddenPosts,
         accounts = host.platform.accounts,
         connectivity = host.platform.connectivity,
         userSettings = host.userSettings,

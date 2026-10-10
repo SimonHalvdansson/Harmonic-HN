@@ -370,99 +370,104 @@ internal fun StoriesList(
                                 },
                                 label = "story preview source accessories",
                             )
-                            StoryRow(
-                                model = model,
-                                style = style,
-                                modifier = itemModifier,
-                                listItem = true,
-                                pageBackground = MaterialTheme.colorScheme.pageBackground,
-                                animateChanges = true,
-                                onLinkClick = {
-                                    dismissSearchKeyboard()
-                                    controller.listener.onLinkClick(story)
-                                },
-                                onLinkLongClick = {
-                                    dismissSearchKeyboard()
-                                    controller.listener.onStoryLongClick(
-                                        story,
-                                        storyTintBase,
-                                    )?.let { deck ->
-                                        controller.showStoryPreview(
-                                            if (style.tintCard) {
-                                                deck
-                                            } else {
-                                                deck.copy(
-                                                    cardColors = List(deck.stories.size) {
-                                                        storyTintBase
-                                                    },
-                                                )
-                                            },
-                                        )
-                                    }
-                                },
-                                onCommentClick = {
-                                    dismissSearchKeyboard()
-                                    controller.listener.onCommentClick(story)
-                                },
-                                onGeometryChanged = { bounds, itemHeightPx ->
-                                    controller.updateStoryItemHeight(story.id, itemHeightPx)
-                                    controller.updateStoryBounds(story.id, bounds)
-                                },
-                                onPreviewSourceGeometryChanged = { geometry ->
-                                    controller.updateStoryPreviewSourceGeometry(story.id, geometry)
-                                },
-                                capturePreviewSourceGeometry =
-                                    controller.visibleStoryPreviewId == story.id,
-                                sourceAccessoryAlpha = sourceAccessoryAlpha,
-                                onPreviewLoadSuccess = {
-                                    model.previewImageUrl?.let { imageUrl ->
-                                        controller.listener.onStoryPreviewImageLoaded(
-                                            story.id,
-                                            story.url.orEmpty(),
-                                            imageUrl,
-                                        )
-                                    }
-                                },
-                                onPreviewLoadFailed = {
-                                    model.previewImageUrl?.let { imageUrl ->
-                                        controller.listener.onStoryPreviewImageLoadFailed(
-                                            story.id,
-                                            story.url.orEmpty(),
-                                            imageUrl,
-                                        )
-                                    }
-                                },
-                                onPreviewTintExtracted = { tintColor ->
-                                    val sourceUrl = model.previewImageUrl
-                                    val baseColor = model.tintFallbackArgb
-                                    if (sourceUrl != null && baseColor != null) {
-                                        controller.listener.onStoryTintExtracted(
+                            SwipeToHideStory(
+                                enabled = controller.canHidePosts && !searchMode && !story.isFrontpageLink,
+                                onHide = { controller.listener.onHidePost(story) },
+                            ) {
+                                StoryRow(
+                                    model = model,
+                                    style = style,
+                                    modifier = itemModifier,
+                                    listItem = true,
+                                    pageBackground = MaterialTheme.colorScheme.pageBackground,
+                                    animateChanges = true,
+                                    onLinkClick = {
+                                        dismissSearchKeyboard()
+                                        controller.listener.onLinkClick(story)
+                                    },
+                                    onLinkLongClick = {
+                                        dismissSearchKeyboard()
+                                        controller.listener.onStoryLongClick(
                                             story,
-                                            sourceUrl,
-                                            baseColor,
-                                            style.paletteTintConfigKey,
-                                            tintColor,
-                                            false,
-                                        )
-                                        controller.invalidateStory(story.id)
-                                    }
-                                },
-                                onFaviconTintExtracted = { tintColor ->
-                                    val sourceUrl = model.faviconUrl
-                                    val baseColor = model.tintFallbackArgb
-                                    if (sourceUrl != null && baseColor != null) {
-                                        controller.listener.onStoryTintExtracted(
-                                            story,
-                                            sourceUrl,
-                                            baseColor,
-                                            style.paletteTintConfigKey,
-                                            tintColor,
-                                            true,
-                                        )
-                                        controller.invalidateStory(story.id)
-                                    }
-                                },
-                            )
+                                            storyTintBase,
+                                        )?.let { deck ->
+                                            controller.showStoryPreview(
+                                                if (style.tintCard) {
+                                                    deck
+                                                } else {
+                                                    deck.copy(
+                                                        cardColors = List(deck.stories.size) {
+                                                            storyTintBase
+                                                        },
+                                                    )
+                                                },
+                                            )
+                                        }
+                                    },
+                                    onCommentClick = {
+                                        dismissSearchKeyboard()
+                                        controller.listener.onCommentClick(story)
+                                    },
+                                    onGeometryChanged = { bounds, itemHeightPx ->
+                                        controller.updateStoryItemHeight(story.id, itemHeightPx)
+                                        controller.updateStoryBounds(story.id, bounds)
+                                    },
+                                    onPreviewSourceGeometryChanged = { geometry ->
+                                        controller.updateStoryPreviewSourceGeometry(story.id, geometry)
+                                    },
+                                    capturePreviewSourceGeometry =
+                                        controller.visibleStoryPreviewId == story.id,
+                                    sourceAccessoryAlpha = sourceAccessoryAlpha,
+                                    onPreviewLoadSuccess = {
+                                        model.previewImageUrl?.let { imageUrl ->
+                                            controller.listener.onStoryPreviewImageLoaded(
+                                                story.id,
+                                                story.url.orEmpty(),
+                                                imageUrl,
+                                            )
+                                        }
+                                    },
+                                    onPreviewLoadFailed = {
+                                        model.previewImageUrl?.let { imageUrl ->
+                                            controller.listener.onStoryPreviewImageLoadFailed(
+                                                story.id,
+                                                story.url.orEmpty(),
+                                                imageUrl,
+                                            )
+                                        }
+                                    },
+                                    onPreviewTintExtracted = { tintColor ->
+                                        val sourceUrl = model.previewImageUrl
+                                        val baseColor = model.tintFallbackArgb
+                                        if (sourceUrl != null && baseColor != null) {
+                                            controller.listener.onStoryTintExtracted(
+                                                story,
+                                                sourceUrl,
+                                                baseColor,
+                                                style.paletteTintConfigKey,
+                                                tintColor,
+                                                false,
+                                            )
+                                            controller.invalidateStory(story.id)
+                                        }
+                                    },
+                                    onFaviconTintExtracted = { tintColor ->
+                                        val sourceUrl = model.faviconUrl
+                                        val baseColor = model.tintFallbackArgb
+                                        if (sourceUrl != null && baseColor != null) {
+                                            controller.listener.onStoryTintExtracted(
+                                                story,
+                                                sourceUrl,
+                                                baseColor,
+                                                style.paletteTintConfigKey,
+                                                tintColor,
+                                                true,
+                                            )
+                                            controller.invalidateStory(story.id)
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }

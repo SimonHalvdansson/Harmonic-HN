@@ -190,10 +190,7 @@ fun StoryRow(
     onFaviconTintExtracted: ((Int) -> Unit)? = null,
     pageBackground: Color = MaterialTheme.colorScheme.pageBackground,
     typographyOverride: ContentTypography? = null,
-    cardPadding: PaddingValues = PaddingValues(
-        horizontal = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
-        vertical = 4.dp,
-    ),
+    cardPadding: PaddingValues? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val typography = typographyOverride ?: rememberContentTypography(
@@ -201,6 +198,20 @@ fun StoryRow(
         storyTextSize = style.textSize,
     )
     val animate = animateChanges
+    val renderedCardPadding = cardPadding ?: run {
+        val targetHorizontalPadding = if (style.hasBackground || style.tintCard) 12.dp else 8.dp
+        val horizontalPadding = if (animate) {
+            val animatedPadding by animateDpAsState(
+                targetValue = targetHorizontalPadding,
+                animationSpec = contentTween(),
+                label = "story card padding",
+            )
+            animatedPadding
+        } else {
+            targetHorizontalPadding
+        }
+        PaddingValues(horizontal = horizontalPadding, vertical = 4.dp)
+    }
     val presentation = rememberStoryRowPresentation(
         model = model,
         style = style,
@@ -279,7 +290,7 @@ fun StoryRow(
                 vertical = if (listItem) 0.dp else 10.dp,
             ),
     ) {
-        Box(Modifier.fillMaxWidth().padding(cardPadding)) {
+        Box(Modifier.fillMaxWidth().padding(renderedCardPadding)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

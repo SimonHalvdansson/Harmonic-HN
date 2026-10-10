@@ -667,7 +667,9 @@ private fun IosStoriesContent(
                 is StoriesFeatureEffect.StoryChanged ->
                     effect.storyId?.let(controller::invalidateStory)
                 StoriesFeatureEffect.LoginRequired -> scene.navigation.showLoginDialog()
-                is StoriesFeatureEffect.UserMessage -> scene.userMessages.show(effect.message)
+                is StoriesFeatureEffect.UserMessage -> scene.userMessages.show(
+                    effect.message, actionLabel = effect.actionLabel, onAction = effect.onAction,
+                )
                 is StoriesFeatureEffect.SavedActionFailed -> {
                     if (effect.presentation.showDetails) {
                         scene.navigation.showFailureDetailDialog(

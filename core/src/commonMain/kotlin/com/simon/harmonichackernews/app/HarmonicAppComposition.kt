@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.app
 
+import com.simon.harmonichackernews.data.HiddenPostsStore
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.network.StoryFeedRepository
 import com.simon.harmonichackernews.network.StoryFeedResult
@@ -102,6 +103,7 @@ class HarmonicAppComposition(
             platform.accounts.currentAccount?.username
         }
     }
+    val hiddenPosts = HiddenPostsStore(host.appDataStore)
     val storyResourceTints = StoryResourceTintRepository(host.appDataStore)
     val aiSummarySettings = AiSummarySettingsRepository(
         store = host.settingsStore,
@@ -176,6 +178,7 @@ class HarmonicAppComposition(
         savedItems = savedItems,
         accounts = platform.accounts,
         history = platform.history,
+        hiddenPosts = hiddenPosts,
         storyCache = storyCache,
         previewResources = previewResources,
         storyResourceTints = storyResourceTints,

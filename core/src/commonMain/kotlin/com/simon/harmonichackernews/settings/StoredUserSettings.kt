@@ -42,6 +42,7 @@ object UserPreferenceKeys {
     const val FAVICON_PROVIDER = "pref_favicon_provider"
     const val FONT = "pref_font"
     const val HIDE_JOBS = "pref_hide_jobs"
+    const val SWIPE_TO_HIDE = "pref_swipe_to_hide"
     const val HIDE_CLICKED = "pref_hide_clicked"
     const val ALWAYS_OPEN_COMMENTS = "pref_always_open_comments"
     const val PAGINATION_MODE = "pref_pagination_mode"
@@ -155,6 +156,7 @@ class StoredUserSettings(
                 font = preferredFont(),
                 hideJobs = boolean(UserPreferenceKeys.HIDE_JOBS, false),
                 hideRead = boolean(UserPreferenceKeys.HIDE_CLICKED, false),
+                swipeToHide = boolean(UserPreferenceKeys.SWIPE_TO_HIDE, false),
                 alwaysOpenComments = boolean(UserPreferenceKeys.ALWAYS_OPEN_COMMENTS, false),
                 pagination = boolean(UserPreferenceKeys.PAGINATION_MODE, false),
                 alwaysShowTapToRefresh =

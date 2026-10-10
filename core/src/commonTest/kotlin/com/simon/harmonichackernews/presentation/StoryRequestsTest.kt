@@ -963,6 +963,119 @@ class StoryRequestsTest {
         assertTrue(feed.requests.isEmpty())
     }
 
+    @Test
+    fun hiddenPostsToggleAndClearRestoreCachedRowsWithoutNetworkOrHistoryChanges() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val preferences = MemoryKeyValueStore()
+        val settings = StoredUserSettings(preferences, emptyFlow())
+        assertFalse(settings.story.swipeToHide)
+        preferences.putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, true)
+        val history = MemoryHistoryStore()
+        val hidden = com.simon.harmonichackernews.data.HiddenPostsStore(
+            MemoryKeyValueStore(), kotlinx.coroutines.test.StandardTestDispatcher(testScheduler),
+        )
+        val feed = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList()))
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, feed), worker,
+            settings = settings, history = history, hiddenPosts = hidden)
+        val messages = mutableListOf<StoriesFeatureEffect.UserMessage>()
+        backgroundScope.launch { runtime.effects.collect { if (it is StoriesFeatureEffect.UserMessage) messages += it } }
+        runCurrent()
+        val original = (1..3).map { Story("Story $it", it, true, false) }
+        runtime.showCachedStories(original)
+        runtime.hidePost(original[1])
+        assertEquals(listOf(1, 3), runtime.mainStories.map(Story::id))
+        runCurrent()
+        assertEquals(setOf(2), hidden.ids.value)
+        assertTrue(history.load().isEmpty())
+        preferences.putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, false)
+        runtime.reconcileSettings()
+        assertEquals(listOf(1, 2, 3), runtime.mainStories.map(Story::id))
+        assertEquals(setOf(2), hidden.ids.value)
+        preferences.putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, true)
+        runtime.reconcileSettings()
+        assertEquals(listOf(1, 3), runtime.mainStories.map(Story::id))
+        messages.single { it.actionLabel == "Undo" }.onAction!!.invoke()
+        runCurrent()
+        assertEquals(listOf(1, 2, 3), runtime.mainStories.map(Story::id))
+        runtime.hidePost(original[0]); runtime.hidePost(original[1]); runCurrent()
+        hidden.clear(); runtime.syncHiddenPosts()
+        assertEquals(listOf(1, 2, 3), runtime.mainStories.map(Story::id))
+        assertTrue(feed.requests.isEmpty())
+        assertTrue(runtime.mainStore.state.value.showingCached)
+    }
+
+    @Test
+    fun hiddenRowsStayOutOfRefreshedFeedAndUndoAfterSwitchDoesNotInsertThem() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val preferences = MemoryKeyValueStore().apply { putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, true) }
+        val hidden = com.simon.harmonichackernews.data.HiddenPostsStore(
+            MemoryKeyValueStore(), kotlinx.coroutines.test.StandardTestDispatcher(testScheduler),
+        )
+        (1..35).forEach { hidden.hide(it) }
+        val feed = RecordingFeedLoader(StoryFeedResult.ItemIds((1..80).toList()))
+        val api = object : HackerNewsApi by UnusedHackerNewsApi {
+            override suspend fun getItem(id: Int) = HackerNewsItemDto(id = id, title = "Story $id", by = "author")
+        }
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, feed, api), worker,
+            settings = StoredUserSettings(preferences, emptyFlow()), hiddenPosts = hidden)
+        runtime.configure(pagination = true, hideRead = false, alwaysOpenComments = false, useIntegratedWebView = false)
+        runtime.refresh(false); runCurrent()
+        repeat(10) { worker.runAll(); runCurrent() }
+        assertEquals((36..80).toList(), runtime.mainStories.map(Story::id))
+        assertTrue(runtime.mainStories.take(30).all { it.loaded })
+        val messages = mutableListOf<StoriesFeatureEffect.UserMessage>()
+        backgroundScope.launch { runtime.effects.collect { if (it is StoriesFeatureEffect.UserMessage) messages += it } }
+        runCurrent()
+        runtime.hidePost(runtime.mainStories.first()); runCurrent()
+        runtime.selectType(StoryListTarget.MAIN, StoryType.NEW_STORIES)
+        runtime.showCachedStories(listOf(Story("Other feed", 99, true, false)))
+        messages.single { it.actionLabel == "Undo" }.onAction!!.invoke(); runCurrent()
+        assertEquals(listOf(99), runtime.mainStories.map(Story::id))
+        assertFalse(36 in hidden.ids.value)
+        runtime.openSearch(); runCurrent()
+        runtime.searchStore.replace(listOf(Story("Search result", 1, true, false)))
+        runtime.syncHiddenPosts()
+        assertEquals(listOf(1), runtime.searchStories.map(Story::id))
+        assertFalse(runtime.canHidePosts)
+    }
+
+    @Test
+    fun hiddenPostUndoSurvivesFeatureScopeRecreation() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val worker = QueuedCacheDispatcher()
+        val settings = StoredUserSettings(MemoryKeyValueStore().apply {
+            putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, true)
+        }, emptyFlow())
+        val hidden = com.simon.harmonichackernews.data.HiddenPostsStore(
+            MemoryKeyValueStore(), kotlinx.coroutines.test.StandardTestDispatcher(testScheduler),
+        )
+        val featureJob = kotlinx.coroutines.Job(backgroundScope.coroutineContext[kotlinx.coroutines.Job])
+        val featureScope = CoroutineScope(backgroundScope.coroutineContext + featureJob)
+        val runtime = cacheRuntime(featureScope, session, saved,
+            storyRequests(session, saved, featureScope), worker, settings = settings, hiddenPosts = hidden)
+        val messages = mutableListOf<StoriesFeatureEffect.UserMessage>()
+        backgroundScope.launch { runtime.effects.collect { if (it is StoriesFeatureEffect.UserMessage) messages += it } }
+        runCurrent()
+        val story = Story("Keep me", 42, true, false)
+        runtime.showCachedStories(listOf(story))
+        runtime.hidePost(story); runCurrent()
+        assertEquals(setOf(42), hidden.ids.value)
+        featureJob.cancel()
+        val recreated = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), worker, settings = settings, hiddenPosts = hidden)
+        messages.single { it.actionLabel == "Undo" }.onAction!!.invoke()
+        recreated.syncHiddenPosts()
+        assertTrue(hidden.ids.value.isEmpty())
+        assertEquals(listOf(42), recreated.mainStories.map(Story::id))
+    }
+
     private fun cachedHeader(id: Int, title: String = "Cached $id", extra: String = "") =
         JSONParser.prepareCachedStoryHeader(
             """{"id":$id,"title":"$title","author":"fixture"$extra}""", id,
@@ -982,6 +1095,7 @@ class StoryRequestsTest {
         settings: UserSettings = StoredUserSettings(MemoryKeyValueStore(), emptyFlow()),
         connectivity: ConnectivityService = AlwaysOnline,
         nowMillis: () -> Long = { 1_000L },
+        hiddenPosts: com.simon.harmonichackernews.data.HiddenPostsStore? = null,
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
@@ -1005,6 +1119,7 @@ class StoryRequestsTest {
         },
         loadCachedStories = cached,
         cacheDispatcher = worker,
+        hiddenPosts = hiddenPosts,
     )
 
     private class QueuedCacheDispatcher : CoroutineDispatcher() {

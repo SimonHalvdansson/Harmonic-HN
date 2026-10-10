@@ -184,7 +184,9 @@ class AndroidStoriesCoordinator(
             }
             StoriesFeatureEffect.LoginRequired -> navigation.showLoginDialog()
             is StoriesFeatureEffect.UserMessage ->
-                navigation.showMessage(effect.message)
+                navigation.scene.userMessages.show(
+                    effect.message, actionLabel = effect.actionLabel, onAction = effect.onAction,
+                )
             is StoriesFeatureEffect.SavedActionFailed -> {
                 if (effect.presentation.showDetails) {
                     navigation.showFailureDetailDialog(

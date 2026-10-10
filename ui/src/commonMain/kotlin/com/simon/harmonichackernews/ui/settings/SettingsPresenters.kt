@@ -65,6 +65,7 @@ class StoriesSettingsPresenter(
             alwaysOpenComments = story.alwaysOpenComments,
             pagination = story.pagination,
             hideRead = story.hideRead,
+            swipeToHide = story.swipeToHide,
             dimReadStories = story.dimReadStories,
             faviconProvider = story.faviconProvider,
             faviconIcon = faviconIcon,

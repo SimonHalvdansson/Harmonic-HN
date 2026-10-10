@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.data.HiddenPostsStore
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.SavedItemSource
@@ -23,6 +24,7 @@ data class DataSettingsSnapshot(
     val showChangelog: Boolean,
     val aiModelBytes: Long? = null,
     val aiModelNames: List<String> = emptyList(),
+    val hiddenPostCount: Int = 0,
 )
 
 data class DataSettingsCounts(
@@ -32,6 +34,7 @@ data class DataSettingsCounts(
     val tintCache: Int,
     val aiModelsBytes: Long? = null,
     val aiModelNames: List<String> = emptyList(),
+    val hiddenPostCount: Int = 0,
 )
 
 /** Expensive storage totals are refreshed independently from dialog and preference state. */
@@ -57,6 +60,7 @@ object DataSettingsPolicy {
         bookmarkCount = counts.bookmarks.coerceAtLeast(0),
         loggedIn = loggedIn,
         historyCount = counts.history.coerceAtLeast(0),
+        hiddenPostCount = counts.hiddenPostCount.coerceAtLeast(0),
         postCacheCount = counts.postCache.coerceAtLeast(0),
         tintCacheCount = counts.tintCache.coerceAtLeast(0),
         showChangelog = settings.general.showChangelog,
@@ -94,6 +98,7 @@ class DataSettingsService(
     private val storyResourceTints: StoryResourceTintRepository,
     private val localModels: LocalModelService?,
     private val settingsTransfer: SettingsTransfer? = null,
+    private val hiddenPosts: HiddenPostsStore? = null,
 ) {
     fun storageCounts(): DataSettingsStorageCounts = DataSettingsStorageCounts(
         posts = storyCache.itemCount(),
@@ -107,6 +112,7 @@ class DataSettingsService(
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount(),
             history = history?.size ?: 0,
+            hiddenPostCount = hiddenPosts?.ids?.value?.size ?: 0,
             postCache = storage.posts,
             tintCache = storage.tints,
             aiModelsBytes = storage.modelBytes,
@@ -131,6 +137,10 @@ class DataSettingsService(
             ?: return BookmarkImportResult.Empty
         return BookmarkImportResult.Imported(result.importedCount, overwrite)
     }
+
+    suspend fun initializeHiddenPosts() { hiddenPosts?.initialize() }
+
+    suspend fun clearHiddenPosts() { hiddenPosts?.clear() }
 
     suspend fun clearHistory(): String? {
         val count = history?.size ?: 0

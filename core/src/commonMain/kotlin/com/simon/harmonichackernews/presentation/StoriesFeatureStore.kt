@@ -63,6 +63,7 @@ data class StoriesState(
     val frontDateLatestMillis: Long = 0L,
     val loggedIn: Boolean = false,
     val canClearHistory: Boolean = false,
+    val canHidePosts: Boolean = false,
     val cache: StoryCacheState = StoryCacheState(),
     val lastUpdatedMillis: Long? = null,
 ) {
@@ -98,6 +99,7 @@ sealed interface StoriesIntent {
         val storyCount: Int,
         val downloadWebViewContents: Boolean,
     ) : StoriesIntent
+    data class HidePost(val storyId: Int) : StoriesIntent
     data class OpenLink(val storyId: Int) : StoriesIntent
     data class OpenComments(val storyId: Int) : StoriesIntent
     data class OpenCommentStory(val storyId: Int) : StoriesIntent
@@ -161,6 +163,14 @@ class StoriesFeatureStore internal constructor(
             }
         }
         jobs += scope.launch { runtime.settingsState.collect { publish() } }
+        jobs += scope.launch {
+            runtime.initializeHiddenPosts()
+            runtime.hiddenPostIds?.collect {
+                runtime.syncHiddenPosts()
+                if (!runtime.searching) runtime.loadVisibleStories()
+                publish()
+            }
+        }
         jobs += scope.launch { runtime.previewActionState.collect { publish() } }
         jobs += scope.launch {
             runtime.historyState.collect {
@@ -249,6 +259,7 @@ class StoriesFeatureStore internal constructor(
                 intent.storyCount,
                 intent.downloadWebViewContents,
             )
+            is StoriesIntent.HidePost -> withActiveStory(intent.storyId, runtime::hidePost)
             is StoriesIntent.OpenLink -> withActiveStory(intent.storyId, runtime::selectStoryLink)
             is StoriesIntent.OpenComments ->
                 withActiveStory(intent.storyId, runtime::selectStoryComments)
@@ -316,6 +327,7 @@ class StoriesFeatureStore internal constructor(
     }
 
     private fun snapshot(): StoriesState {
+        runtime.syncHiddenPosts()
         val searchState = runtime.searchOptions.state.value
         val frontDate = runtime.frontPageDay
         val previewActions = runtime.previewActionState.value
@@ -356,6 +368,7 @@ class StoriesFeatureStore internal constructor(
             frontDateLatestMillis = frontDate.latestMillis,
             loggedIn = runtime.loggedIn,
             canClearHistory = runtime.canClearHistory,
+            canHidePosts = runtime.canHidePosts,
             cache = storyCache.state.value,
             lastUpdatedMillis = runtime.lastUpdatedMillisForHeader(),
         )

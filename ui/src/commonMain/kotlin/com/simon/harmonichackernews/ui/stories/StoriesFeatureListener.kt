@@ -52,6 +52,9 @@ class StoriesFeatureListener(
         store.accept(StoriesIntent.More(action))
     override fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean) =
         store.accept(StoriesIntent.CacheStories(storyCount, downloadWebViewContents))
+    override fun onHidePost(story: StoryListItemSnapshot) =
+        store.accept(StoriesIntent.HidePost(story.id))
+
     override fun onLinkClick(story: StoryListItemSnapshot) =
         store.accept(StoriesIntent.OpenLink(story.id))
     override fun onCommentClick(story: StoryListItemSnapshot) =

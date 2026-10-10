@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,13 +25,16 @@ fun UserMessageSnackbarHost(
 
     LaunchedEffect(messages) {
         messages.messages.collect { message ->
-            hostState.showSnackbar(
+            val result = hostState.showSnackbar(
                 message = message.text,
+                actionLabel = message.actionLabel,
+                withDismissAction = message.actionLabel != null,
                 duration = when (message.duration) {
                     UserMessageDuration.SHORT -> SnackbarDuration.Short
                     UserMessageDuration.LONG -> SnackbarDuration.Long
                 },
             )
+            if (result == SnackbarResult.ActionPerformed) message.onAction?.invoke()
         }
     }
 

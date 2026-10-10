@@ -187,6 +187,7 @@ fun AndroidDataSettingsScreen(
         counts = DataSettingsCounts(
             bookmarks = bookmarkCount,
             history = dataSnapshot.historyCount,
+            hiddenPostCount = dataSnapshot.hiddenPostCount,
             postCache = dataSnapshot.postCacheCount,
             tintCache = dataSnapshot.tintCacheCount,
             aiModelsBytes = dataSnapshot.aiModelBytes,

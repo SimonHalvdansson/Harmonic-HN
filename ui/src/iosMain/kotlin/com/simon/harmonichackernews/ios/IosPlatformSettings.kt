@@ -238,6 +238,7 @@ private fun IosDataSettings(
             state.snapshot.postCacheCount,
             state.snapshot.tintCacheCount,
             state.snapshot.aiModelBytes,
+            hiddenPostCount = state.snapshot.hiddenPostCount,
         ),
         loggedIn = state.snapshot.loggedIn,
         showNavigation = showNavigation,

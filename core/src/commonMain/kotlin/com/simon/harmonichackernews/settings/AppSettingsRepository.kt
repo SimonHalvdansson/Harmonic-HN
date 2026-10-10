@@ -23,6 +23,7 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
     ALWAYS_OPEN_COMMENTS(UserPreferenceKeys.ALWAYS_OPEN_COMMENTS),
     PAGINATION(UserPreferenceKeys.PAGINATION_MODE),
     HIDE_CLICKED(UserPreferenceKeys.HIDE_CLICKED),
+    SWIPE_TO_HIDE(UserPreferenceKeys.SWIPE_TO_HIDE),
     GRAY_OUT_CLICKED(UserPreferenceKeys.GRAY_OUT_CLICKED),
     HIDE_JOBS(UserPreferenceKeys.HIDE_JOBS),
 }

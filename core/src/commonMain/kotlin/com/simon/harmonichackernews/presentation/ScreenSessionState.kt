@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Android lifecycle holders retain this object, but no Android type crosses the boundary.
  */
 class StoriesSessionState {
+    internal val hiddenStoryRows = HiddenStoryRows()
     var initialized: Boolean = false
     val mainStoryList = StoryListStore()
     val searchStoryList = StoryListStore()

@@ -33,6 +33,7 @@ enum class DataSettingsAction {
     ExportBookmarks,
     ImportBookmarks,
     ClearHistory,
+    ClearHiddenPosts,
     ClearPostCache,
     ClearTintCache,
     ClearAiModels,
@@ -48,6 +49,7 @@ fun DataSettingsRuntime.handleDataSettingsAction(action: DataSettingsAction) {
         DataSettingsAction.ExportBookmarks -> exportBookmarks()
         DataSettingsAction.ImportBookmarks -> showDialog(DataSettingsDialogState.IMPORT)
         DataSettingsAction.ClearHistory -> clearHistory()
+        DataSettingsAction.ClearHiddenPosts -> clearHiddenPosts()
         DataSettingsAction.ClearPostCache -> clearPostCache()
         DataSettingsAction.ClearTintCache -> clearTintCache()
         DataSettingsAction.ClearAiModels -> showDialog(DataSettingsDialogState.AI_MODELS)
@@ -119,6 +121,13 @@ fun DataSettingsScreen(
                     title = "Clear reading history (${state.historyCount})",
                     icon = Res.drawable.ic_close,
                     onClick = { onAction(DataSettingsAction.ClearHistory) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Clear hidden posts (${state.hiddenPostCount})",
+                    summary = "Make all hidden posts visible again",
+                    icon = Res.drawable.ic_visibility_off,
+                    onClick = { onAction(DataSettingsAction.ClearHiddenPosts) },
                 )
                 SettingsDivider()
                 SettingRow(

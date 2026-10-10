@@ -129,6 +129,14 @@ class DataSettingsRuntime(
         }
     }
 
+    fun clearHiddenPosts() {
+        scope.launch {
+            service.clearHiddenPosts()
+            refresh()
+            emitMessage("Hidden posts cleared")
+        }
+    }
+
     fun clearHistory() {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             service.clearHistory()
@@ -173,6 +181,7 @@ class DataSettingsRuntime(
     fun refresh() {
         refreshJob?.cancel()
         refreshJob = scope.launch {
+            service.initializeHiddenPosts()
             storageCounts = withContext(storageDispatcher) { service.storageCounts() }
             publish()
         }
