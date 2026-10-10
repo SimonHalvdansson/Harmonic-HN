@@ -191,9 +191,9 @@ private fun ColorSchemePicker(
     FlowRow(
         modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
             .testTag(tag).selectableGroup()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         options.forEach { option ->
             val checked = selected == option.value
@@ -205,10 +205,10 @@ private fun ColorSchemePicker(
                 onPrimary = animateThemeColor(targetScheme.onPrimary),
             )
             Column(
-                modifier = Modifier.width(72.dp).clip(RoundedCornerShape(16.dp))
+                modifier = Modifier.width(66.dp).clip(RoundedCornerShape(16.dp))
                     .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(option.value) })
                     .semantics { contentDescription = "${option.label} color scheme" }
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(Modifier.size(60.dp)

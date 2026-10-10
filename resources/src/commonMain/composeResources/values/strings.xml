@@ -14,7 +14,7 @@
     <string name="settings_summary_notifications">Replies, frequency</string>
     <string name="settings_summary_data">Bookmarks, storage</string>
     <string name="settings_summary_debug">Samples, diagnostics</string>
-    <string name="settings_summary_about">Version, licenses</string>
+    <string name="settings_summary_about">Version %1$s</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_theme">Color scheme</string>
     <string name="settings_section_palette_tint">Palette tint</string>

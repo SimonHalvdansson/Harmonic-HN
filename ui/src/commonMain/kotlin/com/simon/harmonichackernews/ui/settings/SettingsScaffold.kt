@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 private enum class SettingsListGroup { Reading, Tools, App }
@@ -119,6 +120,7 @@ fun SettingsListScreen(
     onSectionSelected: (SettingsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val versionName = LocalHarmonicUiDependencies.current.metadata.versionName
     val settingsCardShape = RoundedCornerShape(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
@@ -188,7 +190,11 @@ fun SettingsListScreen(
                                 selectedSection == SettingsSection.Licenses
                             SettingsNavigationRow(
                                 title = stringResource(entry.section.titleResource),
-                                summary = stringResource(entry.summary),
+                                summary = if (entry.section == SettingsSection.About) {
+                                    stringResource(entry.summary, versionName)
+                                } else {
+                                    stringResource(entry.summary)
+                                },
                                 icon = entry.icon,
                                 iconContainerColor = iconContainerColor,
                                 iconContentColor = iconContentColor,
