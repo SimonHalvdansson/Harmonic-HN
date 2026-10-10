@@ -1,9 +1,37 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.FaviconProviderCatalog
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class FaviconUrlBuilderTest {
+    @Test
+    fun dialogTemplatesAndRequestsUseTheSavedProviderValues() {
+        val expectedTemplates = mapOf(
+            FaviconPreferences.GOOGLE to "https://www.google.com/s2/favicons?domain={host}&sz=128",
+            FaviconPreferences.DUCK_DUCK_GO to "https://icons.duckduckgo.com/ip3/{host}.ico",
+            FaviconPreferences.TWENTY to "https://twenty-icons.com/{host}",
+        )
+        assertEquals(expectedTemplates, FaviconProviderCatalog.options.associate { it.value to it.urlTemplate })
+        expectedTemplates.forEach { (provider, template) ->
+            assertEquals(
+                template.replace("{host}", "example.com"),
+                FaviconUrlBuilder.faviconUrl("https://www.example.com/article", provider),
+            )
+        }
+    }
+
+    @Test
+    fun unknownProvidersFallBackToGoogle() {
+        listOf(null, "", "unknown").forEach { provider ->
+            assertEquals(
+                "https://www.google.com/s2/favicons?domain=example.com&sz=128",
+                FaviconUrlBuilder.faviconUrlForHost("example.com", provider),
+            )
+        }
+    }
+
     @Test
     fun extractsCommonHostsWithoutChangingProviderUrls() {
         assertEquals(

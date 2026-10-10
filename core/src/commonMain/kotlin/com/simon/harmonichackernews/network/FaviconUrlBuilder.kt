@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.settings.FaviconPreferences
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 
 object FaviconUrlBuilder {
@@ -8,7 +9,8 @@ object FaviconUrlBuilder {
     const val PROVIDER_TWENTY = "twenty"
 
     fun sanitizeProvider(provider: String?): String = when (provider) {
-        PROVIDER_DUCKDUCKGO, PROVIDER_TWENTY -> provider
+        PROVIDER_DUCKDUCKGO, FaviconPreferences.DUCK_DUCK_GO -> PROVIDER_DUCKDUCKGO
+        PROVIDER_TWENTY, FaviconPreferences.TWENTY -> PROVIDER_TWENTY
         else -> PROVIDER_GOOGLE
     }
 
