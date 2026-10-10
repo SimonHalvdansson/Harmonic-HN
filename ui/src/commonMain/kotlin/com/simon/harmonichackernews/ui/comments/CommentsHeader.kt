@@ -209,7 +209,9 @@ fun CommentsHeader(
                     readerModeEnabled = controller.readerModeEnabled,
                     showInvert = settings.showInvert,
                     progress = 1f - headerSheetProgress,
-                    contentAlpha = if (controller.predictiveBackActive && !controller.sideBySideActive) {
+                    contentAlpha = if (controller.sideBySideActive) {
+                        0f
+                    } else if (controller.predictiveBackActive) {
                         1f - controller.predictiveBackProgress * 0.7f
                     } else {
                         1f
@@ -517,15 +519,19 @@ fun CommentsSheetControls(
                 .background(colors.onSurfaceVariant.copy(alpha = 0.6f)),
         )
         val actionAlpha = collapsedProgress * collapsedProgress * collapsedProgress
+        val actionsVisible = collapsedProgress >= 0.001f && contentAlpha > 0f
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(CommentsSheetButtonSize * collapsedProgress)
-                .then(if (collapsedProgress < 0.001f) Modifier.clearAndSetSemantics { } else Modifier)
+                .then(if (!actionsVisible) Modifier.clearAndSetSemantics { } else Modifier)
                 .graphicsLayer(alpha = actionAlpha * contentAlpha)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Alpha and a zero-height row do not remove IconButton touch targets or tooltips.
+            // Keep the row's layout animation, but only compose actions while they are visible.
+            if (!actionsVisible) return@Row
             val paneControls = LocalBrowserPaneControls.current
             AnimatedSheetButtonSlot(
                 visible = paneControls.restoreVisible,
