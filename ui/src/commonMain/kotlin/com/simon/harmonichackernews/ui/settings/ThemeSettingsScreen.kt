@@ -192,8 +192,8 @@ private fun ColorSchemePicker(
         modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
             .testTag(tag).selectableGroup()
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         options.forEach { option ->
             val checked = selected == option.value
@@ -205,7 +205,7 @@ private fun ColorSchemePicker(
                 onPrimary = animateThemeColor(targetScheme.onPrimary),
             )
             Column(
-                modifier = Modifier.width(80.dp).clip(RoundedCornerShape(16.dp))
+                modifier = Modifier.width(72.dp).clip(RoundedCornerShape(16.dp))
                     .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(option.value) })
                     .semantics { contentDescription = "${option.label} color scheme" }
                     .padding(vertical = 4.dp),
@@ -224,7 +224,7 @@ private fun ColorSchemePicker(
                         Modifier.align(Alignment.TopCenter).padding(top = 5.dp).size(20.dp),
                         tint = scheme.onPrimary)
                 }
-                Text(option.label, Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(top = 4.dp),
+                Text(option.label, Modifier.fillMaxWidth().heightIn(min = 28.dp).padding(top = 2.dp),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
                     textAlign = TextAlign.Center,
