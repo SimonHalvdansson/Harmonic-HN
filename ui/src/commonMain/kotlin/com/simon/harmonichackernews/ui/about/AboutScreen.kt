@@ -65,12 +65,11 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 const val DefaultAboutBody =
-    "Harmonic is developed by me, Simon Halvdansson, although since 2023 " +
-        "the app is open source.\n\nThe name 'Harmonic' comes from me choosing to study " +
+    "Harmonic is developed by me, Simon Halvdansson, and since 2023 " +
+        "the app is open source.\n\nThe name 'Harmonic', apart from being vaguely similar to 'hacker' comes from me choosing to study " +
         "harmonic analysis at around the time of Harmonic's inception. I guess you could say " +
         "something about 'waves' and 'news' but that's the rationale. Since then, I've finished " +
-        "my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic " +
-        "but it's still my favorite pet project and I use the app daily. Seeing others contribute, " +
+        "my PhD in harmonic analysis and Harmonic has grown to a mature app. Seeing others contribute, " +
         "open meaningful issues on GitHub or just tell me they like the app is always super nice " +
         "and I'm very thankful to the community for helping with the maintenance. Together I " +
         "think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"
