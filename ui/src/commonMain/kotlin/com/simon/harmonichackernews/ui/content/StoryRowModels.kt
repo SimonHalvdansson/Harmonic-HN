@@ -54,11 +54,11 @@ fun storyHeaderTintPresentation(
     }
     val resourceTint = previewResource?.previewTint
     val previewTint = when {
+        persistedPreviewTint != null -> persistedPreviewTint
         resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
             resourceTint.baseColorArgb == tintBaseColor &&
             StoryPreviewTintState.isModeCurrent(resourceTint.paletteConfigKey, paletteMode) ->
             resourceTint.tintColorArgb
-        persistedPreviewTint != null -> persistedPreviewTint
         story.previewImageUrl == previewImageUrl &&
             StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode) ->
             story.previewImageTintColor
@@ -125,11 +125,11 @@ fun storyHeaderTintPresentation(
     val resourceTint = previewResource?.previewTint
     val snapshotPreviewTint = story.presentation.previewTint
     val previewTint = when {
+        persistedPreviewTint != null -> persistedPreviewTint
         resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
             resourceTint.baseColorArgb == tintBaseColor &&
             StoryPreviewTintState.isModeCurrent(resourceTint.paletteConfigKey, paletteMode) ->
             resourceTint.tintColorArgb
-        persistedPreviewTint != null -> persistedPreviewTint
         snapshotPreviewTint?.loaded == true && snapshotPreviewTint.sourceUrl == previewImageUrl &&
             snapshotPreviewTint.baseColorArgb == tintBaseColor &&
             StoryPreviewTintState.isModeCurrent(snapshotPreviewTint.mode, paletteMode) ->
@@ -221,7 +221,7 @@ fun storyRowModel(
             previewImageTintArgb = persistedPreviewTint
                 ?: story.previewImageTintColor.takeIf { currentPreviewTint },
             tintFallbackArgb = tintBaseColor,
-        ).withPreviewResource(previewResource, paletteMode),
+        ).withPreviewResource(previewResource, paletteMode, persistedPreviewTint, persistedFaviconTint),
         resolvedDomain = domain,
         nowMillis = nowMillis,
     )
@@ -283,7 +283,7 @@ fun storyRowModel(
             previewImageTintArgb = persistedPreviewTint
                 ?: previewTint?.colorArgb?.takeIf { currentPreviewTint },
             tintFallbackArgb = tintBaseColor,
-        ).withPreviewResource(previewResource, paletteMode),
+        ).withPreviewResource(previewResource, paletteMode, persistedPreviewTint, persistedFaviconTint),
         resolvedDomain = domain,
         nowMillis = nowMillis,
     )

@@ -2,6 +2,11 @@ package com.simon.harmonichackernews.ui.content
 
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintStore
+import com.simon.harmonichackernews.data.StoryResourceTintRepository
+import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.StoredUserSettings
+import kotlinx.coroutines.flow.emptyFlow
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
@@ -21,6 +26,33 @@ class StoryHeaderTintPresentationTest {
     private val imageUrl = "https://example.com/preview.png"
     private val provider = FaviconUrlBuilder.PROVIDER_GOOGLE
     private val mode = "default"
+
+    @Test
+    fun savedPaletteWinsOverDifferentListAndDetailSamples() {
+        val story = Story("BetterWispr", 42, true, false).apply {
+            url = "https://example.com/story"
+            previewImageUrl = imageUrl
+        }
+        val snapshot = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+        val store = StoryResourceTintRepository(InMemoryKeyValueStore())
+        val saved = StoryResourceTintState(imageUrl, base, StoryPreviewTintState.storedMode(mode), imageTint)
+        store.write(story.id, StoryResourceTintKind.PREVIEW_IMAGE, saved)
+        val settings = StoryDisplaySettings.from(StoredUserSettings(InMemoryKeyValueStore(), emptyFlow()).story)
+        for (sample in listOf(0xffddddee.toInt(), 0xffffdddd.toInt())) {
+            val resource = StoryPreviewResourceState(
+                story.id, story.url!!, imageUrl = imageUrl, imageUrlResolved = true,
+                previewTint = saved.copy(tintColorArgb = sample),
+            )
+            assertEquals(imageTint, storyHeaderTintPresentation(
+                story, resource, provider, mode, base, store,
+            ).initialTintArgb)
+            assertEquals(imageTint, storyHeaderTintPresentation(
+                snapshot, resource, provider, mode, base, store,
+            ).initialTintArgb)
+            assertEquals(imageTint, storyRowModel(story, 0, settings, resource, base, store).previewImageTintArgb)
+            assertEquals(imageTint, storyRowModel(snapshot, 0, settings, resource, base, store).previewImageTintArgb)
+        }
+    }
 
     @Test
     fun mutableAndSnapshotHeadersKeepFaviconUntilPreviewPaletteArrives() {

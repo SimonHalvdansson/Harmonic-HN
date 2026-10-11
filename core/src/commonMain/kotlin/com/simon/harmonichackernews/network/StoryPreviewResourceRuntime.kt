@@ -237,21 +237,25 @@ class StoryPreviewResourceRuntime(
         pageUrl: String,
         kind: StoryResourceTintKind,
         tint: StoryResourceTintState,
+        resolveTint: (StoryResourceTintState) -> StoryResourceTintState = { it },
     ): Boolean {
         val current = stateFor(storyId)?.takeIf { it.pageUrl == pageUrl }
             ?: StoryPreviewResourceState(storyId = storyId, pageUrl = pageUrl)
         if (kind == StoryResourceTintKind.PREVIEW_IMAGE && current.imageUrl != tint.sourceUrl) {
             return false
         }
+        // Validate before saving, then publish only the shared palette. Immediate collectors
+        // must never see a competing sample while it is being reconciled with the tint store.
+        val resolvedTint = resolveTint(tint)
         update(
             when (kind) {
                 StoryResourceTintKind.PREVIEW_IMAGE -> current.copy(
-                    previewTint = tint,
+                    previewTint = resolvedTint,
                     imageLoading = false,
                     imageLoaded = true,
                     imageLoadFailed = false,
                 )
-                StoryResourceTintKind.FAVICON -> current.copy(faviconTint = tint)
+                StoryResourceTintKind.FAVICON -> current.copy(faviconTint = resolvedTint)
             },
         )
         return true

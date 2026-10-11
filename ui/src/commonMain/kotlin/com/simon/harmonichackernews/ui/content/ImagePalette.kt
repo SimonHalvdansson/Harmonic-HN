@@ -68,6 +68,7 @@ internal fun rememberCoilImagePaletteTint(
 /** Keeps preview sampling identical to BitmapPainter while moving its work off the UI thread. */
 @Composable
 internal fun rememberPreviewImagePaletteTint(
+    sourceUrl: String,
     image: Image?,
     fallbackPainter: Painter?,
     baseColorArgb: Int,
@@ -79,7 +80,7 @@ internal fun rememberPreviewImagePaletteTint(
         baseColorArgb = baseColorArgb,
         paletteTintConfigKey = paletteTintConfigKey,
         enabled = enabled,
-        sharedCacheKey = null,
+        sharedCacheKey = "preview:$sourceUrl",
         preview = true,
     )
 } else {
@@ -88,6 +89,7 @@ internal fun rememberPreviewImagePaletteTint(
         baseColorArgb = baseColorArgb,
         paletteTintConfigKey = paletteTintConfigKey,
         enabled = enabled,
+        sharedCacheKey = "preview:$sourceUrl",
     )
 }
 

@@ -2,6 +2,12 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.StoryResourceTintRepository
+import com.simon.harmonichackernews.network.StoryResourceTintState
+import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.StoryPreviewTintState
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.network.CachedStoryPreviewResource
@@ -22,6 +28,33 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryListResourceRuntimeTest {
+    @Test
+    fun onlyCanonicalTintIsPublishedWhenAnotherSurfaceHasAlreadySampledTheImage() = runTest {
+        val store = StoryResourceTintRepository(InMemoryKeyValueStore())
+        val story = story()
+        val canonical = StoryResourceTintState(
+            "https://example.com/image.png", 0xffeeeeee.toInt(),
+            StoryPreviewTintState.storedMode("default"), 0xffddddff.toInt(),
+        )
+        store.write(story.id, StoryResourceTintKind.PREVIEW_IMAGE, canonical)
+        val runtime = StoryListResourceRuntime(backgroundScope, recordingService(mutableListOf()),
+            settings(StoryPreviewMode.SMALL, false), store)
+        runtime.request(story)
+        runCurrent()
+        val published = mutableListOf<Int>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            runtime.statesFlow.collect { states ->
+                states[story.id]?.previewTint?.let { published += it.tintColorArgb }
+            }
+        }
+        assertTrue(runtime.recordTint(story, StoryResourceTintKind.PREVIEW_IMAGE,
+            canonical.sourceUrl, canonical.baseColorArgb, "default", 0xffffdddd.toInt()))
+        assertEquals(listOf(canonical.tintColorArgb), published)
+        assertEquals(canonical.tintColorArgb, runtime.tintFor(story, StoryResourceTintKind.PREVIEW_IMAGE,
+            canonical.sourceUrl, canonical.baseColorArgb, "default"))
+        runtime.dispose()
+    }
+
     @Test
     fun queuedPrefetchFromAnObsoleteFeedCannotRepopulatePrunedState() = runTest {
         val requests = mutableListOf<StoryPreviewResourceRequest>()

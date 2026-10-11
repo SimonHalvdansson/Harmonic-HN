@@ -209,10 +209,9 @@ class StoryListResourceRuntime(
             paletteConfigKey = StoryPreviewTintState.storedMode(paletteConfigKey),
             tintColorArgb = tintColorArgb,
         )
-        if (!resourceRuntime.recordTint(story.id, pageUrl, kind, candidate)) return false
-        val tint = tintStore.canonicalize(story.id, kind, candidate)
-        if (tint != candidate) resourceRuntime.recordTint(story.id, pageUrl, kind, tint)
-        return true
+        return resourceRuntime.recordTint(story.id, pageUrl, kind, candidate) {
+            tintStore.canonicalize(story.id, kind, it)
+        }
     }
 
     fun tintFor(
@@ -224,6 +223,8 @@ class StoryListResourceRuntime(
     ): Int? {
         if (sourceUrl.isNullOrEmpty()) return null
         val storedPalette = StoryPreviewTintState.storedMode(paletteConfigKey)
+        tintStore.read(story.id, kind, sourceUrl, baseColorArgb, storedPalette)
+            ?.let { return it.tintColorArgb }
         val stateTint = when (kind) {
             StoryResourceTintKind.PREVIEW_IMAGE -> stateFor(story.id)?.previewTint
             StoryResourceTintKind.FAVICON -> stateFor(story.id)?.faviconTint
@@ -233,14 +234,6 @@ class StoryListResourceRuntime(
                 it.baseColorArgb == baseColorArgb &&
                 it.paletteConfigKey == storedPalette
         }?.let { return it.tintColorArgb }
-
-        tintStore.read(
-            storyId = story.id,
-            kind = kind,
-            sourceUrl = sourceUrl,
-            baseColorArgb = baseColorArgb,
-            paletteConfigKey = storedPalette,
-        )?.let { return it.tintColorArgb }
 
         return when (kind) {
             StoryResourceTintKind.PREVIEW_IMAGE -> story.previewImageTintColor.takeIf {

@@ -87,7 +87,7 @@ private fun rememberPreviewResourceTint(
         )
     } else {
         rememberPreviewImagePaletteTint(
-            success?.result?.image, success?.painter, baseArgb, paletteMode, enabled = true,
+            url, success?.result?.image, success?.painter, baseArgb, paletteMode, enabled = true,
         )
     }
     LaunchedEffect(tint, url, baseArgb, paletteMode) {

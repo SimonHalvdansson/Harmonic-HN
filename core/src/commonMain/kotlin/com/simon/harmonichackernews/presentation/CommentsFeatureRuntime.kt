@@ -353,27 +353,17 @@ class CommentsFeatureRuntime(
             paletteConfigKey = StoryPreviewTintState.storedMode(paletteConfigKey),
             tintColorArgb = tintColorArgb,
         )
-        if (previewResourceRuntime?.recordTint(
-                currentStory.id,
-                currentStory.url.orEmpty(),
-                StoryResourceTintKind.PREVIEW_IMAGE,
-                candidate,
-            ) != true
-        ) return null
-        val tint = storyResourceTints.canonicalize(
+        var canonicalTint: StoryResourceTintState? = null
+        previewResourceRuntime?.recordTint(
             currentStory.id,
+            currentStory.url.orEmpty(),
             StoryResourceTintKind.PREVIEW_IMAGE,
             candidate,
-        )
-        if (tint != candidate) {
-            previewResourceRuntime.recordTint(
-                currentStory.id,
-                currentStory.url.orEmpty(),
-                StoryResourceTintKind.PREVIEW_IMAGE,
-                tint,
-            )
+        ) {
+            storyResourceTints.canonicalize(currentStory.id, StoryResourceTintKind.PREVIEW_IMAGE, it)
+                .also { resolved -> canonicalTint = resolved }
         }
-        return tint.tintColorArgb
+        return canonicalTint?.tintColorArgb
     }
 
     fun resume() {

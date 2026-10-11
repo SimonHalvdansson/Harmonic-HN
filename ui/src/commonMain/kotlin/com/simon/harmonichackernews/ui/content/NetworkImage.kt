@@ -48,6 +48,7 @@ fun NetworkImage(
     var painter by remember(url) { mutableStateOf<Painter?>(null) }
     var image by remember(url) { mutableStateOf<coil3.Image?>(null) }
     val extractedTint = rememberPreviewImagePaletteTint(
+        sourceUrl = url,
         image = image,
         fallbackPainter = painter,
         baseColorArgb = tintBaseColorArgb ?: 0,

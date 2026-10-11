@@ -22,6 +22,8 @@ data class StoryRowResourcePresentation(
 fun StoryRowResourcePresentation.withPreviewResource(
     resource: StoryPreviewResourceState?,
     paletteConfigKey: String? = null,
+    canonicalPreviewTint: Int? = null,
+    canonicalFaviconTint: Int? = null,
 ): StoryRowResourcePresentation = if (resource == null) {
     this
 } else {
@@ -41,8 +43,8 @@ fun StoryRowResourcePresentation.withPreviewResource(
         previewText = resource.summary?.description ?: previewText,
         previewImageUrl = resource.resolvedImageUrl(previewImageUrl),
         previewImageLoadFailed = resource.imageLoadFailed,
-        previewImageTintArgb = currentPreviewTint?.tintColorArgb ?: previewImageTintArgb,
-        faviconTintArgb = currentFaviconTint?.tintColorArgb ?: faviconTintArgb,
+        previewImageTintArgb = canonicalPreviewTint ?: currentPreviewTint?.tintColorArgb ?: previewImageTintArgb,
+        faviconTintArgb = canonicalFaviconTint ?: currentFaviconTint?.tintColorArgb ?: faviconTintArgb,
     )
 }
 

@@ -49,6 +49,7 @@ internal fun StoryPreviewImage(
         var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
         var loadedPainter by remember(model.previewImageUrl) { mutableStateOf<Painter?>(null) }
         val extractedTint = rememberPreviewImagePaletteTint(
+            sourceUrl = model.previewImageUrl,
             image = loadedImage,
             fallbackPainter = loadedPainter,
             baseColorArgb = tintBaseColorArgb,
