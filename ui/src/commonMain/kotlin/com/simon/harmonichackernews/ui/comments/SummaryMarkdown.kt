@@ -459,7 +459,33 @@ private fun String.stripMarkdownHtmlTags(): String =
     if (contains('<')) replace(MARKDOWN_HTML_TAG, "") else this
 
 private val MARKDOWN_HTML_COMMENT = Regex("<!--[\\s\\S]*?-->")
-private val MARKDOWN_HTML_TAG = Regex("</?[A-Za-z][^>]*>")
+private val MARKDOWN_HTML_TAG = Regex("</?[A-Za-z][A-Za-z0-9-]*(?:\\s[^<>]*?)?\\s*/?>")
+private val MARKDOWN_AUTOLINK = Regex("[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\\s]*")
+private val MARKDOWN_EMAIL_AUTOLINK = Regex("[^<>\\s@]+@[^<>\\s@]+\\.[^<>\\s@]+")
+
+private fun String.markdownLinkEnd(start: Int): Int {
+    var depth = 0
+    var index = start
+    while (index < length) {
+        when (this[index]) {
+            '\\' -> if (index + 1 < length && this[index + 1] in MARKDOWN_ESCAPABLE_CHARACTERS) index++
+            '(' -> depth++
+            ')' -> if (depth == 0) return index else depth--
+        }
+        index++
+    }
+    return -1
+}
+
+private fun String.unescapeMarkdownDestination(): String = buildString {
+    var index = 0
+    while (index < this@unescapeMarkdownDestination.length) {
+        val char = this@unescapeMarkdownDestination[index]
+        if (char == '\\' && index + 1 < this@unescapeMarkdownDestination.length &&
+            this@unescapeMarkdownDestination[index + 1] in MARKDOWN_ESCAPABLE_CHARACTERS) index++
+        append(this@unescapeMarkdownDestination[index++])
+    }
+}
 
 private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     source: String,
@@ -469,6 +495,24 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     var index = 0
     while (index < source.length) {
         when {
+            source[index] == '<' -> {
+                val end = source.indexOf('>', index + 1)
+                val label = if (end >= 0) source.substring(index + 1, end) else ""
+                val url = when {
+                    MARKDOWN_AUTOLINK.matches(label) -> label
+                    MARKDOWN_EMAIL_AUTOLINK.matches(label) -> "mailto:$label"
+                    else -> null
+                }
+                if (url == null) {
+                    append('<')
+                    index++
+                } else {
+                    val style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)
+                    withLink(LinkAnnotation.Url(url, TextLinkStyles(style))) { append(label) }
+                    index = end + 1
+                }
+            }
+
             source[index] == '!' && index + 1 < source.length && source[index + 1] == '[' -> {
                 // Render image Markdown as its linked alt text in this compact text-only surface.
                 index++
@@ -514,13 +558,13 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
 
             source[index] == '[' -> {
                 val labelEnd = source.indexOf("](", index + 1)
-                val urlEnd = if (labelEnd >= 0) source.indexOf(')', labelEnd + 2) else -1
+                val urlEnd = if (labelEnd >= 0) source.markdownLinkEnd(labelEnd + 2) else -1
                 if (labelEnd < 0 || urlEnd < 0) {
                     append('[')
                     index++
                 } else {
                     val label = source.substring(index + 1, labelEnd)
-                    val url = source.substring(labelEnd + 2, urlEnd)
+                    val url = source.substring(labelEnd + 2, urlEnd).unescapeMarkdownDestination()
                     val linkStyle = SpanStyle(
                         color = linkColor,
                         textDecoration = TextDecoration.Underline,
