@@ -564,7 +564,9 @@ private class CallerContextHackerNewsActionRepository(
     }
 
     private fun classifyPage(body: String, useCookies: Boolean): PageResult = when {
-        body.contains(UNKNOWN_OR_EXPIRED_LINK_TEXT) -> PageResult.Result(
+        // HN's expired-action response is this plain body, without an HTML document.
+        // Matching inside a normal item page also rejects successful actions when a user quotes it.
+        body.trim() == UNKNOWN_OR_EXPIRED_LINK_TEXT -> PageResult.Result(
             HackerNewsActionResult.Failure("Unknown or expired link", body),
         )
 

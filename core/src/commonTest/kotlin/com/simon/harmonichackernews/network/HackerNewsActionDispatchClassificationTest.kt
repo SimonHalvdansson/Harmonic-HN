@@ -30,6 +30,37 @@ import kotlin.test.assertIs
 
 class HackerNewsActionDispatchClassificationTest {
     @Test
+    fun actualExpiredActionResponseRemainsRecognized() = runTest {
+        // Captured 2026-10-11 from https://news.ycombinator.com/x?fnid=harmonic-qa-invalid:
+        // HTTP 200, Content-Type text/html; charset=utf-8, plain response body below.
+        for (body in listOf("Unknown or expired link.", "\nUnknown or expired link.\n")) {
+            val transport = HttpClient(MockEngine { respond(body) })
+            try {
+                val failure = assertIs<HackerNewsActionResult.Failure>(userService(transport).vote("42", "up"))
+                assertEquals("Unknown or expired link", failure.summary)
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
+    fun quotingExpiredLinkMessageDoesNotInvalidateSuccessfulComment() = runTest {
+        for (content in listOf(
+            "<div class='commtext'>Unknown or expired link.</div>",
+            "<span class='titleline'><a>Unknown or expired link.</a></span>",
+            "<div class='toptext'>The error says: Unknown or expired link.</div>",
+        )) {
+            val transport = HttpClient(MockEngine { request ->
+                if (request.url.encodedPath == "/comment") {
+                    respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/item?id=42"))
+                } else respond("<html><body>$content</body></html>")
+            })
+            try {
+                assertIs<HackerNewsActionResult.Success>(userService(transport).comment("42", "Quoted error"))
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
     fun genuineBadLoginResponsesRemainRecognizedWithFormattingAndExplanation() = runTest {
         for (body in listOf(
             "Bad login.",
