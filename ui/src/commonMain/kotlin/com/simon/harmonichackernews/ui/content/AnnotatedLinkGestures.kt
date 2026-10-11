@@ -84,7 +84,12 @@ private fun annotatedLinkAtPosition(
 ): AnnotatedLinkAtPosition? {
     layout ?: return null
     if (text.isEmpty()) return null
-    val offset = layout.getOffsetForPosition(position).coerceIn(0, text.length - 1)
+    // getOffsetForPosition returns the nearest caret even outside the painted text. Check
+    // both adjoining glyphs so a press on either half of a linked character still works.
+    val caret = layout.getOffsetForPosition(position)
+    val offset = listOf(caret, caret - 1).firstOrNull { candidate ->
+        candidate in text.indices && layout.getBoundingBox(candidate).contains(position)
+    } ?: return null
     val range = text.getLinkAnnotations(offset, (offset + 1).coerceAtMost(text.length))
         .firstOrNull { it.item is LinkAnnotation.Url } ?: return null
     val link = range.item as LinkAnnotation.Url
