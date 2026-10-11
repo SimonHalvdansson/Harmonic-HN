@@ -24,6 +24,10 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -396,7 +400,7 @@ private class DesktopLocalSummaryEngine(
     private val apple: DesktopAppleIntelligence,
     private val liteRt: DesktopLiteRtInference,
 ) : LocalSummaryEngine {
-    private val inference = DesktopLlamaInference(nativeLibrary, totalMemoryBytes)
+    private val inference = DesktopLlamaInference(nativeLibrary::requireApi, totalMemoryBytes)
 
     override fun canAttempt(): Boolean = DesktopNativePlatform.supported
 
@@ -489,13 +493,11 @@ private class DesktopLocalSummaryEngine(
     }
 }
 
-private class DesktopLlamaInference(
-    private val nativeLibrary: DesktopLlamaNativeLibrary,
+internal class DesktopLlamaInference(
+    private val requireApi: () -> HarmonicLlamaApi,
     private val totalMemoryBytes: () -> Long,
 ) {
     private val inferenceMutex = Mutex()
-
-    fun availability(): Result<Unit> = nativeLibrary.availability()
 
     suspend fun summarize(
         model: LocalModelDefinition,
@@ -507,58 +509,72 @@ private class DesktopLlamaInference(
         preserveInput: Boolean = false,
     ): String = inferenceMutex.withLock {
         withContext(Dispatchers.IO) {
-            val api = nativeLibrary.requireApi()
-            val engine = checkNotNull(api.harmonic_llama_create()) {
-                "Could not create the llama.cpp inference engine"
-            }
-            try {
-                val prepared = LocalSummaryPreparation.prepare(
-                    text = text,
-                    modelContextTokens = model.contextTokens,
-                    totalMemoryBytes = totalMemoryBytes(),
-                    preserveInput = preserveInput,
-                )
-                val loadStartedAt = System.nanoTime()
-                check(api.harmonic_llama_load(engine, modelPath, prepared.contextTokens) != 0) {
-                    nativeError(api, engine, "Could not load the local model")
+            coroutineScope {
+                ensureActive()
+                val api = requireApi()
+                val engine = checkNotNull(api.harmonic_llama_create()) {
+                    "Could not create the llama.cpp inference engine"
                 }
-                onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
+                // A sibling can signal native cancellation while this coroutine is blocked in
+                // model loading, prompt processing or token decoding. Join it before freeing the handle.
+                val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
+                    try { awaitCancellation() } finally { api.harmonic_llama_cancel(engine) }
+                }
+                try {
+                    val prepared = LocalSummaryPreparation.prepare(
+                        text = text,
+                        modelContextTokens = model.contextTokens,
+                        totalMemoryBytes = totalMemoryBytes(),
+                        preserveInput = preserveInput,
+                    )
+                    val loadStartedAt = System.nanoTime()
+                    val loaded = api.harmonic_llama_load(engine, modelPath, prepared.contextTokens)
+                    ensureActive()
+                    check(loaded != 0) {
+                        nativeError(api, engine, "Could not load the local model")
+                    }
+                    onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
 
-                val generation = LocalSummaryGenerationPolicy.configuration(model.id)
-                check(
-                    api.harmonic_llama_start(
+                    val generation = LocalSummaryGenerationPolicy.configuration(model.id)
+                    val started = api.harmonic_llama_start(
                         engine,
                         systemInstruction,
                         prepared.text,
                         generation.responsePrefix,
                         generation.maxOutputTokens,
-                    ) != 0,
-                ) { nativeError(api, engine, "Could not process the summary input") }
-
-                val response = StringBuilder(generation.responsePrefix)
-                val pieceBuffer = ByteArray(OUTPUT_PIECE_BUFFER_BYTES)
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val length = api.harmonic_llama_next_utf8(
-                        engine,
-                        pieceBuffer,
-                        pieceBuffer.size,
                     )
-                    if (length == 0) break
-                    check(length > 0) { nativeError(api, engine, "Local model inference failed") }
-                    response.append(pieceBuffer.decodeToString(0, length))
+                    ensureActive()
+                    check(started != 0) { nativeError(api, engine, "Could not process the summary input") }
+
+                    val response = StringBuilder(generation.responsePrefix)
+                    val pieceBuffer = ByteArray(OUTPUT_PIECE_BUFFER_BYTES)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val length = api.harmonic_llama_next_utf8(
+                            engine,
+                            pieceBuffer,
+                            pieceBuffer.size,
+                        )
+                        ensureActive()
+                        if (length == 0) break
+                        check(length > 0) { nativeError(api, engine, "Local model inference failed") }
+                        response.append(pieceBuffer.decodeToString(0, length))
+                        LocalSummaryGenerationPolicy.visibleOutput(response.toString())
+                            ?.takeIf(String::isNotEmpty)
+                            ?.let(onProgress)
+                    }
+                    nativeError(api, engine, "").takeIf(String::isNotBlank)?.let(::error)
                     LocalSummaryGenerationPolicy.visibleOutput(response.toString())
+                        ?.trim()
                         ?.takeIf(String::isNotEmpty)
-                        ?.let(onProgress)
+                        ?: error("The local model returned an empty summary")
+                } finally {
+                    withContext(NonCancellable) {
+                        cancellation.cancelAndJoin()
+                        api.harmonic_llama_close(engine)
+                        api.harmonic_llama_destroy(engine)
+                    }
                 }
-                nativeError(api, engine, "").takeIf(String::isNotBlank)?.let(::error)
-                LocalSummaryGenerationPolicy.visibleOutput(response.toString())
-                    ?.trim()
-                    ?.takeIf(String::isNotEmpty)
-                    ?: error("The local model returned an empty summary")
-            } finally {
-                api.harmonic_llama_close(engine)
-                api.harmonic_llama_destroy(engine)
             }
         }
     }
@@ -592,6 +608,7 @@ internal interface HarmonicLlamaApi : Library {
     fun harmonic_llama_next_utf8(engine: Pointer, buffer: ByteArray, capacity: Int): Int
     fun harmonic_llama_last_error(engine: Pointer): Pointer?
     fun harmonic_llama_close(engine: Pointer)
+    fun harmonic_llama_cancel(engine: Pointer)
 }
 
 private class DesktopLlamaNativeLibrary(
