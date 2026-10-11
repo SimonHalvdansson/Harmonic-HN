@@ -3,6 +3,9 @@ package com.simon.harmonichackernews.data
 import com.simon.harmonichackernews.app.HarmonicPersistentStorageFactory
 import com.simon.harmonichackernews.app.HarmonicStorageRoots
 import com.simon.harmonichackernews.cache.ArticleSnapshotService
+import com.simon.harmonichackernews.cache.StoryCacheRuntime
+import com.simon.harmonichackernews.cache.StoryCacheRequest
+import com.simon.harmonichackernews.cache.StoryCacheOutcome
 import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.network.KtorHttpClient
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
@@ -16,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.Path
 import kotlin.io.path.createTempDirectory
@@ -26,6 +30,48 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 
 class StoryCacheTransferConcurrencyTest {
+    @Test
+    fun clearingPostCacheAllowsAnotherCachingRun() = runBlocking {
+        val directory = createTempDirectory("harmonic-cache-cancel-")
+        val started = CompletableDeferred<Unit>()
+        val response = CompletableDeferred<Unit>()
+        val completed = CompletableDeferred<Unit>()
+        val client = HttpClient(MockEngine {
+            started.complete(Unit)
+            response.await()
+            respond("<html>Article</html>", headers = headersOf(HttpHeaders.ContentType, "text/html"))
+        })
+        val storage = HarmonicPersistentStorageFactory.create(
+            HarmonicStorageRoots(Path(directory.toString()), Path(directory.toString(), "pdf")),
+            InMemoryKeyValueStore(), InMemoryKeyValueStore(), nowMillis = { 1L },
+        )
+        val service = StoryCacheService(storage.storyCacheRepository,
+            ArticleSnapshotService(KtorHttpClient(client), storage.articleSnapshotStore), { 1L })
+        val runtime = StoryCacheRuntime(this, execute = { _, _ ->
+            try {
+                service.cacheArticle(1, "https://example.com/1")
+                StoryCacheOutcome.FINISHED
+            } finally { completed.complete(Unit) }
+        })
+        try {
+            withTimeout(10_000) {
+                service.storeStory(1, """{"id":1,"title":"Story","children":[]}""")
+                assertTrue(runtime.start(StoryCacheRequest(1, true)))
+                started.await()
+                service.clear()
+                completed.await()
+                yield()
+                assertFalse(runtime.state.value.isCaching, "A cancelled transfer must release caching state")
+                assertTrue(runtime.start(StoryCacheRequest(1, true)), "Cache controls must allow a retry")
+            }
+        } finally {
+            runtime.dispose()
+            response.complete(Unit)
+            client.close()
+            directory.toFile().deleteRecursively()
+        }
+    }
+
     @Test
     fun duplicateArticleRequestsKeepTheirOrder() = runBlocking {
         val directory = createTempDirectory("harmonic-duplicate-article-")

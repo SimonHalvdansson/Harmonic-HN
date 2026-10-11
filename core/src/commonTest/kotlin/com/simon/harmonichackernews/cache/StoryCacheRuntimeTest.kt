@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.cache
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.advanceTimeBy
@@ -13,6 +15,50 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryCacheRuntimeTest {
+    @Test
+    fun externallyCancelledTransferResetsProgressAndAllowsRetry() = runTest {
+        val transfer = CompletableDeferred<Unit>()
+        var attempts = 0
+        val runtime = StoryCacheRuntime(this, execute = { _, _ ->
+            if (++attempts == 1) transfer.await()
+            StoryCacheOutcome.FINISHED
+        })
+        val request = StoryCacheRequest(1, cacheArticleSnapshots = true)
+        assertTrue(runtime.start(request))
+        runCurrent()
+        transfer.cancel()
+        runCurrent()
+        assertEquals(StoryCacheState(), runtime.state.value)
+        assertTrue(runtime.start(request))
+        runCurrent()
+        assertEquals(StoryCacheStatus.FINISHED, runtime.state.value.status)
+        runtime.dispose()
+    }
+
+    @Test
+    fun delayedCancellationCleanupCannotResetANewerRun() = runTest {
+        val oldCleanup = CompletableDeferred<Unit>()
+        var attempts = 0
+        val runtime = StoryCacheRuntime(this, execute = { _, _ ->
+            val first = ++attempts == 1
+            try {
+                awaitCancellation()
+            } finally {
+                if (first) withContext(NonCancellable) { oldCleanup.await() }
+            }
+        })
+        val request = StoryCacheRequest(1, cacheArticleSnapshots = true)
+        assertTrue(runtime.start(request))
+        runCurrent()
+        runtime.dispose()
+        assertTrue(runtime.start(request))
+        runCurrent()
+        oldCleanup.complete(Unit)
+        runCurrent()
+        assertTrue(runtime.state.value.isCaching)
+        runtime.dispose()
+    }
+
     @Test
     fun progressAndCompletionVisibilityAreOwnedByTheRuntime() = runTest {
         val finish = CompletableDeferred<Unit>()

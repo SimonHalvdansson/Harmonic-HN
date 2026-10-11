@@ -83,8 +83,13 @@ class StoryCacheRuntime(
             }
         }
         cacheJob = launchedCacheJob
-        launchedCacheJob.invokeOnCompletion {
-            if (cacheJob === launchedCacheJob) cacheJob = null
+        launchedCacheJob.invokeOnCompletion { cause ->
+            if (cacheJob === launchedCacheJob) {
+                cacheJob = null
+                // Clearing storage can cancel an in-flight transfer independently of this runtime.
+                // An older cancelled run must not reset a replacement started after dispose().
+                if (cause is CancellationException) mutableState.value = StoryCacheState()
+            }
         }
         return true
     }
