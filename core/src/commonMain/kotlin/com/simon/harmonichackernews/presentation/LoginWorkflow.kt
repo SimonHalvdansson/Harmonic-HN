@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /**
  * Host-neutral Hacker News login workflow. The host renders CAPTCHA content and success feedback;
@@ -19,28 +21,45 @@ class LoginWorkflow(
         if (normalizedUsername.isEmpty() || password.isEmpty()) {
             return HackerNewsActionResult.Failure("Login failed", "Missing credentials")
         }
-        if (!accounts.saveAccount(HackerNewsAccount(normalizedUsername, password))) {
-            return HackerNewsActionResult.Failure("Login failed", "Couldn't save credentials")
+        val account = HackerNewsAccount(normalizedUsername, password)
+        return verifyAccount(account) {
+            if (!accounts.saveAccount(account)) {
+                HackerNewsActionResult.Failure("Login failed", "Couldn't save credentials")
+            } else {
+                userService.login()
+            }
         }
-        val result = userService.login()
-        clearAfterTerminalFailure(result)
-        return result
     }
 
     suspend fun continueWithCaptcha(
         challenge: HackerNewsCaptchaChallenge,
         response: String,
     ): HackerNewsActionResult {
-        val result = userService.continueLoginWithCaptcha(challenge, response)
-        clearAfterTerminalFailure(result)
-        return result
+        val account = accounts.awaitAccount()
+        return verifyAccount(account) {
+            userService.continueLoginWithCaptcha(challenge, response)
+        }
     }
 
     suspend fun cancelCaptcha() {
         accounts.clearAccount()
     }
 
-    private suspend fun clearAfterTerminalFailure(result: HackerNewsActionResult) {
-        if (result is HackerNewsActionResult.Failure) accounts.clearAccount()
+    private suspend fun verifyAccount(
+        account: HackerNewsAccount?,
+        action: suspend () -> HackerNewsActionResult,
+    ): HackerNewsActionResult {
+        var keepAccount = false
+        try {
+            return action().also { result ->
+                keepAccount = result is HackerNewsActionResult.Success || result is HackerNewsActionResult.Captcha
+            }
+        } finally {
+            if (!keepAccount && account != null) {
+                // Dialog disposal cancels its coroutine. Storage cleanup must still finish, and
+                // must not erase a different login that replaced this attempt in the meantime.
+                withContext(NonCancellable) { accounts.clearAccountIfMatches(account) }
+            }
+        }
     }
 }
