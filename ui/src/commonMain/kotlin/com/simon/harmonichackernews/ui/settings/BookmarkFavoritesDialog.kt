@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,13 +78,20 @@ fun AddBookmarksToFavoritesDialog(
     addFavorite: suspend (BookmarkFavoriteItem) -> BookmarkFavoriteResult,
     onDismiss: () -> Unit,
 ) {
-    var results by remember(items) { mutableStateOf<List<BookmarkFavoriteResult>>(emptyList()) }
-    var currentIndex by remember(items) { mutableIntStateOf(0) }
-    var finished by remember(items) { mutableStateOf(false) }
+    val itemIds = items.map(BookmarkFavoriteItem::id)
+    val currentItems by rememberUpdatedState(items.associateBy(BookmarkFavoriteItem::id))
+    val currentAddFavorite by rememberUpdatedState(addFavorite)
+    var completedResults by remember(itemIds, prerequisiteError) { mutableStateOf<List<BookmarkFavoriteResult>>(emptyList()) }
+    var currentIndex by remember(itemIds, prerequisiteError) { mutableIntStateOf(0) }
+    var finished by remember(itemIds, prerequisiteError) { mutableStateOf(false) }
+    val results = completedResults.map { result ->
+        result.copy(title = currentItems[result.id]?.title ?: result.title)
+    }
 
-    LaunchedEffect(items, prerequisiteError) {
+    LaunchedEffect(itemIds, prerequisiteError) {
         if (prerequisiteError != null) {
-            results = items.map { item ->
+            completedResults = itemIds.map { id ->
+                val item = currentItems.getValue(id)
                 BookmarkFavoriteResult(
                     id = item.id,
                     title = item.title,
@@ -91,18 +99,18 @@ fun AddBookmarksToFavoritesDialog(
                     message = prerequisiteError,
                 )
             }
-            currentIndex = items.size
+            currentIndex = itemIds.size
             finished = true
             return@LaunchedEffect
         }
 
         val completed = mutableListOf<BookmarkFavoriteResult>()
-        items.forEachIndexed { index, item ->
+        itemIds.forEachIndexed { index, id ->
             currentIndex = index
-            completed += addFavorite(item)
-            results = completed.toList()
+            completed += currentAddFavorite(currentItems.getValue(id))
+            completedResults = completed.toList()
             currentIndex = index + 1
-            if (index < items.lastIndex) delay(1_000)
+            if (index < itemIds.lastIndex) delay(1_000)
         }
         finished = true
     }
