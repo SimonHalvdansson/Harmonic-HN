@@ -433,3 +433,25 @@ test('live theme switch recomputes source text contrast', async () => {
         assert.deepEqual(await getColor(), [255, 192, 203], 'The original article retains its source color');
     } finally { await page.close(); }
 });
+
+for (const useReadability of [false, true]) {
+    test(`reader preserves wrapped video (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.locator('article').evaluate(article => {
+                article.insertAdjacentHTML('beforeend', `
+                    <video id="direct-video" src="data:video/mp4;base64," controls></video>
+                    <figure><video id="figure-video" src="data:video/mp4;base64," controls></video></figure>
+                    <figure><video id="source-video" controls><source src="data:video/mp4;base64," type="video/mp4"></video></figure>
+                    <div class="empty-wrapper"><span></span></div>`);
+            });
+            await enable(page);
+            const content = page.locator('#harmonic-reader-article');
+            assert.deepEqual(await content.locator('video').evaluateAll(nodes => nodes.map(node => node.id)),
+                ['direct-video', 'figure-video', 'source-video']);
+            assert.equal(await content.locator('#figure-video').evaluate(node => node.parentElement.tagName), 'FIGURE');
+            assert.equal(await content.locator('#source-video source').count(), 1);
+            assert.equal(await content.locator('.empty-wrapper').count(), 0);
+        } finally { await page.close(); }
+    });
+}

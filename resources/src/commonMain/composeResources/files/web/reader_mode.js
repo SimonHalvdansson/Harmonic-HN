@@ -421,7 +421,7 @@
             var node = nodes[i];
             var tagName = node.tagName ? node.tagName.toLowerCase() : "";
             if (!keepEmpty[tagName] && !node.id && !node.getAttribute("name") &&
-                    getText(node).length === 0 && node.getElementsByTagName("img").length === 0) {
+                    getText(node).length === 0 && !node.querySelector("img, video, source, iframe")) {
                 node.parentNode.removeChild(node);
             }
         }
