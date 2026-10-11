@@ -23,15 +23,15 @@ import javax.swing.Timer
 internal class MacWkWebViewCanvas(
     private val onStateChanged: (DesktopBrowserHost, DesktopBrowserSnapshot) -> Unit,
     private val onError: (Throwable) -> Unit,
+    private val loadApi: () -> MacWebViewApi = { MacWebViewLibrary.api },
 ) : Canvas(), DesktopBrowserHost {
     private val started = AtomicBoolean(false)
     private val disposed = AtomicBoolean(false)
     private val pollingStarted = AtomicBoolean(false)
     private val stateLock = Any()
-    private val nativeCallLock = Any()
     private val pendingActions = mutableListOf<(MacWebViewApi, Pointer) -> Unit>()
     private val poller = Executors.newSingleThreadScheduledExecutor { task ->
-        Thread(task, "Harmonic-WKWebView-State").apply { isDaemon = true }
+        Thread(task, "Harmonic-WKWebView-Native").apply { isDaemon = true }
     }
 
     @Volatile
@@ -125,28 +125,25 @@ internal class MacWkWebViewCanvas(
     }
 
     override fun disposeBrowser() {
-        if (!disposed.compareAndSet(false, true)) return
-        MacJavaScriptResults.cancel(this)
-        if (EventQueue.isDispatchThread()) {
-            resizeSettleTimer.stop()
-        } else {
-            EventQueue.invokeLater(resizeSettleTimer::stop)
-        }
-        poller.shutdownNow()
-        val target = synchronized(stateLock) {
-            pendingActions.clear()
-            val current = api?.let { native -> host?.let { pointer -> native to pointer } }
-            api = null
-            host = null
-            current
-        }
-        if (target != null) {
-            runCatching {
-                synchronized(nativeCallLock) {
-                    target.first.harmonic_webview_destroy(target.second)
+        synchronized(stateLock) {
+            if (!disposed.compareAndSet(false, true)) return
+            // Teardown follows any in-flight native call. Never wait for AppKit from AWT:
+            // AppKit accessibility can itself be waiting for the AWT event thread.
+            poller.execute {
+                MacJavaScriptResults.cancel(this)
+                pendingActions.clear()
+                val target = api?.let { native -> host?.let { pointer -> native to pointer } }
+                api = null
+                host = null
+                if (target != null) {
+                    runCatching { target.first.harmonic_webview_destroy(target.second) }
+                        .onFailure(::reportError)
                 }
-            }.onFailure(::reportError)
+            }
+            poller.shutdown()
         }
+        if (EventQueue.isDispatchThread()) resizeSettleTimer.stop()
+        else EventQueue.invokeLater(resizeSettleTimer::stop)
     }
 
     private fun initializeBrowser() {
@@ -155,33 +152,46 @@ internal class MacWkWebViewCanvas(
             check(System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
                 "WKWebView is only available on macOS"
             }
-            val native = MacWebViewLibrary.api
+            val native = loadApi()
             val bounds = browserBounds() ?: error("The macOS window is not ready for its WebView")
             check(Pointer.nativeValue(bounds.parentView) != 0L) {
                 "AWT did not provide its native macOS content view"
             }
-            val pointer = native.harmonic_webview_create(
-                bounds.parentView,
-                bounds.x,
-                bounds.top,
-                bounds.width,
-                bounds.height,
-            ) ?: error("macOS did not create the native WKWebView")
-            if (disposed.get()) {
-                native.harmonic_webview_destroy(pointer)
-                return
+            synchronized(stateLock) {
+                if (disposed.get()) return
+                // Retaining is thread-safe and never dispatches to AppKit. Keep the parent alive
+                // if the AWT window closes before the queued creation reaches the main thread.
+                native.harmonic_webview_retain_view(bounds.parentView)
+                poller.execute {
+                    try {
+                        if (!disposed.get()) initializeNativeBrowser(native, bounds)
+                    } catch (error: Throwable) {
+                        reportError(error)
+                    } finally {
+                        native.harmonic_webview_release_view(bounds.parentView)
+                    }
+                }
             }
-            val queuedActions = synchronized(stateLock) {
-                api = native
-                host = pointer
-                pendingActions.toList().also { pendingActions.clear() }
-            }
-            native.harmonic_webview_set_visible(pointer, if (browserVisible) 1 else 0)
-            queuedActions.forEach { action -> runNative(native, pointer, action) }
-            startPolling()
         } catch (error: Throwable) {
             reportError(error)
         }
+    }
+
+    private fun initializeNativeBrowser(native: MacWebViewApi, bounds: MacBrowserBounds) {
+        val pointer = native.harmonic_webview_create(
+            bounds.parentView, bounds.x, bounds.top, bounds.width, bounds.height,
+        ) ?: error("macOS did not create the native WKWebView")
+        if (disposed.get()) {
+            native.harmonic_webview_destroy(pointer)
+            return
+        }
+        api = native
+        host = pointer
+        native.harmonic_webview_set_visible(pointer, if (browserVisible) 1 else 0)
+        val queuedActions = pendingActions.toList()
+        pendingActions.clear()
+        queuedActions.forEach { action -> runNative(native, pointer, action) }
+        startPolling()
     }
 
     private fun scheduleBrowserResize() {
@@ -218,32 +228,31 @@ internal class MacWkWebViewCanvas(
 
     private fun startPolling() {
         if (!pollingStarted.compareAndSet(false, true)) return
-        poller.scheduleWithFixedDelay(::pollSnapshot, 0, SNAPSHOT_INTERVAL_MS, TimeUnit.MILLISECONDS)
+        synchronized(stateLock) {
+            if (!disposed.get()) {
+                poller.scheduleWithFixedDelay(::pollSnapshot, 0, SNAPSHOT_INTERVAL_MS, TimeUnit.MILLISECONDS)
+            }
+        }
     }
 
     private fun pollSnapshot() {
         if (disposed.get() || resizeInProgress) return
-        val target = synchronized(stateLock) {
-            api?.let { native -> host?.let { pointer -> native to pointer } }
-        } ?: return
+        val target = api?.let { native -> host?.let { pointer -> native to pointer } } ?: return
         runCatching {
             val state = IntArray(3)
             val url = ByteArray(TEXT_BUFFER_BYTES)
             val title = ByteArray(TEXT_BUFFER_BYTES)
             val error = ByteArray(TEXT_BUFFER_BYTES)
-            synchronized(nativeCallLock) {
-                if (disposed.get()) return
-                target.first.harmonic_webview_snapshot(
-                    target.second,
-                    state,
-                    url,
-                    url.size,
-                    title,
-                    title.size,
-                    error,
-                    error.size,
-                )
-            }
+            target.first.harmonic_webview_snapshot(
+                target.second,
+                state,
+                url,
+                url.size,
+                title,
+                title.size,
+                error,
+                error.size,
+            )
             DesktopBrowserSnapshot(
                 url = url.decodeNullTerminatedUtf8(),
                 title = title.decodeNullTerminatedUtf8().ifBlank { null },
@@ -262,14 +271,16 @@ internal class MacWkWebViewCanvas(
     }
 
     private fun withHost(action: (MacWebViewApi, Pointer) -> Unit) {
-        val target = synchronized(stateLock) {
+        synchronized(stateLock) {
             if (disposed.get()) return
-            api?.let { native -> host?.let { pointer -> native to pointer } } ?: run {
-                pendingActions += action
-                null
+            poller.execute {
+                if (!disposed.get()) {
+                    val target = api?.let { native -> host?.let { pointer -> native to pointer } }
+                    if (target == null) pendingActions += action
+                    else runNative(target.first, target.second, action)
+                }
             }
         }
-        if (target != null) runNative(target.first, target.second, action)
     }
 
     private fun runNative(
@@ -278,9 +289,7 @@ internal class MacWkWebViewCanvas(
         action: (MacWebViewApi, Pointer) -> Unit,
     ) {
         runCatching {
-            synchronized(nativeCallLock) {
-                if (!disposed.get()) action(native, pointer)
-            }
+            if (!disposed.get()) action(native, pointer)
         }.onFailure(::reportError)
     }
 
@@ -298,6 +307,8 @@ internal class MacWkWebViewCanvas(
 }
 
 internal interface MacWebViewApi : Library {
+    fun harmonic_webview_retain_view(parentView: Pointer)
+    fun harmonic_webview_release_view(parentView: Pointer)
     fun harmonic_webview_create(
         parentView: Pointer,
         x: Double,

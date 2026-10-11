@@ -85,6 +85,18 @@ static HarmonicWebViewHost *HarmonicHost(void *pointer) {
     return (__bridge HarmonicWebViewHost *)pointer;
 }
 
+// Called on AWT before queuing creation; retaining must never wait for AppKit.
+__attribute__((visibility("default")))
+void harmonic_webview_retain_view(void *viewPointer) {
+    if (viewPointer != NULL) CFRetain(viewPointer);
+}
+
+__attribute__((visibility("default")))
+void harmonic_webview_release_view(void *viewPointer) {
+    if (viewPointer == NULL) return;
+    HarmonicOnMainSync(^{ CFRelease(viewPointer); });
+}
+
 static NSRect HarmonicFrame(NSView *parent, double x, double top, double width, double height) {
     double resolvedWidth = MAX(1.0, width);
     double resolvedHeight = MAX(1.0, height);
