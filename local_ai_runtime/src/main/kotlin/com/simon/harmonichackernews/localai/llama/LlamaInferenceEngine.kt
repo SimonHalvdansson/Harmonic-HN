@@ -8,7 +8,7 @@ import com.simon.harmonichackernews.summary.LocalModelDefinition
 
 /** llama.cpp implementation loaded after the local-AI runtime feature is installed. */
 class LlamaInferenceEngine : LocalInferenceEngine {
-  override fun summarize(
+  override suspend fun summarize(
     context: Context,
     model: LocalModelDefinition,
     modelPath: String,

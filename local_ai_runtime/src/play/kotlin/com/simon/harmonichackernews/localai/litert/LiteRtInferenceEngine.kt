@@ -7,20 +7,18 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.Message
-import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.simon.harmonichackernews.summary.local.LocalInferenceEngine
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.LocalModelDefinition
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeout
 
 /** LiteRT-LM implementation loaded after the local-AI runtime feature is installed. */
 /** LiteRT-LM implementation included only in Play-capable distributions. */
 class LiteRtInferenceEngine : LocalInferenceEngine {
-  override fun summarize(
+  override suspend fun summarize(
     context: Context,
     model: LocalModelDefinition,
     modelPath: String,
@@ -40,6 +38,7 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
         maxTokens = contextTokens,
         preferGpu = !isEmulator(),
       )
+      currentCoroutineContext().ensureActive()
       loadCallback.onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
       conversation =
         engine.createConversation(
@@ -49,31 +48,16 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
           )
         )
       val responseText = StringBuilder()
-      val failure = AtomicReference<Throwable?>()
-      val completed = CountDownLatch(1)
-      conversation.sendMessageAsync(
-        text,
-        object : MessageCallback {
-          override fun onMessage(message: Message) {
+      try {
+        withTimeout(INFERENCE_TIMEOUT_MINUTES * 60_000) {
+          conversation.sendMessageAsync(text).collect { message ->
             responseText.append(message.toString())
             progressCallback.onProgress(responseText.toString().trimStart())
           }
-
-          override fun onDone() {
-            completed.countDown()
-          }
-
-          override fun onError(throwable: Throwable) {
-            failure.set(throwable)
-            completed.countDown()
-          }
-        },
-      )
-      if (!completed.await(INFERENCE_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+        }
+      } finally {
         conversation.cancelProcess()
-        throw IllegalStateException("Local model inference timed out")
       }
-      failure.get()?.let { throw it }
       val summary = responseText.toString().trim()
       if (summary.isEmpty()) {
         throw IllegalStateException("Local model returned an empty summary")

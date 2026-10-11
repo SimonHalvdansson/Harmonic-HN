@@ -5,7 +5,7 @@ import com.simon.harmonichackernews.summary.LocalModelDefinition
 
 /** Contract implemented by each downloadable local-AI runtime feature. */
 interface LocalInferenceEngine {
-  fun summarize(
+  suspend fun summarize(
     context: Context,
     model: LocalModelDefinition,
     modelPath: String,

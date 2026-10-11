@@ -79,6 +79,12 @@ HARMONIC_LLAMA_API const char * harmonic_llama_last_error(
 
 HARMONIC_LLAMA_API void harmonic_llama_close(harmonic_llama_engine * engine);
 
+/** Thread-safe signal that interrupts model loading and CPU decoding. The handle must stay alive. */
+HARMONIC_LLAMA_API void harmonic_llama_cancel(harmonic_llama_engine * engine);
+
+/** Starts a new request. Call only while no load or generation is running. */
+HARMONIC_LLAMA_API void harmonic_llama_reset_cancellation(harmonic_llama_engine * engine);
+
 #ifdef __cplusplus
 }
 #endif

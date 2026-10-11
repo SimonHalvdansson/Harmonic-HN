@@ -107,6 +107,7 @@ int inference_threads() {
 }  // namespace
 
 struct harmonic_llama_engine {
+    std::atomic<bool> cancelled{false};
     llama_model * model = nullptr;
     llama_context * context = nullptr;
     llama_sampler * sampler = nullptr;
@@ -121,6 +122,14 @@ struct harmonic_llama_engine {
 };
 
 namespace {
+
+bool should_abort(void * user_data) {
+    return static_cast<harmonic_llama_engine *>(user_data)->cancelled.load(std::memory_order_relaxed);
+}
+
+bool continue_loading(float, void * user_data) {
+    return !should_abort(user_data);
+}
 
 void log_error(const char * message) noexcept {
     if (host_log_callback != nullptr && message != nullptr) {
@@ -311,7 +320,10 @@ extern "C" int harmonic_llama_load(
         release_model(engine);
         clear_error(engine);
 
-        const llama_model_params model_params = llama_model_default_params();
+        if (should_abort(engine)) return 0;
+        llama_model_params model_params = llama_model_default_params();
+        model_params.progress_callback = continue_loading;
+        model_params.progress_callback_user_data = engine;
         engine->model = llama_model_load_from_file(model_path, model_params);
         if (engine->model == nullptr) {
             set_error(engine, "Could not load the GGUF model");
@@ -325,6 +337,8 @@ extern "C" int harmonic_llama_load(
         const int threads = inference_threads();
         context_params.n_threads = threads;
         context_params.n_threads_batch = threads;
+        context_params.abort_callback = should_abort;
+        context_params.abort_callback_data = engine;
         engine->context = llama_init_from_model(engine->model, context_params);
         if (engine->context == nullptr) {
             set_error(engine, "Could not allocate the GGUF model context");
@@ -388,6 +402,7 @@ extern "C" int harmonic_llama_start(
             return 0;
         }
         clear_error(engine);
+        if (should_abort(engine)) return 0;
         std::string prompt = apply_chat_template(engine, system_prompt, user_prompt);
         prompt += response_prefix;
 
@@ -440,6 +455,7 @@ extern "C" harmonic_llama_next_result harmonic_llama_next(
         }
 
         while (engine->generated_tokens < engine->max_generated_tokens) {
+            if (should_abort(engine)) return HARMONIC_LLAMA_NEXT_END;
             llama_token token = llama_sampler_sample(engine->sampler, engine->context, -1);
             if (llama_vocab_is_eog(engine->vocab, token)) {
                 if (!engine->pending_utf8.empty()) {
@@ -482,6 +498,14 @@ extern "C" harmonic_llama_next_result harmonic_llama_next(
         set_unexpected_error(engine, "Local summarization failed unexpectedly");
         return HARMONIC_LLAMA_NEXT_ERROR;
     }
+}
+
+extern "C" void harmonic_llama_cancel(harmonic_llama_engine * engine) {
+    if (engine != nullptr) engine->cancelled.store(true, std::memory_order_relaxed);
+}
+
+extern "C" void harmonic_llama_reset_cancellation(harmonic_llama_engine * engine) {
+    if (engine != nullptr) engine->cancelled.store(false, std::memory_order_relaxed);
 }
 
 extern "C" const char * harmonic_llama_last_error(const harmonic_llama_engine * engine) {

@@ -4,6 +4,8 @@ import android.content.Context
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Streaming text summarization through an installed local-AI runtime feature. */
 class LocalModelInference(
@@ -11,7 +13,7 @@ class LocalModelInference(
   private val models: LocalModelService,
 ) {
   private val appContext = context.applicationContext
-  private val inferenceLock = Any()
+  private val inferenceLock = Mutex()
   private val engines = mutableMapOf<LocalModelRuntime, LocalInferenceEngine>()
 
   fun interface ProgressCallback {
@@ -22,17 +24,17 @@ class LocalModelInference(
     fun onLoaded(loadMillis: Long)
   }
 
-  fun summarize(
+  suspend fun summarize(
     text: String,
     systemInstruction: String = LocalSummaryPreparation.SYSTEM_INSTRUCTION,
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
     preserveInput: Boolean = false,
-  ): String = synchronized(inferenceLock) {
+  ): String = inferenceLock.withLock {
     summarizeLocked(text, systemInstruction, progressCallback, loadCallback, preserveInput)
   }
 
-  private fun summarizeLocked(
+  private suspend fun summarizeLocked(
     text: String,
     systemInstruction: String,
     progressCallback: ProgressCallback,

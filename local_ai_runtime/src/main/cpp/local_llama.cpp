@@ -192,6 +192,16 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeLoad(
     });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeCancel(JNIEnv *, jobject) {
+    harmonic_llama_cancel(engine);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeResetCancellation(JNIEnv *, jobject) {
+    harmonic_llama_reset_cancellation(engine);
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeStart(
         JNIEnv * env, jobject, jstring system_text, jstring user_text,
