@@ -89,8 +89,12 @@ object CollectedReferenceLinks {
                 continue
             }
 
-            val links = mutableListOf<ReferenceLink>()
-            parseUnnumberedAnchor(firstAnchor)?.let(links::add)
+            val firstLink = parseUnnumberedAnchor(firstAnchor)
+            if (firstLink == null) {
+                start++
+                continue
+            }
+            val links = mutableListOf(firstLink)
             var end = start
             var position = start + 1
             while (position < nodes.size) {

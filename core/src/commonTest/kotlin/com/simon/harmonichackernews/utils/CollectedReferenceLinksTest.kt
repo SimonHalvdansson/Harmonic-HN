@@ -7,6 +7,21 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun unsupportedAnchorBeforeAWebLinkRunIsPreserved() {
+        for (href in listOf("mailto:reader@example.com", "tel:12345", "#section")) {
+            val html = "<a href='$href'>Contact or jump</a> " +
+                "<a href='https://example.com/one'>First article</a> " +
+                "<a href='https://example.com/two'>Second article</a>"
+            val result = CollectedReferenceLinks.parse(html)
+            assertTrue("Contact or jump" in result.bodyHtml, result.bodyHtml)
+            assertTrue(href in result.bodyHtml, result.bodyHtml)
+            val allContent = result.bodyHtml + result.links.joinToString { it.label.orEmpty() }
+            assertTrue("First article" in allContent)
+            assertTrue("Second article" in allContent)
+        }
+    }
+
+    @Test
     fun longUnbrokenCodeWithoutDotsStaysUnchanged() {
         val html = "<pre>" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".repeat(100) + "</pre>"
         val result = CollectedReferenceLinks.parse(html)
