@@ -93,6 +93,7 @@ internal suspend fun HttpClient.loadWikipediaInfo(url: String): WikipediaInfo {
     val endpoint = URLBuilder("https://en.wikipedia.org/w/api.php").apply {
         parameters.append("format", "json")
         parameters.append("action", "query")
+        parameters.append("redirects", "1")
         parameters.append("prop", "extracts")
         parameters.append("exintro", "")
         parameters.append("titles", title)
