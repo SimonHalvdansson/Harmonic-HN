@@ -181,6 +181,7 @@ fun SettingsListScreen(
                                     selectedSection == SettingsSection.Glass) ||
                                 entry.section == SettingsSection.Comments &&
                                 (selectedSection == SettingsSection.ThreadDepth ||
+                                    selectedSection == SettingsSection.HeaderDisplay ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||

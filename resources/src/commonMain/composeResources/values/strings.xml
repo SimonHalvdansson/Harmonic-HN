@@ -20,6 +20,7 @@
     <string name="settings_section_palette_tint">Palette tint</string>
     <string name="settings_section_stories">Stories</string>
     <string name="settings_section_comments">Comments</string>
+    <string name="settings_section_header_display">Header display</string>
     <string name="settings_section_thread_depth">Thread depth indicators</string>
     <string name="settings_section_reader_mode">Reader mode</string>
     <string name="settings_section_web_links">Web and links</string>

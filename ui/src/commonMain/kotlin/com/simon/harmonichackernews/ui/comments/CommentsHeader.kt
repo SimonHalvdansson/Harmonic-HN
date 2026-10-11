@@ -48,6 +48,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
@@ -108,6 +110,7 @@ fun CommentsHeader(
     headerPreviewImageDisplayed: Boolean = false,
     onBrowserBack: (() -> Unit)? = null,
     headerTintProgress: Float? = null,
+    faviconPreview: Painter? = null,
     headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
@@ -173,13 +176,14 @@ fun CommentsHeader(
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
-    val backButtonTitleClearance = if (settings.showUpButton && !controller.integratedWebView) {
+    // The floating back control overlays the header; showing it must not reflow the title.
+    val backButtonTitleClearance = if (!controller.integratedWebView) {
         16.dp
     } else {
         0.dp
     }
     val titleTopPadding by animateDpAsState(
-        targetValue = (if (settings.showUpButton && !headerPreviewImageDisplayed) {
+        targetValue = (if (!headerPreviewImageDisplayed) {
             16.dp
         } else {
             0.dp
@@ -187,7 +191,7 @@ fun CommentsHeader(
         animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
         label = "comments title clearance",
     )
-    val shimmerTopPadding = titleTopPadding + if (settings.showUpButton) 8.dp else 0.dp
+    val shimmerTopPadding = titleTopPadding + 8.dp
 
     Column(
         modifier = Modifier
@@ -301,7 +305,7 @@ fun CommentsHeader(
                                     style = textStyle,
                                 )
                                 CommentsPreviewPlatformProvider(previewPlatform) {
-                                    HeaderLinkInfo(story = story, settings = settings)
+                                    HeaderLinkInfo(story = story, settings = settings, faviconPreview = faviconPreview)
                                 }
                             }
                             CommentsPreviewPlatformProvider(previewPlatform) {
@@ -407,12 +411,16 @@ fun CommentsHeader(
                 1f to normalBackground,
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(32.dp)
-                .background(fadeBrush),
-        )
+        Box(Modifier.fillMaxWidth().height(32.dp)) {
+            if (settings.tintHeader) {
+                Box(Modifier.matchParentSize().background(fadeBrush))
+            } else {
+                HorizontalDivider(
+                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
+                    color = colors.outlineVariant,
+                )
+            }
+        }
         Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)

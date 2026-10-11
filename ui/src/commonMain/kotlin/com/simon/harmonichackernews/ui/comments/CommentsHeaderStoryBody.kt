@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -52,7 +54,11 @@ import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 
 @Composable
-fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySettings) {
+fun HeaderLinkInfo(
+    story: StoryListItemSnapshot,
+    settings: CommentDisplaySettings,
+    faviconPreview: Painter? = null,
+) {
     if (!story.loaded || !story.isLink || story.isComment || story.url.isNullOrBlank()) return
     val colors = MaterialTheme.colorScheme
     val typography = rememberContentTypography(preferredFont = settings.font)
@@ -72,23 +78,31 @@ fun HeaderLinkInfo(story: StoryListItemSnapshot, settings: CommentDisplaySetting
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (settings.showFavicons) {
-            var faviconLoaded by remember(favicon) { mutableStateOf(false) }
-            val fallback = painterResource(Res.drawable.ic_public)
-            AsyncImage(
-                model = favicon,
-                placeholder = fallback,
-                fallback = fallback,
-                error = fallback,
-                colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
-                onLoading = { faviconLoaded = false },
-                onSuccess = { faviconLoaded = true },
-                onError = { faviconLoaded = false },
-                contentDescription = null,
-                modifier = Modifier
-                    .padding(end = 4.dp)
-                    .size(17.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-            )
+            if (faviconPreview != null) {
+                Image(
+                    painter = faviconPreview,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 4.dp).size(17.dp).clip(RoundedCornerShape(3.dp)),
+                )
+            } else {
+                var faviconLoaded by remember(favicon) { mutableStateOf(false) }
+                val fallback = painterResource(Res.drawable.ic_public)
+                AsyncImage(
+                    model = favicon,
+                    placeholder = fallback,
+                    fallback = fallback,
+                    error = fallback,
+                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
+                    onLoading = { faviconLoaded = false },
+                    onSuccess = { faviconLoaded = true },
+                    onError = { faviconLoaded = false },
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(17.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                )
+            }
         }
         Text(
             text = domain.orEmpty(),

@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.resources.settings_section_ai_summary
 import com.simon.harmonichackernews.resources.settings_section_appearance
 import com.simon.harmonichackernews.resources.settings_section_comments
+import com.simon.harmonichackernews.resources.settings_section_header_display
 import com.simon.harmonichackernews.resources.settings_section_thread_depth
 import com.simon.harmonichackernews.resources.settings_section_data
 import com.simon.harmonichackernews.resources.settings_section_debug
@@ -32,6 +33,7 @@ enum class SettingsSection(
     Stories("stories", Res.string.settings_section_stories),
     Frontpages("frontpages", Res.string.settings_section_frontpages),
     Comments("comments", Res.string.settings_section_comments),
+    HeaderDisplay("header_display", Res.string.settings_section_header_display),
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
     UserAvatars("user_avatars", Res.string.settings_section_user_avatars),
     WebLinks("web_links", Res.string.settings_section_web_links),

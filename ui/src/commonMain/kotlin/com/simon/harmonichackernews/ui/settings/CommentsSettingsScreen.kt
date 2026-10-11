@@ -94,6 +94,7 @@ fun CommentsSettingsScreen(
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onHeaderDisplayRequested: () -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
 ) {
@@ -172,35 +173,11 @@ fun CommentsSettingsScreen(
                     onBooleanChanged,
                     summary = "Marks comments added since the cached version",
                 )
-            }
-        }
-        item {
-            SettingsCategory("Header display") {
-                BooleanRow(
-                    "Back",
-                    Res.drawable.ic_arrow_back,
-                    state.showUpButton,
-                    CommentsBooleanSetting.ShowUpButton,
-                    onBooleanChanged,
-                )
                 SettingsDivider()
-                BooleanRow(
-                    "Background tint",
-                    Res.drawable.ic_palette,
-                    state.headerTint,
-                    CommentsBooleanSetting.HeaderTint,
-                    onBooleanChanged,
-                    summary = if (state.storyTintEnabled) null else "Disabled because story tint is off",
-                    enabled = state.storyTintEnabled,
-                )
-                SettingsDivider()
-                BooleanRow(
-                    "Preview image",
-                    Res.drawable.ic_image,
-                    state.headerPreviewImage,
-                    CommentsBooleanSetting.HeaderPreviewImage,
-                    onBooleanChanged,
-                    enabled = state.storyPreviewEnabled,
+                SettingRow(
+                    title = stringResource(Res.string.settings_section_header_display),
+                    icon = Res.drawable.ic_image,
+                    onClick = onHeaderDisplayRequested,
                 )
             }
         }

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -31,6 +32,26 @@ import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceConten
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.content.NetworkImage
 
+/** The sample and loaded header images reveal vertically without stretching or sliding sideways. */
+@Composable
+internal fun HeaderPreviewImageVisibility(
+    visible: Boolean,
+    content: @Composable AnimatedVisibilityScope.() -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(240, delayMillis = 80)) + expandVertically(
+            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ),
+        exit = fadeOut(tween(120)) + shrinkVertically(
+            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
+            shrinkTowards = Alignment.Top,
+        ),
+        content = content,
+    )
+}
+
 /** Shared Coil loading, palette extraction and interaction for the comments header image. */
 @Composable
 fun HeaderPreviewImage(
@@ -50,16 +71,8 @@ fun HeaderPreviewImage(
     var bounds by remember(imageUrl) { mutableStateOf(Rect.Zero) }
     var sourceContentLayer by remember(imageUrl) { mutableStateOf<GraphicsLayer?>(null) }
     var imageAspectRatio by remember(imageUrl) { mutableStateOf<Float?>(null) }
-    AnimatedVisibility(
+    HeaderPreviewImageVisibility(
         visible = visible && !imageUrl.isNullOrBlank() && !failed,
-        enter = fadeIn(tween(240, delayMillis = 80)) + expandVertically(
-            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
-            expandFrom = Alignment.Top,
-        ),
-        exit = fadeOut(tween(120)) + shrinkVertically(
-            animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
-            shrinkTowards = Alignment.Top,
-        ),
     ) {
         NetworkImage(
             url = imageUrl.orEmpty(),

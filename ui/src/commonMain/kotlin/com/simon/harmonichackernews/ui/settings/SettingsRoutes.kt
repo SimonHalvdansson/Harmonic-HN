@@ -508,6 +508,7 @@ fun CommentsSettingsRoute(
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onHeaderDisplayRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
@@ -524,6 +525,7 @@ fun CommentsSettingsRoute(
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
+        onHeaderDisplayRequested = onHeaderDisplayRequested,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {
