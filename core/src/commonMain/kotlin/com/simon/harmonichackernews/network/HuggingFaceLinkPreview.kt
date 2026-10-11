@@ -154,7 +154,11 @@ internal object HuggingFaceLinkPreview {
                     "Updated" to json.nonBlankString("lastModified")?.dateOnly(),
                     "Format" to tagValue(json, "format:"),
                     "Size" to tagValue(json, "size_categories:"),
-                    "Access" to if (json.optBoolean("gated")) "Gated" else "Public",
+                    "Access" to when {
+                        json.optBoolean("private") -> "Private"
+                        json.optBoolean("gated") || json.optString("gated") in setOf("auto", "manual") -> "Gated"
+                        else -> "Public"
+                    },
                 ),
             )
             LinkPreviewType.HUGGING_FACE_SPACE -> {

@@ -133,7 +133,12 @@ internal object PackageLinkPreview {
             val versions = json.optJSONObject("versions")
             val analytics = json.optJSONObject("analytics")
                 ?.optJSONObject("install")?.optJSONObject("30d")
-            val name = json.optString("name", target.name)
+            val names = json.optJSONArray("name")
+            val name = json.nonBlankString("name")
+                ?: names?.let { (0 until it.length()).firstNotNullOfOrNull { index ->
+                    names.optString(index).takeIf(String::isNotBlank)
+                } }
+                ?: target.name
             LinkPreviewInfo(
                 type,
                 name,
@@ -144,7 +149,7 @@ internal object PackageLinkPreview {
                 details(
                     "Version" to (versions?.nonBlankString("stable") ?: json.nonBlankString("version")),
                     "License" to json.nonBlankString("license"),
-                    "Installs (30d)" to analytics?.optLong(name)?.toString(),
+                    "Installs (30d)" to analytics?.optLong(target.name)?.toString(),
                     "Dependencies" to json.optJSONArray("dependencies")?.length()?.toString(),
                     "Homepage" to json.nonBlankString("homepage")?.shortHost(),
                 ),

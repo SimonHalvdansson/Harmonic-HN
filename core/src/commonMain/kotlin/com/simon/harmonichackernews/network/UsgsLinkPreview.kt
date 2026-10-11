@@ -13,6 +13,7 @@ internal object UsgsLinkPreview {
         if (parsed.host.lowercase() != "earthquake.usgs.gov") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         val index = segments.indexOf("eventpage")
+        if (index < 0) return null
         return segments.getOrNull(index + 1)?.takeIf(String::isNotEmpty)
     }
 
