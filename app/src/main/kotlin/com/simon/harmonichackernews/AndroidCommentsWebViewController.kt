@@ -108,6 +108,8 @@ internal class AndroidCommentsWebViewController(
     internal interface Callbacks {
         fun onWebViewInitialized() = Unit
 
+        fun onPdfPageChanged() = Unit
+
         fun openExternalLink(url: String)
 
         fun showMessage(
@@ -181,6 +183,12 @@ internal class AndroidCommentsWebViewController(
 
     private var pdfDownloadJob: Job? = null
     private var downloadedPdfUrl: String? = null
+    var isPdfPage: Boolean = false
+        private set(value) {
+            if (field == value) return
+            field = value
+            callbacks.onPdfPageChanged()
+        }
     val isReaderModeAvailable: Boolean get() = webContentSession.readerState.available
     private val readerModeEnabled: Boolean get() = webContentSession.readerState.enabled
     private var touchGestureStartScrollX = 0
@@ -791,6 +799,8 @@ internal class AndroidCommentsWebViewController(
         cancelCachedArticleLoad()
         cancelPdfDownload()
 
+        isPdfPage = isPdfViewerUrl(url)
+
         if (!isPdfViewerUrl(url)) {
             pdfWebViewSession.revokeBridge(view)
         }
@@ -1037,6 +1047,7 @@ internal class AndroidCommentsWebViewController(
     ) {
         if (ctx == null) return
         val targetWebView = webView ?: return
+        isPdfPage = true
         val generation = webContentLoad.state.generation
         cancelPdfDownload()
         val job = coroutineScope.launch(start = CoroutineStart.LAZY) {

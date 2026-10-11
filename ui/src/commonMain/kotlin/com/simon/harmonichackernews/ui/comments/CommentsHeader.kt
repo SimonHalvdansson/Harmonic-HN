@@ -576,11 +576,12 @@ fun CommentsSheetControls(
                 tint = if (readerModeEnabled) colors.secondary else colors.onSurfaceVariant,
                 onClick = { onAction(CommentsSheetAction.READER) },
             )
-            if (showInvert) {
-                SheetButtonSlot(Res.drawable.ic_invert_colors, "Invert colors") {
-                    onAction(CommentsSheetAction.INVERT)
-                }
-            }
+            AnimatedSheetButtonSlot(
+                visible = showInvert,
+                icon = Res.drawable.ic_invert_colors,
+                description = "Invert colors",
+                onClick = { onAction(CommentsSheetAction.INVERT) },
+            )
         }
         // The peek height includes the system navigation inset. Keep header content below that
         // inset while collapsed, then remove the clearance as the comments sheet expands.
