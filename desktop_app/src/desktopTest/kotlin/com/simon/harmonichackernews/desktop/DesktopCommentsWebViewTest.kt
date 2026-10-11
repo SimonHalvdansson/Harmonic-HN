@@ -7,6 +7,47 @@ import kotlin.test.assertTrue
 
 class DesktopCommentsWebViewTest {
     @Test
+    fun firstNavigationFailureStopsLoadingAndRetryCanRecover() {
+        val session = DesktopCommentsWebViewSession("http://127.0.0.1:1/article")
+        val host = RecordingBrowser()
+        session.attach(host)
+        session.updateFromBrowser(host, DesktopBrowserSnapshot(
+            "", null, false, false, false, "Could not connect to the server",
+        ))
+        assertFalse(session.isLoading)
+        assertEquals("Could not connect to the server", session.loadError)
+        assertEquals("http://127.0.0.1:1/article", session.currentUrl())
+        session.reload()
+        assertTrue(session.isLoading)
+        assertEquals(null, session.loadError)
+        assertEquals(session.currentUrl(), host.reloaded)
+        session.updateFromBrowser(host, DesktopBrowserSnapshot(
+            session.currentUrl(), "Recovered article", false, false, false,
+        ))
+        assertFalse(session.isLoading)
+        assertTrue(session.hasLoadedContent)
+        assertEquals("Recovered article", session.pageTitle)
+        session.detach(host)
+        session.updateFromBrowser(host, DesktopBrowserSnapshot(
+            "http://stale.invalid", null, false, false, false, "Stale failure",
+        ))
+        assertEquals(null, session.loadError)
+    }
+
+    private class RecordingBrowser : DesktopBrowserHost {
+        var reloaded: String? = null
+        override fun loadUrl(url: String) = Unit
+        override fun loadHtml(html: String) = Unit
+        override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = result(null)
+        override fun navigateBack() = Unit
+        override fun navigateForward() = Unit
+        override fun reload(fallbackUrl: String) { reloaded = fallbackUrl }
+        override fun setBrowserVisible(visible: Boolean) = Unit
+        override fun evaluateJavaScript(script: String) = Unit
+        override fun disposeBrowser() = Unit
+    }
+
+    @Test
     fun unsupportedHostsDoNotOfferIntegratedBrowserSettings() {
         val capabilities = desktopWebLinksSettingsCapabilities(desktopEmbeddedBrowserBackend("Linux"))
         assertFalse(capabilities.integratedWebView)

@@ -230,6 +230,7 @@ internal class MacWkWebViewCanvas(
             val state = IntArray(3)
             val url = ByteArray(TEXT_BUFFER_BYTES)
             val title = ByteArray(TEXT_BUFFER_BYTES)
+            val error = ByteArray(TEXT_BUFFER_BYTES)
             synchronized(nativeCallLock) {
                 if (disposed.get()) return
                 target.first.harmonic_webview_snapshot(
@@ -239,6 +240,8 @@ internal class MacWkWebViewCanvas(
                     url.size,
                     title,
                     title.size,
+                    error,
+                    error.size,
                 )
             }
             DesktopBrowserSnapshot(
@@ -247,6 +250,7 @@ internal class MacWkWebViewCanvas(
                 isLoading = state[0] != 0,
                 canGoBack = state[1] != 0,
                 canGoForward = state[2] != 0,
+                loadError = error.decodeNullTerminatedUtf8().ifBlank { null },
             )
         }.onSuccess { snapshot ->
             if (snapshot == lastSnapshot || disposed.get()) return@onSuccess
@@ -324,6 +328,8 @@ internal interface MacWebViewApi : Library {
         urlCapacity: Int,
         title: ByteArray,
         titleCapacity: Int,
+        error: ByteArray,
+        errorCapacity: Int,
     )
 }
 

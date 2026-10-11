@@ -27,9 +27,33 @@
 
 @interface HarmonicWebViewHost : NSObject <WKNavigationDelegate, WKUIDelegate>
 @property(nonatomic, strong) WKWebView *webView;
+@property(nonatomic, strong) NSError *loadError;
+@property(nonatomic, copy) NSString *failedUrl;
 @end
 
 @implementation HarmonicWebViewHost
+
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation {
+    self.loadError = nil;
+    self.failedUrl = nil;
+}
+
+- (void)recordFailure:(NSError *)error webView:(WKWebView *)webView {
+    // Replaced/cancelled navigations are expected when a user follows another link.
+    if ([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) return;
+    self.loadError = error;
+    self.failedUrl = error.userInfo[NSURLErrorFailingURLStringErrorKey] ?: webView.URL.absoluteString;
+}
+
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation
+    withError:(NSError *)error {
+    [self recordFailure:error webView:webView];
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation
+    withError:(NSError *)error {
+    [self recordFailure:error webView:webView];
+}
 
 - (nullable WKWebView *)webView:(WKWebView *)webView
     createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
@@ -131,7 +155,10 @@ void harmonic_webview_load_url(void *hostPointer, const char *url) {
     HarmonicOnMainSync(^{
         NSURL *parsedUrl = [NSURL URLWithString:urlString];
         if (parsedUrl != nil) {
-            [HarmonicHost(hostPointer).webView loadRequest:[NSURLRequest requestWithURL:parsedUrl]];
+            HarmonicWebViewHost *host = HarmonicHost(hostPointer);
+            host.loadError = nil;
+            host.failedUrl = nil;
+            [host.webView loadRequest:[NSURLRequest requestWithURL:parsedUrl]];
         }
     });
 }
@@ -159,8 +186,14 @@ void harmonic_webview_reload(void *hostPointer, const char *fallbackUrl) {
     if (hostPointer == NULL) return;
     NSString *fallback = fallbackUrl == NULL ? nil : [NSString stringWithUTF8String:fallbackUrl];
     HarmonicOnMainSync(^{
-        WKWebView *webView = HarmonicHost(hostPointer).webView;
-        if (webView.URL != nil) {
+        HarmonicWebViewHost *host = HarmonicHost(hostPointer);
+        WKWebView *webView = host.webView;
+        if (host.loadError != nil && fallback != nil) {
+            host.loadError = nil;
+            host.failedUrl = nil;
+            NSURL *url = [NSURL URLWithString:fallback];
+            if (url != nil) [webView loadRequest:[NSURLRequest requestWithURL:url]];
+        } else if (webView.URL != nil) {
             [webView reload];
         } else if (fallback != nil) {
             NSURL *url = [NSURL URLWithString:fallback];
@@ -238,20 +271,25 @@ void harmonic_webview_snapshot(
     char *url,
     int urlCapacity,
     char *title,
-    int titleCapacity
+    int titleCapacity,
+    char *error,
+    int errorCapacity
 ) {
     if (state != NULL) memset(state, 0, sizeof(int) * 3);
     if (url != NULL && urlCapacity > 0) url[0] = '\0';
     if (title != NULL && titleCapacity > 0) title[0] = '\0';
+    if (error != NULL && errorCapacity > 0) error[0] = '\0';
     if (hostPointer == NULL) return;
     HarmonicOnMainSync(^{
-        WKWebView *webView = HarmonicHost(hostPointer).webView;
+        HarmonicWebViewHost *host = HarmonicHost(hostPointer);
+        WKWebView *webView = host.webView;
         if (state != NULL) {
             state[0] = webView.loading ? 1 : 0;
             state[1] = webView.canGoBack ? 1 : 0;
             state[2] = webView.canGoForward ? 1 : 0;
         }
-        HarmonicCopyString(webView.URL.absoluteString, url, urlCapacity);
+        HarmonicCopyString(host.failedUrl ?: webView.URL.absoluteString, url, urlCapacity);
         HarmonicCopyString(webView.title, title, titleCapacity);
+        HarmonicCopyString(host.loadError.localizedDescription, error, errorCapacity);
     });
 }

@@ -93,6 +93,7 @@ internal data class DesktopBrowserSnapshot(
     val isLoading: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val loadError: String? = null,
 )
 
 internal interface DesktopBrowserHost {
@@ -136,6 +137,8 @@ internal class DesktopCommentsWebViewSession(
         private set
     var hasLoadedContent by mutableStateOf(false)
         private set
+    var loadError by mutableStateOf<String?>(null)
+        private set
     var canGoBack by mutableStateOf(false)
         private set
     var canGoForward by mutableStateOf(false)
@@ -163,6 +166,19 @@ internal class DesktopCommentsWebViewSession(
     ) {
         if (this.browserHost !== browserHost) return
         val navigatedUrl = snapshot.url.takeUnless(::isTransientBrowserUrl)
+        if (snapshot.loadError != null) {
+            if (loadError != snapshot.loadError || currentPageUrl != navigatedUrl) {
+                documentGeneration++
+                reader?.navigationStarted(null)
+            }
+            navigatedUrl?.let { currentPageUrl = it }
+            loadError = snapshot.loadError
+            isLoading = false
+            canGoBack = snapshot.canGoBack
+            canGoForward = snapshot.canGoForward
+            return
+        }
+        loadError = null
         val started = (snapshot.isLoading && !isLoading) ||
             (navigatedUrl != null && navigatedUrl != currentPageUrl)
         val finished = !snapshot.isLoading && (isLoading || started)
@@ -191,6 +207,7 @@ internal class DesktopCommentsWebViewSession(
         documentGeneration++
         reader?.navigationStarted(currentPageUrl)
         isLoading = true
+        loadError = null
         browserHost?.reload(currentPageUrl)
     }
 
@@ -359,7 +376,7 @@ private fun SwtEdgeBrowserSurface(
         }
     }
 
-    val error = errorMessage
+    val error = errorMessage ?: session.loadError
     val nativeSurfaceVisible = visible && error == null
     Box(Modifier.fillMaxSize()) {
         SwingPanel(
@@ -368,7 +385,7 @@ private fun SwtEdgeBrowserSurface(
             modifier = if (nativeSurfaceVisible) Modifier.fillMaxSize() else Modifier.size(0.dp),
         )
         if (visible && error != null) {
-            DesktopWebViewError(error)
+            DesktopWebViewError(error, onRetry = if (errorMessage == null) session::reload else null)
         }
     }
 }
@@ -406,7 +423,7 @@ private fun MacWkWebViewSurface(
         }
     }
 
-    val error = errorMessage
+    val error = errorMessage ?: session.loadError
     val browserVisible = visible && error == null
     Box(Modifier.fillMaxSize()) {
         SwingPanel(
@@ -415,23 +432,26 @@ private fun MacWkWebViewSurface(
             modifier = if (browserVisible) Modifier.fillMaxSize() else Modifier.size(0.dp),
         )
         if (visible && error != null) {
-            DesktopWebViewError(error)
+            DesktopWebViewError(error, onRetry = if (errorMessage == null) session::reload else null)
         }
     }
 }
 
 @Composable
-private fun DesktopWebViewError(message: String) {
+private fun DesktopWebViewError(message: String, onRetry: (() -> Unit)? = null) {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color.White),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = message,
-            modifier = Modifier.padding(24.dp),
-            color = Color.DarkGray,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = message,
+                modifier = Modifier.padding(24.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (onRetry != null) androidx.compose.material3.TextButton(onClick = onRetry) { Text("Retry") }
+        }
     }
 }
 
