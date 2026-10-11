@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -10,7 +11,9 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
@@ -26,6 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,9 +93,9 @@ fun HarmonicFilterButton(
         bottomEnd = if (position == lastPosition) 24.dp else innerCorner,
         bottomStart = if (position == 0) 24.dp else innerCorner,
     )
-    Row(
+    BoxWithConstraints(
         modifier = modifier
-            .height(48.dp)
+            .heightIn(min = 48.dp)
             .clip(shape)
             .background(backgroundColor)
             .border(
@@ -103,24 +109,38 @@ fun HarmonicFilterButton(
                 role = Role.RadioButton,
                 interactionSource = interactionSource,
             ),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
-        icon?.let {
-            Icon(
-                painter = painterResource(it),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = contentColor,
-            )
-            Spacer(Modifier.width(7.dp))
+        val textStyle = LocalTextStyle.current.copy(fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        val labelWidth = rememberTextMeasurer().measure(label, textStyle, maxLines = 1).size.width
+        val iconSpace = with(LocalDensity.current) { (18.dp + 7.dp + 16.dp).roundToPx() }
+        // Prefer the complete label when equal-width segments become narrow. The icon is
+        // decorative, and scaled text may grow the control vertically instead of being clipped.
+        val showIcon = icon != null && labelWidth + iconSpace <= constraints.maxWidth
+        val rowWidth = with(LocalDensity.current) {
+            minOf(constraints.maxWidth, labelWidth + if (showIcon) iconSpace else 16.dp.roundToPx()).toDp()
         }
-        Text(
-            text = label,
-            color = contentColor,
-            fontFamily = fontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-        )
+        Row(
+            modifier = Modifier.width(rowWidth).padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showIcon) icon.let {
+                Icon(
+                    painter = painterResource(it),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = contentColor,
+                )
+                Spacer(Modifier.width(7.dp))
+            }
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                color = contentColor,
+                style = textStyle,
+            )
+        }
     }
 }
