@@ -576,7 +576,7 @@ private fun PostFields(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp)
-                    .height(80.75.dp)
+                    .heightIn(min = 80.75.dp)
                     .onFocusChanged { onFieldFocusChange(PostEditorField.Title, it.isFocused) }
                     .testTag("compose_editor_title"),
                 label = { Text("Title") },
@@ -608,7 +608,7 @@ private fun PostFields(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, top = 16.dp, end = 16.dp)
-                    .height(61.25.dp)
+                    .heightIn(min = 61.25.dp)
                     .onFocusChanged { onFieldFocusChange(PostEditorField.Url, it.isFocused) }
                     .testTag("compose_editor_url"),
                 label = { Text("URL") },
