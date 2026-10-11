@@ -920,7 +920,9 @@ class AndroidCommentsCoordinator(
     }
 
     private fun shouldShowInvertAction(): Boolean {
-        if (webViewController?.isPdfPage == true) return false
+        val isPdfPage = webViewController?.isPdfPage
+            ?: AndroidCommentsWebViewController.isKnownPdfPage(story?.url, story)
+        if (isPdfPage) return false
         // Even a feature query can synchronously initialize Chromium before the opening delay.
         // Keep the action visible until the initialized WebView can establish support.
         if (webViewController?.hasWebView() != true) return true
