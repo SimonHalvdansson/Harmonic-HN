@@ -1,8 +1,11 @@
 package com.simon.harmonichackernews.ui.settings
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.util.Log
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -21,6 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -63,6 +68,7 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
     var started by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var ready by remember { mutableStateOf(false) }
+    var rendererGeneration by remember { mutableIntStateOf(0) }
     val displayedHeight = remember { Animatable(InitialPreviewHeight.value) }
     var revealed by remember { mutableStateOf(false) }
     val currentReading by rememberUpdatedState(reading)
@@ -118,58 +124,67 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
             .fillMaxWidth().height(displayedHeight.value.dp).clip(RoundedCornerShape(20.dp))
             .background(colors.cardBackground),
     ) {
-        if (started && html != null) AndroidView(
-            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = previewAlpha },
-            factory = { previewContext ->
-                WebView(previewContext).apply {
-                    settings.javaScriptEnabled = true // Only the bundled size observer runs here.
-                    settings.blockNetworkLoads = true
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.useWideViewPort = true
-                    settings.loadWithOverviewMode = true
-                    isVerticalScrollBarEnabled = false
-                    isHorizontalScrollBarEnabled = false
-                    addJavascriptInterface(PreviewSize(
-                        onChanged = { cssPixels ->
-                            post { if (tag != null) height = cssPixels.toFloat().coerceIn(1f, 2000f).dp }
-                        },
-                        onReady = {
-                            post {
-                                if (tag != null) postVisualStateCallback(0, object : WebView.VisualStateCallback() {
-                                    override fun onComplete(requestId: Long) {
-                                        if (tag != null) ready = true
-                                    }
-                                })
+        if (started && html != null) key(rendererGeneration) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = previewAlpha },
+                factory = { previewContext ->
+                    ReaderPreviewWebView(previewContext).apply {
+                        settings.javaScriptEnabled = true // Only the bundled size observer runs here.
+                        settings.blockNetworkLoads = true
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
+                        settings.useWideViewPort = true
+                        settings.loadWithOverviewMode = true
+                        isVerticalScrollBarEnabled = false
+                        isHorizontalScrollBarEnabled = false
+                        addJavascriptInterface(PreviewSize(
+                            onChanged = { cssPixels ->
+                                post { if (tag != null) height = cssPixels.toFloat().coerceIn(1f, 2000f).dp }
+                            },
+                            onReady = {
+                                post {
+                                    if (tag != null) postVisualStateCallback(0, object : WebView.VisualStateCallback() {
+                                        override fun onComplete(requestId: Long) {
+                                            if (tag != null) ready = true
+                                        }
+                                    })
+                                }
+                            },
+                        ), "PreviewSize")
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
+                            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                                // Every WebView sharing the renderer must handle its loss, including
+                                // this local preview. Compose replaces the disposed view on the next frame.
+                                (view.parent as? ViewGroup)?.removeView(view)
+                                (view as ReaderPreviewWebView).release(rendererGone = true)
+                                ready = false
+                                rendererGeneration++
+                                return true
                             }
-                        },
-                    ), "PreviewSize")
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
-                        override fun onPageFinished(view: WebView, url: String) {
-                            view.updateReaderSize(currentReading)
-                            view.evaluateJavascript("document.fonts.ready.then(function(){PreviewSize.ready();});", null)
+                            override fun onPageFinished(view: WebView, url: String) {
+                                if ((view as ReaderPreviewWebView).released) return
+                                view.updateReaderSize(currentReading)
+                                view.evaluateJavascript("document.fonts.ready.then(function(){PreviewSize.ready();});", null)
+                            }
                         }
                     }
-                }
-            },
-            update = { view ->
-                view.setBackgroundColor(background)
-                val document = html
-                if (document != null && view.tag != document) {
-                    ready = false
-                    view.tag = document
-                    view.loadDataWithBaseURL("https://reader-preview.invalid/", document, "text/html", "UTF-8", null)
-                }
-                view.updateReaderSize(currentReading)
-            },
-            onRelease = { view ->
-                view.tag = null
-                view.removeJavascriptInterface("PreviewSize")
-                view.stopLoading()
-                view.destroy()
-            },
-        )
+                },
+                update = { view ->
+                    if (!view.released) {
+                        view.setBackgroundColor(background)
+                        val document = html
+                        if (document != null && view.tag != document) {
+                            ready = false
+                            view.tag = document
+                            view.loadDataWithBaseURL("https://reader-preview.invalid/", document, "text/html", "UTF-8", null)
+                        }
+                        view.updateReaderSize(currentReading)
+                    }
+                },
+                onRelease = { it.release() },
+            )
+        }
         if (failed) {
             Text(
                 "Reader preview is unavailable",
@@ -182,6 +197,22 @@ internal fun AndroidReaderModePreview(reading: ReadingPreferences) {
 }
 
 private val InitialPreviewHeight = 200.dp
+
+private class ReaderPreviewWebView(context: Context) : WebView(context) {
+    var released = false
+        private set
+
+    fun release(rendererGone: Boolean = false) {
+        if (released) return
+        released = true
+        tag = null
+        if (!rendererGone) {
+            removeJavascriptInterface("PreviewSize")
+            stopLoading()
+        }
+        destroy()
+    }
+}
 
 private fun WebView.updateReaderSize(reading: ReadingPreferences) {
     evaluateJavascript(ReaderPreviewDocument.sizeScript(
