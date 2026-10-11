@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <exception>
 #include <new>
+#include <string>
 #include <vector>
 
 #include "harmonic_llama_engine.h"
@@ -46,28 +47,50 @@ void guard_jni_void(JNIEnv * env, Callback && callback) noexcept {
     });
 }
 
-class ScopedUtfChars final {
+// JNI's GetStringUTFChars uses modified UTF-8 (six bytes for supplementary code
+// points). The engine and filesystem use standard UTF-8, so decode UTF-16 explicitly.
+class Utf8String final {
 public:
-    ScopedUtfChars(JNIEnv * env, jstring value) : env_(env), value_(value) {
-        if (env_ != nullptr && value_ != nullptr) {
-            chars_ = env_->GetStringUTFChars(value_, nullptr);
+    Utf8String(JNIEnv * env, jstring value) {
+        if (env == nullptr || value == nullptr) return;
+        const jsize length = env->GetStringLength(value);
+        std::vector<jchar> chars(static_cast<size_t>(length));
+        if (length > 0) env->GetStringRegion(value, 0, length, chars.data());
+        if (env->ExceptionCheck()) return;
+        for (size_t index = 0; index < chars.size(); ++index) {
+            uint32_t point = chars[index];
+            if (point >= 0xD800U && point <= 0xDBFFU && index + 1 < chars.size() &&
+                    chars[index + 1] >= 0xDC00U && chars[index + 1] <= 0xDFFFU) {
+                point = 0x10000U + ((point - 0xD800U) << 10U) + (chars[++index] - 0xDC00U);
+            } else if ((point >= 0xD800U && point <= 0xDFFFU) || point == 0) {
+                // The engine takes NUL-terminated strings. Preserve the remainder of the
+                // prompt instead of truncating it at an embedded NUL or emitting invalid UTF-8.
+                point = 0xFFFDU;
+            }
+            if (point < 0x80U) {
+                bytes_.push_back(static_cast<char>(point));
+            } else if (point < 0x800U) {
+                bytes_.push_back(static_cast<char>(0xC0U | (point >> 6U)));
+                bytes_.push_back(static_cast<char>(0x80U | (point & 0x3FU)));
+            } else if (point < 0x10000U) {
+                bytes_.push_back(static_cast<char>(0xE0U | (point >> 12U)));
+                bytes_.push_back(static_cast<char>(0x80U | ((point >> 6U) & 0x3FU)));
+                bytes_.push_back(static_cast<char>(0x80U | (point & 0x3FU)));
+            } else {
+                bytes_.push_back(static_cast<char>(0xF0U | (point >> 18U)));
+                bytes_.push_back(static_cast<char>(0x80U | ((point >> 12U) & 0x3FU)));
+                bytes_.push_back(static_cast<char>(0x80U | ((point >> 6U) & 0x3FU)));
+                bytes_.push_back(static_cast<char>(0x80U | (point & 0x3FU)));
+            }
         }
+        valid_ = true;
     }
 
-    ~ScopedUtfChars() {
-        if (chars_ != nullptr) {
-            env_->ReleaseStringUTFChars(value_, chars_);
-        }
-    }
-
-    [[nodiscard]] const char * get() const {
-        return chars_;
-    }
+    [[nodiscard]] const char * get() const { return valid_ ? bytes_.c_str() : nullptr; }
 
 private:
-    JNIEnv * env_;
-    jstring value_;
-    const char * chars_ = nullptr;
+    std::string bytes_;
+    bool valid_ = false;
 };
 
 void android_log_callback(harmonic_llama_log_level level, const char * text, void *) {
@@ -179,7 +202,7 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeLoad(
         if (!require_string(env, model_path, "The local model path is required")) {
             return JNI_FALSE;
         }
-        const ScopedUtfChars path(env, model_path);
+        const Utf8String path(env, model_path);
         if (path.get() == nullptr) {
             return JNI_FALSE;
         }
@@ -212,15 +235,15 @@ Java_com_simon_harmonichackernews_summary_local_GgufInference_nativeStart(
                 !require_string(env, response_prefix, "The local summary prefix is required")) {
             return JNI_FALSE;
         }
-        const ScopedUtfChars system_chars(env, system_text);
+        const Utf8String system_chars(env, system_text);
         if (system_chars.get() == nullptr) {
             return JNI_FALSE;
         }
-        const ScopedUtfChars user_chars(env, user_text);
+        const Utf8String user_chars(env, user_text);
         if (user_chars.get() == nullptr) {
             return JNI_FALSE;
         }
-        const ScopedUtfChars prefix_chars(env, response_prefix);
+        const Utf8String prefix_chars(env, response_prefix);
         if (prefix_chars.get() == nullptr) {
             return JNI_FALSE;
         }

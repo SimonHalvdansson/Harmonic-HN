@@ -71,6 +71,8 @@ jobs:
           --no-daemon
           --max-workers=2
           --parallel
+      - name: Verify JNI UTF-8 conversion
+        run: python3 local_ai_runtime/src/test/cpp/jni_utf8/run.py
 
   build:
     needs: changes
