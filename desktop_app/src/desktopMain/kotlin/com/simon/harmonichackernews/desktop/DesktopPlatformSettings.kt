@@ -288,7 +288,11 @@ private fun DesktopDataSettings(
         runtime.effects.collect { effect ->
             when (effect) {
                 is DataSettingsRuntimeEffect.CreateExportDocument -> {
-                    val file = chooseTextFile(save = true, suggestedName = effect.filename)
+                    val file = chooseTextFile(
+                        save = true,
+                        settings = effect.mimeType == "application/json",
+                        suggestedName = effect.filename,
+                    )
                     if (file == null) return@collect
                     runCatching { withContext(Dispatchers.IO) { file.writeText(effect.content) } }
                         .onSuccess { scene.userMessages.show(if (effect.mimeType == "application/json") "Settings exported" else "Bookmarks exported") }
@@ -296,7 +300,10 @@ private fun DesktopDataSettings(
                 }
                 DataSettingsRuntimeEffect.OpenImportDocument,
                 DataSettingsRuntimeEffect.OpenSettingsImportDocument -> {
-                    val file = chooseTextFile(save = false)
+                    val file = chooseTextFile(
+                        save = false,
+                        settings = effect == DataSettingsRuntimeEffect.OpenSettingsImportDocument,
+                    )
                     if (file == null) return@collect
                     runCatching { withContext(Dispatchers.IO) {
                         val limit = if (effect == DataSettingsRuntimeEffect.OpenSettingsImportDocument)
@@ -377,9 +384,9 @@ private fun DesktopDataSettings(
     }
 }
 
-private fun chooseTextFile(save: Boolean, suggestedName: String? = null): File? {
+private fun chooseTextFile(save: Boolean, settings: Boolean, suggestedName: String? = null): File? {
     val chooser = JFileChooser().apply {
-        dialogTitle = if (save) "Export Harmonic bookmarks" else "Import Harmonic bookmarks"
+        dialogTitle = "${if (save) "Export" else "Import"} Harmonic ${if (settings) "settings" else "bookmarks"}"
         fileFilter = FileNameExtensionFilter("Text and JSON files", "txt", "json")
         suggestedName?.let { selectedFile = File(it) }
     }
