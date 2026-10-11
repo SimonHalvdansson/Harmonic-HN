@@ -82,6 +82,7 @@ kotlin {
             implementation(libs.compose.multiplatform.material3)
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)
+            implementation("androidx.navigationevent:navigationevent-compose:1.1.1")
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(compose.desktop.currentOs)

@@ -99,6 +99,9 @@ import java.awt.event.WindowEvent
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import kotlinx.coroutines.delay
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 
 internal val desktopAppIconImage: BufferedImage? by lazy(::loadDesktopAppIcon)
 
@@ -137,14 +140,6 @@ fun main() {
                 onKeyEvent = { event ->
                     when {
                         event.type != KeyEventType.KeyDown -> false
-                        event.key == Key.Escape -> handleDesktopBack(
-                            navigation,
-                            bootstrap.scene,
-                            storiesController,
-                            commentsController,
-                            settingsNavigation,
-                            onEditorBackRequested = { editorBackRequestVersion++ },
-                        )
                         event.key == Key.Comma && (event.isMetaPressed || event.isCtrlPressed) -> {
                             bootstrap.scene.navigation.openSettings(null)
                             true
@@ -157,6 +152,18 @@ fun main() {
                     }
                 },
             ) {
+                // Use the same dispatcher as Compose dialogs so the topmost modal handles
+                // Escape before screen navigation. Window.onKeyEvent bypasses that ordering.
+                NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) {
+                    handleDesktopBack(
+                        navigation,
+                        bootstrap.scene,
+                        storiesController,
+                        commentsController,
+                        settingsNavigation,
+                        onEditorBackRequested = { editorBackRequestVersion++ },
+                    )
+                }
                 // Set the native properties before the window's first visible frame.
                 DisposableEffect(window) {
                     val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
