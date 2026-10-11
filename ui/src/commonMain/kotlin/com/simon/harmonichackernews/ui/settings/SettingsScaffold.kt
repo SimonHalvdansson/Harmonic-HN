@@ -29,7 +29,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.recalculateWindowInsets
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.MutableWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.positionInRoot
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -135,7 +140,7 @@ fun SettingsListScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.pageBackground)
-            .recalculateWindowInsets()
+            .consumeSettingsPaneBounds()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
@@ -281,6 +286,28 @@ private fun SettingsNavigationRow(
     }
 }
 
+/** Consume the actual pane margins without writing inset state during lookahead placement. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Modifier.consumeSettingsPaneBounds(): Modifier {
+    val consumed = remember { MutableWindowInsets() }
+    return onGloballyPositioned { coordinates ->
+        // recalculateWindowInsets shares mutable state between lookahead and actual placement.
+        // Their different pane bounds can invalidate each other indefinitely in a Nav3 scaffold.
+        // Global positioning observes only the placed bounds, which settle after the transition.
+        val topLeft = coordinates.positionInRoot()
+        val size = coordinates.size
+        val bottomRight = coordinates.localToRoot(Offset(size.width.toFloat(), size.height.toFloat()))
+        val rootSize = coordinates.findRootCoordinates().size
+        consumed.insets = WindowInsets(
+            left = topLeft.x.roundToInt().coerceAtLeast(0),
+            top = topLeft.y.roundToInt().coerceAtLeast(0),
+            right = (rootSize.width - bottomRight.x.roundToInt()).coerceAtLeast(0),
+            bottom = (rootSize.height - bottomRight.y.roundToInt()).coerceAtLeast(0),
+        )
+    }.consumeWindowInsets(consumed)
+}
+
 @Composable
 fun SettingsPage(
     title: String,
@@ -310,11 +337,7 @@ fun SettingsPage(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.pageBackground)
-            .recalculateWindowInsets()
-            // Adaptive lookahead can place this pane beyond the window and produce negative
-            // consumed insets. Union with zero prevents phantom safe-area padding, which would
-            // give content animations a narrower target width and cause a final-frame jump.
-            .consumeWindowInsets(WindowInsets(0, 0, 0, 0))
+            .consumeSettingsPaneBounds()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
