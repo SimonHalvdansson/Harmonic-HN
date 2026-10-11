@@ -305,6 +305,60 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 5))
     }
 
+    func testAskQuestionAndAnswerRespectCommentTextSize() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        let question = "Explain the main idea in simpler terms"
+        let answerPrefix = "A useful way to understand technical language"
+        var heights: [(question: CGFloat, answer: CGFloat)] = []
+        for largeText in [false, true] {
+            if largeText {
+                app.terminate()
+                app.launch()
+                completeFirstRunIfNeeded()
+                openSettings()
+                app.tapVisibleButton("Comments")
+                // Compose exposes this adjustable range as Other, not a native UISlider.
+                let slider = app.otherElements.matching(NSPredicate(format: "value == %@", "0.0")).firstMatch
+                XCTAssertTrue(slider.waitForExistence(timeout: 5))
+                // The accessibility bounds extend beyond the actual track's horizontal hit area.
+                slider.coordinate(withNormalizedOffset: CGVector(dx: 0.94, dy: 0.5)).tap()
+                XCTAssertTrue(app.staticTexts["+6"].waitForExistence(timeout: 5))
+                closeSettings()
+            }
+            openDebugSettings()
+            let mock = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Mock AI answers")).firstMatch
+            XCTAssertTrue(mock.waitForExistence(timeout: 5))
+            mock.tapCenter()
+            let field = app.textViews["HN ID"]
+            field.tapCenter()
+            field.typeText("47938184")
+            app.labeledButton("Open HN ID").tapCenter()
+            let summarize = app.labeledButton("Summarize")
+            XCTAssertTrue(summarize.waitForExistence(timeout: 20))
+            summarize.tapCenter()
+            let ask = app.labeledButton("Ask")
+            XCTAssertTrue(ask.waitForExistence(timeout: 20))
+            ask.tapCenter()
+            app.labeledButton(question).tapCenter()
+            let answer = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", answerPrefix)).firstMatch
+            XCTAssertTrue(answer.waitForExistence(timeout: 15))
+            let stop = app.labeledButton("Stop response")
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"), object: stop
+            )], timeout: 15), .completed)
+            // Auto-follow leaves the answer clipped to the same viewport height at either size.
+            // Return to the top before comparing text layout rather than the clipped viewport.
+            app.swipeDown(velocity: .slow)
+            app.swipeDown(velocity: .slow)
+            let sentQuestion = app.staticTexts[question]
+            XCTAssertTrue(sentQuestion.isHittable)
+            heights.append((sentQuestion.frame.height, answer.frame.height))
+            keepScreenshot(largeText ? "Ask maximum comment size" : "Ask default comment size")
+        }
+        XCTAssertGreaterThan(heights[1].question, heights[0].question)
+        XCTAssertGreaterThan(heights[1].answer, heights[0].answer)
+    }
+
     func testForegroundResumePreservesTapToUpdateAndNavigation() throws {
         openDebugSettings()
         let always = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Always show tap to refresh")).firstMatch

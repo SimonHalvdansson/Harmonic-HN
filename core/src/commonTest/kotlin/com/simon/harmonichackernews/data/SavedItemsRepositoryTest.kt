@@ -14,9 +14,27 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SavedItemsRepositoryTest {
+    @Test
+    fun rejectedImportsLeavePersistedBookmarksAndWarmCachesUntouched() = runTest {
+        val store = TestKeyValueStore(mapOf(SavedItemKeys.BOOKMARKS to "42q123"))
+        val repository = SavedItemsRepository(store)
+        val before = repository.loadItems(SavedItemSource.BOOKMARKS)
+        assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 42))
+        for (overwrite in listOf(false, true)) {
+            for (content in listOf("0q0", "-1q123", "1q100-invalid-2q300")) {
+                assertNull(repository.importBookmarksAtomic(content, overwrite))
+                assertEquals("42q123", store.getString(SavedItemKeys.BOOKMARKS))
+                assertEquals(before, repository.loadItems(SavedItemSource.BOOKMARKS))
+                assertTrue(repository.contains(SavedItemSource.BOOKMARKS, 42))
+                assertEquals(before, SavedItemsRepository(store).loadItems(SavedItemSource.BOOKMARKS))
+            }
+        }
+    }
+
     @Test
     fun descendingSnapshotIdsStayCurrentAcrossEveryMembershipWrite() = runTest {
         val repository = SavedItemsRepository(TestKeyValueStore())

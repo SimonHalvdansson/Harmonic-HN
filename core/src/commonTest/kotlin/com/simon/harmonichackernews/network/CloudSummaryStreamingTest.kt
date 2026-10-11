@@ -12,6 +12,7 @@ import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -25,6 +26,65 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CloudSummaryStreamingTest {
+    @Test
+    fun prematureEofNeverPublishesSuccessForEitherProvider() = runTest {
+        for (anthropic in listOf(false, true)) for (ending in listOf("", "\n\n")) {
+            val chunk = if (anthropic) {
+                """{"type":"content_block_delta","delta":{"text":"Partial answer"}}"""
+            } else {
+                """{"choices":[{"delta":{"content":"Partial answer"},"finish_reason":null}]}"""
+            }
+            val transport = HttpClient(MockEngine { respond("data: $chunk$ending") })
+            try {
+                var failure: Throwable? = null
+                val events = KtorCloudSummaryRepository(KtorHttpClient(transport), "test", StandardTestDispatcher(testScheduler))
+                    .summarize(streamConfig(anthropic), "Article")
+                    .catch { failure = it }.toList()
+                assertTrue(failure is CloudSummaryException)
+                assertTrue(failure?.message.orEmpty().contains("before completion"))
+                assertTrue(events.none { it is CloudSummaryEvent.Success })
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
+    fun providerTerminalEventsIncludingUnterminatedLastLinePublishSuccess() = runTest {
+        val openAi = """{"choices":[{"delta":{"content":"Complete"},"finish_reason":null}]}"""
+        val anthropic = """{"type":"content_block_delta","delta":{"text":"Complete"}}"""
+        for ((isAnthropic, body) in listOf(
+            false to "data: $openAi\n\ndata: [DONE]",
+            false to "data: $openAi\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}",
+            false to "data: {\"choices\":[{\"delta\":{\"content\":\"Complete\"},\"finish_reason\":\"length\"}]}\n\n",
+            true to "event: content_block_delta\ndata: $anthropic\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}",
+        )) {
+            val transport = HttpClient(MockEngine { respond(body) })
+            try {
+                val events = KtorCloudSummaryRepository(KtorHttpClient(transport), "test", StandardTestDispatcher(testScheduler))
+                    .summarize(streamConfig(isAnthropic), "Article").toList()
+                assertEquals(CloudSummaryEvent.Success("Complete"), events.last())
+            } finally { transport.close() }
+        }
+    }
+
+    @Test
+    fun plainJsonFallbackStillWorksForBothProviders() = runTest {
+        for ((anthropic, body) in listOf(
+            false to """{"choices":[{"message":{"content":"Complete"}}]}""",
+            true to """{"content":[{"type":"text","text":"Complete"}]}""",
+        )) {
+            val transport = HttpClient(MockEngine { respond(body) })
+            try {
+                val events = KtorCloudSummaryRepository(KtorHttpClient(transport), "test", StandardTestDispatcher(testScheduler))
+                    .summarize(streamConfig(anthropic), "Article").toList()
+                assertEquals(CloudSummaryEvent.Success("Complete"), events.last())
+            } finally { transport.close() }
+        }
+    }
+
+    private fun streamConfig(anthropic: Boolean) = CloudSummaryConfig(
+        if (anthropic) "https://api.anthropic.com/v1" else "https://provider.test/v1", "key", "model",
+    )
+
     @Test
     fun articleExtractionRejectsOversizeBeforeEof() = runTest {
         val body = ByteChannel(autoFlush = true)

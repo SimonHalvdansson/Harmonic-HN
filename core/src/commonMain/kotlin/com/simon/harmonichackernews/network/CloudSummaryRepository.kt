@@ -203,7 +203,10 @@ class KtorCloudSummaryRepository(
         }
         if (!complete && eventData.isNotEmpty()) {
             sawSseData = true
-            appendStreamEvent(eventData.toString(), anthropic, summary, onProgress)
+            complete = appendStreamEvent(eventData.toString(), anthropic, summary, onProgress)
+        }
+        if (sawSseData && !complete) {
+            throw CloudSummaryException("Response ended before completion. Please try again.")
         }
         if (!sawSseData && summary.isEmpty() && plainResponse.isNotEmpty()) {
             appendChunk(
@@ -222,14 +225,19 @@ class KtorCloudSummaryRepository(
         summary: StringBuilder,
         onProgress: suspend (String) -> Unit,
     ): Boolean {
-        if (data == "[DONE]") return true
+        if (!anthropic && data == "[DONE]") return true
         val event = parseCloudSummaryObject(data, "Invalid streaming response")
         if (event.string("type") == "error" || "error" in event) {
             throw CloudSummaryException(apiErrorMessage(data, "Streaming request failed"))
         }
         val chunk = parseCloudSummaryStreamChunk(event, anthropic)
         appendChunk(summary, chunk, onProgress)
-        return false
+        return if (anthropic) {
+            event.string("type") == "message_stop"
+        } else {
+            !event.arrayValue("choices")?.firstOrNull()?.asObject()
+                ?.string("finish_reason").isNullOrBlank()
+        }
     }
 
     private fun parseNonStreamingResponse(responseBody: String, anthropic: Boolean): String =

@@ -44,6 +44,13 @@
 # Its JSON bridge uses Gson's reflective generic type tokens.
 -keep class * extends com.google.gson.reflect.TypeToken
 
+# ProGuard 7.10 narrows these return types but retains a cast to the original
+# interface, producing a VerifyError as soon as OkHttp buffers a socket.
+-keepclassmembers,allowshrinking class okio.Okio__OkioKt {
+    public static okio.BufferedSource buffer(okio.Source);
+    public static okio.BufferedSink buffer(okio.Sink);
+}
+
 # OkHttp probes optional TLS providers; desktop uses the bundled JBR's TLS provider.
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.jsse.**

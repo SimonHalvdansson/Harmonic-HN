@@ -3,15 +3,23 @@ import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import com.simon.harmonichackernews.network.HarmonicHttpClientKt;
+import com.sun.net.httpserver.HttpServer;
+import io.ktor.client.engine.okhttp.OkHttp;
 import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Proxy;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import kotlin.Unit;
+import kotlin.coroutines.EmptyCoroutineContext;
+import kotlinx.coroutines.BuildersKt;
 
 /** Run with the processed release JARs as the only classpath, using the JDK source launcher. */
 public class VerifyDesktopRelease {
@@ -19,6 +27,7 @@ public class VerifyDesktopRelease {
 
     public static void main(String[] args) throws Exception {
         verifyApplicationBytecode();
+        verifyNetworking();
         Properties metadata = new Properties();
         try (InputStream input = resource("harmonic-desktop.properties")) {
             metadata.load(input);
@@ -60,7 +69,34 @@ public class VerifyDesktopRelease {
             // Initialize SWT's JNI layer without opening a browser or a window.
             Class.forName("org.eclipse.swt.internal.win32.OS");
         }
-        System.out.println("Release bytecode, enums, metadata, service providers, JNA structures, and native bindings passed");
+        System.out.println("Release bytecode, networking, enums, metadata, service providers, JNA structures, and native bindings passed");
+    }
+
+    private static void verifyNetworking() throws Exception {
+        // Exercise the packaged Ktor/OkHttp/Okio stack, not a JDK URL connection.
+        // A local fixture makes this independent of external services and credentials.
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        byte[] expected = "[42,123]".getBytes(StandardCharsets.UTF_8);
+        server.createContext("/stories", exchange -> {
+            try (exchange) {
+                exchange.sendResponseHeaders(200, expected.length);
+                exchange.getResponseBody().write(expected);
+            }
+        });
+        var engine = OkHttp.INSTANCE.create(config -> Unit.INSTANCE);
+        var client = HarmonicHttpClientKt.createHarmonicHttpClient(
+                engine, "Harmonic-release-verification", config -> Unit.INSTANCE);
+        try {
+            server.start();
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/stories";
+            String actual = BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE,
+                    (scope, continuation) -> HarmonicHttpClientKt.getTextOrThrow(client, url, continuation));
+            require(actual.equals(new String(expected, StandardCharsets.UTF_8)), "Release HTTP response mismatch");
+            System.out.println("Verified packaged Ktor/OkHttp networking against a local HTTP fixture");
+        } finally {
+            client.close();
+            server.stop(0);
+        }
     }
 
     private static void verifyApplicationBytecode() throws Exception {

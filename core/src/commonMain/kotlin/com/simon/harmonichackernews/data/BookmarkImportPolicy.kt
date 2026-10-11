@@ -12,7 +12,7 @@ object BookmarkImportPolicy {
         current: List<TimestampedItem>,
         overwrite: Boolean,
     ): BookmarkImportResult? {
-        val imported = SavedItemCodec.deduplicate(SavedItemCodec.decode(content, sortedByCreated = true))
+        val imported = SavedItemCodec.deduplicate(SavedItemCodec.decodeImport(content))
         if (imported.isEmpty()) return null
         if (overwrite) return BookmarkImportResult(imported, imported.size)
 

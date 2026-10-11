@@ -9,7 +9,8 @@ class BookmarkImportPolicyTest {
     fun malformedSegmentsCannotCauseRepeatedScansOfTheRemainingDocument() {
         val input = "bad-".repeat(131_072) + "42q123"
         val result = BookmarkImportPolicy.apply(input, emptyList(), overwrite = true)
-        assertEquals(listOf(TimestampedItem(42, 123)), result?.items)
+        assertNull(result)
+        assertEquals(listOf(TimestampedItem(42, 123)), SavedItemCodec.decode(input))
     }
 
     @Test
@@ -50,7 +51,7 @@ class BookmarkImportPolicyTest {
     fun overwriteUsesValidImportedItemsInNewestFirstOrder() {
         val result = requireNotNull(
             BookmarkImportPolicy.apply(
-                content = "1q100-invalid-2q300-3q200",
+                content = "1q100-2q300-3q200",
                 current = listOf(TimestampedItem(9, 900)),
                 overwrite = true,
             ),
@@ -76,12 +77,20 @@ class BookmarkImportPolicyTest {
 
     @Test
     fun emptyOrInvalidDocumentsAreRejectedWithoutChangingState() {
-        assertNull(
-            BookmarkImportPolicy.apply(
-                content = "not-a-bookmark",
-                current = listOf(TimestampedItem(1, 10)),
-                overwrite = false,
-            ),
-        )
+        val current = listOf(TimestampedItem(1, 10))
+        for (overwrite in listOf(false, true)) {
+            for (content in listOf("", "not-a-bookmark", "0q0", "-1q123", "1q-123",
+                "1q100-invalid-2q300", "1q100-0q0", "1q100--2q300", "1q100-",
+                "2147483648q1", "1q9223372036854775808", "1q2q3")) {
+                assertNull(BookmarkImportPolicy.apply(content, current, overwrite), content)
+                assertEquals(listOf(TimestampedItem(1, 10)), current)
+            }
+        }
+    }
+
+    @Test
+    fun exportedNumericLimitsAndZeroTimestampRemainImportable() {
+        val items = listOf(TimestampedItem(Int.MAX_VALUE, Long.MAX_VALUE), TimestampedItem(1, 0))
+        assertEquals(items, BookmarkImportPolicy.apply(SavedItemCodec.encode(items), emptyList(), true)?.items)
     }
 }

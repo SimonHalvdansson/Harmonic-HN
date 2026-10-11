@@ -86,7 +86,7 @@ internal fun AskSurface(
     var expanded by remember(subject) { mutableStateOf(false) }
     val scroll = rememberScrollState()
     val keyboard = LocalSoftwareKeyboardController.current
-    val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
+    val typography = rememberContentTypography(settings.font, commentTextSize = settings.preferredTextSize)
     val questions = remember(subject) { AskConversation.suggestedQuestions(subject) }
     val remainingQuestions = remember(questions, state.suggestedQuestions, state.turns) {
         remainingDiscussionQuestions(questions + state.suggestedQuestions, state.turns.map { it.question })

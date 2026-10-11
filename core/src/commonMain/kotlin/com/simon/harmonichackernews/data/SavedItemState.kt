@@ -25,7 +25,14 @@ private inline fun <T> encodeTimestampedItems(
 }
 
 object SavedItemCodec {
-    fun decode(value: String?, sortedByCreated: Boolean = false): List<TimestampedItem> {
+    fun decode(value: String?, sortedByCreated: Boolean = false): List<TimestampedItem> =
+        decode(value, sortedByCreated, strict = false)
+
+    // Imports can replace the entire collection; legacy persistence still recovers valid entries.
+    internal fun decodeImport(value: String): List<TimestampedItem> =
+        decode(value, sortedByCreated = true, strict = true)
+
+    private fun decode(value: String?, sortedByCreated: Boolean, strict: Boolean): List<TimestampedItem> {
         if (value.isNullOrEmpty()) return emptyList()
         val items = ArrayList<TimestampedItem>()
         var segmentStart = 0
@@ -48,8 +55,10 @@ object SavedItemCodec {
             if (separator > segmentStart) {
                 val id = parseInt(value, segmentStart, separator)
                 val created = parseLong(value, separator + 1, segmentEnd)
-                if (id != null && created != null) items += TimestampedItem(id, created)
-            }
+                if (id != null && created != null && (!strict || id > 0)) {
+                    items += TimestampedItem(id, created)
+                } else if (strict) return emptyList()
+            } else if (strict) return emptyList()
             if (segmentEnd == value.length) break
             segmentStart = segmentEnd + 1
         }
