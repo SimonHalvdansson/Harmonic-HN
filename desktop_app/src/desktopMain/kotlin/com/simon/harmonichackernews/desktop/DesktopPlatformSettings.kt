@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_hard_drive
+import com.simon.harmonichackernews.resources.ic_info
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.DataSettingsCounts
 import com.simon.harmonichackernews.settings.DataSettingsDialogState
@@ -80,6 +81,8 @@ internal fun DesktopSettingsDetail(
             "This desktop host uses the same Kotlin Multiplatform application logic and " +
             "Compose screens as the Android app, with desktop-native storage, links, and " +
             "keyboard/window behavior.",
+        debugPlatformLabel = "Operating system",
+        debugPlatformIcon = Res.drawable.ic_info,
         debugPlatformVersion =
             "${System.getProperty("os.name")} ${System.getProperty("os.version")}",
         debugNotificationsMessage =
