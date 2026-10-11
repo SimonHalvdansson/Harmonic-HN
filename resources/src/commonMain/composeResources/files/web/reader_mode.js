@@ -573,6 +573,7 @@
                 var styles = document.createElement("div");
                 styles.innerHTML = readerStyles();
                 oldStyle.replaceWith(styles.firstElementChild);
+                correctReaderContrast(document.getElementById("harmonic-reader-mode"));
             }
         }
         return "theme_set";
@@ -680,7 +681,17 @@
         return "rgb(" + result.join(",") + ")";
     }
 
+    var contrastCorrections = [];
+
     function correctReaderContrast(root) {
+        if (!root) return;
+        // Re-evaluate source colors after a theme change, rather than adjusting our previous
+        // correction. Restore only reader clones; the retained original document is untouched.
+        for (var previous of contrastCorrections) {
+            if (previous.color) previous.element.style.setProperty("color", previous.color, previous.priority);
+            else previous.element.style.removeProperty("color");
+        }
+        contrastCorrections = [];
         var theme = getReaderTheme();
         // Let the browser resolve CSS colors, including alpha and wide-gamut syntax, into sRGB.
         var context = document.createElement("canvas").getContext("2d", {willReadFrequently: true});
@@ -715,6 +726,11 @@
         // Read all computed styles before writing, preserving inherited source colors and avoiding
         // a style recalculation for every text node. Original page nodes are never modified.
         for (var i = 0; i < changes.length; i++) {
+            contrastCorrections.push({
+                element: changes[i].element,
+                color: changes[i].element.style.getPropertyValue("color"),
+                priority: changes[i].element.style.getPropertyPriority("color")
+            });
             changes[i].element.style.setProperty("color", changes[i].color, "important");
         }
     }
@@ -944,6 +960,7 @@
                 var scrollX = currentState.scrollX || 0;
                 var scrollY = currentState.scrollY || 0;
                 window[STATE_KEY] = null;
+                contrastCorrections = [];
                 setTimeout(function() {
                     window.scrollTo(scrollX, scrollY);
                 }, 0);

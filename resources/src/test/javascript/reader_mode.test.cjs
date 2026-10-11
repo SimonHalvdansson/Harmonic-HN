@@ -410,3 +410,26 @@ for (const useReadability of [false, true]) {
         } finally { await page.close(); }
     });
 }
+
+// Native hosts update themes in-place while reader is open.
+test('live theme switch recomputes source text contrast', async () => {
+    const page = await article(false);
+    try {
+        await page.addStyleTag({ content: '#faint { color: pink !important; }' });
+        await page.evaluate(() => document.querySelector('article').insertAdjacentHTML('beforeend',
+            '<p><q id="faint">Source-colored text must stay readable when the user switches themes.</q></p>'));
+        await enable(page);
+        const getColor = () => page.locator('#faint').evaluate(node => getComputedStyle(node).color.match(/[\d.]+/g).map(Number));
+        const lightColor = await getColor();
+        assert.ok(contrast(lightColor, [250,250,250]) >= 4.5);
+        await page.evaluate(() => HarmonicReaderMode.setTheme({ isLight: false }));
+        const darkColor = await getColor();
+        assert.ok(contrast(darkColor, [21,22,23]) >= 4.5,
+            'The correction must be recalculated against the new background');
+        assert.deepEqual(darkColor, [255, 192, 203], 'Readable source pink should be restored in dark mode');
+        await page.evaluate(() => HarmonicReaderMode.setTheme({ isLight: true }));
+        assert.deepEqual(await getColor(), lightColor, 'Theme round trips must not accumulate color corrections');
+        await disable(page);
+        assert.deepEqual(await getColor(), [255, 192, 203], 'The original article retains its source color');
+    } finally { await page.close(); }
+});
