@@ -65,6 +65,56 @@ final class HarmonicIosUITests: XCTestCase {
         completeFirstRunIfNeeded()
     }
 
+    private func openStoryFromDebugSettings() {
+        openDebugSettings()
+        let field = app.textViews["HN ID"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("49643982")
+        let openItem = app.buttons["Open HN ID"]
+        if UIDevice.current.userInterfaceIdiom == .pad && !openItem.isHittable {
+            openItem.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        openItem.tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["User"].waitForExistence(timeout: 20))
+    }
+
+    func testEdgeBackFromStoryReturnsToRetainedDebugSettings() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        openStoryFromDebugSettings()
+        edgeSwipeBack()
+        XCTAssertTrue(app.textViews["HN ID"].waitForExistence(timeout: 5))
+        XCTAssertFalse(articleHeader.isHittable)
+        keepScreenshot("Story Back returns to Debug settings")
+    }
+
+    func testRetainedStoriesRemainInteractiveAndBackReturnsToSubmissions() throws {
+        openStoryFromDebugSettings()
+        app.buttons["User"].tap()
+        let submissions = app.buttons["Submissions"]
+        XCTAssertTrue(submissions.waitForExistence(timeout: 15))
+        submissions.tap()
+        XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 20))
+        firstCommentsButton.tap()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        print("Retained story idle start")
+        Thread.sleep(forTimeInterval: 10)
+        print("Retained story idle end")
+        app.buttons["User"].tap()
+        XCTAssertTrue(submissions.waitForExistence(timeout: 5), "Retained stories must remain responsive")
+        // Dismiss the profile without invoking any account action.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: submissions
+        )], timeout: 5), .completed)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            edgeSwipeBack()
+            XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 5))
+        }
+        keepScreenshot("Retained story navigation remains interactive")
+    }
+
     private var storyListHeader: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Top Stories")).firstMatch
     }
@@ -158,7 +208,7 @@ final class HarmonicIosUITests: XCTestCase {
             app.launch()
             completeFirstRunIfNeeded()
             openSettings()
-            let debug = app.buttons["Debug"]
+            let debug = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Debug")).firstMatch
             for _ in 0..<4 where !debug.isHittable { app.swipeUp() }
             XCTAssertTrue(debug.waitForExistence(timeout: 5))
             debug.tap()
@@ -214,7 +264,7 @@ final class HarmonicIosUITests: XCTestCase {
 
     private func openDebugSettings() {
         openSettings()
-        let debug = app.buttons["Debug"]
+        let debug = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Debug")).firstMatch
         for _ in 0..<4 where !debug.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(debug.waitForExistence(timeout: 5))
         debug.tap()

@@ -75,6 +75,8 @@ import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
+import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
+import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
@@ -119,8 +121,12 @@ fun main() {
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
             val navigation by bootstrap.scene.navigation.state.collectAsState()
             var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
-            var commentsController by remember { mutableStateOf<CommentsScreenController?>(null) }
-            var settingsNavigation by remember { mutableStateOf<SettingsNavigationStore?>(null) }
+            val commentsControllers = remember { RetainedDestinationControllers<CommentsScreenController>() }
+            val commentsController = commentsControllers[
+                navigation.storyRequest?.serial.takeIf { navigation.currentDestination == MainDestination.STORY }
+            ]
+            val settingsControllers = remember { RetainedDestinationControllers<SettingsNavigationStore>() }
+            val settingsNavigation = settingsControllers[navigation.settingsRequest?.serial]
             var editorBackRequestVersion by remember { mutableIntStateOf(0) }
             val windowState = rememberWindowState(width = 1180.dp, height = 840.dp)
             Window(
@@ -208,8 +214,8 @@ fun main() {
                                         commentsController = commentsController,
                                         editorBackRequestVersion = editorBackRequestVersion,
                                         onStoriesControllerChanged = { storiesController = it },
-                                        onCommentsControllerChanged = { commentsController = it },
-                                        onSettingsNavigationChanged = { settingsNavigation = it },
+                                        commentsControllers = commentsControllers,
+                                        settingsControllers = settingsControllers,
                                     )
                                 }
                             }
@@ -268,7 +274,7 @@ private fun installTaskbarIcon(icon: BufferedImage?) {
     }
 }
 
-private fun handleDesktopBack(
+internal fun handleDesktopBack(
     navigation: MainNavigationSnapshot,
     scene: HarmonicSceneComposition,
     storiesController: StoriesScreenController?,
@@ -285,9 +291,9 @@ private fun handleDesktopBack(
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
         navigation.welcomeDialogVisible -> return true
         navigation.coulombGasVisible -> scene.navigation.closeCoulombGas()
-        navigation.editorRequest != null -> onEditorBackRequested()
-        navigation.submissionsRequest != null -> scene.navigation.closeSubmissions()
-        navigation.settingsRequest != null -> {
+        navigation.currentDestination == MainDestination.EDITOR -> onEditorBackRequested()
+        navigation.currentDestination == MainDestination.SUBMISSIONS -> scene.navigation.closeSubmissions()
+        navigation.currentDestination == MainDestination.SETTINGS -> {
             handleSettingsBack(settingsNavigation, scene.navigation::closeSettings)
         }
         commentsController?.isHeaderMenuShowing() == true ->
@@ -302,7 +308,7 @@ private fun handleDesktopBack(
         commentsController?.isWebsiteVisible() == true -> commentsController.requestExpandSheet()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
-        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
+        navigation.currentDestination == MainDestination.STORY -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.searching == true -> storiesController.finishSearchBack()
         else -> return false
     }
@@ -318,8 +324,8 @@ private fun DesktopAppContent(
     commentsController: CommentsScreenController?,
     editorBackRequestVersion: Int,
     onStoriesControllerChanged: (StoriesScreenController?) -> Unit,
-    onCommentsControllerChanged: (CommentsScreenController?) -> Unit,
-    onSettingsNavigationChanged: (SettingsNavigationStore?) -> Unit,
+    commentsControllers: RetainedDestinationControllers<CommentsScreenController>,
+    settingsControllers: RetainedDestinationControllers<SettingsNavigationStore>,
 ) {
     val navigation by scene.navigation.state.collectAsState()
     val storyDestinationForeground = navigation.currentDestination == MainDestination.STORY
@@ -375,7 +381,7 @@ private fun DesktopAppContent(
             showNavigation = showNavigation,
             webViewForegroundAllowed = webViewForegroundAllowed,
             onClose = scene.navigation::detailRemovedFromBackStack,
-            onControllerChanged = onCommentsControllerChanged,
+            controllers = commentsControllers,
         )
     }
     HarmonicAppRoot(
@@ -413,7 +419,8 @@ private fun DesktopAppContent(
             DesktopSettingsShell(
                 app = app,
                 scene = scene,
-                onNavigationChanged = onSettingsNavigationChanged,
+                requestSerial = request.serial,
+                controllers = settingsControllers,
                 initialSection = SettingsSection.fromRoute(
                     request.initialSectionRoute.orEmpty(),
                 ),
@@ -649,7 +656,8 @@ private fun DesktopSettingsShell(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     initialSection: SettingsSection?,
-    onNavigationChanged: (SettingsNavigationStore?) -> Unit,
+    requestSerial: Int,
+    controllers: RetainedDestinationControllers<SettingsNavigationStore>,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
@@ -659,11 +667,7 @@ private fun DesktopSettingsShell(
         initialSection = initialSection,
         twoPane = isTwoPane,
     )
-    val currentOnNavigationChanged by rememberUpdatedState(onNavigationChanged)
-    DisposableEffect(navigation) {
-        currentOnNavigationChanged(navigation)
-        onDispose { currentOnNavigationChanged(null) }
-    }
+    RegisterDestinationController(controllers, requestSerial, navigation)
 
     LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
+import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
@@ -24,7 +26,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -125,7 +126,7 @@ internal fun IosCommentsContent(
     isTablet: Boolean,
     isTwoPane: Boolean,
     showUpButton: Boolean,
-    onControllerChanged: (CommentsScreenController?) -> Unit,
+    controllers: RetainedDestinationControllers<CommentsScreenController>,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -236,10 +237,9 @@ internal fun IosCommentsContent(
         }
     }
 
-    SideEffect { onControllerChanged(host.controller) }
+    RegisterDestinationController(controllers, request.serial, host.controller)
     DisposableEffect(host) {
         onDispose {
-            onControllerChanged(null)
             host.webView?.dispose()
             host.binding.close()
         }

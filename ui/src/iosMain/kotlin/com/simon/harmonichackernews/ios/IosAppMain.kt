@@ -71,6 +71,8 @@ import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
+import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
+import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
 import com.simon.harmonichackernews.ui.navigation.HarmonicAppRoot
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
@@ -97,7 +99,7 @@ internal val LocalIosForeground = staticCompositionLocalOf { false }
 
 private data object IosApplicationBackInfo : NavigationEventInfo()
 
-private enum class IosBackVisualTarget { None, Story, Settings, Submissions, Editor }
+internal enum class IosBackVisualTarget { None, Story, Settings, Submissions, Editor }
 
 private class IosBackSettle(
     val visualTarget: IosBackVisualTarget,
@@ -180,8 +182,12 @@ private fun IosApp(
     }
     val navigation by scene.navigation.state.collectAsState()
     var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
-    var commentsController by remember { mutableStateOf<CommentsScreenController?>(null) }
-    var settingsNavigation by remember { mutableStateOf<SettingsNavigationStore?>(null) }
+    val commentsControllers = remember { RetainedDestinationControllers<CommentsScreenController>() }
+    val commentsController = commentsControllers[
+        navigation.storyRequest?.serial.takeIf { navigation.currentDestination == MainDestination.STORY }
+    ]
+    val settingsControllers = remember { RetainedDestinationControllers<SettingsNavigationStore>() }
+    val settingsNavigation = settingsControllers[navigation.settingsRequest?.serial]
     var editorBackRequestVersion by remember { mutableIntStateOf(0) }
     var completedBackTarget by remember { mutableStateOf(IosBackVisualTarget.None) }
 
@@ -299,8 +305,8 @@ private fun IosApp(
                     commentsController = commentsController,
                     editorBackRequestVersion = editorBackRequestVersion,
                     onStoriesControllerChanged = { storiesController = it },
-                    onCommentsControllerChanged = { commentsController = it },
-                    onSettingsNavigationChanged = { settingsNavigation = it },
+                    commentsControllers = commentsControllers,
+                    settingsControllers = settingsControllers,
                     backVisualTarget = backSettle?.visualTarget ?: visualTarget,
                     backProgress = backSettle?.progress?.value ?: backProgress,
                     backInProgress = activeBack != null || backSettle != null,
@@ -328,7 +334,7 @@ private fun canHandleIosBack(
     storiesController?.isStoryPreviewShowing() == true ||
     navigation.storyRequest != null || storiesController?.searching == true
 
-private fun iosBackVisualTarget(
+internal fun iosBackVisualTarget(
     navigation: MainNavigationSnapshot,
     storiesController: StoriesScreenController?,
     commentsController: CommentsScreenController?,
@@ -342,17 +348,17 @@ private fun iosBackVisualTarget(
         commentsController?.isCommentActionOverlayShowing() == true ||
         commentsController?.searchDialogVisible == true ||
         commentsController?.isWebsiteVisible() == true -> IosBackVisualTarget.None
-    navigation.editorRequest != null -> IosBackVisualTarget.Editor
-    navigation.submissionsRequest != null -> IosBackVisualTarget.Submissions
-    navigation.settingsRequest != null ->
+    navigation.currentDestination == MainDestination.EDITOR -> IosBackVisualTarget.Editor
+    navigation.currentDestination == MainDestination.SUBMISSIONS -> IosBackVisualTarget.Submissions
+    navigation.currentDestination == MainDestination.SETTINGS ->
         if (settingsCanNavigateBack) IosBackVisualTarget.None else IosBackVisualTarget.Settings
-    navigation.storyRequest != null -> IosBackVisualTarget.Story
+    navigation.currentDestination == MainDestination.STORY -> IosBackVisualTarget.Story
     storiesController?.isStoryPreviewShowing() == true || storiesController?.searching == true ->
         IosBackVisualTarget.None
     else -> IosBackVisualTarget.None
 }
 
-private fun handleIosBack(
+internal fun handleIosBack(
     navigation: MainNavigationSnapshot,
     scene: HarmonicSceneComposition,
     storiesController: StoriesScreenController?,
@@ -369,9 +375,9 @@ private fun handleIosBack(
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
         navigation.welcomeDialogVisible -> return true
         navigation.coulombGasVisible -> scene.navigation.closeCoulombGas()
-        navigation.editorRequest != null -> onEditorBackRequested()
-        navigation.submissionsRequest != null -> scene.navigation.closeSubmissions()
-        navigation.settingsRequest != null -> {
+        navigation.currentDestination == MainDestination.EDITOR -> onEditorBackRequested()
+        navigation.currentDestination == MainDestination.SUBMISSIONS -> scene.navigation.closeSubmissions()
+        navigation.currentDestination == MainDestination.SETTINGS -> {
             handleSettingsBack(settingsNavigation, scene.navigation::closeSettings)
         }
         commentsController?.isLinkPreviewOverlayShowing() == true ->
@@ -380,7 +386,7 @@ private fun handleIosBack(
             commentsController.requestDismissCommentActions()
         commentsController?.searchDialogVisible == true -> commentsController.dismissCommentSearch()
         commentsController?.isWebsiteVisible() == true -> commentsController.requestExpandSheet()
-        navigation.storyRequest != null -> scene.navigation.detailRemovedFromBackStack()
+        navigation.currentDestination == MainDestination.STORY -> scene.navigation.detailRemovedFromBackStack()
         storiesController?.isStoryPreviewShowing() == true ->
             storiesController.requestDismissStoryPreview()
         storiesController?.searching == true -> storiesController.finishSearchBack()
@@ -398,8 +404,8 @@ private fun IosAppContent(
     commentsController: CommentsScreenController?,
     editorBackRequestVersion: Int,
     onStoriesControllerChanged: (StoriesScreenController?) -> Unit,
-    onCommentsControllerChanged: (CommentsScreenController?) -> Unit,
-    onSettingsNavigationChanged: (SettingsNavigationStore?) -> Unit,
+    commentsControllers: RetainedDestinationControllers<CommentsScreenController>,
+    settingsControllers: RetainedDestinationControllers<SettingsNavigationStore>,
     backVisualTarget: IosBackVisualTarget,
     backProgress: Float,
     backInProgress: Boolean,
@@ -437,7 +443,7 @@ private fun IosAppContent(
         IosCommentsContent(
             app = app, scene = scene, request = request,
             isTablet = supportsTwoPane, isTwoPane = !fullScreen, showUpButton = fullScreen,
-            onControllerChanged = onCommentsControllerChanged,
+            controllers = commentsControllers,
         )
     }
     HarmonicAppRoot(
@@ -485,7 +491,8 @@ private fun IosAppContent(
             IosSettingsShell(
                 app = app,
                 scene = scene,
-                onNavigationChanged = onSettingsNavigationChanged,
+                requestSerial = request.serial,
+                controllers = settingsControllers,
                 initialSection = SettingsSection.fromRoute(
                     request.initialSectionRoute.orEmpty(),
                 ),
@@ -709,7 +716,8 @@ private fun IosSettingsShell(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     initialSection: SettingsSection?,
-    onNavigationChanged: (SettingsNavigationStore?) -> Unit,
+    requestSerial: Int,
+    controllers: RetainedDestinationControllers<SettingsNavigationStore>,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
@@ -728,11 +736,7 @@ private fun IosSettingsShell(
         initialSection = initialSection,
         twoPane = isTwoPane,
     )
-    val currentOnNavigationChanged by rememberUpdatedState(onNavigationChanged)
-    DisposableEffect(navigation) {
-        currentOnNavigationChanged(navigation)
-        onDispose { currentOnNavigationChanged(null) }
-    }
+    RegisterDestinationController(controllers, requestSerial, navigation)
 
     LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 
