@@ -186,7 +186,8 @@ class CommentAppearanceRegressionTest {
             .fetchSemanticsNode().boundsInRoot.center - root.topLeft
         fun dotOpacity(): Float {
             val pixels = compose.onRoot().captureToImage().toPixelMap()
-            return 1f - pixels[center.x.toInt(), center.y.toInt()].green
+            val background = HarmonicThemeCatalog.resolve("light", false).colorScheme.pageBackground
+            return 1f - pixels[center.x.toInt(), center.y.toInt()].green / background.green
         }
         compose.mainClock.autoAdvance = false
         try {

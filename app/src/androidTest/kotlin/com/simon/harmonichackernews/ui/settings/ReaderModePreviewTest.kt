@@ -99,8 +99,11 @@ class ReaderModePreviewTest {
                 lineHeights.any { it > minOf(start, end) + 0.1 && it < maxOf(start, end) - 0.1 })
             assertTrue("The document must resize throughout the animation", heights.distinct().size > 2)
             assertEquals(end, lineHeights.last(), 0.1)
-            compose.runOnUiThread {
-                assertEquals(heights.last() * browser.resources.displayMetrics.density, browser.height.toDouble(), 3.0)
+            // JavaScript animation completion precedes the asynchronous Compose height bridge.
+            compose.waitUntil(5_000) {
+                compose.runOnIdle {
+                    kotlin.math.abs(heights.last() * browser.resources.displayMetrics.density - browser.height) < 3.0
+                }
             }
         }
     }

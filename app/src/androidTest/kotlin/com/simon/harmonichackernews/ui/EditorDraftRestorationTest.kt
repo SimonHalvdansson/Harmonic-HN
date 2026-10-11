@@ -79,11 +79,20 @@ class EditorDraftRestorationTest {
     }
 
     private fun awaitKeyboard(visible: Boolean) {
+        var lastBottom = -1
+        var stableSince = SystemClock.uptimeMillis()
         compose.waitUntil(10_000) {
             compose.runOnIdle {
                 val insets = ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                val bottom = insets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: -1
+                if (bottom != lastBottom) {
+                    lastBottom = bottom
+                    stableSince = SystemClock.uptimeMillis()
+                }
+                // Visibility flips before the platform IME animation and gesture target settle.
                 insets != null && insets.isVisible(WindowInsetsCompat.Type.ime()) == visible &&
-                    (visible || insets.getInsets(WindowInsetsCompat.Type.ime()).bottom == 0)
+                    (if (visible) bottom > 0 else bottom == 0) &&
+                    SystemClock.uptimeMillis() - stableSince >= 300
             }
         }
         compose.waitForIdle()

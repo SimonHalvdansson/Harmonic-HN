@@ -5,12 +5,14 @@ import android.app.job.JobScheduler
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.network.ReplyNotificationSchedule
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.utils.AndroidKeystoreSecretStore
@@ -40,16 +42,22 @@ class AndroidCompatibilityTest {
             navigation.dismissChangelogDialog()
         }
         for (section in SettingsSection.entries) {
-            // Notifications deliberately returns to the Settings list while logged out.
-            val title = if (section == SettingsSection.Notifications &&
+            // Logged-out notifications goes back: to the list on phones, or out of
+            // Settings when the tablet's selected detail has no previous destination.
+            val loggedOutNotifications = section == SettingsSection.Notifications &&
                 compose.activity.harmonicAppComposition.platform.accounts.accountState.value.accountOrNull == null
-            ) "Settings" else runBlocking { getString(section.titleResource) }
+            val title = if (loggedOutNotifications) "Settings"
+                else runBlocking { getString(section.titleResource) }
             try {
                 compose.runOnIdle { navigation.openSettings(section.route) }
                 compose.waitForIdle()
                 compose.waitUntil(10_000) {
                     val headings = compose.onAllNodesWithText(title, substring = false)
-                    headings.fetchSemanticsNodes().indices.any { headings[it].isDisplayed() }
+                    headings.fetchSemanticsNodes().indices.any { headings[it].isDisplayed() } ||
+                        (loggedOutNotifications &&
+                            navigation.navigationState.state.value.currentDestination == MainDestination.STORIES &&
+                            compose.onAllNodesWithContentDescription("Choose story list")
+                                .fetchSemanticsNodes().isNotEmpty())
                 }
                 assertFalse("Opening ${section.route} must retain the activity", compose.activity.isFinishing)
             } catch (error: Throwable) {

@@ -85,7 +85,7 @@ class UserAvatarSettingsTest {
             compose.mainClock.autoAdvance = true
             compose.onNodeWithText("Generic").performScrollTo()
             compose.mainClock.autoAdvance = false
-            compose.onNodeWithText("Generic").performClick()
+            compose.onNodeWithText("Generic").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
             compose.mainClock.advanceTimeBy(100)
             assertTrue(options.value.generic)
             // Outgoing examples remain composed during the collapse, then disappear.

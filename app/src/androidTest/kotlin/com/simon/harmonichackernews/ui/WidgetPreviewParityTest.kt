@@ -195,7 +195,8 @@ class WidgetPreviewParityTest {
             val index = labels.single { it.text.toString() == "1." }
             val title = labels.single { it.text.toString().startsWith("Algorithm breaks") }
             fun top(view: View): Int = view.top + ((view.parent as? View)?.takeUnless { it == picker }?.let(::top) ?: 0)
-            assertEquals(top(title), top(index))
+            assertEquals("The index and title align on their text baseline",
+                top(title) + title.baseline, top(index) + index.baseline)
         }
     }
 

@@ -278,13 +278,16 @@ class CommentsHeaderMotionTest {
                 val centerX = pixels.width / 2
                 val centerY = (headerBounds.top - rootBounds.top + (80 + 16 + 21) * scale).toInt()
                 val radius = (3 * scale).toInt().coerceAtLeast(1)
+                val background = pixels[(centerX + 40 * scale).toInt(), centerY]
                 var contrast = 0f
                 // The filled center of the morphing indicator remains present in every shape.
-                // Short, left-aligned comment text leaves this sample region white underneath it.
+                // Sample the adjacent empty background so the theme surface tint is not
+                // mistaken for indicator opacity.
                 for (y in centerY - radius..centerY + radius) {
                     for (x in centerX - radius..centerX + radius) {
                         val pixel = pixels[x, y]
-                        contrast = maxOf(contrast, 1f - minOf(pixel.red, pixel.green, pixel.blue))
+                        contrast = maxOf(contrast, kotlin.math.abs(pixel.red - background.red),
+                            kotlin.math.abs(pixel.green - background.green), kotlin.math.abs(pixel.blue - background.blue))
                     }
                 }
                 return contrast

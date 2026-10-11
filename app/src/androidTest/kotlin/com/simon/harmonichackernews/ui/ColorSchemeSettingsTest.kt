@@ -58,9 +58,10 @@ class ColorSchemeSettingsTest {
     private fun rootList() = compose.onNode(hasScrollAction() and !hasAnyAncestor(hasScrollAction()))
     private fun select(tag: String, scheme: String) {
         rootList().performScrollToNode(hasTestTag(tag))
-        compose.onNodeWithTag(tag).performScrollToIndex(ColorSchemeCatalog.options.indexOfFirst { it.value == scheme })
+        rootList().performScrollToNode(hasContentDescription("${ColorSchemeCatalog.label(scheme)} color scheme"))
         compose.onNode(hasContentDescription("${ColorSchemeCatalog.label(scheme)} color scheme") and
-            hasAnyAncestor(hasTestTag(tag))).performClick()
+            hasAnyAncestor(hasTestTag(tag))).performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
     }
     private fun click(text: String) {
         rootList().performScrollToNode(hasText(text))
@@ -74,6 +75,9 @@ class ColorSchemeSettingsTest {
     }
 
     private fun assertSwatch(tag: String, base: String, dark: Boolean, style: ColorSchemeStyle = ColorSchemeStyle.Balanced) {
+        // Restore the top of the list: bringIntoView can align a swatch behind the
+        // sticky preview, whose pixels must not be sampled as palette roles.
+        rootList().performScrollToIndex(0)
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()
         val expected = harmonicThemePalette(compose.activity, ThemeSelection.forScheme(base, dark, style)).colorScheme
@@ -85,7 +89,8 @@ class ColorSchemeSettingsTest {
             assertEquals(expected.green, actual.green, .01f)
             assertEquals(expected.blue, actual.blue, .01f)
         }
-        assertRole(expected.primary, .7f, .3f)
+        // Keep clear of the selected check mark in the top-right quadrant.
+        assertRole(expected.primary, .15f, .3f)
         assertRole(expected.secondary, .7f, .7f)
         assertRole(expected.tertiary, .3f, .7f)
     }
@@ -116,7 +121,7 @@ class ColorSchemeSettingsTest {
     @Test
     fun dynamicSwatchesUseActualSystemRolesInTheDisplayedMode() = showSettings {
         select("Color scheme", "dynamic")
-        compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+        compose.onNode(hasText("Vibrant") and hasAnyAncestor(hasTestTag("Color scheme style"))).assertIsNotEnabled()
         assertSwatch("Color scheme", "dynamic", false)
         compose.runOnIdle { systemDark.value = true }
         assertSwatch("Color scheme", "dynamic", true)
@@ -138,7 +143,7 @@ class ColorSchemeSettingsTest {
             assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.darkStyle)
         }
         select("Color scheme", "dynamic")
-        compose.onNodeWithTag("Color scheme style").assertDoesNotExist()
+        compose.onNode(hasText("Vibrant") and hasAnyAncestor(hasTestTag("Color scheme style"))).assertIsNotEnabled()
         assertEquals(ColorSchemeStyle.NeutralSurfaces, appearance().colorSchemes.lightStyle)
         select("Color scheme", "hacker_news")
         rootList().performScrollToNode(hasTestTag("Color scheme style"))

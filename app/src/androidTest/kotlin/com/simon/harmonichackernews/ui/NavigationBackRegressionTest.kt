@@ -1,10 +1,9 @@
 package com.simon.harmonichackernews.ui
 
 import androidx.activity.BackEventCompat
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.MainActivity
@@ -287,15 +286,23 @@ class NavigationBackRegressionTest {
                 child.updateStatusBarHeaderCoverage(1f)
             }
             compose.waitForIdle()
-            val pixels = compose.onRoot().captureToImage().toPixelMap()
-            var parentTintPixels = 0
-            for (y in 0 until pixels.height / 5) {
-                for (x in pixels.width / 40 until pixels.width / 12) {
-                    val pixel = pixels[x, y]
-                    if (pixel.red > 0.5f && pixel.blue > 0.5f && pixel.green < 0.2f) parentTintPixels++
-                }
+            // The status bar is drawn by the native window after Compose becomes idle.
+            // Wait for its pixels directly; forcing all retained Compose/SurfaceView roots
+            // to redraw can time out on a covered browser surface.
+            compose.waitUntil(5_000) {
+                val bitmap = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                try {
+                    val pixels = bitmap.asImageBitmap().toPixelMap()
+                    var parentTintPixels = 0
+                    for (y in 0 until pixels.height / 5) {
+                        for (x in pixels.width / 40 until pixels.width / 12) {
+                            val pixel = pixels[x, y]
+                            if (pixel.red > 0.5f && pixel.blue > 0.5f && pixel.green < 0.2f) parentTintPixels++
+                        }
+                    }
+                    parentTintPixels > 50
+                } finally { bitmap.recycle() }
             }
-            assertTrue("The revealed parent's status bar must keep its own tint", parentTintPixels > 50)
             compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }
             compose.waitForIdle()
         } finally {

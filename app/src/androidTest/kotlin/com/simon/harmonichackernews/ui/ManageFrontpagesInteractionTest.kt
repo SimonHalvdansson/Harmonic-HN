@@ -23,6 +23,10 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.pressBack
+import androidx.test.espresso.matcher.RootMatchers.isDialog as isDialogWindow
+import androidx.test.espresso.matcher.ViewMatchers.isRoot as isRootView
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -274,7 +278,8 @@ class ManageFrontpagesInteractionTest {
         repeat(2) {
             compose.onNodeWithContentDescription("About Classic").performTouchInput { click() }
             compose.onNode(hasText("Classic") and hasAnyAncestor(isDialog())).assertIsDisplayed()
-            androidx.test.espresso.Espresso.pressBack()
+            // The dialog owns focus; the underlying activity root cannot accept Back.
+            onView(isRootView()).inRoot(isDialogWindow()).perform(pressBack())
             compose.waitForIdle()
             compose.onNode(isDialog()).assertDoesNotExist()
             compose.onNodeWithContentDescription("Add Classic").assertIsDisplayed()

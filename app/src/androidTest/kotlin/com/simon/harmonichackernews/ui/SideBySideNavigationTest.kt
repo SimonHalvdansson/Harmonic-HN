@@ -21,6 +21,12 @@ import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
+import org.junit.Before
+import org.junit.After
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +34,39 @@ import org.junit.runner.RunWith
 /** Production Navigation3 panes and back dispatcher with a real, locally populated WebView. */
 @RunWith(AndroidJUnit4::class)
 class SideBySideNavigationTest {
+    private lateinit var fixtureServer: ServerSocket
+    private val fixtureWorkers = Executors.newCachedThreadPool()
+
+    @Before fun startBrowserFixture() {
+        fixtureServer = ServerSocket(0, 10, InetAddress.getByName("127.0.0.1"))
+        fixtureWorkers.submit {
+            while (!fixtureServer.isClosed) {
+                val connection = try { fixtureServer.accept() } catch (_: java.io.IOException) { break }
+                fixtureWorkers.submit {
+                    connection.use { socket ->
+                        socket.soTimeout = 3_000
+                        val reader = socket.getInputStream().bufferedReader()
+                        val request = reader.readLine().orEmpty()
+                        while (!reader.readLine().isNullOrEmpty()) {}
+                        val title = request.substringAfter("GET /").substringBefore(' ').substringBefore('?')
+                        val body = ("<html><head><title>$title</title><meta name='viewport' content='width=device-width, initial-scale=1'></head>" +
+                            "<body style='padding:24px;font:20px Georgia;background:#fff;color:#222'><h1>Reading beside the discussion</h1>" +
+                            (1..35).joinToString("") { "<p>Paragraph $it. The article stays in place while comments move between panes.</p>" } +
+                            "</body></html>").toByteArray()
+                        socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n" +
+                            "Content-Length: ${body.size}\r\nConnection: close\r\n\r\n").toByteArray() + body)
+                    }
+                }
+            }
+        }
+    }
+
+    @After fun stopBrowserFixture() {
+        fixtureServer.close()
+        fixtureWorkers.shutdownNow()
+        fixtureWorkers.awaitTermination(5, TimeUnit.SECONDS)
+    }
+
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun interceptedFullScreenStoryCanSplitThenReturnToFullScreen() = verifyStandaloneSplit(Entry.External)
@@ -267,7 +306,8 @@ class SideBySideNavigationTest {
         // Retained navigation surfaces may still contain text behind the submissions page.
         // Select a title from the active, resized list rather than a background feed.
         val inListPane = hasAnyAncestor(hasScrollAction() and SemanticsMatcher("minimum-width list") {
-            it.boundsInRoot.width in rootWidth * 0.28f..rootWidth * 0.31f
+            // Submissions has horizontal content padding inside its 30% pane.
+            it.boundsInRoot.width in rootWidth * 0.20f..rootWidth * 0.31f
         })
         fun firstTitle(): String? = compose.onAllNodes(titles and inListPane, useUnmergedTree = true)
             .fetchSemanticsNodes().firstOrNull {
@@ -400,13 +440,8 @@ class SideBySideNavigationTest {
     }
 
     private fun loadPage(browser: WebView, title: String) {
-        browser.loadDataWithBaseURL("https://example.invalid/$title", """
-            <html><head><title>$title</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-            <body style="padding:24px;font:20px Georgia;background:#fff;color:#222">
-            <h1>Reading beside the discussion</h1>
-            ${(1..35).joinToString("") { "<p>Paragraph $it. The article stays in place while comments move between panes.</p>" }}
-            </body></html>
-        """.trimIndent(), "text/html", "UTF-8", "https://example.invalid/$title")
+        // loadDataWithBaseURL does not create ordinary browser history entries.
+        browser.loadUrl("http://127.0.0.1:${fixtureServer.localPort}/$title")
     }
 
     @Suppress("UNCHECKED_CAST")

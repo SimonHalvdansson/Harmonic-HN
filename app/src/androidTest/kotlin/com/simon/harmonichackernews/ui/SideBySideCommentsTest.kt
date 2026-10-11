@@ -77,8 +77,11 @@ class SideBySideCommentsTest {
         }
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { controller.toggleSideBySide() }
+        compose.mainClock.advanceTimeByFrame()
         compose.mainClock.advanceTimeBy(160)
         compose.waitForIdle()
+        // Fence the Compose frame before sampling the native WebView/window composite.
+        compose.onRoot().captureToImage()
         automation.takeScreenshot().let { during ->
             try {
                 // Halfway through the horizontal slide, the story pane remains visible at its

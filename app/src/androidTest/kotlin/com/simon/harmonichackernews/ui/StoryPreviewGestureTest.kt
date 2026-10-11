@@ -3,7 +3,8 @@ package com.simon.harmonichackernews.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -25,6 +26,8 @@ class StoryPreviewGestureTest {
 
     @Before fun showStories() {
         compose.runOnIdle {
+            compose.activity.navigationController.dismissWelcomeDialog()
+            compose.activity.navigationController.dismissChangelogDialog()
             compose.activity.navigationController.closeEditor()
             compose.activity.navigationController.closeSettings()
             compose.activity.navigationController.closeStory()
@@ -42,16 +45,21 @@ class StoryPreviewGestureTest {
 
     @Test fun shortSwipesPageEquallyInsideAndOutsideCard() {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
-        val stories = (1..3).map { id ->
-            StoryListItemSnapshot(StorySnapshot(id, title = "Equal paging $id"),
+        // Preview reconciliation requires IDs from the active feed.
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
+        val stories = ids.mapIndexed { index, id ->
+            StoryListItemSnapshot(StorySnapshot(id, title = "Equal paging ${index + 1}"),
                 StoryPresentationSnapshot(loaded = true, isLink = false))
         }
         try {
             for (duration in listOf(150L, 400L, 800L)) {
                 for (fraction in listOf(0.06f, 0.12f, 0.22f)) {
                     val results = listOf(true, false).map { inside ->
-                        compose.runOnIdle { controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, 2) }
-                        val root = compose.onRoot()
+                        compose.runOnIdle { controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, ids[1]) }
+                        compose.mainClock.advanceTimeBy(1_000)
+                        compose.waitForIdle()
+                        val root = compose.onAllNodes(isRoot()).onLast()
                         val bounds = root.fetchSemanticsNode().boundsInRoot
                         val title = compose.onNodeWithText("Equal paging 2").fetchSemanticsNode().boundsInRoot
                         root.performTouchInput {
@@ -75,14 +83,19 @@ class StoryPreviewGestureTest {
 
     private fun assertPagesAfterSwipe(insideCard: Boolean) {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
-        val stories = (1..3).map { id ->
+        // Preview reconciliation requires IDs from the active feed.
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
+        val stories = ids.mapIndexed { index, id ->
             StoryListItemSnapshot(
-                StorySnapshot(id, title = "Paging preview $id"),
+                StorySnapshot(id, title = "Paging preview ${index + 1}"),
                 StoryPresentationSnapshot(loaded = true, isLink = false),
             )
         }
-        compose.runOnIdle { controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, 2) }
-        val root = compose.onRoot()
+        compose.runOnIdle { controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, ids[1]) }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        val root = compose.onAllNodes(isRoot()).onLast()
         val bounds = root.fetchSemanticsNode().boundsInRoot
         val title = compose.onNodeWithText("Paging preview 2").fetchSemanticsNode().boundsInRoot
         try {
@@ -96,7 +109,7 @@ class StoryPreviewGestureTest {
             }
             compose.waitForIdle()
             compose.runOnIdle {
-                assertEquals("A deliberate swipe must advance from either touch origin", 3, controller.visibleStoryPreviewId)
+                assertEquals("A deliberate swipe must advance from either touch origin", ids[2], controller.visibleStoryPreviewId)
                 controller.completeStoryPreviewDismiss()
             }
         } finally {
@@ -106,17 +119,22 @@ class StoryPreviewGestureTest {
 
     private fun assertHeldDrag(insideCard: Boolean, direction: Float, cancelled: Boolean = false) {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
-        val stories = (1..3).map { id ->
+        // Preview reconciliation requires IDs from the active feed.
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
+        val stories = ids.mapIndexed { index, id ->
             StoryListItemSnapshot(
-                StorySnapshot(id, title = "Gesture preview $id"),
+                StorySnapshot(id, title = "Gesture preview ${index + 1}"),
                 StoryPresentationSnapshot(loaded = true, isLink = false),
             )
         }
         compose.runOnIdle {
-            controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, 2)
+            controller.showStoryPreview(stories, List(3) { 0xffeeeeee.toInt() }, ids[1])
         }
         val title = compose.onNodeWithText("Gesture preview 2")
-        val root = compose.onRoot()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        val root = compose.onAllNodes(isRoot()).onLast()
         val resting = title.fetchSemanticsNode().boundsInRoot
         val rootBounds = root.fetchSemanticsNode().boundsInRoot
         val step = rootBounds.height * 0.015f * direction
