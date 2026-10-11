@@ -164,6 +164,8 @@ internal class AndroidCommentsWebViewController(
     private var startedLoading = false
     private var initializedWebView = false
     private var startupJob: Job? = null
+    private var recoveryUrl: String? = null
+    private var recoveryPdfPath: String? = null
     private val startupCallbacks = mutableListOf<(Boolean) -> Unit>()
     private val showingErrorPage: Boolean
         get() = webContentSession.state.page == EmbeddedWebContentPage.ERROR
@@ -746,7 +748,14 @@ internal class AndroidCommentsWebViewController(
 
         currentWebView.setBackgroundColor(Color.TRANSPARENT)
 
-        if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(
+        val recoveredUrl = recoveryUrl
+        val recoveredPdfPath = recoveryPdfPath
+        recoveryUrl = null
+        recoveryPdfPath = null
+        if (recoveredUrl != null) {
+            loadUrl(recoveredUrl, recoveredPdfPath)
+            startedLoading = true
+        } else if (shouldPreloadStoryUrl(context) || showWebsite || linkPreviewController.shouldInitializeWebViewForPreview(
                 context
             )
         ) {
@@ -1249,6 +1258,8 @@ internal class AndroidCommentsWebViewController(
 
     private fun destroy(rendererProcessGone: Boolean) {
         cancelStartup()
+        recoveryUrl = null
+        recoveryPdfPath = null
         initializedWebView = false
         readerApplyRequest++
         readerApplyJob?.cancel()
@@ -1299,15 +1310,16 @@ internal class AndroidCommentsWebViewController(
 
     private fun isPdfViewerUrl(url: String?): Boolean = isTrustedPdfViewerUrl(url, PDF_LOADER_URL)
 
-    private fun restartWebView() {
+    private fun restartWebView(url: String?, pdfPath: String?, pdfSourceUrl: String?) {
         val context = hostGateway.context
         if (context == null || !hostGateway.isAttached || webViewContainer == null) {
             destroy(true)
             return
         }
 
-        destroy()
-
+        recoveryUrl = url
+        recoveryPdfPath = pdfPath
+        downloadedPdfUrl = pdfSourceUrl
         initialize()
     }
 
@@ -1560,6 +1572,15 @@ internal class AndroidCommentsWebViewController(
 
         override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail): Boolean {
             val wasCurrentWebView = view === webView
+            // Read our retained state, not the dead WebView. This also restores a page reached
+            // after following links, cached articles, and the current PDF document.
+            val recoveryTarget = webContentSession.state.let { state ->
+                state.lastFailedUrl.takeIf { showingErrorPage || showingCachedArticlePage }
+                    ?: state.lastRequestedUrl
+                    ?: story?.url.takeIf { startedLoading }
+            }
+            val pdfPath = pdfWebViewSession.currentFilePath
+            val pdfSourceUrl = downloadedPdfUrl
             if (wasCurrentWebView) {
                 destroy(true)
             }
@@ -1575,7 +1596,7 @@ internal class AndroidCommentsWebViewController(
                 )
 
                 if (wasCurrentWebView) {
-                    restartWebView()
+                    restartWebView(recoveryTarget, pdfPath, pdfSourceUrl)
                 }
 
                 return true
@@ -1583,7 +1604,7 @@ internal class AndroidCommentsWebViewController(
             val context = hostGateway.context
             if (context != null && wasCurrentWebView) {
                 callbacks.showMessage("WebView crashed, reinitializing")
-                restartWebView()
+                restartWebView(recoveryTarget, pdfPath, pdfSourceUrl)
             }
 
             Log.e("MY_APP_TAG", "The WebView rendering process crashed!")

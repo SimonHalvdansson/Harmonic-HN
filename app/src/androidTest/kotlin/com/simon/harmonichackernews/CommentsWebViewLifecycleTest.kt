@@ -574,6 +574,59 @@ class CommentsWebViewLifecycleTest {
         }
     }
 
+    @Test
+    fun rendererTerminationRestoresArticleOpenedFromCommentsWithPreloadingDisabled() {
+        TestServer().use { server ->
+            val story = com.simon.harmonichackernews.data.Story().apply {
+                id = 1999999993
+                title = PAGE_TITLE
+                url = server.url("/next-article")
+                isLink = true
+            }
+            fixture(story = story).use { browser ->
+                onMain { browser.controller.initializeForVisibleWebsite() }
+                awaitTitle(browser.webView, PAGE_TITLE)
+                for (url in listOf(story.url, server.url("/followed-link"))) {
+                    onMain { browser.webView.loadUrl(checkNotNull(url)) }
+                    awaitJavascript(browser.webView, "location.pathname === '${Uri.parse(url).path}'")
+                    recreateRenderer(browser)
+                    awaitTitle(browser.webView, PAGE_TITLE)
+                    onMain { assertEquals(url, browser.webView.url) }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun rendererTerminationRestoresPdfAndItsExternalSource() {
+        TestServer().use { server ->
+            fixture().use { browser ->
+                startPendingPdf(server, browser)
+                server.releasePdf.countDown()
+                awaitJavascript(browser.webView, paintedPage(1))
+                recreateRenderer(browser)
+                awaitJavascript(browser.webView, paintedPage(1))
+                onMain {
+                    browser.controller.openCurrentOrStoryUrlInBrowser()
+                    assertEquals(server.url("/document.pdf"), browser.externalUrl)
+                }
+            }
+        }
+    }
+
+    private fun recreateRenderer(browser: BrowserFixture) {
+        val original = browser.webView
+        onMain { assertTrue(original.webViewRenderProcess!!.terminate()) }
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+        while (!onMain { browser.controller.hasWebView() && browser.webView !== original }) {
+            if (System.nanoTime() >= deadline) throw AssertionError("Browser was not recreated")
+            Thread.sleep(50)
+        }
+        // This fixture is offscreen: provide the replacement's viewport just as at startup,
+        // otherwise PDF.js correctly waits for a visible page before scheduling rendering.
+        onMain { browser.resize(480, 800) }
+    }
+
     private fun startPendingPdf(server: TestServer, browser: BrowserFixture) {
         onMain { browser.webView.loadUrl(server.url("/document.pdf")) }
         assertTrue("WebView must hand the PDF to the production downloader",
@@ -581,13 +634,14 @@ class CommentsWebViewLifecycleTest {
     }
 
     private fun fixture(
+        story: com.simon.harmonichackernews.data.Story? = null,
         blockAds: Boolean = false,
         coveredByComments: Boolean = false,
         readerMode: Boolean = false,
         awaitStartup: Boolean = true,
         startWebView: suspend (Context) -> Unit = ::awaitAndroidWebViewStartup,
     ): BrowserFixture = onMain {
-        BrowserFixture(blockAds, coveredByComments, readerMode, startWebView)
+        BrowserFixture(story, blockAds, coveredByComments, readerMode, startWebView)
     }.also { if (awaitStartup) it.awaitStartup() }
 
     private fun swipeUp(view: View) {
@@ -653,6 +707,7 @@ class CommentsWebViewLifecycleTest {
     }
 
     private class BrowserFixture(
+        story: com.simon.harmonichackernews.data.Story?,
         blockAds: Boolean,
         coveredByComments: Boolean,
         readerMode: Boolean,
@@ -687,7 +742,7 @@ class CommentsWebViewLifecycleTest {
                 override val context: Context get() = this@BrowserFixture.context
                 override val isAttached = true
             },
-            story = null,
+            story = story,
             linkPreviewController = previews,
             webContentRuntime = app.webContent.createRuntime(),
             storyCache = app.storyCache,
