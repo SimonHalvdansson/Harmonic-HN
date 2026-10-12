@@ -1,6 +1,10 @@
 package com.simon.harmonichackernews.adapters
 
 import com.simon.harmonichackernews.settings.UserAvatarOptions
+import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
+import com.simon.harmonichackernews.settings.CommentsHeaderLayout
+import com.simon.harmonichackernews.settings.CommentsHeaderEdge
+import com.simon.harmonichackernews.settings.CommentsHeaderTint
 
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
@@ -41,7 +45,12 @@ data class CommentDisplaySettings(
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
+    val headerLayout: CommentsHeaderLayout = CommentsHeaderLayout.STANDARD,
+    val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
+    val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.SMALL,
+    val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
 ) {
+    val combineHeaderActions: Boolean get() = headerMetaInfo == CommentsHeaderMetaInfo.BUTTONS
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
     val hasBackground: Boolean get() = displayStyle != DisplayStyle.FLAT
 
@@ -65,6 +74,10 @@ data class CommentDisplaySettings(
             showFavicons = preferences.showFavicons,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,
+            headerLayout = preferences.headerLayout,
+            headerEdge = preferences.headerEdge,
+            headerMetaInfo = preferences.headerMetaInfo,
+            headerTint = preferences.headerTint,
             showUpButton = preferences.showUpButton,
             paletteTintMode = PaletteTintPreferences.normalizeConfigKey(
                 preferences.paletteTintConfigKey,

@@ -315,6 +315,7 @@ fun SettingsPage(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     contentVersion: Int = 0,
+    showTopAppBar: Boolean = true,
     pinnedContent: (@Composable () -> Unit)? = null,
     listState: LazyListState = rememberLazyListState(),
     extraBottomPadding: Dp = 0.dp,
@@ -340,14 +341,14 @@ fun SettingsPage(
             .consumeSettingsPaneBounds()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                    if (showTopAppBar) WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                    else WindowInsetsSides.Horizontal,
                 ),
             ),
     ) {
-        SettingsTopAppBar(
-            title = title,
-            onBack = onBack.takeIf { showNavigation },
-        )
+        if (showTopAppBar) {
+            SettingsTopAppBar(title = title, onBack = onBack.takeIf { showNavigation })
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },
             state = listState,

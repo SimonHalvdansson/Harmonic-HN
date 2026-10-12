@@ -22,12 +22,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,7 +55,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -89,6 +88,7 @@ fun CommentsHeaderActions(
     val story = controller.story
     val hasAccount = settings.hasAccountDetails
     val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(story.createdAtEpochSeconds)
+    val combineActions = hasAccount && settings.combineHeaderActions
     var shareExpanded by remember { mutableStateOf(false) }
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
@@ -125,28 +125,38 @@ fun CommentsHeaderActions(
         controller.isBookmarked(story.id)
     }
     val actions = buildList {
-        add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsHeaderAction.USER))
-        if (canReply) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsHeaderAction.REPLY))
-        if (hasAccount) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Upvote", CommentsHeaderAction.VOTE, controller.storyVoteLoading))
+        if (!combineActions) {
+            add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsHeaderAction.USER))
+        }
+        if (canReply && !combineActions) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsHeaderAction.REPLY))
+        if (hasAccount && !combineActions) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Upvote", CommentsHeaderAction.VOTE, controller.storyVoteLoading))
         if (hasAccount) add(HeaderAction(if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsHeaderAction.FAVORITE, controller.storyFavoriteLoading))
-        if (bookmarksEnabled && !hasAccount) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsHeaderAction.BOOKMARK))
+        if (bookmarksEnabled && (!hasAccount || combineActions)) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsHeaderAction.BOOKMARK))
         if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsHeaderAction.SUMMARIZE, controller.storySummaryLoading))
     }
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val actionCount = actions.size + (if (hasAccount) 2 else 3) +
-            if (!hasAccount && controller.sideBySideAvailable) 1 else 0
+    BoxWithConstraints(Modifier.fillMaxWidth().then(
+        if (combineActions) Modifier.padding(horizontal = 16.dp) else Modifier,
+    )) {
+        // Reserve Share and More, then promote only as many actions as have a 48dp target.
+        val capacity = (maxWidth.value / 48f).toInt().coerceAtLeast(2)
+        val visibleActions = actions.take(capacity - 2)
+        val overflowActions = actions.drop(visibleActions.size)
+        val showRefresh = (!hasAccount || combineActions) && visibleActions.size + 2 < capacity
+        val showSideBySide = !hasAccount && controller.sideBySideAvailable &&
+            visibleActions.size + 2 + (if (showRefresh) 1 else 0) < capacity
+        val actionCount = visibleActions.size + 2 + (if (showRefresh) 1 else 0) + (if (showSideBySide) 1 else 0)
         val actionHorizontalPadding = commentActionPadding(maxWidth.value, actionCount).dp
         val actionButtonModifier = Modifier
             .width(commentActionButtonWidth(maxWidth.value, actionCount).dp)
             .height(CommentsHeaderActionButtonSize)
-        FlowRow(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = actionHorizontalPadding),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            actions.forEach { action ->
+            visibleActions.forEach { action ->
                 HeaderActionButton(action, actionButtonModifier, story.id) {
                     controller.listener.onHeaderAction(action.action)
                 }
@@ -175,7 +185,7 @@ fun CommentsHeaderActions(
                     onAction = controller.listener::onShareAction,
                 )
             }
-            if (!hasAccount) {
+            if (showRefresh) {
                 CommentsTooltip("Refresh") {
                     IconButton(
                         onClick = {
@@ -209,7 +219,7 @@ fun CommentsHeaderActions(
                     }
                 }
             }
-            if (!hasAccount && controller.sideBySideAvailable) {
+            if (showSideBySide) {
                 CommentsTooltip(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") {
                     IconButton(onClick = controller::toggleSideBySide, modifier = actionButtonModifier) {
                         Icon(
@@ -251,6 +261,10 @@ fun CommentsHeaderActions(
                     settings = settings,
                     bookmarksEnabled = bookmarksEnabled,
                     contentVersion = contentVersion,
+                    overflowActions = overflowActions,
+                    refreshInline = showRefresh,
+                    sideBySideInline = showSideBySide,
+                    bookmarkInline = visibleActions.any { it.action == CommentsHeaderAction.BOOKMARK },
                     onDismiss = dismissMenus,
                     onSortExpanded = { sortExpanded = true },
                     onArchiveExpanded = { archiveExpanded = true },
@@ -384,6 +398,10 @@ private fun MoreMenu(
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
     contentVersion: Int,
+    overflowActions: List<HeaderAction>,
+    refreshInline: Boolean,
+    sideBySideInline: Boolean,
+    bookmarkInline: Boolean,
     onDismiss: () -> Unit,
     onSortExpanded: () -> Unit,
     onArchiveExpanded: () -> Unit,
@@ -497,7 +515,18 @@ private fun MoreMenu(
                     }
 
                     MoreMenuPage.Root -> {
-                        if (settings.hasAccountDetails && controller.sideBySideAvailable) {
+                        overflowActions.filter { it.action != CommentsHeaderAction.BOOKMARK }.forEach { item ->
+                            DropdownMenuItem(
+                                text = { CommentsMenuText(item.label) },
+                                leadingIcon = {
+                                    if (item.loading) HarmonicLoadingIndicator(Modifier.size(24.dp))
+                                    else Icon(painterResource(item.icon), null)
+                                },
+                                enabled = !item.loading,
+                                onClick = { onDismiss(); controller.listener.onHeaderAction(item.action) },
+                            )
+                        }
+                        if (!sideBySideInline && controller.sideBySideAvailable) {
                             DropdownMenuItem(
                                 text = { CommentsMenuText(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") },
                                 leadingIcon = { Icon(painterResource(Res.drawable.ic_chrome_reader_mode), null) },
@@ -527,7 +556,7 @@ private fun MoreMenu(
                                 },
                             )
                         }
-                        if (settings.hasAccountDetails) {
+                        if (!refreshInline) {
                             action("Refresh", Res.drawable.ic_refresh, CommentsMoreAction.REFRESH)
                         }
                         if (story.isComment && story.parentId > 0) {
@@ -536,7 +565,7 @@ private fun MoreMenu(
                         if (story.isComment && story.rootStoryId > 0) {
                             action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
                         }
-                        if (settings.hasAccountDetails && bookmarksEnabled) {
+                        if (bookmarksEnabled && !bookmarkInline) {
                             DropdownMenuItem(
                                 text = {
                                     CommentsMenuText(if (bookmarked) "Remove bookmark" else "Bookmark")

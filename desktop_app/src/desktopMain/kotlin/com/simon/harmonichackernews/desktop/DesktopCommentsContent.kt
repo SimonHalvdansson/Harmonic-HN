@@ -359,9 +359,10 @@ private fun DesktopCommentsHeader(
         previewPlatform = previewPlatform,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             presentation.tint.previewImageAvailable,
-        headerPreviewImage = { _, onTintLoaded ->
+        headerPreviewImage = { imageModifier, _, onTintLoaded ->
             val imageUrl = presentation.tint.previewImageUrl
             HeaderPreviewImage(
+                modifier = imageModifier,
                 imageUrl = imageUrl,
                 initiallyFailed = controller.headerPreviewResource?.imageLoadFailed == true,
                 visible = settings.showHeaderPreviewImage,

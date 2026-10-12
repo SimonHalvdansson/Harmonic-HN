@@ -41,6 +41,8 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
     ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
     HEADER_TINT(UserPreferenceKeys.COMMENTS_HEADER_TINT),
+    HEADER_FAVICON(UserPreferenceKeys.COMMENTS_HEADER_FAVICON),
+    COMBINE_HEADER_ACTIONS(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS),
     HEADER_PREVIEW_IMAGE(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE),
     SHOW_UP_BUTTON(UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON),
     COLLAPSE_PARENT(UserPreferenceKeys.COLLAPSE_PARENT),
@@ -155,6 +157,14 @@ class AppSettingsRepository(
         mutator.setCommentBoolean(preference, value)
 
     fun setCollectedLinksMode(mode: CollectedLinksMode) = mutator.setCollectedLinksMode(mode)
+
+    fun setCommentsHeaderImage(value: CommentsHeaderImage) = mutator.setCommentsHeaderImage(value)
+    fun setCommentsHeaderTint(value: CommentsHeaderTint) = mutator.setCommentsHeaderTint(value)
+
+    fun setCommentsHeaderMetaInfo(value: CommentsHeaderMetaInfo) = mutator.setCommentsHeaderMetaInfo(value)
+
+    fun setCommentsHeaderLayout(value: CommentsHeaderLayout) = mutator.setCommentsHeaderLayout(value)
+    fun setCommentsHeaderEdge(value: CommentsHeaderEdge) = mutator.setCommentsHeaderEdge(value)
 
     fun setCommentDisplayStyle(value: String) = mutator.setCommentDisplayStyle(value)
     fun setCommentDisplayStyle(value: DisplayStyle) = mutator.setCommentDisplayStyle(value)

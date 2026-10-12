@@ -9,10 +9,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,17 +16,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import com.simon.harmonichackernews.ui.content.NetworkImage
+
+/** Shared by real thumbnails and the settings sample, including the compact layout. */
+internal fun Modifier.headerPreviewImageGestures(onClick: () -> Unit, onInspect: () -> Unit): Modifier =
+    combinedClickable(onClick = onClick, onLongClick = onInspect, onLongClickLabel = "Inspect image")
+        .onSecondaryClick { onInspect() }
 
 /** The sample and loaded header images reveal vertically without stretching or sliding sideways. */
 @Composable
@@ -55,6 +54,7 @@ internal fun HeaderPreviewImageVisibility(
 /** Shared Coil loading, palette extraction and interaction for the comments header image. */
 @Composable
 fun HeaderPreviewImage(
+    modifier: Modifier,
     imageUrl: String?,
     initiallyFailed: Boolean,
     visible: Boolean,
@@ -77,20 +77,13 @@ fun HeaderPreviewImage(
         NetworkImage(
             url = imageUrl.orEmpty(),
             contentDescription = "Story preview image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
-                .height(216.dp)
-                .clip(RoundedCornerShape(8.dp))
+            modifier = modifier
                 .graphicsLayer(alpha = if (suppressed) 0f else 1f)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
-                .combinedClickable(
+                .headerPreviewImageGestures(
                     onClick = onClick,
-                    onLongClick = { onLongClick(bounds, sourceContentLayer, imageAspectRatio) },
+                    onInspect = { onLongClick(bounds, sourceContentLayer, imageAspectRatio) },
                 )
-                .onSecondaryClick {
-                    onLongClick(bounds, sourceContentLayer, imageAspectRatio)
-                }
                 .captureSharedTransformSourceContent { sourceContentLayer = it },
             contentScale = ContentScale.Crop,
             tintBaseColorArgb = tintBaseColorArgb,

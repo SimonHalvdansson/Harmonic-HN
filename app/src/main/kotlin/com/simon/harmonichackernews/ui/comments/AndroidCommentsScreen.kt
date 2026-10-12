@@ -322,9 +322,10 @@ private fun AndroidCommentsHeader(
         headerTintProgress = if (controller.sideBySideActive && portal?.liveInLeft == false) {
             portal.sheetExpansion
         } else null,
-    ) { visibleBackground, onTintLoaded ->
+    ) { imageModifier, visibleBackground, onTintLoaded ->
         val previewUrl = previewImageUrl
         HeaderPreviewImage(
+            modifier = imageModifier,
             imageUrl = previewUrl,
             initiallyFailed = previewResource?.imageLoadFailed == true,
             visible = settings.showHeaderPreviewImage,

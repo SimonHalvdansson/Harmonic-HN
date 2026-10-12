@@ -104,6 +104,10 @@ data class CommentPreferences(
     val userAvatarsEnabled: Boolean = true,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
+    val headerLayout: CommentsHeaderLayout = CommentsHeaderLayout.STANDARD,
+    val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
+    val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.SMALL,
+    val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

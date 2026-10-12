@@ -166,6 +166,8 @@ private fun contentFontFamily(font: String): FontFamily = when (font) {
     else -> rememberFontFamily(
         font,
         Font(Res.font.google_sans_flex_rounded_regular, FontWeight.Normal),
+        Font(Res.font.google_sans_flex_rounded_variable_latin, FontWeight.Medium,
+            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
         Font(Res.font.google_sans_flex_rounded_bold, FontWeight.Bold),
     )
 }

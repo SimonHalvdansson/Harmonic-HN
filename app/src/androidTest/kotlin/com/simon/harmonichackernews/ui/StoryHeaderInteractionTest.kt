@@ -30,6 +30,38 @@ class StoryHeaderInteractionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun combinedAuthorIsAnAccessibleProfileButton() {
+        var profileOpens = 0
+        val repository = com.simon.harmonichackernews.settings.AppSettingsRepository(
+            com.simon.harmonichackernews.settings.InMemoryKeyValueStore(), kotlinx.coroutines.flow.emptyFlow(),
+        )
+        val settings = com.simon.harmonichackernews.adapters.CommentDisplaySettings.from(
+            repository.snapshot().comments, false, false, true, false,
+        ).copy(headerMetaInfo = com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.BUTTONS)
+        val story = com.simon.harmonichackernews.presentation.StoryListItemSnapshot(
+            story = com.simon.harmonichackernews.data.StorySnapshot(
+                id = -1, author = "willow", title = "Test story", score = 53, descendantCount = 18,
+            ),
+            presentation = com.simon.harmonichackernews.data.StoryPresentationSnapshot(loaded = true),
+        )
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.width(320.dp)) {
+                    com.simon.harmonichackernews.ui.comments.CommentsHeaderMetadata(
+                        story, settings, "friend", androidx.compose.ui.text.TextStyle.Default,
+                        onAuthorClick = { profileOpens++ },
+                    )
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("Open profile: willow")
+            .assertHasClickAction().assertHeightIsAtLeast(48.dp).performClick()
+        compose.onNodeWithText("willow (friend)", useUnmergedTree = true).assertExists()
+        compose.runOnIdle { assertEquals(1, profileOpens) }
+    }
+
+    @Test
     fun pdfBeforeYearRendersAsBadgeWithoutRepeatingMarker() {
         val story = com.simon.harmonichackernews.data.Story().apply {
             title = "A paper [pdf] (2025)"

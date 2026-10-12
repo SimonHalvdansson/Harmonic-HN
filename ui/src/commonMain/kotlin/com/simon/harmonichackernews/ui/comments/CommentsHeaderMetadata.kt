@@ -4,10 +4,30 @@ package com.simon.harmonichackernews.ui.comments
 
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.selected
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,6 +37,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,9 +57,63 @@ fun CommentsHeaderMetadata(
     settings: CommentDisplaySettings,
     storyPosterTag: String = "",
     textStyle: TextStyle,
+    onAuthorClick: () -> Unit = {},
+    onVoteClick: () -> Unit = {},
+    onReplyClick: () -> Unit = {},
+    upvoted: Boolean = false,
+    voteLoading: Boolean = false,
+    headerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
-    if (!story.loaded) return
+    if (!story.loaded || settings.headerMetaInfo == com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.ON_IMAGE) return
     val typography = rememberContentTypography(settings.font)
+    val combineActions = settings.combineHeaderActions && settings.hasAccountDetails
+    val posterLabel = buildString {
+        append(story.by.orEmpty())
+        if (storyPosterTag.isNotBlank()) append(" (").append(storyPosterTag).append(')')
+    }
+    if (combineActions) {
+        androidx.compose.foundation.layout.Column {
+            if (!story.isLink || story.isComment || story.url.isNullOrBlank()) {
+                HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds),
+                    typography, textStyle, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                HeaderDetailButton(
+                    icon = Res.drawable.ic_account_circle,
+                    label = posterLabel.ifBlank { "User" },
+                    description = "Open profile: ${story.by.orEmpty()}",
+                    typography = typography, textStyle = textStyle,
+                    headerColor = headerColor,
+                    modifier = Modifier.weight(1.4f),
+                    shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 8.dp, bottomEnd = 8.dp),
+                    onClick = onAuthorClick,
+                )
+                HeaderDetailButton(
+                    icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
+                    label = if (story.isComment) "" else story.score.toString(),
+                    description = if (upvoted) "Remove vote" else "Upvote",
+                    typography = typography, textStyle = textStyle,
+                    headerColor = headerColor,
+                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
+                    loading = voteLoading, selected = upvoted, onClick = onVoteClick,
+                )
+                HeaderDetailButton(
+                    icon = Res.drawable.ic_comment, label = story.descendants.toString(),
+                    description = if (story.isComment) "Reply to comment" else "Reply to post",
+                    typography = typography, textStyle = textStyle,
+                    headerColor = headerColor,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 24.dp, bottomEnd = 24.dp),
+                    enabled = !AgePolicy.isOlderThanTwoWeeks(story.createdAtEpochSeconds),
+                    onClick = onReplyClick,
+                )
+            }
+        }
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,13 +132,8 @@ fun CommentsHeaderMetadata(
             }
             HeaderMetaItem(Res.drawable.ic_comment, story.descendants.toString(), typography, textStyle)
             HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle)
-            val posterLabel = buildString {
-                append(story.by.orEmpty())
-                if (storyPosterTag.isNotBlank()) {
-                    append(" (").append(storyPosterTag).append(')')
-                }
-            }
             HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography, textStyle)
+
         }
         if (story.isLink) {
             Icon(
@@ -76,13 +147,68 @@ fun CommentsHeaderMetadata(
 }
 
 @Composable
+private fun HeaderDetailButton(
+    icon: DrawableResource,
+    label: String,
+    description: String,
+    typography: ContentTypography,
+    textStyle: TextStyle,
+    modifier: Modifier,
+    shape: Shape,
+    headerColor: Color,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    selected: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val background by animateColorAsState(
+        lerp(headerColor, colors.onSurface, if (selected) 0.18f else 0.07f),
+        tween(180), label = "header detail button color",
+    )
+    val foreground by animateColorAsState(
+        colors.onSurface,
+        tween(180), label = "header detail button content",
+    )
+    Box(modifier) {
+        CommentsTooltip(description) {
+            FilledTonalButton(
+                onClick = onClick, enabled = enabled && !loading,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { contentDescription = description; this.selected = selected },
+                shape = shape, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = background, contentColor = foreground,
+                    disabledContainerColor = background.copy(alpha = 0.5f),
+                    disabledContentColor = foreground.copy(alpha = 0.38f),
+                ),
+            ) {
+                AnimatedContent(targetState = icon to loading,
+                    transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+                    label = "header detail button icon") { (visibleIcon, busy) ->
+                    if (busy) HarmonicLoadingIndicator(Modifier.size(18.dp))
+                    else Icon(painterResource(visibleIcon), null, Modifier.size(18.dp))
+                }
+                if (label.isNotEmpty()) {
+                    Text(label, Modifier.padding(start = 6.dp).weight(1f, fill = false),
+                        fontFamily = typography.family, fontSize = typography.commentsHeaderMetaSize.sp,
+                        fontWeight = FontWeight.Medium, style = textStyle,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HeaderMetaItem(
     icon: DrawableResource,
     label: String,
     typography: ContentTypography,
     textStyle: TextStyle,
+    modifier: Modifier = Modifier,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painterResource(icon),
             contentDescription = null,

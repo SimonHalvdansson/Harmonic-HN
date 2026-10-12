@@ -70,6 +70,17 @@ private val StoryMetricPillShape = RoundedCornerShape(50)
 
 private val StoryMetricPillHeight = 25.dp
 
+/** Shared image badge surface for Stories and the comments header. */
+@Composable
+internal fun Modifier.storyImageMetricBackground(hazeState: HazeState): Modifier =
+    sharedHazeBackground(
+        hazeState = hazeState,
+        surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.60f),
+        shape = StoryMetricPillShape,
+        blurRadius = 4.dp,
+        glassAppearance = HazeGlassAppearance.FloatingButton,
+    )
+
 @Composable
 internal fun StoryMetricPill(
     icon: DrawableResource,
@@ -105,14 +116,7 @@ internal fun StoryMetricPill(
             .background(container.copy(alpha = 0.92f))
             .border(1.dp, colors.outlineVariant, StoryMetricPillShape)
     } else {
-        Modifier
-            .sharedHazeBackground(
-                hazeState = hazeState,
-                surfaceColor = container.copy(alpha = 0.60f),
-                shape = StoryMetricPillShape,
-                blurRadius = 4.dp,
-                glassAppearance = HazeGlassAppearance.FloatingButton,
-            )
+        Modifier.storyImageMetricBackground(hazeState)
     }
     Row(
         modifier = Modifier

@@ -40,12 +40,39 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
         val nighttime = root["nighttime"]?.let { it as? JsonObject ?: return SettingsImportResult.Invalid }
             ?: JsonObject(emptyMap())
         // Stage every value first. No untrusted data reaches a store editor.
-        val staged = validate(values, rules)
+        val staged = validate(values, rules).toMutableMap()
+        val importedSettingsCount = staged.size
+        if (UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE !in values) {
+            staged[UserPreferenceKeys.COMMENTS_HEADER_TINT]?.second?.let { legacy ->
+                val mode = if ((legacy as? JsonPrimitive)?.booleanOrNull == false)
+                    CommentsHeaderTint.OFF else CommentsHeaderTint.IMAGE
+                staged[UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE] =
+                    rules.getValue(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE) to JsonPrimitive(mode.storedValue)
+            }
+        }
+        if (staged[UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE]?.second == JsonNull) {
+            staged[UserPreferenceKeys.COMMENTS_HEADER_TINT] =
+                rules.getValue(UserPreferenceKeys.COMMENTS_HEADER_TINT) to JsonPrimitive(true)
+        }
+        // Older backups only had the combined-actions switch. Honor it over a newer local choice.
+        if (UserPreferenceKeys.COMMENTS_HEADER_META_INFO !in values) {
+            staged[UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS]?.second?.let { legacy ->
+                val mode = if ((legacy as? JsonPrimitive)?.booleanOrNull == true)
+                    CommentsHeaderMetaInfo.BUTTONS else CommentsHeaderMetaInfo.SMALL
+                staged[UserPreferenceKeys.COMMENTS_HEADER_META_INFO] =
+                    rules.getValue(UserPreferenceKeys.COMMENTS_HEADER_META_INFO) to JsonPrimitive(mode.storedValue)
+            }
+        }
+        // Resetting the new setting must not revive an old enabled boolean.
+        if (staged[UserPreferenceKeys.COMMENTS_HEADER_META_INFO]?.second == JsonNull) {
+            staged[UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS] =
+                rules.getValue(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS) to JsonPrimitive(false)
+        }
         val stagedNighttime = validate(nighttime, scheduleRules)
         apply(scheduleStore, stagedNighttime)
         apply(store, staged)
-        return SettingsImportResult.Imported(staged.size + stagedNighttime.size,
-            values.size + nighttime.size - staged.size - stagedNighttime.size)
+        return SettingsImportResult.Imported(importedSettingsCount + stagedNighttime.size,
+            values.size + nighttime.size - importedSettingsCount - stagedNighttime.size)
     }
 
     private fun exportValues(source: KeyValueStore, schema: Map<String, Rule>) = buildJsonObject {
@@ -57,7 +84,14 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
         }
         if (source === store) {
             // Resolve read-through theme migration so backups do not depend on legacy key names.
-            val appearance = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow()).appearance
+            val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
+            if (!source.contains(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE)) {
+                put(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE, settings.comments.headerTint.storedValue)
+            }
+            if (!source.contains(UserPreferenceKeys.COMMENTS_HEADER_META_INFO)) {
+                put(UserPreferenceKeys.COMMENTS_HEADER_META_INFO, settings.comments.headerMetaInfo.storedValue)
+            }
+            val appearance = settings.appearance
             put(ThemePreferences.FOLLOW_SYSTEM_KEY, appearance.followSystem)
             put(ThemePreferences.MANUAL_DARK_KEY, appearance.manualDark)
             val schemes = appearance.colorSchemes
@@ -137,6 +171,10 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
                     AiSummaryPreferenceKeys.ENABLE_BOLD_FORMATTING, AiSummaryPreferenceKeys.SHOW_ADDITIONAL_INFO,
                 )).forEach { put(it, booleanRule) }
             put(UserPreferenceKeys.FONT, choice(AppFont.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.COMMENTS_HEADER_META_INFO, choice(CommentsHeaderMetaInfo.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE, choice(CommentsHeaderTint.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.COMMENTS_HEADER_LAYOUT, choice(CommentsHeaderLayout.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.COMMENTS_HEADER_EDGE, choice(CommentsHeaderEdge.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, choice(ReaderLineHeight.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_FONT, choice(AppFont.entries.map { it.storedValue }))
             put(UserPreferenceKeys.STORY_TEXT_SIZE, numberString(TextPreferences.MIN_STORY_TEXT_SIZE..TextPreferences.MAX_STORY_TEXT_SIZE))

@@ -6,6 +6,9 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.flow.flow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -42,6 +46,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +64,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import com.simon.harmonichackernews.settings.CommentsHeaderTint
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -79,6 +89,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
+import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
+import com.simon.harmonichackernews.settings.CommentsHeaderLayout
+import com.simon.harmonichackernews.settings.CommentsHeaderEdge
+import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
@@ -111,8 +125,12 @@ fun CommentsHeader(
     onBrowserBack: (() -> Unit)? = null,
     headerTintProgress: Float? = null,
     faviconPreview: Painter? = null,
-    headerPreviewImage: @Composable (visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
+    headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
+    val effectiveMetaInfo = settings.headerMetaInfo.resolve(
+        settings.hasAccountDetails, settings.showHeaderPreviewImage && headerPreviewImageDisplayed,
+    )
+    val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
     val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
@@ -145,7 +163,8 @@ fun CommentsHeader(
     val normalBackground = colors.pageBackground
     val correctedTint = rememberStoryTintColor(loadedTint, settings.paletteTintMode)
     val targetBackground = if (settings.tintHeader && !showHeaderShimmer) {
-        correctedTint ?: Color(tintBaseColor)
+        if (settings.headerTint == CommentsHeaderTint.THEME) colors.secondaryContainer
+        else correctedTint ?: Color(tintBaseColor)
     } else {
         normalBackground
     }
@@ -176,12 +195,26 @@ fun CommentsHeader(
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
-    // The floating back control overlays the header; showing it must not reflow the title.
-    val backButtonTitleClearance = if (!controller.integratedWebView) {
-        16.dp
-    } else {
-        0.dp
-    }
+    val backButtonTitleClearance by animateDpAsState(
+        if (settings.showUpButton &&
+            !(headerPreviewImageDisplayed && settings.headerLayout == CommentsHeaderLayout.STANDARD)) {
+            if (settings.headerLayout == CommentsHeaderLayout.BALANCED) 28.dp else 48.dp
+        } else 0.dp,
+        tween(320), label = "header back clearance",
+    )
+    val contentTopPadding by animateDpAsState(
+        if (settings.headerLayout == CommentsHeaderLayout.BALANCED) 0.dp else headerTopPadding,
+        tween(320), label = "header content top padding",
+    )
+    val bottomRadius by animateDpAsState(
+        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.ROUNDED) 24.dp else 0.dp,
+        tween(240), label = "header bottom corners",
+    )
+    val bottomPadding by animateDpAsState(
+        if (settings.tintHeader && settings.headerEdge != CommentsHeaderEdge.FADE) 12.dp else 0.dp,
+        tween(240), label = "header bottom breathing room",
+    )
+    val headerShape = RoundedCornerShape(bottomStart = bottomRadius, bottomEnd = bottomRadius)
     val titleTopPadding by animateDpAsState(
         targetValue = (if (!headerPreviewImageDisplayed) {
             16.dp
@@ -192,6 +225,21 @@ fun CommentsHeader(
         label = "comments title clearance",
     )
     val shimmerTopPadding = titleTopPadding + 8.dp
+    val shadowElevation by animateDpAsState(
+        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.SHADOW) 1.5.dp else 0.dp,
+        tween(240), label = "header shadow",
+    )
+    val edgeHeight by animateDpAsState(
+        if (settings.tintHeader && settings.headerEdge != CommentsHeaderEdge.FADE) 16.dp else 32.dp,
+        tween(240), label = "header edge spacing",
+    )
+    val fadeAlpha by animateFloatAsState(
+        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.FADE) 1f else 0f,
+        tween(240), label = "header fade",
+    )
+    val dividerAlpha by animateFloatAsState(
+        if (settings.tintHeader) 0f else 1f, tween(240), label = "header divider",
+    )
 
     Column(
         modifier = Modifier
@@ -201,7 +249,11 @@ fun CommentsHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(visibleHeaderBackground),
+                .zIndex(1f)
+                .shadow(shadowElevation, headerShape)
+                .clip(headerShape)
+                .background(visibleHeaderBackground)
+                .padding(bottom = bottomPadding),
         ) {
             Spacer(Modifier.height(topSpacer))
             if (controller.integratedWebView && controller.showSheetControls) {
@@ -239,7 +291,7 @@ fun CommentsHeader(
                 modifier = Modifier
                     .commentsReadingWidth()
                     .padding(start = sideMarginStart, end = sideMarginEnd)
-                    .padding(top = headerTopPadding),
+                    .padding(top = contentTopPadding),
             ) {
                 AnimatedContent(
                     targetState = showHeaderShimmer,
@@ -286,26 +338,78 @@ fun CommentsHeader(
                                 title = storyTitle.text,
                                 onClick = controller.listener::onHeaderClick,
                             ) {
-                                headerPreviewImage(visibleHeaderBackground) { loadedTint = it }
-                                StoryTitleText(
-                                    text = storyTitle.text,
-                                    badge = storyTitle.badge,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(
-                                            start = 16.dp,
-                                            top = titleTopPadding,
-                                            end = 16.dp,
-                                        )
-                                        .semantics { heading() },
-                                    color = colors.onSurface,
-                                    fontFamily = headerTypography.family,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = headerTypography.commentsHeaderTitleSize.sp,
-                                    style = textStyle,
-                                )
-                                CommentsPreviewPlatformProvider(previewPlatform) {
-                                    HeaderLinkInfo(story = story, settings = settings, faviconPreview = faviconPreview)
+                                AnimatedContent(
+                                    targetState = settings.headerLayout,
+                                    transitionSpec = { headerSettingsTransition() },
+                                    label = "header layout",
+                                ) { layout ->
+                                    val title: @Composable (Modifier) -> Unit = { modifier -> StoryTitleText(
+                                        text = storyTitle.text,
+                                        badge = storyTitle.badge,
+                                        modifier = modifier.semantics { heading() },
+                                        color = colors.onSurface,
+                                        fontFamily = headerTypography.family,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = (headerTypography.commentsHeaderTitleSize *
+                                            if (layout == CommentsHeaderLayout.BALANCED) 0.85f else 1f).sp,
+                                        style = textStyle,
+                                    ) }
+                                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                                        val sideImage = layout == CommentsHeaderLayout.BALANCED
+                                        val thumbnailHeight = if (maxWidth < 360.dp) 88.dp else 104.dp
+                                        val thumbnailWidth = if (maxWidth < 360.dp) 112.dp else 128.dp
+                                        if (sideImage) {
+                                            Row(
+                                                Modifier.fillMaxWidth().padding(top = 12.dp + backButtonTitleClearance),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Column(Modifier.weight(1f).animateContentSize(tween(320))) {
+                                                    title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                                                    CommentsPreviewPlatformProvider(previewPlatform) {
+                                                        HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
+                                                    }
+                                                }
+                                                AnimatedVisibility(
+                                                    visible = headerPreviewImageDisplayed,
+                                                    enter = fadeIn(tween(240)) + expandHorizontally(tween(320)),
+                                                    exit = fadeOut(tween(120)) + shrinkHorizontally(tween(320)),
+                                                ) {
+                                                    val imageHazeState = rememberHazeState()
+                                                    Box(Modifier.padding(end = 16.dp)) {
+                                                        headerPreviewImage(
+                                                            Modifier.width(thumbnailWidth).height(thumbnailHeight).clip(RoundedCornerShape(8.dp))
+                                                                .hazeSource(imageHazeState),
+                                                            visibleHeaderBackground,
+                                                        ) { loadedTint = it }
+                                                        HeaderImageMetrics(controller, detailSettings, imageHazeState,
+                                                            textStyle, Modifier.align(Alignment.BottomEnd))
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            Column {
+                                                HeaderPreviewImageVisibility(visible = headerPreviewImageDisplayed) {
+                                                    val imageHazeState = rememberHazeState()
+                                                    Column {
+                                                        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                                            headerPreviewImage(
+                                                                Modifier.fillMaxWidth().height(216.dp).clip(RoundedCornerShape(8.dp))
+                                                                    .hazeSource(imageHazeState),
+                                                                visibleHeaderBackground,
+                                                            ) { loadedTint = it }
+                                                            HeaderImageMetrics(controller, detailSettings, imageHazeState,
+                                                                textStyle, Modifier.align(Alignment.BottomEnd))
+                                                        }
+                                                        Spacer(Modifier.height(10.dp))
+                                                    }
+                                                }
+                                                title(Modifier.fillMaxWidth().padding(start = 16.dp, top = titleTopPadding, end = 16.dp))
+                                                CommentsPreviewPlatformProvider(previewPlatform) {
+                                                    HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             CommentsPreviewPlatformProvider(previewPlatform) {
@@ -385,18 +489,33 @@ fun CommentsHeader(
                                     }
                                 }
                             }
-                            CommentsHeaderMetadata(
-                                story = story,
-                                settings = settings,
-                                storyPosterTag = storyPosterTag,
-                                textStyle = textStyle,
-                            )
-                            CommentsHeaderActions(
-                                controller = controller,
-                                settings = settings,
-                                contentVersion = contentVersion,
-                                bookmarksEnabled = bookmarksEnabled,
-                            )
+                            AnimatedContent(
+                                targetState = effectiveMetaInfo,
+                                transitionSpec = { headerSettingsTransition() },
+                                label = "header details and actions",
+                            ) { metaInfo ->
+                                Column {
+                                    val actionSettings = settings.copy(headerMetaInfo = metaInfo)
+                                    CommentsHeaderMetadata(
+                                        story = story,
+                                        settings = actionSettings,
+                                        storyPosterTag = storyPosterTag,
+                                        textStyle = textStyle,
+                                        onAuthorClick = { controller.listener.onHeaderAction(CommentsHeaderAction.USER) },
+                                        onVoteClick = { controller.listener.onHeaderAction(CommentsHeaderAction.VOTE) },
+                                        onReplyClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REPLY) },
+                                        upvoted = controller.isUpvoted(story.id, story.isComment),
+                                        voteLoading = controller.storyVoteLoading,
+                                        headerColor = visibleHeaderBackground,
+                                    )
+                                    CommentsHeaderActions(
+                                        controller = controller,
+                                        settings = actionSettings,
+                                        contentVersion = contentVersion,
+                                        bookmarksEnabled = bookmarksEnabled,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -411,15 +530,13 @@ fun CommentsHeader(
                 1f to normalBackground,
             )
         }
-        Box(Modifier.fillMaxWidth().height(32.dp)) {
-            if (settings.tintHeader) {
-                Box(Modifier.matchParentSize().background(fadeBrush))
-            } else {
-                HorizontalDivider(
-                    modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp),
-                    color = colors.outlineVariant,
-                )
-            }
+        Box(Modifier.fillMaxWidth().height(edgeHeight)) {
+            Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.background(fadeBrush))
+            HorizontalDivider(
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp)
+                    .graphicsLayer { alpha = dividerAlpha },
+                color = colors.outlineVariant,
+            )
         }
         Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
@@ -427,6 +544,11 @@ fun CommentsHeader(
         }
     }
 }
+
+private fun <S> androidx.compose.animation.AnimatedContentTransitionScope<S>.headerSettingsTransition() =
+    (fadeIn(tween(240, delayMillis = 80)) togetherWith fadeOut(tween(120))).using(
+        SizeTransform(clip = false) { _, _ -> tween(320, easing = FastOutSlowInEasing) },
+    )
 
 /** Expands only the indication. The measured content and its siblings retain their positions. */
 @Composable

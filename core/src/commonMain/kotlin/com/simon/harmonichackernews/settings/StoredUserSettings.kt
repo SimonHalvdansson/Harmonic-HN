@@ -54,6 +54,13 @@ object UserPreferenceKeys {
     const val COLLAPSE_PARENT = "pref_collapse_parent"
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
+    const val COMMENTS_HEADER_TINT_SOURCE = "pref_comments_header_tint_source"
+    const val COMMENTS_HEADER_FAVICON = "pref_comments_header_favicon"
+    const val COMMENTS_HEADER_LAYOUT = "pref_comments_header_layout"
+    const val COMMENTS_HEADER_EDGE = "pref_comments_header_edge"
+    const val COMMENTS_HEADER_META_INFO = "pref_comments_header_meta_info"
+    // Legacy boolean retained for importing older backups.
+    const val COMMENTS_COMBINE_HEADER_ACTIONS = "pref_comments_combine_header_author"
     const val COMMENTS_SHOW_UP_BUTTON = "pref_comments_show_up_button"
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
     const val LAST_ENABLED_COMMENT_DEPTH_INDICATORS = "pref_last_enabled_comment_depth_indicators"
@@ -179,14 +186,28 @@ class StoredUserSettings(
             val headerPreviewImageEnabled =
                 boolean(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE, true)
             val headerTintEnabled = boolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, true)
+            val headerTint = CommentsHeaderTint.fromStored(
+                store.getString(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE), headerTintEnabled && tintCard,
+            )
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
-                showFavicons = boolean(UserPreferenceKeys.THUMBNAILS, true),
+                showFavicons = boolean(UserPreferenceKeys.COMMENTS_HEADER_FAVICON, true),
                 headerPreviewImageEnabled = headerPreviewImageEnabled,
                 showHeaderPreviewImage = previewImageMode() != StoryPreviewMode.OFF &&
                     headerPreviewImageEnabled,
                 headerTintEnabled = headerTintEnabled,
-                tintHeader = tintCard && headerTintEnabled,
+                tintHeader = headerTint != CommentsHeaderTint.OFF,
+                headerTint = headerTint,
+                headerLayout = CommentsHeaderLayout.fromStored(
+                    string(UserPreferenceKeys.COMMENTS_HEADER_LAYOUT, CommentsHeaderLayout.STANDARD.storedValue),
+                ),
+                headerEdge = CommentsHeaderEdge.fromStored(
+                    string(UserPreferenceKeys.COMMENTS_HEADER_EDGE, CommentsHeaderEdge.FADE.storedValue),
+                ),
+                headerMetaInfo = CommentsHeaderMetaInfo.fromStored(
+                    store.getString(UserPreferenceKeys.COMMENTS_HEADER_META_INFO),
+                    boolean(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS, false),
+                ),
                 showUpButton = boolean(
                     UserPreferenceKeys.COMMENTS_SHOW_UP_BUTTON,
                     showCommentsUpButtonByDefault,

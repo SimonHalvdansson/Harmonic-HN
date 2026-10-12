@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,8 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +61,7 @@ fun HeaderLinkInfo(
     story: StoryListItemSnapshot,
     settings: CommentDisplaySettings,
     faviconPreview: Painter? = null,
+    posterTag: String = "",
 ) {
     if (!story.loaded || !story.isLink || story.isComment || story.url.isNullOrBlank()) return
     val colors = MaterialTheme.colorScheme
@@ -77,11 +81,15 @@ fun HeaderLinkInfo(
             .padding(top = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (settings.showFavicons) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = settings.showFavicons,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally(),
+        ) {
             if (faviconPreview != null) {
                 Image(
                     painter = faviconPreview,
-                    contentDescription = null,
+                    contentDescription = "Site icon",
                     modifier = Modifier.padding(end = 4.dp).size(17.dp).clip(RoundedCornerShape(3.dp)),
                 )
             } else {
@@ -96,7 +104,7 @@ fun HeaderLinkInfo(
                     onLoading = { faviconLoaded = false },
                     onSuccess = { faviconLoaded = true },
                     onError = { faviconLoaded = false },
-                    contentDescription = null,
+                    contentDescription = "Site icon",
                     modifier = Modifier
                         .padding(end = 4.dp)
                         .size(17.dp)
@@ -104,13 +112,30 @@ fun HeaderLinkInfo(
                 )
             }
         }
-        Text(
-            text = domain.orEmpty(),
-            color = colors.onSurfaceVariant,
-            fontFamily = typography.family,
-            fontSize = typography.commentsHeaderMetaSize.sp,
-            style = LocalCommentsPreviewPlatform.current.textStyle,
-        )
+        val onImage = settings.headerMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE
+        val label = if (onImage) {
+            val author = if (posterTag.isBlank()) story.by.orEmpty() else "${story.by.orEmpty()} ($posterTag)"
+            "${domain.orEmpty()} \u00b7 ${relativeTimeOnResume(story.createdAtEpochSeconds)} \u00b7 $author"
+        } else if (settings.combineHeaderActions) {
+            "${domain.orEmpty()} \u00b7 ${relativeTimeOnResume(story.createdAtEpochSeconds)}"
+        } else domain.orEmpty()
+        androidx.compose.animation.Crossfade(
+            targetState = label,
+            animationSpec = androidx.compose.animation.core.tween(180),
+            label = "header domain and age",
+            modifier = Modifier.weight(1f),
+        ) { visibleLabel ->
+            Text(
+                text = visibleLabel,
+                color = colors.onSurfaceVariant,
+                fontFamily = typography.family,
+                fontWeight = if (onImage) FontWeight.Medium else FontWeight.Normal,
+                fontSize = typography.commentsHeaderMetaSize.sp,
+                style = LocalCommentsPreviewPlatform.current.textStyle,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

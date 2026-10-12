@@ -83,7 +83,42 @@ class StoredSettingsMutator(
     }
 
     fun setCommentBoolean(preference: CommentBooleanPreference, value: Boolean) {
-        store.putBoolean(preference.storageKey, value)
+        if (preference == CommentBooleanPreference.COMBINE_HEADER_ACTIONS) {
+            setCommentsHeaderMetaInfo(if (value) CommentsHeaderMetaInfo.BUTTONS else CommentsHeaderMetaInfo.SMALL)
+        } else if (preference == CommentBooleanPreference.HEADER_TINT) {
+            setCommentsHeaderTint(if (value) CommentsHeaderTint.IMAGE else CommentsHeaderTint.OFF)
+        } else store.putBoolean(preference.storageKey, value)
+    }
+
+    fun setCommentsHeaderTint(value: CommentsHeaderTint) {
+        store.update {
+            putString(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE, value.storedValue)
+            putBoolean(UserPreferenceKeys.COMMENTS_HEADER_TINT, value != CommentsHeaderTint.OFF)
+        }
+    }
+
+    fun setCommentsHeaderImage(value: CommentsHeaderImage) {
+        store.update {
+            putBoolean(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE, value != CommentsHeaderImage.OFF)
+            putString(UserPreferenceKeys.COMMENTS_HEADER_LAYOUT,
+                if (value == CommentsHeaderImage.LARGE) CommentsHeaderLayout.STANDARD.storedValue
+                else CommentsHeaderLayout.BALANCED.storedValue)
+        }
+    }
+
+    fun setCommentsHeaderMetaInfo(value: CommentsHeaderMetaInfo) {
+        store.update {
+            putString(UserPreferenceKeys.COMMENTS_HEADER_META_INFO, value.storedValue)
+            putBoolean(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS, value == CommentsHeaderMetaInfo.BUTTONS)
+        }
+    }
+
+    fun setCommentsHeaderLayout(value: CommentsHeaderLayout) {
+        store.putString(UserPreferenceKeys.COMMENTS_HEADER_LAYOUT, value.storedValue)
+    }
+
+    fun setCommentsHeaderEdge(value: CommentsHeaderEdge) {
+        store.putString(UserPreferenceKeys.COMMENTS_HEADER_EDGE, value.storedValue)
     }
 
     fun setCollectedLinksMode(mode: CollectedLinksMode) {
