@@ -34,6 +34,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.simon.harmonichackernews.resources.ic_keyboard_arrow_down
+import com.simon.harmonichackernews.resources.ic_keyboard_arrow_up_dark
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -159,7 +164,11 @@ fun LocalModelsPanel(
             (it.presentation.enabled || it.model.runtime == LocalModelRuntime.APPLE_FOUNDATION_MODELS)
     }
     val downloadableRows = models.filter { it.model.downloadable }
-    val catalogIncludesNano = models.any { !it.model.downloadable }
+    val initiallyCollapsed = nanoRow?.presentation?.enabled == true ||
+        downloadableRows.any { it.presentation.selected }
+    // Keep an explicit choice while availability and download progress update.
+    var expansionChoice by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val expanded = expansionChoice ?: !initiallyCollapsed
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,7 +177,7 @@ fun LocalModelsPanel(
     ) {
         nanoRow?.let { row ->
             LocalModelGroup(
-                label = "Built-in",
+                label = "System provided",
                 bottomPadding = 10.dp,
             ) {
                 LocalModelCard(
@@ -189,28 +198,36 @@ fun LocalModelsPanel(
         }
         if (downloadableRows.isNotEmpty()) {
             if (nanoRow != null) SettingsDivider()
-            LocalModelGroup(
-                label = "Downloadable models".takeIf { catalogIncludesNano },
-                bottomPadding = 12.dp,
-            ) {
-                downloadableRows.forEach { row ->
-                    LocalModelCard(
-                        row = row,
-                        iconPainter = modelIconPainter(row.model),
-                        onModelSelected = onModelSelected,
-                        onAction = onAction,
+            SettingRow(
+                title = "Downloadable models",
+                summary = downloadableRows.firstOrNull { it.presentation.selected }?.model?.displayName,
+                icon = if (expanded) Res.drawable.ic_keyboard_arrow_up_dark else Res.drawable.ic_keyboard_arrow_down,
+                onClick = { expansionChoice = !expanded },
+            )
+            AnimatedVisibility(visible = expanded) {
+                LocalModelGroup(
+                    label = null,
+                    bottomPadding = 12.dp,
+                ) {
+                    downloadableRows.forEach { row ->
+                        LocalModelCard(
+                            row = row,
+                            iconPainter = modelIconPainter(row.model),
+                            onModelSelected = onModelSelected,
+                            onAction = onAction,
+                        )
+                    }
+                    Text(
+                        text = "Downloadable models run in separate runtimes and are not kept in " +
+                            "memory so must be loaded before each use. Generally requires a strong " +
+                            "device to run in reasonable time.",
+                        modifier = Modifier.padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
                     )
                 }
-                Text(
-                    text = "Downloadable models run in separate runtimes and are not kept in " +
-                        "memory so must be loaded before each use. Generally requires a strong " +
-                        "device to run in reasonable time.",
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
-                )
             }
         }
     }

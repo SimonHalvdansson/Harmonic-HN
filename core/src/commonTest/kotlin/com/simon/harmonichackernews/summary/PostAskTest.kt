@@ -140,7 +140,7 @@ class PostAskTest {
             assertEquals(3, Json.parseToJsonElement(inputs.last()).jsonObject["conversation"]!!.jsonArray.size)
             assertEquals(0, conversation.state.value.omittedTurns)
             conversation.reset()
-            assertNull(conversation.state.value.articleIncluded)
+            assertEquals(true, conversation.state.value.articleIncluded)
             conversation.ask("fresh")
             advanceUntilIdle()
             assertEquals(5, if (mode == AiSummaryMode.LOCAL) requests.size else repo.requests.size)
@@ -148,20 +148,24 @@ class PostAskTest {
     }
 
     @Test
-    fun providersWithoutTokenCountingOnlyReceiveSmallArticleContexts() = runTest {
+    fun longArticlesAreShortenedAndDeclaredBeforeTheFirstQuestion() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         settings.setMode(AiSummaryMode.CLOUD)
         val repo = Repository()
         val source = AskSource.Post(
-            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary", "x".repeat(3_000),
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary", "x".repeat(12_000),
         )
         val conversation = AskConversation(this, noNetwork, SummaryUseCase(repo), settings, null,
             source, contextDispatcher = dispatcher)
+        assertEquals(true, conversation.state.value.articleIncluded)
+        assertTrue(conversation.state.value.articleShortened)
         conversation.ask("Explain")
         advanceUntilIdle()
-        assertFalse(repo.requests.single().contains("article_text"))
-        assertEquals(false, conversation.state.value.articleIncluded)
+        val context = Json.parseToJsonElement(repo.requests.single()).jsonObject["source_context"]!!.jsonObject
+        assertEquals("x".repeat(8_000), context["article_text"]!!.jsonPrimitive.content)
+        assertTrue(context["article_text_shortened"]!!.jsonPrimitive.boolean)
+        assertEquals(true, conversation.state.value.articleIncluded)
         assertTrue(conversation.state.value.turns.single().complete)
     }
 

@@ -175,7 +175,7 @@ fun AiSummarySettingsScreen(
                 )
                 SettingsDivider()
                 SwitchSettingRow(
-                    title = "Show additional info",
+                    title = "Show generation details",
                     icon = Res.drawable.ic_info,
                     checked = state.showAdditionalInfo,
                     onCheckedChange = onShowAdditionalInfoChanged,

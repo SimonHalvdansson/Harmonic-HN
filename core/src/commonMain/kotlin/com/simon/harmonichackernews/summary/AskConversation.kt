@@ -37,12 +37,19 @@ class AskConversation(
         val inputTooLarge: Boolean = false,
         val omittedTurns: Int = 0,
         val articleIncluded: Boolean? = null,
+        val articleShortened: Boolean = false,
         val contextReady: Boolean = false,
         val parentCount: Int = 0,
         val suggestedQuestions: List<String> = emptyList(),
         val loadingSuggestions: Boolean = false,
     )
-    private val mutableState = MutableStateFlow(State())
+    private val fullArticle = (source as? AskSource.Post)?.articleText?.takeIf { it.isNotBlank() }
+    private var articleText = fullArticle?.take(MAX_ARTICLE_CHARACTERS)
+    private fun initialState() = State(
+        articleIncluded = if (source is AskSource.Post) articleText != null else null,
+        articleShortened = articleText != null && articleText != fullArticle,
+    )
+    private val mutableState = MutableStateFlow(initialState())
     val state = mutableState.asStateFlow()
     private var job: Job? = null
     private var context: JsonObject? = null
@@ -52,7 +59,7 @@ class AskConversation(
     private var suggestionsAttempted = false
     private var suggestionGeneration = 0
     private var firstIncludedTurn = 0
-    private var includeArticle = (source as? AskSource.Post)?.articleText?.isNotBlank() == true
+    private var includeArticle = articleText != null
 
     fun generateSuggestedQuestions() {
         if (suggestionsAttempted || suggestionJob?.isActive == true || state.value.turns.isNotEmpty()) return
@@ -146,13 +153,6 @@ class AskConversation(
                             }.toString()
                         }
                         if (input.length > MAX_INPUT) throw DiscussionContextLimitException()
-                        // Without a tokenizer/capacity contract, admit only small initial requests.
-                        // Nano additionally enforces half its actual input budget, including instructions.
-                        if (includeArticle && reserveDiscussionSpace &&
-                            (config.mode != AiSummaryMode.LOCAL || !builtInModelSelected()) &&
-                            input.length + prompt.length > MAX_INITIAL_ARTICLE_CHARACTERS) {
-                            throw DiscussionContextLimitException()
-                        }
                         if (source is AskSource.Post) {
                             mutableState.update { it.copy(articleIncluded = includeArticle) }
                         }
@@ -190,11 +190,17 @@ class AskConversation(
                         if (error is CancellationException) throw error
                         val oversized = error is DiscussionContextLimitException || isContextLimitError(error.message)
                         if (!oversized || state.value.turns.last().answer.isNotEmpty()) throw error
-                        // Prefer the summary over losing conversation history. Nano preflights the
-                        // complete request with its tokenizer; other providers report their limits.
+                        // Keep useful source text before falling back to the summary. Local models
+                        // preflight with their tokenizer; cloud providers report capacity errors.
                         if (includeArticle) {
-                            includeArticle = false
-                            mutableState.update { it.copy(articleIncluded = false) }
+                            val shorter = articleText.orEmpty().length / 2
+                            if (shorter >= 1_000) {
+                                articleText = articleText?.take(shorter)
+                                mutableState.update { it.copy(articleShortened = true) }
+                            } else {
+                                includeArticle = false
+                                mutableState.update { it.copy(articleIncluded = false) }
+                            }
                             continue
                         }
                         // Only discard complete turns, and never retry after any answer has streamed.
@@ -229,9 +235,10 @@ class AskConversation(
         job?.cancel()
         job = null
         firstIncludedTurn = 0
-        includeArticle = (source as? AskSource.Post)?.articleText?.isNotBlank() == true
+        articleText = fullArticle?.take(MAX_ARTICLE_CHARACTERS)
+        includeArticle = articleText != null
         cancelSuggestedQuestions()
-        mutableState.value = State(contextReady = context != null, parentCount = state.value.parentCount,
+        mutableState.value = initialState().copy(contextReady = context != null, parentCount = state.value.parentCount,
             suggestedQuestions = state.value.suggestedQuestions)
         // The source context is immutable for this comment; resetting only clears conversation history.
     }
@@ -272,7 +279,8 @@ class AskConversation(
         val summaryContext = sourceContext()
         if (!includeArticle || source !is AskSource.Post) return summaryContext
         return JsonObject(summaryContext + mapOf(
-            "article_text" to JsonPrimitive(source.articleText),
+            "article_text" to JsonPrimitive(articleText),
+            "article_text_shortened" to JsonPrimitive(articleText != fullArticle),
             "original_article_included" to JsonPrimitive(true),
         ))
     }
@@ -361,7 +369,7 @@ class AskConversation(
             )
         }
         private const val MAX_INPUT = 60_000
-        private const val MAX_INITIAL_ARTICLE_CHARACTERS = 3_000
+        internal const val MAX_ARTICLE_CHARACTERS = 8_000
         internal fun isContextLimitError(message: String?): Boolean {
             val text = message.orEmpty().lowercase()
             return listOf("context_length_exceeded", "context window", "context size", "context length",
@@ -388,6 +396,7 @@ class AskConversation(
             "The linked article is not included."
         private const val POST_PROMPT = RESPONSE_STYLE +
             "Use article_text when supplied; prefer it over displayed_summary if they disagree. " +
+            "When article_text_shortened is true, only the beginning of the article is supplied. " +
             "Otherwise you only have post_title and displayed_summary, an AI summary that may be " +
             "incomplete or mistaken. Do not invent details absent from the supplied context. " +
             "The HN discussion is not included."

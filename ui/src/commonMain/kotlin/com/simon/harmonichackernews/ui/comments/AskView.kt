@@ -241,14 +241,14 @@ internal fun AskSurface(
                     }
                 }
                 if (post != null) {
-                    val contextNotice = when (state.articleIncluded) {
-                        true -> "Answers use the article text and AI summary."
-                        false -> "Answers use only the AI summary. The article is unavailable or too long for this conversation."
-                        null -> if (post.articleText.isNullOrBlank()) {
-                            "Answers use only the AI summary; the article text is unavailable."
-                        } else {
-                            "Answers include the article text when it fits; otherwise they use only the AI summary."
-                        }
+                    val contextNotice = when {
+                        state.articleIncluded == false && !post.articleText.isNullOrBlank() ->
+                            "Answers use the AI summary; this model could not fit the article text."
+                        post.articleText.isNullOrBlank() ->
+                            "Answers use the AI summary; article text is unavailable."
+                        state.articleShortened ->
+                            "Answers use a shortened article and the AI summary."
+                        else -> "Answers use the article text and AI summary."
                     }
                     Text(contextNotice,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
