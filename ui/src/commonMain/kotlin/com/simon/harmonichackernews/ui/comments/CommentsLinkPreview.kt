@@ -51,9 +51,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.runtime.CompositionLocalProvider
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.simon.harmonichackernews.data.LinkPreviewType
 
@@ -77,52 +77,58 @@ fun CommentsPreviewPlatformProvider(
     CompositionLocalProvider(LocalCommentsPreviewPlatform provides platform, content = content)
 }
 
+internal val LocalPreviewFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
+
 @Composable
 fun LinkPreviewContent(
     story: StoryListItemSnapshot,
     contentVersion: Int,
     settings: CommentDisplaySettings,
+    background: Color = MaterialTheme.colorScheme.surface,
 ) {
-    val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
-    AnimatedVisibility(
-        visible = previewType != null || story.linkPreviewLoading,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
-    ) {
-        val colors = MaterialTheme.colorScheme
-        AnimatedContent(
-            targetState = previewType,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, colors.onSurfaceVariant, RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            transitionSpec = {
-                (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
-                    SizeTransform(clip = false) { _, _ -> tween(220) },
-                )
-            },
-            label = "comments link preview",
+    val fontFamily = rememberContentTypography(settings.font).family
+    CompositionLocalProvider(LocalPreviewFontFamily provides fontFamily) {
+        val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
+        AnimatedVisibility(
+            visible = previewType != null || story.linkPreviewLoading,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
         ) {
-            when (it) {
-                LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
-                LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
-                LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
-                LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
-                LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
-                LinkPreviewType.ARXIV -> ArxivPreview(story, settings)
-                LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
-                LinkPreviewType.TWITTER_X -> NitterPreview(story)
-                null -> Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    HarmonicLoadingIndicator(Modifier.size(44.dp))
+            val colors = MaterialTheme.colorScheme
+            AnimatedContent(
+                targetState = previewType,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(2.dp, colors.onSurfaceVariant, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                transitionSpec = {
+                    (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
+                        SizeTransform(clip = false) { _, _ -> tween(220) },
+                    )
+                },
+                label = "comments link preview",
+            ) {
+                when (it) {
+                    LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
+                    LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
+                    LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
+                    LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
+                    LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
+                    LinkPreviewType.ARXIV -> ArxivPreview(story, settings, background)
+                    LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
+                    LinkPreviewType.TWITTER_X -> NitterPreview(story)
+                    null -> Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        HarmonicLoadingIndicator(Modifier.size(44.dp))
+                    }
+                    else -> RichLinkPreview(story)
                 }
-                else -> RichLinkPreview(story)
             }
         }
     }
@@ -170,7 +176,7 @@ internal fun PreviewHeader(
         Text(
             text.uppercase(),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = LocalPreviewFontFamily.current,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
             lineHeight = 16.sp,
@@ -186,7 +192,7 @@ internal fun PreviewBody(
     maxLines: Int = Int.MAX_VALUE,
     topPadding: Dp = 6.dp,
     bottomPadding: Dp = 4.dp,
-    fontFamily: FontFamily = ProductSansFontFamily,
+    fontFamily: FontFamily = LocalPreviewFontFamily.current,
     fontSize: Float = 14f,
     lineHeight: Float = 17f,
 ) {
@@ -239,7 +245,7 @@ internal fun PreviewInfoRow(
         Text(
             text,
             color = if (onClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = LocalPreviewFontFamily.current,
             fontSize = 14.sp,
             lineHeight = 17.sp,
             maxLines = 2,

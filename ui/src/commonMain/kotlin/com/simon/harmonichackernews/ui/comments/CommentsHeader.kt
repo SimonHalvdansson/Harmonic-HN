@@ -435,7 +435,7 @@ fun CommentsHeader(
                                         )
                                     },
                                 )
-                                LinkPreviewContent(story, contentVersion, settings)
+                                LinkPreviewContent(story, contentVersion, settings, visibleHeaderBackground)
                             }
                             PollOptions(
                                 pollOptions,

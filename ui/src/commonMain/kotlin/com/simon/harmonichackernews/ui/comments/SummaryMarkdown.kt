@@ -52,6 +52,7 @@ internal fun SummaryMarkdownText(
     enableBoldFormatting: Boolean = true,
     animateStreamingText: Boolean = false,
     animationContentKey: Any? = null,
+    onOverflowChanged: ((Boolean) -> Unit)? = null,
 ) {
     val listItems = remember(markdown) { summaryMarkdownListItems(markdown) }
     if (listItems != null) {
@@ -70,6 +71,7 @@ internal fun SummaryMarkdownText(
             enableBoldFormatting = enableBoldFormatting,
             animateStreamingText = animateStreamingText,
             animationContentKey = animationContentKey,
+            onOverflowChanged = onOverflowChanged,
         )
         return
     }
@@ -88,6 +90,7 @@ internal fun SummaryMarkdownText(
         enableBoldFormatting = enableBoldFormatting,
         animateStreamingText = animateStreamingText,
         animationContentKey = animationContentKey,
+        onOverflowChanged = onOverflowChanged,
     )
 }
 
@@ -107,6 +110,7 @@ private fun SummaryMarkdownList(
     enableBoldFormatting: Boolean,
     animateStreamingText: Boolean,
     animationContentKey: Any?,
+    onOverflowChanged: ((Boolean) -> Unit)?,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -125,8 +129,12 @@ private fun SummaryMarkdownList(
         val textWidth = (constraints.maxWidth - with(density) { markerWidth.roundToPx() }).coerceAtLeast(0)
         Column {
             var remainingLines = maxLines
+            var truncated = false
             items.forEachIndexed { index, item ->
-                if (remainingLines <= 0) return@forEachIndexed
+                if (remainingLines <= 0) {
+                    truncated = true
+                    return@forEachIndexed
+                }
                 val allowedLines = remainingLines
                 val lineCount = if (maxLines == Int.MAX_VALUE) 0 else textMeasurer.measure(
                     text = summaryMarkdownAnnotatedString(item.content, linkColor, enableBoldFormatting, baseUrl, onOpenLink),
@@ -134,6 +142,7 @@ private fun SummaryMarkdownList(
                     constraints = Constraints(maxWidth = textWidth),
                 ).lineCount
                 remainingLines -= lineCount
+                if (lineCount > allowedLines) truncated = true
                 val content = if (remainingLines <= 0 && lineCount <= allowedLines && index < items.lastIndex &&
                     overflow == TextOverflow.Ellipsis) item.content + "…" else item.content
                 Row(Modifier.fillMaxWidth()) {
@@ -163,6 +172,7 @@ private fun SummaryMarkdownList(
                     )
                 }
             }
+            SideEffect { onOverflowChanged?.invoke(truncated) }
         }
     }
 }
@@ -183,6 +193,7 @@ private fun SummaryMarkdownSingleText(
     enableBoldFormatting: Boolean = true,
     animateStreamingText: Boolean = false,
     animationContentKey: Any? = null,
+    onOverflowChanged: ((Boolean) -> Unit)? = null,
 ) {
     val rendered = remember(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink) {
         summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink)
@@ -227,6 +238,7 @@ private fun SummaryMarkdownSingleText(
         }
     }
     Text(
+        onTextLayout = { onOverflowChanged?.invoke(it.hasVisualOverflow) },
         text = displayed,
         modifier = modifier,
         color = color,

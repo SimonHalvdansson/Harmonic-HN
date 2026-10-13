@@ -197,7 +197,7 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
                     modifier = Modifier.padding(vertical = 4.dp),
                     color = MaterialTheme.colorScheme.onSurface,
                     linkColor = MaterialTheme.colorScheme.primary,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = LocalPreviewFontFamily.current,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
                 )

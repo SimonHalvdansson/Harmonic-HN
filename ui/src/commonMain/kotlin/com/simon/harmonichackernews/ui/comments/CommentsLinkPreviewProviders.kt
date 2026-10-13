@@ -23,6 +23,12 @@ import com.simon.harmonichackernews.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -182,7 +188,7 @@ internal fun StackExchangePreview(story: StoryListItemSnapshot) {
 }
 
 @Composable
-internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplaySettings) {
+internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplaySettings, background: Color) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.arxivInfo ?: return
     val typography = rememberContentTypography(preferredFont = settings.font)
@@ -211,9 +217,16 @@ internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplay
             runCatching(info::concatNames).getOrNull(),
         )
         PreviewInfoRow(Res.drawable.ic_library_books, runCatching(info::formatSubjects).getOrNull())
+        val scheme = MaterialTheme.colorScheme
+        val actionBackground = com.simon.harmonichackernews.ui.theme.contrastingColor(
+            scheme.secondaryContainer, listOf(background), 1.5f,
+        )
+        val actionForeground = com.simon.harmonichackernews.ui.theme.contrastingColor(
+            scheme.onSecondaryContainer, listOf(actionBackground), 4.5f,
+        )
         val actionColors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor = actionBackground,
+            contentColor = actionForeground,
         )
         Row(
             modifier = Modifier
@@ -265,7 +278,7 @@ internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplay
 private fun ArxivActionLabel(text: String) {
     Text(
         text = text,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = LocalPreviewFontFamily.current,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
     )
@@ -294,7 +307,9 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
     val info = story.linkPreviewInfo ?: return
     val details = remember(info.details) { splitRichPreviewDetails(info.details) }
     val isRelease = info.type == LinkPreviewType.GITHUB_RELEASE
-    Column {
+    var expanded by rememberSaveable(info.url) { mutableStateOf(false) }
+    var truncated by remember(info.url, info.description) { mutableStateOf(false) }
+    Column(Modifier.animateContentSize()) {
         PreviewHeader(
             text = info.title,
             icon = info.type.linkPreviewIcon(),
@@ -320,12 +335,18 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 color = MaterialTheme.colorScheme.onSurface,
                 linkColor = MaterialTheme.colorScheme.primary,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = LocalPreviewFontFamily.current,
                 fontSize = 14.sp,
                 lineHeight = 17.sp,
-                maxLines = 12,
+                maxLines = if (expanded) Int.MAX_VALUE else 12,
                 overflow = TextOverflow.Ellipsis,
+                onOverflowChanged = { if (!expanded) truncated = it },
             )
+            if (expanded || truncated) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Show less" else "Show more", fontFamily = LocalPreviewFontFamily.current)
+                }
+            }
         } else {
             PreviewBody(
                 text = info.description.orEmpty(),
@@ -426,7 +447,7 @@ internal fun NitterPreview(story: StoryListItemSnapshot) {
                             .background(Color.Black.copy(alpha = 0.75f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         color = Color.White,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = LocalPreviewFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                     )
@@ -476,7 +497,7 @@ internal fun NitterPreview(story: StoryListItemSnapshot) {
                 Text(
                     "Open on X",
                     modifier = Modifier.padding(start = 8.dp),
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = LocalPreviewFontFamily.current,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -503,7 +524,7 @@ private fun PreviewCompactInfo(
         text,
         modifier = Modifier.padding(start = startPadding, end = endPadding),
         color = MaterialTheme.colorScheme.onSurface,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = LocalPreviewFontFamily.current,
         fontSize = 13.sp,
         lineHeight = 16.sp,
         style = LocalCommentsPreviewPlatform.current.textStyle,

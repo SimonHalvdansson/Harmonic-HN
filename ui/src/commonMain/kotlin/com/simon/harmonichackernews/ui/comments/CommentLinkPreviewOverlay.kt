@@ -574,8 +574,8 @@ private fun HackerNewsStoryCard(
                 onClick = onOpen,
                 modifier = Modifier.heightIn(min = 44.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primaryContainer,
-                    contentColor = colors.onPrimaryContainer,
+                    containerColor = colors.cardBackground,
+                    contentColor = colors.onSurface,
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
