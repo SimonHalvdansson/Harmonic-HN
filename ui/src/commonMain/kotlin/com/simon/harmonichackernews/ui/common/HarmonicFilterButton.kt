@@ -2,6 +2,12 @@ package com.simon.harmonichackernews.ui.common
 
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -28,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -72,6 +80,8 @@ fun HarmonicFilterButton(
     fontFamily: FontFamily = ProductSansFontFamily,
     lastPosition: Int = 2,
     icon: DrawableResource? = null,
+    showIcon: Boolean? = null,
+    showLabel: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -95,6 +105,7 @@ fun HarmonicFilterButton(
     )
     BoxWithConstraints(
         modifier = modifier
+            .semantics { if (!showLabel) contentDescription = label }
             .heightIn(min = 48.dp)
             .clip(shape)
             .background(backgroundColor)
@@ -114,33 +125,48 @@ fun HarmonicFilterButton(
         val textStyle = LocalTextStyle.current.copy(fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         val labelWidth = rememberTextMeasurer().measure(label, textStyle, maxLines = 1).size.width
         val iconSpace = with(LocalDensity.current) { (18.dp + 7.dp + 16.dp).roundToPx() }
-        // Prefer the complete label when equal-width segments become narrow. The icon is
-        // decorative, and scaled text may grow the control vertically instead of being clipped.
-        val showIcon = icon != null && labelWidth + iconSpace <= constraints.maxWidth
-        val rowWidth = with(LocalDensity.current) {
-            minOf(constraints.maxWidth, labelWidth + if (showIcon) iconSpace else 16.dp.roundToPx()).toDp()
-        }
+        // A group may choose one shared mode; other callers hide the decorative icon
+        // when the full label needs its space.
+        val iconVisible = icon != null && (showIcon ?: (labelWidth + iconSpace <= constraints.maxWidth))
+        val density = LocalDensity.current
         Row(
-            modifier = Modifier.width(rowWidth).padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showIcon) icon.let {
-                Icon(
-                    painter = painterResource(it),
+            AnimatedVisibility(
+                visible = iconVisible,
+                enter = expandHorizontally(tween(200), expandFrom = Alignment.Start) + fadeIn(tween(150)),
+                exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.Start) + fadeOut(tween(100)),
+            ) {
+                if (icon != null) Icon(
+                    painter = painterResource(icon),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = contentColor,
                 )
-                Spacer(Modifier.width(7.dp))
             }
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                color = contentColor,
-                style = textStyle,
+            val gap by animateDpAsState(
+                targetValue = if (iconVisible && showLabel) 7.dp else 0.dp,
+                animationSpec = tween(200),
+                label = "filter icon spacing",
             )
+            Spacer(Modifier.width(gap))
+            AnimatedVisibility(
+                visible = showLabel,
+                enter = expandHorizontally(tween(200), expandFrom = Alignment.End) + fadeIn(tween(150)),
+                exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
+            ) {
+                Text(
+                    text = label,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.width(with(density) { labelWidth.toDp() }),
+                    textAlign = TextAlign.Center,
+                    color = contentColor,
+                    style = textStyle,
+                )
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +37,9 @@ import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -585,36 +589,53 @@ private fun SubmissionsHeader(
                     style = legacyTextStyle,
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                SubmissionFilterButton(
-                    label = "Stories",
-                    icon = Res.drawable.ic_newspaper,
-                    selected = selectedFilter == SubmissionFilter.STORIES,
-                    position = 0,
-                    onClick = { onFilterSelected(SubmissionFilter.STORIES) },
-                    modifier = Modifier.weight(1f),
-                )
-                SubmissionFilterButton(
-                    label = "All",
-                    icon = Res.drawable.ic_stacks,
-                    selected = selectedFilter == SubmissionFilter.BOTH,
-                    position = 1,
-                    onClick = { onFilterSelected(SubmissionFilter.BOTH) },
-                    modifier = Modifier.weight(1f),
-                )
-                SubmissionFilterButton(
-                    label = "Comments",
-                    icon = Res.drawable.ic_comment,
-                    selected = selectedFilter == SubmissionFilter.COMMENTS,
-                    position = 2,
-                    onClick = { onFilterSelected(SubmissionFilter.COMMENTS) },
-                    modifier = Modifier.weight(1f),
-                )
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val density = LocalDensity.current
+                val measurer = rememberTextMeasurer()
+                val textStyle = LocalTextStyle.current.copy(fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                val widths = listOf("Stories", "All", "Comments").map {
+                    with(density) { measurer.measure(it, textStyle, maxLines = 1).size.width.toDp().value }
+                }
+                val layout = submissionFilterLayout(maxWidth.value, widths)
+                val totalWeight = layout.weights.sum()
+                val weights = layout.weights.mapIndexed { index, weight ->
+                    animateFloatAsState(weight / totalWeight, tween(200), label = "submission filter $index width").value
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectableGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    SubmissionFilterButton(
+                        label = "Stories",
+                        icon = Res.drawable.ic_newspaper,
+                        selected = selectedFilter == SubmissionFilter.STORIES,
+                        position = 0,
+                        onClick = { onFilterSelected(SubmissionFilter.STORIES) },
+                        modifier = Modifier.weight(weights[0]),
+                        showIcons = layout.showIcons, showLabels = layout.showLabels,
+                    )
+                    SubmissionFilterButton(
+                        label = "All",
+                        icon = Res.drawable.ic_stacks,
+                        selected = selectedFilter == SubmissionFilter.BOTH,
+                        position = 1,
+                        onClick = { onFilterSelected(SubmissionFilter.BOTH) },
+                        modifier = Modifier.weight(weights[1]),
+                        showIcons = layout.showIcons, showLabels = layout.showLabels,
+                    )
+                    SubmissionFilterButton(
+                        label = "Comments",
+                        icon = Res.drawable.ic_comment,
+                        selected = selectedFilter == SubmissionFilter.COMMENTS,
+                        position = 2,
+                        onClick = { onFilterSelected(SubmissionFilter.COMMENTS) },
+                        modifier = Modifier.weight(weights[2]),
+                        showIcons = layout.showIcons, showLabels = layout.showLabels,
+                    )
+                }
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -644,10 +665,14 @@ private fun SubmissionFilterButton(
     position: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showIcons: Boolean,
+    showLabels: Boolean,
 ) {
     HarmonicFilterButton(
         label = label,
         icon = icon,
+        showIcon = showIcons,
+        showLabel = showLabels,
         selected = selected,
         position = position,
         colors = harmonicFilterButtonColors(),
