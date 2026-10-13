@@ -8,19 +8,36 @@ import kotlin.test.assertTrue
 
 class CommentDepthPaletteCatalogTest {
     @Test
-    fun materialDepthColorsFollowTheActiveScheme() {
-        val scheme = androidx.compose.material3.lightColorScheme(
-            primary = Color.Red, secondary = Color.Green, tertiary = Color.Blue,
-            primaryContainer = Color.Cyan, secondaryContainer = Color.Magenta, tertiaryContainer = Color.Yellow,
-        )
-        val expected = listOf(Color.Red, Color.Green, Color.Blue, Color.Cyan, Color.Yellow)
-        for (mode in listOf(CommentDepthPreferences.THEME_DEFAULT, CommentDepthPreferences.MATERIAL_YOU)) {
-            val colors = CommentDepthPaletteCatalog.colors(mode, "material_light", false, scheme)
-            assertEquals(expected, colors)
-            val depths = (0..14).map {
-                CommentDepthPaletteCatalog.color(mode, "material_light", false, it, scheme = scheme)
+    fun themeIndicatorsHaveSurfaceContrastAndPerceptualSeparation() {
+        val schemes = com.simon.harmonichackernews.settings.ColorSchemePreferences.values.flatMap { name ->
+            listOf(false, true).flatMap { dark ->
+                com.simon.harmonichackernews.settings.ColorSchemeStyle.entries.map { style ->
+                    HarmonicThemeCatalog.scheme(name, dark, style).colorScheme
+                }
             }
-            assertEquals(List(15) { expected[it % expected.size] }, depths)
+        }
+        for (scheme in schemes) {
+            for (mode in listOf(CommentDepthPreferences.THEME_DEFAULT, CommentDepthPreferences.MATERIAL_YOU)) {
+                val colors = CommentDepthPaletteCatalog.colors(mode, "dynamic", false, scheme)
+                assertEquals(5, colors.size)
+                colors.forEachIndexed { index, color ->
+                    assertTrue(colorContrast(color, scheme.pageBackground) >= 2.99f)
+                    assertTrue(colorContrast(color, scheme.cardBackground) >= 2.99f)
+                    colors.take(index).forEach { other ->
+                        assertTrue(perceptualColorDistance(color, other) >= 21.9f)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun previewActionsStayVisibleAgainstTintedAndThemeSurfaces() {
+        for (background in listOf(Color(0xFFFFAA44), Color(0xFF222211), Color.White, Color.Black)) {
+            val container = contrastingColor(background, listOf(background), 1.5f)
+            val text = contrastingColor(Color.Gray, listOf(container), 4.5f)
+            assertTrue(colorContrast(container, background) >= 1.499f)
+            assertTrue(colorContrast(text, container) >= 4.499f)
         }
     }
 

@@ -957,7 +957,10 @@ private fun CommentSurface(
 @Composable
 private fun commentDepthColor(mode: String, depth: Int, author: String): Color {
     val selection = LocalHarmonicUiDependencies.current.appearance.selection()
-    return CommentDepthPaletteCatalog.color(mode, selection.colorScheme, selection.dark, depth, author, MaterialTheme.colorScheme)
+    val scheme = MaterialTheme.colorScheme
+    return remember(mode, selection.colorScheme, selection.dark, depth, author, scheme) {
+        CommentDepthPaletteCatalog.color(mode, selection.colorScheme, selection.dark, depth, author, scheme)
+    }
 }
 
 private val animatedCommentTextStyle = TextStyle(
