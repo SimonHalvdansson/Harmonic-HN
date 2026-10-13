@@ -74,6 +74,11 @@ class HarmonicAppComposition(
     val storyUpdates = StoryUpdateBus()
     val webContent = WebContentService()
     val launchState = AppLaunchStateStore(host.appDataStore)
+    init {
+        com.simon.harmonichackernews.settings.ColorSchemePreferences.resolveDynamicAvailability(
+            host.settingsStore, host.dynamicColorAvailable,
+        )
+    }
     val appearance = AppearanceRuntime(
         settings = host.settingsStore,
         scheduleStore = NighttimeScheduleStore(host.appDataStore),

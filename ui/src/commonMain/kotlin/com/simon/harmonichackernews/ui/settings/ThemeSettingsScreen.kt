@@ -119,6 +119,7 @@ fun ThemeSettingsScreen(
             SettingsCategory("Color scheme") {
                 ColorSchemePicker(
                     selected = state.schemes.light,
+                    dynamicColorAvailable = state.dynamicColorAvailable,
                     dark = state.activeDark,
                     style = state.schemes.lightStyle,
                     tag = "Color scheme",
@@ -126,14 +127,6 @@ fun ThemeSettingsScreen(
                     onSelected = onColorSchemeSelected,
                     onStyleSelected = onColorStyleSelected,
                 )
-            }
-        }
-        if (!state.dynamicColorAvailable) {
-            item {
-                Text("Dynamic uses Violet on this device.",
-                    Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -156,7 +149,7 @@ fun ThemeSettingsScreen(
         item(key = "nighttime-color-scheme") {
             ThemeSettingsVisibility(visible = state.specialNighttime) {
                 SettingsCategory("Nighttime color scheme") {
-                    ColorSchemePicker(state.schemes.nighttime, dark = true, style = state.schemes.nighttimeStyle,
+                    ColorSchemePicker(state.schemes.nighttime, dynamicColorAvailable = state.dynamicColorAvailable, dark = true, style = state.schemes.nighttimeStyle,
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
                         onSelected = onNighttimeColorSchemeSelected, onStyleSelected = onNighttimeColorStyleSelected)
                 }
@@ -180,6 +173,7 @@ private fun ThemeSettingsVisibility(visible: Boolean, content: @Composable () ->
 @Composable
 private fun ColorSchemePicker(
     selected: String,
+    dynamicColorAvailable: Boolean,
     dark: Boolean,
     style: ColorSchemeStyle,
     tag: String,
@@ -187,7 +181,9 @@ private fun ColorSchemePicker(
     onSelected: (String) -> Unit,
     onStyleSelected: (ColorSchemeStyle) -> Unit,
 ) {
-    val options = ColorSchemeCatalog.options
+    val options = ColorSchemeCatalog.options.filter {
+        dynamicColorAvailable || it.value != ColorSchemePreferences.DYNAMIC
+    }
     FlowRow(
         modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
             .testTag(tag).selectableGroup()

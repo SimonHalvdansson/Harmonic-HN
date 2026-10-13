@@ -32,6 +32,7 @@ class HarmonicHostConfiguration(
     val storyCacheRepository: StoryCacheRepository,
     val showCommentsUpButtonByDefault: Boolean = false,
     val preloadCommentsFromStoriesByDefault: Boolean = false,
+    val dynamicColorAvailable: Boolean = false,
     val defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
     val savedItemsRepository: SavedItemsRepository? = null,
     val widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),

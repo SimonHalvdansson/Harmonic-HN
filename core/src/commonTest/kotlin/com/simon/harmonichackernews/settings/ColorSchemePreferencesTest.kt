@@ -9,6 +9,20 @@ class ColorSchemePreferencesTest {
     private fun repository(store: InMemoryKeyValueStore) = AppSettingsRepository(store, store.changes)
 
     @Test
+    fun unsupportedDynamicDefaultsAndNighttimeResolveToRealViolet() {
+        val store = InMemoryKeyValueStore()
+        ColorSchemePreferences.write(store, ColorSchemeSelection(nighttime = "dynamic"))
+        ColorSchemePreferences.resolveDynamicAvailability(store, false)
+        assertEquals(ColorSchemeSelection("violet", nighttime = "violet"), ColorSchemePreferences.read(store))
+        ColorSchemePreferences.write(store, ColorSchemeSelection("rose"))
+        ColorSchemePreferences.resolveDynamicAvailability(store, false)
+        assertEquals("rose", ColorSchemePreferences.read(store).light)
+        ColorSchemePreferences.write(store, ColorSchemeSelection())
+        ColorSchemePreferences.resolveDynamicAvailability(store, true)
+        assertEquals("dynamic", ColorSchemePreferences.read(store).light)
+    }
+
+    @Test
     fun newInstallDefaultsToSyncedDynamicWithSystemAppearance() {
         val appearance = repository(InMemoryKeyValueStore()).snapshot().appearance
         assertEquals(ColorSchemeSelection(), appearance.colorSchemes)

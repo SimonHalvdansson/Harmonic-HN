@@ -51,6 +51,7 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             localModels = localModels,
         ),
         host = HarmonicHostConfiguration(
+            dynamicColorAvailable = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,
             metadata = AppMetadata(
                 versionName = BuildConfig.VERSION_NAME,
                 versionCode = BuildConfig.VERSION_CODE,

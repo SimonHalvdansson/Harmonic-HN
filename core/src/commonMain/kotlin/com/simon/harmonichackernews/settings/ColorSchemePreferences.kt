@@ -45,6 +45,18 @@ object ColorSchemePreferences {
     val values = listOf(DYNAMIC) + generatedValues + listOf(CLASSIC, PURE, HACKER_NEWS, HACKER, GRAY)
     fun supportsStyle(value: String): Boolean = value in values && value != DYNAMIC
 
+    /** Persist the actual fallback so settings, previews and the active palette agree. */
+    fun resolveDynamicAvailability(store: KeyValueStore, available: Boolean) {
+        if (available) return
+        val selection = read(store)
+        val resolved = selection.copy(
+            light = selection.light.takeUnless { it == DYNAMIC } ?: "violet",
+            dark = selection.dark.takeUnless { it == DYNAMIC } ?: "violet",
+            nighttime = selection.nighttime.takeUnless { it == DYNAMIC } ?: "violet",
+        )
+        if (resolved != selection) write(store, resolved)
+    }
+
     fun sanitize(value: String?): String = value?.takeIf { it in values } ?: DYNAMIC
 
     fun fromLegacyTheme(theme: String?, color: String? = null): String = when {
