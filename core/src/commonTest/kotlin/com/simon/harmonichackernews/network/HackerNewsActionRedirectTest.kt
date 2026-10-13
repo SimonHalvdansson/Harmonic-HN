@@ -70,6 +70,64 @@ class HackerNewsActionRedirectTest {
     }
 
     @Test
+    fun successfulCommentCanRedirectToHomepage() = runTest {
+        var requestCount = 0
+        val transport = HttpClient(MockEngine { request ->
+            requestCount++
+            when (request.url.encodedPath) {
+                "/comment" -> {
+                    assertEquals(HttpMethod.Post, request.method)
+                    respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/"))
+                }
+                else -> {
+                    assertEquals(HttpMethod.Get, request.method)
+                    assertEquals("/", request.url.encodedPath)
+                    respond("<html><body>Hacker News front page</body></html>")
+                }
+            }
+        })
+        try {
+            assertIs<HackerNewsActionResult.Success>(
+                repository(transport).comment(HackerNewsAccount("tester", "secret"), "42", "Hello"),
+            )
+            assertEquals(2, requestCount)
+        } finally {
+            transport.close()
+        }
+    }
+
+    @Test
+    fun commentRejectRedirectRemainsFailure() = runTest {
+        // The rejection endpoint can return either a message or an expired one-time link.
+        for (body in listOf("<html>This item is too old.</html>", "Unknown or expired link.")) {
+            var requestCount = 0
+            val transport = HttpClient(MockEngine { request ->
+                requestCount++
+                when (request.url.encodedPath) {
+                    "/comment" -> respond(
+                        "", HttpStatusCode.Found,
+                        headersOf(HttpHeaders.Location, "/x?fnid=token&fnop=comment-reject"),
+                    )
+                    else -> {
+                        assertEquals(HttpMethod.Get, request.method)
+                        assertEquals("/x", request.url.encodedPath)
+                        assertEquals("comment-reject", request.url.parameters["fnop"])
+                        respond(body)
+                    }
+                }
+            })
+            try {
+                assertIs<HackerNewsActionResult.Failure>(
+                    repository(transport).comment(HackerNewsAccount("tester", "secret"), "1", "Hello"),
+                )
+                assertEquals(2, requestCount)
+            } finally {
+                transport.close()
+            }
+        }
+    }
+
+    @Test
     fun crossOriginActionRedirectIsRejectedWithoutFollowingIt() = runTest {
         var requestCount = 0
         val transport = HttpClient(MockEngine {

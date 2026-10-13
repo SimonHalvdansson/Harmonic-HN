@@ -443,7 +443,7 @@ private class CallerContextHackerNewsActionRepository(
     }
 
     /**
-     * HN completes successful mutations with a redirect to the affected page. Ktor does not
+     * HN completes successful mutations with a redirect to the affected page or homepage. Ktor does not
      * follow POST redirects, so mirror the legacy OkHttp behavior with an explicit, same-origin
      * GET. Inspecting the destination page preserves HN's error and captcha classification.
      */
@@ -486,7 +486,7 @@ private class CallerContextHackerNewsActionRepository(
             indeterminateOnHttpFailure = true,
         )
         return if (requirePostConfirmation && page is PageResult.Success &&
-            redirectUrl.encodedPath !in setOf("/item", "/newest", "/submitted", "/newcomments", "/threads")
+            redirectUrl.encodedPath !in setOf("/", "/item", "/newest", "/submitted", "/newcomments", "/threads")
         ) {
             unconfirmedPost(page.body)
         } else page
