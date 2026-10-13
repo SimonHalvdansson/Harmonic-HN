@@ -8,6 +8,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,8 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -642,7 +645,11 @@ private fun DesktopStoriesContent(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // Navigation assigns focus within its scene after the window root is composed.
+    // Keep the neutral target inside the retained stories scene so the header isn't selected.
+    val initialFocus = remember { FocusRequester() }
+    LaunchedEffect(initialFocus) { initialFocus.requestFocus() }
+    Box(Modifier.fillMaxSize().focusRequester(initialFocus).focusable()) {
         StoriesRoute(
             controller = controller,
             tintStore = app.storyResourceTints,
