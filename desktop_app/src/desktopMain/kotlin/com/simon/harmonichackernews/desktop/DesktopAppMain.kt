@@ -26,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -216,7 +218,7 @@ fun main() {
                                 if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
                                     DesktopWindowsTitleBar(window, windowIcon)
                                 }
-                                Box(Modifier.fillMaxSize().padding(top = titleBarInset)) {
+                                Box(Modifier.fillMaxSize().padding(top = titleBarInset).clipToBounds()) {
                                     DesktopAppContent(
                                         app = bootstrap.app,
                                         scene = bootstrap.scene,
@@ -385,6 +387,11 @@ private fun DesktopAppContent(
         )
     }
     val isTwoPane = mainDirective.maxHorizontalPartitions > 1
+    val currentStoriesContent by rememberUpdatedState<@Composable () -> Unit> {
+        DesktopStoriesContent(app, scene, isSplitLayout = isTwoPane,
+            onControllerChanged = onStoriesControllerChanged)
+    }
+    val retainedStoriesContent = remember { movableContentOf { currentStoriesContent() } }
     val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, showNavigation ->
         DesktopCommentsContent(
             app = app, scene = scene, request = request,
@@ -405,10 +412,7 @@ private fun DesktopAppContent(
                 { DesktopCommentLinkPreview(app, scene, controller) }
             },
         stories = { detail, paneComments ->
-            val stories: @Composable () -> Unit = {
-                DesktopStoriesContent(app, scene, isSplitLayout = isTwoPane,
-                    onControllerChanged = onStoriesControllerChanged)
-            }
+            val stories = retainedStoriesContent
             if (isTwoPane) {
                 MainNavigationScene(
                     storyRequest = detail,
@@ -546,7 +550,7 @@ private fun DesktopStoriesContent(
             ),
         )
     }
-    val controller = remember(store, defaultStoryHeightPx) {
+    val controller = remember(store) {
         lateinit var created: StoriesScreenController
         val callbacks = object : StoriesFeatureListener.PlatformCallbacks {
             override fun onSearchStateChanged(searching: Boolean) {
@@ -566,6 +570,7 @@ private fun DesktopStoriesContent(
             override fun isSplitLayout(): Boolean = currentSplitLayout
         }
         created = StoriesScreenController.create(
+            revealedStoryIds = scene.sessions.stories.revealedStoryIds,
             defaultStoryHeightPx = defaultStoryHeightPx,
             savedItemState = store.savedItemState,
             listener = StoriesFeatureListener(store, callbacks),
@@ -689,6 +694,9 @@ private fun DesktopSettingsShell(
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only
     // the scene machinery at the breakpoint; the navigation store stays outside this key so the
     // selected section and detail stack survive both directions of the layout change.
+    val scrollHistory = remember { SettingsScrollHistory() }
+    val density = LocalDensity.current
+    val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
     key(isTwoPane) {
         SettingsNavigationShell(
             navigation = navigation,
@@ -703,24 +711,28 @@ private fun DesktopSettingsShell(
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
             renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
-                SettingsListScreen(
-                    selectedSection = selectedSection,
-                    showSelection = showSelection,
-                    showDebugSettings = app.metadata.debugSettingsEnabled,
-                    loggedIn = settingsAccountState.accountOrNull != null,
-                    onBack = onBack,
-                    onSectionSelected = onSectionSelected,
-                )
+                SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
+                    SettingsListScreen(
+                        selectedSection = selectedSection,
+                        showSelection = showSelection,
+                        showDebugSettings = app.metadata.debugSettingsEnabled,
+                        loggedIn = settingsAccountState.accountOrNull != null,
+                        onBack = onBack,
+                        onSectionSelected = onSectionSelected,
+                    )
+                }
             },
             renderDetail = { section, singlePane, onBack, onNavigate ->
-                DesktopSettingsDetail(
-                    section,
-                    app,
-                    scene,
-                    singlePane,
-                    onBack,
-                    onNavigate,
-                )
+                SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
+                    DesktopSettingsDetail(
+                        section,
+                        app,
+                        scene,
+                        singlePane,
+                        onBack,
+                        onNavigate,
+                    )
+                }
             },
         )
     }

@@ -53,6 +53,7 @@ import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.CommentsHeader
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.comments.rememberCommentsListState
 import com.simon.harmonichackernews.ui.comments.CommentsRoute
 import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
@@ -142,6 +143,8 @@ internal fun DesktopCommentsContent(
     val showFloatingUpButton = showNavigation &&
         host.controller.displaySettings?.showUpButton == true
     val accountState by app.platform.accounts.accountState.collectAsState()
+    // The browser crossfade and pane layout must not own the thread scroll position.
+    val commentsListState = rememberCommentsListState()
     val comments: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
             if (showNavigation && !showFloatingUpButton) {
@@ -155,6 +158,7 @@ internal fun DesktopCommentsContent(
             Box(Modifier.weight(1f)) {
                 CommentsRoute(
                     controller = host.controller,
+                    listState = commentsListState,
                     reserveUpButtonInset = showFloatingUpButton,
                     pullToRefreshEnabled = false,
                     headerContent = { settings ->

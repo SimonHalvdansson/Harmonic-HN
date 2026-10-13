@@ -1,19 +1,19 @@
 package com.simon.harmonichackernews.desktop
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -45,7 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.Res
@@ -755,17 +758,15 @@ internal class SwtEdgeBrowserCanvas(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DesktopWebViewToolbar(
+internal fun DesktopWebViewToolbar(
     showWebsite: Boolean,
     storyTitle: String?,
     session: DesktopCommentsWebViewSession,
     onShowWebsite: () -> Unit,
     onShowComments: () -> Unit,
     onOpenExternal: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val openInBrowserInteractions = remember { MutableInteractionSource() }
-    val openInBrowserHovered by openInBrowserInteractions.collectIsHoveredAsState()
-    val openInBrowserFocused by openInBrowserInteractions.collectIsFocusedAsState()
     val readerState = session.reader?.state?.collectAsState()?.value
     val pageHost = remember(session.currentPageUrl) {
         runCatching { URI(session.currentPageUrl).host }
@@ -773,114 +774,79 @@ private fun DesktopWebViewToolbar(
             ?.removePrefix("www.")
             .orEmpty()
     }
-    Surface(
-        color = MaterialTheme.colorScheme.pageBackground,
-    ) {
-        Column(Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier) {
+        val density = LocalDensity.current
+        val measurer = rememberTextMeasurer()
+        val tabWidths = listOf("Article", "Comments").map {
+            with(density) {
+                measurer.measure(it, MaterialTheme.typography.labelLarge, maxLines = 1).size.width.toDp()
+            } + 56.dp
+        }
+        // Reserve the article controls for this decision so switching tabs doesn't
+        // also change the label mode. The title yields before any control wraps.
+        val labeledTabsWidth = tabWidths.reduce { total, width -> total + width }
+        val tabLabels = maxWidth >= 224.dp + labeledTabsWidth
+        val tabsWidth = if (tabLabels) labeledTabsWidth else 96.dp
+        val actionsWidth = if (showWebsite) {
+            156.dp + if (readerState?.available == true) 36.dp else 0.dp
+        } else 0.dp
+        val showTitle = maxWidth - 32.dp - actionsWidth - tabsWidth >= 160.dp * density.fontScale
+        Surface(color = MaterialTheme.colorScheme.pageBackground) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 64.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (showWebsite) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                        DesktopWebViewIconButton(
-                            icon = Res.drawable.ic_chevron_left,
-                            description = "Back",
-                            onClick = {
-                                if (session.canGoBack) session.navigateBack() else onShowComments()
-                            },
-                        )
-                        DesktopWebViewIconButton(
-                            icon = Res.drawable.ic_chevron_right,
-                            description = "Forward",
-                            onClick = session::navigateForward,
-                            enabled = session.canGoForward,
-                        )
-                        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                            AnimatedContent(
-                                targetState = session.isLoading,
-                                transitionSpec = {
-                                    fadeIn(tween(140)) togetherWith fadeOut(tween(100))
-                                },
-                                label = "web reload loading transition",
-                            ) { loading ->
-                                if (loading) {
-                                    HarmonicLoadingIndicator(modifier = Modifier.size(24.dp))
-                                } else {
-                                    DesktopWebViewIconButton(
-                                        icon = Res.drawable.ic_refresh,
-                                        description = "Reload",
-                                        onClick = session::reload,
-                                    )
-                                }
+                ToolbarActionVisibility(showWebsite) {
+                    DesktopWebNavigation(session, onShowComments)
+                }
+                Box(Modifier.weight(1f).padding(end = 6.dp)) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showTitle,
+                        enter = fadeIn(tween(180)),
+                        exit = fadeOut(tween(100)),
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Crossfade(
+                                targetState = desktopWebViewToolbarTitle(
+                                    showWebsite = showWebsite,
+                                    storyTitle = storyTitle,
+                                    pageTitle = session.pageTitle,
+                                    currentPageUrl = session.currentPageUrl,
+                                ),
+                                animationSpec = tween(140),
+                                label = "web toolbar title",
+                            ) { title ->
+                                Text(
+                                    text = title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            if (pageHost.isNotEmpty()) {
+                                Text(
+                                    text = pageHost,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
-                        Spacer(Modifier.width(8.dp))
                     }
                 }
-
-                Box(Modifier.weight(1f).padding(end = 6.dp)) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(
-                            text = desktopWebViewToolbarTitle(
-                                showWebsite = showWebsite,
-                                storyTitle = storyTitle,
-                                pageTitle = session.pageTitle,
-                                currentPageUrl = session.currentPageUrl,
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (pageHost.isNotEmpty()) {
-                            Text(
-                                text = pageHost,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    // Draw in the toolbar itself: Compose popup layers can sit behind WKWebView
-                    // and SWT. The overlay never changes the button's bounds during hover.
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showWebsite && (openInBrowserHovered || openInBrowserFocused),
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                            .wrapContentSize(Alignment.CenterEnd, unbounded = true),
-                        enter = fadeIn(tween(120)),
-                        exit = fadeOut(tween(90)),
-                    ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.extraSmall,
-                            color = MaterialTheme.colorScheme.inverseSurface,
-                            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                        ) {
-                            Text(
-                                "Open in browser",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                }
-
-                if (showWebsite && readerState?.available == true) {
+                ToolbarActionVisibility(showWebsite && readerState?.available == true) {
                     DesktopWebViewIconButton(
                         icon = Res.drawable.ic_book_ribbon,
-                        description = if (readerState.enabled) "Exit reader mode" else "Reader mode",
+                        description = if (readerState?.enabled == true) "Exit reader mode" else "Reader mode",
                         onClick = { session.reader?.toggle() },
                     )
                 }
-                if (showWebsite) {
+                ToolbarActionVisibility(showWebsite) {
                     FilledTonalIconButton(
                         onClick = onOpenExternal,
-                        interactionSource = openInBrowserInteractions,
                     ) {
                         Icon(
                             painterResource(Res.drawable.ic_open_in_new),
@@ -889,38 +855,92 @@ private fun DesktopWebViewToolbar(
                         )
                     }
                 }
-
                 Spacer(Modifier.width(8.dp))
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
-                        selected = showWebsite,
-                        onClick = onShowWebsite,
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        icon = {
-                            Icon(
-                                painterResource(Res.drawable.ic_public),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        },
-                        label = { Text("Article") },
-                    )
-                    SegmentedButton(
-                        selected = !showWebsite,
-                        onClick = onShowComments,
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        icon = {
-                            Icon(
-                                painterResource(Res.drawable.ic_forum),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        },
-                        label = { Text("Comments") },
+                DesktopWebTabs(showWebsite, onShowWebsite, onShowComments, tabLabels, tabWidths)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolbarActionVisibility(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandHorizontally(tween(200), expandFrom = Alignment.Start) + fadeIn(tween(150)),
+        exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.Start) + fadeOut(tween(100)),
+    ) { content() }
+}
+
+@Composable
+private fun DesktopWebNavigation(session: DesktopCommentsWebViewSession, onShowComments: () -> Unit) {
+    Row {
+        DesktopWebViewIconButton(
+            icon = Res.drawable.ic_chevron_left,
+            description = "Back",
+            onClick = {
+                if (session.canGoBack) session.navigateBack() else onShowComments()
+            },
+        )
+        DesktopWebViewIconButton(
+            icon = Res.drawable.ic_chevron_right,
+            description = "Forward",
+            onClick = session::navigateForward,
+            enabled = session.canGoForward,
+        )
+        Crossfade(
+            targetState = session.isLoading,
+            modifier = Modifier.size(36.dp),
+            animationSpec = tween(140),
+            label = "web reload loading transition",
+        ) { loading ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (loading) {
+                    HarmonicLoadingIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    DesktopWebViewIconButton(
+                        icon = Res.drawable.ic_refresh,
+                        description = "Reload",
+                        onClick = session::reload,
                     )
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DesktopWebTabs(
+    showWebsite: Boolean,
+    onShowWebsite: () -> Unit,
+    onShowComments: () -> Unit,
+    showLabels: Boolean,
+    labelWidths: List<Dp>,
+) {
+    SingleChoiceSegmentedButtonRow {
+        listOf("Article" to Res.drawable.ic_public, "Comments" to Res.drawable.ic_forum)
+            .forEachIndexed { index, (label, icon) ->
+                val width by animateDpAsState(
+                    targetValue = if (showLabels) labelWidths[index] else 48.dp,
+                    animationSpec = tween(200),
+                    label = "web tab width",
+                )
+                SegmentedButton(
+                    selected = showWebsite == (index == 0),
+                    modifier = Modifier.width(width).semantics { contentDescription = label },
+                    onClick = if (index == 0) onShowWebsite else onShowComments,
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                    icon = {},
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(painterResource(icon), null, Modifier.size(18.dp))
+                            ToolbarActionVisibility(showLabels) {
+                                Text(label, Modifier.padding(start = 8.dp), maxLines = 1, softWrap = false)
+                            }
+                        }
+                    },
+                )
+            }
     }
 }
 

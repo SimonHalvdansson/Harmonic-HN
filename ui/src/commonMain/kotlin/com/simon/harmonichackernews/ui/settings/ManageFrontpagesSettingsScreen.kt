@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.RippleAlpha
@@ -161,7 +160,7 @@ fun ManageFrontpagesSettingsScreen(
 ) {
     var infoFrontpage by remember { mutableStateOf<FrontpageInfoSource?>(null) }
     var infoSourceCovered by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
+    val listState = rememberSettingsListState()
     val hazeState = rememberHazeState()
     val resetButtonShape = RoundedCornerShape(16.dp)
     val scope = rememberCoroutineScope()
