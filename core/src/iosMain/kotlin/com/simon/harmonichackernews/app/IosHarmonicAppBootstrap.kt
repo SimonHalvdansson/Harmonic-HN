@@ -6,9 +6,11 @@ import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
-import com.simon.harmonichackernews.settings.IosKeyValueStore
+import com.simon.harmonichackernews.settings.DataStoreKeyValueStore
+import com.simon.harmonichackernews.settings.ProcessPreferenceStores
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import com.simon.harmonichackernews.settings.SurfaceEffectMode
-import platform.Foundation.NSUserDefaults
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.IosLocalAiEnvironment
 import kotlinx.io.files.Path
@@ -40,17 +42,18 @@ class IosHarmonicAppBootstrap(
     userAgent: String,
     bindings: IosPlatformBindings,
     runtime: IosHostRuntimeBindings,
-    settingsDefaults: NSUserDefaults = NSUserDefaults.standardUserDefaults,
-    appDataDefaults: NSUserDefaults = NSUserDefaults(
-        suiteName = AppLaunchPreferenceKeys.STORE_NAME,
-    ),
 ) {
-    val preferences = IosKeyValueStore(settingsDefaults)
-    val appData = IosKeyValueStore(appDataDefaults)
-    val previewCache = IosKeyValueStore(NSUserDefaults(suiteName = PreviewCachePolicy.STORE_NAME))
-    val fileAccess = IosKeyValueStore(
-        NSUserDefaults(suiteName = StorageKeyPolicy.FILE_ACCESS_STORE),
-    )
+    private fun openStore(root: String, name: String): DataStoreKeyValueStore =
+        runBlocking(Dispatchers.Default) {
+            ProcessPreferenceStores.open(
+                Path(root, "datastore", "$name.preferences_pb").toString(),
+                onWriteFailure = { println("Harmonic preference write failed: $it") },
+            )
+        }
+    val preferences = openStore(runtime.filesDirectory, "settings")
+    val appData = openStore(runtime.filesDirectory, AppLaunchPreferenceKeys.STORE_NAME)
+    val previewCache = openStore(runtime.cacheDirectory, PreviewCachePolicy.STORE_NAME)
+    val fileAccess = openStore(runtime.cacheDirectory, StorageKeyPolicy.FILE_ACCESS_STORE)
     val network = IosNetworkComponent(userAgent)
     private val localAi = bindings.nativeLiteRt?.takeIf { runtime.localModels == null }?.let {
         IosLocalAiEnvironment.create(
@@ -102,5 +105,8 @@ class IosHarmonicAppBootstrap(
     fun close() {
         localAi?.close()
         network.close()
+        runBlocking(Dispatchers.Default) {
+            listOf(preferences, appData, previewCache, fileAccess).forEach { it.awaitPersisted() }
+        }
     }
 }

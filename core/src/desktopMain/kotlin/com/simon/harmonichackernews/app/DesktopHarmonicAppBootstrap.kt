@@ -16,7 +16,9 @@ import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.StoredHistoryStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.KeyValueStore
-import com.simon.harmonichackernews.settings.DesktopFileKeyValueStore
+import com.simon.harmonichackernews.settings.DataStoreKeyValueStore
+import com.simon.harmonichackernews.settings.ProcessPreferenceStores
+import kotlinx.coroutines.runBlocking
 import com.simon.harmonichackernews.summary.DesktopLocalAiEnvironment
 import io.ktor.client.engine.okhttp.OkHttp
 import java.awt.Desktop
@@ -58,12 +60,15 @@ class DesktopHarmonicAppBootstrap(
         platform = platform,
         host = host,
     )
-    val scene = app.createScene()
+
+    // Headless tests and previews can opt into a scene without a UI lifecycle owner.
+    private val previewScene = lazy { app.createScene() }
+    val scene get() = previewScene.value
 
     fun close() {
         if (closed) return
         closed = true
-        scene.close()
+        if (previewScene.isInitialized()) previewScene.value.close()
         app.platform.accounts.close()
         closePlatformServices()
         network.close()
@@ -80,14 +85,16 @@ class DesktopHarmonicAppBootstrap(
             Files.createDirectories(paths.configDirectory)
             Files.createDirectories(paths.filesDirectory)
             Files.createDirectories(paths.cacheDirectory)
-            val settings = DesktopFileKeyValueStore(paths.configDirectory.resolve("settings.properties"))
-            val appData = DesktopFileKeyValueStore(paths.configDirectory.resolve("app-data.properties"))
-            val previewCache = DesktopFileKeyValueStore(
-                paths.cacheDirectory.resolve("preview-cache.properties"),
-            )
-            val fileAccess = DesktopFileKeyValueStore(
-                paths.cacheDirectory.resolve("file-access.properties"),
-            )
+            val stores = mutableListOf<DataStoreKeyValueStore>()
+            fun openStore(path: Path): DataStoreKeyValueStore = runBlocking(Dispatchers.IO) {
+                ProcessPreferenceStores.open(path.toString(),
+                    onWriteFailure = { System.err.println("Harmonic preference write failed: $it") },
+                ).also(stores::add)
+            }
+            val settings = openStore(paths.configDirectory.resolve("settings.preferences_pb"))
+            val appData = openStore(paths.configDirectory.resolve("app-data.preferences_pb"))
+            val previewCache = openStore(paths.cacheDirectory.resolve("preview-cache.preferences_pb"))
+            val fileAccess = openStore(paths.cacheDirectory.resolve("file-access.preferences_pb"))
             val credentials = desktopCredentialStore()
             val localAi = DesktopLocalAiEnvironment.create(
                 preferences = settings,
@@ -142,7 +149,12 @@ class DesktopHarmonicAppBootstrap(
                         localSummary = localAi.summary,
                     ),
                     host = host,
-                    closePlatformServices = localAi::close,
+                    closePlatformServices = {
+                        localAi.close()
+                        runBlocking(Dispatchers.IO) {
+                            stores.forEach { it.awaitPersisted() }
+                        }
+                    },
                 )
             } catch (error: Throwable) {
                 localAi.close()

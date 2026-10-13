@@ -19,21 +19,18 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private func prepareUiTestStateIfNeeded() {
 #if DEBUG
-        guard ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" else {
+        guard ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1",
+              ProcessInfo.processInfo.environment["HARMONIC_UI_TEST_PRESERVE_DATA"] != "1" else {
             return
         }
-        if let bundleIdentifier = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
-        }
-        [
-            "com.simon.harmonichackernews.GLOBAL_SHARED_PREFERENCES_KEY",
-            "com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES",
-            "file_access_times",
-        ].forEach { suiteName in
-            UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
-        }
+        // UI tests use their own DataStore/files root; never reset the normal installation.
+        try? FileManager.default.removeItem(at: harmonicUiTestDirectory)
 #endif
     }
+}
+
+private var harmonicUiTestDirectory: URL {
+    FileManager.default.temporaryDirectory.appendingPathComponent("HarmonicUITests", isDirectory: true)
 }
 
 /// Keep the same application and navigation graph as this window resizes or changes displays.
@@ -76,14 +73,20 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             privacyUrl: "https://github.com/SimonHalvdansson/Harmonic-HN/blob/main/PRIVACY.md"
         )
         let fileManager = FileManager.default
-        let filesDirectory = fileManager.urls(
+        var filesDirectory = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        let cacheDirectory = fileManager.urls(
+        var cacheDirectory = fileManager.urls(
             for: .cachesDirectory,
             in: .userDomainMask
         )[0]
+#if DEBUG
+        if ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" {
+            filesDirectory = harmonicUiTestDirectory.appendingPathComponent("files")
+            cacheDirectory = harmonicUiTestDirectory.appendingPathComponent("cache")
+        }
+#endif
         try? fileManager.createDirectory(
             at: filesDirectory,
             withIntermediateDirectories: true

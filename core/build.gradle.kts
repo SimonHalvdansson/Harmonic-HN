@@ -25,6 +25,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(libs.androidx.datastore.preferences.core)
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.io.core)
             api(libs.ktor.client.core)

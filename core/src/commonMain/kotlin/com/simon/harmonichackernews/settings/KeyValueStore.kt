@@ -3,9 +3,8 @@ package com.simon.harmonichackernews.settings
 /**
  * Minimal platform-neutral persistence surface used by shared repositories.
  *
- * Platform implementations decide where values live. The Android app provides adapters for its
- * existing default and named SharedPreferences stores, so moving logic here does not migrate or
- * rewrite any user data.
+ * Production hosts use a loaded DataStore snapshot. Android migrates its default and named
+ * SharedPreferences stores before exposing that snapshot; tests can use an in-memory store.
  */
 interface KeyValueStore {
     interface Editor {

@@ -9,6 +9,7 @@
         <exclude
             domain="sharedpref"
             path="com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.xml" />
+        <exclude domain="file" path="datastore/com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.preferences_pb" />
 
         <!-- Android Keystore keys are not restored with their encrypted values. -->
         <exclude domain="sharedpref" path="HARMONIC_ENCRYPTED_PREFS.xml" />
@@ -29,6 +30,7 @@
         <exclude
             domain="sharedpref"
             path="com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.xml" />
+        <exclude domain="file" path="datastore/com.simon.harmonichackernews.PREVIEW_IMAGE_CACHE_PREFERENCES.preferences_pb" />
         <exclude domain="sharedpref" path="HARMONIC_ENCRYPTED_PREFS.xml" />
         <exclude
             domain="sharedpref"

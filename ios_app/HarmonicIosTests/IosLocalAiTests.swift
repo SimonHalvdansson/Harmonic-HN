@@ -6,25 +6,20 @@ import HarmonicKit
 final class IosLocalAiTests: XCTestCase {
     private var environment: IosLocalAiEnvironment!
     private var directory: URL!
-    private var defaults: UserDefaults!
-    private var suite: String!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        suite = "harmonic-litert-tests-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)!
     }
 
     override func tearDownWithError() throws {
         environment?.close()
-        defaults.removePersistentDomain(forName: suite)
         try? FileManager.default.removeItem(at: directory)
     }
 
     private func createEnvironment(bridge: IosLiteRtSummaryBridge) {
         environment = IosLocalAiEnvironment.companion.create(
-            preferences: IosKeyValueStore(defaults: defaults),
+            preferences: InMemoryKeyValueStore(),
             modelsDirectory: directory.appendingPathComponent("models").path,
             cacheDirectory: directory.appendingPathComponent("cache").path,
             userAgent: "Harmonic-iOS-LiteRT-Tests",

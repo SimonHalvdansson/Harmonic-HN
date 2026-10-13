@@ -539,7 +539,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
     }
 
-    func testPreloadPreferenceAndArticleOpening() throws {
+    func testPreloadPreferenceSurvivesRelaunchAndArticleOpening() throws {
         openSettings()
         app.labeledButton("Web and links").tapCenter()
         let preload = app.buttons.matching(
@@ -549,6 +549,18 @@ final class HarmonicIosUITests: XCTestCase {
         preload.tapCenter()
         app.staticTexts["Always"].tapCenter()
         app.labeledButton("OK").tapCenter()
+        XCTAssertTrue(app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Preload websites, Always")
+        ).firstMatch.waitForExistence(timeout: 5))
+        closeSettings()
+        // Keep the isolated test files for this launch to exercise a fresh DataStore reader.
+        app.launchEnvironment["HARMONIC_UI_TEST_PRESERVE_DATA"] = "1"
+        defer { app.launchEnvironment.removeValue(forKey: "HARMONIC_UI_TEST_PRESERVE_DATA") }
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 15), "First-run preferences must survive too")
+        openSettings()
+        app.labeledButton("Web and links").tapCenter()
         XCTAssertTrue(app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Preload websites, Always")
         ).firstMatch.waitForExistence(timeout: 5))

@@ -37,6 +37,8 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 baseline-profile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 
 [libraries]
+androidx-datastore-preferences-core = "androidx.datastore:datastore-preferences-core:1.2.1"
+androidx-datastore-preferences = "androidx.datastore:datastore-preferences:1.2.1"
 androidx-collection = "androidx.collection:collection:1.6.0"
 latex-renderer = "io.github.huarangmeng:latex-renderer:1.5.6"
 androidx-lifecycle-viewmodel = "androidx.lifecycle:lifecycle-viewmodel:2.11.0"
