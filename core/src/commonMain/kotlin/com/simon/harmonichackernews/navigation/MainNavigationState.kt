@@ -310,7 +310,13 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     }
 
     fun closeSubmissions() {
-        pop(MainDestination.SUBMISSIONS)
+        val index = backStack.indexOfLast { it is MainNavigationEntry.Submissions }
+        if (index < 1) return
+        // In a split layout the list's Back button remains visible beside its story.
+        // Close that entire surface, including linked stories, but never a covering screen.
+        if (backStack.drop(index + 1).all { it is MainNavigationEntry.Story }) {
+            backStack.subList(index, backStack.size).clear()
+        }
     }
 
     fun openCoulombGas() {

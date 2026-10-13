@@ -212,6 +212,51 @@ class MainNavigationStateTest {
     }
 
     @Test
+    fun closingSubmissionsAlsoClosesItsSelectedAndLinkedStories() {
+        val state = MainNavigationState()
+        state.openStory(StoryDestination(storyId = 1))
+        state.openSubmissions("simon")
+        state.openStory(StoryDestination(storyId = 2))
+        state.openLinkedStory(StoryDestination(storyId = 3))
+
+        state.closeSubmissions()
+
+        assertEquals(listOf(MainDestination.STORIES, MainDestination.STORY),
+            state.destinationStack.map { it.destination })
+        assertEquals(1, state.storyRequest?.storyId)
+        assertNull(state.submissionsRequest)
+    }
+
+    @Test
+    fun closingNestedSubmissionsReturnsToTheParentSubmissionsStory() {
+        val state = MainNavigationState()
+        state.openSubmissions("parent")
+        state.openStory(StoryDestination(storyId = 1))
+        state.openSubmissions("child")
+        state.openStory(StoryDestination(storyId = 2))
+
+        state.closeSubmissions()
+
+        assertEquals("parent", state.submissionsRequest?.userName)
+        assertEquals(1, state.storyRequest?.storyId)
+        state.closeSubmissions()
+        assertEquals(listOf(MainNavigationEntry.Stories), state.destinationStack)
+    }
+
+    @Test
+    fun closingSubmissionsDoesNotDismissACoveringEditor() {
+        val state = MainNavigationState()
+        state.openSubmissions("simon")
+        state.openStory(StoryDestination(storyId = 2))
+        state.openEditor(EditorDestination(EditorType.COMMENT_REPLY, itemId = 2))
+        val stack = state.destinationStack
+
+        state.closeSubmissions()
+
+        assertEquals(stack, state.destinationStack)
+    }
+
+    @Test
     fun openingEditorPushesAboveTheCurrentDestination() {
         val state = MainNavigationState()
         state.openSettings("stories")
