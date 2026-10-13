@@ -11,8 +11,6 @@ import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.platform.ExternalLinkOpener
 import com.simon.harmonichackernews.platform.ExternalLinkPolicy
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
-import com.simon.harmonichackernews.platform.LocalCalendarDate
-import com.simon.harmonichackernews.platform.PlatformTimeFormatter
 import com.simon.harmonichackernews.platform.ShareService
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.StoredHistoryStore
@@ -27,18 +25,11 @@ import java.awt.datatransfer.StringSelection
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.LocalTime
-import java.time.format.FormatStyle
-import java.util.Locale
 import kotlinx.io.files.Path as KotlinPath
 
 /**
@@ -217,26 +208,6 @@ private data object SideEffectFreeClipboardService : ClipboardService {
 private data object DesktopPreviewConnectivity : ConnectivityService {
     override fun isOnline(): Boolean = true
     override fun isUnmetered(): Boolean = true
-}
-
-private class DesktopTimeFormatter : PlatformTimeFormatter {
-    private val zone = ZoneId.systemDefault()
-    private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-        .withLocale(Locale.getDefault())
-
-    override fun time(epochMillis: Long): String =
-        Instant.ofEpochMilli(epochMillis).atZone(zone).format(timeFormatter)
-
-    override fun localDate(epochMillis: Long): LocalCalendarDate =
-        Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate().let { date ->
-            LocalCalendarDate(date.year, date.monthValue, date.dayOfMonth)
-        }
-
-    override fun uses24HourClock(): Boolean =
-        (DateFormat.getTimeInstance(DateFormat.SHORT) as? SimpleDateFormat)
-            ?.toPattern()
-            ?.any { it == 'H' || it == 'k' }
-            ?: true
 }
 
 private class InMemoryCredentialStore : CredentialStore {
