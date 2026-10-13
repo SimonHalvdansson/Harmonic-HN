@@ -138,7 +138,6 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Rounded corners",
-                    summary = "Rounded line ends; sits beside the card in Filled and Raised",
                     icon = Res.drawable.ic_select,
                     checked = state.roundedDepthIndicators,
                     enabled = indicatorsEnabled,
@@ -150,9 +149,6 @@ private fun ThreadDepthIndicatorsSettingsScreen(
             SettingsCategory("Thread lines") {
                 SwitchSettingRow(
                     title = "Continuous thread lines",
-                    summary = if (state.depthMode == CommentDepthPreferences.AUTHOR) {
-                        "Unavailable with Author colors"
-                    } else "Continue ancestor lines along the left of their replies",
                     icon = Res.drawable.ic_account_tree,
                     checked = state.continuousDepthIndicators && state.depthMode != CommentDepthPreferences.AUTHOR,
                     enabled = indicatorsEnabled && state.depthMode != CommentDepthPreferences.AUTHOR,
@@ -160,8 +156,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                 )
                 SettingsDivider()
                 SwitchSettingRow(
-                    title = "Show top level thread indicators",
-                    summary = "Makes it easier to separate top level comments",
+                    title = "Show top level indicators",
                     icon = Res.drawable.ic_border_left,
                     checked = state.topLevelIndicators,
                     enabled = indicatorsEnabled,
