@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -568,9 +569,15 @@ private fun PostFields(
 ) {
     val focusManager = LocalFocusManager.current
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // Preserve the roomy form's field sizes; scroll the whole form when it no longer fits.
-        val textHeight = (maxHeight - 182.dp).coerceAtLeast(144.dp)
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        // Fill the viewport using the fields' measured heights, and scroll only when
+        // their minimum heights no longer fit (for example, with the keyboard open).
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .height(IntrinsicSize.Min),
+        ) {
             OutlinedTextField(
                 state = title,
                 modifier = Modifier
@@ -625,7 +632,9 @@ private fun PostFields(
                 state = text,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(textHeight + 16.dp)
+                    .weight(1f)
+                    // Weight can expand this height; long text should scroll inside the field.
+                    .height(160.dp)
                     .padding(start = 16.dp, top = 16.dp, end = 16.dp)
                     .onFocusChanged { onFieldFocusChange(PostEditorField.Text, it.isFocused) }
                     .testTag("compose_editor_text"),
