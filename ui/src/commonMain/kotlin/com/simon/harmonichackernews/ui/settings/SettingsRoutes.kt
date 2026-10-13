@@ -273,6 +273,7 @@ data class AppearanceRouteLabels(
     val showTransparentStatusBar: Boolean,
     val dynamicColorAvailable: Boolean = true,
     val showExtraSidePadding: Boolean = false,
+    val splitRatioTitle: String? = null,
 )
 
 data class ThemeRouteLabels(
@@ -311,6 +312,7 @@ fun AppearanceSettingsRoute(
             showSplitRatio = splitLayout.supportsTwoPane,
             splitRatio = splitLayout.ratio,
             splitOrientation = splitLayout.orientation,
+            splitRatioTitle = labels.splitRatioTitle,
             allowSplitAdjustment = settings.appearance.allowSplitAdjustment,
             sideBySideEnabled = settings.appearance.sideBySideEnabled,
             integratedBrowserEnabled = settings.reading.integratedWebView,
@@ -508,7 +510,6 @@ fun CommentsSettingsRoute(
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
-    onHeaderDisplayRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
@@ -525,7 +526,6 @@ fun CommentsSettingsRoute(
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
-        onHeaderDisplayRequested = onHeaderDisplayRequested,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {

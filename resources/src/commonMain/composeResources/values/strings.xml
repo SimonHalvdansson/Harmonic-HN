@@ -7,6 +7,7 @@
     <string name="settings_title">Settings</string>
     <string name="settings_summary_appearance">Colors, fonts, layout</string>
     <string name="settings_summary_stories">Frontpages, previews</string>
+    <string name="settings_summary_header_display">Post details, images, links</string>
     <string name="settings_summary_comments">Threads, avatars</string>
     <string name="settings_summary_web_links">Browser, reader mode</string>
     <string name="settings_summary_filters_tags">Keywords, domains</string>

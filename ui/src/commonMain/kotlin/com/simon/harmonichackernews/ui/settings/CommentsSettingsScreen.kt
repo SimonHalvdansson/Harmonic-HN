@@ -94,7 +94,6 @@ fun CommentsSettingsScreen(
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
-    onHeaderDisplayRequested: () -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
 ) {
@@ -171,13 +170,7 @@ fun CommentsSettingsScreen(
                     state.markNewComments,
                     CommentsBooleanSetting.MarkNewComments,
                     onBooleanChanged,
-                    summary = "Marks comments added since the cached version",
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = stringResource(Res.string.settings_section_header_display),
-                    icon = Res.drawable.ic_image,
-                    onClick = onHeaderDisplayRequested,
+                    summary = "Highlights newly added comments",
                 )
             }
         }

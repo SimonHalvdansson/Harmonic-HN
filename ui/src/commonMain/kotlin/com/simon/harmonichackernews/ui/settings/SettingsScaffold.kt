@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,7 +88,8 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Appearance, Res.drawable.ic_style, Res.string.settings_summary_appearance),
     SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Stories, Res.drawable.ic_newspaper, Res.string.settings_summary_stories),
     SettingsListEntry(SettingsListGroup.Reading, SettingsSection.Comments, Res.drawable.ic_comment, Res.string.settings_summary_comments),
-    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
+    SettingsListEntry(SettingsListGroup.Reading, SettingsSection.HeaderDisplay, Res.drawable.ic_web, Res.string.settings_summary_header_display),
+    SettingsListEntry(SettingsListGroup.Tools, SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.FiltersTags, Res.drawable.ic_filter_list, Res.string.settings_summary_filters_tags),
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.AiSummary, Res.drawable.ic_auto_awesome, Res.string.settings_summary_ai_summary),
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.Notifications, Res.drawable.ic_notifications, Res.string.settings_summary_notifications),
@@ -95,6 +97,13 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsListGroup.App, SettingsSection.About, Res.drawable.ic_info, Res.string.settings_summary_about),
     SettingsListEntry(SettingsListGroup.App, SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
 )
+
+/** Desktop keeps scroll owners outside Navigation 3's pane-count recreation boundary. */
+val LocalSettingsListState = staticCompositionLocalOf<LazyListState?> { null }
+
+@Composable
+internal fun rememberSettingsListState(): LazyListState =
+    LocalSettingsListState.current ?: rememberLazyListState()
 
 @Composable
 internal fun itemBackgroundColor(): Color = MaterialTheme.colorScheme.cardBackground
@@ -153,6 +162,7 @@ fun SettingsListScreen(
         )
 
         LazyColumn(
+            state = rememberSettingsListState(),
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(
@@ -186,7 +196,6 @@ fun SettingsListScreen(
                                     selectedSection == SettingsSection.Glass) ||
                                 entry.section == SettingsSection.Comments &&
                                 (selectedSection == SettingsSection.ThreadDepth ||
-                                    selectedSection == SettingsSection.HeaderDisplay ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||
@@ -317,7 +326,7 @@ fun SettingsPage(
     contentVersion: Int = 0,
     showTopAppBar: Boolean = true,
     pinnedContent: (@Composable () -> Unit)? = null,
-    listState: LazyListState = rememberLazyListState(),
+    listState: LazyListState = rememberSettingsListState(),
     extraBottomPadding: Dp = 0.dp,
     headerContent: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,

@@ -61,6 +61,7 @@ fun PortableSettingsDetail(
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
     debugPlatformLabel: String = "Android version",
     debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
+    splitRatioTitle: String? = null,
 ) {
     when (section) {
         SettingsSection.Appearance -> PortableAppearanceSettings(
@@ -68,6 +69,7 @@ fun PortableSettingsDetail(
             appIcon,
             singlePane,
             onBack,
+            splitRatioTitle,
         ) { target ->
             onNavigate(
                 target,
@@ -95,7 +97,6 @@ fun PortableSettingsDetail(
             onBack = onBack,
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
-            onHeaderDisplayRequested = { onNavigate(SettingsSection.HeaderDisplay, true) },
         )
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
@@ -234,6 +235,7 @@ private fun PortableAppearanceSettings(
     appIcon: Painter,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    splitRatioTitle: String?,
     onNavigate: (SettingsSection) -> Unit,
 ) {
     val snapshot = app.settings.snapshot()
@@ -243,6 +245,7 @@ private fun PortableAppearanceSettings(
         repository = app.settings,
         labels = AppearanceRouteLabels(
             showTransparentStatusBar = false,
+            splitRatioTitle = splitRatioTitle,
         ),
         showNavigation = showNavigation,
         onBack = onBack,

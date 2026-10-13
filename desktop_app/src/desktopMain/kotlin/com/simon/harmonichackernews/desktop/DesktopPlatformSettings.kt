@@ -70,6 +70,7 @@ internal fun DesktopSettingsDetail(
 ) {
     val appIcon = rememberDesktopAppIconPainter()
     PortableSettingsDetail(
+        splitRatioTitle = "Split ratio",
         section = section,
         app = app,
         scene = scene,

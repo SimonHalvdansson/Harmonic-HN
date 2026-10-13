@@ -43,6 +43,7 @@ data class AppearanceSettingsUiState(
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val surfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
+    val splitRatioTitle: String? = null,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
@@ -142,7 +143,7 @@ fun AppearanceSettingsScreen(
                 SettingsCategory("Two panes") {
                     key(state.splitOrientation) {
                         SliderSetting(
-                            title = when (state.splitOrientation) {
+                            title = state.splitRatioTitle ?: when (state.splitOrientation) {
                                 SplitOrientation.Portrait -> "Portrait split ratio"
                                 SplitOrientation.Landscape -> "Landscape split ratio"
                             },
@@ -207,6 +208,12 @@ fun AppearanceSettingsScreen(
                     title = "Comments settings",
                     icon = Res.drawable.ic_open_in_new,
                     onClick = { onNavigate(SettingsSection.Comments) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Header display settings",
+                    icon = Res.drawable.ic_open_in_new,
+                    onClick = { onNavigate(SettingsSection.HeaderDisplay) },
                 )
             }
         }
