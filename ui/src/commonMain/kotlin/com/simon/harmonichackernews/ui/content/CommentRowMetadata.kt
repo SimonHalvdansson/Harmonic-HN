@@ -21,7 +21,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -129,19 +128,8 @@ internal fun CommentMeta(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(author, color = metaColor, fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            if (byOp) {
-                Text(
-                    "OP",
-                    modifier = Modifier.padding(start = 3.dp).heightIn(min = 14.dp).clip(RoundedCornerShape(3.dp))
-                        .background(metaColor.copy(alpha = 0.14f)).padding(horizontal = 3.dp),
-                    color = metaColor,
-                    fontFamily = fontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    lineHeight = 10.sp,
-                    style = compactCommentTextStyle,
-                )
-            }
+            if (byOp) CommentAuthorBadge("OP", metaColor, fontFamily)
+            if (byUser) CommentAuthorBadge("YOU", metaColor, fontFamily)
             Text(age, modifier = Modifier.padding(start = 4.dp), color = metaColor, fontFamily = fontFamily, fontSize = 13.sp)
             if (!userTag.isNullOrBlank()) {
                 Text(
@@ -210,5 +198,30 @@ internal fun CommentMeta(
             // Older comments retain the original fixed-width, opacity-only count animation.
             Box(Modifier.offset(y = (-2).dp)) { replyCount() }
         }
+    }
+}
+
+@Composable
+private fun CommentAuthorBadge(
+    label: String,
+    color: Color,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+) {
+    Box(
+        modifier = Modifier.padding(start = 3.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(color.copy(alpha = 0.14f))
+            .padding(horizontal = 3.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = color,
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+            lineHeight = 10.sp,
+            style = compactCommentTextStyle,
+        )
     }
 }
