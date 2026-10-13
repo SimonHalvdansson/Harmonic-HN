@@ -4,6 +4,7 @@
 
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.ui.content.AnimatedMenuItem
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.theme.menuBackground
@@ -24,6 +25,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
@@ -445,7 +448,13 @@ private fun MainHeader(
             ).size.width.toDp().value
         }
         // Leave a pixel-rounding margin, and use the same tracking for measuring and drawing.
-        val sizing = storyHeaderSizing(maxWidth.value, titleWidth + 1f, minimumSize / preferredSize)
+        val showRefreshButton = showRefreshMenuItem &&
+            maxWidth.value >= titleWidth + 24f + 32f + 3 * 48f
+        val sizing = storyHeaderSizing(
+            maxWidth.value - if (showRefreshButton) 48f else 0f,
+            titleWidth + 1f,
+            minimumSize / preferredSize,
+        )
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.weight(1f)) {
                 Row(
@@ -541,6 +550,18 @@ private fun MainHeader(
                     )
                 }
             }
+            AnimatedVisibility(
+                visible = showRefreshButton,
+                enter = expandHorizontally(tween(200), expandFrom = Alignment.End) + fadeIn(tween(150)),
+                exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
+            ) {
+                StoriesTooltip("Refresh") {
+                    IconButton(onClick = controller::refresh, enabled = !controller.refreshing) {
+                        Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             Box {
                 StoriesTooltip("More options") {
                     IconButton(
@@ -556,7 +577,7 @@ private fun MainHeader(
                 StoriesMoreMenu(
                     controller = controller,
                     expanded = moreExpanded,
-                    showRefreshItem = showRefreshMenuItem,
+                    showRefreshItem = showRefreshMenuItem && !showRefreshButton,
                     showSearchItem = sizing.searchInMenu,
                     dismiss = { moreExpanded = false },
                 )
@@ -666,15 +687,17 @@ private fun StoriesMoreMenu(
                 },
             )
         }
-        if (controller.loggedIn) {
-            MoreItem("Profile", StoriesMenuAction.PROFILE, controller, dismiss)
-            MoreItem("Submit", StoriesMenuAction.SUBMIT, controller, dismiss)
+        AnimatedMenuItem(visible = controller.loggedIn) {
+            Column {
+                MoreItem("Profile", StoriesMenuAction.PROFILE, controller, dismiss)
+                MoreItem("Submit", StoriesMenuAction.SUBMIT, controller, dismiss)
+            }
         }
         MoreItem(if (controller.loggedIn) "Log out" else "Log in", StoriesMenuAction.ACCOUNT, controller, dismiss)
-        if (controller.canCache) {
+        AnimatedMenuItem(visible = controller.canCache) {
             MoreItem("Cache stories", StoriesMenuAction.CACHE, controller, dismiss)
         }
-        if (controller.canClearHistory) {
+        AnimatedMenuItem(visible = controller.canClearHistory) {
             MoreItem("Clear history", StoriesMenuAction.CLEAR_HISTORY, controller, dismiss)
         }
         MoreItem("Settings", StoriesMenuAction.SETTINGS, controller, dismiss)

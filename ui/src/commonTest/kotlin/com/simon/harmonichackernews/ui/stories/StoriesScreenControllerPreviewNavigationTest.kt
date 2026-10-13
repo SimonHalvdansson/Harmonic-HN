@@ -23,6 +23,24 @@ import kotlin.test.assertTrue
 
 class StoriesScreenControllerPreviewNavigationTest {
     @Test
+    fun seenRowsSurviveControllerRecreationForTheSameSession() {
+        val session = com.simon.harmonichackernews.presentation.StoriesSessionState()
+        fun recreate() = StoriesScreenController.create(
+            defaultStoryHeightPx = 100,
+            savedItemState = EmptySavedItemState,
+            listener = TestListener(false),
+            revealedStoryIds = session.revealedStoryIds,
+        )
+        val before = recreate()
+        assertFalse(before.hasRevealedStory(42))
+        before.markStoryRevealed(42)
+        val resumed = recreate()
+        assertTrue(resumed.hasRevealedStory(42))
+        assertFalse(resumed.hasRevealedStory(43))
+        assertTrue(recreate().hasRevealedStory(42))
+    }
+
+    @Test
     fun settledPreviewPageRequestsItsOwnResourceWindow() {
         val listener = TestListener(false)
         val controller = controller(false, listener)

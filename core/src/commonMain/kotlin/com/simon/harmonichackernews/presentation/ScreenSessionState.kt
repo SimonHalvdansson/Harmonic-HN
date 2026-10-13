@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * Android lifecycle holders retain this object, but no Android type crosses the boundary.
  */
 class StoriesSessionState {
+    /** Loaded rows reveal once for the entire retained screen session. */
+    val revealedStoryIds = mutableSetOf<Int>()
     internal val hiddenStoryRows = HiddenStoryRows()
     var initialized: Boolean = false
     val mainStoryList = StoryListStore()

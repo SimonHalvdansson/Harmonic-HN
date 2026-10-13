@@ -216,7 +216,8 @@ fun StoriesScreen(
         predictiveBackProgress = controller.predictiveBackProgress,
         backgroundColor = MaterialTheme.colorScheme.pageBackground,
         mainLayer = {
-            Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)) {
+            Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)
+                .background(MaterialTheme.colorScheme.pageBackground)) {
                 StoriesList(
                     controller = controller,
                     settings = settings,

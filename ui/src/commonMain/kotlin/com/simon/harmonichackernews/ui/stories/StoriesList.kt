@@ -41,6 +41,8 @@ import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import androidx.compose.material3.Icon
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Surface
@@ -222,7 +224,10 @@ internal fun StoriesList(
                                 } else {
                                     OutlinedButton(
                                         onClick = controller.listener::onLoadMore,
-                                    ) { Text("Load more") }
+                                    ) {
+                                        Icon(painterResource(Res.drawable.ic_add), contentDescription = null)
+                                        Text("Load more", Modifier.padding(start = 8.dp))
+                                    }
                                 }
                             }
                         }
@@ -296,8 +301,13 @@ internal fun StoriesList(
                             val suppressed = controller.isStorySuppressed(story.id)
                             val keepPreviewSourceVisible =
                                 controller.shouldKeepStoryPreviewSourceVisible(story.id)
-                            var revealed by rememberSaveable(story.id) { mutableStateOf(false) }
-                            LaunchedEffect(story.id) { revealed = true }
+                            var revealed by remember(story.id, controller) {
+                                mutableStateOf(controller.hasRevealedStory(story.id))
+                            }
+                            LaunchedEffect(story.id, controller) {
+                                controller.markStoryRevealed(story.id)
+                                revealed = true
+                            }
                             val revealAlpha by animateFloatAsState(
                                 targetValue = if (revealed) 1f else 0f,
                                 animationSpec = tween(220, easing = StoriesEasing),

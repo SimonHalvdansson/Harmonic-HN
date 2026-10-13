@@ -42,7 +42,11 @@ class StoriesScreenController private constructor(
     defaultStoryHeightPx: Int,
     private val savedItemState: SavedItemStateReader,
     val listener: Listener,
+    private val revealedStoryIds: MutableSet<Int>,
 ) {
+    fun hasRevealedStory(storyId: Int): Boolean = storyId in revealedStoryIds
+    fun markStoryRevealed(storyId: Int) { revealedStoryIds.add(storyId) }
+
     private var mainStoriesState by mutableStateOf<List<StoryListItemSnapshot>>(emptyList())
     private var searchStoriesState by mutableStateOf<List<StoryListItemSnapshot>>(emptyList())
     private var previewResourcesSnapshot: Map<Int, StoryPreviewResourceState> = emptyMap()
@@ -771,8 +775,10 @@ class StoriesScreenController private constructor(
             defaultStoryHeightPx: Int,
             savedItemState: SavedItemStateReader,
             listener: Listener,
+            revealedStoryIds: MutableSet<Int> = mutableSetOf(),
         ): StoriesScreenController = StoriesScreenController(
             defaultStoryHeightPx = defaultStoryHeightPx,
+            revealedStoryIds = revealedStoryIds,
             savedItemState = savedItemState,
             listener = listener,
         )

@@ -1,5 +1,13 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
@@ -190,4 +198,26 @@ fun HarmonicMenuText(
         fontWeight = fontWeight,
         fontSize = fontSize,
     )
+}
+
+@Composable
+fun AnimatedMenuItem(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.fillMaxWidth(),
+        enter = expandVertically(
+            animationSpec = tween(220, easing = FastOutSlowInEasing),
+            expandFrom = Alignment.Top,
+        ) + fadeIn(tween(150, delayMillis = 50)),
+        exit = shrinkVertically(
+            animationSpec = tween(190, easing = FastOutSlowInEasing),
+            shrinkTowards = Alignment.Top,
+        ) + fadeOut(tween(100)),
+        label = "menu item",
+    ) {
+        content()
+    }
 }

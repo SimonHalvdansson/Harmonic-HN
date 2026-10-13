@@ -148,6 +148,7 @@ class AndroidStoriesCoordinator(
             override fun isSplitLayout(): Boolean = isFoldableSplitLayout
         }
         composeController = StoriesScreenController.create(
+            revealedStoryIds = sessionState.revealedStoryIds,
             defaultStoryHeightPx = (96f * resources.displayMetrics.density).roundToInt(),
             savedItemState = storiesStore.savedItemState,
             listener = StoriesFeatureListener(storiesStore, platformCallbacks),

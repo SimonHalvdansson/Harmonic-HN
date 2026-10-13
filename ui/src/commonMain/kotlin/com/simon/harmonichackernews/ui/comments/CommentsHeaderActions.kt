@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.content.AnimatedMenuItem
 import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -579,13 +580,13 @@ private fun MoreMenu(
                                 },
                             )
                         }
-                        AnimatedCommentMenuItem(visible = commentsCount > 1) {
+                        AnimatedMenuItem(visible = commentsCount > 1) {
                             action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
                         }
-                        AnimatedCommentMenuItem(visible = commentsCount > 2) {
+                        AnimatedMenuItem(visible = commentsCount > 2) {
                             SubmenuEntry("Sort comments", Res.drawable.ic_filter_list, onSortExpanded)
                         }
-                        AnimatedCommentMenuItem(
+                        AnimatedMenuItem(
                             visible = !controller.opThreadFilterEnabled && controller.hasCommentsByOp,
                         ) {
                             action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
@@ -605,28 +606,6 @@ private fun MoreMenu(
 }
 
 private enum class MoreMenuPage { Root, Sort, Archive }
-
-@Composable
-private fun AnimatedCommentMenuItem(
-    visible: Boolean,
-    content: @Composable () -> Unit,
-) {
-    AnimatedVisibility(
-        visible = visible,
-        modifier = Modifier.fillMaxWidth(),
-        enter = expandVertically(
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-            expandFrom = Alignment.Top,
-        ) + fadeIn(tween(150, delayMillis = 50)),
-        exit = shrinkVertically(
-            animationSpec = tween(190, easing = FastOutSlowInEasing),
-            shrinkTowards = Alignment.Top,
-        ) + fadeOut(tween(100)),
-        label = "comment menu item",
-    ) {
-        content()
-    }
-}
 
 @Composable
 private fun SubmenuHeader(title: String, onClick: () -> Unit) {

@@ -588,7 +588,7 @@ private fun IosStoriesContent(
             ),
         )
     }
-    val controller = remember(store, defaultStoryHeightPx) {
+    val controller = remember(store) {
         lateinit var created: StoriesScreenController
         val callbacks = object : StoriesFeatureListener.PlatformCallbacks {
             override fun onSearchStateChanged(searching: Boolean) {
@@ -608,6 +608,7 @@ private fun IosStoriesContent(
             override fun isSplitLayout(): Boolean = false
         }
         created = StoriesScreenController.create(
+            revealedStoryIds = scene.sessions.stories.revealedStoryIds,
             defaultStoryHeightPx = defaultStoryHeightPx,
             savedItemState = store.savedItemState,
             listener = StoriesFeatureListener(store, callbacks),
