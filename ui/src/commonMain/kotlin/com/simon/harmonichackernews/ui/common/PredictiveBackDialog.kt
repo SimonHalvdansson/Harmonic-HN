@@ -16,6 +16,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.simon.harmonichackernews.ui.navigation.PredictiveNavigationBackHandler
+import androidx.navigationevent.NavigationEvent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -98,8 +103,8 @@ fun PredictiveBackDialog(
             ),
         ) {
             // This must live inside the Dialog composition so Android registers it with the dialog's
-            // OnBackPressedDispatcherOwner instead of the activity underneath.
-            PlatformDialogPredictiveBackHandler(
+            // NavigationEventDispatcherOwner instead of the activity underneath.
+            DialogPredictiveBackHandler(
                 enabled = predictiveBackEnabled,
                 onProgress = { event ->
                     swipeDirection = event.swipeDirection
@@ -160,12 +165,32 @@ internal expect fun platformDialogProperties(
 ): DialogProperties
 
 @Composable
-internal expect fun PlatformDialogPredictiveBackHandler(
+internal fun DialogPredictiveBackHandler(
     enabled: Boolean,
     onProgress: suspend (DialogPredictiveBackEvent) -> Unit,
     onCancelled: suspend () -> Unit,
     onCommitted: suspend () -> Unit,
-)
+) {
+    PredictiveNavigationBackHandler(enabled = enabled) { events ->
+        try {
+            events.collect { event ->
+                onProgress(
+                    DialogPredictiveBackEvent(
+                        progress = event.progress,
+                        swipeDirection = if (event.swipeEdge == NavigationEvent.EDGE_RIGHT) {
+                            -1f
+                        } else {
+                            1f
+                        },
+                    ),
+                )
+            }
+            onCommitted()
+        } catch (_: CancellationException) {
+            withContext(NonCancellable) { onCancelled() }
+        }
+    }
+}
 
 @Composable
 internal expect fun PlatformDialogBackgroundDimAmount(fraction: Float)

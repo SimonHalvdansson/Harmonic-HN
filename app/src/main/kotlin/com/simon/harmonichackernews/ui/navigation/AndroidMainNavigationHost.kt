@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.ReportDrawnWhen
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -146,6 +145,7 @@ private fun MainNavigation(
 ) {
     val navigationSnapshot by controller.navigationState.state.collectAsStateWithLifecycle()
     val backCompletion = LocalPredictiveBackCompletion.current
+    val backInput = rememberNavigationBackInput()
     // Include asynchronous feed population in launcher time-to-full-display. Other
     // destinations have their own loading lifecycle and must not wait for the hidden feed.
     ReportDrawnWhen {
@@ -224,7 +224,7 @@ private fun MainNavigation(
         }
     }
 
-    PredictiveBackHandler(
+    PredictiveNavigationBackHandler(
         // Let Android own the return-to-caller gesture at an external entry. Nested web/history
         // navigation still consumes Back before reaching this boundary.
         enabled = navigationSnapshot.currentDestination == MainDestination.STORY &&
@@ -232,8 +232,8 @@ private fun MainNavigation(
                 controller.getCommentsCoordinator()?.handlesBackInternally() == true),
     ) { events ->
         val storySerialAtGestureStart = controller.navigationState.state.value.storyRequest?.serial
-        if (backCompletion.handleFollowingBack(events, activity.onBackPressedDispatcher)) {
-            return@PredictiveBackHandler
+        if (backCompletion.handleFollowingBack(events, backInput)) {
+            return@PredictiveNavigationBackHandler
         }
         fun popGestureStoryIfStillCurrent(completedGesture: Boolean = false) {
             if (controller.navigationState.state.value.storyRequest?.serial == storySerialAtGestureStart) {
@@ -262,7 +262,7 @@ private fun MainNavigation(
                     internalBackCoordinator.cancelInternalPredictiveBack()
                 }
             }
-            return@PredictiveBackHandler
+            return@PredictiveNavigationBackHandler
         }
 
         if (scenePlan.storyUsesTwoPane) {
@@ -285,7 +285,7 @@ private fun MainNavigation(
             } finally {
                 frozenWebViewCoordinator?.endWebViewPredictiveBack()
             }
-            return@PredictiveBackHandler
+            return@PredictiveNavigationBackHandler
         }
 
         var animation: DefaultActivityPredictiveBackAnimation? = null
@@ -313,7 +313,7 @@ private fun MainNavigation(
             val currentAnimation = animation
             if (currentAnimation == null) {
                 popGestureStoryIfStillCurrent()
-                return@PredictiveBackHandler
+                return@PredictiveNavigationBackHandler
             }
             val retainedWebView = frozenWebViewCoordinator
             frozenWebViewCoordinator = null
@@ -370,7 +370,7 @@ private fun MainNavigation(
         onBack = controller::closeEditor,
     )
 
-    PredictiveBackHandler(
+    PredictiveNavigationBackHandler(
         enabled = navigationSnapshot.currentDestination == MainDestination.IMMERSIVE,
     ) { events ->
         try {
@@ -382,13 +382,13 @@ private fun MainNavigation(
     }
 
     val storiesController = controller.storiesComposeController
-    PredictiveBackHandler(
+    PredictiveNavigationBackHandler(
         // Let the preview's Back callback dismiss the overlay before leaving search.
         enabled = storiesController?.searching == true &&
             !storiesController.isStoryPreviewShowing() &&
             navigationSnapshot.currentDestination == MainDestination.STORIES,
     ) { events ->
-        val searchController = storiesController ?: return@PredictiveBackHandler
+        val searchController = storiesController ?: return@PredictiveNavigationBackHandler
         var started = false
         try {
             events.collect { event ->

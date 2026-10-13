@@ -13,8 +13,8 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.activity.BackEventCompat
-import androidx.activity.OnBackPressedCallback
+import androidx.navigationevent.NavigationEvent
+import com.simon.harmonichackernews.ui.comments.CommentsNavigationEventHandler
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -67,7 +67,7 @@ private class CommentsViewSession(
     val linkPreviewController: LinkPreviewController,
     val webViewController: AndroidCommentsWebViewController,
 ) {
-    var backPressedCallback: OnBackPressedCallback? = null
+    var backPressedCallback: CommentsNavigationEventHandler? = null
     var composeController: CommentsScreenController? = null
 }
 
@@ -124,7 +124,7 @@ class AndroidCommentsCoordinator(
         get() = viewSession?.linkPreviewController
     private val webViewController: AndroidCommentsWebViewController?
         get() = viewSession?.webViewController
-    private val backPressedCallback: OnBackPressedCallback?
+    private val backPressedCallback: CommentsNavigationEventHandler?
         get() = viewSession?.backPressedCallback
     private val composeController: CommentsScreenController?
         get() = viewSession?.composeController
@@ -355,7 +355,7 @@ class AndroidCommentsCoordinator(
 
         val backPressedCallback = createBackPressedCallback(webViewController)
         session.backPressedCallback = backPressedCallback
-        activity.onBackPressedDispatcher.addCallback(backPressedCallback)
+        activity.navigationEventDispatcher.addHandler(backPressedCallback)
 
         installWindowInsetsListener(view)
 
@@ -373,83 +373,16 @@ class AndroidCommentsCoordinator(
 
     private fun createBackPressedCallback(
         webViewController: AndroidCommentsWebViewController,
-    ): OnBackPressedCallback = object : OnBackPressedCallback(true) {
-        override fun handleOnBackCancelled() {
-            when (commentsBackTarget()) {
-                CommentsBackTarget.LINK_PREVIEW ->
-                    composeController?.cancelLinkPreviewPredictiveBack()
-                CommentsBackTarget.COMMENT_ACTION ->
-                    composeController?.cancelCommentActionPredictiveBack()
-                CommentsBackTarget.CLOSE_WEBSITE -> endCommentsPredictiveBackVisuals()
-                else -> Unit
-            }
-        }
-
-        override fun handleOnBackProgressed(backEvent: BackEventCompat) {
-            when (commentsBackTarget()) {
-                CommentsBackTarget.LINK_PREVIEW -> composeController?.updateLinkPreviewPredictiveBack(
-                    backEvent.progress,
-                    backEvent.swipeEdge,
-                    backEvent.touchY
-                )
-                CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
-                    backEvent.progress,
-                    backEvent.swipeEdge,
-                    backEvent.touchY
-                )
-                CommentsBackTarget.CLOSE_WEBSITE ->
-                    updateCommentsPredictiveBackVisuals(backEvent.progress, false)
-                else -> Unit
-            }
-        }
-
-        override fun handleOnBackStarted(backEvent: BackEventCompat) {
-            when (commentsBackTarget()) {
-                CommentsBackTarget.LINK_PREVIEW -> composeController?.startLinkPreviewPredictiveBack(
-                    backEvent.progress,
-                    backEvent.swipeEdge,
-                    backEvent.touchY
-                )
-                CommentsBackTarget.COMMENT_ACTION -> composeController?.updateCommentActionPredictiveBack(
-                    backEvent.progress,
-                    backEvent.swipeEdge,
-                    backEvent.touchY
-                )
-                CommentsBackTarget.CLOSE_WEBSITE ->
-                    updateCommentsPredictiveBackVisuals(backEvent.progress, true)
-                else -> Unit
-            }
-        }
-
-        override fun handleOnBackPressed() {
-            when (commentsBackTarget()) {
-                CommentsBackTarget.LINK_PREVIEW -> {
-                    if (composeController?.isLinkPreviewPredictiveBackActive() == true) {
-                        composeController?.commitLinkPreviewPredictiveBack()
-                    } else {
-                        composeController?.requestDismissLinkPreview()
-                    }
-                }
-                CommentsBackTarget.COMMENT_ACTION -> {
-                    if (composeController?.isCommentActionPredictiveBackActive() == true) {
-                        composeController?.commitCommentActionPredictiveBack()
-                    } else {
-                        composeController?.requestDismissCommentActions()
-                    }
-                }
-                CommentsBackTarget.CUSTOM_WEB_CONTENT ->
-                    webViewController.hideCustomView(true)
-                CommentsBackTarget.READER_MODE -> webViewController.disableReaderMode()
-                CommentsBackTarget.CLOSE_WEBSITE -> {
-                    composeController?.requestExpandSheet()
-                    endCommentsPredictiveBackVisuals()
-                }
-                CommentsBackTarget.WEB_HISTORY ->
-                    webViewController.goBackFromVisibleWebView()
-                CommentsBackTarget.NONE -> navigation.closeStory()
-            }
-        }
-    }
+    ) = CommentsNavigationEventHandler(
+        target = ::commentsBackTarget,
+        controller = { composeController },
+        onWebsiteGestureProgress = ::updateCommentsPredictiveBackVisuals,
+        onWebsiteGestureFinished = ::endCommentsPredictiveBackVisuals,
+        onHideCustomView = { webViewController.hideCustomView(true) },
+        onDisableReaderMode = { webViewController.disableReaderMode() },
+        onWebHistoryBack = { webViewController.goBackFromVisibleWebView() },
+        onCloseStory = { navigation.closeStory() },
+    )
 
     private fun installWindowInsetsListener(view: View) {
         // This is how much the bottom sheet sticks up by default and also decides height of WebView
@@ -524,7 +457,7 @@ class AndroidCommentsCoordinator(
 
     fun handlesBackInternally(): Boolean {
         syncOnBackPressedCallbackEnabledState()
-        return backPressedCallback?.isEnabled == true
+        return backPressedCallback?.isBackEnabled == true
     }
 
     fun setHostActive(active: Boolean) {
@@ -533,19 +466,19 @@ class AndroidCommentsCoordinator(
         syncOnBackPressedCallbackEnabledState()
     }
 
-    fun startInternalPredictiveBack(backEvent: BackEventCompat) {
+    fun startInternalPredictiveBack(backEvent: NavigationEvent) {
         beginWebViewPredictiveBack()
-        backPressedCallback?.handleOnBackStarted(backEvent)
+        backPressedCallback?.onBackStarted(backEvent)
     }
 
-    fun updateInternalPredictiveBack(backEvent: BackEventCompat) {
+    fun updateInternalPredictiveBack(backEvent: NavigationEvent) {
         webViewController?.maintainPredictiveBackScrollFreeze()
-        backPressedCallback?.handleOnBackProgressed(backEvent)
+        backPressedCallback?.onBackProgressed(backEvent)
     }
 
     fun cancelInternalPredictiveBack() {
         try {
-            backPressedCallback?.handleOnBackCancelled()
+            backPressedCallback?.onBackCancelled()
         } finally {
             endWebViewPredictiveBack()
         }
@@ -553,7 +486,7 @@ class AndroidCommentsCoordinator(
 
     fun commitInternalBack() {
         try {
-            backPressedCallback?.takeIf { it.isEnabled }?.handleOnBackPressed()
+            backPressedCallback?.takeIf { it.isBackEnabled }?.onBackCompleted()
         } finally {
             endWebViewPredictiveBack()
         }
@@ -773,7 +706,7 @@ class AndroidCommentsCoordinator(
     }
 
     private fun syncOnBackPressedCallbackEnabledState() {
-        backPressedCallback?.isEnabled = commentsBackTarget() != CommentsBackTarget.NONE
+        backPressedCallback?.isBackEnabled = commentsBackTarget() != CommentsBackTarget.NONE
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {

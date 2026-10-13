@@ -19,14 +19,6 @@ internal actual fun platformDialogProperties(
 )
 
 @Composable
-internal actual fun PlatformDialogPredictiveBackHandler(
-    enabled: Boolean,
-    onProgress: suspend (DialogPredictiveBackEvent) -> Unit,
-    onCancelled: suspend () -> Unit,
-    onCommitted: suspend () -> Unit,
-) = Unit
-
-@Composable
 internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) = Unit
 
 @Composable

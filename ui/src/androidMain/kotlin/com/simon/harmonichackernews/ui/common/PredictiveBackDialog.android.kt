@@ -4,8 +4,6 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.WindowManager
-import androidx.activity.BackEventCompat
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -17,9 +15,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
 
 internal actual val platformDialogPredictiveBackSupported: Boolean = true
 
@@ -43,34 +38,6 @@ internal actual fun platformDialogProperties(
     // window jumps to its resized bounds before Compose applies the animated IME insets.
     decorFitsSystemWindows = false,
 )
-
-@Composable
-internal actual fun PlatformDialogPredictiveBackHandler(
-    enabled: Boolean,
-    onProgress: suspend (DialogPredictiveBackEvent) -> Unit,
-    onCancelled: suspend () -> Unit,
-    onCommitted: suspend () -> Unit,
-) {
-    PredictiveBackHandler(enabled = enabled) { events ->
-        try {
-            events.collect { event ->
-                onProgress(
-                    DialogPredictiveBackEvent(
-                        progress = event.progress,
-                        swipeDirection = if (event.swipeEdge == BackEventCompat.EDGE_RIGHT) {
-                            -1f
-                        } else {
-                            1f
-                        },
-                    ),
-                )
-            }
-            onCommitted()
-        } catch (_: CancellationException) {
-            withContext(NonCancellable) { onCancelled() }
-        }
-    }
-}
 
 @Composable
 internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) {

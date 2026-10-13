@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.ui.editor
 
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -92,7 +94,10 @@ internal fun ComposeEditorScreen(
     // Otherwise the draft guard can turn keyboard dismissal into a request to discard the post.
     val keyboardShowing = WindowInsets.isImeVisible ||
         WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    BackHandler(enabled = !predictiveBackEnabled && !keyboardShowing) { backRequestVersion++ }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = !predictiveBackEnabled && !keyboardShowing,
+    ) { backRequestVersion++ }
     SideEffect { onPredictiveBackEnabledChanged(predictiveBackEnabled && !keyboardShowing) }
 
     EditorScreen(

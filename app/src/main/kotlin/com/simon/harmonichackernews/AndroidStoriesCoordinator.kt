@@ -2,8 +2,7 @@ package com.simon.harmonichackernews
 
 import android.content.res.Resources
 import android.os.Bundle
-import androidx.activity.BackEventCompat
-import androidx.activity.OnBackPressedCallback
+import com.simon.harmonichackernews.ui.stories.StoryPreviewNavigationEventHandler
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.StoriesFeatureHost
 import com.simon.harmonichackernews.app.createStoriesFeatureStore
@@ -84,7 +83,8 @@ class AndroidStoriesCoordinator(
         },
         scope = coroutineScope,
     )
-    private var linkSummaryBackCallback: OnBackPressedCallback? = null
+    private var linkSummaryBackCallback: StoryPreviewNavigationEventHandler? = null
+    private var hostStarted = activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     private var hostActive =
         navigation.navigationState.state.value.currentDestination == MainDestination.STORIES
     private var pendingLinkSummaryStoryId: Int = NO_PENDING_LINK_SUMMARY_STORY_ID
@@ -257,41 +257,8 @@ class AndroidStoriesCoordinator(
         if (linkSummaryBackCallback != null) {
             return
         }
-        linkSummaryBackCallback = object : OnBackPressedCallback(false) {
-            override fun handleOnBackCancelled() {
-                if (composeController != null && composeController!!.isStoryPreviewShowing()) {
-                    composeController!!.cancelStoryPreviewPredictiveBack()
-                }
-            }
-
-            override fun handleOnBackProgressed(backEvent: BackEventCompat) {
-                if (composeController != null && composeController!!.isStoryPreviewShowing()) {
-                    composeController!!.updateStoryPreviewPredictiveBack(
-                        backEvent.progress, backEvent.swipeEdge, backEvent.touchY
-                    )
-                }
-            }
-
-            override fun handleOnBackStarted(backEvent: BackEventCompat) {
-                if (composeController != null && composeController!!.isStoryPreviewShowing()) {
-                    composeController!!.startStoryPreviewPredictiveBack(
-                        backEvent.progress, backEvent.swipeEdge, backEvent.touchY
-                    )
-                }
-            }
-
-            override fun handleOnBackPressed() {
-                if (composeController == null || !composeController!!.isStoryPreviewShowing()) {
-                    return
-                }
-                if (composeController!!.isStoryPreviewPredictiveBackActive()) {
-                    composeController!!.commitStoryPreviewPredictiveBack()
-                } else {
-                    composeController!!.requestDismissStoryPreview()
-                }
-            }
-        }
-        activity.onBackPressedDispatcher.addCallback(activity, linkSummaryBackCallback!!)
+        linkSummaryBackCallback = StoryPreviewNavigationEventHandler { composeController }
+        activity.navigationEventDispatcher.addHandler(linkSummaryBackCallback!!)
     }
 
     private val isFoldableSplitLayout: Boolean
@@ -303,15 +270,19 @@ class AndroidStoriesCoordinator(
     }
 
     private fun updateStoryPreviewBackCallback() {
-        linkSummaryBackCallback?.isEnabled =
-            hostActive && composeController?.isStoryPreviewShowing() == true
+        linkSummaryBackCallback?.isBackEnabled =
+            hostStarted && hostActive && composeController?.isStoryPreviewShowing() == true
     }
 
     fun onStart() {
+        hostStarted = true
+        updateStoryPreviewBackCallback()
         storiesStore.onStart()
     }
 
     fun onStop() {
+        hostStarted = false
+        updateStoryPreviewBackCallback()
         storiesStore.onStop()
     }
 

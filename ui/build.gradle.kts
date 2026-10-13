@@ -61,6 +61,8 @@ kotlin {
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)
             implementation(libs.androidx.material3.adaptive.navigation3)
+            api(libs.androidx.navigationevent)
+            api(libs.androidx.navigationevent.compose)
             implementation(libs.androidx.navigation3.runtime)
             implementation(libs.androidx.navigation3.ui)
         }

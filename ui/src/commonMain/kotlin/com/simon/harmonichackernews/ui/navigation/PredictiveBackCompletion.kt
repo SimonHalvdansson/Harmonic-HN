@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.navigation
 
-import androidx.activity.BackEventCompat
-import androidx.activity.OnBackPressedDispatcher
+import androidx.navigationevent.NavigationEvent
+import androidx.navigationevent.DirectNavigationEventInput
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.CancellationException
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /** A released gesture is committed even if another gesture interrupts its settling animation. */
-internal class PredictiveBackCompletion {
+class PredictiveBackCompletion {
     private var pending: (() -> Unit)? = null
 
     fun finish(
@@ -48,8 +48,8 @@ internal class PredictiveBackCompletion {
 
     /** Finish the previous pop, then route this new Back to the newly exposed destination. */
     suspend fun handleFollowingBack(
-        events: Flow<BackEventCompat>,
-        dispatcher: OnBackPressedDispatcher,
+        events: Flow<NavigationEvent>,
+        dispatcher: DirectNavigationEventInput,
     ): Boolean {
         val previous = pending ?: return false
         pending = null
@@ -58,7 +58,7 @@ internal class PredictiveBackCompletion {
             events.collect { }
             // The dispatcher registrations must observe the synchronous pop before redispatch.
             repeat(2) { withFrameNanos { } }
-            dispatcher.onBackPressed()
+            dispatcher.backCompleted()
         } catch (_: CancellationException) {
             // Only this second gesture was cancelled; the earlier release remains committed.
         }
@@ -66,6 +66,6 @@ internal class PredictiveBackCompletion {
     }
 }
 
-internal val LocalPredictiveBackCompletion = staticCompositionLocalOf<PredictiveBackCompletion> {
+val LocalPredictiveBackCompletion = staticCompositionLocalOf<PredictiveBackCompletion> {
     error("Predictive back completion must be provided by the navigation host")
 }

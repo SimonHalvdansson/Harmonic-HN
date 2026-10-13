@@ -40,7 +40,7 @@ import com.simon.harmonichackernews.resources.ic_info
 import com.simon.harmonichackernews.ui.common.PlatformDialogBackgroundDimAmount
 import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
 import com.simon.harmonichackernews.ui.common.PlatformDialogDimHost
-import com.simon.harmonichackernews.ui.common.PlatformDialogPredictiveBackHandler
+import com.simon.harmonichackernews.ui.common.DialogPredictiveBackHandler
 import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.common.platformDialogPredictiveBackSupported
 import com.simon.harmonichackernews.ui.common.platformDialogProperties
@@ -112,7 +112,7 @@ internal fun FrontpageInfoDialog(
             PlatformDisableDialogWindowAnimations()
             // The transform draws its own animated scrim.
             PlatformDialogBackgroundDimAmount(0f)
-            PlatformDialogPredictiveBackHandler(
+            DialogPredictiveBackHandler(
                 enabled = platformDialogPredictiveBackSupported,
                 onProgress = {
                     backEdge = if (it.swipeDirection < 0f) 1 else 0

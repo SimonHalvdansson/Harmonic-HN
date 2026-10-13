@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.ui.navigation
 
-import androidx.activity.compose.PredictiveBackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -10,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import java.util.concurrent.CancellationException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,8 +21,8 @@ import kotlinx.coroutines.withContext
  * committed gesture does.
  */
 @Stable
-internal class DefaultActivityPredictiveBackState internal constructor() {
-    internal var animation by mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
+class DefaultActivityPredictiveBackState internal constructor() {
+    var animation by mutableStateOf<DefaultActivityPredictiveBackAnimation?>(null)
     var completedRequestKey: MainNavigationSurfaceKey? by mutableStateOf(null)
         internal set
 }
@@ -34,7 +32,7 @@ internal class DefaultActivityPredictiveBackState internal constructor() {
  * Destination-specific back policy and any post-pop frame hold remain explicit parameters.
  */
 @Composable
-internal fun rememberDefaultActivityPredictiveBackState(
+fun rememberDefaultActivityPredictiveBackState(
     requestKey: MainNavigationSurfaceKey?,
     enabled: Boolean,
     completedFrameHoldCount: Int = 0,
@@ -44,10 +42,10 @@ internal fun rememberDefaultActivityPredictiveBackState(
     val animationScope = rememberCoroutineScope()
     val currentOnBack by rememberUpdatedState(onBack)
     val completion = LocalPredictiveBackCompletion.current
-    val dispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+    val dispatcher = rememberNavigationBackInput()
 
-    PredictiveBackHandler(enabled = enabled) { events ->
-        if (completion.handleFollowingBack(events, dispatcher)) return@PredictiveBackHandler
+    PredictiveNavigationBackHandler(enabled = enabled) { events ->
+        if (completion.handleFollowingBack(events, dispatcher)) return@PredictiveNavigationBackHandler
         val gestureRequestKey = requestKey
         var gestureAnimation: DefaultActivityPredictiveBackAnimation? = null
         try {
@@ -63,7 +61,7 @@ internal fun rememberDefaultActivityPredictiveBackState(
             val currentAnimation = gestureAnimation
             if (currentAnimation == null) {
                 currentOnBack()
-                return@PredictiveBackHandler
+                return@PredictiveNavigationBackHandler
             }
 
             completion.finish(

@@ -571,7 +571,10 @@ class PredictiveBackSurfaceRegressionTest {
     }
 
     private fun heldGesture() = DefaultActivityPredictiveBackAnimation(
-        BackEventCompat(550f, 1200f, 0.8f, BackEventCompat.EDGE_LEFT),
+        androidx.navigationevent.NavigationEvent(
+            touchX = 550f, touchY = 1200f, progress = 0.8f,
+            swipeEdge = androidx.navigationevent.NavigationEvent.EDGE_LEFT,
+        ),
     )
 
     private fun countPixels(predicate: (Color) -> Boolean): Int {

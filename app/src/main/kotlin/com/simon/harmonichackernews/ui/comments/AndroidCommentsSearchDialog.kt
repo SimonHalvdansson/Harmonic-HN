@@ -1,13 +1,11 @@
 package com.simon.harmonichackernews.ui.comments
 
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import kotlinx.coroutines.CancellationException
 
 @Composable
 fun AndroidCommentsSearchDialog(
@@ -60,40 +58,8 @@ fun AndroidCommentsSearchDialog(
         },
         foreground = {
             // Register with the search dialog's dispatcher, above its own Back handler.
-            AndroidSearchLinkPreviewBackHandler(controller)
+            SearchLinkPreviewBackHandler(controller)
             AndroidCommentLinkPreviewOverlay(controller)
         },
     )
-}
-
-@Composable
-private fun AndroidSearchLinkPreviewBackHandler(controller: CommentsScreenController) {
-    PredictiveBackHandler(enabled = controller.linkPreviewOverlay != null) { events ->
-        var predictiveBackStarted = false
-        try {
-            events.collect { event ->
-                if (predictiveBackStarted) {
-                    controller.updateLinkPreviewPredictiveBack(
-                        event.progress,
-                        event.swipeEdge,
-                        event.touchY,
-                    )
-                } else {
-                    predictiveBackStarted = true
-                    controller.startLinkPreviewPredictiveBack(
-                        event.progress,
-                        event.swipeEdge,
-                        event.touchY,
-                    )
-                }
-            }
-            if (predictiveBackStarted) {
-                controller.commitLinkPreviewPredictiveBack()
-            } else {
-                controller.requestDismissLinkPreview()
-            }
-        } catch (_: CancellationException) {
-            if (predictiveBackStarted) controller.cancelLinkPreviewPredictiveBack()
-        }
-    }
 }
