@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.ui.session.commentsViewModel
 import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
 import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -128,6 +129,7 @@ internal fun IosCommentsContent(
     showUpButton: Boolean,
     controllers: RetainedDestinationControllers<CommentsScreenController>,
 ) {
+    val viewModel = commentsViewModel(scene, request)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -145,6 +147,7 @@ internal fun IosCommentsContent(
             scene = scene,
             request = request,
             scope = scope,
+            sessionState = viewModel.session,
             canLoadArticleTextOnDemand = true,
             performanceTrace = openingProfile?.trace
                 ?: CommentsPerformanceTrace(),

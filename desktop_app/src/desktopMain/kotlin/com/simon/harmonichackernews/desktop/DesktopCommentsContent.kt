@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.desktop
 
+import com.simon.harmonichackernews.ui.session.commentsViewModel
 import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
 import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -83,6 +84,7 @@ internal fun DesktopCommentsContent(
     onClose: () -> Unit,
     controllers: RetainedDestinationControllers<CommentsScreenController>,
 ) {
+    val viewModel = commentsViewModel(scene, request)
     val scope = rememberCoroutineScope()
     val integratedBrowserAvailable = remember {
         desktopEmbeddedBrowserBackend() != DesktopEmbeddedBrowserBackend.UNSUPPORTED
@@ -94,6 +96,7 @@ internal fun DesktopCommentsContent(
                 scene = scene,
                 request = request,
                 scope = scope,
+                sessionState = viewModel.session,
             ),
         )
     }

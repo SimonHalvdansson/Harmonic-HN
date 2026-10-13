@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews
 
 import android.content.res.Resources
+import androidx.savedstate.serialization.decodeFromSavedState
+import androidx.savedstate.serialization.encodeToSavedState
 import android.os.Bundle
 import com.simon.harmonichackernews.ui.stories.StoryPreviewNavigationEventHandler
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -101,9 +103,8 @@ class AndroidStoriesCoordinator(
             return
         }
         if (savedInstanceState != null) {
-            pendingLinkSummaryStoryId = savedInstanceState.getInt(
-                STATE_LINK_SUMMARY_STORY_ID, NO_PENDING_LINK_SUMMARY_STORY_ID
-            )
+            pendingLinkSummaryStoryId = savedInstanceState.getBundle(STATE_LINK_SUMMARY_STORY_ID)
+                ?.let { decodeFromSavedState<Int>(it) } ?: NO_PENDING_LINK_SUMMARY_STORY_ID
         }
 
         setupLinkSummaryBackCallback()
@@ -301,7 +302,7 @@ class AndroidStoriesCoordinator(
         else
             composeController!!.visibleStoryPreviewId
         if (visibleStoryId != NO_PENDING_LINK_SUMMARY_STORY_ID) {
-            outState.putInt(STATE_LINK_SUMMARY_STORY_ID, visibleStoryId)
+            outState.putBundle(STATE_LINK_SUMMARY_STORY_ID, encodeToSavedState(visibleStoryId))
         }
     }
 

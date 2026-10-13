@@ -12,6 +12,7 @@ import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
@@ -37,6 +38,11 @@ fun HarmonicAppRoot(
     completedPredictiveBack: Set<MainNavigationSurfaceKey> = emptySet(),
     linkPreview: (@Composable () -> Unit)? = null,
 ) {
+    val scopes = rememberNavigationEntryScopes(plan.surfaces.flatMap { surface ->
+        listOfNotNull(surface.key, surface.detail?.let {
+            MainNavigationSurfaceKey(MainDestination.STORY, it.serial)
+        })
+    })
     val currentComments by rememberUpdatedState(comments)
     val storyContent = remember {
         mutableMapOf<Int, @Composable (MainStoryRequest, Boolean) -> Unit>()
@@ -49,7 +55,9 @@ fun HarmonicAppRoot(
                 DisposableEffect(entry.serial) {
                     onDispose { storyContent.remove(entry.serial) }
                 }
-                currentComments(entry, full)
+                scopes.Content(MainNavigationSurfaceKey(MainDestination.STORY, entry.serial)) {
+                    currentComments(entry, full)
+                }
             }
         }
         content(request, fullScreen)
@@ -58,12 +66,12 @@ fun HarmonicAppRoot(
     val render: @Composable (MainNavigationSurface) -> Unit = { surface ->
         CompositionLocalProvider(LocalSplitPaneAnimationEnabled provides (surface.key == plan.current.key)) {
             when (val entry = surface.entry) {
-                MainNavigationEntry.Stories -> stories(surface.detail, paneComments)
+                MainNavigationEntry.Stories -> scopes.Content(surface.key) { stories(surface.detail, paneComments) }
                 is MainNavigationEntry.Story -> renderStory(entry.request, true)
-                is MainNavigationEntry.Settings -> settings(entry.request)
-                is MainNavigationEntry.Submissions -> submissions(entry.request, surface.detail, paneComments)
-                is MainNavigationEntry.Editor -> editor(entry.request)
-                MainNavigationEntry.Immersive -> immersive()
+                is MainNavigationEntry.Settings -> scopes.Content(surface.key) { settings(entry.request) }
+                is MainNavigationEntry.Submissions -> scopes.Content(surface.key) { submissions(entry.request, surface.detail, paneComments) }
+                is MainNavigationEntry.Editor -> scopes.Content(surface.key) { editor(entry.request) }
+                MainNavigationEntry.Immersive -> scopes.Content(surface.key) { immersive() }
             }
         }
     }

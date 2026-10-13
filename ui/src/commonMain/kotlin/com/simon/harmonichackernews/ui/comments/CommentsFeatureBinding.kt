@@ -141,8 +141,8 @@ class CommentsFeatureBinding private constructor(
             scope: CoroutineScope,
             canLoadArticleTextOnDemand: Boolean = false,
             performanceTrace: CommentsPerformanceTrace = CommentsPerformanceTrace(),
+            sessionState: CommentsSessionState = scene.sessions.commentsStateFor(request.serial, request.storyId),
         ): CommentsFeatureBinding {
-            val sessionState = scene.sessions.commentsStateFor(request.serial, request.storyId)
             val restoring = sessionState.initialized
             val restoreProgress = sessionState.scrollProgress.initialized &&
                 (restoring || scene.navigation.state.value.storyStackParentDestination !=

@@ -71,9 +71,10 @@ final class IosLiteRtSettingsUITests: XCTestCase {
         func labelContaining(_ text: String) -> XCUIElement {
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
         }
+        XCTAssertTrue(labelContaining("Apple Intelligence").waitForExistence(timeout: 10))
+        app.tapVisibleButton("Downloadable models")
         XCTAssertTrue(labelContaining("Gemma 4 E2B").waitForExistence(timeout: 10))
         XCTAssertTrue(labelContaining("Gemma 4 E4B").exists)
-        XCTAssertTrue(labelContaining("Apple Intelligence").exists)
         XCTAssertFalse(labelContaining("Bonsai 1.7B").exists)
         XCTAssertFalse(labelContaining("llama.cpp").exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
@@ -805,7 +806,7 @@ final class HarmonicIosPresentationTests: XCTestCase {
         keepScreenshot("About Harmonic icon")
 
         app.labeledButton("Navigate up").tapCenter()
-        XCTAssertTrue(app.labeledButton("Debug").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 10))
         app.tapVisibleButton("Debug")
         let welcome = app.labeledButton("Welcome dialog")
         for _ in 0..<4 where !welcome.isHittable { app.swipeUp() }

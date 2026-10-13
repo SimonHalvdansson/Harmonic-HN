@@ -19,8 +19,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -55,14 +55,9 @@ data class SettingsPredictiveBackOverlay(
 fun rememberSettingsNavigationStore(
     initialSection: SettingsSection?,
     twoPane: Boolean,
-): SettingsNavigationStore = rememberSaveable(
-    saver = Saver<SettingsNavigationStore, List<String>>(
-        save = { it.savedRoutes() },
-        restore = { SettingsNavigationStore(twoPane = twoPane, restoredRoutes = it) },
-    ),
-) {
-    SettingsNavigationStore(initialSection = initialSection, twoPane = twoPane)
-}
+): SettingsNavigationStore = viewModel<SettingsNavigationViewModel> {
+    SettingsNavigationViewModel(createSavedStateHandle(), initialSection, twoPane)
+}.navigation
 
 /**
  * KMP list/detail settings scene. A host supplies native settings adapters and optional Android

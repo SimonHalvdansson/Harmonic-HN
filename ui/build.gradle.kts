@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -40,6 +41,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.androidx.savedstate)
+            implementation(libs.androidx.savedstate.compose)
+            implementation(libs.compose.multiplatform.lifecycle.viewmodel)
+            implementation(libs.compose.multiplatform.lifecycle.viewmodel.compose)
+            implementation(libs.compose.multiplatform.lifecycle.viewmodel.savedstate)
+            implementation(libs.compose.multiplatform.lifecycle.viewmodel.navigation3)
             implementation(libs.androidx.collection)
             api(project(":core"))
             api(project(":resources"))

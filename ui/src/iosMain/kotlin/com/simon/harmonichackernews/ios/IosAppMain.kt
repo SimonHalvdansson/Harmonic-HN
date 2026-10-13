@@ -92,6 +92,8 @@ import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import platform.UIKit.UIViewController
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.simon.harmonichackernews.ui.session.HarmonicSceneOwner
 import platform.UIKit.UIDevice
 import platform.UIKit.UIUserInterfaceIdiomPhone
 
@@ -122,7 +124,8 @@ class IosHarmonicApplication(
         bindings = bindings,
         runtime = runtime,
     )
-    private val scene = bootstrap.createScene()
+    private val sceneOwner = HarmonicSceneOwner(bootstrap.app)
+    private val scene = sceneOwner.scene
     private var closed = false
     private var foreground by mutableStateOf(false)
     private var screenCorners by mutableStateOf(ScreenCorners())
@@ -146,6 +149,7 @@ class IosHarmonicApplication(
 
     fun makeViewController(): UIViewController = ComposeUIViewController {
         CompositionLocalProvider(
+            LocalViewModelStoreOwner provides sceneOwner,
             LocalIosForeground provides foreground,
             LocalIosScreenCorners provides screenCorners,
         ) {
@@ -160,7 +164,7 @@ class IosHarmonicApplication(
     fun close() {
         if (closed) return
         closed = true
-        scene.close()
+        sceneOwner.close()
         bootstrap.close()
     }
 }
@@ -738,8 +742,6 @@ private fun IosSettingsShell(
         twoPane = isTwoPane,
     )
     RegisterDestinationController(controllers, requestSerial, navigation)
-
-    LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 
     // Compose iOS can leave LookaheadDelegate alignment-line ownership stale when a
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only

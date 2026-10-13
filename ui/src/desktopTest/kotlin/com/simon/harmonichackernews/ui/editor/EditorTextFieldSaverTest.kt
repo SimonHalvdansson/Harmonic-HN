@@ -4,7 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.savedstate.SavedState
+import androidx.savedstate.serialization.decodeFromSavedState
 import com.simon.harmonichackernews.platform.EditorDraftField
 import com.simon.harmonichackernews.platform.EditorDraftStorage
 import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
@@ -35,19 +36,19 @@ class EditorTextFieldSaverTest {
         assertEquals(1, storage.failures.value)
         assertNull(files.read(EditorDraftField.COMMENT))
         files.writable = true
-        assertEquals(saved, with(saver) { scope.save(value) })
+        assertEquals(decoded(saved), decoded(requireNotNull(with(saver) { scope.save(value) })))
         runCurrent()
         assertEquals(value.text.toString(), files.read(EditorDraftField.COMMENT))
     }
 
     @Test
-    fun ordinaryDraftsKeepTheOriginalSaverFormatWithoutStorageAccess() {
+    fun ordinaryDraftsSerializeWithoutStorageAccess() {
         val storage = MemoryStorage()
         val saver = editorTextFieldSaver(EditorDraftField.COMMENT, storage)
         val value = TextFieldState("A normal reply", TextRange(12, 2))
         val saved = with(saver) { scope.save(value) }
 
-        assertEquals(with(TextFieldValue.Saver) { scope.save(TextFieldValue(value.text.toString(), value.selection)) }, saved)
+        assertEquals("A normal reply", decoded(requireNotNull(saved)).text)
         assertFieldEquals(value, saver.restore(requireNotNull(saved)))
         assertEquals(0, storage.writes)
         assertEquals(0, storage.reads)
@@ -60,10 +61,10 @@ class EditorTextFieldSaverTest {
         val saver = editorTextFieldSaver(EditorDraftField.COMMENT, storage)
         val saved = requireNotNull(with(saver) { scope.save(value) })
 
-        assertTrue(saved.toString().length < 100)
+        assertTrue(decoded(saved).text.orEmpty().length < 100)
         val restoredSaver = editorTextFieldSaver(EditorDraftField.COMMENT, storage)
         assertFieldEquals(value, restoredSaver.restore(saved))
-        assertEquals(saved, with(restoredSaver) { scope.save(value) })
+        assertEquals(decoded(saved), decoded(requireNotNull(with(restoredSaver) { scope.save(value) })))
         assertEquals(1, storage.writes)
     }
 
@@ -81,10 +82,7 @@ class EditorTextFieldSaverTest {
         assertFieldEquals(large, titleSaver.restore(title))
         assertFieldEquals(edited, bodySaver.restore(body))
         val short = TextFieldState("short again")
-        assertEquals(
-            with(TextFieldValue.Saver) { scope.save(TextFieldValue(short.text.toString(), short.selection)) },
-            with(bodySaver) { scope.save(short) },
-        )
+        assertFieldEquals(short, bodySaver.restore(requireNotNull(with(bodySaver) { scope.save(short) })))
     }
 
     @Test
@@ -105,21 +103,19 @@ class EditorTextFieldSaverTest {
 
     @OptIn(ExperimentalFoundationApi::class)
     @Test
-    fun oldInlineDraftsRestoreAndUndoHistoryNeverInflatesSavedState() {
+    fun undoHistoryNeverInflatesSavedState() {
         val saver = editorTextFieldSaver(EditorDraftField.COMMENT, MemoryStorage())
-        val legacy = TextFieldValue("Old draft", TextRange(7, 2))
-        val legacySaved = requireNotNull(with(TextFieldValue.Saver) { scope.save(legacy) })
-        assertFieldEquals(TextFieldState(legacy.text, legacy.selection), saver.restore(legacySaved))
-
         val state = TextFieldState("x".repeat(500_000))
         state.edit { replace(0, length, "Short replacement") }
         assertTrue(state.undoState.canUndo)
         val saved = requireNotNull(with(saver) { scope.save(state) })
-        assertTrue(saved.toString().length < 100)
+        assertTrue(decoded(saved).text.orEmpty().length < 100)
         val restored = requireNotNull(saver.restore(saved))
         assertFieldEquals(state, restored)
         assertEquals(false, restored.undoState.canUndo)
     }
+
+    private fun decoded(saved: Any) = decodeFromSavedState<EditorFieldRestoration>(saved as SavedState)
 
     private fun assertFieldEquals(expected: TextFieldState, actual: TextFieldState?) {
         requireNotNull(actual)

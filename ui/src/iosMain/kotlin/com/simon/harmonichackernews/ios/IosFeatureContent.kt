@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.ui.session.submissionsViewModel
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,7 +27,6 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
-import com.simon.harmonichackernews.app.createSubmissionsStore
 import com.simon.harmonichackernews.navigation.MainEditorRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
@@ -46,23 +46,13 @@ internal fun IosSubmissionsContent(
     scene: HarmonicSceneComposition,
     request: MainSubmissionsRequest,
 ) {
-    val scope = rememberCoroutineScope()
-    val store = remember(app, scene, request.serial, scope) {
-        val state = scene.sessions.submissionsStateFor(
-            request.serial,
-            request.userName,
-            app.network.algoliaRepository,
-        )
-        app.createSubmissionsStore(scope, state)
-    }
-    val initialScrollRestoration = remember(store) { store.start() }
+    val viewModel = submissionsViewModel(scene, request)
+    val store = viewModel.store
+    val initialScrollRestoration = remember(viewModel) { viewModel.scrollRestoration() }
     val displaySettings = remember(store) {
         StoryDisplaySettings.from(app.userSettings.story).withShowIndex(false)
     }
 
-    DisposableEffect(store) {
-        onDispose(store::close)
-    }
     LaunchedEffect(store, scene) {
         store.effects.collect { effect ->
             when (effect) {

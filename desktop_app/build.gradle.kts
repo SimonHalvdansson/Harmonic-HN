@@ -76,6 +76,7 @@ kotlin {
     sourceSets {
         getByName("desktopMain").dependencies {
             implementation(project(":ui"))
+            implementation(libs.compose.multiplatform.lifecycle.viewmodel.compose)
             implementation(libs.compose.multiplatform.runtime)
             implementation(libs.compose.multiplatform.ui)
             implementation(libs.compose.multiplatform.foundation)

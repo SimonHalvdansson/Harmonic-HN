@@ -7,7 +7,6 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -56,8 +55,6 @@ fun SettingsShell(
     val predictiveBack = rememberSettingsPredictiveBack(
         navigation, isTwoPane, backHandlerEnabled, onBackFromSettings,
     )
-
-    LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 
     SettingsNavigationShell(
         navigation = navigation,

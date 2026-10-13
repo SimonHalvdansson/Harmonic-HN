@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
+import kotlinx.serialization.Serializable
+
 enum class CommentsBackTarget {
     LINK_PREVIEW,
     COMMENT_ACTION,
@@ -41,11 +43,15 @@ object CommentsBackPolicy {
     }
 }
 
+@Serializable
 sealed interface CommentsOverlayRestoration {
+    @Serializable
     data class Reference(val url: String, val fallbackTitle: String?) : CommentsOverlayRestoration
+    @Serializable
     data class Image(val url: String) : CommentsOverlayRestoration
 }
 
+@Serializable
 data class CommentsHostRestoration(
     val sorting: String? = null,
     val commentActionId: Int = -1,

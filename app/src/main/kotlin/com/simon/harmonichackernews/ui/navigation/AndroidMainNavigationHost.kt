@@ -43,7 +43,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.AndroidCommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
-import com.simon.harmonichackernews.HarmonicSceneViewModel
+import com.simon.harmonichackernews.ui.session.HarmonicSceneViewModel
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.AndroidStoriesCoordinator
 import com.simon.harmonichackernews.ui.comments.SideBySideCommentsHost
@@ -85,7 +85,7 @@ object AndroidMainNavigationHost {
     @JvmStatic
     fun install(activity: MainActivity, savedState: Bundle?): AndroidMainNavigationController {
         val appComposition = activity.harmonicAppComposition
-        val scene = ViewModelProvider(activity)[HarmonicSceneViewModel::class.java].scene
+        val scene = ViewModelProvider(activity, HarmonicSceneViewModel.factory(appComposition))[HarmonicSceneViewModel::class.java].scene
         val controller = AndroidMainNavigationController(
             scene,
             savedState,
@@ -518,10 +518,11 @@ private fun MainNavigation(
         },
         submissions = { request, detail, paneComments ->
             key(request.serial) {
+                val viewModel = com.simon.harmonichackernews.ui.session.submissionsViewModel(controller.scene, request)
                 val coordinator = remember(request.serial) {
                     AndroidSubmissionsCoordinator(
                         activity = activity,
-                        sessionKey = request.serial,
+                        viewModel = viewModel,
                         userName = request.userName,
                         scene = controller.scene,
                         navigator = AndroidSubmissionsCoordinator.Navigator { destination ->

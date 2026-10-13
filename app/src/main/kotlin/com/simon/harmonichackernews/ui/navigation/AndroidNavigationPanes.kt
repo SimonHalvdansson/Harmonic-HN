@@ -127,8 +127,9 @@ internal fun CommentsPane(
 ) {
     val activity = LocalActivity.current as MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
+    val viewModel = com.simon.harmonichackernews.ui.session.commentsViewModel(controller.scene, request)
     val activeCoordinator = remember(controller, activity, request.serial) {
-        controller.retainCommentsCoordinator(activity, request)
+        controller.retainCommentsCoordinator(activity, request, viewModel.session)
     }
     val extraPadding = animatedExtraPanePadding()
     val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }

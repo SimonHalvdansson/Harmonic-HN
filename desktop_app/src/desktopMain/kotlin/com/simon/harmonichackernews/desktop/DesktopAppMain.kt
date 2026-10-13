@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.desktop
 
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.compose.runtime.CompositionLocalProvider
+import com.simon.harmonichackernews.ui.session.HarmonicSceneOwner
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -124,10 +127,11 @@ fun main() {
         showDesktopStartupFailure(desktopAppIcon, error)
         return
     }
+    val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     try {
         application {
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
-            val navigation by bootstrap.scene.navigation.state.collectAsState()
+            val navigation by sceneOwner.scene.navigation.state.collectAsState()
             var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
             val commentsControllers = remember { RetainedDestinationControllers<CommentsScreenController>() }
             val commentsController = commentsControllers[
@@ -146,7 +150,7 @@ fun main() {
                     when {
                         event.type != KeyEventType.KeyDown -> false
                         event.key == Key.Comma && (event.isMetaPressed || event.isCtrlPressed) -> {
-                            bootstrap.scene.navigation.openSettings(null)
+                            sceneOwner.scene.navigation.openSettings(null)
                             true
                         }
                         event.key == Key.W && (event.isMetaPressed || event.isCtrlPressed) -> {
@@ -157,78 +161,80 @@ fun main() {
                     }
                 },
             ) {
-                // Use the same dispatcher as Compose dialogs so the topmost modal handles
-                // Escape before screen navigation. Window.onKeyEvent bypasses that ordering.
-                NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) {
-                    handleDesktopBack(
-                        navigation,
-                        bootstrap.scene,
-                        storiesController,
-                        commentsController,
-                        settingsNavigation,
-                        onEditorBackRequested = { editorBackRequestVersion++ },
-                    )
-                }
-                // Set the native properties before the window's first visible frame.
-                DisposableEffect(window) {
-                    val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
-                    onDispose { releaseTitleBar() }
-                }
-                val selection by bootstrap.app.appearance.selections.collectAsState(
-                    initial = bootstrap.app.appearance.selection(),
-                )
-                val palette = remember(selection) {
-                    HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
-                }
-                LaunchedEffect(window, selection.dark, palette.colorScheme.pageBackground) {
-                    DesktopWindowAppearance.apply(
-                        window = window,
-                        dark = selection.dark,
-                        backgroundArgb = palette.colorScheme.pageBackground.toArgb(),
-                    )
-                }
-                LaunchedEffect(bootstrap.app.launchState) {
-                    when (
-                        bootstrap.app.launchState.consumeLaunchDialog(
-                            currentVersion = bootstrap.app.metadata.versionCode,
-                            showChangelog = bootstrap.app.userSettings.general.showChangelog,
+                CompositionLocalProvider(LocalViewModelStoreOwner provides sceneOwner) {
+                    // Use the same dispatcher as Compose dialogs so the topmost modal handles
+                    // Escape before screen navigation. Window.onKeyEvent bypasses that ordering.
+                    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) {
+                        handleDesktopBack(
+                            navigation,
+                            sceneOwner.scene,
+                            storiesController,
+                            commentsController,
+                            settingsNavigation,
+                            onEditorBackRequested = { editorBackRequestVersion++ },
                         )
-                    ) {
-                        AppLaunchDialog.WELCOME -> bootstrap.scene.navigation.showWelcomeDialog()
-                        AppLaunchDialog.CHANGELOG -> bootstrap.scene.navigation.showChangelogDialog()
-                        AppLaunchDialog.NONE -> Unit
                     }
-                }
-
-                ProvideHarmonicUiDependencies(
-                    HarmonicUiDependencies(bootstrap.app, bootstrap.scene),
-                ) {
-                    HarmonicTheme(palette.colorScheme, palette.dark) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
-                            color = palette.colorScheme.pageBackground,
+                    // Set the native properties before the window's first visible frame.
+                    DisposableEffect(window) {
+                        val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
+                        onDispose { releaseTitleBar() }
+                    }
+                    val selection by bootstrap.app.appearance.selections.collectAsState(
+                        initial = bootstrap.app.appearance.selection(),
+                    )
+                    val palette = remember(selection) {
+                        HarmonicThemeCatalog.scheme(selection.colorScheme, selection.dark, selection.colorStyle)
+                    }
+                    LaunchedEffect(window, selection.dark, palette.colorScheme.pageBackground) {
+                        DesktopWindowAppearance.apply(
+                            window = window,
+                            dark = selection.dark,
+                            backgroundArgb = palette.colorScheme.pageBackground.toArgb(),
+                        )
+                    }
+                    LaunchedEffect(bootstrap.app.launchState) {
+                        when (
+                            bootstrap.app.launchState.consumeLaunchDialog(
+                                currentVersion = bootstrap.app.metadata.versionCode,
+                                showChangelog = bootstrap.app.userSettings.general.showChangelog,
+                            )
                         ) {
-                            // Reserve the native controls/drag area on every screen. Windows
-                            // branding shares the app surface with no separate strip or divider.
-                            val titleBarInset = if (
-                                DesktopWindowAppearance.usesIntegratedTitleBar &&
-                                windowState.placement != WindowPlacement.Fullscreen
-                            ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
-                            Box(Modifier.fillMaxSize()) {
-                                if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
-                                    DesktopWindowsTitleBar(window, windowIcon)
-                                }
-                                Box(Modifier.fillMaxSize().padding(top = titleBarInset).clipToBounds()) {
-                                    DesktopAppContent(
-                                        app = bootstrap.app,
-                                        scene = bootstrap.scene,
-                                        storiesController = storiesController,
-                                        commentsController = commentsController,
-                                        editorBackRequestVersion = editorBackRequestVersion,
-                                        onStoriesControllerChanged = { storiesController = it },
-                                        commentsControllers = commentsControllers,
-                                        settingsControllers = settingsControllers,
-                                    )
+                            AppLaunchDialog.WELCOME -> sceneOwner.scene.navigation.showWelcomeDialog()
+                            AppLaunchDialog.CHANGELOG -> sceneOwner.scene.navigation.showChangelogDialog()
+                            AppLaunchDialog.NONE -> Unit
+                        }
+                    }
+
+                    ProvideHarmonicUiDependencies(
+                        HarmonicUiDependencies(bootstrap.app, sceneOwner.scene),
+                    ) {
+                        HarmonicTheme(palette.colorScheme, palette.dark) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
+                                color = palette.colorScheme.pageBackground,
+                            ) {
+                                // Reserve the native controls/drag area on every screen. Windows
+                                // branding shares the app surface with no separate strip or divider.
+                                val titleBarInset = if (
+                                    DesktopWindowAppearance.usesIntegratedTitleBar &&
+                                    windowState.placement != WindowPlacement.Fullscreen
+                                ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
+                                Box(Modifier.fillMaxSize()) {
+                                    if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
+                                        DesktopWindowsTitleBar(window, windowIcon)
+                                    }
+                                    Box(Modifier.fillMaxSize().padding(top = titleBarInset).clipToBounds()) {
+                                        DesktopAppContent(
+                                            app = bootstrap.app,
+                                            scene = sceneOwner.scene,
+                                            storiesController = storiesController,
+                                            commentsController = commentsController,
+                                            editorBackRequestVersion = editorBackRequestVersion,
+                                            onStoriesControllerChanged = { storiesController = it },
+                                            commentsControllers = commentsControllers,
+                                            settingsControllers = settingsControllers,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -237,6 +243,7 @@ fun main() {
             }
         }
     } finally {
+        sceneOwner.close()
         bootstrap.close()
     }
 }
@@ -687,8 +694,6 @@ private fun DesktopSettingsShell(
         twoPane = isTwoPane,
     )
     RegisterDestinationController(controllers, requestSerial, navigation)
-
-    LaunchedEffect(initialSection) { initialSection?.let(navigation::navigateTo) }
 
     // Compose Desktop can leave LookaheadDelegate alignment-line ownership stale when a
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only

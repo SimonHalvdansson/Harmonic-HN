@@ -5,7 +5,6 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.provider.Settings
 import android.os.Build
-import android.os.Bundle
 import android.os.SystemClock
 import android.os.Trace
 import android.text.TextUtils
@@ -13,6 +12,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.simon.harmonichackernews.presentation.CommentsSessionState
 import androidx.navigationevent.NavigationEvent
 import com.simon.harmonichackernews.ui.comments.CommentsNavigationEventHandler
 import androidx.core.view.OnApplyWindowInsetsListener
@@ -75,7 +75,7 @@ class AndroidCommentsCoordinator(
     private val activity: MainActivity,
     private val destination: StoryDestination,
     internal val sessionKey: Int,
-    savedInstanceState: Bundle?,
+    private val sessionState: CommentsSessionState,
     private val navigation: AndroidMainNavigationController,
     restorePreviousScrollProgress: Boolean = true,
     private val appComposition: HarmonicAppComposition = activity.harmonicAppComposition,
@@ -84,10 +84,6 @@ class AndroidCommentsCoordinator(
     userSettings: UserSettings = appComposition.userSettings,
 ) {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val sessionState = navigation.scene.sessions.commentsStateFor(
-        sessionKey,
-        destination.storyId,
-    )
     private val restoringSession = sessionState.initialized
     private val scrollProgress = sessionState.scrollProgress
     private var restoringStoredProgress = scrollProgress.initialized &&
@@ -205,7 +201,7 @@ class AndroidCommentsCoordinator(
                 renderCommentsState(state)
             }
         }
-        initializeView(CommentsWebViewHost(activity), savedInstanceState)
+        initializeView(CommentsWebViewHost(activity))
     }
 
     val webViewRoot: View
@@ -224,11 +220,8 @@ class AndroidCommentsCoordinator(
     private val isActive: Boolean
         get() = !destroyed
 
-    private fun initializeView(host: CommentsWebViewHost, savedInstanceState: Bundle?) {
+    private fun initializeView(host: CommentsWebViewHost) {
         val view = host.root
-        if (savedInstanceState != null) {
-            hostRestoration = restoreHostState(savedInstanceState)
-        }
         val restoredSorting = hostRestoration.sorting
         topInset = 0
 
@@ -913,43 +906,8 @@ class AndroidCommentsCoordinator(
         )
     }
 
-    private fun restoreHostState(bundle: Bundle): CommentsHostRestoration {
-        val referenceUrl = bundle.getString(STATE_REFERENCE_LINK_SUMMARY_URL)
-        val imageUrl = bundle.getString(STATE_PREVIEW_IMAGE_DIALOG_URL)
-        val overlay = when {
-            !referenceUrl.isNullOrBlank() -> CommentsOverlayRestoration.Reference(
-                referenceUrl,
-                bundle.getString(STATE_REFERENCE_LINK_SUMMARY_TITLE),
-            )
-            !imageUrl.isNullOrBlank() -> CommentsOverlayRestoration.Image(imageUrl)
-            else -> null
-        }
-        return CommentsHostRestoration(
-            sorting = bundle.getString(STATE_COMMENT_SORTING),
-            commentActionId = bundle.getInt(STATE_COMMENT_ACTION_COMMENT_ID, -1),
-            adBlockDisabled = bundle.getBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, false),
-            overlay = overlay,
-        )
-    }
-
-    private fun writeHostState(bundle: Bundle, restoration: CommentsHostRestoration) {
-        bundle.putString(STATE_COMMENT_SORTING, restoration.sorting)
-        bundle.putInt(STATE_COMMENT_ACTION_COMMENT_ID, restoration.commentActionId)
-        bundle.putBoolean(STATE_ADBLOCK_DISABLED_FOR_SESSION, restoration.adBlockDisabled)
-        when (val overlay = restoration.overlay) {
-            is CommentsOverlayRestoration.Reference -> {
-                bundle.putString(STATE_REFERENCE_LINK_SUMMARY_URL, overlay.url)
-                bundle.putString(STATE_REFERENCE_LINK_SUMMARY_TITLE, overlay.fallbackTitle)
-            }
-            is CommentsOverlayRestoration.Image ->
-                bundle.putString(STATE_PREVIEW_IMAGE_DIALOG_URL, overlay.url)
-            null -> Unit
-        }
-    }
-
-    fun onSaveInstanceState(outState: Bundle) {
+    fun captureSavedState() {
         hostRestoration = captureHostRestoration(preserveOverlay = true)
-        writeHostState(outState, hostRestoration)
     }
 
     private fun restoreScrollProgress() {
@@ -1179,18 +1137,6 @@ class AndroidCommentsCoordinator(
         private const val TRACE_CONTENT_READY = "CommentsOpen.contentReady"
         private const val COMMENTS_BENCHMARK_APPLICATION_ID =
             "com.simon.harmonichackernews.benchmark.app"
-        private const val STATE_COMMENT_ACTION_COMMENT_ID =
-            "com.simon.harmonichackernews.STATE_COMMENT_ACTION_COMMENT_ID"
-        private const val STATE_ADBLOCK_DISABLED_FOR_SESSION =
-            "com.simon.harmonichackernews.STATE_ADBLOCK_DISABLED_FOR_SESSION"
-        private const val STATE_COMMENT_SORTING =
-            "com.simon.harmonichackernews.STATE_COMMENT_SORTING"
-        private const val STATE_REFERENCE_LINK_SUMMARY_URL =
-            "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_URL"
-        private const val STATE_REFERENCE_LINK_SUMMARY_TITLE =
-            "com.simon.harmonichackernews.STATE_REFERENCE_LINK_SUMMARY_TITLE"
-        private const val STATE_PREVIEW_IMAGE_DIALOG_URL =
-            "com.simon.harmonichackernews.STATE_PREVIEW_IMAGE_DIALOG_URL"
         // Ignore tiny nested-scroll/settling deviations while the comments sheet is effectively
         // fully expanded. A real website reveal still preloads after the first 2% of travel, and
         // the settled callback remains the correctness fallback.

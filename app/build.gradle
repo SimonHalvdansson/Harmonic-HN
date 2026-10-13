@@ -151,6 +151,7 @@ kotlin {
 
 dependencies {
     implementation libs.androidx.datastore.preferences
+    implementation libs.androidx.savedstate
     implementation(project(":resources"))
     implementation(project(":core"))
     implementation(project(":ui"))
