@@ -38,13 +38,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.simon.harmonichackernews.resources.ic_keyboard_arrow_down
-import com.simon.harmonichackernews.resources.ic_keyboard_arrow_up_dark
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -197,11 +197,17 @@ fun LocalModelsPanel(
             }
         }
         if (downloadableRows.isNotEmpty()) {
+            val caretRotation by animateFloatAsState(
+                targetValue = if (expanded) 180f else 0f,
+                animationSpec = tween(durationMillis = 240),
+                label = "Downloadable models caret rotation",
+            )
             if (nanoRow != null) SettingsDivider()
             SettingRow(
                 title = "Downloadable models",
                 summary = downloadableRows.firstOrNull { it.presentation.selected }?.model?.displayName,
-                icon = if (expanded) Res.drawable.ic_keyboard_arrow_up_dark else Res.drawable.ic_keyboard_arrow_down,
+                icon = Res.drawable.ic_keyboard_arrow_down,
+                iconModifier = Modifier.graphicsLayer { rotationZ = caretRotation },
                 onClick = { expansionChoice = !expanded },
             )
             AnimatedVisibility(visible = expanded) {

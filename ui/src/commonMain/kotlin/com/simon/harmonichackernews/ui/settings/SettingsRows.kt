@@ -197,6 +197,7 @@ fun SettingRow(
     role: Role = Role.Button,
     checkedState: Boolean? = null,
     iconTint: Color? = null,
+    iconModifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val resolvedIconPainter = when {
@@ -236,7 +237,7 @@ fun SettingRow(
             Icon(
                 painter = resolvedIconPainter,
                 contentDescription = null,
-                modifier = Modifier.size(
+                modifier = iconModifier.size(
                     HarmonicDimens.compose_settings_row_icon_size,
                 ),
                 tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
