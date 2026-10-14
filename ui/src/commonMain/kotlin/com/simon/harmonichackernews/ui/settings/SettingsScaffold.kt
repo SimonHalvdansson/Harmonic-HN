@@ -134,6 +134,7 @@ fun SettingsListScreen(
     onBack: () -> Unit,
     onSectionSelected: (SettingsSection) -> Unit,
     modifier: Modifier = Modifier,
+    showNotifications: Boolean = true,
 ) {
     val versionName = LocalHarmonicUiDependencies.current.metadata.versionName
     val settingsCardShape = RoundedCornerShape(
@@ -141,7 +142,7 @@ fun SettingsListScreen(
     )
     val visibleGroups = MainSettingsEntries.filter {
         (it.section != SettingsSection.Debug || showDebugSettings) &&
-            (it.section != SettingsSection.Notifications || loggedIn)
+            (it.section != SettingsSection.Notifications || (loggedIn && showNotifications))
     }.groupBy { it.group }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()

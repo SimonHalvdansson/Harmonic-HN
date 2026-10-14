@@ -722,6 +722,7 @@ private fun DesktopSettingsShell(
                         showSelection = showSelection,
                         showDebugSettings = app.metadata.debugSettingsEnabled,
                         loggedIn = settingsAccountState.accountOrNull != null,
+                        showNotifications = false,
                         onBack = onBack,
                         onSectionSelected = onSectionSelected,
                     )
