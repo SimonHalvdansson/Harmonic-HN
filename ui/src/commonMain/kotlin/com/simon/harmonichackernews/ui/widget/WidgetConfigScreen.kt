@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.widget
 
+import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
@@ -174,7 +175,7 @@ fun WidgetConfigScreen(
                 ),
             shape = buttonShape,
             containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            contentColor = MaterialTheme.colorScheme.onFloatingContainer,
             elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
         ) {
             Icon(painterResource(Res.drawable.ic_check), null)

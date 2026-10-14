@@ -6,6 +6,7 @@ package com.simon.harmonichackernews.ui.stories
 
 
 
+import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
@@ -334,7 +335,7 @@ fun BoxScope.StoryTapToUpdateButton(
                     focusedElevation = 0.dp,
                     hoveredElevation = 0.dp,
                 ),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                contentColor = MaterialTheme.colorScheme.onFloatingContainer,
                 icon = {
                     Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null)
                 },

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
@@ -312,7 +313,7 @@ fun PaletteTintSettingsScreen(
                 focusedElevation = 0.dp,
                 hoveredElevation = 0.dp,
             ),
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            contentColor = MaterialTheme.colorScheme.onFloatingContainer,
             icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
             text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
         )

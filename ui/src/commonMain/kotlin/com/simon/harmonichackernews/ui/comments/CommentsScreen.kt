@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
@@ -643,7 +644,7 @@ fun CommentsScreen(
                     Icon(
                         painterResource(Res.drawable.ic_arrow_upward),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                        tint = MaterialTheme.colorScheme.onFloatingContainer,
                     )
                 },
                 text = {
@@ -668,7 +669,7 @@ fun CommentsScreen(
                     ),
                 shape = scrollTopShape,
                 containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                contentColor = MaterialTheme.colorScheme.onFloatingContainer,
                 // Keep the shadow present but constant. AnimatedVisibility owns the appearance
                 // transition, so Material's interaction elevation cannot flash it on entry.
                 elevation = FloatingActionButtonDefaults.elevation(
@@ -904,7 +905,7 @@ internal fun CommentNavigationButtons(
                 Icon(
                     painterResource(Res.drawable.ic_keyboard_arrow_up_dark),
                     "Previous top-level comment",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onFloatingContainer,
                 )
             }
             Box(
@@ -917,7 +918,7 @@ internal fun CommentNavigationButtons(
                     painterResource(Res.drawable.ic_explore_dark),
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onFloatingContainer,
                 )
             }
             Box(
@@ -940,7 +941,7 @@ internal fun CommentNavigationButtons(
                 Icon(
                     painterResource(Res.drawable.ic_keyboard_arrow_down_dark),
                     "Next top-level comment",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onFloatingContainer,
                 )
             }
         }

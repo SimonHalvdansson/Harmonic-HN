@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 private enum class SettingsListGroup { Reading, Tools, App }
 
@@ -238,6 +239,7 @@ private fun SettingsNavigationRow(
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val useDarkSelection = selected && HarmonicTheme.isDark
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -245,10 +247,11 @@ private fun SettingsNavigationRow(
                 minHeight = 72.dp,
             )
             .background(
-                if (selected) {
-                    colors.secondaryContainer.copy(alpha = 0.45f).compositeOver(itemBackgroundColor())
-                } else {
-                    itemBackgroundColor()
+                when {
+                    useDarkSelection -> colors.secondaryContainer.copy(alpha = 0.45f)
+                        .compositeOver(itemBackgroundColor())
+                    selected -> colors.surfaceContainerHigh
+                    else -> itemBackgroundColor()
                 },
             )
             .clickable(role = Role.Button, onClick = onClick)
@@ -277,7 +280,7 @@ private fun SettingsNavigationRow(
         Column(Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = if (selected) colors.onSecondaryContainer else colors.onSurface,
+                color = if (useDarkSelection) colors.onSecondaryContainer else colors.onSurface,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
@@ -286,7 +289,7 @@ private fun SettingsNavigationRow(
             Text(
                 text = summary,
                 modifier = Modifier.padding(top = 1.dp),
-                color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                color = if (useDarkSelection) colors.onSecondaryContainer else colors.onSurfaceVariant,
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,

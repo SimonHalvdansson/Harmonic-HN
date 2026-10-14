@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -147,7 +148,7 @@ fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
                             .semantics { contentDescription = "Reset glass settings" },
                         shape = shape,
                         containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onFloatingContainer,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                         icon = { Icon(painterResource(Res.drawable.ic_refresh), null) },
                         text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
@@ -309,7 +310,7 @@ private fun SurfaceEffectPreview(preferences: SurfaceEffectPreferences) {
                             hazeState, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                             RoundedCornerShape(24.dp), glassAppearance = HazeGlassAppearance.FloatingButton),
                             contentAlignment = Alignment.Center) {
-                            Text("Button", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                            Text("Button", color = MaterialTheme.colorScheme.onFloatingContainer, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

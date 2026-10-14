@@ -1,10 +1,19 @@
 package com.simon.harmonichackernews.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import kotlin.math.sqrt
+
+/** Prefer neutral floating-control content, retaining legibility on inverted containers. */
+internal val ColorScheme.onFloatingContainer: Color
+    get() = if (colorContrast(onSurface, primaryContainer) >= 4.5f) {
+        onSurface
+    } else {
+        onPrimaryContainer
+    }
 
 internal fun colorContrast(first: Color, second: Color): Float {
     val a = first.luminance()
