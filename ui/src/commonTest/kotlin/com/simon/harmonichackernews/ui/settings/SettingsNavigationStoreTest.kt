@@ -7,6 +7,38 @@ import kotlin.test.assertTrue
 
 class SettingsNavigationStoreTest {
     @Test
+    fun nestedNavigationRecordsForwardAndBackwardDirection() {
+        val navigation = SettingsNavigationStore(twoPane = true)
+        navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)
+        assertEquals(SettingsDetailNavigation.Push, navigation.state.value.detailNavigation)
+
+        handleSettingsBack(navigation) { error("Nested Back must stay in Settings") }
+        assertEquals(SettingsSection.Appearance, navigation.state.value.selectedSection)
+        assertEquals(SettingsDetailNavigation.Pop, navigation.state.value.detailNavigation)
+    }
+
+    @Test
+    fun selectingACategoryFromNestedSettingsIsAReplacementEvenForItsOwnParent() {
+        for (category in listOf(SettingsSection.Appearance, SettingsSection.Comments)) {
+            val navigation = SettingsNavigationStore(twoPane = true)
+            navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)
+            navigation.navigateTo(category)
+
+            assertEquals(listOf(category), navigation.state.value.detailStack)
+            assertEquals(SettingsDetailNavigation.Replace, navigation.state.value.detailNavigation)
+        }
+    }
+
+    @Test
+    fun restoredNavigationDoesNotReplayThePreviousDirection() {
+        val navigation = SettingsNavigationStore(twoPane = true)
+        val routes = navigation.savedRoutes()
+        navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)
+        navigation.restore(routes)
+        assertEquals(SettingsDetailNavigation.Replace, navigation.state.value.detailNavigation)
+    }
+
+    @Test
     fun manageFrontpagesRestoresAndReturnsToItsEntryPointInEitherLayout() {
         for (twoPane in listOf(false, true)) {
             for (parent in listOf(SettingsSection.Stories, SettingsSection.FiltersTags)) {

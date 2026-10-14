@@ -6,6 +6,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
@@ -14,17 +15,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.drawscope.scale
 
-/** Fade through peer categories inside a fixed detail pane. */
+/** Fade through categories; shared Z-axis motion conveys depth within the fixed detail pane. */
 @Composable
 internal fun SettingsDetailTransition(
-    section: SettingsSection,
+    navigationState: SettingsNavigationState,
     content: @Composable (SettingsSection) -> Unit,
 ) {
-    AnimatedContent(
-        targetState = section,
-        modifier = Modifier.fillMaxSize(),
+    val detailTransition = updateTransition(navigationState, label = "Settings detail navigation")
+    val navigation = detailTransition.targetState.detailNavigation
+    detailTransition.AnimatedContent(
+        modifier = Modifier.fillMaxSize().clipToBounds(),
+        contentKey = { it.selectedSection },
         transitionSpec = {
             ContentTransform(
                 targetContentEnter = fadeIn(tween(FadeInMillis, FadeOutMillis)),
@@ -32,15 +36,30 @@ internal fun SettingsDetailTransition(
                 sizeTransform = null,
             )
         },
-        label = "Settings detail fade through",
-    ) { currentSection ->
+    ) { currentState ->
         val contentScale by transition.animateFloat(
             transitionSpec = {
-                tween(FadeInMillis, FadeOutMillis, FastOutSlowInEasing)
+                if (navigation == SettingsDetailNavigation.Replace) {
+                    tween(FadeInMillis, FadeOutMillis, FastOutSlowInEasing)
+                } else {
+                    tween(FadeOutMillis + FadeInMillis, easing = FastOutSlowInEasing)
+                }
             },
-            label = "Settings detail incoming scale",
+            label = "Settings detail scale",
         ) { state ->
-            if (state == EnterExitState.PreEnter) 0.92f else 1f
+            when (state) {
+                EnterExitState.PreEnter -> when (navigation) {
+                    SettingsDetailNavigation.Replace -> 0.92f
+                    SettingsDetailNavigation.Push -> 0.8f
+                    SettingsDetailNavigation.Pop -> 1.1f
+                }
+                EnterExitState.Visible -> 1f
+                EnterExitState.PostExit -> when (navigation) {
+                    SettingsDetailNavigation.Replace -> 1f
+                    SettingsDetailNavigation.Push -> 1.1f
+                    SettingsDetailNavigation.Pop -> 0.8f
+                }
+            }
         }
         Box(
             Modifier.fillMaxSize().drawWithContent {
@@ -49,7 +68,7 @@ internal fun SettingsDetailTransition(
                 scale(contentScale) { this@drawWithContent.drawContent() }
             },
         ) {
-            content(currentSection)
+            content(currentState.selectedSection)
         }
     }
 }

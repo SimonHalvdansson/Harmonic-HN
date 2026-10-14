@@ -170,7 +170,7 @@ fun SettingsNavigationShell(
                     if (!animateDetailChanges) {
                         renderDetailWithOrigin(selectedSection, false, ::navigateBack, ::navigateTo)
                     } else {
-                        SettingsDetailTransition(selectedSection) { section ->
+                        SettingsDetailTransition(navigationState) { section ->
                             renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
                         }
                     }

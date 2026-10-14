@@ -9,9 +9,12 @@ fun handleSettingsBack(navigation: SettingsNavigationStore?, closeSettings: () -
     if (navigation?.navigateBack() != true) closeSettings()
 }
 
+enum class SettingsDetailNavigation { Replace, Push, Pop }
+
 data class SettingsNavigationState(
     val detailStack: List<SettingsSection>,
     val twoPane: Boolean,
+    val detailNavigation: SettingsDetailNavigation = SettingsDetailNavigation.Replace,
 ) {
     val selectedSection: SettingsSection
         get() = detailStack.lastOrNull() ?: SettingsSection.Appearance
@@ -59,20 +62,27 @@ class SettingsNavigationStore(
         } else {
             listOf(section)
         }
-        mutableState.value = current.copy(detailStack = stack).normalized()
+        mutableState.value = current.copy(
+            detailStack = stack,
+            detailNavigation = if (preserveCurrentDetail) SettingsDetailNavigation.Push else SettingsDetailNavigation.Replace,
+        ).normalized()
         return true
     }
 
     fun navigateBack(): Boolean {
         val current = mutableState.value
         if (!current.canNavigateBackWithinSettings) return false
-        mutableState.value = current.copy(detailStack = current.detailStack.dropLast(1)).normalized()
+        mutableState.value = current.copy(
+            detailStack = current.detailStack.dropLast(1),
+            detailNavigation = SettingsDetailNavigation.Pop,
+        ).normalized()
         return true
     }
 
     fun restore(routes: List<String>) {
         mutableState.value = mutableState.value.copy(
             detailStack = routes.mapNotNull(SettingsSection::fromRoute),
+            detailNavigation = SettingsDetailNavigation.Replace,
         ).normalized()
     }
 
