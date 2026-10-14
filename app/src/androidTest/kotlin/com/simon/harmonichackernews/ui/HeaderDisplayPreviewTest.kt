@@ -38,7 +38,7 @@ class HeaderDisplayPreviewTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                SettingsPage("Header display", true, {}, showTopAppBar = false, pinnedContent = {
+                SettingsPage("Post header", true, {}, showTopAppBar = false, pinnedContent = {
                     HeaderDisplayPreview(state.value, true, {})
                 }) { item { Text("Layout preview") } }
             }
@@ -168,18 +168,20 @@ class HeaderDisplayPreviewTest {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                SettingsPage("Header display", true, {}, showTopAppBar = false,
+                SettingsPage("Post header", true, {}, showTopAppBar = false,
                     pinnedContent = { HeaderDisplayPreview(state.value, true, {}, sample.value) },
+                    pinnedContentBackground = androidx.compose.ui.graphics.Color.Transparent,
+                    floatingContent = { HeaderPreviewSampleSelector(sample.value) { sample.value = it } },
                 ) {
-                    item { HeaderPreviewSampleSelector(sample.value) { sample.value = it } }
                     item { Text("Layout preview") }
                 }
             }
         }
         compose.onNodeWithText("Preview only").assertDoesNotExist()
-        val selectorTop = compose.onNodeWithText("Link with image").assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
-        val previewBottom = compose.onNodeWithContentDescription("Header preview").fetchSemanticsNode().boundsInRoot.bottom
-        assertTrue("Sample controls belong below the preview", selectorTop >= previewBottom)
+        val selectorBounds = compose.onNodeWithContentDescription("Next preview post").assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        compose.onNodeWithText("Link with image").assertDoesNotExist()
+        compose.onNodeWithText("1 of 4").assertDoesNotExist()
         val image = compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
         assertTrue("Small preview should be wider than tall", image.width > image.height)
@@ -196,7 +198,8 @@ class HeaderDisplayPreviewTest {
         compose.onNodeWithContentDescription("Remove vote").assertExists()
         save("header-meta-on-image")
         compose.onNodeWithContentDescription("Next preview post").performClick()
-        compose.onNodeWithText("Link without image").assertExists()
+        assertEquals("Sample controls stay fixed when preview height changes", selectorBounds,
+            compose.onNodeWithContentDescription("Next preview post").fetchSemanticsNode().boundsInRoot)
         compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("User").assertIsDisplayed()
         compose.onNodeWithText("53", useUnmergedTree = true).assertIsDisplayed()
@@ -213,13 +216,11 @@ class HeaderDisplayPreviewTest {
         compose.runOnIdle { state.value = state.value.copy(showHeaderPreviewImage = true) }
         save("header-meta-no-image")
         compose.onNodeWithContentDescription("Next preview post").performClick()
-        compose.onNodeWithText("Text post").assertExists()
         compose.onNodeWithText("I made a small tool", substring = true, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("science.org", substring = true, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("User").assertIsDisplayed()
         save("header-meta-text-post")
         compose.onNodeWithContentDescription("Next preview post").performClick()
-        compose.onNodeWithText("Link preview").assertIsDisplayed()
         compose.onNodeWithText("WILLOW / READING-LIST", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("A small, offline-first home", substring = true, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertDoesNotExist()

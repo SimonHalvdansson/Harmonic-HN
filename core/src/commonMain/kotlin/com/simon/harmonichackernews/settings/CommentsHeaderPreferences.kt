@@ -45,7 +45,7 @@ enum class CommentsHeaderImage(val label: String) {
 
 /** Presentation of poster, votes and comments; image-less posts keep all details accessible. */
 enum class CommentsHeaderMetaInfo(val storedValue: String, val label: String) {
-    SMALL("small", "Small"), BUTTONS("buttons", "Buttons"), ON_IMAGE("on_image", "On image");
+    ON_IMAGE("on_image", "Integrated"), SMALL("small", "Line"), BUTTONS("buttons", "Large");
 
     fun resolve(hasAccount: Boolean, hasPreviewImage: Boolean): CommentsHeaderMetaInfo = when {
         this == BUTTONS && !hasAccount -> SMALL

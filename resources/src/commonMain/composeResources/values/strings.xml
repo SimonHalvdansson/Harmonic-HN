@@ -7,7 +7,7 @@
     <string name="settings_title">Settings</string>
     <string name="settings_summary_appearance">Colors, fonts, layout</string>
     <string name="settings_summary_stories">Frontpages, previews</string>
-    <string name="settings_summary_header_display">Post details, images, links</string>
+    <string name="settings_summary_header_display">Images, layout</string>
     <string name="settings_summary_comments">Threads, avatars</string>
     <string name="settings_summary_web_links">Browser, reader mode</string>
     <string name="settings_summary_filters_tags">Keywords, domains</string>
@@ -21,7 +21,7 @@
     <string name="settings_section_palette_tint">Palette tint</string>
     <string name="settings_section_stories">Stories</string>
     <string name="settings_section_comments">Comments</string>
-    <string name="settings_section_header_display">Header display</string>
+    <string name="settings_section_header_display">Post header</string>
     <string name="settings_section_thread_depth">Thread depth indicators</string>
     <string name="settings_section_reader_mode">Reader mode</string>
     <string name="settings_section_web_links">Web and links</string>

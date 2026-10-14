@@ -64,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.simon.harmonichackernews.settings.CommentsHeaderTint
@@ -242,16 +241,19 @@ fun CommentsHeader(
     )
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(normalBackground),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(1f)
-                .shadow(shadowElevation, headerShape)
-                .clip(headerShape)
+                // Keep one layer through zero elevation; inserting/removing a shadow layer
+                // during the corner animation can briefly redraw the old outline.
+                .graphicsLayer {
+                    this.shadowElevation = shadowElevation.toPx()
+                    shape = headerShape
+                    clip = true
+                }
                 .background(visibleHeaderBackground)
                 .padding(bottom = bottomPadding),
         ) {
@@ -521,13 +523,12 @@ fun CommentsHeader(
                 }
             }
         }
-        val fadeBrush = remember(visibleHeaderBackground, normalBackground) {
+        val fadeBrush = remember(visibleHeaderBackground) {
             Brush.verticalGradient(
                 0f to visibleHeaderBackground,
-                0.25f to lerpCommentsColor(visibleHeaderBackground, normalBackground, 0.16f),
-                0.55f to lerpCommentsColor(visibleHeaderBackground, normalBackground, 0.58f),
-                0.88f to normalBackground,
-                1f to normalBackground,
+                0.25f to visibleHeaderBackground.copy(alpha = visibleHeaderBackground.alpha * 0.84f),
+                0.55f to visibleHeaderBackground.copy(alpha = visibleHeaderBackground.alpha * 0.42f),
+                1f to visibleHeaderBackground.copy(alpha = 0f),
             )
         }
         Box(Modifier.fillMaxWidth().height(edgeHeight)) {

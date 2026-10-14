@@ -330,6 +330,8 @@ fun SettingsPage(
     contentVersion: Int = 0,
     showTopAppBar: Boolean = true,
     pinnedContent: (@Composable () -> Unit)? = null,
+    pinnedContentBackground: Color = MaterialTheme.colorScheme.pageBackground,
+    floatingContent: (@Composable () -> Unit)? = null,
     listState: LazyListState = rememberSettingsListState(),
     extraBottomPadding: Dp = 0.dp,
     headerContent: (@Composable () -> Unit)? = null,
@@ -362,42 +364,52 @@ fun SettingsPage(
         if (showTopAppBar) {
             SettingsTopAppBar(title = title, onBack = onBack.takeIf { showNavigation })
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },
-            state = listState,
-            contentPadding = PaddingValues(
-                start = 0.dp,
-                top = 0.dp,
-                end = 0.dp,
-                bottom = 24.dp + navigationBarPadding + extraBottomPadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-        ) {
-            // Preference-backed rows are declared in the lazy content lambda. Capturing the
-            // version here makes LazyColumn rebuild those declarations after a preference edit.
-            @Suppress("UNUSED_EXPRESSION")
-            contentVersion
-            headerContent?.let { header ->
-                item(key = "settings-header") { header() }
-            }
-            pinnedContent?.let { preview ->
-                val previewContent: @Composable () -> Unit = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { previewSize = it.size }
-                            .background(MaterialTheme.colorScheme.pageBackground),
-                    ) {
-                        preview()
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },
+                state = listState,
+                contentPadding = PaddingValues(
+                    start = 0.dp,
+                    top = 0.dp,
+                    end = 0.dp,
+                    bottom = 24.dp + navigationBarPadding + extraBottomPadding,
+                ),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                // Preference-backed rows are declared in the lazy content lambda. Capturing the
+                // version here makes LazyColumn rebuild those declarations after a preference edit.
+                @Suppress("UNUSED_EXPRESSION")
+                contentVersion
+                headerContent?.let { header ->
+                    item(key = "settings-header") { header() }
+                }
+                pinnedContent?.let { preview ->
+                    val previewContent: @Composable () -> Unit = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { previewSize = it.size }
+                                .background(pinnedContentBackground),
+                        ) {
+                            preview()
+                        }
+                    }
+                    if (pinPreview) {
+                        stickyHeader(key = "settings-preview") { previewContent() }
+                    } else {
+                        item(key = "settings-preview") { previewContent() }
                     }
                 }
-                if (pinPreview) {
-                    stickyHeader(key = "settings-preview") { previewContent() }
-                } else {
-                    item(key = "settings-preview") { previewContent() }
+                content()
+            }
+            floatingContent?.let { controls ->
+                Box(
+                    Modifier.align(Alignment.BottomEnd)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarPadding),
+                ) {
+                    controls()
                 }
             }
-            content()
         }
     }
 }

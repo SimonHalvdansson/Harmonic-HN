@@ -123,6 +123,11 @@ fun HeaderDisplaySettingsRoute(
         showTopAppBar = false,
         onBack = onBack,
         contentVersion = settings.hashCode() + sampleIndex,
+        pinnedContentBackground = Color.Transparent,
+        extraBottomPadding = 72.dp,
+        floatingContent = {
+            HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
+        },
         pinnedContent = {
             AnimatedContent(
                 targetState = sample,
@@ -136,9 +141,6 @@ fun HeaderDisplaySettingsRoute(
             }
         },
     ) {
-        item(key = "header-preview-controls") {
-            HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
-        }
         item {
             SettingsCategory("Layout") {
                 SegmentedSetting(
