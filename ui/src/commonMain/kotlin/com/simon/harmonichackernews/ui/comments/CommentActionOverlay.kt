@@ -582,13 +582,15 @@ private fun CommentActionCardContent(
                         maxLines = 1,
                     )
                 }
-                TextButton(
-                    onClick = onAsk,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                ) {
-                    Icon(painterResource(Res.drawable.ic_auto_awesome), contentDescription = null,
-                        modifier = Modifier.size(20.dp))
-                    Text("Ask", modifier = Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily)
+                if (settings.canAsk) {
+                    TextButton(
+                        onClick = onAsk,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_auto_awesome), contentDescription = null,
+                            modifier = Modifier.size(20.dp))
+                        Text("Ask", modifier = Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily)
+                    }
                 }
             }
         }

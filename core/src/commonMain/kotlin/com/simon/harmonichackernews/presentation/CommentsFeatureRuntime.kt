@@ -277,6 +277,7 @@ class CommentsFeatureRuntime(
             isTablet = capabilities.isTablet,
             hasAccountDetails = hasAccount,
             canProvideSummary = story?.isLink == true && canProvideSummary,
+            canAsk = canProvideSummary,
             showAdditionalSummaryInfo = aiSnapshot?.showAdditionalInfo ?: false,
             enableSummaryBoldFormatting = aiSnapshot?.enableBoldFormatting ?: true,
         )

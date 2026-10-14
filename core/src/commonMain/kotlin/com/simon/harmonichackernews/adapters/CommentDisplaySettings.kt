@@ -49,6 +49,7 @@ data class CommentDisplaySettings(
     val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.SMALL,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
+    val canAsk: Boolean = canProvideSummary,
 ) {
     val combineHeaderActions: Boolean get() = headerMetaInfo == CommentsHeaderMetaInfo.BUTTONS
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -63,6 +64,7 @@ data class CommentDisplaySettings(
             canProvideSummary: Boolean,
             showAdditionalSummaryInfo: Boolean = false,
             enableSummaryBoldFormatting: Boolean = true,
+            canAsk: Boolean = canProvideSummary,
         ): CommentDisplaySettings = CommentDisplaySettings(
             collapseParent = preferences.collapseParent,
             indicatorThickness = preferences.indicatorThickness,
@@ -102,6 +104,7 @@ data class CommentDisplaySettings(
             expandedReferenceLinks = preferences.expandedReferenceLinks,
             hasAccountDetails = hasAccountDetails,
             canProvideSummary = canProvideSummary,
+            canAsk = canAsk,
             showAdditionalSummaryInfo = showAdditionalSummaryInfo,
             enableSummaryBoldFormatting = enableSummaryBoldFormatting,
         )
