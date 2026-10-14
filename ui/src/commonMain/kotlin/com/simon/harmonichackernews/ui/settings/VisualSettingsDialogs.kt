@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_search
+import com.simon.harmonichackernews.resources.ic_algolia
 import com.simon.harmonichackernews.settings.CommentsProvider
 import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
@@ -112,7 +112,7 @@ fun CommentsProviderDialog(
     onProviderSelected: (CommentsProvider) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val providers = listOf(CommentsProvider.OFFICIAL, CommentsProvider.ALGOLIA)
+    val providers = listOf(CommentsProvider.ALGOLIA, CommentsProvider.OFFICIAL)
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle("Comments provider") },
@@ -200,7 +200,7 @@ private fun ProviderBrandMark(provider: CommentsProvider) {
             )
         } else {
             Icon(
-                painter = painterResource(Res.drawable.ic_search),
+                painter = painterResource(Res.drawable.ic_algolia),
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(21.dp),
