@@ -37,8 +37,10 @@ import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
+import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
+import com.simon.harmonichackernews.network.StoryLinkPreviewSession
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
@@ -64,6 +66,8 @@ import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 
 private class DesktopCommentsHost(
     val binding: CommentsFeatureBinding,
@@ -71,6 +75,7 @@ private class DesktopCommentsHost(
     val store get() = binding.store
     val controller get() = binding.controller
     var webViewSession: DesktopCommentsWebViewSession? by mutableStateOf(null)
+    var previews: StoryLinkPreviewSession? = null
     var externalArticleOpened = false
 }
 
@@ -101,6 +106,26 @@ internal fun DesktopCommentsContent(
         )
     }
     val featureState by host.store.state.collectAsState()
+    val reading = featureState.settings?.reading
+    LaunchedEffect(host, reading, featureState.story?.url) {
+        if (reading == null) return@LaunchedEffect
+        coroutineScope {
+            val session = app.createStoryLinkPreviewSession(
+                scope = this,
+                story = host.binding.story,
+                readingPreferences = reading,
+                onPreviewChanged = host.store::refreshStoryPresentation,
+            )
+            host.previews = session
+            try {
+                session.loadNetworkPreviews()
+                awaitCancellation()
+            } finally {
+                session.dispose()
+                if (host.previews === session) host.previews = null
+            }
+        }
+    }
     val readerState = host.webViewSession?.reader?.state?.collectAsState()?.value
     val contentInsetRightPx = with(LocalDensity.current) {
         if (showNavigation) 0 else DesktopWidePaneHorizontalPadding.roundToPx()
@@ -285,7 +310,7 @@ private fun handleDesktopCommentsPlatformEffect(
             app.platform.clipboard.copy(effect.label, effect.text)
             scene.userMessages.show("Text copied to clipboard")
         }
-        CommentsPlatformEffect.ReloadLinkPreviews -> Unit
+        CommentsPlatformEffect.ReloadLinkPreviews -> host.previews?.loadNetworkPreviews()
         CommentsPlatformEffect.Summarize -> host.store.startSummary(null)
         is CommentsPlatformEffect.OpenStory -> scene.navigation.openStory(effect.destination)
         is CommentsPlatformEffect.OpenExternalLink -> {
