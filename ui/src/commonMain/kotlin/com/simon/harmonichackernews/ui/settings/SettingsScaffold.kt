@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.positionInRoot
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -435,7 +436,11 @@ fun SettingsCategory(
         ) { displayedTitle ->
             Text(
                 text = displayedTitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = lerp(
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    MaterialTheme.colorScheme.primary,
+                    0.25f,
+                ),
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
