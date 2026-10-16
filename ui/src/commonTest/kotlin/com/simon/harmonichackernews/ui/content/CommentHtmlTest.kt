@@ -14,6 +14,26 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun quotedParagraphsAreMarkedWithoutLosingLinksOrBoldText() {
+        val html = "Lead<p>&gt; quoted <b>bold</b> and <a href='https://example.com'>linked</a><p>After"
+        val prepared = prepareCommentHtml(html)
+        assertEquals("Lead\n\nquoted bold and linked\n\nAfter", prepared.text)
+        val quotes = prepared.getStringAnnotations(COMMENT_QUOTE_TAG, 0, prepared.length)
+        assertEquals(1, quotes.size)
+        assertEquals("quoted bold and linked", prepared.text.substring(quotes[0].start, quotes[0].end))
+        assertTrue(prepared.spanStyles.any { prepared.text.substring(it.start, it.end) == "bold" })
+        val rendered = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener { })
+        val link = rendered.getLinkAnnotations(0, rendered.length).single()
+        assertEquals("linked", rendered.text.substring(link.start, link.end))
+    }
+
+    @Test
+    fun consecutiveQuoteMarkersAreRemovedButCodeQuotesRemainUntouched() {
+        val rendered = prepareCommentHtml("&gt;&gt; First<br>&gt; Second<p>Normal<pre><code>&gt; code</code></pre>")
+        assertEquals("First\nSecond\n\nNormal\n\n> code", rendered.text)
+        assertEquals(2, rendered.getStringAnnotations(COMMENT_QUOTE_TAG, 0, rendered.length).size)
+    }
+    @Test
     fun linkFreeTextReusesCachedStylesAcrossThemeAndListenerChanges() {
         val html = "<p>A <b>bold</b> comment.<p>With <code>code</code>."
         val first = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener { error("No links") })

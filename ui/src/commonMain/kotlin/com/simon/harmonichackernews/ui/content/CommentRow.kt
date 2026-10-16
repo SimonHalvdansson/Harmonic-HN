@@ -666,6 +666,34 @@ private fun CommentBodyText(
             text = displayedBody,
             modifier = modifier
                 .fillMaxWidth()
+                .drawWithContent {
+                    val layout = textLayout
+                    if (layout != null) {
+                        val background = colors.onSurface.copy(alpha = 0.055f)
+                        val accent = colors.onSurface.copy(alpha = 0.35f)
+                        displayedBody.getStringAnnotations(COMMENT_QUOTE_TAG, 0, displayedBody.length)
+                            .forEach { quote ->
+                                if (quote.start < quote.end) {
+                                    val first = layout.getLineForOffset(quote.start)
+                                    val last = layout.getLineForOffset(quote.end - 1)
+                                    val top = layout.getLineTop(first)
+                                    val bottom = layout.getLineBottom(last)
+                                    drawRoundRect(
+                                        color = background,
+                                        topLeft = Offset(0f, top),
+                                        size = Size(size.width, bottom - top),
+                                        cornerRadius = CornerRadius(7.dp.toPx()),
+                                    )
+                                    drawRect(
+                                        color = accent,
+                                        topLeft = Offset(0f, top),
+                                        size = Size(3.dp.toPx(), bottom - top),
+                                    )
+                                }
+                            }
+                    }
+                    drawContent()
+                }
                 .onGloballyPositioned { textCoordinates = it }
                 .detectAnnotatedLinkLongPress(
                     text = displayedBody,
