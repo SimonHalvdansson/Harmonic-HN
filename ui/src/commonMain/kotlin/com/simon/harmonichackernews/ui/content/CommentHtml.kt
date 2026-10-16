@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
-import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
@@ -12,7 +11,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
@@ -81,16 +79,13 @@ internal fun AnnotatedString.withHighlightedQuotedLines(): AnnotatedString {
                 append(this@withHighlightedQuotedLines.subSequence(copiedThrough, lineStart))
                 val start = length
                 append(this@withHighlightedQuotedLines.subSequence(contentStart, lineEnd))
-                val quoteEnd = length
-                // Include the existing newline in ParagraphStyle. Ending the style before it
-                // makes Compose create another implicit paragraph boundary (extra blank space).
-                val afterLine = if (lineEnd < sourceText.length) lineEnd + 1 else lineEnd
-                append(this@withHighlightedQuotedLines.subSequence(lineEnd, afterLine))
-                if (quoteEnd > start) {
-                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, quoteEnd)
-                    addStyle(ParagraphStyle(textIndent = TextIndent(12.sp, 12.sp)), start, length)
+                if (length > start) {
+                    // A ParagraphStyle creates an implicit Compose paragraph boundary even
+                    // when the source has the correct newlines. Keep the original paragraph
+                    // layout and let CommentRow draw the quote accent/background instead.
+                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, length)
                 }
-                copiedThrough = afterLine
+                copiedThrough = lineEnd
             }
             lineStart = if (lineEnd < sourceText.length) lineEnd + 1 else sourceText.length
         }

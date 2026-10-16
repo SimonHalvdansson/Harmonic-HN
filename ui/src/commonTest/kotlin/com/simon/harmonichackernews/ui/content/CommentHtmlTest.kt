@@ -21,11 +21,9 @@ class CommentHtmlTest {
         val quotes = prepared.getStringAnnotations(COMMENT_QUOTE_TAG, 0, prepared.length)
         assertEquals(1, quotes.size)
         assertEquals("quoted bold and linked", prepared.text.substring(quotes[0].start, quotes[0].end))
-        // Compose inserts implicit paragraph boundaries when a ParagraphStyle ends before
-        // an existing newline. The style must include exactly the next newline, not end
-        // at the last visible character of the quote.
-        val quoteParagraph = prepared.paragraphStyles.single()
-        assertEquals("quoted bold and linked\n", prepared.text.substring(quoteParagraph.start, quoteParagraph.end))
+        // ParagraphStyle itself produces implicit line boundaries in Compose, adding an
+        // extra visual line beneath the quote even when the text has the right newlines.
+        assertTrue(prepared.paragraphStyles.isEmpty())
         assertTrue(prepared.spanStyles.any { prepared.text.substring(it.start, it.end) == "bold" })
         val rendered = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener { })
         val link = rendered.getLinkAnnotations(0, rendered.length).single()
@@ -37,18 +35,39 @@ class CommentHtmlTest {
         val rendered = prepareCommentHtml("&gt;&gt; First<br>&gt; Second<p>Normal<pre><code>&gt; code</code></pre>")
         assertEquals("First\nSecond\n\nNormal\n\n> code", rendered.text)
         assertEquals(2, rendered.getStringAnnotations(COMMENT_QUOTE_TAG, 0, rendered.length).size)
-        assertEquals(listOf("First\n", "Second\n"), rendered.paragraphStyles.map {
-            rendered.text.substring(it.start, it.end)
-        })
+        assertTrue(rendered.paragraphStyles.isEmpty())
     }
 
     @Test
     fun quoteAtEndDoesNotIntroduceTrailingWhitespaceOrEmptyParagraphs() {
         val rendered = prepareCommentHtml("Before<p>&gt; Last quote")
         assertEquals("Before\n\nLast quote", rendered.text)
-        assertEquals("Last quote", rendered.paragraphStyles.single().let {
-            rendered.text.substring(it.start, it.end)
-        })
+        assertTrue(rendered.paragraphStyles.isEmpty())
+    }
+
+    @Test
+    fun quotesDoNotChangeExistingParagraphGaps() {
+        val quoted = prepareCommentHtml(
+            "&gt; a peanut shortage prompted Delta, then America’s fourth-largest airline, " +
+                "to seek an alternative onboard snack<p>I never knew this was the reason."
+        )
+        val plain = prepareCommentHtml(
+            "a peanut shortage prompted Delta, then America’s fourth-largest airline, " +
+                "to seek an alternative onboard snack<p>I never knew this was the reason."
+        )
+        assertEquals(plain.text, quoted.text)
+        assertTrue("snack\n\nI never" in quoted.text)
+        assertTrue(quoted.paragraphStyles.isEmpty())
+        assertEquals(1, quoted.getStringAnnotations(COMMENT_QUOTE_TAG, 0, quoted.length).size)
+    }
+
+    @Test
+    fun quotedLineWithSingleBreakKeepsExactlyOneBreak() {
+        val quoted = prepareCommentHtml("&gt; Quoted text<br>Reply")
+        val plain = prepareCommentHtml("Quoted text<br>Reply")
+        assertEquals("Quoted text\nReply", quoted.text)
+        assertEquals(plain.text, quoted.text)
+        assertTrue(quoted.paragraphStyles.isEmpty())
     }
 
     @Test

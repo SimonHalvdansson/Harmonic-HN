@@ -678,15 +678,19 @@ private fun CommentBodyText(
                                     val last = layout.getLineForOffset(quote.end - 1)
                                     val top = layout.getLineTop(first)
                                     val bottom = layout.getLineBottom(last)
+                                    // Draw the left rail just outside the text's leading edge.
+                                    // This retains a visual inset without ParagraphStyle, which
+                                    // would add an unwanted paragraph break before the reply.
+                                    val quoteInset = 5.dp.toPx()
                                     drawRoundRect(
                                         color = background,
-                                        topLeft = Offset(0f, top),
-                                        size = Size(size.width, bottom - top),
+                                        topLeft = Offset(-quoteInset, top),
+                                        size = Size(size.width + quoteInset, bottom - top),
                                         cornerRadius = CornerRadius(7.dp.toPx()),
                                     )
                                     drawRect(
                                         color = accent,
-                                        topLeft = Offset(0f, top),
+                                        topLeft = Offset(-quoteInset, top),
                                         size = Size(3.dp.toPx(), bottom - top),
                                     )
                                 }
