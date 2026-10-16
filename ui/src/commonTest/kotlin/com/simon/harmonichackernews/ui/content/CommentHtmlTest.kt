@@ -21,6 +21,11 @@ class CommentHtmlTest {
         val quotes = prepared.getStringAnnotations(COMMENT_QUOTE_TAG, 0, prepared.length)
         assertEquals(1, quotes.size)
         assertEquals("quoted bold and linked", prepared.text.substring(quotes[0].start, quotes[0].end))
+        // Compose inserts implicit paragraph boundaries when a ParagraphStyle ends before
+        // an existing newline. The style must include exactly the next newline, not end
+        // at the last visible character of the quote.
+        val quoteParagraph = prepared.paragraphStyles.single()
+        assertEquals("quoted bold and linked\n", prepared.text.substring(quoteParagraph.start, quoteParagraph.end))
         assertTrue(prepared.spanStyles.any { prepared.text.substring(it.start, it.end) == "bold" })
         val rendered = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener { })
         val link = rendered.getLinkAnnotations(0, rendered.length).single()
@@ -32,7 +37,20 @@ class CommentHtmlTest {
         val rendered = prepareCommentHtml("&gt;&gt; First<br>&gt; Second<p>Normal<pre><code>&gt; code</code></pre>")
         assertEquals("First\nSecond\n\nNormal\n\n> code", rendered.text)
         assertEquals(2, rendered.getStringAnnotations(COMMENT_QUOTE_TAG, 0, rendered.length).size)
+        assertEquals(listOf("First\n", "Second\n"), rendered.paragraphStyles.map {
+            rendered.text.substring(it.start, it.end)
+        })
     }
+
+    @Test
+    fun quoteAtEndDoesNotIntroduceTrailingWhitespaceOrEmptyParagraphs() {
+        val rendered = prepareCommentHtml("Before<p>&gt; Last quote")
+        assertEquals("Before\n\nLast quote", rendered.text)
+        assertEquals("Last quote", rendered.paragraphStyles.single().let {
+            rendered.text.substring(it.start, it.end)
+        })
+    }
+
     @Test
     fun linkFreeTextReusesCachedStylesAcrossThemeAndListenerChanges() {
         val html = "<p>A <b>bold</b> comment.<p>With <code>code</code>."

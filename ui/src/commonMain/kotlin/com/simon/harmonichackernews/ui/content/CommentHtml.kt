@@ -81,11 +81,16 @@ internal fun AnnotatedString.withHighlightedQuotedLines(): AnnotatedString {
                 append(this@withHighlightedQuotedLines.subSequence(copiedThrough, lineStart))
                 val start = length
                 append(this@withHighlightedQuotedLines.subSequence(contentStart, lineEnd))
-                if (length > start) {
-                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, length)
+                val quoteEnd = length
+                // Include the existing newline in ParagraphStyle. Ending the style before it
+                // makes Compose create another implicit paragraph boundary (extra blank space).
+                val afterLine = if (lineEnd < sourceText.length) lineEnd + 1 else lineEnd
+                append(this@withHighlightedQuotedLines.subSequence(lineEnd, afterLine))
+                if (quoteEnd > start) {
+                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, quoteEnd)
                     addStyle(ParagraphStyle(textIndent = TextIndent(12.sp, 12.sp)), start, length)
                 }
-                copiedThrough = lineEnd
+                copiedThrough = afterLine
             }
             lineStart = if (lineEnd < sourceText.length) lineEnd + 1 else sourceText.length
         }
