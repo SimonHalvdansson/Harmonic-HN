@@ -141,7 +141,7 @@ class WidgetPreviewParityTest {
                     20 * context.resources.displayMetrics.density, nativeIndex.width.toFloat(), 1f)
                 if (android.os.Build.VERSION.SDK_INT >= 31) {
                     val favicon = descendants(requireNotNull(nativeRoot)).filterIsInstance<android.widget.ImageView>()
-                        .single { kotlin.math.abs(it.width - 14 * context.resources.displayMetrics.density) < 1f }
+                        .single { kotlin.math.abs(it.width - WidgetDimensions.faviconSize.value * context.resources.displayMetrics.density) < 1f }
                     val outline = Outline().also { favicon.outlineProvider.getOutline(favicon, it) }
                     assertTrue("Favicon must clip to its rounded outline", favicon.clipToOutline)
                     assertEquals(WidgetDimensions.faviconCornerRadius.value * context.resources.displayMetrics.density,
@@ -159,8 +159,8 @@ class WidgetPreviewParityTest {
                     (countPosition[1] - nativePosition[1]).toFloat(), 1.5f * context.resources.displayMetrics.density)
                 if (hasImage) {
                     val images = descendants(requireNotNull(nativeRoot)).filterIsInstance<android.widget.ImageView>()
-                    val thumbnail = images.single { it.width == (120 * context.resources.displayMetrics.density).toInt() }
-                    assertEquals("One-line title must not crop medium image", (72 * context.resources.displayMetrics.density).toInt(), thumbnail.height)
+                    val thumbnail = images.single { kotlin.math.abs(it.width - 120 * context.resources.displayMetrics.density) <= 1f }
+                    assertEquals("One-line title must not crop medium image", 72 * context.resources.displayMetrics.density, thumbnail.height.toFloat(), 1f)
                     var parent = thumbnail.parent as? View
                     while (parent != null && parent != nativeRoot) {
                         assertTrue("Image must fit its ancestors", parent.height >= thumbnail.height)

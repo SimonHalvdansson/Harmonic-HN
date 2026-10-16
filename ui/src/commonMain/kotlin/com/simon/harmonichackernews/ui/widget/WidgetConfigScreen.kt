@@ -94,7 +94,7 @@ fun WidgetConfigScreen(
                 Modifier.fillMaxWidth().weight(1f)
                     .then(if (pinPreview) Modifier else Modifier.verticalScroll(pageScroll)),
             ) {
-                Box(Modifier.fillMaxWidth()
+                Box(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 600.dp).fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
                     preview()
                 }
@@ -106,58 +106,60 @@ fun WidgetConfigScreen(
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                         .padding(bottom = 112.dp),
                 ) {
-                    SettingsCategory("Content") {
-                        Box {
-                            SettingRow(
-                                title = "Frontpage", summary = feed.label,
-                                icon = Res.drawable.ic_library_books,
-                                onClick = { choosingFeed = true },
-                            )
-                            StoryTypeDropdownMenu(
-                                expanded = choosingFeed, onDismiss = { choosingFeed = false },
-                                types = feeds, selectedType = feed,
-                                onSelected = { feed = it; choosingFeed = false },
+                    Column(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 600.dp).fillMaxWidth()) {
+                        SettingsCategory("Content") {
+                            Box {
+                                SettingRow(
+                                    title = "Frontpage", summary = feed.label,
+                                    icon = Res.drawable.ic_library_books,
+                                    onClick = { choosingFeed = true },
+                                )
+                                StoryTypeDropdownMenu(
+                                    expanded = choosingFeed, onDismiss = { choosingFeed = false },
+                                    types = feeds, selectedType = feed,
+                                    onSelected = { feed = it; choosingFeed = false },
+                                )
+                            }
+                            SettingsDivider()
+                            SliderSetting(
+                                title = stringResource(Res.string.widget_config_story_count_label),
+                                valueLabel = count.toString(), value = count.toFloat(),
+                                valueRange = WidgetConfiguration.MIN_STORY_COUNT.toFloat()..WidgetConfiguration.MAX_STORY_COUNT.toFloat(),
+                                steps = WidgetConfiguration.MAX_STORY_COUNT - WidgetConfiguration.MIN_STORY_COUNT - 1,
+                                onValueChange = { count = it.roundToInt() },
                             )
                         }
-                        SettingsDivider()
-                        SliderSetting(
-                            title = stringResource(Res.string.widget_config_story_count_label),
-                            valueLabel = count.toString(), value = count.toFloat(),
-                            valueRange = WidgetConfiguration.MIN_STORY_COUNT.toFloat()..WidgetConfiguration.MAX_STORY_COUNT.toFloat(),
-                            steps = WidgetConfiguration.MAX_STORY_COUNT - WidgetConfiguration.MIN_STORY_COUNT - 1,
-                            onValueChange = { count = it.roundToInt() },
-                        )
-                    }
-                    SettingsCategory("Appearance") {
-                        SwitchSettingRow(
-                            title = "Tint", summary = "Uses preview or favicon",
-                            icon = Res.drawable.ic_palette, checked = tint,
-                            onCheckedChange = {
-                                tint = it
-                                if (it && style == DisplayStyle.FLAT) style = DisplayStyle.STANDARD
-                            },
-                        )
-                        SettingsDivider()
-                        SegmentedSetting(
-                            title = "Preview image",
-                            options = listOf(StoryPreviewMode.OFF to "Off", StoryPreviewMode.SMALL to "Small", StoryPreviewMode.MEDIUM to "Medium"),
-                            selected = image, onSelected = { image = it },
-                        )
-                        SettingsDivider()
-                        SegmentedSetting(
-                            title = "Display style",
-                            options = listOf(DisplayStyle.FLAT to "Flat", DisplayStyle.STANDARD to "Filled", DisplayStyle.RAISED to "Raised", DisplayStyle.OUTLINED to "Outlined"),
-                            selected = style,
-                            onSelected = { style = it; if (it == DisplayStyle.FLAT) tint = false },
-                        )
-                        if (headlineFontFamily != null) {
+                        SettingsCategory("Appearance") {
+                            SwitchSettingRow(
+                                title = "Tint", summary = "Uses preview or favicon",
+                                icon = Res.drawable.ic_palette, checked = tint,
+                                onCheckedChange = {
+                                    tint = it
+                                    if (it && style == DisplayStyle.FLAT) style = DisplayStyle.STANDARD
+                                },
+                            )
                             SettingsDivider()
                             SegmentedSetting(
-                                title = "Font",
-                                options = listOf(false to "Default", true to headlineFontLabel),
-                                optionWeights = if (headlineFontLabel.length > 18) mapOf(false to 1f, true to 2f) else emptyMap(),
-                                selected = useHeadlineFont, onSelected = { useHeadlineFont = it },
+                                title = "Preview image",
+                                options = listOf(StoryPreviewMode.OFF to "Off", StoryPreviewMode.SMALL to "Small", StoryPreviewMode.MEDIUM to "Medium"),
+                                selected = image, onSelected = { image = it },
                             )
+                            SettingsDivider()
+                            SegmentedSetting(
+                                title = "Display style",
+                                options = listOf(DisplayStyle.FLAT to "Flat", DisplayStyle.STANDARD to "Filled", DisplayStyle.RAISED to "Raised", DisplayStyle.OUTLINED to "Outlined"),
+                                selected = style,
+                                onSelected = { style = it; if (it == DisplayStyle.FLAT) tint = false },
+                            )
+                            if (headlineFontFamily != null) {
+                                SettingsDivider()
+                                SegmentedSetting(
+                                    title = "Font",
+                                    options = listOf(false to "Default", true to headlineFontLabel),
+                                    optionWeights = if (headlineFontLabel.length > 18) mapOf(false to 1f, true to 2f) else emptyMap(),
+                                    selected = useHeadlineFont, onSelected = { useHeadlineFont = it },
+                                )
+                            }
                         }
                     }
                 }
@@ -196,7 +198,9 @@ object WidgetTypography {
 
 object WidgetDimensions {
     val indexWidth = 20.dp
-    val faviconSize = 14.dp
+    val faviconSize = 12.dp
+    // Align the icon with the visible text rather than TextView's asymmetric font padding.
+    val faviconTopPadding = 2.dp
     val faviconCornerRadius = 2.dp
     val mediumImageWidth = 120.dp
     val mediumImageHeight = 72.dp
@@ -206,6 +210,7 @@ object WidgetDimensions {
     val headerBottomPadding = 2.dp
     val listBottomPadding = 6.dp
     val cardSpacing = 7.dp
+    val titleMetadataSpacing = 2.dp
     val cardHorizontalMargin = 12.dp
     const val metricBackgroundAlpha = 0.92f
     val metricStartPadding = 5.dp

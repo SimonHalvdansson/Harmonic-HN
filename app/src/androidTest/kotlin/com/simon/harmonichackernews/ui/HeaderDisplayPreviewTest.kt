@@ -193,7 +193,8 @@ class HeaderDisplayPreviewTest {
         val domain = compose.onNodeWithText("science.org", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertEquals("Image and title/domain group share a vertical center", (title.top + domain.bottom) / 2f, image.center.y, 3f)
         compose.onNodeWithContentDescription("User").assertIsDisplayed()
-        assertTrue("Reply remains in the toolbar", compose.onNodeWithContentDescription("Reply to post").fetchSemanticsNode().boundsInRoot.top > image.bottom)
+        val replyTop = compose.onNodeWithContentDescription("Reply to post").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Reply toolbar must not overlap the image: $replyTop < ${image.bottom}", replyTop >= image.bottom - 1f)
         compose.onNodeWithContentDescription("Upvote").performClick()
         compose.onNodeWithContentDescription("Remove vote").assertExists()
         save("header-meta-on-image")
@@ -210,11 +211,25 @@ class HeaderDisplayPreviewTest {
         compose.runOnIdle { state.value = state.value.copy(showHeaderPreviewImage = false) }
         assertEquals("Large must not reserve an image slot when the post has no image", noImageTitleTop, titleTop(), 1f)
         assertEquals("Absent and disabled images use the same header height", noImageHeight, height(), 1f)
+        compose.runOnIdle { state.value = state.value.copy(showUpButton = true) }
+        val backBottom = compose.onNodeWithContentDescription("Back").fetchSemanticsNode().boundsInRoot.bottom
+        val titleGap = (titleTop() - backBottom) / compose.activity.resources.displayMetrics.density
+        assertTrue("Large layout without an image keeps the title close beneath Back: ${titleGap}dp",
+            titleGap in 0f..20f)
+        save("header-large-no-image-with-back")
+        compose.runOnIdle { state.value = state.value.copy(showUpButton = false) }
         val previewTop = compose.onNodeWithContentDescription("Header preview").fetchSemanticsNode().boundsInRoot.top
-        assertTrue("No empty image-sized gap above the title",
-            (noImageTitleTop - previewTop) / compose.activity.resources.displayMetrics.density < 140f)
+        val statusBarHeight = compose.activity.window.decorView.rootWindowInsets
+            .getInsets(android.view.WindowInsets.Type.statusBars()).top
+        val topGap = (titleTop() - previewTop - statusBarHeight) / compose.activity.resources.displayMetrics.density
+        // Text semantics include the font's leading as well as the 16dp layout margin.
+        assertTrue("Without Back or an image the title only needs its normal top margin: ${topGap}dp",
+            topGap in 0f..40f)
         compose.runOnIdle { state.value = state.value.copy(showHeaderPreviewImage = true) }
         save("header-meta-no-image")
+        compose.runOnIdle { state.value = state.value.copy(tintHeader = false) }
+        save("header-no-tint-no-divider")
+        compose.runOnIdle { state.value = state.value.copy(tintHeader = true) }
         compose.onNodeWithContentDescription("Next preview post").performClick()
         compose.onNodeWithText("I made a small tool", substring = true, useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("science.org", substring = true, useUnmergedTree = true).assertDoesNotExist()

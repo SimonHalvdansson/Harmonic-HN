@@ -19,7 +19,6 @@ import android.graphics.Color
 import android.view.WindowManager
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
-import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
 import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
 
@@ -123,16 +122,8 @@ class WidgetConfigActivity : ComponentActivity() {
         val resultValue = Intent()
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         setResult(RESULT_OK, resultValue)
-        // Launchers can supply a no-animation configuration launch. Explicitly animate the
-        // successful close while leaving gesture-driven cancellation to predictive back.
-        if (Build.VERSION.SDK_INT >= 34) {
-            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.widget_config_reveal, R.anim.widget_config_close)
-        }
+        // Leave activity closing and predictive back to Android.
         finish()
-        if (Build.VERSION.SDK_INT < 34) {
-            @Suppress("DEPRECATION")
-            overridePendingTransition(R.anim.widget_config_reveal, R.anim.widget_config_close)
-        }
     }
 
 }

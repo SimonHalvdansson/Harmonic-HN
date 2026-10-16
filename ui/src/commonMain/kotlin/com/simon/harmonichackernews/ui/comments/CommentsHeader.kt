@@ -53,7 +53,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -197,12 +196,14 @@ fun CommentsHeader(
     val backButtonTitleClearance by animateDpAsState(
         if (settings.showUpButton &&
             !(headerPreviewImageDisplayed && settings.headerLayout == CommentsHeaderLayout.STANDARD)) {
-            if (settings.headerLayout == CommentsHeaderLayout.BALANCED) 28.dp else 48.dp
+            28.dp
         } else 0.dp,
         tween(320), label = "header back clearance",
     )
     val contentTopPadding by animateDpAsState(
-        if (settings.headerLayout == CommentsHeaderLayout.BALANCED) 0.dp else headerTopPadding,
+        if (settings.headerLayout == CommentsHeaderLayout.STANDARD && headerPreviewImageDisplayed) {
+            headerTopPadding
+        } else 0.dp,
         tween(320), label = "header content top padding",
     )
     val bottomRadius by animateDpAsState(
@@ -229,15 +230,16 @@ fun CommentsHeader(
         tween(240), label = "header shadow",
     )
     val edgeHeight by animateDpAsState(
-        if (settings.tintHeader && settings.headerEdge != CommentsHeaderEdge.FADE) 16.dp else 32.dp,
+        when {
+            !settings.tintHeader -> 8.dp
+            settings.headerEdge == CommentsHeaderEdge.FADE -> 32.dp
+            else -> 16.dp
+        },
         tween(240), label = "header edge spacing",
     )
     val fadeAlpha by animateFloatAsState(
         if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.FADE) 1f else 0f,
         tween(240), label = "header fade",
-    )
-    val dividerAlpha by animateFloatAsState(
-        if (settings.tintHeader) 0f else 1f, tween(240), label = "header divider",
     )
 
     Column(
@@ -533,11 +535,6 @@ fun CommentsHeader(
         }
         Box(Modifier.fillMaxWidth().height(edgeHeight)) {
             Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.background(fadeBrush))
-            HorizontalDivider(
-                modifier = Modifier.align(Alignment.Center).padding(horizontal = 16.dp)
-                    .graphicsLayer { alpha = dividerAlpha },
-                color = colors.outlineVariant,
-            )
         }
         Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
