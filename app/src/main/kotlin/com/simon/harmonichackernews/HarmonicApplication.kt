@@ -10,6 +10,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.network.DeDupeConcurrentRequestStrategy
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.allowPartialImage
+import coil3.svg.SvgDecoder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +58,7 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         .allowPartialImage(false)
         .components {
             add(IncompleteImageRetryInterceptor())
+            add(SvgDecoder.Factory(parser = AndroidCompatibleSvgParser))
             add(KtorNetworkFetcherFactory(concurrentRequestStrategy = { DeDupeConcurrentRequestStrategy() }))
         }
         .build()
