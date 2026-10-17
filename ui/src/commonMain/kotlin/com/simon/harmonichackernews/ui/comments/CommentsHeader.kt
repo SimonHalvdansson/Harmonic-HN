@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneControls
@@ -5,10 +7,11 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.SharedTransitionLayout
+import com.simon.harmonichackernews.ui.content.ContentMotionEasing
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.SharedTransitionScope
+import com.simon.harmonichackernews.ui.content.contentTween
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,6 +45,7 @@ import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -127,7 +131,6 @@ fun CommentsHeader(
 ) {
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
-    val showStackedMetrics = effectiveMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE && !headerPreviewImageDisplayed
     val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
@@ -196,21 +199,6 @@ fun CommentsHeader(
         (CommentsSheetHandleTopPadding + CommentsSheetHandleHeight + CommentsSheetHandleBottomPadding) *
             if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
     } else 0.dp
-    val backButtonTitleClearance by animateDpAsState(
-        if (settings.showUpButton &&
-            !(headerPreviewImageDisplayed && settings.headerLayout == CommentsHeaderLayout.STANDARD)) {
-            // The small-image row starts at 12dp: reserve 57dp total (4dp top + 48dp
-            // back button + 5dp gap), including any sheet handle already above the title.
-            45.dp - sheetHandleInset
-        } else 0.dp,
-        tween(320), label = "header back clearance",
-    )
-    val contentTopPadding by animateDpAsState(
-        if (settings.headerLayout == CommentsHeaderLayout.STANDARD && headerPreviewImageDisplayed) {
-            headerTopPadding
-        } else 0.dp,
-        tween(320), label = "header content top padding",
-    )
     val bottomRadius by animateDpAsState(
         if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.ROUNDED) 24.dp else 0.dp,
         tween(240), label = "header bottom corners",
@@ -220,16 +208,10 @@ fun CommentsHeader(
         tween(240), label = "header bottom breathing room",
     )
     val headerShape = RoundedCornerShape(bottomStart = bottomRadius, bottomEnd = bottomRadius)
-    val titleTopPadding by animateDpAsState(
-        targetValue = (if (!headerPreviewImageDisplayed) {
-            16.dp
-        } else {
-            0.dp
-        }) + backButtonTitleClearance,
-        animationSpec = tween(CommentsHeaderRevealDurationMillis, easing = FastOutSlowInEasing),
-        label = "comments title clearance",
+    val shimmerTopPadding by animateDpAsState(
+        24.dp + if (settings.showUpButton) 45.dp - sheetHandleInset else 0.dp,
+        contentTween(), label = "header shimmer clearance",
     )
-    val shimmerTopPadding = titleTopPadding + 8.dp
     val shadowElevation by animateDpAsState(
         if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.SHADOW) 1.5.dp else 0.dp,
         tween(240), label = "header shadow",
@@ -299,8 +281,7 @@ fun CommentsHeader(
             Column(
                 modifier = Modifier
                     .commentsReadingWidth()
-                    .padding(start = sideMarginStart, end = sideMarginEnd)
-                    .padding(top = contentTopPadding),
+                    .padding(start = sideMarginStart, end = sideMarginEnd),
             ) {
                 AnimatedContent(
                     targetState = showHeaderShimmer,
@@ -347,85 +328,144 @@ fun CommentsHeader(
                                 title = storyTitle.text,
                                 onClick = controller.listener::onHeaderClick,
                             ) {
-                                AnimatedContent(
-                                    targetState = settings.headerLayout,
-                                    transitionSpec = { headerSettingsTransition() },
-                                    label = "header layout",
-                                ) { layout ->
-                                    val title: @Composable (Modifier) -> Unit = { modifier -> StoryTitleText(
-                                        text = storyTitle.text,
-                                        badge = storyTitle.badge,
-                                        modifier = modifier.semantics { heading() },
-                                        color = colors.onSurface,
-                                        fontFamily = headerTypography.family,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = (headerTypography.commentsHeaderTitleSize *
-                                            if (layout == CommentsHeaderLayout.BALANCED) 0.85f else 1f).sp,
-                                        style = textStyle,
-                                    ) }
-                                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                                        val sideImage = layout == CommentsHeaderLayout.BALANCED
-                                        val thumbnailHeight = if (maxWidth < 360.dp) 88.dp else 104.dp
-                                        val thumbnailWidth = if (maxWidth < 360.dp) 112.dp else 128.dp
-                                        if (sideImage) {
-                                            Row(
-                                                Modifier.fillMaxWidth().padding(top = 12.dp + backButtonTitleClearance),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                Column(Modifier.weight(1f).animateContentSize(tween(320))) {
-                                                    title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-                                                    CommentsPreviewPlatformProvider(previewPlatform) {
-                                                        HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
-                                                    }
-                                                }
-                                                HeaderStackedMetrics(controller, detailSettings, textStyle,
-                                                    visibleHeaderBackground, showStackedMetrics)
-                                                AnimatedVisibility(
-                                                    visible = headerPreviewImageDisplayed,
-                                                    enter = fadeIn(tween(240)) + expandHorizontally(tween(320)),
-                                                    exit = fadeOut(tween(120)) + shrinkHorizontally(tween(320)),
-                                                ) {
-                                                    val imageHazeState = rememberHazeState()
-                                                    Box(Modifier.padding(end = 16.dp)) {
-                                                        headerPreviewImage(
-                                                            Modifier.width(thumbnailWidth).height(thumbnailHeight).clip(RoundedCornerShape(8.dp))
-                                                                .hazeSource(imageHazeState),
-                                                            visibleHeaderBackground,
-                                                        ) { loadedTint = it }
-                                                        HeaderImageMetrics(controller, detailSettings, imageHazeState,
-                                                            textStyle, Modifier.align(Alignment.BottomEnd))
-                                                    }
+                                SharedTransitionLayout {
+                                    val boundsTransform = BoundsTransform { _, _ -> headerLayoutTween() }
+                                    AnimatedContent(
+                                        targetState = HeaderVisualLayout(
+                                            settings.headerLayout, headerPreviewImageDisplayed, effectiveMetaInfo,
+                                        ),
+                                        transitionSpec = {
+                                            // Clear outgoing text before the image moves through its space;
+                                            // reveal rewrapped text when that movement is nearly complete.
+                                            (fadeIn(tween(80, delayMillis = 220)) togetherWith fadeOut(tween(80))).using(
+                                                SizeTransform(clip = true) { _, _ -> headerLayoutTween() },
+                                            )
+                                        },
+                                        label = "header layout",
+                                    ) { visual ->
+                                        val visibility = this
+                                        val visualSettings = detailSettings.copy(headerMetaInfo = visual.metaInfo)
+                                        val sideImage = visual.layout == CommentsHeaderLayout.BALANCED
+                                        val titleLayout = HeaderTitleLayout(
+                                            layout = visual.layout,
+                                            sideImage = sideImage && visual.imageVisible,
+                                            stackedMetrics = visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE &&
+                                                !visual.imageVisible,
+                                        )
+                                        val backClearance by animateDpAsState(
+                                            if (settings.showUpButton && !(visual.imageVisible && !sideImage)) {
+                                                45.dp - sheetHandleInset
+                                            } else 0.dp,
+                                            contentTween(), label = "header back clearance",
+                                        )
+                                        val title: @Composable (Modifier) -> Unit = { modifier ->
+                                            StoryTitleText(
+                                                text = storyTitle.text,
+                                                badge = storyTitle.badge,
+                                                // Preserve text when its wrapping is unchanged. When the
+                                                // image crosses the title, fade through at the two endpoints.
+                                                modifier = modifier.sharedElement(
+                                                    rememberSharedContentState(titleLayout), visibility,
+                                                    boundsTransform = boundsTransform,
+                                                ).semantics { heading() },
+                                                color = colors.onSurface,
+                                                fontFamily = headerTypography.family,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = (headerTypography.commentsHeaderTitleSize * if (sideImage) 0.85f else 1f).sp,
+                                                style = textStyle,
+                                            )
+                                        }
+                                        val linkInfo: @Composable () -> Unit = {
+                                            Box(Modifier.sharedElement(
+                                                rememberSharedContentState(titleLayout to visual.metaInfo), visibility,
+                                                boundsTransform = boundsTransform,
+                                            )) {
+                                                CommentsPreviewPlatformProvider(previewPlatform) {
+                                                    HeaderLinkInfo(story, visualSettings, faviconPreview, storyPosterTag)
                                                 }
                                             }
-                                        } else {
-                                            Column {
-                                                HeaderPreviewImageVisibility(visible = headerPreviewImageDisplayed) {
-                                                    val imageHazeState = rememberHazeState()
-                                                    Column {
+                                        }
+                                        val preview: @Composable (Modifier) -> Unit = { modifier ->
+                                            val imageHazeState = rememberHazeState()
+                                            Box(modifier.sharedBounds(
+                                                rememberSharedContentState("image bounds"), visibility,
+                                                enter = fadeIn(tween(140, delayMillis = 160)),
+                                                exit = fadeOut(tween(80)),
+                                                boundsTransform = boundsTransform,
+                                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                                            )) {
+                                                headerPreviewImage(
+                                                    Modifier.sharedElement(
+                                                        rememberSharedContentState("image"), visibility,
+                                                        boundsTransform = boundsTransform,
+                                                    ).fillMaxSize()
+                                                        .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
+                                                    visibleHeaderBackground,
+                                                ) { loadedTint = it }
+                                                HeaderImageMetrics(
+                                                    controller, visualSettings, imageHazeState, textStyle,
+                                                    Modifier.align(Alignment.BottomEnd)
+                                                        .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+                                                        .animateEnterExit(
+                                                            enter = fadeIn(tween(80, delayMillis = 220)),
+                                                            exit = fadeOut(tween(80)),
+                                                        ),
+                                                )
+                                            }
+                                        }
+                                        val stackedMetrics: @Composable () -> Unit = {
+                                            Box(Modifier.animateEnterExit(
+                                                enter = fadeIn(tween(140, delayMillis = 160)),
+                                                exit = fadeOut(tween(80)),
+                                            )) {
+                                                HeaderStackedMetrics(
+                                                    controller, visualSettings, textStyle, visibleHeaderBackground,
+                                                    visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE &&
+                                                        !visual.imageVisible,
+                                                )
+                                            }
+                                        }
+                                        BoxWithConstraints(
+                                            Modifier.fillMaxWidth().padding(
+                                                top = if (visual.imageVisible && !sideImage) headerTopPadding else 0.dp,
+                                            ),
+                                        ) {
+                                            val thumbnailHeight = if (maxWidth < 360.dp) 88.dp else 104.dp
+                                            val thumbnailWidth = if (maxWidth < 360.dp) 112.dp else 128.dp
+                                            if (sideImage) {
+                                                Row(
+                                                    Modifier.fillMaxWidth().padding(top = 12.dp + backClearance),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Column(Modifier.weight(1f)) {
+                                                        title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                                                        linkInfo()
+                                                    }
+                                                    stackedMetrics()
+                                                    if (visual.imageVisible) Box(Modifier.padding(end = 16.dp)) {
+                                                        preview(Modifier.width(thumbnailWidth).height(thumbnailHeight))
+                                                    }
+                                                }
+                                            } else {
+                                                Column {
+                                                    if (visual.imageVisible) {
                                                         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                                                            headerPreviewImage(
-                                                                Modifier.fillMaxWidth().height(216.dp).clip(RoundedCornerShape(8.dp))
-                                                                    .hazeSource(imageHazeState),
-                                                                visibleHeaderBackground,
-                                                            ) { loadedTint = it }
-                                                            HeaderImageMetrics(controller, detailSettings, imageHazeState,
-                                                                textStyle, Modifier.align(Alignment.BottomEnd))
+                                                            preview(Modifier.fillMaxWidth().height(216.dp))
                                                         }
                                                         Spacer(Modifier.height(10.dp))
                                                     }
-                                                }
-                                                Row(
-                                                    Modifier.fillMaxWidth().padding(top = titleTopPadding),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                ) {
-                                                    Column(Modifier.weight(1f).animateContentSize(tween(320))) {
-                                                        title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-                                                        CommentsPreviewPlatformProvider(previewPlatform) {
-                                                            HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
+                                                    Row(
+                                                        Modifier.fillMaxWidth().padding(
+                                                            top = (if (visual.imageVisible) 0.dp else 16.dp) + backClearance,
+                                                        ),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                    ) {
+                                                        Column(Modifier.weight(1f)) {
+                                                            title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                                                            linkInfo()
                                                         }
+                                                        stackedMetrics()
                                                     }
-                                                    HeaderStackedMetrics(controller, detailSettings, textStyle,
-                                                        visibleHeaderBackground, showStackedMetrics)
                                                 }
                                             }
                                         }
@@ -559,9 +599,23 @@ fun CommentsHeader(
     }
 }
 
+private data class HeaderVisualLayout(
+    val layout: CommentsHeaderLayout,
+    val imageVisible: Boolean,
+    val metaInfo: CommentsHeaderMetaInfo,
+)
+
+private data class HeaderTitleLayout(
+    val layout: CommentsHeaderLayout,
+    val sideImage: Boolean,
+    val stackedMetrics: Boolean,
+)
+
+private fun <T> headerLayoutTween() = tween<T>(220, delayMillis = 80, easing = ContentMotionEasing)
+
 private fun <S> androidx.compose.animation.AnimatedContentTransitionScope<S>.headerSettingsTransition() =
-    (fadeIn(tween(240, delayMillis = 80)) togetherWith fadeOut(tween(120))).using(
-        SizeTransform(clip = false) { _, _ -> tween(320, easing = FastOutSlowInEasing) },
+    (fadeIn(tween(140, delayMillis = 80)) togetherWith fadeOut(tween(80))).using(
+        SizeTransform(clip = true) { _, _ -> contentTween() },
     )
 
 /** Expands only the indication. The measured content and its siblings retain their positions. */

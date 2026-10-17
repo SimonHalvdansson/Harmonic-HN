@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Image
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,10 +32,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -46,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -76,7 +83,6 @@ import kotlinx.coroutines.delay
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.commentsHazeSource
 import com.simon.harmonichackernews.ui.comments.currentCommentsHazeState
-import com.simon.harmonichackernews.ui.comments.HeaderPreviewImageVisibility
 import com.simon.harmonichackernews.ui.comments.headerPreviewImageGestures
 import com.simon.harmonichackernews.ui.comments.ZoomableImageViewport
 import com.simon.harmonichackernews.ui.comments.previewImageViewport
@@ -92,6 +98,7 @@ import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -100,6 +107,7 @@ import org.jetbrains.compose.resources.stringResource
 fun HeaderDisplaySettingsRoute(
     repository: AppSettingsRepository,
     onBack: () -> Unit,
+    statusBarProtection: @Composable (Color, Dp) -> Unit = { _, _ -> },
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val account by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
@@ -124,6 +132,9 @@ fun HeaderDisplaySettingsRoute(
 
     var sampleIndex by rememberSaveable { mutableIntStateOf(0) }
     val sample = HeaderPreviewSample.entries[sampleIndex]
+    val listState = rememberSettingsListState()
+    val background = MaterialTheme.colorScheme.pageBackground
+    var headerColor by remember { mutableStateOf(background) }
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_header_display),
@@ -133,11 +144,16 @@ fun HeaderDisplaySettingsRoute(
         contentVersion = settings.hashCode() + sampleIndex,
         pinnedContentBackground = Color.Transparent,
         extraBottomPadding = 72.dp,
+        listState = listState,
+        topOverlay = {
+            HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
+        },
         floatingContent = {
             HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
         },
         pinnedContent = {
-            HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample)
+            HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
+                onHeaderColorChanged = { headerColor = it })
         },
     ) {
         item {
@@ -197,12 +213,41 @@ fun HeaderDisplaySettingsRoute(
     }
 }
 
+/** Matches the real post's status-bar tint as the header scrolls out of the inset. */
+@Composable
+internal fun HeaderSettingsStatusBarProtection(
+    listState: LazyListState,
+    headerColor: Color,
+    statusBarHeight: Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+    protection: @Composable (Color, Dp) -> Unit,
+) {
+    if (statusBarHeight <= 0.dp) return
+    val insetPx = with(LocalDensity.current) { statusBarHeight.roundToPx() }
+    val coverage by remember(listState, insetPx) {
+        derivedStateOf {
+            val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "settings-preview" }
+            if (header == null || insetPx <= 0) 0f else {
+                val overlap = minOf(header.offset + header.size, insetPx) - maxOf(header.offset, 0)
+                (overlap.toFloat() / insetPx).coerceIn(0f, 1f)
+            }
+        }
+    }
+    val color by animateColorAsState(
+        lerp(MaterialTheme.colorScheme.pageBackground, headerColor, coverage),
+        tween(90, easing = LinearEasing),
+        label = "header settings status bar",
+    )
+    // Like an expanded real post, the unscrolled preview already fills the status bar.
+    if (listState.canScrollBackward) protection(color, statusBarHeight)
+}
+
 @Composable
 internal fun HeaderDisplayPreview(
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
     onBack: () -> Unit,
     sample: HeaderPreviewSample = HeaderPreviewSample.LINK_WITH_IMAGE,
+    onHeaderColorChanged: (Color) -> Unit = {},
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
@@ -226,11 +271,13 @@ internal fun HeaderDisplayPreview(
                     targetState = sample,
                     transitionSpec = {
                         (fadeIn(tween(240)) togetherWith fadeOut(tween(120)))
-                            .using(SizeTransform(clip = false) { _, _ -> tween(320) })
+                            .using(SizeTransform(clip = true) { _, _ -> tween(320) })
                     },
                     label = "header preview sample",
                 ) { visibleSample ->
-                    HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample)
+                    HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample) { color ->
+                        if (visibleSample == sample) onHeaderColorChanged(color)
+                    }
                 }
             }
             AnimatedVisibility(
@@ -275,6 +322,7 @@ private fun HeaderDisplayPreviewContent(
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
     sample: HeaderPreviewSample,
+    onHeaderColorChanged: (Color) -> Unit,
 ) {
     val hasPreviewImage = sample == HeaderPreviewSample.LINK_WITH_IMAGE || sample == HeaderPreviewSample.LINK_PREVIEW
     val imageDisplayed = settings.showHeaderPreviewImage && hasPreviewImage
@@ -372,20 +420,22 @@ private fun HeaderDisplayPreviewContent(
             else -> painterResource(Res.drawable.quanta)
         },
         headerPreviewImage = { imageModifier, _, _ ->
-            HeaderPreviewImageVisibility(visible = imageDisplayed) {
-                Image(
-                    painter = image,
-                    contentDescription = "Story preview image",
-                    contentScale = ContentScale.Crop,
-                    modifier = imageModifier.onGloballyPositioned { imageBounds = it.boundsInWindow() }
-                        .headerPreviewImageGestures(onClick = {}, onInspect = {
-                            imageDismissRequest = 0
-                            inspectedImage = imageBounds
-                        }),
-                )
-            }
+            Image(
+                painter = image,
+                contentDescription = "Story preview image",
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier.onGloballyPositioned {
+                    imageBounds = it.boundsInWindow()
+                }
+                    .headerPreviewImageGestures(onClick = {}, onInspect = {
+                        imageDismissRequest = 0
+                        inspectedImage = imageBounds
+                    }),
+            )
         },
     )
+    val headerColor = controller.statusBarHeaderColor
+    SideEffect { headerColor?.let(onHeaderColorChanged) }
     inspectedImage?.let { bounds ->
         val dismiss = { imageDismissRequest += 1 }
         PlatformDialogDimHost {

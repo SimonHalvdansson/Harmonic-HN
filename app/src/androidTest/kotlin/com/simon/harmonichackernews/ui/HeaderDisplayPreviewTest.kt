@@ -204,7 +204,7 @@ class HeaderDisplayPreviewTest {
         compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("User").assertIsDisplayed()
         compose.onNodeWithText("53", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("willow", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("science.org \u00b7 2h \u00b7 willow", useUnmergedTree = true).assertIsDisplayed()
         compose.runOnIdle { state.value = state.value.copy(headerLayout = CommentsHeaderLayout.STANDARD) }
         val noImageTitleTop = titleTop()
         val noImageHeight = height()
@@ -238,7 +238,7 @@ class HeaderDisplayPreviewTest {
         compose.onNodeWithContentDescription("Next preview post").performClick()
         compose.onNodeWithText("WILLOW / READING-LIST", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("A small, offline-first home", substring = true, useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertIsDisplayed()
         save("header-link-preview")
         compose.runOnIdle { state.value = state.value.copy(headerLayout = CommentsHeaderLayout.BALANCED) }
         compose.onNodeWithContentDescription("Next preview post").performClick()

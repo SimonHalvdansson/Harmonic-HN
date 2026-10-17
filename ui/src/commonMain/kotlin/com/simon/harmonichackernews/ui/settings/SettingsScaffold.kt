@@ -47,7 +47,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -336,6 +338,7 @@ fun SettingsPage(
     listState: LazyListState = rememberSettingsListState(),
     extraBottomPadding: Dp = 0.dp,
     headerContent: (@Composable () -> Unit)? = null,
+    topOverlay: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
@@ -349,6 +352,10 @@ fun SettingsPage(
     }
     val contentHeight = viewportSize.height - with(density) { navigationBarPadding.roundToPx() }
     val pinPreview = previewSize?.let { it.height <= contentHeight * 0.7f } ?: true
+    val currentPinnedContent by rememberUpdatedState(pinnedContent)
+    // Changing between item and stickyHeader changes composition sites. Move the existing
+    // preview between them so a size change cannot reset its animation or local state.
+    val previewContent = remember { movableContentOf { currentPinnedContent?.invoke() } }
 
     Column(
         modifier = modifier
@@ -384,25 +391,26 @@ fun SettingsPage(
                 headerContent?.let { header ->
                     item(key = "settings-header") { header() }
                 }
-                pinnedContent?.let { preview ->
-                    val previewContent: @Composable () -> Unit = {
+                pinnedContent?.let {
+                    val previewItem: @Composable () -> Unit = {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onGloballyPositioned { previewSize = it.size }
                                 .background(pinnedContentBackground),
                         ) {
-                            preview()
+                            previewContent()
                         }
                     }
                     if (pinPreview) {
-                        stickyHeader(key = "settings-preview") { previewContent() }
+                        stickyHeader(key = "settings-preview") { previewItem() }
                     } else {
-                        item(key = "settings-preview") { previewContent() }
+                        item(key = "settings-preview") { previewItem() }
                     }
                 }
                 content()
             }
+            topOverlay?.invoke()
             floatingContent?.let { controls ->
                 Box(
                     Modifier.align(Alignment.BottomEnd)

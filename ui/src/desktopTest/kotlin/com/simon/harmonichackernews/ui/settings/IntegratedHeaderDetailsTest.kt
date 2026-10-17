@@ -74,10 +74,14 @@ class IntegratedHeaderDetailsTest {
                 verifyMetrics(stacked = true)
                 val railWidth = tagged("header-stacked-metrics").single().boundsInRoot.width
                 settings.value = settings.value.copy(showHeaderPreviewImage = true)
-                frames(8, "transition")
-                val shrinkingWidth = tagged("header-stacked-metrics").single().boundsInRoot.width
-                assertTrue(shrinkingWidth > 0f && shrinkingWidth < railWidth,
-                    "The stacked rail must animate closed while the image appears")
+                frames(2, "transition")
+                val fadingWidth = tagged("header-stacked-metrics").single().boundsInRoot.width
+                assertEquals(railWidth, fadingWidth,
+                    "The outgoing rail must fade at full width while the image layout appears")
+                frames(6)
+                assertTrue(tagged("header-stacked-metrics").isEmpty(),
+                    "The old rail must finish fading before the image occupies its space")
+                assertTrue(tagged("header-image-metrics").isNotEmpty())
                 frames(40, "image")
                 assertTrue(tagged("header-stacked-metrics").isEmpty())
                 verifyMetrics(stacked = false)

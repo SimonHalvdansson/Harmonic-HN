@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -50,8 +52,170 @@ import javax.swing.SwingUtilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun largePreviewSampleChangesAnimateAcrossThePinningThreshold() = SwingUtilities.invokeAndWait {
+        val sample = mutableStateOf(HeaderPreviewSample.LINK_PREVIEW)
+        val settings = CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ).copy(headerLayout = CommentsHeaderLayout.STANDARD, showHeaderPreviewImage = true,
+            headerMetaInfo = CommentsHeaderMetaInfo.BUTTONS)
+        var previewBounds = Rect.Zero
+        val scene = ImageComposeScene(420, 900, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false,
+                    contentVersion = sample.value.ordinal,
+                    pinnedContent = {
+                        Box(Modifier.onGloballyPositioned { previewBounds = it.boundsInRoot() }) {
+                            HeaderDisplayPreview(settings, true, {}, sample.value)
+                        }
+                    },
+                ) { items(20) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Magenta)) } }
+            }
+        }
+        try {
+            var time = 0L
+            fun frame(): Float {
+                scene.render(time.also { time += 16_666_667L }).use { image ->
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    for (x in 16 until 404 step 8) {
+                        assertEquals(Color.Magenta.toArgb(), pixels[x, previewBounds.bottom.toInt() + 4].toArgb(),
+                            "The outgoing sample must not paint over the settings as the preview shrinks")
+                    }
+                }
+                return previewBounds.height
+            }
+            repeat(40) { frame() }
+            val tall = frame()
+            assertTrue(tall > 900f * 0.7f, "Preview 4 must exceed the pinning threshold")
+            sample.value = HeaderPreviewSample.TEXT_POST
+            val shrinking = List(40) { frame() }
+            val short = shrinking.last()
+            assertTrue(short < 900f * 0.7f, "Preview 3 must fit beneath the pinning threshold")
+            sample.value = HeaderPreviewSample.LINK_PREVIEW
+            val growing = List(40) { frame() }
+            assertEquals(tall, growing.last())
+            for (heights in listOf(listOf(tall) + shrinking, listOf(short) + growing)) {
+                assertTrue(heights.count { it > short + 1f && it < tall - 1f } >= 5,
+                    "Both directions must interpolate height instead of recreating the preview: $heights")
+                assertTrue(heights.zipWithNext().all { (a, b) -> kotlin.math.abs(a - b) < (tall - short) / 3f },
+                    "Crossing the pinning threshold must not jump to the final height: $heights")
+            }
+        } finally { scene.close() }
+    }
+
+    @Test fun statusBarProtectionStaysAtTheTopAndTracksHeaderCoverage() = SwingUtilities.invokeAndWait {
+        val listState = LazyListState()
+        var protectionColor: Color? = null
+        var protectionBounds = Rect.Zero
+        val palette = HarmonicThemeCatalog.resolve("material_light", false)
+        val background = palette.colorScheme.pageBackground
+        val headerColor = Color(0xFF84BCA5)
+        val scene = ImageComposeScene(360, 900, Density(1f)) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false, listState = listState,
+                    pinnedContent = { Box(Modifier.fillMaxWidth().height(700.dp).background(headerColor)) },
+                    topOverlay = {
+                        HeaderSettingsStatusBarProtection(listState, headerColor, 24.dp) { color, height ->
+                            SideEffect { protectionColor = color }
+                            DisposableEffect(Unit) { onDispose { protectionColor = null } }
+                            Box(Modifier.fillMaxWidth().height(height).background(color)
+                                .onGloballyPositioned { protectionBounds = it.boundsInRoot() })
+                        }
+                    },
+                ) {
+                    items(20) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Magenta)) }
+                }
+            }
+        }
+        try {
+            var time = 0L
+            fun settle() { repeat(20) { scene.render(time.also { time += 16_666_667L }).close() } }
+            settle()
+            assertNull(protectionColor, "The unscrolled header already fills the status bar")
+            listState.dispatchRawDelta(20f)
+            settle()
+            assertEquals(headerColor, protectionColor)
+            assertEquals(Rect(0f, 0f, 360f, 24f), protectionBounds)
+            listState.dispatchRawDelta(668f)
+            settle()
+            assertEquals(lerp(background, headerColor, 0.5f), protectionColor)
+            listState.dispatchRawDelta(40f)
+            settle()
+            assertEquals(background, protectionColor)
+            assertEquals(Rect(0f, 0f, 360f, 24f), protectionBounds,
+                "Protection must stay above the list after the preview scrolls away")
+            scene.render(time).use { image ->
+                assertEquals(background.toArgb(), image.toComposeImageBitmap().toPixelMap()[180, 4].toArgb())
+            }
+            listState.dispatchRawDelta(-728f)
+            settle()
+            assertNull(protectionColor)
+        } finally { scene.close() }
+    }
+
+    @Test fun headerLayoutAnimationsNeverPaintOverTheSettingsBelow() = SwingUtilities.invokeAndWait {
+        val initial = CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ).copy(headerMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE, showHeaderPreviewImage = true)
+        val settings = mutableStateOf(initial)
+        var previewBounds = Rect.Zero
+        val scene = ImageComposeScene(360, 1000, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false,
+                    pinnedContentBackground = Color.Transparent,
+                    pinnedContent = {
+                        Box(Modifier.onGloballyPositioned { previewBounds = it.boundsInRoot() }) {
+                            HeaderDisplayPreview(settings.value, true, {})
+                        }
+                    },
+                ) { items(20) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Magenta)) } }
+            }
+        }
+        try {
+            var time = 0L
+            fun frame() = scene.render(time.also { time += 16_666_667L }).use { image ->
+                val pixels = image.toComposeImageBitmap().toPixelMap()
+                val belowHeader = previewBounds.bottom.toInt() + 4
+                for (x in 16 until 344 step 8) {
+                    assertEquals(Color.Magenta.toArgb(), pixels[x, belowHeader].toArgb(),
+                        "Retained header content must not draw over settings during a transition")
+                }
+            }
+            fun settle() { repeat(30) { frame() } }
+            val layouts = listOf(
+                initial,
+                initial.copy(headerLayout = CommentsHeaderLayout.BALANCED),
+                initial.copy(showHeaderPreviewImage = false),
+            )
+            for (from in layouts) for (to in layouts) {
+                if (from == to) continue
+                settings.value = from
+                settle()
+                settings.value = to
+                settle()
+            }
+            for (layout in layouts) for (from in CommentsHeaderMetaInfo.entries) for (to in CommentsHeaderMetaInfo.entries) {
+                if (from == to) continue
+                settings.value = layout.copy(headerMetaInfo = from)
+                settle()
+                settings.value = layout.copy(headerMetaInfo = to)
+                settle()
+            }
+            // Reverse a transition before it completes, as with quick repeated taps.
+            repeat(12) {
+                settings.value = layouts[it % layouts.size].copy(headerMetaInfo = CommentsHeaderMetaInfo.entries[it % 3])
+                repeat(3) { frame() }
+            }
+            settle()
+        } finally { scene.close() }
+    }
+
     @Test fun smallImageTitleClearsBackButtonWithOrWithoutBrowserSheetHandle() = SwingUtilities.invokeAndWait {
         val settings = CommentDisplaySettings.from(
             AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
