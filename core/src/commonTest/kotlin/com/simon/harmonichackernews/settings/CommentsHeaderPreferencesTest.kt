@@ -45,7 +45,7 @@ class CommentsHeaderPreferencesTest {
             assertEquals(mode, AppSettingsRepository(destination, emptyFlow()).snapshot().comments.headerMetaInfo)
         }
         store.putString(UserPreferenceKeys.COMMENTS_HEADER_META_INFO, "future")
-        assertEquals(CommentsHeaderMetaInfo.SMALL, repository.snapshot().comments.headerMetaInfo)
+        assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, repository.snapshot().comments.headerMetaInfo)
     }
 
     @Test fun oldBackupReplacesNewMetaInfoChoice() {
@@ -63,7 +63,7 @@ class CommentsHeaderPreferencesTest {
         val backup = """{"format":"harmonic-settings","version":1,"settings":{"pref_comments_header_meta_info":null}}"""
         val result = SettingsTransfer(store, InMemoryKeyValueStore()).import(backup)
         assertEquals(SettingsImportResult.Imported(1, 0), result)
-        assertEquals(CommentsHeaderMetaInfo.SMALL, AppSettingsRepository(store, emptyFlow()).snapshot().comments.headerMetaInfo)
+        assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, AppSettingsRepository(store, emptyFlow()).snapshot().comments.headerMetaInfo)
     }
 
     @Test fun integratedDetailsStayAvailableAndButtonsRequireAnAccount() {
@@ -98,7 +98,7 @@ class CommentsHeaderPreferencesTest {
             val comments = AppSettingsRepository(store, emptyFlow()).snapshot().comments
             assertEquals(CommentsHeaderLayout.STANDARD, comments.headerLayout)
             assertEquals(CommentsHeaderEdge.FADE, comments.headerEdge)
-            assertEquals(CommentsHeaderMetaInfo.SMALL, comments.headerMetaInfo)
+            assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, comments.headerMetaInfo)
         }
     }
 

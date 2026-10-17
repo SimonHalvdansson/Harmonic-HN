@@ -55,6 +55,6 @@ enum class CommentsHeaderMetaInfo(val storedValue: String, val label: String) {
     companion object {
         fun fromStored(value: String?, legacyCombined: Boolean = false) =
             entries.firstOrNull { it.storedValue == value }
-                ?: if (value == null && legacyCombined) BUTTONS else SMALL
+                ?: if (value == null && legacyCombined) BUTTONS else ON_IMAGE
     }
 }
