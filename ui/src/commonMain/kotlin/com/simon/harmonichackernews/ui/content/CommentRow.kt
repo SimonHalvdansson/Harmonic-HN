@@ -666,6 +666,38 @@ private fun CommentBodyText(
             text = displayedBody,
             modifier = modifier
                 .fillMaxWidth()
+                .drawWithContent {
+                    val layout = textLayout
+                    if (layout != null) {
+                        val background = colors.onSurface.copy(alpha = 0.055f)
+                        val accent = colors.onSurface.copy(alpha = 0.35f)
+                        displayedBody.getStringAnnotations(COMMENT_QUOTE_TAG, 0, displayedBody.length)
+                            .forEach { quote ->
+                                if (quote.start < quote.end) {
+                                    val first = layout.getLineForOffset(quote.start)
+                                    val last = layout.getLineForOffset(quote.end - 1)
+                                    val top = layout.getLineTop(first)
+                                    val bottom = layout.getLineBottom(last)
+                                    // Draw the left rail just outside the text's leading edge.
+                                    // This retains a visual inset without ParagraphStyle, which
+                                    // would add an unwanted paragraph break before the reply.
+                                    val quoteInset = 5.dp.toPx()
+                                    drawRoundRect(
+                                        color = background,
+                                        topLeft = Offset(-quoteInset, top),
+                                        size = Size(size.width + quoteInset, bottom - top),
+                                        cornerRadius = CornerRadius(7.dp.toPx()),
+                                    )
+                                    drawRect(
+                                        color = accent,
+                                        topLeft = Offset(-quoteInset, top),
+                                        size = Size(3.dp.toPx(), bottom - top),
+                                    )
+                                }
+                            }
+                    }
+                    drawContent()
+                }
                 .onGloballyPositioned { textCoordinates = it }
                 .detectAnnotatedLinkLongPress(
                     text = displayedBody,

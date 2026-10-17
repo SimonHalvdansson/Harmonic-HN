@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
@@ -50,10 +51,47 @@ internal fun prepareCommentHtml(html: String): AnnotatedString {
     return buildAnnotatedString {
         val renderer = CommentHtmlRenderer(this)
         document.body().childNodes().forEach { renderer.appendNode(it) }
-    }.trimmedCommentText()
+    }.trimmedCommentText().withHighlightedQuotedLines()
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
+internal const val COMMENT_QUOTE_TAG = "harmonic-comment-quote"
+
+/** Mark HN's leading > quote paragraphs without altering links or inline formatting. */
+internal fun AnnotatedString.withHighlightedQuotedLines(): AnnotatedString {
+    if ('>' !in text) return this
+    val sourceText = text
+    val codeSpans = spanStyles
+    return buildAnnotatedString {
+        var copiedThrough = 0
+        var lineStart = 0
+        while (lineStart < sourceText.length) {
+            val lineEnd = sourceText.indexOf('\n', lineStart).let { if (it < 0) sourceText.length else it }
+            var marker = lineStart
+            while (marker < lineEnd && marker - lineStart < 3 && sourceText[marker] == ' ') marker++
+            val isCode = codeSpans.any {
+                it.item.fontFamily == FontFamily.Monospace && it.start <= marker && it.end > marker
+            }
+            if (marker < lineEnd && sourceText[marker] == '>' && !isCode) {
+                var contentStart = marker
+                while (contentStart < lineEnd && sourceText[contentStart] == '>') contentStart++
+                if (contentStart < lineEnd && sourceText[contentStart] == ' ') contentStart++
+                append(this@withHighlightedQuotedLines.subSequence(copiedThrough, lineStart))
+                val start = length
+                append(this@withHighlightedQuotedLines.subSequence(contentStart, lineEnd))
+                if (length > start) {
+                    // A ParagraphStyle creates an implicit Compose paragraph boundary even
+                    // when the source has the correct newlines. Keep the original paragraph
+                    // layout and let CommentRow draw the quote accent/background instead.
+                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, length)
+                }
+                copiedThrough = lineEnd
+            }
+            lineStart = if (lineEnd < sourceText.length) lineEnd + 1 else sourceText.length
+        }
+        append(this@withHighlightedQuotedLines.subSequence(copiedThrough, sourceText.length))
+    }
+}
 
 private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) {
     private var pendingCodeBoundary = false
