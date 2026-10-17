@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +63,7 @@ fun WidgetConfigScreen(
     paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     headlineFontFamily: FontFamily? = null,
     headlineFontLabel: String = "Device headline",
+    onSettingsCoverStatusBar: (Boolean) -> Unit = {},
 ) {
     val feeds = frontpages.ifEmpty { listOf(StoryType.TOP_STORIES) }
     var feed by rememberSaveable { mutableStateOf(initialConfiguration.storyType.takeIf { it in feeds } ?: feeds.first()) }
@@ -73,6 +77,12 @@ fun WidgetConfigScreen(
     val fontFamily = if (useHeadlineFont) headlineFontFamily ?: FontFamily.SansSerif else FontFamily.SansSerif
     val hazeState = rememberHazeState()
     val buttonShape = RoundedCornerShape(16.dp)
+    val statusBarHeight = WindowInsets.statusBars.getTop(LocalDensity.current)
+    var settingsCoverStatusBar by remember { mutableStateOf(false) }
+    val currentOnSettingsCoverStatusBar by rememberUpdatedState(onSettingsCoverStatusBar)
+    LaunchedEffect(settingsCoverStatusBar) {
+        currentOnSettingsCoverStatusBar(settingsCoverStatusBar)
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pinPreview = maxHeight >= 560.dp
@@ -89,11 +99,12 @@ fun WidgetConfigScreen(
         Column(
             Modifier.fillMaxSize().sharedHazeSource(hazeState),
         ) {
-            Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing))
             Column(
                 Modifier.fillMaxWidth().weight(1f)
                     .then(if (pinPreview) Modifier else Modifier.verticalScroll(pageScroll)),
             ) {
+                // Scroll the top inset with the page so content can pass behind the status bar.
+                Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing))
                 Box(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 600.dp).fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
                     preview()
@@ -101,6 +112,11 @@ fun WidgetConfigScreen(
                 Column(
                     Modifier.fillMaxWidth()
                         .then(if (pinPreview) Modifier.weight(1f) else Modifier)
+                        .onGloballyPositioned { coordinates ->
+                            // Switch contrast when the panel reaches the middle of the status icons.
+                            settingsCoverStatusBar = statusBarHeight > 0 &&
+                                coordinates.positionInWindow().y <= statusBarHeight / 2f
+                        }
                         .background(MaterialTheme.colorScheme.pageBackground)
                         .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))

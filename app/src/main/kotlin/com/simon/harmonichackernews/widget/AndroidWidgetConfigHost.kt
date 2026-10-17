@@ -31,6 +31,7 @@ object AndroidWidgetConfigHost {
         activity: ComponentActivity,
         initialConfiguration: WidgetConfiguration,
         listener: Listener,
+        onSettingsCoverStatusBar: (Boolean) -> Unit,
     ) {
         val composeView = ComposeView(activity).apply {
             id = R.id.widget_config_compose
@@ -57,6 +58,7 @@ object AndroidWidgetConfigHost {
                                 paletteTintConfigKey = story.paletteTintConfigKey,
                                 headlineFontFamily = headlineFamily,
                                 headlineFontLabel = headlineFamilyName?.let(::widgetFontDisplayName).orEmpty(),
+                                onSettingsCoverStatusBar = onSettingsCoverStatusBar,
                             )
                         }
                     }

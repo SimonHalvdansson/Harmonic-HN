@@ -20,6 +20,7 @@ import android.view.WindowManager
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
+import com.simon.harmonichackernews.utils.AndroidActivityTheme.getPageBackgroundColor
 import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
 
 class WidgetConfigActivity : ComponentActivity() {
@@ -27,6 +28,8 @@ class WidgetConfigActivity : ComponentActivity() {
     private val widgets by lazy { harmonicAppComposition.widgets }
     private val wallpaperManager by lazy { WallpaperManager.getInstance(this) }
     private var wallpaperColorsListener: WallpaperManager.OnColorsChangedListener? = null
+    private var wallpaperUsesDarkIcons = false
+    private var settingsCoverStatusBar = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +86,7 @@ class WidgetConfigActivity : ComponentActivity() {
     private fun showWallpaper() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.statusBarColor = Color.TRANSPARENT
         refreshWallpaperStatusBarIcons()
     }
 
@@ -91,19 +95,30 @@ class WidgetConfigActivity : ComponentActivity() {
             updateWallpaperStatusBarIcons(wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM))
         } else {
             // Android 8.0 does not expose wallpaper colors. Use the usual light launcher icons.
-            WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
+            wallpaperUsesDarkIcons = false
+            updateStatusBarIcons()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     private fun updateWallpaperStatusBarIcons(colors: WallpaperColors?) {
-        val useDarkIcons = when {
+        wallpaperUsesDarkIcons = when {
             colors == null -> false
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
                 colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
             else -> ColorUtils.calculateLuminance(colors.primaryColor.toArgb()) > 0.5
         }
-        // Only the status bar overlays wallpaper; navigation overlays the themed settings panel.
+        updateStatusBarIcons()
+    }
+
+    private fun updateStatusBarIcons() {
+        val useDarkIcons = if (settingsCoverStatusBar) {
+            val background = getPageBackgroundColor(this)
+            ColorUtils.calculateContrast(Color.BLACK, background) >=
+                ColorUtils.calculateContrast(Color.WHITE, background)
+        } else {
+            wallpaperUsesDarkIcons
+        }
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = useDarkIcons
     }
 
@@ -111,7 +126,11 @@ class WidgetConfigActivity : ComponentActivity() {
         install(
             this,
             widgets.configuration(appWidgetId, WidgetConfiguration.fromStoryPreferences(harmonicAppComposition.userSettings.story)),
-            AndroidWidgetConfigHost.Listener(::confirmConfiguration)
+            AndroidWidgetConfigHost.Listener(::confirmConfiguration),
+            onSettingsCoverStatusBar = { covered ->
+                settingsCoverStatusBar = covered
+                updateStatusBarIcons()
+            },
         )
     }
 
