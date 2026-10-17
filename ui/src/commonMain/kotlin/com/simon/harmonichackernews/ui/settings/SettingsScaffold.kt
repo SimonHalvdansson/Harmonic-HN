@@ -439,7 +439,7 @@ fun SettingsCategory(
                 color = lerp(
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     MaterialTheme.colorScheme.primary,
-                    0.25f,
+                    0.45f,
                 ),
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
