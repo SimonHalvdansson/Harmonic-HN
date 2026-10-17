@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -183,6 +184,7 @@ fun StorySearchHeader(
                 FilterChip(
                     selected = state.onlyRead,
                     onClick = onToggleOnlyRead,
+                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                     label = { Text("From history") },
                     leadingIcon = { Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp)) },
                 )
@@ -206,6 +208,9 @@ private fun SearchOptionChip(
         FilterChip(
             selected = false,
             onClick = { expanded = true },
+            // A hover shadow bleeds through the transparent chip around its animated label.
+            // Keep the chip flat; Material's hover state layer still provides feedback.
+            elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
             label = {
                 // Resize the label inside the chip so its border follows every frame. Resizing
                 // an outer box instead clips a fully sized chip at the old trailing edge.
