@@ -89,7 +89,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
+import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import kotlin.time.Clock
@@ -156,7 +156,6 @@ fun HeaderDisplaySettingsRoute(
                     selected = settings.comments.headerMetaInfo,
                     disabledOptions = buildSet {
                         if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
-                        if (!displaySettings.showHeaderPreviewImage) add(CommentsHeaderMetaInfo.ON_IMAGE)
                     },
                     onSelected = repository::setCommentsHeaderMetaInfo,
                 )
@@ -344,19 +343,20 @@ private fun HeaderDisplayPreviewContent(
         if (sample == HeaderPreviewSample.LINK_PREVIEW) Res.drawable.github_preview else Res.drawable.web_preview,
     )
     val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
+    // Resolve before the first frame so the header and detail buttons start fully tinted.
     // As in a real thread, hiding the image does not change the story's resolved palette.
-    val tint = rememberPainterPaletteTint(
-        painter = image,
-        baseColorArgb = tintBase,
-        paletteTintConfigKey = settings.paletteTintMode,
-    )
+    val tint = remember(sample, tintBase, settings.paletteTintMode) {
+        sample.tintPalette?.let {
+            PreviewTintPolicy.calculateCardTint(tintBase, it, settings.paletteTintMode)
+        }
+    }
     CommentsHeader(
         controller = controller,
         settings = settings,
         contentVersion = actions.version,
         storyPosterTag = "",
         tintBaseColor = tintBase,
-        initialTint = if (hasPreviewImage) tint else null,
+        initialTint = tint,
         headerTopPadding = 24.dp,
         bookmarksEnabled = bookmarksEnabled,
         lastRefreshedText = null,
@@ -364,9 +364,13 @@ private fun HeaderDisplayPreviewContent(
         previewPlatform = platform,
         includeStatusBarSpacer = true,
         headerPreviewImageDisplayed = imageDisplayed,
-        faviconPreview = if (sample == HeaderPreviewSample.LINK_PREVIEW)
-            tintedPainterResource(Res.drawable.ic_link_preview_github, MaterialTheme.colorScheme.onSurfaceVariant)
-            else painterResource(Res.drawable.quanta),
+        faviconPreview = when (sample) {
+            HeaderPreviewSample.TEXT_POST -> null
+            HeaderPreviewSample.LINK_PREVIEW -> tintedPainterResource(
+                Res.drawable.ic_link_preview_github, MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            else -> painterResource(Res.drawable.quanta)
+        },
         headerPreviewImage = { imageModifier, _, _ ->
             HeaderPreviewImageVisibility(visible = imageDisplayed) {
                 Image(

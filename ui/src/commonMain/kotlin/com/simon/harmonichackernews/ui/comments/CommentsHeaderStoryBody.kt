@@ -63,7 +63,10 @@ fun HeaderLinkInfo(
     faviconPreview: Painter? = null,
     posterTag: String = "",
 ) {
-    if (!story.loaded || !story.isLink || story.isComment || story.url.isNullOrBlank()) return
+    if (!story.loaded) return
+    val hasLink = story.isLink && !story.isComment && !story.url.isNullOrBlank()
+    val onImage = settings.headerMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE
+    if (!hasLink && !onImage) return
     val colors = MaterialTheme.colorScheme
     val typography = rememberContentTypography(preferredFont = settings.font)
     val domain = remember(story.url) {
@@ -82,7 +85,7 @@ fun HeaderLinkInfo(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.animation.AnimatedVisibility(
-            visible = settings.showFavicons,
+            visible = settings.showFavicons && hasLink,
             enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally(),
         ) {
@@ -112,10 +115,13 @@ fun HeaderLinkInfo(
                 )
             }
         }
-        val onImage = settings.headerMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE
         val label = if (onImage) {
             val author = if (posterTag.isBlank()) story.by.orEmpty() else "${story.by.orEmpty()} ($posterTag)"
-            "${domain.orEmpty()} \u00b7 ${relativeTimeOnResume(story.createdAtEpochSeconds)} \u00b7 $author"
+            listOfNotNull(
+                domain?.takeIf { hasLink && it.isNotBlank() },
+                relativeTimeOnResume(story.createdAtEpochSeconds),
+                author.takeIf { it.isNotBlank() },
+            ).joinToString(" \u00b7 ")
         } else if (settings.combineHeaderActions) {
             "${domain.orEmpty()} \u00b7 ${relativeTimeOnResume(story.createdAtEpochSeconds)}"
         } else domain.orEmpty()

@@ -125,10 +125,9 @@ fun CommentsHeader(
     faviconPreview: Painter? = null,
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
-    val effectiveMetaInfo = settings.headerMetaInfo.resolve(
-        settings.hasAccountDetails, settings.showHeaderPreviewImage && headerPreviewImageDisplayed,
-    )
+    val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
+    val showStackedMetrics = effectiveMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE && !headerPreviewImageDisplayed
     val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
@@ -193,10 +192,16 @@ fun CommentsHeader(
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
+    val sheetHandleInset = if (controller.integratedWebView && controller.showSheetControls) {
+        (CommentsSheetHandleTopPadding + CommentsSheetHandleHeight + CommentsSheetHandleBottomPadding) *
+            if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
+    } else 0.dp
     val backButtonTitleClearance by animateDpAsState(
         if (settings.showUpButton &&
             !(headerPreviewImageDisplayed && settings.headerLayout == CommentsHeaderLayout.STANDARD)) {
-            28.dp
+            // The small-image row starts at 12dp: reserve 57dp total (4dp top + 48dp
+            // back button + 5dp gap), including any sheet handle already above the title.
+            45.dp - sheetHandleInset
         } else 0.dp,
         tween(320), label = "header back clearance",
     )
@@ -373,6 +378,8 @@ fun CommentsHeader(
                                                         HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
                                                     }
                                                 }
+                                                HeaderStackedMetrics(controller, detailSettings, textStyle,
+                                                    visibleHeaderBackground, showStackedMetrics)
                                                 AnimatedVisibility(
                                                     visible = headerPreviewImageDisplayed,
                                                     enter = fadeIn(tween(240)) + expandHorizontally(tween(320)),
@@ -407,9 +414,18 @@ fun CommentsHeader(
                                                         Spacer(Modifier.height(10.dp))
                                                     }
                                                 }
-                                                title(Modifier.fillMaxWidth().padding(start = 16.dp, top = titleTopPadding, end = 16.dp))
-                                                CommentsPreviewPlatformProvider(previewPlatform) {
-                                                    HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
+                                                Row(
+                                                    Modifier.fillMaxWidth().padding(top = titleTopPadding),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Column(Modifier.weight(1f).animateContentSize(tween(320))) {
+                                                        title(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                                                        CommentsPreviewPlatformProvider(previewPlatform) {
+                                                            HeaderLinkInfo(story, detailSettings, faviconPreview, storyPosterTag)
+                                                        }
+                                                    }
+                                                    HeaderStackedMetrics(controller, detailSettings, textStyle,
+                                                        visibleHeaderBackground, showStackedMetrics)
                                                 }
                                             }
                                         }

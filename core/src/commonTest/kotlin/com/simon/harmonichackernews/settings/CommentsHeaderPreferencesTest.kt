@@ -66,11 +66,11 @@ class CommentsHeaderPreferencesTest {
         assertEquals(CommentsHeaderMetaInfo.SMALL, AppSettingsRepository(store, emptyFlow()).snapshot().comments.headerMetaInfo)
     }
 
-    @Test fun unavailableMetaLayoutsFallBackWithoutLosingThePreference() {
-        assertEquals(CommentsHeaderMetaInfo.SMALL, CommentsHeaderMetaInfo.BUTTONS.resolve(false, true))
+    @Test fun integratedDetailsStayAvailableAndButtonsRequireAnAccount() {
+        assertEquals(CommentsHeaderMetaInfo.SMALL, CommentsHeaderMetaInfo.BUTTONS.resolve(false))
+        assertEquals(CommentsHeaderMetaInfo.BUTTONS, CommentsHeaderMetaInfo.BUTTONS.resolve(true))
         for (signedIn in listOf(true, false)) {
-            assertEquals(CommentsHeaderMetaInfo.SMALL, CommentsHeaderMetaInfo.ON_IMAGE.resolve(signedIn, false))
-            assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, CommentsHeaderMetaInfo.ON_IMAGE.resolve(signedIn, true))
+            assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, CommentsHeaderMetaInfo.ON_IMAGE.resolve(signedIn))
         }
     }
 
