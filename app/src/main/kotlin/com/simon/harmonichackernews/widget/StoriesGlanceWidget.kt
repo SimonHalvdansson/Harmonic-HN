@@ -237,12 +237,14 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                             Column(GlanceModifier.defaultWeight()) {
                                 val title = if (snapshot.isComment) HtmlTextUtils.plainText(snapshot.text).take(220) else text.title
                                 Text(title, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.TITLE_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 4)
-                                Spacer(GlanceModifier.height(6.dp))
+                                Spacer(GlanceModifier.height(WidgetDimensions.titleMetadataSpacing))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (preferences.showFavicons && !snapshot.isComment) {
-                                        Image(visual?.favicon?.let(::ImageProvider) ?: ImageProvider(R.drawable.ic_public), null,
-                                            GlanceModifier.size(WidgetDimensions.faviconSize).cornerRadius(WidgetDimensions.faviconCornerRadius),
-                                            colorFilter = if (visual?.favicon == null) ColorFilter.tint(colors.textSecondary) else null)
+                                        Box(GlanceModifier.padding(top = WidgetDimensions.faviconTopPadding)) {
+                                            Image(visual?.favicon?.let(::ImageProvider) ?: ImageProvider(R.drawable.ic_public), null,
+                                                GlanceModifier.size(WidgetDimensions.faviconSize).cornerRadius(WidgetDimensions.faviconCornerRadius),
+                                                colorFilter = if (visual?.favicon == null) ColorFilter.tint(colors.textSecondary) else null)
+                                        }
                                         Spacer(GlanceModifier.width(4.dp))
                                     }
                                     Text(if (snapshot.isComment) "${snapshot.author.orEmpty()} · ${text.metadata.substringAfterLast(" · ")}" else metadata,
