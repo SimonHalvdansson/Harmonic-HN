@@ -840,6 +840,7 @@ private fun SubmitButton(
                 transitionSpec = {
                     fadeIn(tween(160)).togetherWith(fadeOut(tween(120)))
                 },
+                contentAlignment = Alignment.Center,
                 label = "editor submitting",
             ) { loading ->
                 if (loading) {
