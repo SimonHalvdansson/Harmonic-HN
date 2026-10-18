@@ -109,6 +109,7 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
+                    onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
                 )
                 SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(
                     repository = dependencies.settings,

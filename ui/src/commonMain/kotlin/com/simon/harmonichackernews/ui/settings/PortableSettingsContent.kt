@@ -84,9 +84,13 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
         )
-        SettingsSection.Stories -> PortableStoriesSettings(app, singlePane, onBack) {
-            onNavigate(SettingsSection.Frontpages, true)
-        }
+        SettingsSection.Stories -> PortableStoriesSettings(
+            app = app,
+            showNavigation = singlePane,
+            onBack = onBack,
+            onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
+            onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
+        )
         SettingsSection.Frontpages -> {
             val accountState by app.platform.accounts.accountState.collectAsStateWithLifecycle()
             ManageFrontpagesSettingsRoute(app.settings, onBack, hasAccount = accountState.accountOrNull != null)
@@ -329,6 +333,7 @@ private fun PortableStoriesSettings(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
+    onPaletteTintRequested: () -> Unit,
 ) {
     val story = app.settings.snapshot().story
     StoriesSettingsRoute(
@@ -338,6 +343,7 @@ private fun PortableStoriesSettings(
         ),
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,
+        onPaletteTintRequested = onPaletteTintRequested,
         showNavigation = showNavigation,
         onBack = onBack,
         onPlatformEffect = { effect ->

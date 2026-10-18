@@ -571,6 +571,7 @@ fun NavigationSwitchSettingRow(
     summary: String? = null,
     icon: DrawableResource,
     checked: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit,
 ) {
@@ -578,6 +579,7 @@ fun NavigationSwitchSettingRow(
         title = title,
         summary = summary,
         icon = icon,
+        enabled = enabled,
         onClick = onClick,
         trailing = {
             Icon(
@@ -595,6 +597,7 @@ fun NavigationSwitchSettingRow(
             HarmonicSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 modifier = Modifier.semantics { contentDescription = title },
             )
         },

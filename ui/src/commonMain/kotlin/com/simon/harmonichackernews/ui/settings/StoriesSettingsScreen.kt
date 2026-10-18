@@ -78,8 +78,11 @@ fun StoriesSettingsScreen(
     onResetLayout: () -> Unit,
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
     onManageFrontpages: () -> Unit,
+    onPaletteTintRequested: () -> Unit,
     contentVersion: Int = 0,
 ) {
+    // Palette settings remain reachable even when story tint is disabled.
+    PreloadPalettePreviewResources()
     SettingsPage(
         title = stringResource(Res.string.settings_section_stories),
         showNavigation = showNavigation,
@@ -139,7 +142,14 @@ fun StoriesSettingsScreen(
                     onSelected = { onStringChanged(StoriesStringSetting.DisplayStyle, it) },
                 )
                 SettingsDivider()
-                BooleanRow("Tint", Res.drawable.ic_palette, state.tint, StoriesBooleanSetting.Tint, onBooleanChanged, summary = "Uses preview or favicon")
+                NavigationSwitchSettingRow(
+                    title = "Tint",
+                    summary = "Uses preview or favicon",
+                    icon = Res.drawable.ic_palette,
+                    checked = state.tint,
+                    onClick = onPaletteTintRequested,
+                    onCheckedChange = { onBooleanChanged(StoriesBooleanSetting.Tint, it) },
+                )
                 SettingsDivider()
                 BooleanRow("Compact layout", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
                 SettingsDivider()

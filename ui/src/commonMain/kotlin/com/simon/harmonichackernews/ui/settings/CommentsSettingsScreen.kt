@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
+import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.CommentBooleanPreference
@@ -102,8 +103,10 @@ fun CommentsSettingsScreen(
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onThreadDepthEnabledChanged: (Boolean) -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onUserAvatarsEnabledChanged: (Boolean) -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
 ) {
@@ -158,18 +161,22 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Emphasize username and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
                 SettingsDivider()
-                SettingRow(
+                NavigationSwitchSettingRow(
                     title = "User profile images",
                     summary = if (!state.userAvatarsEnabled) "Off" else state.userAvatarOptions.summary,
                     icon = Res.drawable.ic_person,
                     onClick = onUserAvatarsRequested,
+                    checked = state.userAvatarsEnabled,
+                    onCheckedChange = onUserAvatarsEnabledChanged,
                 )
                 SettingsDivider()
-                SettingRow(
+                NavigationSwitchSettingRow(
                     title = "Thread depth indicators",
                     summary = state.depthModeLabel,
                     icon = Res.drawable.ic_palette,
                     onClick = onThreadDepthRequested,
+                    checked = CommentDepthPreferences.shouldShowIndicators(state.depthMode),
+                    onCheckedChange = onThreadDepthEnabledChanged,
                 )
                 SettingsDivider()
                 NavigationSwitchSettingRow(

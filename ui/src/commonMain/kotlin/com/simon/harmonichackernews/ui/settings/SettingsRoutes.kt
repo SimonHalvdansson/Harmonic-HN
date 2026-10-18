@@ -446,6 +446,7 @@ fun StoriesSettingsRoute(
     onBack: () -> Unit,
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
     onManageFrontpages: () -> Unit,
+    onPaletteTintRequested: () -> Unit,
     faviconDialog: @Composable (
         selected: String,
         presenter: StoriesSettingsPresenter,
@@ -468,6 +469,7 @@ fun StoriesSettingsRoute(
         },
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onManageFrontpages = onManageFrontpages,
+        onPaletteTintRequested = onPaletteTintRequested,
         onStringChanged = presenter::setString,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onResetLayout = {
@@ -526,8 +528,10 @@ fun CommentsSettingsRoute(
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
+        onThreadDepthEnabledChanged = repository::setCommentDepthIndicatorsEnabled,
         onQuoteHighlightingRequested = onQuoteHighlightingRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
+        onUserAvatarsEnabledChanged = repository::setUserAvatarsEnabled,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {

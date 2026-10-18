@@ -135,11 +135,13 @@ fun WebLinksSettingsScreen(
         item {
             SettingsCategory("Browser and links") {
                 if (capabilities.integratedWebView && capabilities.readerMode) {
-                    SettingRow(
+                    NavigationSwitchSettingRow(
                         title = "Reader mode",
                         icon = Res.drawable.ic_book_ribbon,
                         enabled = state.integratedWebView,
                         onClick = onReaderModeRequested,
+                        checked = state.readerModeEnabled,
+                        onCheckedChange = { onBooleanChanged(WebLinksBooleanSetting.ReaderModeEnabled, it) },
                     )
                     SettingsDivider()
                 }
