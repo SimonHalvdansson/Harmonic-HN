@@ -14,6 +14,43 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun unknownQuoteAppearanceFallsBackToMaterialAndBoth() {
+        val repository = AppSettingsRepository(
+            TestKeyValueStore(mapOf(
+                UserPreferenceKeys.QUOTE_HIGHLIGHT_COLOR to "unknown",
+                UserPreferenceKeys.QUOTE_HIGHLIGHT_STYLE to "unknown",
+            )),
+            kotlinx.coroutines.flow.emptyFlow(),
+        )
+        assertEquals(QuoteHighlightColor.MATERIAL, repository.snapshot().comments.quoteHighlightColor)
+        assertEquals(QuoteHighlightStyle.BOTH, repository.snapshot().comments.quoteHighlightStyle)
+    }
+
+    @Test
+    fun quoteHighlightingDefaultsOffAndPersistsInDisplaySettings() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(repository.snapshot().comments.highlightQuotes)
+        assertEquals(QuoteHighlightColor.MATERIAL, repository.snapshot().comments.quoteHighlightColor)
+        assertEquals(QuoteSpacing.COMFORTABLE, repository.snapshot().comments.quoteSpacing)
+        repository.setQuoteSpacing(QuoteSpacing.COMPACT)
+        repository.setQuoteHighlightColor(QuoteHighlightColor.NEUTRAL)
+        repository.setQuoteHighlightStyle(QuoteHighlightStyle.SIDE_LINE)
+        repository.setCommentBoolean(CommentBooleanPreference.HIGHLIGHT_QUOTES, false)
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow()).snapshot().comments
+        assertFalse(restored.highlightQuotes)
+        assertEquals(QuoteSpacing.COMPACT, restored.quoteSpacing)
+        assertEquals(QuoteHighlightColor.NEUTRAL, restored.quoteHighlightColor)
+        assertEquals(QuoteHighlightStyle.SIDE_LINE, restored.quoteHighlightStyle)
+        assertFalse(CommentDisplaySettings.from(
+            restored, showInvert = false, isTablet = false,
+            hasAccountDetails = false, canProvideSummary = false,
+        ).highlightQuotes)
+        repository.setCommentBoolean(CommentBooleanPreference.HIGHLIGHT_QUOTES, true)
+        assertTrue(repository.snapshot().comments.highlightQuotes)
+    }
+
+    @Test
     fun sideBySideDefaultsOnAndPersistsWithoutChangingBrowserPreferences() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

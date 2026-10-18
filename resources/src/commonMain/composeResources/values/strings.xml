@@ -104,4 +104,5 @@
     <string name="widget_config_story_count_label">Number of stories to show</string>
     <string name="widget_config_confirm">Add widget</string>
     <string name="settings_section_user_avatars">User profile images</string>
+    <string name="settings_section_quote_highlighting">Quote highlighting</string>
 </resources>

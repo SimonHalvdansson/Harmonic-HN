@@ -509,6 +509,7 @@ fun CommentsSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
@@ -525,6 +526,7 @@ fun CommentsSettingsRoute(
         onBooleanChanged = presenter::setBoolean,
         onDialogRequested = { dialog = it },
         onThreadDepthRequested = onThreadDepthRequested,
+        onQuoteHighlightingRequested = onQuoteHighlightingRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
         contentVersion = settings.hashCode(),
     )

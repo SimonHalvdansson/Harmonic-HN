@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
@@ -21,8 +22,9 @@ fun htmlAnnotatedString(
     html: String,
     linkColor: Color,
     linkListener: LinkInteractionListener,
+    highlightQuotes: Boolean = true,
 ): AnnotatedString = runCatching {
-    val prepared = CommentHtmlTextCache.get(html)
+    val prepared = CommentHtmlTextCache.get(html, highlightQuotes)
     val links = prepared.getStringAnnotations(COMMENT_URL_TAG, 0, prepared.length)
     // Most comments have no links to bind. Their cached text already contains every style.
     if (links.isEmpty()) {
@@ -45,15 +47,77 @@ fun htmlAnnotatedString(
 }.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
 
 /** No theme, listener, mutable DOM, or screen references are retained in the prepared text. */
-internal fun prepareCommentHtml(html: String): AnnotatedString {
+internal fun prepareCommentHtml(html: String): AnnotatedString = prepareCommentHtml(html, true)
+
+internal fun prepareCommentHtml(html: String, highlightQuotes: Boolean): AnnotatedString {
     val document = Ksoup.parse(preserveLegacyCommentParagraphSpacing(html))
     return buildAnnotatedString {
         val renderer = CommentHtmlRenderer(this)
         document.body().childNodes().forEach { renderer.appendNode(it) }
-    }.trimmedCommentText()
+    }.trimmedCommentText().let { if (highlightQuotes) it.withHighlightedQuotedLines() else it }
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
+internal const val COMMENT_QUOTE_TAG = "harmonic-comment-quote"
+
+/** Mark HN's leading > quote paragraphs without altering links or inline formatting. */
+internal fun AnnotatedString.withHighlightedQuotedLines(removeMarkers: Boolean = true): AnnotatedString {
+    if ('>' !in text) return this
+    val sourceText = text
+    val codeSpans = spanStyles
+    return buildAnnotatedString {
+        var copiedThrough = 0
+        var lineStart = 0
+        while (lineStart < sourceText.length) {
+            val lineEnd = sourceText.indexOf('\n', lineStart).let { if (it < 0) sourceText.length else it }
+            var marker = lineStart
+            while (marker < lineEnd && marker - lineStart < 3 && sourceText[marker] == ' ') marker++
+            val isCode = codeSpans.any {
+                it.item.fontFamily == FontFamily.Monospace && it.start <= marker && it.end > marker
+            }
+            if (marker < lineEnd && sourceText[marker] == '>' && !isCode) {
+                var contentStart = marker
+                while (contentStart < lineEnd && sourceText[contentStart] == '>') contentStart++
+                if (contentStart < lineEnd && sourceText[contentStart] == ' ') contentStart++
+                append(this@withHighlightedQuotedLines.subSequence(copiedThrough, lineStart))
+                val start = length
+                append(this@withHighlightedQuotedLines.subSequence(if (removeMarkers) contentStart else lineStart, lineEnd))
+                if (length > start) {
+                    // A ParagraphStyle creates an implicit Compose paragraph boundary even
+                    // when the source has the correct newlines. Keep the original paragraph
+                    // layout and let CommentRow draw the quote accent/background instead.
+                    addStringAnnotation(COMMENT_QUOTE_TAG, "quote", start, length)
+                }
+                copiedThrough = lineEnd
+            }
+            lineStart = if (lineEnd < sourceText.length) lineEnd + 1 else sourceText.length
+        }
+        append(this@withHighlightedQuotedLines.subSequence(copiedThrough, sourceText.length))
+    }
+}
+
+/** Split only at blank lines adjacent to quotes, preserving inline annotations. */
+internal fun AnnotatedString.quoteSpacedSegments(): List<AnnotatedString> {
+    val quotes = getStringAnnotations(COMMENT_QUOTE_TAG, 0, length)
+    val blankLines = mutableSetOf<Int>()
+    quotes.forEach { quote ->
+        if (quote.start >= 2 && text.substring(quote.start - 2, quote.start) == "\n\n") {
+            blankLines += quote.start - 2
+        }
+        if (quote.end + 1 < length && text.substring(quote.end, quote.end + 2) == "\n\n") {
+            blankLines += quote.end
+        }
+    }
+    if (blankLines.isEmpty()) return listOf(this)
+    return buildList {
+        var copiedThrough = 0
+        blankLines.sorted().forEach { index ->
+            add(this@quoteSpacedSegments.subSequence(copiedThrough, index))
+            copiedThrough = index + 2
+        }
+        add(this@quoteSpacedSegments.subSequence(copiedThrough, this@quoteSpacedSegments.length))
+    }
+}
 
 private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) {
     private var pendingCodeBoundary = false

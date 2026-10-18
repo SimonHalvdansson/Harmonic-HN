@@ -1,5 +1,9 @@
 package com.simon.harmonichackernews.adapters
 
+import com.simon.harmonichackernews.settings.QuoteSpacing
+import com.simon.harmonichackernews.settings.QuoteHighlightColor
+import com.simon.harmonichackernews.settings.QuoteHighlightStyle
+
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
 import com.simon.harmonichackernews.settings.CommentsHeaderLayout
@@ -39,6 +43,10 @@ data class CommentDisplaySettings(
     val showAdditionalSummaryInfo: Boolean,
     val enableSummaryBoldFormatting: Boolean,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val highlightQuotes: Boolean = false,
+    val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
+    val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
+    val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
@@ -68,6 +76,10 @@ data class CommentDisplaySettings(
         ): CommentDisplaySettings = CommentDisplaySettings(
             collapseParent = preferences.collapseParent,
             indicatorThickness = preferences.indicatorThickness,
+            highlightQuotes = preferences.highlightQuotes,
+            quoteSpacing = preferences.quoteSpacing,
+            quoteHighlightColor = preferences.quoteHighlightColor,
+            quoteHighlightStyle = preferences.quoteHighlightStyle,
             roundedDepthIndicators = preferences.roundedDepthIndicators,
             continuousDepthIndicators = preferences.continuousDepthIndicators &&
                 preferences.depthIndicatorMode != CommentDepthPreferences.AUTHOR,

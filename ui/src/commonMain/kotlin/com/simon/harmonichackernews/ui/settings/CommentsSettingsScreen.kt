@@ -1,5 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.QuoteSpacing
+import com.simon.harmonichackernews.settings.QuoteHighlightColor
+import com.simon.harmonichackernews.settings.QuoteHighlightStyle
+
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.CollectedLinksMode
@@ -52,6 +56,10 @@ data class CommentsSettingsUiState(
     val volumeNavigation: CommentVolumeNavigationMode,
     val smoothScroll: Boolean,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val highlightQuotes: Boolean = false,
+    val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
+    val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
+    val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
@@ -61,6 +69,7 @@ data class CommentsSettingsUiState(
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
+    HighlightQuotes(CommentBooleanPreference.HIGHLIGHT_QUOTES),
     RoundedDepthIndicators(CommentBooleanPreference.ROUNDED_DEPTH_INDICATORS),
     ContinuousDepthIndicators(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS),
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
@@ -93,6 +102,7 @@ fun CommentsSettingsScreen(
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
@@ -160,6 +170,14 @@ fun CommentsSettingsScreen(
                     summary = state.depthModeLabel,
                     icon = Res.drawable.ic_palette,
                     onClick = onThreadDepthRequested,
+                )
+                SettingsDivider()
+                NavigationSwitchSettingRow(
+                    title = "Quote highlighting",
+                    icon = Res.drawable.ic_format_quote,
+                    onClick = onQuoteHighlightingRequested,
+                    checked = state.highlightQuotes,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.HighlightQuotes, it) },
                 )
                 SettingsDivider()
                 BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)

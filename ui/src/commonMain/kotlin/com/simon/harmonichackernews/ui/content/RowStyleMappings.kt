@@ -45,6 +45,10 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     context: CommentRowStyleContext,
 ): CommentRowStyle = when (context) {
     is CommentRowStyleContext.Thread -> CommentRowStyle(
+        highlightQuotes = highlightQuotes,
+        quoteSpacing = quoteSpacing,
+        quoteHighlightColor = quoteHighlightColor,
+        quoteHighlightStyle = quoteHighlightStyle,
         displayStyle = displayStyle,
         textSize = preferredTextSize,
         collectLinks = collectReferenceLinks,
@@ -62,6 +66,10 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
         animateChanges = context.animateChanges,
     )
     CommentRowStyleContext.Search -> CommentRowStyle(
+        highlightQuotes = highlightQuotes,
+        quoteSpacing = quoteSpacing,
+        quoteHighlightColor = quoteHighlightColor,
+        quoteHighlightStyle = quoteHighlightStyle,
         displayStyle = displayStyle,
         textSize = preferredTextSize,
         collectLinks = false,

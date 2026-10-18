@@ -362,6 +362,18 @@ class StoredSettingsMutator(
         }
     }
 
+    fun setQuoteSpacing(value: QuoteSpacing) {
+        store.putString(UserPreferenceKeys.QUOTE_SPACING, value.storedValue)
+    }
+
+    fun setQuoteHighlightColor(value: QuoteHighlightColor) {
+        store.putString(UserPreferenceKeys.QUOTE_HIGHLIGHT_COLOR, value.storedValue)
+    }
+
+    fun setQuoteHighlightStyle(value: QuoteHighlightStyle) {
+        store.putString(UserPreferenceKeys.QUOTE_HIGHLIGHT_STYLE, value.storedValue)
+    }
+
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) {
         store.putString(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, value.storedValue)
     }

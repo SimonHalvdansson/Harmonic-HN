@@ -96,9 +96,11 @@ fun PortableSettingsDetail(
             showNavigation = singlePane,
             onBack = onBack,
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+            onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
+        SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
         SettingsSection.WebLinks -> PortableWebLinksSettings(

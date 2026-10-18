@@ -51,6 +51,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -559,5 +561,42 @@ internal fun segmentedSettingShape(
         topEnd = if (last) outerCorner else innerCorner,
         bottomEnd = if (last) outerCorner else innerCorner,
         bottomStart = if (first) outerCorner else innerCorner,
+    )
+}
+
+/** The parent owns the full-width navigation ripple; the switch consumes its own taps. */
+@Composable
+fun NavigationSwitchSettingRow(
+    title: String,
+    summary: String? = null,
+    icon: DrawableResource,
+    checked: Boolean,
+    onClick: () -> Unit,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    SettingRow(
+        title = title,
+        summary = summary,
+        icon = icon,
+        onClick = onClick,
+        trailing = {
+            Icon(
+                painter = painterResource(Res.drawable.ic_chevron_right),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(8.dp))
+            Spacer(
+                Modifier.width(1.dp).height(32.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant),
+            )
+            Spacer(Modifier.width(12.dp))
+            HarmonicSwitch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.semantics { contentDescription = title },
+            )
+        },
     )
 }

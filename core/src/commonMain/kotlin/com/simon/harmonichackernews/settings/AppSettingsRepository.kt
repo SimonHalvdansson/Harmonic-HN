@@ -31,6 +31,7 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
 enum class StoryStringPreference { DISPLAY_STYLE }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
+    HIGHLIGHT_QUOTES(UserPreferenceKeys.HIGHLIGHT_QUOTES),
     ROUNDED_DEPTH_INDICATORS(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS),
     CONTINUOUS_DEPTH_INDICATORS(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS),
     COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),
@@ -179,6 +180,11 @@ class AppSettingsRepository(
     fun setCommentDepthIndicatorMode(value: String) = mutator.setCommentDepthIndicatorMode(value)
     fun setCommentDepthIndicatorsEnabled(enabled: Boolean) =
         mutator.setCommentDepthIndicatorsEnabled(enabled, reader.comments.depthIndicatorMode)
+    fun setQuoteSpacing(value: QuoteSpacing) = mutator.setQuoteSpacing(value)
+
+    fun setQuoteHighlightColor(value: QuoteHighlightColor) = mutator.setQuoteHighlightColor(value)
+    fun setQuoteHighlightStyle(value: QuoteHighlightStyle) = mutator.setQuoteHighlightStyle(value)
+
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) = mutator.setCommentIndicatorThickness(value)
     fun setUserAvatarOptions(value: UserAvatarOptions) = mutator.setUserAvatarOptions(value)
     fun setUserAvatarsEnabled(enabled: Boolean) = mutator.setUserAvatarsEnabled(enabled)
