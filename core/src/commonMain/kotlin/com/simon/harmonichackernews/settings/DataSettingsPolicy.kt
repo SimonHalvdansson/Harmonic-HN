@@ -5,7 +5,7 @@ import com.simon.harmonichackernews.cache.StoryCacheService
 import com.simon.harmonichackernews.data.SavedItemCodec
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
-import com.simon.harmonichackernews.data.StoryResourceTintRepository
+import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
@@ -95,7 +95,7 @@ class DataSettingsService(
     private val history: ObservableHistoryStore?,
     private val storyCache: StoryCacheService,
     private val previewResources: StoryPreviewRepository,
-    private val storyResourceTints: StoryResourceTintRepository,
+    private val storyResourceTints: StoryResourceTintStore,
     private val localModels: LocalModelService?,
     private val settingsTransfer: SettingsTransfer? = null,
     private val hiddenPosts: HiddenPostsStore? = null,

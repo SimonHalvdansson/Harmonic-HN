@@ -60,6 +60,58 @@ class StoryResourceTintRepository(
 ) : StoryResourceTintStore {
     private val readCache = LinkedHashMap<ReadKey, CachedRead>()
 
+    /** Used only by the background cache adapter and its one-time migration. */
+    internal fun entries(): Map<String, StoryResourceTintState> = buildMap {
+        for (key in store.getStringSet(INDEX_KEY)) {
+            val prefix = "$PREFIX.$key"
+            val source = store.getString("$prefix.source") ?: continue
+            val palette = store.getString("$prefix.palette") ?: continue
+            if (!store.contains("$prefix.base") || !store.contains("$prefix.tint")) continue
+            put(key, StoryResourceTintState(source, store.getInt("$prefix.base", 0), palette,
+                store.getInt("$prefix.tint", 0)))
+        }
+    }
+
+    internal fun replaceEntries(entries: Map<String, StoryResourceTintState>) {
+        val oldKeys = store.keys().filter { it.startsWith("$PREFIX.") }
+        store.update {
+            oldKeys.forEach(::remove)
+            entries.forEach { (key, tint) ->
+                val prefix = "$PREFIX.$key"
+                putString("$prefix.source", tint.sourceUrl)
+                putInt("$prefix.base", tint.baseColorArgb)
+                putString("$prefix.palette", tint.paletteConfigKey)
+                putInt("$prefix.tint", tint.tintColorArgb)
+            }
+            putStringSet(INDEX_KEY, entries.keys)
+        }
+        readCache.clear()
+    }
+
+    /** Apply a coalesced delta without allocating editor operations for every cached color. */
+    internal fun updateEntries(
+        previous: Map<String, StoryResourceTintState>,
+        entries: Map<String, StoryResourceTintState>,
+    ) {
+        val removed = previous.keys.filter { it !in entries }
+        val changed = entries.filter { (key, tint) -> previous[key] != tint }
+        if (removed.isEmpty() && changed.isEmpty()) return
+        store.update {
+            removed.forEach { removeEntry(it) }
+            changed.forEach { (key, tint) ->
+                val prefix = "$PREFIX.$key"
+                putString("$prefix.source", tint.sourceUrl)
+                putInt("$prefix.base", tint.baseColorArgb)
+                putString("$prefix.palette", tint.paletteConfigKey)
+                putInt("$prefix.tint", tint.tintColorArgb)
+            }
+            if (removed.isNotEmpty() || previous.size != entries.size) {
+                putStringSet(INDEX_KEY, entries.keys)
+            }
+        }
+        readCache.clear()
+    }
+
     override fun read(
         storyId: Int,
         kind: StoryResourceTintKind,

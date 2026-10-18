@@ -110,7 +110,7 @@ class HarmonicAppComposition(
         }
     }
     val hiddenPosts = HiddenPostsStore(host.appDataStore)
-    val storyResourceTints = StoryResourceTintRepository(host.appDataStore)
+    val storyResourceTints = host.storyResourceTints ?: StoryResourceTintRepository(host.appDataStore)
     val aiSummarySettings = AiSummarySettingsRepository(
         store = host.settingsStore,
         credentials = platform.credentials,

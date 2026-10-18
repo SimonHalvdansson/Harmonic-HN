@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,30 @@ import org.junit.runner.RunWith
 /** Real SharedPreferences XML -> DataStore files, isolated from the installed app's data. */
 @RunWith(AndroidJUnit4::class)
 class AndroidPreferenceMigrationTest {
+    @Test
+    fun namedHandlesAreLazyAndAwaitingLoadsTheSharedSnapshot() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = IsolatedContext(instrumentation.targetContext)
+        val name = "lazy_preferences"
+        val legacy = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+        assertTrue(legacy.edit().putString("saved_value", "before upgrade").commit())
+        val readsBefore = context.legacyReads.get()
+        lateinit var store: AndroidKeyValueStore
+        try {
+            instrumentation.runOnMainSync {
+                store = AndroidKeyValueStore.named(context, name)
+                assertSame(store, AndroidKeyValueStore.named(context, name))
+                assertEquals(readsBefore, context.legacyReads.get())
+            }
+            store.awaitLoaded()
+            assertEquals("before upgrade", store.getString("saved_value"))
+            store.putString("saved_value", "updated")
+            store.awaitPersisted()
+            assertEquals("updated", AndroidKeyValueStore.named(context, name).getString("saved_value"))
+            assertTrue(legacy.all.isEmpty())
+        } finally { context.filesDir.deleteRecursively(); context.cleanup() }
+    }
+
     @Test
     fun version31StoresPreserveEveryTypeUnknownKeysAndSecrets() = runBlocking {
         val context = isolatedContext()
@@ -170,10 +195,14 @@ class AndroidPreferenceMigrationTest {
     private class IsolatedContext(base: Context) : ContextWrapper(base) {
         private val prefix = "migration-${UUID.randomUUID()}-"
         private val names = mutableSetOf<String>()
+        val legacyReads = AtomicInteger()
         override fun getApplicationContext(): Context = this
         override fun getFilesDir(): File = File(baseContext.cacheDir, prefix).apply { mkdirs() }
         override fun getSharedPreferences(name: String, mode: Int) =
-            baseContext.getSharedPreferences(prefix + name, mode).also { names += prefix + name }
+            baseContext.getSharedPreferences(prefix + name, mode).also {
+                legacyReads.incrementAndGet()
+                names += prefix + name
+            }
         fun cleanup() { names.forEach { baseContext.deleteSharedPreferences(it) } }
     }
 

@@ -11,13 +11,18 @@ import coil3.network.DeDupeConcurrentRequestStrategy
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.allowPartialImage
 import coil3.svg.SvgDecoder
+import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
+import com.simon.harmonichackernews.data.FileEditorDraftStorage
+import com.simon.harmonichackernews.network.PreviewCachePolicy
+import com.simon.harmonichackernews.platform.StorageKeyPolicy
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
-import com.simon.harmonichackernews.data.FileEditorDraftStorage
 import kotlinx.io.files.Path
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
@@ -45,7 +50,25 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
     private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var deferredServicesStarted = false
     internal val composition by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        createAndroidAppComposition(this)
+        createAndroidAppComposition(this, preloadScope)
+    }
+
+    private val startupPreferences by lazy {
+        preloadScope.async {
+            listOf(
+                AndroidKeyValueStore.defaults(this@HarmonicApplication),
+                AndroidKeyValueStore.global(this@HarmonicApplication),
+                AndroidKeyValueStore.named(this@HarmonicApplication, PreviewCachePolicy.STORE_NAME),
+                AndroidKeyValueStore.named(this@HarmonicApplication, StorageKeyPolicy.FILE_ACCESS_STORE),
+            ).map { store -> async { store.awaitLoaded() } }.awaitAll()
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // Overlap independent file reads with activity construction. Consumers keep their normal
+        // lifecycle and wait only if their particular snapshot has not finished loading yet.
+        startupPreferences.start()
     }
 
     override fun attachBaseContext(base: Context?) {

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.app
 import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
 import com.simon.harmonichackernews.data.InMemoryStoryCacheMetadataStore
 import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.data.StoryCacheRepository
 import com.simon.harmonichackernews.network.DownloadStore
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
@@ -41,6 +42,7 @@ class HarmonicHostConfiguration(
     val articleSnapshotStore: DownloadStore? = null,
     val pdfDownloadStore: DownloadStore? = null,
     val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    val storyResourceTints: StoryResourceTintStore? = null,
 ) {
     companion object {
         /** Explicitly non-persistent configuration for previews and host-contract checks. */

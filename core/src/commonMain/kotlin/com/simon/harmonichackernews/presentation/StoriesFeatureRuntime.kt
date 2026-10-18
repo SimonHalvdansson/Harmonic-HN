@@ -156,6 +156,16 @@ class StoriesFeatureRuntime(
     private var paginationMode = false
     private var hideRead = false
     private var swipeToHideEnabled = false
+    private var hiddenFilterRevision = 0L
+    private var lastHiddenInputs: HiddenInputs? = null
+    private data class HiddenInputs(
+        val items: List<StoryListItemSnapshot>,
+        val ids: Set<Int>,
+        val type: StoryType,
+        val historyVersion: Long,
+        val filterRevision: Long,
+        val hideRead: Boolean,
+    )
     private var alwaysOpenComments = false
     private var useIntegratedWebView = false
     private var activeLoadedThrough = -1
@@ -299,12 +309,14 @@ class StoriesFeatureRuntime(
             alwaysOpenComments = story.alwaysOpenComments,
             useIntegratedWebView = settings.reading.integratedWebView,
         )
-        return requests.configureVisibility(filters, story.hideJobs)
+        return requests.configureVisibility(filters, story.hideJobs).also {
+            if (it) hiddenFilterRevision++
+        }
     }
 
     val hiddenPostIds get() = hiddenPosts?.ids
 
-    val canHidePosts: Boolean get() = userSettings.story.swipeToHide &&
+    val canHidePosts: Boolean get() = swipeToHideEnabled &&
         !searching && HiddenStoryPolicy.supports(currentType)
 
     suspend fun initializeHiddenPosts() { hiddenPosts?.initialize() }
@@ -348,11 +360,17 @@ class StoriesFeatureRuntime(
         }
     }
 
-    fun syncHiddenPosts() {
-        val enabled = userSettings.story.swipeToHide &&
+    fun syncHiddenPosts(force: Boolean = false) {
+        val enabled = swipeToHideEnabled &&
             HiddenStoryPolicy.supports(sessionState.mainStoryType)
         val storedIds = if (enabled) hiddenPostIds?.value.orEmpty() else emptySet()
         val ids = if (enabled && pendingHiddenIds.isNotEmpty()) storedIds + pendingHiddenIds else storedIds
+        val previous = lastHiddenInputs
+        val items = mainStore.state.value.items
+        if (!force && previous != null && previous.items === items && previous.ids == ids &&
+            previous.type == sessionState.mainStoryType && previous.historyVersion == historyStore.changeVersion &&
+            previous.filterRevision == hiddenFilterRevision && previous.hideRead == hideRead
+        ) return
         val visible = sessionState.hiddenStoryRows.apply(mainStories, ids) { story ->
             !(hideRead && historyStore.contains(story.id)) &&
                 !requests.shouldHideStory(story, sessionState.mainStoryType)
@@ -368,6 +386,10 @@ class StoriesFeatureRuntime(
             mainStore.markLoadedThrough(-1)
             if (!searching) activeLoadedThrough = -1
         }
+        lastHiddenInputs = HiddenInputs(
+            mainStore.state.value.items, ids, sessionState.mainStoryType,
+            historyStore.changeVersion, hiddenFilterRevision, hideRead,
+        )
     }
 
     fun initializeHistory() {
@@ -1851,7 +1873,8 @@ class StoriesFeatureRuntime(
     private fun prefetch(story: Story) = storyResources?.prefetchStory(story, activeStories)
 
     private fun changed(story: Story? = null) {
-        syncHiddenPosts()
+        // Mutable working rows can change before their immutable snapshots are published.
+        syncHiddenPosts(force = true)
         when {
             story == null -> activeStore.contentChanged()
             mainStories.contains(story) -> mainStore.contentChanged(story)

@@ -1008,6 +1008,41 @@ class StoryRequestsTest {
     }
 
     @Test
+    fun feedPublicationReusesSettingsAndRechecksChangedRowEligibility() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val preferences = MemoryKeyValueStore().apply { putBoolean(UserPreferenceKeys.SWIPE_TO_HIDE, true) }
+        val delegate = StoredUserSettings(preferences, emptyFlow())
+        var settingsReads = 0
+        val settings = object : UserSettings by delegate {
+            override val story: com.simon.harmonichackernews.settings.StoryPreferences
+                get() { settingsReads++; return delegate.story }
+        }
+        val hidden = com.simon.harmonichackernews.data.HiddenPostsStore(
+            MemoryKeyValueStore(), kotlinx.coroutines.test.StandardTestDispatcher(testScheduler),
+        )
+        hidden.hide(2)
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(),
+            settings = settings, hiddenPosts = hidden)
+        runCurrent()
+        runtime.showCachedStories(listOf(
+            Story("Story", 1, true, false),
+            Story("Comment", 2, true, false).apply { isComment = true },
+        ))
+        runtime.syncHiddenPosts()
+        val readsBefore = settingsReads
+        repeat(100) { runtime.syncHiddenPosts(); assertTrue(runtime.canHidePosts) }
+        assertEquals(readsBefore, settingsReads)
+        runtime.mainStore.updateStory(2) { isComment = false }
+        runtime.syncHiddenPosts()
+        assertEquals(listOf(1), runtime.mainStories.map(Story::id))
+        hidden.clear()
+        runtime.syncHiddenPosts()
+        assertEquals(listOf(1, 2), runtime.mainStories.map(Story::id))
+    }
+
+    @Test
     fun hiddenRowsStayOutOfRefreshedFeedAndUndoAfterSwitchDoesNotInsertThem() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())

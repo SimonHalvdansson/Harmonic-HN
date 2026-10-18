@@ -17,13 +17,17 @@ import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.summary.local.createAndroidLocalModelService
 import java.util.Calendar
 import kotlinx.io.files.Path
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import com.simon.harmonichackernews.data.BufferedStoryResourceTintStore
+import com.simon.harmonichackernews.data.migrateStoryResourceTints
 
 /** Resolves the graph from its actual Android Application owner without a static locator. */
 internal val Context.harmonicAppComposition: HarmonicAppComposition
     get() = (applicationContext as? HarmonicApplication)?.composition
         ?: error("HarmonicApplication does not own this process")
 
-internal fun createAndroidAppComposition(context: Context): HarmonicAppComposition {
+internal fun createAndroidAppComposition(context: Context, cacheScope: CoroutineScope): HarmonicAppComposition {
     val network = AndroidNetworkEnvironment(context)
     val settingsStore = AndroidKeyValueStore.defaults(context)
     val appDataStore = AndroidKeyValueStore.global(context)
@@ -85,6 +89,16 @@ internal fun createAndroidAppComposition(context: Context): HarmonicAppCompositi
             storyCacheRepository = persistentStorage.storyCacheRepository,
             articleSnapshotStore = persistentStorage.articleSnapshotStore,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
+            storyResourceTints = BufferedStoryResourceTintStore(
+                scope = cacheScope,
+                dispatcher = Dispatchers.IO,
+                openStore = {
+                    AndroidKeyValueStore.named(context, "story_resource_tints").also { tints ->
+                        tints.awaitLoaded()
+                        migrateStoryResourceTints(appDataStore, tints, tints::awaitPersisted)
+                    }
+                },
+            ),
         ),
     )
 }

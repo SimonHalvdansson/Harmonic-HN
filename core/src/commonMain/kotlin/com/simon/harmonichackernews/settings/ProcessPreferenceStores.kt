@@ -12,15 +12,23 @@ import kotlinx.coroutines.sync.withLock
 object ProcessPreferenceStores {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
-    private val stores = mutableMapOf<String, DataStoreKeyValueStore>()
+    private class Entry {
+        val mutex = Mutex()
+        var store: DataStoreKeyValueStore? = null
+    }
+    private val stores = mutableMapOf<String, Entry>()
 
     suspend fun open(
         path: String,
         migrations: List<DataMigration<Preferences>> = emptyList(),
         onWriteFailure: (Throwable) -> Unit = {},
-    ): DataStoreKeyValueStore = mutex.withLock {
-        stores.getOrPut(path) {
-            DataStoreKeyValueStore.openFile(path, scope, migrations, onWriteFailure)
+    ): DataStoreKeyValueStore {
+        // Unrelated files can initialize concurrently. The per-file lock still guarantees one
+        // DataStore writer, and a failed/cancelled open can be retried after its owner is closed.
+        val entry = mutex.withLock { stores.getOrPut(path) { Entry() } }
+        return entry.mutex.withLock {
+            entry.store ?: DataStoreKeyValueStore.openFile(path, scope, migrations, onWriteFailure)
+                .also { entry.store = it }
         }
     }
 }
