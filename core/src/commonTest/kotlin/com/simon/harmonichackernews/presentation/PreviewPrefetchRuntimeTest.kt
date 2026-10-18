@@ -11,6 +11,19 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class)
 class PreviewPrefetchRuntimeTest {
     @Test
+    fun movingViewportDoesNotRevisitTheEarlierFeedAndCanReturnToIt() = runTest {
+        val requested = mutableListOf<Int>()
+        val stories = (1..500).map { story(it, loaded = true) }
+        val runtime = PreviewPrefetchRuntime(this, 10, 2, 450L) { requested += it.id }
+        runtime.prefetchNearViewport(stories, 5, 300, 304)
+        assertEquals((301..307).toList(), requested)
+        requested.clear()
+        runtime.prefetchNearViewport(stories, 5, 5, 8)
+        assertEquals((6..11).toList(), requested)
+        runtime.reset()
+    }
+
+    @Test
     fun visibleStoriesAreDispatchedInDelayedBatches() = runTest {
         val requested = mutableListOf<Int>()
         val stories = (1..5).map { story(it, loaded = it <= 2) }

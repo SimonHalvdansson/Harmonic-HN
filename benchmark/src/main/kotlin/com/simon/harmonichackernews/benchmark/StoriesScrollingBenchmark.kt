@@ -19,8 +19,9 @@ class StoriesScrollingBenchmark {
 
     @Test fun imageArrivals() = measure(cached = false)
     @Test fun cachedPalettes() = measure(cached = true)
+    @Test fun metadataUpdates() = measure(cached = true, updates = true)
 
-    private fun measure(cached: Boolean) {
+    private fun measure(cached: Boolean, updates: Boolean = false) {
         var run = (System.currentTimeMillis() / 1_000 % 90_000).toInt()
         rule.measureRepeated(
             packageName = BenchmarkPackageName,
@@ -34,7 +35,8 @@ class StoriesScrollingBenchmark {
                     "com.simon.harmonichackernews.StoriesScrollBenchmarkActivity")
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("stories_run", run++)
-                    .putExtra("stories_cached", cached))
+                    .putExtra("stories_cached", cached)
+                    .putExtra("stories_updates", updates))
                 device.wait(Until.findObject(By.text("Get started")), 500)?.let { (it.parent ?: it).click() }
                 check(device.wait(Until.hasObject(By.text("1. A small database built for predictable performance")), 10_000))
                 device.waitForIdle()

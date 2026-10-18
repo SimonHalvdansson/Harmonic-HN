@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -38,7 +39,7 @@ internal class StoryRowPresentation(
     val renderedStyle: StoryRowStyle,
     val mediumAccessoryAlpha: State<Float>,
     val hasPreview: Boolean,
-    val background: Color,
+    val background: State<Color>,
     val tintBaseColorArgb: Int,
     val onPreviewLoadFailed: () -> Unit,
     val onPreviewLoadSuccess: () -> Unit,
@@ -71,7 +72,7 @@ internal fun rememberStoryRowPresentation(
     } else {
         1f
     }
-    val cardProgress = if (listItem && !animate) {
+    val cardProgress = if (listItem) {
         if (style.cardStyle) 1f else 0f
     } else {
         val animatedCardProgress by animateFloatAsState(
@@ -81,7 +82,7 @@ internal fun rememberStoryRowPresentation(
         )
         animatedCardProgress
     }
-    val outlineAlpha = if (listItem && !animate) {
+    val outlineAlpha = if (listItem) {
         if (style.showOutline) 1f else 0f
     } else {
         val animatedOutlineAlpha by animateFloatAsState(
@@ -178,14 +179,13 @@ internal fun rememberStoryRowPresentation(
     // Image palette extraction finishes after a list row is first composed. Preserve the old
     // blend so an arriving preview/favicon tint does not flash into place.
     val background = if (animate) {
-        val animatedBackground by animateColorAsState(
+        animateColorAsState(
             targetValue = targetBackground,
             animationSpec = contentTween(),
             label = "story card tint",
         )
-        animatedBackground
     } else {
-        targetBackground
+        rememberUpdatedState(targetBackground)
     }
     return StoryRowPresentation(
         dimAlpha = dimAlpha,

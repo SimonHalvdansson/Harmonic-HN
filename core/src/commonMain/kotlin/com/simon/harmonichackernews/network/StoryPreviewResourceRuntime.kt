@@ -67,6 +67,11 @@ private fun StoryPreviewResourceState.withReconciledResources(
     clearContentLoadFailure: Boolean,
 ): StoryPreviewResourceState {
     val imageChanged = chosenImageUrl != imageUrl
+    if (!imageChanged && chosenSummary == summary &&
+        (!imageResolutionEvidence || imageUrlResolved) &&
+        (!summaryResolutionEvidence || summaryResolved) &&
+        (!clearContentLoadFailure || !contentLoadFailed)
+    ) return this
     return copy(
         imageUrlResolved = imageUrlResolved || imageResolutionEvidence,
         imageUrl = chosenImageUrl,

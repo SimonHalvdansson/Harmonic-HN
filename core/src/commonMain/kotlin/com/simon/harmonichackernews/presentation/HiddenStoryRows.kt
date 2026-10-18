@@ -18,10 +18,14 @@ object HiddenStoryPolicy {
 class HiddenStoryRows {
     private var order = emptyList<Int>()
     private var retained = emptyMap<Int, Story>()
+    private var lastVisible = emptyList<Story>()
+    private var lastHiddenIds: Set<Int>? = null
 
     fun reset() {
         order = emptyList()
         retained = emptyMap()
+        lastVisible = emptyList()
+        lastHiddenIds = null
     }
 
     fun apply(
@@ -29,7 +33,22 @@ class HiddenStoryRows {
         hiddenIds: Set<Int>,
         canRestore: (Story) -> Boolean = { true },
     ): List<Story> {
-        if (retained.isEmpty() && hiddenIds.isEmpty()) return stories
+        if (retained.isEmpty() && hiddenIds.isEmpty()) {
+            reset()
+            return stories
+        }
+        // Preview arrivals and viewport changes do not change the feed. Retain the input
+        // without rebuilding its sets/maps/lists. Story is mutable, so also check eligibility
+        // and restoration policy rather than relying on list identity or IDs alone.
+        if (lastHiddenIds == hiddenIds && stories.size == lastVisible.size &&
+            stories.indices.all { index ->
+                val story = stories[index]
+                story === lastVisible[index] &&
+                    (story.id !in hiddenIds || story.isComment || story.isFrontpageLink)
+            } && retained.values.all { !it.isComment && !it.isFrontpageLink && canRestore(it) }
+        ) {
+            return stories
+        }
         val present = stories.mapTo(mutableSetOf(), Story::id)
         val before = mutableMapOf<Int, List<Story>>()
         var pending = mutableListOf<Story>()
@@ -54,6 +73,9 @@ class HiddenStoryRows {
         order = restored.map(Story::id)
         retained = restored.filter { it.id in hiddenIds && !it.isComment && !it.isFrontpageLink }
             .associateBy(Story::id)
-        return restored.filterNot { it.id in retained }
+        return restored.filterNot { it.id in retained }.also {
+            lastVisible = it
+            lastHiddenIds = hiddenIds.toSet()
+        }
     }
 }

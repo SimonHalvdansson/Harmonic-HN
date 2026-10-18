@@ -351,7 +351,8 @@ class StoriesFeatureRuntime(
     fun syncHiddenPosts() {
         val enabled = userSettings.story.swipeToHide &&
             HiddenStoryPolicy.supports(sessionState.mainStoryType)
-        val ids = if (enabled) hiddenPostIds?.value.orEmpty() + pendingHiddenIds else emptySet()
+        val storedIds = if (enabled) hiddenPostIds?.value.orEmpty() else emptySet()
+        val ids = if (enabled && pendingHiddenIds.isNotEmpty()) storedIds + pendingHiddenIds else storedIds
         val visible = sessionState.hiddenStoryRows.apply(mainStories, ids) { story ->
             !(hideRead && historyStore.contains(story.id)) &&
                 !requests.shouldHideStory(story, sessionState.mainStoryType)
@@ -931,12 +932,14 @@ class StoriesFeatureRuntime(
         tintColorArgb,
     ) ?: false
 
-    fun prefetchVisibleStoryResources(lastVisibleIndex: Int = -1) {
+    fun prefetchVisibleStoryResources(lastVisibleIndex: Int = -1, firstVisibleIndex: Int = -1) {
         val store = activeStore
+        val viewport = visibleRanges[store]
         storyResources?.prefetchNearViewport(
             stories = activeStories,
             initialLoadCount = previewPrefetchInitialLoadCount,
-            lastVisibleItem = lastVisibleIndex,
+            firstVisibleItem = firstVisibleIndex.takeIf { it >= 0 } ?: viewport?.first ?: -1,
+            lastVisibleItem = lastVisibleIndex.takeIf { it >= 0 } ?: viewport?.last ?: -1,
             paginationVisibleCount = store.state.value.visibleStoryCount
                 .takeIf { store.state.value.paginationEnabled },
         )

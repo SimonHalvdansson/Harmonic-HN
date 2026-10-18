@@ -40,7 +40,7 @@ class PreviewPrefetchRuntime(
             lastVisibleItem = lastVisibleItem,
             paginationVisibleCount = paginationVisibleCount,
         ) ?: return
-        planner.begin(range.last, enabled = true)
+        planner.begin(range.last, enabled = true, firstIndex = range.first)
         range.forEach { enqueue(stories[it], stories) }
     }
 

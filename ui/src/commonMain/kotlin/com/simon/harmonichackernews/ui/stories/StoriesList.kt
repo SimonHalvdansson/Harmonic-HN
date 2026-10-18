@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlin.time.Clock
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.CommentFeedItem
@@ -135,7 +136,14 @@ internal fun StoriesList(
     val visibleCount = (
         if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
     ).coerceIn(0, stories.size)
-    val modelNowMillis = rememberTimeOnResume(stories, settings)
+    // Refresh cached ages per feed/resume. A single arriving row must not expire other models.
+    val modelTimeRefresh = rememberTimeOnResume(
+        searchMode,
+        controller.selectedTypeIndex,
+        controller.mainListGeneration,
+        controller.scrollToTopRequestVersion,
+        controller.lastSearch.takeIf { searchMode },
+    )
     val centerFailure = !searchMode && visibleCount == 0 &&
         (controller.loadingFailed || controller.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -325,14 +333,15 @@ internal fun StoriesList(
                                 storyRevision,
                                 previewResource,
                                 storyItemModelCacheKey,
-                                modelNowMillis,
+                                modelTimeRefresh,
                             ) {
                                 storyItemModel(
                                     story,
                                     index,
                                     settings,
                                     previewResource,
-                                    modelNowMillis,
+                                    // New or changed rows still need the current time during a long session.
+                                    Clock.System.now().toEpochMilliseconds(),
                                 )
                             }
                             val style = remember(story, settings, storyRevision, model.previewText) {

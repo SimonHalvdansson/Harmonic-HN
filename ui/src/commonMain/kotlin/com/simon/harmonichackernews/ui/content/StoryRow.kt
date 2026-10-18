@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -197,7 +198,8 @@ fun StoryRow(
         preferredFont = style.preferredFont,
         storyTextSize = style.textSize,
     )
-    val animate = animateChanges
+    // List rows retain content-arrival motion; the settings previews own style transitions.
+    val animate = animateChanges && !listItem
     val renderedCardPadding = cardPadding ?: run {
         val targetHorizontalPadding = if (style.hasBackground || style.tintCard) 12.dp else 8.dp
         val horizontalPadding = if (animate) {
@@ -216,7 +218,7 @@ fun StoryRow(
         model = model,
         style = style,
         listItem = listItem,
-        animate = animate,
+        animate = animateChanges,
         pageBackground = pageBackground,
         onPreviewLoadSuccess = onPreviewLoadSuccess,
         onPreviewLoadFailed = onPreviewLoadFailed,
@@ -255,7 +257,7 @@ fun StoryRow(
             style.cardStyle -> Modifier
                 .shadow(elevation = 1.dp, shape = StoryCardShape, clip = false)
                 .clip(StoryCardShape)
-                .background(background)
+                .drawBehind { drawRect(background.value) }
                 .border(
                     width = 1.dp,
                     color = colors.outlineVariant.copy(alpha = outlineAlpha),
@@ -263,7 +265,7 @@ fun StoryRow(
                 )
             style.hasBackground || style.tintCard -> Modifier
                 .clip(StoryCardShape)
-                .background(background)
+                .drawBehind { drawRect(background.value) }
             else -> Modifier
         }
     } else {
@@ -274,7 +276,7 @@ fun StoryRow(
                 clip = false,
             )
             .clip(StoryCardShape)
-            .background(background)
+            .drawBehind { drawRect(background.value) }
             .border(
                 width = 1.dp,
                 color = colors.outlineVariant.copy(alpha = outlineAlpha),
@@ -301,7 +303,7 @@ fun StoryRow(
             ) {
                 StoryVisibility(
                     visible = renderedPreviewMode == StoryPreviewMode.LARGE && hasPreview,
-                    animate = animate,
+                    animate = animateChanges,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
@@ -473,7 +475,7 @@ fun StoryRow(
                         }
                         StoryContentRow(
                             commentsOnLeft = style.commentsOnLeft && !mediumPreview,
-                            animateChanges = animate,
+                            animateChanges = animateChanges,
                             railWidth = animatedRailWidth,
                             contentMinHeight = if (mediumPreview && hasPreview) {
                                 if (renderedStyle.borderlessLargeImage) MediumPreviewImageMinimumHeight
@@ -503,6 +505,7 @@ fun StoryRow(
                                     model.faviconTintArgb == null,
                                 onFaviconTintExtracted = handleFaviconTintExtracted,
                                 animateChanges = animate,
+                                animateContentChanges = animateChanges,
                                 capturePreviewSource = captureSourceContent,
                                 itemGeometry = itemGeometry,
                                 sharedTransitionScope = sharedTransitionScope,
@@ -615,6 +618,7 @@ private fun StoryMainContent(
     extractFaviconTint: Boolean,
     onFaviconTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
+    animateContentChanges: Boolean,
     capturePreviewSource: Boolean,
     itemGeometry: StoryRowGeometry,
     sharedTransitionScope: SharedTransitionScope?,
@@ -745,7 +749,7 @@ private fun StoryMainContent(
                 )
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
-                    animate = animateChanges,
+                    animate = animateContentChanges,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
@@ -792,7 +796,7 @@ private fun StoryMainContent(
                     )
                 }
             }
-            if (animateChanges) {
+            if (animateContentChanges) {
                 AnimatedVisibility(
                     visible = hasSmallPreview,
                     modifier = Modifier.align(Alignment.CenterVertically),

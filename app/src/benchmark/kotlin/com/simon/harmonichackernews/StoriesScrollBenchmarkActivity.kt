@@ -2,6 +2,7 @@ package com.simon.harmonichackernews
 
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.asImage
@@ -11,6 +12,7 @@ import coil3.request.SuccessResult
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.ui.session.HarmonicSceneViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Fixed input, real Stories store/screen, and local images; absent from distributable builds. */
 @OptIn(coil3.annotation.DelicateCoilApi::class)
@@ -78,6 +80,19 @@ class StoriesScrollBenchmarkActivity : MainActivity() {
         session.initialized = true
         session.lastLoaded = System.currentTimeMillis()
         session.searching = false
+        if (intent.getBooleanExtra("stories_updates", false)) {
+            lifecycleScope.launch {
+                delay(1_000)
+                // Exercise the same immutable-list publication as arriving/refreshed story
+                // metadata, without introducing network timing into a scrolling comparison.
+                repeat(160) { index ->
+                    delay(120)
+                    val story = stories[index % stories.size]
+                    story.score++
+                    session.mainStoryList.contentChanged(story)
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

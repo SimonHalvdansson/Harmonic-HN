@@ -284,7 +284,7 @@ class StoriesFeatureStore internal constructor(
             }
             is StoriesIntent.VisibleRange -> {
                 runtime.loadVisibleStories(intent.lastVisibleIndex, intent.firstVisibleIndex)
-                runtime.prefetchVisibleStoryResources(intent.lastVisibleIndex)
+                runtime.prefetchVisibleStoryResources(intent.lastVisibleIndex, intent.firstVisibleIndex)
             }
             is StoriesIntent.OpenPreviewStory -> withActiveStory(intent.storyId) { story ->
                 runtime.openStory(story, intent.showWebsite)

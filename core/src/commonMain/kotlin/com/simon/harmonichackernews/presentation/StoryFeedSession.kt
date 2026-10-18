@@ -141,15 +141,17 @@ class PreviewPrefetchPlanner(
     private val requestedIds = mutableSetOf<Int>()
     private var slotsRemaining = batchSize
     private var targetIndex = -1
+    private var firstIndex = 0
 
     var complete: Boolean = false
         private set
     var scheduled: Boolean = false
         private set
 
-    fun begin(targetIndex: Int, enabled: Boolean) {
+    fun begin(targetIndex: Int, enabled: Boolean, firstIndex: Int = 0) {
         if (enabled && targetIndex >= 0 && !complete) {
-            this.targetIndex = maxOf(this.targetIndex, targetIndex)
+            this.firstIndex = firstIndex.coerceAtLeast(0)
+            this.targetIndex = targetIndex
         }
     }
 
@@ -196,6 +198,7 @@ class PreviewPrefetchPlanner(
         requestedIds.clear()
         slotsRemaining = batchSize
         targetIndex = -1
+        firstIndex = 0
         complete = false
         scheduled = false
     }
@@ -238,7 +241,7 @@ class PreviewPrefetchPlanner(
 
             val story = queue.removeAt(bestQueueIndex)
             if (story.id > 0) queuedIds.remove(story.id)
-            if (bestDisplayIndex >= 0 && story.loaded && !story.loadingFailed) return story
+            if (bestDisplayIndex in firstIndex..targetIndex && story.loaded && !story.loadingFailed) return story
         }
         return null
     }
@@ -259,7 +262,7 @@ class PreviewPrefetchPlanner(
     private fun updateCompletion(stories: List<Story>) {
         if (complete || targetIndex < 0 || queue.isNotEmpty()) return
         val cappedTarget = targetIndex.coerceAtMost(stories.lastIndex)
-        if (cappedTarget >= 0 && (0..cappedTarget).any { index ->
+        if (cappedTarget >= firstIndex && (firstIndex..cappedTarget).any { index ->
                 !stories[index].loaded && !stories[index].loadingFailed
             }
         ) {

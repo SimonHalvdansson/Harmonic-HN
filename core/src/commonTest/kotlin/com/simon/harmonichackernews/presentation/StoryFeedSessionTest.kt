@@ -101,6 +101,33 @@ class StoryFeedSessionTest {
     }
 
     @Test
+    fun prefetchCanCompleteAfterSkippingUnloadedRowsBeforeTheViewport() {
+        val planner = PreviewPrefetchPlanner(batchSize = 2, visibleThreshold = 0)
+        val stories = (1..10).map { story(id = it, loaded = it >= 9) }
+        planner.begin(targetIndex = 9, enabled = true, firstIndex = 8)
+        assertEquals(listOf(stories[8]), planner.enqueue(stories[8], stories))
+        assertTrue(planner.complete)
+        assertEquals(listOf(stories[9]), planner.enqueue(stories[9], stories))
+        assertFalse(planner.requestNextBatchSchedule())
+    }
+
+    @Test
+    fun movingViewportDropsPreviouslyQueuedRows() {
+        val planner = PreviewPrefetchPlanner(batchSize = 1, visibleThreshold = 0)
+        val stories = (1..6).map { story(id = it, loaded = it == 1) }
+        planner.begin(5, enabled = true)
+        planner.enqueue(stories[0], stories)
+        assertTrue(planner.requestNextBatchSchedule())
+        stories[1].loaded = true
+        planner.enqueue(stories[1], stories)
+        planner.begin(5, enabled = true, firstIndex = 4)
+        stories[4].loaded = true
+        planner.enqueue(stories[4], stories)
+        planner.startNextBatch()
+        assertEquals(listOf(stories[4]), planner.drain(stories))
+    }
+
+    @Test
     fun prefetchPlannerBatchesLoadedStoriesInDisplayOrder() {
         val planner = PreviewPrefetchPlanner(batchSize = 2, visibleThreshold = 4)
         val stories = listOf(
