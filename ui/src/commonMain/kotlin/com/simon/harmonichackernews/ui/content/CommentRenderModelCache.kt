@@ -152,39 +152,39 @@ internal object CommentHtmlTextCache {
     private const val MAX_ENTRIES = 384
     private const val MAX_CACHEABLE_SOURCE_CHARS = 64 * 1024
     private const val MAX_TOTAL_WEIGHTED_CHARS = 2 * 1024 * 1024
-    private data class TextKey(val html: String, val highlightQuotes: Boolean)
-    private val entries = CommentContentLruEntries<TextKey, AnnotatedString>()
+    private val entries = CommentContentLruEntries<String, PreparedCommentHtml>()
     private var totalWeightedChars = 0
 
-    fun get(html: String, highlightQuotes: Boolean = true): AnnotatedString {
-        entries[TextKey(html, highlightQuotes)]?.let { cached ->
-            return cached
-        }
-        val text = prepareCommentHtml(html, highlightQuotes)
-        install(html, text, highlightQuotes)
-        return text
+    fun get(
+        html: String,
+        highlightQuotes: Boolean = true,
+        retainQuoteDecoration: Boolean = false,
+    ): AnnotatedString = getPrepared(html).text(highlightQuotes, retainQuoteDecoration)
+
+    fun getPrepared(html: String): PreparedCommentHtml {
+        entries[html]?.let { return it }
+        val prepared = prepareCommentHtmlContent(html)
+        install(html, prepared)
+        return prepared
     }
 
-    fun contains(html: String): Boolean = TextKey(html, true) in entries
+    fun contains(html: String): Boolean = html in entries
 
-    fun install(html: String, text: AnnotatedString, highlightQuotes: Boolean = true) {
-        val key = TextKey(html, highlightQuotes)
-        if (key in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
-        val weight = min(Int.MAX_VALUE / 2, html.length * 3)
+    fun install(html: String, text: PreparedCommentHtml) {
+        if (html in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
+        val weight = text.weightedChars(html.length)
         while (entries.isNotEmpty() &&
             (entries.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
         ) {
             remove(entries.oldestKey())
         }
-        entries.install(key, text)
+        entries.install(html, text)
         totalWeightedChars += weight
     }
 
-    private fun remove(key: TextKey) {
-        val html = key.html
-        if (entries.remove(key) != null) {
-            totalWeightedChars -= min(Int.MAX_VALUE / 2, html.length * 3)
-        }
+    private fun remove(html: String) {
+        val removed = entries.remove(html) ?: return
+        totalWeightedChars -= removed.weightedChars(html.length)
     }
 
     internal fun clearForTest() {
@@ -199,7 +199,7 @@ internal object CommentHtmlTextCache {
 internal suspend fun prefetchCommentRenderModels(
     comments: List<PortableCommentItem>,
     collectLinks: Boolean,
-    prepareHtml: (String) -> AnnotatedString = ::prepareCommentHtml,
+    prepareHtml: (String) -> PreparedCommentHtml = ::prepareCommentHtmlContent,
 ) {
     for (batch in comments.chunked(8)) {
         currentCoroutineContext().ensureActive()

@@ -20,8 +20,8 @@ class QuoteSpacingLayoutTest {
         fun measure(gap: Int): Int {
             var height = 0
             val scene = ImageComposeScene(400, 300, Density(1f)) {
-                QuoteSpacedContent(body, gap.dp, Modifier.onSizeChanged { height = it.height }) {
-                    Text(it, fontSize = 20.sp, style = TextStyle())
+                QuoteSpacedContent(body.quoteSpacedSegments(), gap.dp, Modifier.onSizeChanged { height = it.height }) { text, modifier ->
+                    Text(text, modifier = modifier, fontSize = 20.sp, style = TextStyle())
                 }
             }
             try {

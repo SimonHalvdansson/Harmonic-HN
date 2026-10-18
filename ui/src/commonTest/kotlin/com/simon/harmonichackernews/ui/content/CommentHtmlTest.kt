@@ -254,7 +254,7 @@ class CommentHtmlTest {
         assertEquals("Bold nested\nLink", prepared.text)
         assertEquals(2, prepared.spanStyles.size)
         assertTrue(prepared.getLinkAnnotations(0, prepared.length).isEmpty())
-        CommentHtmlTextCache.install(html, prepared)
+        CommentHtmlTextCache.install(html, PreparedCommentHtml(prepared))
         var firstClicks = 0
         var secondClicks = 0
         val first = htmlAnnotatedString(html, Color.Red, LinkInteractionListener { firstClicks++ })

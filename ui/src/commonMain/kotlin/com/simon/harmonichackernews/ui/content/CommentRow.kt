@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.RoundRect
@@ -644,7 +645,7 @@ private fun CommentRowLayout(
 }
 
 @Composable
-private fun CommentBodyText(
+internal fun CommentBodyText(
     highlightQuotes: Boolean,
     quoteSpacing: QuoteSpacing,
     quoteHighlightColor: QuoteHighlightColor,
@@ -660,18 +661,13 @@ private fun CommentBodyText(
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val quoteBase = if (quoteHighlightColor == QuoteHighlightColor.MATERIAL) colors.primary else colors.onSurface
-    val quoteBackground by animateColorAsState(
-        targetValue = if (!highlightQuotes || quoteHighlightStyle == QuoteHighlightStyle.SIDE_LINE) Color.Transparent
-            else quoteBase.copy(alpha = if (quoteHighlightColor == QuoteHighlightColor.MATERIAL) 0.08f else 0.055f),
-        animationSpec = tween(240),
-        label = "quote background",
-    )
-    val quoteAccent by animateColorAsState(
-        targetValue = if (!highlightQuotes || quoteHighlightStyle == QuoteHighlightStyle.BACKGROUND) Color.Transparent
-            else quoteBase.copy(alpha = 0.4f),
-        animationSpec = tween(240),
-        label = "quote side line",
+    val quotePresentation = rememberCommentQuotePresentation(
+        enabled = highlightQuotes,
+        spacing = quoteSpacing,
+        color = quoteHighlightColor,
+        style = quoteHighlightStyle,
+        primary = colors.primary,
+        onSurface = colors.onSurface,
     )
     val hapticFeedback = LocalHapticFeedback.current
     val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
@@ -684,15 +680,12 @@ private fun CommentBodyText(
             }
         }
     }
-    val quoteGapFraction by animateFloatAsState(
-        targetValue = if (highlightQuotes && quoteSpacing == QuoteSpacing.COMPACT) 0.5f else 1f,
-        animationSpec = tween(280),
-        label = "quote paragraph spacing",
-    )
-    val body = remember(html, colors.primary, linkListener, highlightQuotes) {
-        val parsed = htmlAnnotatedString(html, colors.primary, linkListener, highlightQuotes)
-        // Keep ranges while disabled so the decoration can fade out instead of disappearing.
-        if (highlightQuotes) parsed else parsed.withHighlightedQuotedLines(removeMarkers = false)
+    val decorateQuotes = quotePresentation.decorate
+    val body = remember(html, colors.primary, linkListener, highlightQuotes, decorateQuotes) {
+        htmlAnnotatedString(
+            html, colors.primary, linkListener, highlightQuotes,
+            retainQuoteDecoration = decorateQuotes,
+        )
     }
     val displayedBody = if (animateSearchMatches) {
         animatedSearchMatches(
@@ -707,64 +700,70 @@ private fun CommentBodyText(
         }
     }
     val density = LocalDensity.current
-    val hasQuoteGaps = remember(body) { body.quoteSpacedSegments().size > 1 }
-    val lineHeight = if (hasQuoteGaps) {
-        val textMeasurer = rememberTextMeasurer(cacheSize = 1)
+    val segments = remember(displayedBody, decorateQuotes) {
+        if (decorateQuotes) displayedBody.quoteSpacedSegments() else listOf(displayedBody)
+    }
+    val paragraphGap = if (segments.size > 1) {
+        val textMeasurer = rememberTextMeasurer(cacheSize = 2)
         remember(fontFamily, fontSize, density, textMeasurer) {
-            textMeasurer.measure(
-                text = "M",
-                style = animatedCommentTextStyle.copy(fontFamily = fontFamily, fontSize = fontSize.sp),
-            ).size.height
+            val textStyle = animatedCommentTextStyle.copy(fontFamily = fontFamily, fontSize = fontSize.sp)
+            // A standalone glyph's height can include font leading that a blank line does not.
+            // Match the space between two Text nodes to the same paragraphs in a single Text,
+            // so entering/leaving the decorated layout does not change comfortable spacing.
+            val singleLine = textMeasurer.measure("M", style = textStyle).size.height
+            val paragraphs = textMeasurer.measure("M\n\nM", style = textStyle).size.height
+            (paragraphs - 2 * singleLine).coerceAtLeast(0)
         }
     } else 0
-    val gap = with(density) { (lineHeight * quoteGapFraction).toDp() }
-    QuoteSpacedContent(displayedBody, gap, modifier) { segment ->
-        var textLayout by remember(segment) { mutableStateOf<TextLayoutResult?>(null) }
+    val gap = with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
+    QuoteSpacedContent(segments, gap, modifier) { segment, textModifier ->
+        val textLayout = remember(segment) { mutableStateOf<TextLayoutResult?>(null) }
         var textCoordinates by remember(segment) { mutableStateOf<LayoutCoordinates?>(null) }
+        val quoteLayout = remember(segment, decorateQuotes) {
+            if (decorateQuotes) {
+                segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
+                    .takeIf { it.isNotEmpty() }?.let(::CommentQuoteLayout)
+            } else null
+        }
+        val decoration = if (quoteLayout == null) Modifier else remember(
+            quoteLayout, quotePresentation.background, quotePresentation.accent,
+        ) {
+            Modifier.drawBehind {
+                val inset = 5.dp.toPx()
+                val railWidth = 3.dp.toPx()
+                val radius = CornerRadius(7.dp.toPx())
+                // Bounds are updated by text layout, never recalculated during color animation.
+                val background = quotePresentation.background.value
+                val accent = quotePresentation.accent.value
+                quoteLayout.bounds.forEach { bounds ->
+                    val topLeft = Offset(-inset, bounds.top)
+                    if (background.alpha > 0f) {
+                        drawRoundRect(background, topLeft, Size(size.width + inset, bounds.height), radius)
+                    }
+                    if (accent.alpha > 0f) {
+                        drawRect(accent, topLeft, Size(railWidth, bounds.height))
+                    }
+                }
+            }
+        }
         Text(
             text = segment,
-            modifier = Modifier
+            modifier = textModifier
                 .fillMaxWidth()
-                .drawWithContent {
-                    val layout = textLayout
-                    if (layout != null) {
-                        segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
-                            .forEach { quote ->
-                                if (quote.start < quote.end) {
-                                    val first = layout.getLineForOffset(quote.start)
-                                    val last = layout.getLineForOffset(quote.end - 1)
-                                    val top = layout.getLineTop(first)
-                                    val bottom = layout.getLineBottom(last)
-                                    // Draw the left rail just outside the text's leading edge.
-                                    // This retains a visual inset without ParagraphStyle, which
-                                    // would add an unwanted paragraph break before the reply.
-                                    val quoteInset = 5.dp.toPx()
-                                    drawRoundRect(
-                                        color = quoteBackground,
-                                        topLeft = Offset(-quoteInset, top),
-                                        size = Size(size.width + quoteInset, bottom - top),
-                                        cornerRadius = CornerRadius(7.dp.toPx()),
-                                    )
-                                    drawRect(
-                                        color = quoteAccent,
-                                        topLeft = Offset(-quoteInset, top),
-                                        size = Size(3.dp.toPx(), bottom - top),
-                                    )
-                                }
-                            }
-                    }
-                    drawContent()
-                }
+                .then(decoration)
                 .onGloballyPositioned { textCoordinates = it }
                 .detectAnnotatedLinkLongPress(
                     text = segment,
-                    layoutResult = { textLayout },
+                    layoutResult = { textLayout.value },
                     coordinates = { textCoordinates },
                     linkGestureState = linkGestureState,
                     hapticFeedback = hapticFeedback,
                     onLongPress = onLinkLongClick,
                 ),
-            onTextLayout = { textLayout = it },
+            onTextLayout = {
+                textLayout.value = it
+                quoteLayout?.update(it)
+            },
             color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
@@ -773,19 +772,39 @@ private fun CommentBodyText(
     }
 }
 
+/** Only quoted text needs this small geometry cache; ordinary text has no decoration modifier. */
+private class CommentQuoteLayout(private val quotes: List<AnnotatedString.Range<String>>) {
+    var bounds by mutableStateOf<List<Rect>>(emptyList())
+        private set
+
+    fun update(layout: TextLayoutResult) {
+        bounds = quotes.mapNotNull { quote ->
+            if (quote.start >= quote.end) null else Rect(
+                left = 0f,
+                top = layout.getLineTop(layout.getLineForOffset(quote.start)),
+                right = layout.size.width.toFloat(),
+                bottom = layout.getLineBottom(layout.getLineForOffset(quote.end - 1)),
+            )
+        }
+    }
+}
+
 /** Only the empty gaps change height; paragraph text stays fully opaque. */
 @Composable
 internal fun QuoteSpacedContent(
-    text: AnnotatedString,
+    segments: List<AnnotatedString>,
     gap: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
-    content: @Composable (AnnotatedString) -> Unit,
+    content: @Composable (AnnotatedString, Modifier) -> Unit,
 ) {
-    val segments = remember(text) { text.quoteSpacedSegments() }
+    if (segments.size == 1) {
+        if (segments[0].isNotEmpty()) content(segments[0], modifier)
+        return
+    }
     Column(modifier) {
         segments.forEachIndexed { index, segment ->
             if (index > 0) Spacer(Modifier.height(gap))
-            if (segment.isNotEmpty()) content(segment)
+            if (segment.isNotEmpty()) content(segment, Modifier)
         }
     }
 }

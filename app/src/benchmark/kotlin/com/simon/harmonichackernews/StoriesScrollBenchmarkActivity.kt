@@ -9,6 +9,7 @@ import coil3.decode.DataSource
 import coil3.intercept.Interceptor
 import coil3.request.SuccessResult
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.ui.session.HarmonicSceneViewModel
 import kotlinx.coroutines.delay
 
 /** Fixed input, real Stories store/screen, and local images; absent from distributable builds. */
@@ -18,7 +19,9 @@ class StoriesScrollBenchmarkActivity : MainActivity() {
     private var fixtureLoader: ImageLoader? = null
 
     override fun prepareScene() {
-        val session = ViewModelProvider(this)[HarmonicSceneViewModel::class.java].scene.sessions.stories
+        val session = ViewModelProvider(this, HarmonicSceneViewModel.factory(harmonicAppComposition))[
+            HarmonicSceneViewModel::class.java
+        ].scene.sessions.stories
         val run = intent.getIntExtra("stories_run", 0).coerceIn(0, 100_000)
         val cached = intent.getBooleanExtra("stories_cached", false)
         val image = assets.open("stories_scroll_preview.webp").use {

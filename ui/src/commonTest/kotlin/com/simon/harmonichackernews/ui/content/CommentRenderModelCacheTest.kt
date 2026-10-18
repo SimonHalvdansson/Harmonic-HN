@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.LinkInteractionListener
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
@@ -19,6 +21,58 @@ import kotlin.test.assertTrue
 
 class CommentRenderModelCacheTest {
     @Test
+    fun prefetchServesBothQuoteModesAndFadeOutWithoutAnotherParseOrCacheEntry() = runTest {
+        CommentRenderModelCache.clearForTest()
+        CommentHtmlTextCache.clearForTest()
+        val comments = listOf("Ordinary <b>comment</b>", "&gt; A <b>quote</b><p>Reply").mapIndexed { index, html ->
+            Comment().apply { id = index + 1; text = html }
+                .let { PortableCommentItem(it.toSnapshot(), it.presentationSnapshot()) }
+        }
+        val prepared = mutableMapOf<String, PreparedCommentHtml>()
+        prefetchCommentRenderModels(comments, collectLinks = false) { html ->
+            prepareCommentHtmlContent(html).also { prepared[html] = it }
+        }
+        assertEquals(2, prepared.size)
+        val listener = LinkInteractionListener { error("No links in fixture") }
+        repeat(3) {
+            comments.forEach { comment ->
+                val html = comment.expandedAnchorText!!
+                val expected = prepared.getValue(html)
+                // Identity verifies that UI rendering consumes the worker result, not another parse.
+                assertSame(expected.plain, htmlAnnotatedString(html, Color.Blue, listener, false))
+                assertSame(expected.highlighted, htmlAnnotatedString(html, Color.Blue, listener, true))
+                assertSame(expected.decoratedPlain, htmlAnnotatedString(html, Color.Blue, listener, false, true))
+                assertSame(expected, CommentHtmlTextCache.getPrepared(html))
+            }
+            assertEquals(2, CommentHtmlTextCache.entryCountForTest())
+        }
+        var extraPreparations = 0
+        prefetchCommentRenderModels(comments, collectLinks = false) {
+            extraPreparations++
+            prepareCommentHtmlContent(it)
+        }
+        assertEquals(0, extraPreparations)
+        assertEquals(2, CommentHtmlTextCache.entryCountForTest())
+    }
+
+    @Test
+    fun quoteModesSharePlainTextWhenThereAreNoQuotesAndRetainLinkOffsetsWhenThereAre() {
+        CommentHtmlTextCache.clearForTest()
+        val plain = "A <b>normal</b> comment with a &gt; comparison"
+        assertSame(CommentHtmlTextCache.get(plain, false), CommentHtmlTextCache.get(plain, true))
+        val html = "&gt;&gt; <b>Quote</b> <a href='https://example.com'>link</a><p>Reply"
+        val prepared = CommentHtmlTextCache.getPrepared(html)
+        for (enabled in listOf(false, true)) {
+            val rendered = htmlAnnotatedString(html, Color.Blue, LinkInteractionListener {}, enabled)
+            assertEquals(if (enabled) "Quote link\n\nReply" else ">> Quote link\n\nReply", rendered.text)
+            val link = rendered.getLinkAnnotations(0, rendered.length).single()
+            assertEquals("link", rendered.text.substring(link.start, link.end))
+            assertSame(prepared, CommentHtmlTextCache.getPrepared(html))
+        }
+        assertEquals(2, CommentHtmlTextCache.entryCountForTest())
+    }
+
+    @Test
     fun failedPrefetchDoesNotBlockOtherCommentsOrCacheAPartialResultAndCanRetry() = runTest {
         CommentRenderModelCache.clearForTest()
         CommentHtmlTextCache.clearForTest()
@@ -28,7 +82,7 @@ class CommentRenderModelCacheTest {
 
         prefetchCommentRenderModels(comments, collectLinks = false) { html ->
             if (html == failedHtml) throw IllegalArgumentException("Cannot prepare comment")
-            prepareCommentHtml(html)
+            prepareCommentHtmlContent(html)
         }
 
         assertEquals(9, CommentRenderModelCache.entryCountForTest())
@@ -55,7 +109,7 @@ class CommentRenderModelCacheTest {
         val thrown = assertFailsWith<CancellationException> {
             prefetchCommentRenderModels(comments, collectLinks = false) { html ->
                 if (++prepared == 2) throw cancellation
-                prepareCommentHtml(html)
+                prepareCommentHtmlContent(html)
             }
         }
 
@@ -97,6 +151,7 @@ class CommentRenderModelCacheTest {
                 expected.contentBlocks.mapNotNull { it.bodyHtml }.forEach { html ->
                     assertTrue(CommentHtmlTextCache.contains(html))
                     assertEquals(prepareCommentHtml(html), CommentHtmlTextCache.get(html))
+                    assertEquals(prepareCommentHtml(html, false), CommentHtmlTextCache.get(html, false))
                 }
             }
         }
@@ -216,11 +271,11 @@ class CommentRenderModelCacheTest {
     fun htmlTextHitsRefreshRecencyAndContainsDoesNot() {
         CommentHtmlTextCache.clearForTest()
         val first = AnnotatedString("first prepared")
-        repeat(384) { CommentHtmlTextCache.install("body $it", if (it == 0) first else AnnotatedString("$it")) }
+        repeat(384) { CommentHtmlTextCache.install("body $it", PreparedCommentHtml(if (it == 0) first else AnnotatedString("$it"))) }
 
         assertSame(first, CommentHtmlTextCache.get("body 0"))
         assertTrue(CommentHtmlTextCache.contains("body 1"))
-        CommentHtmlTextCache.install("body 384", AnnotatedString("384"))
+        CommentHtmlTextCache.install("body 384", PreparedCommentHtml(AnnotatedString("384")))
 
         assertSame(first, CommentHtmlTextCache.get("body 0"))
         assertFalse(CommentHtmlTextCache.contains("body 1"))
@@ -232,10 +287,10 @@ class CommentRenderModelCacheTest {
     fun weightedHtmlEvictionStillUsesLeastRecentlyUsedEntry() {
         CommentHtmlTextCache.clearForTest()
         val sources = List(11) { "$it:" + "x".repeat(64 * 1024 - 3) }
-        sources.take(10).forEach { CommentHtmlTextCache.install(it, AnnotatedString(it)) }
+        sources.take(10).forEach { CommentHtmlTextCache.install(it, PreparedCommentHtml(AnnotatedString(it))) }
         CommentHtmlTextCache.get(sources[0])
 
-        CommentHtmlTextCache.install(sources[10], AnnotatedString(sources[10]))
+        CommentHtmlTextCache.install(sources[10], PreparedCommentHtml(AnnotatedString(sources[10])))
 
         assertTrue(CommentHtmlTextCache.contains(sources[0]))
         assertFalse(CommentHtmlTextCache.contains(sources[1]))
@@ -245,10 +300,10 @@ class CommentRenderModelCacheTest {
     @Test
     fun installingExistingHtmlDoesNotRefreshItsRecency() {
         CommentHtmlTextCache.clearForTest()
-        repeat(384) { CommentHtmlTextCache.install("body $it", AnnotatedString("$it")) }
-        CommentHtmlTextCache.install("body 0", AnnotatedString("replacement"))
+        repeat(384) { CommentHtmlTextCache.install("body $it", PreparedCommentHtml(AnnotatedString("$it"))) }
+        CommentHtmlTextCache.install("body 0", PreparedCommentHtml(AnnotatedString("replacement")))
 
-        CommentHtmlTextCache.install("body 384", AnnotatedString("384"))
+        CommentHtmlTextCache.install("body 384", PreparedCommentHtml(AnnotatedString("384")))
 
         assertFalse(CommentHtmlTextCache.contains("body 0"))
         assertTrue(CommentHtmlTextCache.contains("body 1"))
