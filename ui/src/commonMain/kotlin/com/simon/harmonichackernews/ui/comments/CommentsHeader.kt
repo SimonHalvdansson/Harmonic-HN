@@ -2,6 +2,8 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.settings.CommentsHeaderButton
+
 import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneControls
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
@@ -127,6 +129,8 @@ fun CommentsHeader(
     onBrowserBack: (() -> Unit)? = null,
     headerTintProgress: Float? = null,
     faviconPreview: Painter? = null,
+    previewCommentActions: Boolean = false,
+    onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
@@ -578,6 +582,8 @@ fun CommentsHeader(
                                 settings = settings.copy(headerMetaInfo = effectiveMetaInfo),
                                 contentVersion = contentVersion,
                                 bookmarksEnabled = bookmarksEnabled,
+                                previewCommentActions = previewCommentActions,
+                                onButtonsOverflowChanged = onButtonsOverflowChanged,
                             )
                         }
                     }

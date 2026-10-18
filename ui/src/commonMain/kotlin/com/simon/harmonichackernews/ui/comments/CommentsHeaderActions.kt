@@ -52,6 +52,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +85,8 @@ fun CommentsHeaderActions(
     settings: CommentDisplaySettings,
     contentVersion: Int,
     bookmarksEnabled: Boolean,
+    previewCommentActions: Boolean = false,
+    onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
 ) {
     val story = controller.story
     val hasAccount = settings.hasAccountDetails
@@ -136,9 +139,10 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.SIDE_BY_SIDE -> controller.sideBySideAvailable
             CommentsHeaderButton.OPEN_PARENT -> story.isComment && story.parentId > 0
             CommentsHeaderButton.OPEN_TOP_LEVEL -> story.isComment && story.rootStoryId > 0
-            CommentsHeaderButton.SEARCH -> controller.comments.size > 1
-            CommentsHeaderButton.SORT -> controller.comments.size > 2
-            CommentsHeaderButton.COMMENTS_BY_OP -> !controller.opThreadFilterEnabled && controller.hasCommentsByOp
+            CommentsHeaderButton.SEARCH -> previewCommentActions || controller.comments.size > 1
+            CommentsHeaderButton.SORT -> previewCommentActions || controller.comments.size > 2
+            CommentsHeaderButton.COMMENTS_BY_OP -> previewCommentActions ||
+                (!controller.opThreadFilterEnabled && controller.hasCommentsByOp)
             CommentsHeaderButton.DISABLE_AD_BLOCK -> controller.adBlockActive
             CommentsHeaderButton.ARCHIVE -> story.isLink
             else -> true
@@ -176,6 +180,10 @@ fun CommentsHeaderActions(
         val inline = settings.headerButtons.inlineButtons(actions.filter { it.available }.map { it.action },
             capacity, hasAccount, combineActions)
         val overflow = actions.filter { it.available && it.action !in inline }
+        val selectedOverflow = overflow.filter {
+            settings.headerButtons.isShown(it.action, hasAccount, combineActions)
+        }.map { it.action }
+        SideEffect { onButtonsOverflowChanged(selectedOverflow) }
         val count = inline.size + 1
         val padding = commentActionPadding(contentWidth, count)
         val buttonWidth = commentActionButtonWidth(contentWidth, count)

@@ -13,13 +13,18 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Image
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -69,6 +74,7 @@ import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
+import com.simon.harmonichackernews.settings.AppSettings
 import com.simon.harmonichackernews.settings.CommentsHeaderButton
 import com.simon.harmonichackernews.ui.comments.icon
 import com.simon.harmonichackernews.settings.CommentsHeaderImage
@@ -137,6 +143,7 @@ fun HeaderDisplaySettingsRoute(
     val listState = rememberSettingsListState()
     val background = MaterialTheme.colorScheme.pageBackground
     var headerColor by remember { mutableStateOf(background) }
+    var overflowButtons by remember { mutableStateOf(emptyList<CommentsHeaderButton>()) }
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_header_display),
@@ -149,13 +156,15 @@ fun HeaderDisplaySettingsRoute(
         listState = listState,
         topOverlay = {
             HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
+            HeaderButtonOverflowSnackbar(overflowButtons)
         },
         floatingContent = {
             HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
         },
         pinnedContent = {
             HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
-                onHeaderColorChanged = { headerColor = it })
+                onHeaderColorChanged = { headerColor = it },
+                onButtonsOverflowChanged = { overflowButtons = it })
         },
     ) {
         item {
@@ -204,46 +213,8 @@ fun HeaderDisplaySettingsRoute(
             }
         }
         item {
-            SettingsCategory("Buttons") {
-                val large = displaySettings.hasAccountDetails && displaySettings.combineHeaderActions
-                CommentsHeaderButton.entries.filter { it.configurable }.forEachIndexed { index, button ->
-                    if (index > 0) SettingsDivider()
-                    val reason = when {
-                        button in listOf(CommentsHeaderButton.COMMENT, CommentsHeaderButton.VOTE,
-                            CommentsHeaderButton.FAVORITE) && !displaySettings.hasAccountDetails -> "Sign in to use"
-                        button in listOf(CommentsHeaderButton.USER, CommentsHeaderButton.COMMENT,
-                            CommentsHeaderButton.VOTE) && large -> "Included in Large post details"
-                        button == CommentsHeaderButton.BOOKMARK && !settings.general.bookmarksEnabled -> "Turn on Bookmarks"
-                        button == CommentsHeaderButton.SUMMARIZE && !displaySettings.canProvideSummary -> "Set up AI summaries"
-                        button == CommentsHeaderButton.SIDE_BY_SIDE && !settings.appearance.sideBySideEnabled -> "Turn on side by side"
-                        button == CommentsHeaderButton.DISABLE_AD_BLOCK && !settings.reading.blockAds -> "Turn on ad blocking"
-                        else -> null
-                    }
-                    val context = when (button) {
-                        CommentsHeaderButton.SEARCH, CommentsHeaderButton.SORT -> "When comments are loaded"
-                        CommentsHeaderButton.COMMENTS_BY_OP -> "When the author has commented"
-                        CommentsHeaderButton.SUMMARIZE, CommentsHeaderButton.ARCHIVE -> "On link posts"
-                        CommentsHeaderButton.SIDE_BY_SIDE -> "On supported layouts"
-                        CommentsHeaderButton.DISABLE_AD_BLOCK -> "While blocking ads"
-                        else -> null
-                    }
-                    SwitchSettingRow(
-                        title = button.label,
-                        summary = reason ?: context,
-                        icon = button.icon,
-                        checked = settings.comments.headerButtons.isShown(button, displaySettings.hasAccountDetails, large),
-                        enabled = reason == null,
-                        onCheckedChange = { repository.setCommentsHeaderButton(button, it) },
-                    )
-                }
-                SettingsDivider()
-                SettingRow(
-                    title = "Reset",
-                    summary = "Restore default buttons",
-                    icon = Res.drawable.ic_refresh,
-                    onClick = repository::resetCommentsHeaderButtons,
-                )
-            }
+            HeaderButtonSettings(settings, displaySettings,
+                repository::setCommentsHeaderButton, repository::resetCommentsHeaderButtons)
         }
         item {
             SettingsCategory("Background") {
@@ -263,6 +234,87 @@ fun HeaderDisplaySettingsRoute(
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun HeaderButtonSettings(
+    settings: AppSettings,
+    displaySettings: CommentDisplaySettings,
+    onButtonChanged: (CommentsHeaderButton, Boolean) -> Unit,
+    onReset: () -> Unit,
+) {
+    val large = displaySettings.hasAccountDetails && displaySettings.combineHeaderActions
+    val buttons = CommentsHeaderButton.entries.filter { it.configurable }
+    val reasons = buttons.associateWith { button ->
+        when {
+            button in listOf(CommentsHeaderButton.COMMENT, CommentsHeaderButton.VOTE,
+                CommentsHeaderButton.FAVORITE) && !displaySettings.hasAccountDetails -> "Sign in to use"
+            button in listOf(CommentsHeaderButton.USER, CommentsHeaderButton.COMMENT,
+                CommentsHeaderButton.VOTE) && large -> "Included in Large post details"
+            button == CommentsHeaderButton.BOOKMARK && !settings.general.bookmarksEnabled -> "Turn on Bookmarks"
+            button == CommentsHeaderButton.SUMMARIZE && !displaySettings.canProvideSummary -> "Set up AI summaries"
+            button == CommentsHeaderButton.SIDE_BY_SIDE && !settings.appearance.sideBySideEnabled -> "Turn on side by side"
+            button == CommentsHeaderButton.DISABLE_AD_BLOCK && !settings.reading.blockAds -> "Turn on ad blocking"
+            else -> null
+        }
+    }
+    fun isSelected(button: CommentsHeaderButton) =
+        settings.comments.headerButtons.isShown(button, displaySettings.hasAccountDetails, large)
+    SettingsCategory("Buttons") {
+        buttons.forEachIndexed { index, button ->
+            if (index > 0) SettingsDivider()
+            val checked = isSelected(button)
+            val reason = reasons[button]
+            val context = when (button) {
+                CommentsHeaderButton.SUMMARIZE, CommentsHeaderButton.ARCHIVE -> "On link posts"
+                CommentsHeaderButton.SIDE_BY_SIDE -> "On supported layouts"
+                CommentsHeaderButton.DISABLE_AD_BLOCK -> "While blocking ads"
+                else -> null
+            }
+            SwitchSettingRow(
+                title = button.label,
+                summary = reason ?: context,
+                icon = button.icon,
+                checked = checked,
+                enabled = reason == null,
+                onCheckedChange = { onButtonChanged(button, it) },
+            )
+        }
+        SettingsDivider()
+        SettingRow(
+            title = "Reset",
+            summary = "Restore default buttons",
+            icon = Res.drawable.ic_refresh,
+            onClick = onReset,
+        )
+    }
+}
+
+@Composable
+internal fun HeaderButtonOverflowSnackbar(
+    overflowButtons: List<CommentsHeaderButton>,
+    hostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    var previousOverflow by remember { mutableStateOf(emptySet<CommentsHeaderButton>()) }
+    val overflow = overflowButtons.toSet()
+    LaunchedEffect(overflow) {
+        val newlyHidden = overflow - previousOverflow
+        previousOverflow = overflow
+        if (newlyHidden.isNotEmpty()) {
+            // A changed layout cancels the previous notice, keeping quick toggles and resizes
+            // from queuing stale messages. Unchanged overflow does not repeat the notice.
+            hostState.showSnackbar("Extra selected buttons are in More options at this width.")
+        }
+    }
+    Box(Modifier.fillMaxSize().zIndex(1f)) {
+        SnackbarHost(
+            hostState = hostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .navigationBarsPadding().imePadding()
+                // Clear the 56dp sample selector and its 16dp bottom margin.
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+        )
     }
 }
 
@@ -301,6 +353,7 @@ internal fun HeaderDisplayPreview(
     onBack: () -> Unit,
     sample: HeaderPreviewSample = HeaderPreviewSample.LINK_WITH_IMAGE,
     onHeaderColorChanged: (Color) -> Unit = {},
+    onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
@@ -328,9 +381,13 @@ internal fun HeaderDisplayPreview(
                     },
                     label = "header preview sample",
                 ) { visibleSample ->
-                    HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample) { color ->
-                        if (visibleSample == sample) onHeaderColorChanged(color)
-                    }
+                    HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample,
+                        onHeaderColorChanged = { color ->
+                            if (visibleSample == sample) onHeaderColorChanged(color)
+                        },
+                        onButtonsOverflowChanged = { overflow ->
+                            if (visibleSample == sample) onButtonsOverflowChanged(overflow)
+                        })
                 }
             }
             AnimatedVisibility(
@@ -377,6 +434,7 @@ private fun HeaderDisplayPreviewContent(
     bookmarksEnabled: Boolean,
     sample: HeaderPreviewSample,
     onHeaderColorChanged: (Color) -> Unit,
+    onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit,
 ) {
     val hasPreviewImage = sample == HeaderPreviewSample.LINK_WITH_IMAGE || sample == HeaderPreviewSample.LINK_PREVIEW
     val imageDisplayed = settings.showHeaderPreviewImage && hasPreviewImage
@@ -464,6 +522,8 @@ private fun HeaderDisplayPreviewContent(
         lastRefreshedText = null,
         textStyle = textStyle,
         previewPlatform = platform,
+        previewCommentActions = true,
+        onButtonsOverflowChanged = onButtonsOverflowChanged,
         includeStatusBarSpacer = true,
         headerPreviewImageDisplayed = imageDisplayed,
         faviconPreview = when (sample) {

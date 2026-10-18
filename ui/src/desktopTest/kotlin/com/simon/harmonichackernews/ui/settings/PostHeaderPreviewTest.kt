@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.SideEffect
@@ -24,7 +26,9 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -54,9 +58,115 @@ import javax.swing.SwingUtilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun selectingExtraButtonsKeepsSettingsRowsFixedAndUsable() = SwingUtilities.invokeAndWait {
+        val repository = AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow())
+        CommentsHeaderButton.entries.forEach { repository.setCommentsHeaderButton(it, false) }
+        listOf(CommentsHeaderButton.USER, CommentsHeaderButton.BOOKMARK, CommentsHeaderButton.SHARE,
+            CommentsHeaderButton.REFRESH, CommentsHeaderButton.SEARCH, CommentsHeaderButton.SORT
+        ).forEach { repository.setCommentsHeaderButton(it, true) }
+        val settings = mutableStateOf(repository.snapshot())
+        val changes = mutableListOf<Pair<CommentsHeaderButton, Boolean>>()
+        val scene = ImageComposeScene(420, 2000, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) {
+                HeaderButtonSettings(
+                    settings.value,
+                    CommentDisplaySettings.from(settings.value.comments, false, false, false, false),
+                    onButtonChanged = { button, checked ->
+                        changes += button to checked
+                        repository.setCommentsHeaderButton(button, checked)
+                        settings.value = repository.snapshot()
+                    },
+                    onReset = {},
+                )
+            }
+        }
+        try {
+            var time = 0L
+            fun settle() { repeat(30) { scene.render(time.also { time += 16_666_667L }).close() } }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            fun row(label: String) = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single {
+                it.config.getOrNull(SemanticsProperties.Role) == Role.Switch &&
+                    it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == label } == true
+            }
+            fun click(label: String) {
+                val center = row(label).boundsInRoot.center
+                scene.sendPointerEvent(PointerEventType.Press, center)
+                scene.sendPointerEvent(PointerEventType.Release, center)
+                settle()
+            }
+            settle()
+            val labels = listOf("Search comments", "Sort comments", "Comments by OP", "Open in browser")
+            val originalBounds = labels.map { row(it).boundsInRoot }
+            assertFalse(row("Comments by OP").config.contains(SemanticsProperties.Disabled))
+            click("Comments by OP")
+            assertEquals(ToggleableState.On, row("Comments by OP").config[SemanticsProperties.ToggleableState])
+            assertEquals(originalBounds, labels.map { row(it).boundsInRoot })
+            labels.forEach { assertFalse(row(it).config.contains(SemanticsProperties.Disabled)) }
+            click("Comments by OP")
+            assertEquals(originalBounds, labels.map { row(it).boundsInRoot })
+            assertEquals(listOf(CommentsHeaderButton.COMMENTS_BY_OP to true, CommentsHeaderButton.COMMENTS_BY_OP to false), changes)
+        } finally { scene.close() }
+    }
+
+    @Test fun overflowNoticeTracksActualPlacementAfterResizingAndSelectingButtons() = SwingUtilities.invokeAndWait {
+        val selected = setOf(CommentsHeaderButton.USER, CommentsHeaderButton.BOOKMARK, CommentsHeaderButton.SHARE,
+            CommentsHeaderButton.REFRESH, CommentsHeaderButton.SEARCH, CommentsHeaderButton.SORT,
+            CommentsHeaderButton.COMMENTS_BY_OP)
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, false, false,
+        ).copy(showHeaderPreviewImage = false,
+            headerButtons = CommentsHeaderButtons(CommentsHeaderButton.entries.associateWith { it in selected })))
+        val width = mutableStateOf(420.dp)
+        val overflow = mutableStateOf(emptyList<CommentsHeaderButton>())
+        val snackbar = SnackbarHostState()
+        val scene = ImageComposeScene(600, 1000, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) {
+                Box {
+                    Box(Modifier.width(width.value)) {
+                        HeaderDisplayPreview(settings.value, true, {},
+                            onButtonsOverflowChanged = { overflow.value = it })
+                    }
+                    HeaderButtonOverflowSnackbar(overflow.value, snackbar)
+                }
+            }
+        }
+        try {
+            var time = 0L
+            fun settle() { repeat(30) { scene.render(time.also { time += 16_666_667L }).close() } }
+            settle()
+            assertTrue(overflow.value.isEmpty())
+            assertNull(snackbar.currentSnackbarData)
+            val originalChoices = settings.value.headerButtons
+            width.value = 320.dp
+            settle()
+            assertEquals(listOf(CommentsHeaderButton.SORT, CommentsHeaderButton.COMMENTS_BY_OP), overflow.value)
+            val notice = snackbar.currentSnackbarData
+            assertTrue(notice?.visuals?.message?.contains("More options") == true)
+            settle()
+            assertTrue(notice === snackbar.currentSnackbarData, "Unchanged overflow must not repeat the notice")
+            width.value = 420.dp
+            settle()
+            assertTrue(overflow.value.isEmpty())
+            assertNull(snackbar.currentSnackbarData, "A resolved overflow must dismiss the stale notice")
+            assertEquals(originalChoices, settings.value.headerButtons, "Resizing must preserve every choice")
+            settings.value = settings.value.copy(headerButtons = originalChoices.copy(
+                overrides = originalChoices.overrides + (CommentsHeaderButton.OPEN_BROWSER to true)))
+            settle()
+            assertEquals(listOf(CommentsHeaderButton.OPEN_BROWSER), overflow.value)
+            assertTrue(snackbar.currentSnackbarData != null)
+            settings.value = settings.value.copy(headerButtons = originalChoices)
+            settle()
+            assertNull(snackbar.currentSnackbarData)
+        } finally { scene.close() }
+    }
+
     @Test fun enablingAButtonStartsFadingBeforeTheOtherButtonsFinishMoving() = SwingUtilities.invokeAndWait {
         val hidden = CommentsHeaderButtons(
             CommentsHeaderButton.entries.associateWith { false })
