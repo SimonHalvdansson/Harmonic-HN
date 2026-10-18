@@ -881,7 +881,7 @@ class StoriesFeatureRuntime(
     private fun openExternalStory(story: Story) {
         val url = story.url ?: return
         if (story.isFrontpageLink) updateStoryReadState(story, true) else markRead(story)
-        changed(story)
+        changed(story, contentAlreadyPublished = true)
         emit(StoriesFeatureEffect.OpenExternalLink(url))
     }
 
@@ -913,7 +913,7 @@ class StoriesFeatureRuntime(
 
     fun openStory(story: Story, showWebsite: Boolean) {
         markRead(story)
-        changed(story)
+        changed(story, contentAlreadyPublished = true)
         val destination = story.toDestination(showWebsite = showWebsite).copy(
             openedFromCachedStories = activeStore.state.value.showingCached,
         )
@@ -1252,11 +1252,11 @@ class StoriesFeatureRuntime(
     fun resumeRetainedLoads() = resumeInterruptedLoads()
 
     fun syncHistoryIfChanged(): StoryHistorySyncResult {
-        val currentVersion = historyStore.changeVersion
-        if (currentVersion == historyChangeVersion) return StoryHistorySyncResult.UNCHANGED
-        historyChangeVersion = currentVersion
+        val history = historyStore.historyState.value
+        if (history.changeVersion == historyChangeVersion) return StoryHistorySyncResult.UNCHANGED
+        historyChangeVersion = history.changeVersion
         val result = activeStore.syncHistory(
-            readStoryIds = historyStore.load().mapTo(mutableSetOf()) { it.id },
+            readStoryIds = history.ids,
             searchingOnlyRead = searching && searchOptions.state.value.options.onlyRead,
             showingHistory = currentType.isHistory,
             hideRead = hideRead,
@@ -1872,13 +1872,17 @@ class StoriesFeatureRuntime(
 
     private fun prefetch(story: Story) = storyResources?.prefetchStory(story, activeStories)
 
-    private fun changed(story: Story? = null) {
+    private fun changed(story: Story? = null, contentAlreadyPublished: Boolean = false) {
         // Mutable working rows can change before their immutable snapshots are published.
-        syncHiddenPosts(force = true)
-        when {
-            story == null -> activeStore.contentChanged()
-            mainStories.contains(story) -> mainStore.contentChanged(story)
-            searchStories.contains(story) -> searchStore.contentChanged(story)
+        syncHiddenPosts(force = !contentAlreadyPublished)
+        // Read-state updates already publish both lists. Keep filtering and the host effect,
+        // without copying the active list and advancing its revision a second time.
+        if (!contentAlreadyPublished) {
+            when {
+                story == null -> activeStore.contentChanged()
+                mainStories.contains(story) -> mainStore.contentChanged(story)
+                searchStories.contains(story) -> searchStore.contentChanged(story)
+            }
         }
         emit(StoriesFeatureEffect.StoryChanged(story?.id))
     }

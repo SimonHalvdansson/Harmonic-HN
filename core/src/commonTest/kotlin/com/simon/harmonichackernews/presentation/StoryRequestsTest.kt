@@ -61,6 +61,110 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
     @Test
+    fun openingUnreadStoryPublishesEachListOnceAndPreservesNavigationAndHistory() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val history = MemoryHistoryStore()
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(), history = history)
+        val story = Story("Main", 42, true, false)
+        val searchStory = Story("Search", 42, true, false)
+        runtime.mainStore.replace(listOf(story))
+        runtime.searchStore.replace(listOf(searchStory))
+        val mainRevision = runtime.mainStore.state.value.revision
+        val searchRevision = runtime.searchStore.state.value.revision
+        val effects = mutableListOf<StoriesFeatureEffect>()
+        backgroundScope.launch { runtime.effects.collect { effects += it } }
+        runCurrent()
+        effects.clear()
+
+        runtime.selectStoryComments(story)
+        runCurrent()
+
+        assertEquals(mainRevision + 1, runtime.mainStore.state.value.revision)
+        assertEquals(searchRevision + 1, runtime.searchStore.state.value.revision)
+        assertTrue(runtime.mainStore.state.value.items.single().presentation.isRead)
+        assertTrue(runtime.searchStore.state.value.items.single().presentation.isRead)
+        assertTrue(story.isRead && searchStory.isRead)
+        assertTrue(history.contains(42))
+        assertEquals(2, effects.size)
+        assertEquals(StoriesFeatureEffect.StoryChanged(42), effects.first())
+        val destination = assertIs<StoriesFeatureEffect.OpenStory>(effects.last()).destination
+        assertEquals(42, destination.storyId)
+        assertFalse(destination.showWebsite)
+    }
+
+    @Test
+    fun openingOnlyReadSearchPreservesStylingAndDoesNotRepublishUnchangedRows() = runTest {
+        val session = StoriesSessionState().apply { searching = true }
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val history = MemoryHistoryStore()
+        val requests = storyRequests(session, saved, backgroundScope)
+        requests.searchStore.restoreOptions(StorySearchOptions(onlyRead = true))
+        val runtime = cacheRuntime(backgroundScope, session, saved, requests,
+            QueuedCacheDispatcher(), history = history)
+        val story = Story("Search", 42, true, false)
+        runtime.searchStore.replace(listOf(story))
+        val before = runtime.searchStore.state.value
+        val effect = backgroundScope.async { runtime.effects.first { it is StoriesFeatureEffect.OpenStory } }
+        runCurrent()
+
+        runtime.selectStoryComments(story)
+        runCurrent()
+
+        assertEquals(before, runtime.searchStore.state.value)
+        assertFalse(story.isRead)
+        assertTrue(history.contains(42))
+        assertEquals(42, assertIs<StoriesFeatureEffect.OpenStory>(effect.await()).destination.storyId)
+    }
+
+    @Test
+    fun openingExternalFrontpagePublishesReadStateOnceWithoutRecordingHistory() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val history = MemoryHistoryStore()
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(), history = history)
+        val story = Story("Frontpage", 42, true, false).apply {
+            isFrontpageLink = true
+            url = "https://example.com/frontpage"
+        }
+        runtime.mainStore.replace(listOf(story))
+        val before = runtime.mainStore.state.value.revision
+        val effect = backgroundScope.async { runtime.effects.first { it is StoriesFeatureEffect.OpenExternalLink } }
+        runCurrent()
+
+        runtime.selectStoryLink(story)
+        runCurrent()
+
+        assertEquals(before + 1, runtime.mainStore.state.value.revision)
+        assertTrue(runtime.mainStore.state.value.items.single().presentation.isRead)
+        assertFalse(history.contains(42))
+        assertEquals(story.url, assertIs<StoriesFeatureEffect.OpenExternalLink>(effect.await()).url)
+    }
+
+    @Test
+    fun historyReconciliationUsesPublishedMembershipAndSkipsAnUnchangedVersion() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val history = MemoryHistoryStore()
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(), history = history)
+        runtime.mainStore.replace(listOf(Story("Read", 42, true, false), Story("Unread", 43, true, false)))
+        runtime.initializeHistory()
+        history.recordHistory(42, 1_000L)
+        val loads = history.loadCalls
+
+        assertEquals(StoryHistorySyncResult.CONTENT_CHANGED, runtime.syncHistoryIfChanged())
+        assertTrue(runtime.mainStore.state.value.items[0].presentation.isRead)
+        assertFalse(runtime.mainStore.state.value.items[1].presentation.isRead)
+        val reconciled = runtime.mainStore.state.value
+        assertEquals(StoryHistorySyncResult.UNCHANGED, runtime.syncHistoryIfChanged())
+        assertEquals(reconciled, runtime.mainStore.state.value)
+        assertEquals(loads, history.loadCalls, "Membership is already in the published history snapshot")
+    }
+
+    @Test
     fun foregroundRecoveryPreservesRowsAndPaginationAndDoesNotDuplicateActiveLoads() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
@@ -1341,11 +1445,12 @@ class StoryRequestsTest {
     )
 
     private class MemoryHistoryStore : ObservableHistoryStore {
+        var loadCalls = 0
         private val items = mutableListOf<History>()
         private val mutableHistoryState = MutableStateFlow(HistoryStoreSnapshot())
         override val historyState: StateFlow<HistoryStoreSnapshot> = mutableHistoryState
         override fun initialize() = Unit
-        override fun load(): List<History> = items.toList()
+        override fun load(): List<History> = items.toList().also { loadCalls++ }
         override fun record(id: Int, createdAtMillis: Long) {
             items.removeAll { it.id == id }
             items += History(id, createdAtMillis)
