@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
 import androidx.datastore.preferences.core.*
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
@@ -36,6 +37,7 @@ internal object WidgetState {
     val revision = longPreferencesKey("revision")
     val width = intPreferencesKey("width")
     val debug = stringPreferencesKey("debug")
+    val lastFailure = stringPreferencesKey("lastFailure")
 }
 
 internal data class WidgetEntry(val destination: StoryDestination, val imagePath: String?, val tintPath: String?, val faviconPath: String?)
@@ -70,6 +72,10 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
             return Result.success()
         }
         val configuration = app.widgets.configuration(widgetId)
+        val started = SystemClock.elapsedRealtime()
+        fun diagnostics(outcome: String) = widgetRefreshDiagnostics(
+            context, runAttemptCount, SystemClock.elapsedRealtime() - started, outcome,
+        )
         try {
             updateAppWidgetState(context, glanceId) { state ->
                 // Never label a previous feed's stories as the newly selected feed.
@@ -77,18 +83,20 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     state.remove(WidgetState.content)
                     state.remove(WidgetState.updated)
                     state.remove(WidgetState.debug)
+                    state.remove(WidgetState.lastFailure)
                 }
                 state[WidgetState.feed] = configuration.feedUrl
                 state[WidgetState.refreshing] = true
                 state[WidgetState.retryScheduled] = false
                 state.remove(WidgetState.error)
+                state[WidgetState.debug] = diagnostics("started")
             }
             StoriesGlanceWidget().update(context, glanceId)
             app.widgets.setSkipFetch(widgetId, false)
             when (val result = app.widgetRefresh.refresh(widgetId, hasExistingStories = false)) {
                 is WidgetRefreshResult.Loaded -> {
                     updateAppWidgetState(context, glanceId) {
-                        it[WidgetState.debug] = "${result.stories.size}/${result.availableStoryCount} items · ${result.failedStoryCount} failed · timeout=${result.timedOut}"
+                        it[WidgetState.debug] = diagnostics("loaded ${result.stories.size}/${result.availableStoryCount} · failed=${result.failedStoryCount} · timeout=${result.timedOut}")
                     }
                     val entries = result.stories.map { story ->
                         JSONObject().put("destination", AppDestinationCodec.encode(story.toDestination(showWebsite = story.isLink && !app.userSettings.story.alwaysOpenComments))).apply {
@@ -149,7 +157,8 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     updateAppWidgetState(context, glanceId) { state ->
                         state[WidgetState.error] = widgetFailureDescription(cause)
                         state[WidgetState.retryScheduled] = retry
-                        state.remove(WidgetState.debug)
+                        state[WidgetState.debug] = diagnostics(if (retry) "retry pending (network required)" else "failed; no retry")
+                        state[WidgetState.lastFailure] = "${state[WidgetState.debug]}\n${widgetFailureDescription(cause)}"
                         state[WidgetState.refreshing] = false
                     }
                     StoriesGlanceWidget().update(context, glanceId)
@@ -160,13 +169,15 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            val retry = shouldRetryWidgetRefresh(error, runAttemptCount)
             HarmonicLog.debug("Widget refresh failed widgetId=$widgetId: $error")
             updateAppWidgetState(context, glanceId) {
                 it[WidgetState.error] = widgetFailureDescription(error)
-                it[WidgetState.retryScheduled] = false
-                it.remove(WidgetState.debug)
+                it[WidgetState.retryScheduled] = retry
+                it[WidgetState.debug] = diagnostics(if (retry) "retry pending (network required)" else "failed; no retry")
+                it[WidgetState.lastFailure] = "${it[WidgetState.debug]}\n${widgetFailureDescription(error)}"
             }
-            return Result.failure()
+            return if (retry) Result.retry() else Result.failure()
         } finally {
             // Clear durable loading state even when WorkManager cancels/replaces a run.
             withContext(NonCancellable) {
@@ -220,6 +231,9 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 workName(widgetId), ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
                     .setInputData(workDataOf(WIDGET_ID to widgetId))
+                    // Let JobScheduler wait for network access for this app, including Doze.
+                    // Otherwise a run without a usable network consumes the DNS retry budget.
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WIDGET_REFRESH_BACKOFF_SECONDS, TimeUnit.SECONDS)
                     .build(),
             )

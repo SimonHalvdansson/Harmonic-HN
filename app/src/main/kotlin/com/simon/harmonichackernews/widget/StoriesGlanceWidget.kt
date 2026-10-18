@@ -161,9 +161,15 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         maxLines = 4)
                 }
                 if (settings.debug.showWidgetDebugInfo) {
-                    Text("Widget $widgetId · ${if (error != null) "Refresh failed: $error" else state[WidgetState.debug].orEmpty()}",
+                    val diagnostics = buildString {
+                        append("Widget $widgetId · last refresh snapshot\n")
+                        append(state[WidgetState.debug].orEmpty())
+                        if (error != null) append("\nRefresh failed: $error")
+                        else state[WidgetState.lastFailure]?.let { append("\nPrevious failure: $it") }
+                    }
+                    Text(diagnostics,
                         GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp),
-                        style = TextStyle(color = colors.textSecondary, fontSize = 10.sp, fontFamily = fontFamily), maxLines = 2)
+                        style = TextStyle(color = colors.textSecondary, fontSize = 10.sp, fontFamily = fontFamily), maxLines = 14)
                 }
                 LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
                     itemsIndexed(entries, itemId = { _, entry -> entry.destination.storyId.toLong() }) { index, entry ->
