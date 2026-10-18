@@ -29,7 +29,7 @@ internal fun HeaderPreviewSampleSelector(sample: HeaderPreviewSample, onSample: 
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shadowElevation = 6.dp,
     ) {
-        Row {
+        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             IconButton(
                 onClick = {
                     onSample(HeaderPreviewSample.entries[(sample.ordinal + HeaderPreviewSample.entries.size - 1) % HeaderPreviewSample.entries.size])

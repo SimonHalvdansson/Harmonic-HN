@@ -376,8 +376,11 @@ fun CommentsHeader(
                                             )
                                         }
                                         val linkInfo: @Composable () -> Unit = {
-                                            Box(Modifier.sharedElement(
-                                                rememberSharedContentState(titleLayout to visual.metaInfo), visibility,
+                                            Box(Modifier.sharedBounds(
+                                                rememberSharedContentState("link info" to titleLayout), visibility,
+                                                enter = fadeIn(tween(140, delayMillis = 80)),
+                                                exit = fadeOut(tween(80)),
+                                                resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                                                 boundsTransform = boundsTransform,
                                             )) {
                                                 CommentsPreviewPlatformProvider(previewPlatform) {
@@ -552,7 +555,7 @@ fun CommentsHeader(
                             AnimatedContent(
                                 targetState = effectiveMetaInfo,
                                 transitionSpec = { headerSettingsTransition() },
-                                label = "header details and actions",
+                                label = "header details",
                             ) { metaInfo ->
                                 Column {
                                     val actionSettings = settings.copy(headerMetaInfo = metaInfo)
@@ -568,14 +571,14 @@ fun CommentsHeader(
                                         voteLoading = controller.storyVoteLoading,
                                         headerColor = visibleHeaderBackground,
                                     )
-                                    CommentsHeaderActions(
-                                        controller = controller,
-                                        settings = actionSettings,
-                                        contentVersion = contentVersion,
-                                        bookmarksEnabled = bookmarksEnabled,
-                                    )
                                 }
                             }
+                            CommentsHeaderActions(
+                                controller = controller,
+                                settings = settings.copy(headerMetaInfo = effectiveMetaInfo),
+                                contentVersion = contentVersion,
+                                bookmarksEnabled = bookmarksEnabled,
+                            )
                         }
                     }
                 }

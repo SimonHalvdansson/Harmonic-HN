@@ -2,7 +2,11 @@
 
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.ui.content.AnimatedMenuItem
+import com.simon.harmonichackernews.settings.CommentsHeaderButton
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.key
+import com.simon.harmonichackernews.ui.content.ContentMotionEasing
 import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -15,20 +19,17 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,14 +78,12 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CommentsHeaderActions(
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     contentVersion: Int,
     bookmarksEnabled: Boolean,
-
 ) {
     val story = controller.story
     val hasAccount = settings.hasAccountDetails
@@ -125,157 +124,141 @@ fun CommentsHeaderActions(
     val bookmarked = remember(contentVersion, story.id) {
         controller.isBookmarked(story.id)
     }
-    val actions = buildList {
-        if (!combineActions) {
-            add(HeaderAction(Res.drawable.ic_account_circle, "User", CommentsHeaderAction.USER))
+    // Keep the same keyed button compositions as availability and placement change.
+    val actions = CommentsHeaderButton.entries.map { button ->
+        val available = when (button) {
+            CommentsHeaderButton.USER -> !combineActions
+            CommentsHeaderButton.COMMENT -> canReply && !combineActions
+            CommentsHeaderButton.VOTE -> hasAccount && !combineActions
+            CommentsHeaderButton.FAVORITE -> hasAccount
+            CommentsHeaderButton.BOOKMARK -> bookmarksEnabled
+            CommentsHeaderButton.SUMMARIZE -> story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully
+            CommentsHeaderButton.SIDE_BY_SIDE -> controller.sideBySideAvailable
+            CommentsHeaderButton.OPEN_PARENT -> story.isComment && story.parentId > 0
+            CommentsHeaderButton.OPEN_TOP_LEVEL -> story.isComment && story.rootStoryId > 0
+            CommentsHeaderButton.SEARCH -> controller.comments.size > 1
+            CommentsHeaderButton.SORT -> controller.comments.size > 2
+            CommentsHeaderButton.COMMENTS_BY_OP -> !controller.opThreadFilterEnabled && controller.hasCommentsByOp
+            CommentsHeaderButton.DISABLE_AD_BLOCK -> controller.adBlockActive
+            CommentsHeaderButton.ARCHIVE -> story.isLink
+            else -> true
         }
-        if (canReply && !combineActions) add(HeaderAction(Res.drawable.ic_comment, if (story.isComment) "Reply to comment" else "Reply to post", CommentsHeaderAction.REPLY))
-        if (hasAccount && !combineActions) add(HeaderAction(if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up, if (upvoted) "Remove vote" else "Upvote", CommentsHeaderAction.VOTE, controller.storyVoteLoading))
-        if (hasAccount) add(HeaderAction(if (favorited) Res.drawable.ic_star_filled else Res.drawable.ic_star, if (favorited) "Remove favorite" else "Favorite", CommentsHeaderAction.FAVORITE, controller.storyFavoriteLoading))
-        if (bookmarksEnabled && (!hasAccount || combineActions)) add(HeaderAction(if (bookmarked) Res.drawable.ic_bookmark_filled else Res.drawable.ic_bookmark, if (bookmarked) "Remove bookmark" else "Bookmark", CommentsHeaderAction.BOOKMARK))
-        if (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully) add(HeaderAction(Res.drawable.ic_auto_awesome, "Summarize", CommentsHeaderAction.SUMMARIZE, controller.storySummaryLoading))
+        val label = when (button) {
+            CommentsHeaderButton.COMMENT -> if (story.isComment) "Reply to comment" else "Reply to post"
+            CommentsHeaderButton.VOTE -> if (upvoted) "Remove vote" else "Upvote"
+            CommentsHeaderButton.FAVORITE -> if (favorited) "Remove favorite" else "Favorite"
+            CommentsHeaderButton.BOOKMARK -> if (bookmarked) "Remove bookmark" else "Bookmark"
+            CommentsHeaderButton.SIDE_BY_SIDE -> if (controller.sideBySideActive) "Exit side by side" else button.label
+            else -> button.label
+        }
+        val icon = when {
+            button == CommentsHeaderButton.VOTE && upvoted -> Res.drawable.ic_thumb_up_filled
+            button == CommentsHeaderButton.FAVORITE && favorited -> Res.drawable.ic_star_filled
+            button == CommentsHeaderButton.BOOKMARK && bookmarked -> Res.drawable.ic_bookmark_filled
+            else -> button.icon
+        }
+        val loading = when (button) {
+            CommentsHeaderButton.VOTE -> controller.storyVoteLoading
+            CommentsHeaderButton.FAVORITE -> controller.storyFavoriteLoading
+            CommentsHeaderButton.SUMMARIZE -> controller.storySummaryLoading
+            CommentsHeaderButton.REFRESH -> controller.refreshButtonInProgress
+            else -> false
+        }
+        HeaderAction(icon, label, button, loading, available,
+            active = button == CommentsHeaderButton.SIDE_BY_SIDE && controller.sideBySideActive)
     }
-    BoxWithConstraints(Modifier.fillMaxWidth().then(
-        if (combineActions) Modifier.padding(horizontal = 16.dp) else Modifier,
-    )) {
-        // Reserve Share and More, then promote only as many actions as have a 48dp target.
-        val capacity = (maxWidth.value / 48f).toInt().coerceAtLeast(2)
-        val visibleActions = actions.take(capacity - 2)
-        val overflowActions = actions.drop(visibleActions.size)
-        val showRefresh = (!hasAccount || combineActions) && visibleActions.size + 2 < capacity
-        val showSideBySide = !hasAccount && controller.sideBySideAvailable &&
-            visibleActions.size + 2 + (if (showRefresh) 1 else 0) < capacity
-        val actionCount = visibleActions.size + 2 + (if (showRefresh) 1 else 0) + (if (showSideBySide) 1 else 0)
-        val actionHorizontalPadding = commentActionPadding(maxWidth.value, actionCount).dp
-        val actionButtonModifier = Modifier
-            .width(commentActionButtonWidth(maxWidth.value, actionCount).dp)
-            .height(CommentsHeaderActionButtonSize)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = actionHorizontalPadding),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            visibleActions.forEach { action ->
-                HeaderActionButton(action, actionButtonModifier, story.id) {
-                    controller.listener.onHeaderAction(action.action)
+    BoxWithConstraints(Modifier.fillMaxWidth().height(CommentsHeaderActionButtonSize)) {
+        // Animate absolute positions once, including the Large-details inset. Animating the
+        // parent inset too would continually retarget the buttons and prolong their motion.
+        val inset = if (combineActions) 16f else 0f
+        val contentWidth = maxWidth.value - inset * 2
+        val capacity = (contentWidth / 48f).toInt().coerceAtLeast(2)
+        val inline = settings.headerButtons.inlineButtons(actions.filter { it.available }.map { it.action },
+            capacity, hasAccount, combineActions)
+        val overflow = actions.filter { it.available && it.action !in inline }
+        val count = inline.size + 1
+        val padding = commentActionPadding(contentWidth, count)
+        val buttonWidth = commentActionButtonWidth(contentWidth, count)
+        val gap = ((contentWidth - padding * 2 - count * buttonWidth) / (count + 1)).coerceAtLeast(0f)
+        fun position(index: Int) = (inset + padding + gap + index * (buttonWidth + gap)).dp
+        val onAction: (CommentsHeaderButton) -> Unit = { button ->
+            // Bookmark remains open so its changed state is visible in the menu.
+            if (button != CommentsHeaderButton.BOOKMARK) dismissMenus()
+            when (button) {
+                CommentsHeaderButton.USER -> controller.listener.onHeaderAction(CommentsHeaderAction.USER)
+                CommentsHeaderButton.COMMENT -> controller.listener.onHeaderAction(CommentsHeaderAction.REPLY)
+                CommentsHeaderButton.VOTE -> controller.listener.onHeaderAction(CommentsHeaderAction.VOTE)
+                CommentsHeaderButton.FAVORITE -> controller.listener.onHeaderAction(CommentsHeaderAction.FAVORITE)
+                CommentsHeaderButton.BOOKMARK -> controller.listener.onHeaderAction(CommentsHeaderAction.BOOKMARK)
+                CommentsHeaderButton.SUMMARIZE -> controller.listener.onHeaderAction(CommentsHeaderAction.SUMMARIZE)
+                CommentsHeaderButton.SHARE -> shareExpanded = true
+                CommentsHeaderButton.REFRESH -> {
+                    controller.beginHeaderRefresh(showProgressInButton = button in inline)
+                    controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
                 }
+                CommentsHeaderButton.SIDE_BY_SIDE -> controller.toggleSideBySide()
+                CommentsHeaderButton.SORT -> { sortExpanded = true; archiveExpanded = false; moreExpanded = true }
+                CommentsHeaderButton.ARCHIVE -> { archiveExpanded = true; sortExpanded = false; moreExpanded = true }
+                else -> controller.listener.onMoreAction(when (button) {
+                    CommentsHeaderButton.OPEN_PARENT -> CommentsMoreAction.OPEN_PARENT
+                    CommentsHeaderButton.OPEN_TOP_LEVEL -> CommentsMoreAction.OPEN_TOP_LEVEL
+                    CommentsHeaderButton.SEARCH -> CommentsMoreAction.SEARCH
+                    CommentsHeaderButton.COMMENTS_BY_OP -> CommentsMoreAction.COMMENTS_BY_OP
+                    CommentsHeaderButton.OPEN_BROWSER -> CommentsMoreAction.OPEN_BROWSER
+                    CommentsHeaderButton.DISABLE_AD_BLOCK -> CommentsMoreAction.DISABLE_AD_BLOCK
+                })
             }
-            Box(
-                actionButtonModifier,
-                contentAlignment = Alignment.Center,
+        }
+        actions.forEach { action -> key(action.action) {
+            val index = inline.indexOf(action.action)
+            // Retained buttons keep moving while additions gently fade into their new slots.
+            val lastPosition = remember { mutableStateOf(position(index.coerceAtLeast(0))) }
+            if (index >= 0) lastPosition.value = position(index)
+            val x by key(index >= 0) {
+                animateDpAsState(lastPosition.value, tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "${action.action} position")
+            }
+            AnimatedVisibility(
+                visible = index >= 0,
+                modifier = Modifier.offset(x = x),
+                enter = fadeIn(tween(180, delayMillis = 120)) +
+                    scaleIn(tween(180, delayMillis = 120), initialScale = 0.85f),
+                exit = fadeOut(tween(80)),
             ) {
-                CommentsTooltip("Share") {
-                    IconButton(
-                        onClick = { shareExpanded = true },
-                        modifier = actionButtonModifier,
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_share),
-                            contentDescription = "Share",
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                Box {
+                    HeaderActionButton(action, Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize), story.id) {
+                        onAction(action.action)
                     }
-                }
-                ShareMenu(
-                    expanded = shareExpanded,
-                    isLink = story.isLink,
-                    onDismiss = { shareExpanded = false },
-                    onAction = controller.listener::onShareAction,
-                )
-            }
-            if (showRefresh) {
-                CommentsTooltip("Refresh") {
-                    IconButton(
-                        onClick = {
-                            controller.beginHeaderRefresh(showProgressInButton = true)
-                            controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
-                        },
-                        modifier = actionButtonModifier,
-                    ) {
-                        AnimatedContent(
-                            targetState = controller.refreshButtonInProgress,
-                            transitionSpec = {
-                                fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-                            },
-                            contentAlignment = Alignment.Center,
-                            label = "Refresh loading transition",
-                        ) { refreshing ->
-                            if (refreshing) {
-                                HarmonicLoadingIndicator(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .semantics { contentDescription = "Refresh" },
-                                )
-                            } else {
-                                Icon(
-                                    painterResource(Res.drawable.ic_refresh),
-                                    contentDescription = "Refresh",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                    if (action.action == CommentsHeaderButton.SHARE) {
+                        ShareMenu(shareExpanded, story.isLink, { shareExpanded = false }, controller.listener::onShareAction)
                     }
                 }
             }
-            if (showSideBySide) {
-                CommentsTooltip(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") {
-                    IconButton(onClick = controller::toggleSideBySide, modifier = actionButtonModifier) {
-                        Icon(
-                            painterResource(Res.drawable.ic_chrome_reader_mode),
-                            contentDescription = if (controller.sideBySideActive) "Exit side by side" else "Read side by side",
-                            modifier = Modifier.size(24.dp),
-                            tint = if (controller.sideBySideActive) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+        } }
+        val moreX by animateDpAsState(position(inline.size), tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "More position")
+        Box(Modifier.offset(x = moreX).width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
+            CommentsTooltip("More options") {
+                IconButton(onClick = {
+                    sortExpanded = false
+                    archiveExpanded = false
+                    moreExpanded = true
+                }, modifier = Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
+                    Icon(painterResource(Res.drawable.ic_more_vert), "More options", Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Box(
-                actionButtonModifier,
-                contentAlignment = Alignment.Center,
-            ) {
-                CommentsTooltip("More options") {
-                    IconButton(
-                        onClick = {
-                            sortExpanded = false
-                            archiveExpanded = false
-                            moreExpanded = true
-                        },
-                        modifier = actionButtonModifier,
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_more_vert),
-                            contentDescription = "More options",
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                MoreMenu(
-                    expanded = moreExpanded,
-                    sortExpanded = sortExpanded,
-                    archiveExpanded = archiveExpanded,
-                    controller = controller,
-                    settings = settings,
-                    bookmarksEnabled = bookmarksEnabled,
-                    contentVersion = contentVersion,
-                    overflowActions = overflowActions,
-                    refreshInline = showRefresh,
-                    sideBySideInline = showSideBySide,
-                    bookmarkInline = visibleActions.any { it.action == CommentsHeaderAction.BOOKMARK },
-                    onDismiss = dismissMenus,
-                    onSortExpanded = { sortExpanded = true },
-                    onArchiveExpanded = { archiveExpanded = true },
-                    onSubmenuBack = {
-                        sortExpanded = false
-                        archiveExpanded = false
-                    },
-                )
+            if (CommentsHeaderButton.SHARE !in inline) {
+                ShareMenu(shareExpanded, story.isLink, { shareExpanded = false }, controller.listener::onShareAction)
             }
+            MoreMenu(
+                expanded = moreExpanded,
+                sortExpanded = sortExpanded,
+                archiveExpanded = archiveExpanded,
+                controller = controller,
+                overflowActions = overflow,
+                onAction = onAction,
+                onDismiss = dismissMenus,
+                onSubmenuBack = { sortExpanded = false; archiveExpanded = false },
+            )
         }
     }
 }
@@ -285,8 +268,10 @@ private val CommentsHeaderActionButtonSize = 54.dp
 private data class HeaderAction(
     val icon: DrawableResource,
     val label: String,
-    val action: CommentsHeaderAction,
+    val action: CommentsHeaderButton,
     val loading: Boolean = false,
+    val available: Boolean = true,
+    val active: Boolean = false,
 )
 
 private data class HeaderActionVisual(
@@ -308,7 +293,7 @@ private fun HeaderActionButton(
             enabled = !action.loading,
             modifier = modifier,
         ) {
-            if (action.action == CommentsHeaderAction.BOOKMARK) {
+            if (action.action == CommentsHeaderButton.BOOKMARK) {
                 AnimatedBookmarkIcon(
                     bookmarked = action.icon == Res.drawable.ic_bookmark_filled,
                     itemId = itemId,
@@ -335,7 +320,7 @@ private fun HeaderActionButton(
                         painterResource(visual.icon),
                         contentDescription = visual.label,
                         modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (action.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -399,23 +384,12 @@ private fun MoreMenu(
     sortExpanded: Boolean,
     archiveExpanded: Boolean,
     controller: CommentsScreenController,
-    settings: CommentDisplaySettings,
-    bookmarksEnabled: Boolean,
-    contentVersion: Int,
     overflowActions: List<HeaderAction>,
-    refreshInline: Boolean,
-    sideBySideInline: Boolean,
-    bookmarkInline: Boolean,
+    onAction: (CommentsHeaderButton) -> Unit,
     onDismiss: () -> Unit,
-    onSortExpanded: () -> Unit,
-    onArchiveExpanded: () -> Unit,
     onSubmenuBack: () -> Unit,
 ) {
     val story = controller.story
-    val commentsCount = controller.comments.size
-    val bookmarked = remember(contentVersion, story.id) {
-        controller.isBookmarked(story.id)
-    }
     val page = when {
         sortExpanded -> MoreMenuPage.Sort
         archiveExpanded -> MoreMenuPage.Archive
@@ -519,87 +493,22 @@ private fun MoreMenu(
                     }
 
                     MoreMenuPage.Root -> {
-                        overflowActions.filter { it.action != CommentsHeaderAction.BOOKMARK }.forEach { item ->
+                        overflowActions.forEach { item ->
                             DropdownMenuItem(
                                 text = { CommentsMenuText(item.label) },
                                 leadingIcon = {
-                                    if (item.loading) HarmonicLoadingIndicator(Modifier.size(24.dp))
+                                    if (item.action == CommentsHeaderButton.BOOKMARK) {
+                                        AnimatedBookmarkIcon(item.icon == Res.drawable.ic_bookmark_filled, story.id, description = null)
+                                    } else if (item.loading) HarmonicLoadingIndicator(Modifier.size(24.dp))
                                     else Icon(painterResource(item.icon), null)
                                 },
+                                trailingIcon = if (item.action in listOf(CommentsHeaderButton.SHARE,
+                                        CommentsHeaderButton.SORT, CommentsHeaderButton.ARCHIVE)) {
+                                    { Icon(painterResource(Res.drawable.ic_chevron_right), null) }
+                                } else null,
                                 enabled = !item.loading,
-                                onClick = { onDismiss(); controller.listener.onHeaderAction(item.action) },
+                                onClick = { onAction(item.action) },
                             )
-                        }
-                        if (!sideBySideInline && controller.sideBySideAvailable) {
-                            DropdownMenuItem(
-                                text = { CommentsMenuText(if (controller.sideBySideActive) "Exit side by side" else "Read side by side") },
-                                leadingIcon = { Icon(painterResource(Res.drawable.ic_chrome_reader_mode), null) },
-                                onClick = { onDismiss(); controller.toggleSideBySide() },
-                            )
-                        }
-                        @Composable fun action(
-                            label: String,
-                            icon: DrawableResource,
-                            id: CommentsMoreAction,
-                        ) {
-                            DropdownMenuItem(
-                                text = { CommentsMenuText(label) },
-                                leadingIcon = {
-                                    Icon(
-                                        painterResource(icon),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    if (id == CommentsMoreAction.REFRESH) {
-                                        controller.beginHeaderRefresh()
-                                    }
-                                    controller.listener.onMoreAction(id)
-                                },
-                            )
-                        }
-                        if (!refreshInline) {
-                            action("Refresh", Res.drawable.ic_refresh, CommentsMoreAction.REFRESH)
-                        }
-                        if (story.isComment && story.parentId > 0) {
-                            action("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT)
-                        }
-                        if (story.isComment && story.rootStoryId > 0) {
-                            action("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL)
-                        }
-                        if (bookmarksEnabled && !bookmarkInline) {
-                            DropdownMenuItem(
-                                text = {
-                                    CommentsMenuText(if (bookmarked) "Remove bookmark" else "Bookmark")
-                                },
-                                leadingIcon = {
-                                    AnimatedBookmarkIcon(bookmarked, story.id, description = null)
-                                },
-                                // This local toggle stays visible to show the saved state and its motion.
-                                onClick = {
-                                    controller.listener.onMoreAction(CommentsMoreAction.TOGGLE_BOOKMARK)
-                                },
-                            )
-                        }
-                        AnimatedMenuItem(visible = commentsCount > 1) {
-                            action("Search comments", Res.drawable.ic_search, CommentsMoreAction.SEARCH)
-                        }
-                        AnimatedMenuItem(visible = commentsCount > 2) {
-                            SubmenuEntry("Sort comments", Res.drawable.ic_filter_list, onSortExpanded)
-                        }
-                        AnimatedMenuItem(
-                            visible = !controller.opThreadFilterEnabled && controller.hasCommentsByOp,
-                        ) {
-                            action("Comments by OP", Res.drawable.ic_person, CommentsMoreAction.COMMENTS_BY_OP)
-                        }
-                        action("Open in browser", Res.drawable.ic_open_in_browser, CommentsMoreAction.OPEN_BROWSER)
-                        if (controller.adBlockActive) {
-                            action("Disable AdBlock", Res.drawable.ic_block, CommentsMoreAction.DISABLE_AD_BLOCK)
-                        }
-                        if (story.isLink) {
-                            SubmenuEntry("View on archive", Res.drawable.ic_history, onArchiveExpanded)
                         }
                     }
                 }
@@ -624,28 +533,6 @@ private fun SubmenuHeader(title: String, onClick: () -> Unit) {
         onClick = onClick,
     )
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-}
-
-@Composable
-private fun SubmenuEntry(title: String, icon: DrawableResource, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { CommentsMenuText(title) },
-        leadingIcon = {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        trailingIcon = {
-            Icon(
-                painterResource(Res.drawable.ic_chevron_right),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        onClick = onClick,
-    )
 }
 
 @Composable

@@ -55,6 +55,7 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_HEADER_TINT_SOURCE = "pref_comments_header_tint_source"
+    const val COMMENTS_HEADER_DOMAIN = "pref_comments_header_domain"
     const val COMMENTS_HEADER_FAVICON = "pref_comments_header_favicon"
     const val COMMENTS_HEADER_LAYOUT = "pref_comments_header_layout"
     const val COMMENTS_HEADER_EDGE = "pref_comments_header_edge"
@@ -196,6 +197,10 @@ class StoredUserSettings(
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 showFavicons = boolean(UserPreferenceKeys.COMMENTS_HEADER_FAVICON, true),
+                showHeaderDomain = boolean(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN, true),
+                headerButtons = CommentsHeaderButtons(CommentsHeaderButton.entries
+                    .filter { it.configurable && store.contains(it.storageKey) }
+                    .associateWith { boolean(it.storageKey, false) }),
                 headerPreviewImageEnabled = headerPreviewImageEnabled,
                 showHeaderPreviewImage = previewImageMode() != StoryPreviewMode.OFF &&
                     headerPreviewImageEnabled,

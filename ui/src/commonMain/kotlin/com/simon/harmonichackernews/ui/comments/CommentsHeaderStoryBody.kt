@@ -2,6 +2,12 @@ package com.simon.harmonichackernews.ui.comments
 
 
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 
@@ -46,6 +52,7 @@ import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.AnnotatedLinkGestureState
+import com.simon.harmonichackernews.ui.content.ContentMotionEasing
 import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -67,7 +74,8 @@ fun HeaderLinkInfo(
     if (!story.loaded) return
     val hasLink = story.isLink && !story.isComment && !story.url.isNullOrBlank()
     val onImage = settings.headerMetaInfo == CommentsHeaderMetaInfo.ON_IMAGE
-    if (!hasLink && !onImage) return
+    val showDomain = hasLink && settings.showHeaderDomain
+    val showInfo = showDomain || onImage || (hasLink && settings.combineHeaderActions)
     val colors = MaterialTheme.colorScheme
     val typography = rememberContentTypography(preferredFont = settings.font)
     val domain = remember(story.url) {
@@ -78,76 +86,88 @@ fun HeaderLinkInfo(
             FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), settings.faviconProvider)
         }.getOrNull()
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    androidx.compose.animation.AnimatedVisibility(
+        visible = showInfo,
+        enter = fadeIn(tween(140, delayMillis = 80)) + androidx.compose.animation.expandVertically(contentTween(), clip = false),
+        exit = fadeOut(tween(80)) + androidx.compose.animation.shrinkVertically(tween(220, delayMillis = 80, easing = ContentMotionEasing), clip = false),
     ) {
-        androidx.compose.animation.AnimatedVisibility(
-            visible = settings.showFavicons && hasLink,
-            enter = androidx.compose.animation.fadeIn(contentTween()) + androidx.compose.animation.expandHorizontally(
-                animationSpec = contentTween(),
-                expandFrom = Alignment.Start,
-            ),
-            exit = androidx.compose.animation.fadeOut(contentTween()) + androidx.compose.animation.shrinkHorizontally(
-                animationSpec = contentTween(),
-                shrinkTowards = Alignment.Start,
-            ),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (faviconPreview != null) {
-                Image(
-                    painter = faviconPreview,
-                    contentDescription = "Site icon",
-                    modifier = Modifier.padding(end = 4.dp).size(17.dp).clip(RoundedCornerShape(3.dp)),
-                )
-            } else {
-                var faviconLoaded by remember(favicon) { mutableStateOf(false) }
-                val fallback = painterResource(Res.drawable.ic_public)
-                AsyncImage(
-                    model = favicon,
-                    placeholder = fallback,
-                    fallback = fallback,
-                    error = fallback,
-                    colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
-                    onLoading = { faviconLoaded = false },
-                    onSuccess = { faviconLoaded = true },
-                    onError = { faviconLoaded = false },
-                    contentDescription = "Site icon",
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(17.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+            androidx.compose.animation.AnimatedVisibility(
+                visible = settings.showFavicons && showDomain,
+                enter = fadeIn(tween(100, delayMillis = 120)) + androidx.compose.animation.expandHorizontally(
+                    animationSpec = contentTween(),
+                    expandFrom = Alignment.Start,
+                    clip = false,
+                ),
+                exit = fadeOut(tween(80)) + androidx.compose.animation.shrinkHorizontally(
+                    animationSpec = tween(220, delayMillis = 80, easing = ContentMotionEasing),
+                    shrinkTowards = Alignment.Start,
+                    clip = false,
+                ),
+            ) {
+                if (faviconPreview != null) {
+                    Image(
+                        painter = faviconPreview,
+                        contentDescription = "Site icon",
+                        modifier = Modifier.padding(end = 4.dp).size(17.dp).clip(RoundedCornerShape(3.dp)),
+                    )
+                } else {
+                    var faviconLoaded by remember(favicon) { mutableStateOf(false) }
+                    val fallback = painterResource(Res.drawable.ic_public)
+                    AsyncImage(
+                        model = favicon,
+                        placeholder = fallback,
+                        fallback = fallback,
+                        error = fallback,
+                        colorFilter = if (faviconLoaded) null else ColorFilter.tint(colors.onSurfaceVariant),
+                        onLoading = { faviconLoaded = false },
+                        onSuccess = { faviconLoaded = true },
+                        onError = { faviconLoaded = false },
+                        contentDescription = "Site icon",
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(17.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                    )
+                }
+            }
+            val label = if (onImage) {
+                val author = if (posterTag.isBlank()) story.by.orEmpty() else "${story.by.orEmpty()} ($posterTag)"
+                listOfNotNull(
+                    domain?.takeIf { showDomain && it.isNotBlank() },
+                    relativeTimeOnResume(story.createdAtEpochSeconds),
+                    author.takeIf { it.isNotBlank() },
+                ).joinToString(" \u00b7 ")
+            } else if (settings.combineHeaderActions) {
+                listOfNotNull(domain?.takeIf { showDomain && it.isNotBlank() },
+                    relativeTimeOnResume(story.createdAtEpochSeconds)).joinToString(" \u00b7 ")
+            } else domain.orEmpty()
+            AnimatedContent(
+                targetState = label,
+                transitionSpec = {
+                    (fadeIn(tween(100, delayMillis = 80)) togetherWith fadeOut(tween(80)))
+                        .using(SizeTransform(clip = false) { _, _ -> contentTween() })
+                },
+                label = "header domain and age",
+                modifier = Modifier.weight(1f),
+            ) { visibleLabel ->
+                Text(
+                    text = visibleLabel,
+                    color = colors.onSurfaceVariant,
+                    fontFamily = typography.family,
+                    fontWeight = if (onImage) FontWeight.Medium else FontWeight.Normal,
+                    fontSize = typography.commentsHeaderMetaSize.sp,
+                    style = LocalCommentsPreviewPlatform.current.textStyle,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-        }
-        val label = if (onImage) {
-            val author = if (posterTag.isBlank()) story.by.orEmpty() else "${story.by.orEmpty()} ($posterTag)"
-            listOfNotNull(
-                domain?.takeIf { hasLink && it.isNotBlank() },
-                relativeTimeOnResume(story.createdAtEpochSeconds),
-                author.takeIf { it.isNotBlank() },
-            ).joinToString(" \u00b7 ")
-        } else if (settings.combineHeaderActions) {
-            "${domain.orEmpty()} \u00b7 ${relativeTimeOnResume(story.createdAtEpochSeconds)}"
-        } else domain.orEmpty()
-        androidx.compose.animation.Crossfade(
-            targetState = label,
-            animationSpec = androidx.compose.animation.core.tween(180),
-            label = "header domain and age",
-            modifier = Modifier.weight(1f),
-        ) { visibleLabel ->
-            Text(
-                text = visibleLabel,
-                color = colors.onSurfaceVariant,
-                fontFamily = typography.family,
-                fontWeight = if (onImage) FontWeight.Medium else FontWeight.Normal,
-                fontSize = typography.commentsHeaderMetaSize.sp,
-                style = LocalCommentsPreviewPlatform.current.textStyle,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
         }
     }
 }

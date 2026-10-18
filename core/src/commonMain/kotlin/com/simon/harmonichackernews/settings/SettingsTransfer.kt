@@ -158,6 +158,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
         private val rules: Map<String, Rule> = buildMap {
             (StoryBooleanPreference.entries.map { it.storageKey } +
                 CommentBooleanPreference.entries.map { it.storageKey } +
+                CommentsHeaderButton.entries.filter { it.configurable }.map { it.storageKey } +
                 ReadingBooleanPreference.entries.map { it.storageKey } +
                 AppearanceBooleanPreference.entries.map { it.storageKey } +
                 GeneralBooleanPreference.entries.map { it.storageKey } +

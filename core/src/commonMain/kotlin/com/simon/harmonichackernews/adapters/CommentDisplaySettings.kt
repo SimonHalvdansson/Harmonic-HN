@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
 import com.simon.harmonichackernews.settings.CommentsHeaderLayout
 import com.simon.harmonichackernews.settings.CommentsHeaderEdge
+import com.simon.harmonichackernews.settings.CommentsHeaderButtons
 import com.simon.harmonichackernews.settings.CommentsHeaderTint
 
 import com.simon.harmonichackernews.settings.DisplayStyle
@@ -57,6 +58,8 @@ data class CommentDisplaySettings(
     val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
+    val showHeaderDomain: Boolean = true,
+    val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val canAsk: Boolean = canProvideSummary,
 ) {
     val combineHeaderActions: Boolean get() = headerMetaInfo == CommentsHeaderMetaInfo.BUTTONS
@@ -86,6 +89,8 @@ data class CommentDisplaySettings(
             userAvatarsEnabled = preferences.userAvatarsEnabled,
             userAvatarOptions = preferences.userAvatarOptions,
             showFavicons = preferences.showFavicons,
+            showHeaderDomain = preferences.showHeaderDomain,
+            headerButtons = preferences.headerButtons,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,
             headerLayout = preferences.headerLayout,

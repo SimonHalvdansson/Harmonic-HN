@@ -42,6 +42,7 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
     ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
     HEADER_TINT(UserPreferenceKeys.COMMENTS_HEADER_TINT),
+    HEADER_DOMAIN(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN),
     HEADER_FAVICON(UserPreferenceKeys.COMMENTS_HEADER_FAVICON),
     COMBINE_HEADER_ACTIONS(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS),
     HEADER_PREVIEW_IMAGE(UserPreferenceKeys.COMMENTS_HEADER_PREVIEW_IMAGE),
@@ -158,6 +159,11 @@ class AppSettingsRepository(
         mutator.setCommentBoolean(preference, value)
 
     fun setCollectedLinksMode(mode: CollectedLinksMode) = mutator.setCollectedLinksMode(mode)
+
+    fun resetCommentsHeaderButtons() = mutator.resetCommentsHeaderButtons()
+
+    fun setCommentsHeaderButton(button: CommentsHeaderButton, shown: Boolean) =
+        mutator.setCommentsHeaderButton(button, shown)
 
     fun setCommentsHeaderImage(value: CommentsHeaderImage) = mutator.setCommentsHeaderImage(value)
     fun setCommentsHeaderTint(value: CommentsHeaderTint) = mutator.setCommentsHeaderTint(value)

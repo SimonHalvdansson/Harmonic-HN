@@ -112,6 +112,8 @@ data class CommentPreferences(
     val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
+    val showHeaderDomain: Boolean = true,
+    val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

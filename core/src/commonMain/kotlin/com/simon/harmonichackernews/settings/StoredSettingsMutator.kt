@@ -90,6 +90,14 @@ class StoredSettingsMutator(
         } else store.putBoolean(preference.storageKey, value)
     }
 
+    fun resetCommentsHeaderButtons() {
+        store.update { CommentsHeaderButton.entries.forEach { remove(it.storageKey) } }
+    }
+
+    fun setCommentsHeaderButton(button: CommentsHeaderButton, shown: Boolean) {
+        if (button.configurable) store.putBoolean(button.storageKey, shown)
+    }
+
     fun setCommentsHeaderTint(value: CommentsHeaderTint) {
         store.update {
             putString(UserPreferenceKeys.COMMENTS_HEADER_TINT_SOURCE, value.storedValue)

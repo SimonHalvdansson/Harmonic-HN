@@ -69,6 +69,8 @@ import com.simon.harmonichackernews.presentation.SavedItemStateReader
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
+import com.simon.harmonichackernews.settings.CommentsHeaderButton
+import com.simon.harmonichackernews.ui.comments.icon
 import com.simon.harmonichackernews.settings.CommentsHeaderImage
 import com.simon.harmonichackernews.settings.CommentsHeaderEdge
 import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
@@ -177,7 +179,16 @@ fun HeaderDisplaySettingsRoute(
                 )
                 SettingsDivider()
                 SwitchSettingRow(
-                    title = "Favicon",
+                    title = "Domain",
+                    icon = Res.drawable.ic_public,
+                    checked = settings.comments.showHeaderDomain,
+                    onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_DOMAIN, it) },
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Thumbnail",
+                    enabled = settings.comments.showHeaderDomain,
+                    summary = if (!settings.comments.showHeaderDomain) "Turn on Domain" else null,
                     icon = Res.drawable.ic_public,
                     checked = settings.comments.showFavicons,
                     onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_FAVICON, it) },
@@ -190,6 +201,48 @@ fun HeaderDisplaySettingsRoute(
                     onCheckedChange = { presenter.setBoolean(CommentsBooleanSetting.ShowUpButton, it) },
                 )
 
+            }
+        }
+        item {
+            SettingsCategory("Buttons") {
+                val large = displaySettings.hasAccountDetails && displaySettings.combineHeaderActions
+                CommentsHeaderButton.entries.filter { it.configurable }.forEachIndexed { index, button ->
+                    if (index > 0) SettingsDivider()
+                    val reason = when {
+                        button in listOf(CommentsHeaderButton.COMMENT, CommentsHeaderButton.VOTE,
+                            CommentsHeaderButton.FAVORITE) && !displaySettings.hasAccountDetails -> "Sign in to use"
+                        button in listOf(CommentsHeaderButton.USER, CommentsHeaderButton.COMMENT,
+                            CommentsHeaderButton.VOTE) && large -> "Included in Large post details"
+                        button == CommentsHeaderButton.BOOKMARK && !settings.general.bookmarksEnabled -> "Turn on Bookmarks"
+                        button == CommentsHeaderButton.SUMMARIZE && !displaySettings.canProvideSummary -> "Set up AI summaries"
+                        button == CommentsHeaderButton.SIDE_BY_SIDE && !settings.appearance.sideBySideEnabled -> "Turn on side by side"
+                        button == CommentsHeaderButton.DISABLE_AD_BLOCK && !settings.reading.blockAds -> "Turn on ad blocking"
+                        else -> null
+                    }
+                    val context = when (button) {
+                        CommentsHeaderButton.SEARCH, CommentsHeaderButton.SORT -> "When comments are loaded"
+                        CommentsHeaderButton.COMMENTS_BY_OP -> "When the author has commented"
+                        CommentsHeaderButton.SUMMARIZE, CommentsHeaderButton.ARCHIVE -> "On link posts"
+                        CommentsHeaderButton.SIDE_BY_SIDE -> "On supported layouts"
+                        CommentsHeaderButton.DISABLE_AD_BLOCK -> "While blocking ads"
+                        else -> null
+                    }
+                    SwitchSettingRow(
+                        title = button.label,
+                        summary = reason ?: context,
+                        icon = button.icon,
+                        checked = settings.comments.headerButtons.isShown(button, displaySettings.hasAccountDetails, large),
+                        enabled = reason == null,
+                        onCheckedChange = { repository.setCommentsHeaderButton(button, it) },
+                    )
+                }
+                SettingsDivider()
+                SettingRow(
+                    title = "Reset",
+                    summary = "Restore default buttons",
+                    icon = Res.drawable.ic_refresh,
+                    onClick = repository::resetCommentsHeaderButtons,
+                )
             }
         }
         item {
@@ -301,6 +354,7 @@ internal fun HeaderDisplayPreview(
                         contentDescription = "Preview ${sample.ordinal + 1} of ${HeaderPreviewSample.entries.size}: ${sample.label}"
                     },
                 shape = RoundedCornerShape(50),
+                shadowElevation = 2.dp,
                 color = MaterialTheme.colorScheme.tertiary,
                 contentColor = MaterialTheme.colorScheme.onTertiary,
             ) {

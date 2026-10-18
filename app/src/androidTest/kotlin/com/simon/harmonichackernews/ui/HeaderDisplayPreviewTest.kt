@@ -33,6 +33,43 @@ class HeaderDisplayPreviewTest {
     ).copy(headerMetaInfo = com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.BUTTONS, headerLayout = CommentsHeaderLayout.BALANCED,
         headerEdge = CommentsHeaderEdge.ROUNDED)
 
+    @Test fun hiddenButtonsStayActionableInOverflowIncludingShare() {
+        val preferences = settings(true).copy(headerButtons = CommentsHeaderButtons(mapOf(
+            CommentsHeaderButton.FAVORITE to false, CommentsHeaderButton.SHARE to false,
+        )))
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) { HeaderDisplayPreview(preferences, true, {}) }
+        }
+        compose.onNodeWithContentDescription("Favorite").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Share").assertDoesNotExist()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Favorite").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Remove favorite").assertExists()
+        compose.onNodeWithText("Share").performClick()
+        compose.onNodeWithText("Article link").assertExists()
+        compose.onNodeWithText("HN link").performClick()
+        compose.onAllNodes(isPopup()).assertCountEquals(0)
+    }
+
+    @Test fun promotedArchiveOpensItsSubmenuAndHiddenBookmarkStillToggles() {
+        val preferences = settings(false).copy(headerButtons = CommentsHeaderButtons(
+            CommentsHeaderButton.entries.associateWith { it == CommentsHeaderButton.ARCHIVE },
+        ))
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) { HeaderDisplayPreview(preferences, true, {}) }
+        }
+        compose.onNodeWithContentDescription("View on archive").performClick()
+        compose.onNodeWithText("archive.org").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("View on archive").assertDoesNotExist()
+        compose.onNodeWithText("Open in browser").assertExists()
+        compose.onNodeWithText("Bookmark").performClick()
+        compose.onNodeWithText("Remove bookmark").assertExists()
+    }
+
     @Test fun signedInActionsShareMetadataAndAnimateLayoutChanges() {
         val state = mutableStateOf(settings(true).copy(headerLayout = CommentsHeaderLayout.STANDARD))
         compose.setContent {

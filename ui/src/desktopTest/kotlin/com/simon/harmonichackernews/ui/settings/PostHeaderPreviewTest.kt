@@ -32,6 +32,8 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.settings.CommentsHeaderButton
+import com.simon.harmonichackernews.settings.CommentsHeaderButtons
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentsHeaderEdge
 import com.simon.harmonichackernews.settings.CommentsHeaderTint
@@ -55,6 +57,113 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun enablingAButtonStartsFadingBeforeTheOtherButtonsFinishMoving() = SwingUtilities.invokeAndWait {
+        val hidden = CommentsHeaderButtons(
+            CommentsHeaderButton.entries.associateWith { false })
+        val shown = hidden.copy(overrides = hidden.overrides +
+            (CommentsHeaderButton.USER to true))
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, false, false,
+        ).copy(headerButtons = shown, tintHeader = false, showHeaderPreviewImage = false))
+        val scene = ImageComposeScene(420, 900, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) { HeaderDisplayPreview(settings.value, true, {}) }
+        }
+        try {
+            var time = 0L
+            fun frame() { scene.render(time.also { time += 16_666_667L }).close() }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            repeat(40) { frame() }
+            val icon = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single {
+                it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains("User") == true
+            }.boundsInRoot
+            val points = (icon.left.toInt() until icon.right.toInt()).flatMap { x ->
+                (icon.top.toInt() until icon.bottom.toInt()).map { y -> x to y }
+            }
+            fun pixels() = scene.render(time.also { time += 16_666_667L }).use { image ->
+                val map = image.toComposeImageBitmap().toPixelMap()
+                points.map { (x, y) -> map[x, y] }
+            }
+            val visible = pixels()
+            settings.value = settings.value.copy(headerButtons = hidden)
+            repeat(40) { frame() }
+            val background = pixels()
+            fun ink(colors: List<Color>) = colors.zip(background).sumOf { (a, b) ->
+                (kotlin.math.abs(a.red - b.red) + kotlin.math.abs(a.green - b.green) + kotlin.math.abs(a.blue - b.blue)).toDouble()
+            }
+            val fullInk = ink(visible)
+            assertTrue(fullInk > 1.0)
+            settings.value = settings.value.copy(headerButtons = shown)
+            repeat(10) { frame() }
+            val earlyInk = ink(pixels())
+            repeat(4) { frame() }
+            val laterInk = ink(pixels())
+            assertTrue(earlyInk > fullInk * 0.03 && earlyInk < fullInk * 0.8,
+                "The icon must already be partly visible around 170ms: $earlyInk / $fullInk")
+            assertTrue(laterInk > earlyInk, "The fade should develop over several frames")
+            repeat(30) { frame() }
+            assertTrue(ink(pixels()) > fullInk * 0.95)
+        } finally { scene.close() }
+    }
+
+    @Test fun actionButtonsKeepTheirIdentityAndMoveThroughDetailChanges() = SwingUtilities.invokeAndWait {
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ).copy(headerMetaInfo = CommentsHeaderMetaInfo.SMALL))
+        val scene = ImageComposeScene(420, 900, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) { HeaderDisplayPreview(settings.value, true, {}) }
+        }
+        try {
+            var time = 0L
+            fun frame() { scene.render(time.also { time += 16_666_667L }).close() }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            fun share() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single {
+                it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains("Share") == true
+            }
+            repeat(40) { frame() }
+            val original = share().id
+            val start = share().boundsInRoot.center
+            settings.value = settings.value.copy(headerMetaInfo = CommentsHeaderMetaInfo.BUTTONS)
+            val positions = List(40) {
+                frame()
+                assertEquals(original, share().id, "Share must stay composed instead of crossfading with details")
+                share().boundsInRoot.center
+            }
+            val end = positions.last()
+            assertTrue(start != end)
+            assertTrue(positions.distinct().size >= 5, "Buttons must move through intermediate positions")
+            settings.value = settings.value.copy(headerMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE)
+            repeat(40) { frame(); assertEquals(original, share().id) }
+        } finally { scene.close() }
+    }
+
+    @Test fun hidingDomainPreservesIntegratedAuthorAndRestoresThumbnailChoice() = SwingUtilities.invokeAndWait {
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ))
+        val scene = ImageComposeScene(420, 900, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) { HeaderDisplayPreview(settings.value, true, {}) }
+        }
+        try {
+            var time = 0L
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            for (domain in listOf(true, false, true)) {
+                settings.value = settings.value.copy(showHeaderDomain = domain)
+                repeat(40) { scene.render(time.also { time += 16_666_667L }).close() }
+                val all = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }
+                assertEquals(domain, all.any { it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains("Site icon") == true })
+                val text = all.flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }.joinToString { it.text }
+                assertTrue("willow" in text)
+                assertEquals(domain, "science.org" in text)
+            }
+        } finally { scene.close() }
+    }
+
     @Test fun largePreviewSampleChangesAnimateAcrossThePinningThreshold() = SwingUtilities.invokeAndWait {
         val sample = mutableStateOf(HeaderPreviewSample.LINK_PREVIEW)
         val settings = CommentDisplaySettings.from(
@@ -450,7 +559,7 @@ class PostHeaderPreviewTest {
             }
             settle()
             val initialBounds = controls
-            assertEquals(112f, controls.width)
+            assertEquals(120f, controls.width)
             assertEquals(56f, controls.height)
             listState.dispatchRawDelta(500f)
             settle()
