@@ -30,10 +30,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +60,13 @@ import com.simon.harmonichackernews.resources.ic_public
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import org.jetbrains.compose.resources.painterResource
+
+private class ReferenceLinkGeometry {
+    var coordinates: LayoutCoordinates? = null
+    var layer: GraphicsLayer? = null
+
+    fun bounds(): Rect = coordinates?.takeIf { it.isAttached }?.boundsInWindow() ?: Rect.Zero
+}
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -79,8 +89,27 @@ internal fun ReferenceLinkRow(
         animationSpec = contentTween(),
         label = "collected link favicon size",
     )
-    var bounds by remember(label) { mutableStateOf(Rect.Zero) }
-    var sourceContentLayer by remember(label) { mutableStateOf<GraphicsLayer?>(null) }
+    val geometry = remember { ReferenceLinkGeometry() }
+    var captureRequested by remember { mutableStateOf(false) }
+    var pendingLongClick by remember { mutableStateOf(false) }
+    val requestLongClick = {
+        captureRequested = true
+        pendingLongClick = true
+    }
+    if (pendingLongClick) {
+        LaunchedEffect(onLongClick) {
+            // As with comment action previews, cross a complete draw before opening the overlay.
+            withFrameNanos { }
+            withFrameNanos { }
+            onLongClick(geometry.bounds(), geometry.layer)
+            pendingLongClick = false
+        }
+    }
+    // Retain an interacted row's layer until disposal so the returning overlay can still use it.
+    // Unvisited reference rows never allocate or record a capture layer.
+    val captureModifier = if (captureRequested) {
+        Modifier.captureSharedTransformSourceContent { geometry.layer = it }
+    } else Modifier
     Box(modifier.fillMaxWidth().padding(top = topPadding)) {
         Row(
             modifier = Modifier
@@ -89,15 +118,15 @@ internal fun ReferenceLinkRow(
                 .defaultMinSize(minHeight = 38.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(6.dp))
-                .onGloballyPositioned { bounds = it.boundsInWindow() }
+                .onGloballyPositioned { geometry.coordinates = it }
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
                     onClick = onClick,
-                    onLongClick = { onLongClick(bounds, sourceContentLayer) },
+                    onLongClick = requestLongClick,
                 )
-                .onSecondaryClick { onLongClick(bounds, sourceContentLayer) }
-                .captureSharedTransformSourceContent { sourceContentLayer = it }
+                .onSecondaryClick { requestLongClick() }
+                .then(captureModifier)
                 .padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

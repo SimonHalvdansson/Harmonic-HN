@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.Dp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
+import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.ui.content.CommentRowStyleContext
 import com.simon.harmonichackernews.ui.content.toCommentRowStyle
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
@@ -113,6 +116,11 @@ fun CommentsSearchContent(
     val itemStyle = remember(settings) {
         settings.toCommentRowStyle(CommentRowStyleContext.Search)
     }
+    val rowTypography = rememberContentTypography(
+        preferredFont = itemStyle.preferredFont,
+        commentTextSize = itemStyle.textSize,
+    )
+    val resumedAt = rememberTimeOnResume()
 
     CommentSearchScreen(
         searchTerm = searchTerm,
@@ -127,6 +135,8 @@ fun CommentsSearchContent(
         CommentRow(
             comment = comment,
             style = itemStyle,
+            typography = rowTypography,
+            age = remember(comment.time, resumedAt) { ItemTimeFormatter.formatNow(comment.time) },
             storyAuthor = storyAuthor,
             accountUser = accountUser,
             userTag = null,

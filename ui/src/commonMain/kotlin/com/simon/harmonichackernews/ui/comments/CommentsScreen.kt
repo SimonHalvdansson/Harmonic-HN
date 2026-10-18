@@ -80,6 +80,9 @@ import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
+import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.ui.content.CommentRowStyleContext
 import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
 import com.simon.harmonichackernews.ui.content.contentTween
@@ -268,6 +271,11 @@ fun CommentsScreen(
             CommentRowStyleContext.Thread(animateChanges = animateComments),
         )
     }
+    val rowTypography = rememberContentTypography(
+        preferredFont = itemStyle.preferredFont,
+        commentTextSize = itemStyle.textSize,
+    )
+    val resumedAt = rememberTimeOnResume()
 
     LaunchedEffect(listState, visibleComments, animatedRows.exitingIds) {
         var previousHeaderCoverage: Float? = null
@@ -485,6 +493,10 @@ fun CommentsScreen(
                 CommentRow(
                     comment = item.comment,
                     style = itemStyle,
+                    typography = rowTypography,
+                    age = remember(item.comment.time, resumedAt) {
+                        ItemTimeFormatter.formatNow(item.comment.time)
+                    },
                     storyAuthor = controller.story.by,
                     accountUser = controller.accountUser,
                     userTag = tag,

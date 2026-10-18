@@ -27,12 +27,31 @@ fun htmlAnnotatedString(
     retainQuoteDecoration: Boolean = false,
 ): AnnotatedString = runCatching {
     val prepared = CommentHtmlTextCache.get(html, highlightQuotes, retainQuoteDecoration)
+    bindCommentLinks(prepared, linkColor, linkListener)
+}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+
+internal fun preparedCommentText(
+    html: String,
+    highlightQuotes: Boolean,
+    retainQuoteDecoration: Boolean,
+): AnnotatedString = runCatching {
+    CommentHtmlTextCache.get(html, highlightQuotes, retainQuoteDecoration)
+}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+
+internal fun AnnotatedString.hasCommentLinks(): Boolean =
+    hasStringAnnotations(COMMENT_URL_TAG, 0, length)
+
+internal fun bindCommentLinks(
+    prepared: AnnotatedString,
+    linkColor: Color,
+    linkListener: LinkInteractionListener,
+): AnnotatedString {
     val links = prepared.getStringAnnotations(COMMENT_URL_TAG, 0, prepared.length)
     // Most comments have no links to bind. Their cached text already contains every style.
     if (links.isEmpty()) {
-        return@runCatching prepared
+        return prepared
     }
-    buildAnnotatedString {
+    return buildAnnotatedString {
         append(prepared)
         links.forEach { link ->
             addLink(
@@ -46,7 +65,7 @@ fun htmlAnnotatedString(
             )
         }
     }
-}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+}
 
 /** No theme, listener, mutable DOM, or screen references are retained in the prepared text. */
 internal fun prepareCommentHtml(html: String): AnnotatedString = prepareCommentHtml(html, true)

@@ -32,6 +32,8 @@ private data class AvatarVisual(
     val style: UserAvatarStyle?,
 )
 
+private val avatarArtworkCache = AvatarArtworkCache(create = ::GeneratedAvatarArtwork)
+
 @Composable
 fun UserAvatar(
     author: String,
@@ -78,7 +80,7 @@ fun UserAvatar(
             )
         } else {
             val artwork = remember(content) {
-                GeneratedAvatarArtwork(content.author, content.style)
+                avatarArtworkCache.get(content.author, content.style)
             }
             Canvas(Modifier.fillMaxSize()) {
                 scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {

@@ -357,12 +357,13 @@ fun CommentRow(
     onLinkLongClick: (String, String, Rect) -> Unit,
     onReferenceLongClick: (CollectedReferenceLinks.ReferenceLink, Rect, GraphicsLayer?) -> Unit,
     onLinkClick: (String) -> Unit = {},
-) {
-    val colors = MaterialTheme.colorScheme
-    val typography = rememberContentTypography(
+    typography: ContentTypography = rememberContentTypography(
         preferredFont = style.preferredFont,
         commentTextSize = style.textSize,
-    )
+    ),
+    age: String = relativeTimeOnResume(comment.time),
+) {
+    val colors = MaterialTheme.colorScheme
     val bodySize by animateFloatAsState(
         targetValue = typography.commentTextSize,
         animationSpec = if (style.animateChanges) contentTween() else snap(),
@@ -523,7 +524,7 @@ fun CommentRow(
                 author = comment.by.orEmpty(),
                 avatarsEnabled = style.userAvatarsEnabled,
                 avatarOptions = style.userAvatarOptions,
-                age = relativeTimeOnResume(comment.time),
+                age = age,
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
@@ -669,24 +670,26 @@ internal fun CommentBodyText(
         primary = colors.primary,
         onSurface = colors.onSurface,
     )
-    val hapticFeedback = LocalHapticFeedback.current
-    val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
-    val linkListener = remember(linkGestureState, onLinkClick) {
-        LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url &&
-                !linkGestureState.consumeSuppressedLinkClick()
-            ) {
-                onLinkClick(annotation.url)
+    val decorateQuotes = quotePresentation.decorate
+    val prepared = remember(html, highlightQuotes, decorateQuotes) {
+        preparedCommentText(html, highlightQuotes, decorateQuotes)
+    }
+    val hasLinks = remember(prepared) { prepared.hasCommentLinks() }
+    val linkGestureState = if (hasLinks) remember(html) { AnnotatedLinkGestureState() } else null
+    val body = if (linkGestureState != null) {
+        val linkListener = remember(linkGestureState, onLinkClick) {
+            LinkInteractionListener { annotation ->
+                if (annotation is LinkAnnotation.Url &&
+                    !linkGestureState.consumeSuppressedLinkClick()
+                ) {
+                    onLinkClick(annotation.url)
+                }
             }
         }
-    }
-    val decorateQuotes = quotePresentation.decorate
-    val body = remember(html, colors.primary, linkListener, highlightQuotes, decorateQuotes) {
-        htmlAnnotatedString(
-            html, colors.primary, linkListener, highlightQuotes,
-            retainQuoteDecoration = decorateQuotes,
-        )
-    }
+        remember(prepared, colors.primary, linkListener) {
+            bindCommentLinks(prepared, colors.primary, linkListener)
+        }
+    } else prepared
     val displayedBody = if (animateSearchMatches) {
         animatedSearchMatches(
             body = body,
@@ -717,8 +720,21 @@ internal fun CommentBodyText(
     } else 0
     val gap = with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
     QuoteSpacedContent(segments, gap, modifier) { segment, textModifier ->
-        val textLayout = remember(segment) { mutableStateOf<TextLayoutResult?>(null) }
-        var textCoordinates by remember(segment) { mutableStateOf<LayoutCoordinates?>(null) }
+        // Most comments contain no links. Keep their text free of gesture nodes and geometry
+        // callbacks; quoted text still receives the layout callback needed for its decoration.
+        val segmentHasLinks = hasLinks && remember(segment) { segment.hasCommentLinks() }
+        val geometry = if (segmentHasLinks) remember(segment) { CommentTextGeometry() } else null
+        val linkModifier = if (geometry != null && linkGestureState != null) {
+            Modifier.onGloballyPositioned { geometry.coordinates = it }
+                .detectAnnotatedLinkLongPress(
+                    text = segment,
+                    layoutResult = { geometry.layout },
+                    coordinates = { geometry.coordinates },
+                    linkGestureState = linkGestureState,
+                    hapticFeedback = LocalHapticFeedback.current,
+                    onLongPress = onLinkLongClick,
+                )
+        } else Modifier
         val quoteLayout = remember(segment, decorateQuotes) {
             if (decorateQuotes) {
                 segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
@@ -751,25 +767,24 @@ internal fun CommentBodyText(
             modifier = textModifier
                 .fillMaxWidth()
                 .then(decoration)
-                .onGloballyPositioned { textCoordinates = it }
-                .detectAnnotatedLinkLongPress(
-                    text = segment,
-                    layoutResult = { textLayout.value },
-                    coordinates = { textCoordinates },
-                    linkGestureState = linkGestureState,
-                    hapticFeedback = hapticFeedback,
-                    onLongPress = onLinkLongClick,
-                ),
-            onTextLayout = {
-                textLayout.value = it
-                quoteLayout?.update(it)
-            },
+                .then(linkModifier),
+            onTextLayout = if (geometry != null || quoteLayout != null) {
+                { result ->
+                    geometry?.layout = result
+                    quoteLayout?.update(result)
+                }
+            } else { _ -> },
             color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
             style = animatedCommentTextStyle,
         )
     }
+}
+
+private class CommentTextGeometry {
+    var layout: TextLayoutResult? = null
+    var coordinates: LayoutCoordinates? = null
 }
 
 /** Only quoted text needs this small geometry cache; ordinary text has no decoration modifier. */

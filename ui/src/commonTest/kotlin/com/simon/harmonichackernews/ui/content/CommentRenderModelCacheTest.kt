@@ -10,6 +10,13 @@ import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.PortableCommentThreadState
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -99,7 +106,7 @@ class CommentRenderModelCacheTest {
     }
 
     @Test
-    fun prefetchPropagatesCancellationWithoutInstallingPartialResults() = runTest {
+    fun prefetchRetainsCompletedCommentsButDoesNotInstallCancelledComment() = runTest {
         CommentRenderModelCache.clearForTest()
         CommentHtmlTextCache.clearForTest()
         val comments = commentsForPrefetch(3)
@@ -115,8 +122,76 @@ class CommentRenderModelCacheTest {
 
         assertEquals(cancellation.message, thrown.message)
         assertEquals(2, prepared)
-        assertEquals(0, CommentRenderModelCache.entryCountForTest())
-        assertEquals(0, CommentHtmlTextCache.entryCountForTest())
+        assertEquals(1, CommentRenderModelCache.entryCountForTest())
+        assertEquals(1, CommentHtmlTextCache.entryCountForTest())
+        assertTrue(CommentHtmlTextCache.contains(comments[0].expandedAnchorText!!))
+        assertFalse(CommentHtmlTextCache.contains(comments[1].expandedAnchorText!!))
+        assertFalse(CommentHtmlTextCache.contains(comments[2].expandedAnchorText!!))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun scrollingFinishesCurrentCommentThenPreparesOnlyTheLatestWindow() = runTest {
+        val comments = commentsForPrefetch(6)
+        val windows = Channel<List<PortableCommentItem>>(Channel.UNLIMITED)
+        val finishFirst = CompletableDeferred<Unit>()
+        val preparedIds = mutableListOf<Int>()
+        val job = launch {
+            prefetchCommentWindows(windows.receiveAsFlow()) { comment ->
+                if (comment.id == 1) finishFirst.await()
+                preparedIds += comment.id
+            }
+        }
+        windows.send(comments.take(2))
+        runCurrent()
+        windows.send(comments.subList(2, 4))
+        windows.send(comments.subList(4, 6))
+        runCurrent()
+        assertTrue(preparedIds.isEmpty())
+        finishFirst.complete(Unit)
+        windows.close()
+        job.join()
+        assertEquals(listOf(1, 5, 6), preparedIds)
+    }
+
+    @Test
+    fun leavingTheScreenCancelsItsPrefetchWorker() = runTest {
+        val windows = Channel<List<PortableCommentItem>>(Channel.UNLIMITED)
+        val started = CompletableDeferred<Unit>()
+        var cancelled = false
+        val job = launch {
+            prefetchCommentWindows(windows.receiveAsFlow()) {
+                started.complete(Unit)
+                try {
+                    CompletableDeferred<Unit>().await()
+                } finally {
+                    cancelled = true
+                }
+            }
+        }
+        windows.send(commentsForPrefetch(3))
+        started.await()
+        job.cancelAndJoin()
+        windows.close()
+        assertTrue(cancelled)
+    }
+
+    @Test
+    fun textWithoutLinksReusesPreparedTextAndQuotedSegmentsKeepTheirLinkFlags() {
+        val plain = preparedCommentText("Plain <b>text</b>", false, false)
+        assertFalse(plain.hasCommentLinks())
+        assertSame(plain, bindCommentLinks(plain, Color.Blue, LinkInteractionListener {}))
+
+        val quoted = preparedCommentText(
+            "&gt; Quoted text<p><a href='https://example.com'>Reference</a>", true, true,
+        )
+        val segments = quoted.quoteSpacedSegments()
+        assertEquals(2, segments.size)
+        assertFalse(segments[0].hasCommentLinks())
+        assertTrue(segments[1].hasCommentLinks())
+        val linked = bindCommentLinks(segments[1], Color.Blue, LinkInteractionListener {})
+        val link = linked.getLinkAnnotations(0, linked.length).single()
+        assertEquals("Reference", linked.text.substring(link.start, link.end))
     }
 
     private fun commentsForPrefetch(count: Int): List<PortableCommentItem> = (1..count).map { id ->

@@ -12,10 +12,14 @@ import com.simon.harmonichackernews.presentation.PortableCommentThreadState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import kotlin.math.min
 
@@ -201,50 +205,63 @@ internal suspend fun prefetchCommentRenderModels(
     collectLinks: Boolean,
     prepareHtml: (String) -> PreparedCommentHtml = ::prepareCommentHtmlContent,
 ) {
-    for (batch in comments.chunked(8)) {
+    for (comment in comments) {
         currentCoroutineContext().ensureActive()
         // Snapshot cache lookups on their owner. Workers receive immutable models and strings only.
-        val work = batch.mapNotNull { comment ->
-            val source = comment.expandedAnchorText.orEmpty()
-            val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
-            val missing = cached?.contentBlocks?.mapNotNull { it.bodyHtml }
-                ?.distinct()?.filterNot(CommentHtmlTextCache::contains)
-            if (cached != null && missing.isNullOrEmpty()) null
-            else RenderPreparation(comment.id, source, cached, missing)
-        }
-        if (work.isEmpty()) continue
+        val source = comment.expandedAnchorText.orEmpty()
+        val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
+        val missing = cached?.contentBlocks?.mapNotNull { it.bodyHtml }
+            ?.distinct()?.filterNot(CommentHtmlTextCache::contains)
+        if (cached != null && missing.isNullOrEmpty()) continue
         val prepared = withContext(Dispatchers.Default) {
-            work.mapNotNull { request ->
-                coroutineContext.ensureActive()
-                try {
-                    val model = request.cached ?: CommentRenderModelCache.prepare(request.source, collectLinks)
-                    val missing = request.missing ?: model.contentBlocks.mapNotNull { it.bodyHtml }.distinct()
-                    Triple(request, model, missing.associateWith { html ->
-                        coroutineContext.ensureActive()
-                        prepareHtml(html)
-                    })
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Exception) {
-                    // Prefetch is optional. Leave failed entries uncached so visible rendering
-                    // can use its fallback, while other comments still finish preparing.
-                    null
+            try {
+                val model = cached ?: CommentRenderModelCache.prepare(source, collectLinks)
+                val missingTexts = missing ?: model.contentBlocks.mapNotNull { it.bodyHtml }.distinct()
+                model to missingTexts.associateWith { html ->
+                    coroutineContext.ensureActive()
+                    prepareHtml(html)
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // A failed comment must not prevent other rows from preparing or install a
+                // partial model. Successful earlier comments are already available to rendering.
+                null
             }
-        }
-        prepared.forEach { (request, model, texts) ->
-            CommentRenderModelCache.install(request.id, request.source, collectLinks, model)
-            texts.forEach { (html, text) -> CommentHtmlTextCache.install(html, text) }
-        }
+        } ?: continue
+        CommentRenderModelCache.install(comment.id, source, collectLinks, prepared.first)
+        prepared.second.forEach { (html, text) -> CommentHtmlTextCache.install(html, text) }
     }
 }
 
-private data class RenderPreparation(
-    val id: Int,
-    val source: String,
-    val cached: CommentRenderModel?,
-    val missing: List<String>?,
-)
+/** Finish the current comment, then switch to the newest viewport without queuing old windows. */
+internal suspend fun prefetchCommentWindows(
+    windows: Flow<List<PortableCommentItem>>,
+    prepare: suspend (PortableCommentItem) -> Unit,
+) = coroutineScope {
+    val requests = Channel<List<PortableCommentItem>>(Channel.CONFLATED)
+    launch {
+        try {
+            windows.collect { requests.send(it) }
+        } finally {
+            requests.close()
+        }
+    }
+    var pending = emptyList<PortableCommentItem>()
+    var index = 0
+    while (true) {
+        requests.tryReceive().getOrNull()?.let {
+            pending = it
+            index = 0
+        }
+        if (index == pending.size) {
+            pending = requests.receiveCatching().getOrNull() ?: break
+            index = 0
+        } else {
+            prepare(pending[index++])
+        }
+    }
+}
 
 /** Small first viewport only; do not delay presentation to render an entire discussion. */
 suspend fun prepareInitialCommentContent(
@@ -270,13 +287,18 @@ internal fun PrefetchCommentContent(
     headerItems: Int = 0,
 ) {
     LaunchedEffect(listState, comments, collectLinks) {
-        snapshotFlow {
+        val windows = snapshotFlow {
             val items = listState.layoutInfo.visibleItemsInfo
             (items.firstOrNull()?.index ?: 0) to (items.lastOrNull()?.index ?: 0)
-        }.distinctUntilChanged().collectLatest { (first, last) ->
+        }.distinctUntilChanged().map { (first, last) ->
             val start = (first - headerItems - 8).coerceIn(0, comments.size)
             val end = (last - headerItems + 25).coerceIn(start, comments.size)
-            prefetchCommentRenderModels(comments.subList(start, end), collectLinks)
+            val visibleStart = (first - headerItems).coerceIn(start, end)
+            // Visible/upcoming rows take priority over the small retained window behind them.
+            comments.subList(visibleStart, end) + comments.subList(start, visibleStart).asReversed()
+        }
+        prefetchCommentWindows(windows) { comment ->
+            prefetchCommentRenderModels(listOf(comment), collectLinks)
         }
     }
 }
