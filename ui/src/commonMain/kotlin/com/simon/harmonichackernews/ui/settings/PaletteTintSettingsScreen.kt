@@ -103,7 +103,7 @@ private val PalettePreviewSamples = listOf(
     ),
 )
 
-/** Prepare bundled previews after Appearance has opened, before the palette page is requested. */
+/** Prepare bundled previews after the parent settings page opens, before the palette page is requested. */
 @Composable
 internal fun PreloadPalettePreviewResources() {
     val environment = rememberResourceEnvironment()
