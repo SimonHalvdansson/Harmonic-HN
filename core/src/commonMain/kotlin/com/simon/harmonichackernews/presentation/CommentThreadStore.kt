@@ -70,6 +70,7 @@ internal data class CommentThreadPreparationInput(
     val state: PortableCommentThreadState,
     val initialCommentIds: Set<Int>?,
     val hideDelayedComments: Boolean,
+    val hideDeadComments: Boolean,
     val searchIndex: Map<Int, SearchableCommentText>,
 )
 
@@ -91,6 +92,7 @@ class CommentThreadStore {
     private var initialCommentIds: Set<Int>? = null
     internal val hasLoadedComments: Boolean get() = initialCommentIds != null
     private var hideDelayedComments = false
+    private var hideDeadComments = true
     private var visibilityTopology: CommentVisibilityTopology? = null
     private var previousVisibilityTopology: CommentVisibilityTopology? = null
 
@@ -151,6 +153,7 @@ class CommentThreadStore {
     ): PreparedInitialCommentThread {
         val prepared = CommentThreadStore().also { store ->
             store.hideDelayedComments = hideDelayedComments
+            store.hideDeadComments = hideDeadComments
             store.reset(story, allComments.firstOrNull() ?: Comment(), sorting)
             store.replaceParsedComments(story, parsedComments, sorting, collapseTopLevel)
         }
@@ -198,7 +201,7 @@ class CommentThreadStore {
 
     /** Capture on the store's owner; a worker receives no live mutable comments or maps. */
     internal fun capturePreparationInput() = CommentThreadPreparationInput(
-        state.value, initialCommentIds, hideDelayedComments, searchableTextById.toMap(),
+        state.value, initialCommentIds, hideDelayedComments, hideDeadComments, searchableTextById.toMap(),
     )
 
     companion object {
@@ -217,6 +220,7 @@ class CommentThreadStore {
                 input.initialCommentIds.orEmpty() + parsedComments.map { it.id }
             } else input.initialCommentIds
             prepared.hideDelayedComments = input.hideDelayedComments
+            prepared.hideDeadComments = input.hideDeadComments
             prepared.mutableState.value = input.state
             prepared.snapshotReuseCandidates = input.state.allComments.associateBy { it.id }
             prepared.searchableTextById.putAll(input.searchIndex)
@@ -276,6 +280,13 @@ class CommentThreadStore {
     fun setHideDelayedComments(hide: Boolean) {
         if (hideDelayedComments == hide) return
         hideDelayedComments = hide
+        rebuildFilteredComments()
+        publish(rebuildSearch = true, rebuildVisibility = true)
+    }
+
+    fun setHideDeadComments(hide: Boolean) {
+        if (hideDeadComments == hide) return
+        hideDeadComments = hide
         rebuildFilteredComments()
         publish(rebuildSearch = true, rebuildVisibility = true)
     }
@@ -429,8 +440,8 @@ class CommentThreadStore {
         } else {
             allComments
         }
-        val next = if (hideDelayedComments) {
-            filteredByOp.filterNot { it.isDelayedPlaceholder() }
+        val next = if (hideDelayedComments || hideDeadComments) {
+            filteredByOp.filterNot { it.isHiddenPlaceholder() }
         } else {
             filteredByOp
         }
@@ -450,7 +461,7 @@ class CommentThreadStore {
         }
         for (index in 1..<allComments.size) {
             val comment = allComments[index]
-            if (hideDelayedComments && comment.isDelayedPlaceholder()) continue
+            if (comment.isHiddenPlaceholder()) continue
             if (normalizedQuery.isNotEmpty()) {
                 val source = comment.expandedAnchorText.orEmpty()
                 val cached = searchableTextById[comment.id]
@@ -592,7 +603,7 @@ class CommentThreadStore {
             return emptyList()
         }
 
-        // Keep the current and previous filtered variants so hiding/showing delayed comments can
+        // Keep the current and previous filtered variants so hiding/showing placeholder comments can
         // reuse both. Validate either entry before reuse: legacy comments can still be mutated.
         val topology = visibilityTopology?.takeIf { it.matches(source) } ?: run {
             val next = previousVisibilityTopology?.takeIf { it.matches(source) }
@@ -699,7 +710,11 @@ class CommentThreadStore {
     }
 
 
-    private fun Comment.isDelayedPlaceholder(): Boolean = text?.trim() == "[delayed]"
+    private fun Comment.isHiddenPlaceholder(): Boolean = when (text?.trim()) {
+        "[delayed]" -> hideDelayedComments
+        "[dead]" -> hideDeadComments
+        else -> false
+    }
 }
 
 internal data class SearchableCommentText(val source: String, val text: String)

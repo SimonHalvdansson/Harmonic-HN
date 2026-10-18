@@ -17,6 +17,57 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentThreadStoreTest {
     @Test
+    fun deadPlaceholdersAreHiddenByDefaultWithoutRemovingRepliesOrMatchingOtherText() {
+        val store = CommentThreadStore().also { it.reset(story()) }
+        store.appendLoadedComments(story(), listOf(
+            comment(1, -1, 0, " \n[dead]\t ").apply { expanded = true },
+            comment(2, 1, 1, "visible reply"),
+            comment(3, -1, 0, "Not [dead]"),
+            comment(4, -1, 0, "[delayed]"),
+        ), "Default", false)
+        assertEquals(listOf(2, 3, 4), store.state.value.filteredComments.drop(1).map { it.id })
+        assertEquals(listOf(2, 3, 4), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(2, 3, 4), store.state.value.searchResultIds)
+        val source = store.state.value.allComments
+        store.installSearchIndex(source, source.associate { item ->
+            val text = item.expandedAnchorText.orEmpty()
+            item.id to SearchableCommentText(text, text.lowercase())
+        })
+        store.setSearchQuery("[dead]")
+        assertEquals(listOf(3), store.state.value.searchResultIds)
+
+        store.setHideDelayedComments(true)
+        store.setHideDeadComments(false)
+        assertEquals(listOf(1, 2, 3), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(1, 3), store.state.value.searchResultIds)
+        store.setHideDeadComments(true)
+        assertEquals(listOf(2, 3), store.state.value.visibleComments.map { it.comment.id })
+        assertEquals(listOf(3), store.state.value.searchResultIds)
+    }
+
+    @Test
+    fun backgroundPreparationPreservesBothDeadCommentSettingValues() {
+        for (hideDead in listOf(false, true)) {
+            val story = story()
+            val store = CommentThreadStore().also {
+                it.reset(story)
+                it.setHideDeadComments(hideDead)
+            }
+            fun source() = listOf(comment(1, -1, 0, "[dead]"), comment(2, 1, 1, "reply"))
+            val expected = if (hideDead) listOf(2) else listOf(1, 2)
+            val initial = store.prepareInitialParsedComments(story, source(), "Default", false)
+            assertEquals(expected, initial.state.filteredComments.drop(1).map { it.id })
+            store.commitPreparedInitialComments(story, initial)
+            val refreshed = CommentThreadStore.prepareUpdate(
+                store.capturePreparationInput(), story.toSnapshot(), source(), false, true,
+            )
+            store.commitPreparedInitialComments(story, refreshed)
+            assertEquals(expected, store.state.value.filteredComments.drop(1).map { it.id })
+            assertEquals(expected, store.state.value.searchResultIds)
+        }
+    }
+
+    @Test
     fun detachedRefreshReusesUnchangedContentWhileReplacingEditedComments() {
         val story = story()
         val store = CommentThreadStore().also {

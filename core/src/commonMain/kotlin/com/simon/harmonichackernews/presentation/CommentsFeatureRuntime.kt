@@ -261,6 +261,7 @@ class CommentsFeatureRuntime(
             hasAccount = accountUser != null,
         )
         thread.setHideDelayedComments(settings.comments.hideDelayedComments)
+        thread.setHideDeadComments(settings.comments.hideDeadComments)
         val aiSnapshot = summarySettings?.snapshot()
         val canProvideSummary = settings.debug.mockAiAnswers || (aiSnapshot?.let { snapshot ->
             AiSummaryAvailabilityPolicy.canProvideSummary(

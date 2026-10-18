@@ -90,6 +90,7 @@ data class CommentPreferences(
     val collectReferenceLinks: Boolean,
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
+    val hideDeadComments: Boolean,
     val preloadCommentsMode: WebViewPreloadMode,
     val preloadCommentsMinimumBattery: Int,
     val sorting: CommentSortingPreference,

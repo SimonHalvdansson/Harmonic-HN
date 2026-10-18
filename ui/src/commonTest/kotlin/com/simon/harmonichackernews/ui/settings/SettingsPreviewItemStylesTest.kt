@@ -165,6 +165,7 @@ class SettingsPreviewItemStylesTest {
         collapseParent = false,
         collapseTopLevel = false,
         hideDelayedComments = false,
+        hideDeadComments = true,
         preloadCommentsSummary = "Never",
         swapTap = false,
         sorting = CommentSortingPreference.DEFAULT,

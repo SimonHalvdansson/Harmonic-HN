@@ -14,6 +14,23 @@ import kotlinx.coroutines.test.runTest
 
 class AppSettingsRepositoryTest {
     @Test
+    fun hideDeadCommentsDefaultsOnAndPersistsIndependentlyOfDelayedComments() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertTrue(repository.snapshot().comments.hideDeadComments)
+        assertFalse(repository.snapshot().comments.hideDelayedComments)
+
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_DEAD_COMMENTS, false)
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_DELAYED_COMMENTS, true)
+        val restored = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(restored.snapshot().comments.hideDeadComments)
+        assertTrue(restored.snapshot().comments.hideDelayedComments)
+
+        restored.setCommentBoolean(CommentBooleanPreference.HIDE_DEAD_COMMENTS, true)
+        assertTrue(AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow()).snapshot().comments.hideDeadComments)
+    }
+
+    @Test
     fun unknownQuoteAppearanceFallsBackToMaterialAndBoth() {
         val repository = AppSettingsRepository(
             TestKeyValueStore(mapOf(
