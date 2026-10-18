@@ -52,8 +52,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_arrow_drop_up"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="53"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
                     android:orientation="horizontal" android:gravity="center_vertical"
@@ -62,8 +62,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_comment"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18" android:layout_marginStart="2dp"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
             </LinearLayout>
         </FrameLayout>
@@ -101,8 +101,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_arrow_drop_up"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="128"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
                     android:orientation="horizontal" android:gravity="center_vertical"
@@ -111,8 +111,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_comment"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="42" android:layout_marginStart="2dp"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
             </LinearLayout>
         </FrameLayout>
@@ -150,8 +150,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_arrow_drop_up"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="91"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
                     android:orientation="horizontal" android:gravity="center_vertical"
@@ -160,8 +160,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_comment"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="24" android:layout_marginStart="2dp"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
             </LinearLayout>
         </FrameLayout>
@@ -199,8 +199,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_arrow_drop_up"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="76"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp"
                     android:orientation="horizontal" android:gravity="center_vertical"
@@ -209,8 +209,8 @@
                     <ImageView android:layout_width="13dp" android:layout_height="13dp" android:src="@drawable/ic_comment"
                         android:tint="@color/widget_story_title" android:importantForAccessibility="no" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="57" android:layout_marginStart="2dp"
-                        android:fontFamily="variable-body-medium-emphasized" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/widget_story_title" android:maxLines="1" />
+                        android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/widget_story_meta" android:maxLines="1" />
                 </LinearLayout>
             </LinearLayout>
         </FrameLayout>

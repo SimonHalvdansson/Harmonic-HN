@@ -210,6 +210,7 @@ object WidgetTypography {
     const val HEADER_SIZE = 18f
     const val METADATA_SIZE = 11f
     const val COMMENT_COUNT_SIZE = 12f
+    const val METRIC_COUNT_SIZE = 11f
 }
 
 object WidgetDimensions {

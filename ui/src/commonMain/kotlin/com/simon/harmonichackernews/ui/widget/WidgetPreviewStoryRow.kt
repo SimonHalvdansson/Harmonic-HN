@@ -170,7 +170,7 @@ private fun WidgetPreviewMetric(value: String, icon: DrawableResource, family: F
             verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(icon), null, Modifier.size(WidgetDimensions.metricIconSize).alpha(0.8f), tint = colors.onSurface)
             if (!points) Spacer(Modifier.width(2.dp))
-            WidgetPreviewText(value, family, WidgetTypography.COMMENT_COUNT_SIZE, colors.onSurface, bold = true)
+            WidgetPreviewText(value, family, WidgetTypography.METRIC_COUNT_SIZE, colors.onSurfaceVariant, bold = true)
         }
     }
 }

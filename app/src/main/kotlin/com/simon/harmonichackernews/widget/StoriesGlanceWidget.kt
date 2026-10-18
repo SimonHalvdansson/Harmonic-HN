@@ -303,7 +303,7 @@ private fun WidgetMetric(value: String, icon: Int, description: String, colors: 
             verticalAlignment = Alignment.CenterVertically) {
             Image(ImageProvider(icon), description, GlanceModifier.size(WidgetDimensions.metricIconSize), colorFilter = ColorFilter.tint(colors.contentPrimary))
             if (!points) Spacer(GlanceModifier.width(2.dp))
-            Text(value, style = TextStyle(color = colors.contentPrimary, fontSize = WidgetTypography.COMMENT_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 1)
+            Text(value, style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.METRIC_COUNT_SIZE.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamily), maxLines = 1)
         }
     }
 }
