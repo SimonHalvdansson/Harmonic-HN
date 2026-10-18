@@ -26,6 +26,10 @@ internal fun StoriesSettingsUiState.toPreviewStoryRowStyle(): StoryRowStyle = St
 
 internal fun CommentsSettingsUiState.toPreviewCommentRowStyle(): CommentRowStyle =
     CommentRowStyle(
+        highlightQuotes = highlightQuotes,
+        quoteSpacing = quoteSpacing,
+        quoteHighlightColor = quoteHighlightColor,
+        quoteHighlightStyle = quoteHighlightStyle,
         displayStyle = displayStyle,
         textSize = textSize,
         collectLinks = collectLinks,

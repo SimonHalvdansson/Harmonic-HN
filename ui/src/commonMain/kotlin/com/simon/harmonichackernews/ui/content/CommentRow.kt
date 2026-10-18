@@ -1,5 +1,9 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.settings.QuoteSpacing
+import com.simon.harmonichackernews.settings.QuoteHighlightColor
+import com.simon.harmonichackernews.settings.QuoteHighlightStyle
+
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
@@ -25,6 +29,10 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -112,6 +120,10 @@ data class CommentRowStyle(
     val animateChanges: Boolean = true,
     val transparentNonCardBackground: Boolean = false,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
+    val highlightQuotes: Boolean = false,
+    val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
+    val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
+    val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
@@ -242,6 +254,10 @@ fun CommentRow(
             animateChanges = style.animateChanges,
         )
         CommentBodyText(
+            highlightQuotes = style.highlightQuotes,
+            quoteSpacing = style.quoteSpacing,
+            quoteHighlightColor = style.quoteHighlightColor,
+            quoteHighlightStyle = style.quoteHighlightStyle,
             html = previewBody,
             searchTerm = "",
             markedColor = MaterialTheme.colorScheme.onSurface,
@@ -287,6 +303,10 @@ fun CommentRow(
                     )
                 } else {
                     CommentBodyText(
+                        highlightQuotes = style.highlightQuotes,
+                        quoteSpacing = style.quoteSpacing,
+                        quoteHighlightColor = style.quoteHighlightColor,
+                        quoteHighlightStyle = style.quoteHighlightStyle,
                         html = inlineReferenceHtml,
                         modifier = Modifier.padding(top = 16.dp),
                         searchTerm = "",
@@ -531,6 +551,10 @@ fun CommentRow(
                         val link = block.getLink()
                         if (link == null) {
                             CommentBodyText(
+                                highlightQuotes = style.highlightQuotes,
+                                quoteSpacing = style.quoteSpacing,
+                                quoteHighlightColor = style.quoteHighlightColor,
+                                quoteHighlightStyle = style.quoteHighlightStyle,
                                 html = block.bodyHtml.orEmpty(),
                                 modifier = if (hasInterleavedReferences && index > 0) {
                                     Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
@@ -621,6 +645,10 @@ private fun CommentRowLayout(
 
 @Composable
 private fun CommentBodyText(
+    highlightQuotes: Boolean,
+    quoteSpacing: QuoteSpacing,
+    quoteHighlightColor: QuoteHighlightColor,
+    quoteHighlightStyle: QuoteHighlightStyle,
     html: String,
     modifier: Modifier = Modifier,
     searchTerm: String,
@@ -632,6 +660,19 @@ private fun CommentBodyText(
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val quoteBase = if (quoteHighlightColor == QuoteHighlightColor.MATERIAL) colors.primary else colors.onSurface
+    val quoteBackground by animateColorAsState(
+        targetValue = if (!highlightQuotes || quoteHighlightStyle == QuoteHighlightStyle.SIDE_LINE) Color.Transparent
+            else quoteBase.copy(alpha = if (quoteHighlightColor == QuoteHighlightColor.MATERIAL) 0.08f else 0.055f),
+        animationSpec = tween(240),
+        label = "quote background",
+    )
+    val quoteAccent by animateColorAsState(
+        targetValue = if (!highlightQuotes || quoteHighlightStyle == QuoteHighlightStyle.BACKGROUND) Color.Transparent
+            else quoteBase.copy(alpha = 0.4f),
+        animationSpec = tween(240),
+        label = "quote side line",
+    )
     val hapticFeedback = LocalHapticFeedback.current
     val linkGestureState = remember(html) { AnnotatedLinkGestureState() }
     val linkListener = remember(linkGestureState, onLinkClick) {
@@ -643,8 +684,15 @@ private fun CommentBodyText(
             }
         }
     }
-    val body = remember(html, colors.primary, linkListener) {
-        htmlAnnotatedString(html, colors.primary, linkListener)
+    val quoteGapFraction by animateFloatAsState(
+        targetValue = if (highlightQuotes && quoteSpacing == QuoteSpacing.COMPACT) 0.5f else 1f,
+        animationSpec = tween(280),
+        label = "quote paragraph spacing",
+    )
+    val body = remember(html, colors.primary, linkListener, highlightQuotes) {
+        val parsed = htmlAnnotatedString(html, colors.primary, linkListener, highlightQuotes)
+        // Keep ranges while disabled so the decoration can fade out instead of disappearing.
+        if (highlightQuotes) parsed else parsed.withHighlightedQuotedLines(removeMarkers = false)
     }
     val displayedBody = if (animateSearchMatches) {
         animatedSearchMatches(
@@ -658,20 +706,29 @@ private fun CommentBodyText(
             highlightSearchMatches(body, searchTerm, markedColor)
         }
     }
-    var textLayout by remember(body) { mutableStateOf<TextLayoutResult?>(null) }
-    var textCoordinates by remember(body) { mutableStateOf<LayoutCoordinates?>(null) }
-
-    if (displayedBody.isNotEmpty()) {
+    val density = LocalDensity.current
+    val hasQuoteGaps = remember(body) { body.quoteSpacedSegments().size > 1 }
+    val lineHeight = if (hasQuoteGaps) {
+        val textMeasurer = rememberTextMeasurer(cacheSize = 1)
+        remember(fontFamily, fontSize, density, textMeasurer) {
+            textMeasurer.measure(
+                text = "M",
+                style = animatedCommentTextStyle.copy(fontFamily = fontFamily, fontSize = fontSize.sp),
+            ).size.height
+        }
+    } else 0
+    val gap = with(density) { (lineHeight * quoteGapFraction).toDp() }
+    QuoteSpacedContent(displayedBody, gap, modifier) { segment ->
+        var textLayout by remember(segment) { mutableStateOf<TextLayoutResult?>(null) }
+        var textCoordinates by remember(segment) { mutableStateOf<LayoutCoordinates?>(null) }
         Text(
-            text = displayedBody,
-            modifier = modifier
+            text = segment,
+            modifier = Modifier
                 .fillMaxWidth()
                 .drawWithContent {
                     val layout = textLayout
                     if (layout != null) {
-                        val background = colors.onSurface.copy(alpha = 0.055f)
-                        val accent = colors.onSurface.copy(alpha = 0.35f)
-                        displayedBody.getStringAnnotations(COMMENT_QUOTE_TAG, 0, displayedBody.length)
+                        segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
                             .forEach { quote ->
                                 if (quote.start < quote.end) {
                                     val first = layout.getLineForOffset(quote.start)
@@ -683,13 +740,13 @@ private fun CommentBodyText(
                                     // would add an unwanted paragraph break before the reply.
                                     val quoteInset = 5.dp.toPx()
                                     drawRoundRect(
-                                        color = background,
+                                        color = quoteBackground,
                                         topLeft = Offset(-quoteInset, top),
                                         size = Size(size.width + quoteInset, bottom - top),
                                         cornerRadius = CornerRadius(7.dp.toPx()),
                                     )
                                     drawRect(
-                                        color = accent,
+                                        color = quoteAccent,
                                         topLeft = Offset(-quoteInset, top),
                                         size = Size(3.dp.toPx(), bottom - top),
                                     )
@@ -700,7 +757,7 @@ private fun CommentBodyText(
                 }
                 .onGloballyPositioned { textCoordinates = it }
                 .detectAnnotatedLinkLongPress(
-                    text = displayedBody,
+                    text = segment,
                     layoutResult = { textLayout },
                     coordinates = { textCoordinates },
                     linkGestureState = linkGestureState,
@@ -713,6 +770,23 @@ private fun CommentBodyText(
             fontSize = fontSize.sp,
             style = animatedCommentTextStyle,
         )
+    }
+}
+
+/** Only the empty gaps change height; paragraph text stays fully opaque. */
+@Composable
+internal fun QuoteSpacedContent(
+    text: AnnotatedString,
+    gap: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable (AnnotatedString) -> Unit,
+) {
+    val segments = remember(text) { text.quoteSpacedSegments() }
+    Column(modifier) {
+        segments.forEachIndexed { index, segment ->
+            if (index > 0) Spacer(Modifier.height(gap))
+            if (segment.isNotEmpty()) content(segment)
+        }
     }
 }
 

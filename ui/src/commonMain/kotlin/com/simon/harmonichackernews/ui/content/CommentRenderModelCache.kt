@@ -152,34 +152,37 @@ internal object CommentHtmlTextCache {
     private const val MAX_ENTRIES = 384
     private const val MAX_CACHEABLE_SOURCE_CHARS = 64 * 1024
     private const val MAX_TOTAL_WEIGHTED_CHARS = 2 * 1024 * 1024
-    private val entries = CommentContentLruEntries<String, AnnotatedString>()
+    private data class TextKey(val html: String, val highlightQuotes: Boolean)
+    private val entries = CommentContentLruEntries<TextKey, AnnotatedString>()
     private var totalWeightedChars = 0
 
-    fun get(html: String): AnnotatedString {
-        entries[html]?.let { cached ->
+    fun get(html: String, highlightQuotes: Boolean = true): AnnotatedString {
+        entries[TextKey(html, highlightQuotes)]?.let { cached ->
             return cached
         }
-        val text = prepareCommentHtml(html)
-        install(html, text)
+        val text = prepareCommentHtml(html, highlightQuotes)
+        install(html, text, highlightQuotes)
         return text
     }
 
-    fun contains(html: String): Boolean = html in entries
+    fun contains(html: String): Boolean = TextKey(html, true) in entries
 
-    fun install(html: String, text: AnnotatedString) {
-        if (html in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
+    fun install(html: String, text: AnnotatedString, highlightQuotes: Boolean = true) {
+        val key = TextKey(html, highlightQuotes)
+        if (key in entries || html.length > MAX_CACHEABLE_SOURCE_CHARS) return
         val weight = min(Int.MAX_VALUE / 2, html.length * 3)
         while (entries.isNotEmpty() &&
             (entries.size >= MAX_ENTRIES || totalWeightedChars + weight > MAX_TOTAL_WEIGHTED_CHARS)
         ) {
             remove(entries.oldestKey())
         }
-        entries.install(html, text)
+        entries.install(key, text)
         totalWeightedChars += weight
     }
 
-    private fun remove(html: String) {
-        if (entries.remove(html) != null) {
+    private fun remove(key: TextKey) {
+        val html = key.html
+        if (entries.remove(key) != null) {
             totalWeightedChars -= min(Int.MAX_VALUE / 2, html.length * 3)
         }
     }

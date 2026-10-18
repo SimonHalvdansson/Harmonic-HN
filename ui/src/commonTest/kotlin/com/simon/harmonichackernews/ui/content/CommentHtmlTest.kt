@@ -14,6 +14,46 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun quoteSpacingSegmentsPreserveOrdinaryParagraphGapsAndLinks() {
+        val source = prepareCommentHtml("Intro<p>&gt; <b>Quoted</b> <a href='https://example.com'>link</a><p>Reply<p>Ordinary paragraph")
+        val segments = source.quoteSpacedSegments()
+        assertEquals(listOf("Intro", "Quoted link", "Reply\n\nOrdinary paragraph"), segments.map { it.text })
+        assertEquals(source.text, segments.joinToString("\n\n") { it.text })
+        val compact = segments[1]
+        val quote = compact.getStringAnnotations(COMMENT_QUOTE_TAG, 0, compact.length).single()
+        assertEquals("Quoted link", compact.text.substring(quote.start, quote.end))
+        assertTrue(compact.spanStyles.any { compact.text.substring(it.start, it.end) == "Quoted" })
+        assertTrue(compact.getStringAnnotations(0, compact.length).any {
+            it.item == "https://example.com" && compact.text.substring(it.start, it.end) == "link"
+        })
+        assertTrue(compact.paragraphStyles.isEmpty())
+    }
+
+    @Test
+    fun disabledQuoteDecorationRetainsRangesForFadeOutWithoutRemovingMarkers() {
+        val source = prepareCommentHtml("&gt; Quote<p>Reply<pre><code>&gt; code</code></pre>", false)
+        val annotated = source.withHighlightedQuotedLines(removeMarkers = false)
+        assertEquals(source.text, annotated.text)
+        val quote = annotated.getStringAnnotations(COMMENT_QUOTE_TAG, 0, annotated.length).single()
+        assertEquals("> Quote", annotated.text.substring(quote.start, quote.end))
+    }
+
+    @Test
+    fun quoteToggleRestoresMarkersAndKeepsLinkOffsetsAcrossCachedModes() {
+        val html = "&gt;&gt; <b>Quoted</b> <a href='https://example.com'>link</a><p>Reply"
+        val listener = LinkInteractionListener { }
+        val enabled = htmlAnnotatedString(html, Color.Blue, listener, highlightQuotes = true)
+        val disabled = htmlAnnotatedString(html, Color.Blue, listener, highlightQuotes = false)
+        assertEquals("Quoted link\n\nReply", enabled.text)
+        assertEquals(">> Quoted link\n\nReply", disabled.text)
+        assertTrue(disabled.getStringAnnotations(COMMENT_QUOTE_TAG, 0, disabled.length).isEmpty())
+        val link = disabled.getLinkAnnotations(0, disabled.length).single()
+        assertEquals("link", disabled.text.substring(link.start, link.end))
+        assertEquals(enabled, htmlAnnotatedString(html, Color.Blue, listener, highlightQuotes = true))
+        assertEquals(disabled, htmlAnnotatedString(html, Color.Blue, listener, highlightQuotes = false))
+    }
+
+    @Test
     fun quotedParagraphsAreMarkedWithoutLosingLinksOrBoldText() {
         val html = "Lead<p>&gt; quoted <b>bold</b> and <a href='https://example.com'>linked</a><p>After"
         val prepared = prepareCommentHtml(html)

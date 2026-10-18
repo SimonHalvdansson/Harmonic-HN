@@ -65,6 +65,10 @@ object UserPreferenceKeys {
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
     const val LAST_ENABLED_COMMENT_DEPTH_INDICATORS = "pref_last_enabled_comment_depth_indicators"
     const val COMMENT_INDICATOR_THICKNESS = "pref_comment_indicator_thickness"
+    const val QUOTE_SPACING = "pref_quote_spacing"
+    const val QUOTE_HIGHLIGHT_COLOR = "pref_quote_highlight_color"
+    const val QUOTE_HIGHLIGHT_STYLE = "pref_quote_highlight_style"
+    const val HIGHLIGHT_QUOTES = "pref_highlight_quotes"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
     const val USER_AVATARS_ENABLED = "pref_user_avatars_enabled"
@@ -218,6 +222,10 @@ class StoredUserSettings(
                 indicatorThickness = CommentIndicatorThickness.fromStored(
                     string(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "standard"),
                 ),
+                highlightQuotes = boolean(UserPreferenceKeys.HIGHLIGHT_QUOTES, false),
+                quoteSpacing = QuoteSpacing.fromStored(string(UserPreferenceKeys.QUOTE_SPACING, "comfortable")),
+                quoteHighlightColor = QuoteHighlightColor.fromStored(string(UserPreferenceKeys.QUOTE_HIGHLIGHT_COLOR, "material")),
+                quoteHighlightStyle = QuoteHighlightStyle.fromStored(string(UserPreferenceKeys.QUOTE_HIGHLIGHT_STYLE, "both")),
                 roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, true),
                 continuousDepthIndicators = boolean(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS, false),
                 userAvatarsEnabled = boolean(UserPreferenceKeys.USER_AVATARS_ENABLED, true),

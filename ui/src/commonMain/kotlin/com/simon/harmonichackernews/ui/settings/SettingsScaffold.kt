@@ -199,6 +199,7 @@ fun SettingsListScreen(
                                     selectedSection == SettingsSection.Glass) ||
                                 entry.section == SettingsSection.Comments &&
                                 (selectedSection == SettingsSection.ThreadDepth ||
+                                    selectedSection == SettingsSection.QuoteHighlighting ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||
@@ -418,6 +419,7 @@ fun SettingsPage(
 @Composable
 fun SettingsCategory(
     title: String,
+    titleTopPadding: Dp = HarmonicDimens.compose_settings_category_padding_top,
     content: @Composable () -> Unit,
 ) {
     Column {
@@ -429,7 +431,7 @@ fun SettingsCategory(
                 .semantics { heading() }
                 .padding(
                     start = HarmonicDimens.compose_settings_category_padding_start,
-                    top = HarmonicDimens.compose_settings_category_padding_top,
+                    top = titleTopPadding,
                     end = HarmonicDimens.settings_list_segment_horizontal_margin,
                     bottom = HarmonicDimens.compose_settings_category_padding_bottom,
                 ),

@@ -8,6 +8,7 @@ fun AndroidCommentsSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThreadDepthRequested: () -> Unit,
+    onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
 ) {
     CommentsSettingsRoute(
@@ -15,6 +16,7 @@ fun AndroidCommentsSettingsScreen(
         showNavigation = showNavigation,
         onBack = onBack,
         onThreadDepthRequested = onThreadDepthRequested,
+        onQuoteHighlightingRequested = onQuoteHighlightingRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
     )
 }

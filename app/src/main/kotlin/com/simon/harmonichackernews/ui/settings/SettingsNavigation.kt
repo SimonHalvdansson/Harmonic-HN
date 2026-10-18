@@ -118,9 +118,11 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     onBack = onBack,
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
+                    onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
                     onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(dependencies.settings, onBack)
+                SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.UserAvatars -> UserAvatarSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
                     repository = dependencies.settings,
