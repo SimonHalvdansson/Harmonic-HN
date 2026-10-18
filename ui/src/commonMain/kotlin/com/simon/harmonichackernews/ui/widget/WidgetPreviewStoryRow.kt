@@ -105,9 +105,9 @@ fun WidgetPreviewStoryRow(
                             Column(Modifier.weight(1f).alignBy(FirstBaseline)) {
                                 WidgetPreviewText(model.title, fontFamily, WidgetTypography.TITLE_SIZE, colors.onSurface,
                                     Modifier.testTag("widget-preview-title"), bold = true, maxLines = 4)
-                                Spacer(Modifier.height(6.dp))
+                                Spacer(Modifier.height(WidgetDimensions.titleMetadataSpacing))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(painterResource(model.faviconFallback), null, Modifier.size(WidgetDimensions.faviconSize)
+                                    Icon(painterResource(model.faviconFallback), null, Modifier.padding(top = WidgetDimensions.faviconTopPadding).size(WidgetDimensions.faviconSize)
                                         .clip(RoundedCornerShape(WidgetDimensions.faviconCornerRadius)).alpha(if (model.tintFaviconFallback) 0.8f else 1f),
                                         tint = if (model.tintFaviconFallback) colors.onSurfaceVariant else Color.Unspecified)
                                     Spacer(Modifier.width(4.dp))

@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.about.AndroidAboutScreen
 import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
 import com.simon.harmonichackernews.ui.navigation.animatedExtraPanePadding
+import com.simon.harmonichackernews.ui.navigation.StatusBarProtection
 
 /** Android adapter for window facts, predictive back, and native settings effects. */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -123,6 +124,10 @@ fun SettingsShell(
                 )
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(dependencies.settings, onBack)
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
+                SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(
+                    dependencies.settings, onBack,
+                    statusBarProtection = { color, height -> StatusBarProtection(color, height) },
+                )
                 SettingsSection.UserAvatars -> UserAvatarSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
                     repository = dependencies.settings,

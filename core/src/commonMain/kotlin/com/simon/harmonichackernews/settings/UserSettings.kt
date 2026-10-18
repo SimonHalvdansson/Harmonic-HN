@@ -110,7 +110,7 @@ data class CommentPreferences(
     val markNewComments: Boolean = true,
     val headerLayout: CommentsHeaderLayout = CommentsHeaderLayout.STANDARD,
     val headerEdge: CommentsHeaderEdge = CommentsHeaderEdge.FADE,
-    val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.SMALL,
+    val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
 ) {
     val cardStyle: Boolean

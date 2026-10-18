@@ -9,8 +9,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Image
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
@@ -19,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -26,18 +32,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -68,7 +83,6 @@ import kotlinx.coroutines.delay
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.commentsHazeSource
 import com.simon.harmonichackernews.ui.comments.currentCommentsHazeState
-import com.simon.harmonichackernews.ui.comments.HeaderPreviewImageVisibility
 import com.simon.harmonichackernews.ui.comments.headerPreviewImageGestures
 import com.simon.harmonichackernews.ui.comments.ZoomableImageViewport
 import com.simon.harmonichackernews.ui.comments.previewImageViewport
@@ -81,9 +95,10 @@ import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
-import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
+import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.theme.pageBackground
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -92,6 +107,7 @@ import org.jetbrains.compose.resources.stringResource
 fun HeaderDisplaySettingsRoute(
     repository: AppSettingsRepository,
     onBack: () -> Unit,
+    statusBarProtection: @Composable (Color, Dp) -> Unit = { _, _ -> },
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val account by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
@@ -116,6 +132,9 @@ fun HeaderDisplaySettingsRoute(
 
     var sampleIndex by rememberSaveable { mutableIntStateOf(0) }
     val sample = HeaderPreviewSample.entries[sampleIndex]
+    val listState = rememberSettingsListState()
+    val background = MaterialTheme.colorScheme.pageBackground
+    var headerColor by remember { mutableStateOf(background) }
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_header_display),
@@ -125,20 +144,16 @@ fun HeaderDisplaySettingsRoute(
         contentVersion = settings.hashCode() + sampleIndex,
         pinnedContentBackground = Color.Transparent,
         extraBottomPadding = 72.dp,
+        listState = listState,
+        topOverlay = {
+            HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
+        },
         floatingContent = {
             HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
         },
         pinnedContent = {
-            AnimatedContent(
-                targetState = sample,
-                transitionSpec = {
-                    (fadeIn(tween(240)) togetherWith fadeOut(tween(120)))
-                        .using(SizeTransform(clip = false) { _, _ -> tween(320) })
-                },
-                label = "header preview sample",
-            ) { visibleSample ->
-                HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, visibleSample)
-            }
+            HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
+                onHeaderColorChanged = { headerColor = it })
         },
     ) {
         item {
@@ -157,7 +172,6 @@ fun HeaderDisplaySettingsRoute(
                     selected = settings.comments.headerMetaInfo,
                     disabledOptions = buildSet {
                         if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
-                        if (!displaySettings.showHeaderPreviewImage) add(CommentsHeaderMetaInfo.ON_IMAGE)
                     },
                     onSelected = repository::setCommentsHeaderMetaInfo,
                 )
@@ -199,14 +213,119 @@ fun HeaderDisplaySettingsRoute(
     }
 }
 
+/** Matches the real post's status-bar tint as the header scrolls out of the inset. */
+@Composable
+internal fun HeaderSettingsStatusBarProtection(
+    listState: LazyListState,
+    headerColor: Color,
+    statusBarHeight: Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+    protection: @Composable (Color, Dp) -> Unit,
+) {
+    if (statusBarHeight <= 0.dp) return
+    val insetPx = with(LocalDensity.current) { statusBarHeight.roundToPx() }
+    val coverage by remember(listState, insetPx) {
+        derivedStateOf {
+            val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "settings-preview" }
+            if (header == null || insetPx <= 0) 0f else {
+                val overlap = minOf(header.offset + header.size, insetPx) - maxOf(header.offset, 0)
+                (overlap.toFloat() / insetPx).coerceIn(0f, 1f)
+            }
+        }
+    }
+    val color by animateColorAsState(
+        lerp(MaterialTheme.colorScheme.pageBackground, headerColor, coverage),
+        tween(90, easing = LinearEasing),
+        label = "header settings status bar",
+    )
+    // Like an expanded real post, the unscrolled preview already fills the status bar.
+    if (listState.canScrollBackward) protection(color, statusBarHeight)
+}
+
 @Composable
 internal fun HeaderDisplayPreview(
     settings: CommentDisplaySettings,
     bookmarksEnabled: Boolean,
     onBack: () -> Unit,
     sample: HeaderPreviewSample = HeaderPreviewSample.LINK_WITH_IMAGE,
+    onHeaderColorChanged: (Color) -> Unit = {},
 ) {
-    val imageDisplayed = settings.showHeaderPreviewImage && sample == HeaderPreviewSample.LINK_WITH_IMAGE
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
+    val textMeasurer = rememberTextMeasurer()
+    // Reserve the widest counter at the current font scale, even if the font lacks tabular digits.
+    val counterWidth = with(LocalDensity.current) {
+        HeaderPreviewSample.entries.maxOf {
+            textMeasurer.measure(
+                text = "${it.ordinal + 1}/${HeaderPreviewSample.entries.size}",
+                style = counterStyle,
+                maxLines = 1,
+            ).size.width
+        }.toDp()
+    }
+    CommentsHazeHost {
+        val hazeState = currentCommentsHazeState()
+        Box(Modifier.fillMaxWidth().semantics { contentDescription = "Header preview" }) {
+            // Keep the floating controls composed while only the post content crossfades.
+            Box(Modifier.commentsHazeSource(hazeState)) {
+                AnimatedContent(
+                    targetState = sample,
+                    transitionSpec = {
+                        (fadeIn(tween(240)) togetherWith fadeOut(tween(120)))
+                            .using(SizeTransform(clip = true) { _, _ -> tween(320) })
+                    },
+                    label = "header preview sample",
+                ) { visibleSample ->
+                    HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample) { color ->
+                        if (visibleSample == sample) onHeaderColorChanged(color)
+                    }
+                }
+            }
+            AnimatedVisibility(
+                visible = settings.showUpButton,
+                // Fading creates an offscreen layer. Include the shadow in its bounds so it
+                // doesn't get clipped during the fade and pop back at full opacity.
+                modifier = Modifier.align(Alignment.TopStart).offset(y = statusBarPadding - 12.dp).zIndex(1f),
+                enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.9f),
+                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.9f),
+            ) {
+                CommentsUpButton(
+                    onClick = onBack,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            Surface(
+                modifier = Modifier.align(Alignment.TopEnd)
+                    .padding(top = statusBarPadding + 8.dp, end = 16.dp)
+                    .zIndex(1f)
+                    .clearAndSetSemantics {
+                        contentDescription = "Preview ${sample.ordinal + 1} of ${HeaderPreviewSample.entries.size}: ${sample.label}"
+                    },
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary,
+            ) {
+                Text(
+                    text = "${sample.ordinal + 1}/${HeaderPreviewSample.entries.size}",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).width(counterWidth),
+                    style = counterStyle,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderDisplayPreviewContent(
+    settings: CommentDisplaySettings,
+    bookmarksEnabled: Boolean,
+    sample: HeaderPreviewSample,
+    onHeaderColorChanged: (Color) -> Unit,
+) {
+    val hasPreviewImage = sample == HeaderPreviewSample.LINK_WITH_IMAGE || sample == HeaderPreviewSample.LINK_PREVIEW
+    val imageDisplayed = settings.showHeaderPreviewImage && hasPreviewImage
     var imageBounds by remember(sample) { mutableStateOf(Rect.Zero) }
     var inspectedImage by remember(sample) { mutableStateOf<Rect?>(null) }
     var imageDismissRequest by remember(sample) { mutableIntStateOf(0) }
@@ -268,69 +387,55 @@ internal fun HeaderDisplayPreview(
             plainText = { it },
         )
     }
-    val image = painterResource(Res.drawable.web_preview)
-    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
-    // As in a real thread, hiding the image does not change the story's resolved palette.
-    val tint = rememberPainterPaletteTint(
-        painter = image,
-        baseColorArgb = tintBase,
-        paletteTintConfigKey = settings.paletteTintMode,
+    val image = painterResource(
+        if (sample == HeaderPreviewSample.LINK_PREVIEW) Res.drawable.github_preview else Res.drawable.web_preview,
     )
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    CommentsHazeHost {
-        val hazeState = currentCommentsHazeState()
-        Box(
-            Modifier.fillMaxWidth().semantics { contentDescription = "Header preview" },
-        ) {
-            Box(Modifier.commentsHazeSource(hazeState)) {
-                CommentsHeader(
-                    controller = controller,
-                    settings = settings,
-                    contentVersion = actions.version,
-                    storyPosterTag = "",
-                    tintBaseColor = tintBase,
-                    initialTint = if (sample == HeaderPreviewSample.LINK_WITH_IMAGE) tint else null,
-                    headerTopPadding = 24.dp,
-                    bookmarksEnabled = bookmarksEnabled,
-                    lastRefreshedText = null,
-                    textStyle = textStyle,
-                    previewPlatform = platform,
-                    includeStatusBarSpacer = true,
-                    headerPreviewImageDisplayed = imageDisplayed,
-                    faviconPreview = if (sample == HeaderPreviewSample.LINK_PREVIEW)
-                        tintedPainterResource(Res.drawable.ic_link_preview_github, MaterialTheme.colorScheme.onSurfaceVariant)
-                        else painterResource(Res.drawable.quanta),
-                    headerPreviewImage = { imageModifier, _, _ ->
-                        HeaderPreviewImageVisibility(visible = imageDisplayed) {
-                            Image(
-                                painter = image,
-                                contentDescription = "Story preview image",
-                                contentScale = ContentScale.Crop,
-                                modifier = imageModifier.onGloballyPositioned { imageBounds = it.boundsInWindow() }
-                                    .headerPreviewImageGestures(onClick = {}, onInspect = {
-                                        imageDismissRequest = 0
-                                        inspectedImage = imageBounds
-                                    }),
-                            )
-                        }
-                    },
-                )
-            }
-            AnimatedVisibility(
-                visible = settings.showUpButton,
-                // Fading creates an offscreen layer. Include the shadow in its bounds so it
-                // doesn't get clipped during the fade and pop back at full opacity.
-                modifier = Modifier.align(Alignment.TopStart).offset(y = statusBarPadding - 12.dp).zIndex(1f),
-                enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.9f),
-                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.9f),
-            ) {
-                CommentsUpButton(
-                    onClick = onBack,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
+    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
+    // Resolve before the first frame so the header and detail buttons start fully tinted.
+    // As in a real thread, hiding the image does not change the story's resolved palette.
+    val tint = remember(sample, tintBase, settings.paletteTintMode) {
+        sample.tintPalette?.let {
+            PreviewTintPolicy.calculateCardTint(tintBase, it, settings.paletteTintMode)
         }
     }
+    CommentsHeader(
+        controller = controller,
+        settings = settings,
+        contentVersion = actions.version,
+        storyPosterTag = "",
+        tintBaseColor = tintBase,
+        initialTint = tint,
+        headerTopPadding = 24.dp,
+        bookmarksEnabled = bookmarksEnabled,
+        lastRefreshedText = null,
+        textStyle = textStyle,
+        previewPlatform = platform,
+        includeStatusBarSpacer = true,
+        headerPreviewImageDisplayed = imageDisplayed,
+        faviconPreview = when (sample) {
+            HeaderPreviewSample.TEXT_POST -> null
+            HeaderPreviewSample.LINK_PREVIEW -> tintedPainterResource(
+                Res.drawable.ic_link_preview_github, MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            else -> painterResource(Res.drawable.quanta)
+        },
+        headerPreviewImage = { imageModifier, _, _ ->
+            Image(
+                painter = image,
+                contentDescription = "Story preview image",
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier.onGloballyPositioned {
+                    imageBounds = it.boundsInWindow()
+                }
+                    .headerPreviewImageGestures(onClick = {}, onInspect = {
+                        imageDismissRequest = 0
+                        inspectedImage = imageBounds
+                    }),
+            )
+        },
+    )
+    val headerColor = controller.statusBarHeaderColor
+    SideEffect { headerColor?.let(onHeaderColorChanged) }
     inspectedImage?.let { bounds ->
         val dismiss = { imageDismissRequest += 1 }
         PlatformDialogDimHost {

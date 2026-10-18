@@ -4,13 +4,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import org.jetbrains.compose.resources.DrawableResource
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableFloatStateOf
@@ -538,6 +542,12 @@ private fun SubmissionsHeader(
         formatSubmissionCount(storyCount, "story", "stories"),
         formatSubmissionCount(commentCount, "comment", "comments"),
     ).joinToString(" · ")
+    val visibleSummary = if (showFilter) summary else ""
+    val titleBottomPadding by animateDpAsState(
+        targetValue = if (visibleSummary.isNotEmpty()) 4.dp else if (compact) 8.dp else 16.dp,
+        animationSpec = tween(200),
+        label = "submission title spacing",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -564,7 +574,7 @@ private fun SubmissionsHeader(
                     } else {
                         35.75.dp
                     },
-                    bottom = if (showFilter && summary.isNotEmpty()) 4.dp else if (compact) 8.dp else 16.dp,
+                    bottom = titleBottomPadding,
                 )
                 .semantics {
                     heading()
@@ -577,18 +587,32 @@ private fun SubmissionsHeader(
             style = legacyTextStyle,
         )
 
-        if (showFilter) {
-            if (summary.isNotEmpty()) {
-                Text(
-                    text = summary,
-                    modifier = Modifier.padding(bottom = if (compact) 12.dp else 16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    style = legacyTextStyle,
-                )
+        AnimatedContent(
+            targetState = visibleSummary,
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.TopStart,
+            transitionSpec = {
+                (fadeIn(tween(200)) togetherWith fadeOut(tween(200)))
+                    .using(SizeTransform(clip = false) { _, _ -> tween(200) })
+            },
+            label = "submission counts",
+        ) { animatedSummary ->
+            // Keep both states full-width so only the height changes as the counts fade in.
+            Box(Modifier.fillMaxWidth()) {
+                if (animatedSummary.isNotEmpty()) {
+                    Text(
+                        text = animatedSummary,
+                        modifier = Modifier.padding(bottom = if (compact) 12.dp else 16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = ProductSansFontFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        style = legacyTextStyle,
+                    )
+                }
             }
+        }
+        if (showFilter) {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val density = LocalDensity.current
                 val measurer = rememberTextMeasurer()

@@ -1,0 +1,11 @@
+<!-- Hacker News favicon: https://news.ycombinator.com/y18.svg (original paths and colors). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp"
+    android:height="18dp"
+    android:viewportWidth="188"
+    android:viewportHeight="188">
+    <group android:translateX="-4" android:translateY="-4">
+        <path android:fillColor="#FF6600" android:pathData="m4 4h188v188h-188z" />
+        <path android:fillColor="#FFFFFF" android:pathData="m73.2521756 45.01 22.7478244 47.39130083 22.7478244-47.39130083h19.56569631l-34.32352071 64.48661468v41.49338532h-15.98v-41.49338532l-34.32352071-64.48661468z" />
+    </group>
+</vector>

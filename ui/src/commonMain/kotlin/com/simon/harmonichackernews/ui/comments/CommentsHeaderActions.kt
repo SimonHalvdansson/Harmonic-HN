@@ -200,6 +200,7 @@ fun CommentsHeaderActions(
                             transitionSpec = {
                                 fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                             },
+                            contentAlignment = Alignment.Center,
                             label = "Refresh loading transition",
                         ) { refreshing ->
                             if (refreshing) {
@@ -319,6 +320,8 @@ private fun HeaderActionButton(
                 transitionSpec = {
                     fadeIn(tween(150)) togetherWith fadeOut(tween(150))
                 },
+                // Keep the 28dp spinner and 24dp icon centered while the content size animates.
+                contentAlignment = Alignment.Center,
                 label = "${action.label} loading transition",
             ) { visual ->
                 if (visual.loading) {
