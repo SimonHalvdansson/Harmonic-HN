@@ -195,6 +195,7 @@ fun SettingsListScreen(
                             val isSelected = selectedSection == entry.section ||
                                 entry.section == SettingsSection.Appearance &&
                                 (selectedSection == SettingsSection.Theme ||
+                                    selectedSection == SettingsSection.Font ||
                                     selectedSection == SettingsSection.PaletteTint) ||
                                 entry.section == SettingsSection.Debug &&
                                 (selectedSection == SettingsSection.DebugLinkPreviews ||

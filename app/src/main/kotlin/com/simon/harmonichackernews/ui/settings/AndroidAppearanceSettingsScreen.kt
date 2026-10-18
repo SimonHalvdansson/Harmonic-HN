@@ -43,10 +43,6 @@ fun AndroidAppearanceSettingsScreen(
         onThemeChanged = onThemeChanged,
         dialogContent = { dialog, _, dismiss ->
             when (dialog) {
-                AppearanceSettingsDialog.Font -> FontSelectionRoute(
-                    readerMode = false,
-                    onDismiss = dismiss,
-                )
                 AppearanceSettingsDialog.Style -> AndroidWelcomeSettingsDialog(
                     styleChooser = true,
                     onDismiss = dismiss,

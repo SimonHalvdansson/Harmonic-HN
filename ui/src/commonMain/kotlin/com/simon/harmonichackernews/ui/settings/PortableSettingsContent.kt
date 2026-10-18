@@ -73,9 +73,11 @@ fun PortableSettingsDetail(
         ) { target ->
             onNavigate(
                 target,
-                singlePane || target == SettingsSection.Theme || target == SettingsSection.PaletteTint,
+                singlePane || target == SettingsSection.Theme || target == SettingsSection.PaletteTint ||
+                    target == SettingsSection.Font,
             )
         }
+        SettingsSection.Font -> FontSettingsRoute(app.settings, onBack)
         SettingsSection.Theme -> PortableThemeSettings(app, true, onBack)
         SettingsSection.PaletteTint -> PaletteTintSettingsRoute(app.settings, true, onBack)
         SettingsSection.Notifications -> NotificationsSettingsRoute(
@@ -259,10 +261,6 @@ private fun PortableAppearanceSettings(
         onThemeChanged = ::themeChanged,
         dialogContent = { dialog, presenter, dismiss ->
             when (dialog) {
-                AppearanceSettingsDialog.Font -> FontSelectionRoute(
-                    readerMode = false,
-                    onDismiss = dismiss,
-                )
                 AppearanceSettingsDialog.Style -> {
                     WelcomeSettingsDialog(
                         styleChooser = true,

@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.resources.settings_section_ai_summary
 import com.simon.harmonichackernews.resources.settings_section_appearance
+import com.simon.harmonichackernews.resources.settings_section_font
 import com.simon.harmonichackernews.resources.settings_section_comments
 import com.simon.harmonichackernews.resources.settings_section_header_display
 import com.simon.harmonichackernews.resources.settings_section_thread_depth
@@ -29,6 +30,7 @@ enum class SettingsSection(
     val titleResource: StringResource,
 ) {
     Appearance("appearance", Res.string.settings_section_appearance),
+    Font("font", Res.string.settings_section_font),
     Theme("theme", Res.string.settings_section_theme),
     PaletteTint("palette_tint", Res.string.settings_section_palette_tint),
     Stories("stories", Res.string.settings_section_stories),

@@ -53,7 +53,7 @@ enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPr
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
 }
-enum class AppearanceSettingsDialog { Font, Style }
+enum class AppearanceSettingsDialog { Style }
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -93,7 +93,7 @@ fun AppearanceSettingsScreen(
                     title = "Title and comment font",
                     summary = state.fontLabel,
                     icon = Res.drawable.ic_font_download,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.Font) },
+                    onClick = { onNavigate(SettingsSection.Font) },
                 )
                 SettingsDivider()
                 SettingRow(

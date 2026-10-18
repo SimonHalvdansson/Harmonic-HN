@@ -3,11 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.font_entries
-import com.simon.harmonichackernews.resources.font_values
-import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.painterResource
 import com.simon.harmonichackernews.settings.FaviconProviderCatalog
 import com.simon.harmonichackernews.settings.FaviconPreferences
@@ -47,25 +43,6 @@ fun FaviconProviderRoute(
         onProviderSelected = { provider ->
             if (selected == null) presenter.setFaviconProvider(provider)
             onProviderSelected(provider)
-        },
-        onDismiss = onDismiss,
-    )
-}
-
-@Composable
-fun FontSelectionRoute(readerMode: Boolean, onDismiss: () -> Unit) {
-    val labels = stringArrayResource(Res.array.font_entries)
-    val values = stringArrayResource(Res.array.font_values)
-    val app = LocalHarmonicUiDependencies.current
-    val webPresenter = remember(app) { WebLinksSettingsPresenter(app.settings) }
-    val appearancePresenter = remember(app) { AppearanceSettingsPresenter(app.settings) }
-    val snapshot = app.settings.snapshot()
-    FontSelectionDialog(
-        readerMode = readerMode,
-        selected = if (readerMode) snapshot.reading.readerModeFont else snapshot.story.fontChoice,
-        options = remember(labels, values) { labels.zip(values.map(AppFont::fromStored)) },
-        onSelected = { value ->
-            if (readerMode) webPresenter.setReaderFont(value) else appearancePresenter.setFont(value)
         },
         onDismiss = onDismiss,
     )

@@ -24,6 +24,7 @@
     <string name="settings_section_header_display">Post header</string>
     <string name="settings_section_thread_depth">Thread depth indicators</string>
     <string name="settings_section_reader_mode">Reader mode</string>
+    <string name="settings_section_font">Title and comment font</string>
     <string name="settings_section_web_links">Web and links</string>
     <string name="settings_section_filters_tags">Filters and tags</string>
     <string name="settings_section_ai_summary">AI features</string>
