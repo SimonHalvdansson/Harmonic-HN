@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
@@ -133,8 +134,13 @@ fun StorySearchHeader(
                     Icon(painterResource(Res.drawable.ic_arrow_back), "Back", tint = iconColor)
                 }
             },
-            trailingIcon = if (state.draft.isNotEmpty()) {
-                {
+            trailingIcon = {
+                AnimatedVisibility(
+                    visible = state.draft.isNotEmpty(),
+                    enter = fadeIn(tween(100)),
+                    exit = fadeOut(tween(100)),
+                    label = "clear search button",
+                ) {
                     IconButton(
                         onClick = {
                             submission.startEditing()
@@ -147,7 +153,7 @@ fun StorySearchHeader(
                         Icon(painterResource(Res.drawable.ic_close), "Clear search", tint = iconColor)
                     }
                 }
-            } else null,
+            },
             singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
