@@ -155,6 +155,7 @@ class CommentsSettingsPresenter(
             collapseTopLevel = comments.collapseTopLevel,
             hideDelayedComments = comments.hideDelayedComments,
             hideDeadComments = comments.hideDeadComments,
+            hideFlaggedComments = comments.hideFlaggedComments,
             preloadCommentsSummary = comments.preloadCommentsMode.summary(
                 comments.preloadCommentsMinimumBattery,
             ),

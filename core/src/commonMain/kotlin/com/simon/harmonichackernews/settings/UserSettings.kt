@@ -91,6 +91,7 @@ data class CommentPreferences(
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
     val hideDeadComments: Boolean,
+    val hideFlaggedComments: Boolean,
     val preloadCommentsMode: WebViewPreloadMode,
     val preloadCommentsMinimumBattery: Int,
     val sorting: CommentSortingPreference,

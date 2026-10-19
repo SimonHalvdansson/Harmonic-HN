@@ -50,6 +50,7 @@ data class CommentsSettingsUiState(
     val collapseTopLevel: Boolean,
     val hideDelayedComments: Boolean,
     val hideDeadComments: Boolean,
+    val hideFlaggedComments: Boolean,
     val preloadCommentsSummary: String,
     val swapTap: Boolean,
     val sorting: CommentSortingPreference,
@@ -88,6 +89,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     CollapseTopLevel(CommentBooleanPreference.COLLAPSE_TOP_LEVEL),
     HideDelayedComments(CommentBooleanPreference.HIDE_DELAYED_COMMENTS),
     HideDeadComments(CommentBooleanPreference.HIDE_DEAD_COMMENTS),
+    HideFlaggedComments(CommentBooleanPreference.HIDE_FLAGGED_COMMENTS),
     SwapTap(CommentBooleanPreference.SWAP_LONG_PRESS_TAP),
     NavigationButtons(CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS),
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
@@ -223,6 +225,15 @@ fun CommentsSettingsScreen(
                     CommentsBooleanSetting.HideDeadComments,
                     onBooleanChanged,
                     summary = "Hides comments whose text is exactly [dead]",
+                )
+                SettingsDivider()
+                BooleanRow(
+                    "Hide flagged comments",
+                    Res.drawable.ic_visibility_off,
+                    state.hideFlaggedComments,
+                    CommentsBooleanSetting.HideFlaggedComments,
+                    onBooleanChanged,
+                    summary = "Hides comments whose text is exactly [flagged]",
                 )
                 SettingsDivider()
                 SettingRow(

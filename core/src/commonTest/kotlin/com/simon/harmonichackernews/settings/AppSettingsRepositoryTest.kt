@@ -70,6 +70,29 @@ class AppSettingsRepositoryTest {
     }
 
     @Test
+    fun hideFlaggedCommentsDefaultsOffAndPersistsIndependentlyOfOtherFilters() {
+        val store = TestKeyValueStore()
+        fun restored() = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        val repository = restored()
+        assertFalse(repository.snapshot().comments.hideFlaggedComments)
+
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_FLAGGED_COMMENTS, true)
+        val enabled = restored().snapshot().comments
+        assertTrue(enabled.hideFlaggedComments)
+        assertTrue(enabled.hideDeadComments)
+        assertFalse(enabled.hideDelayedComments)
+
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_DEAD_COMMENTS, false)
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_DELAYED_COMMENTS, true)
+        assertTrue(restored().snapshot().comments.hideFlaggedComments)
+        repository.setCommentBoolean(CommentBooleanPreference.HIDE_FLAGGED_COMMENTS, false)
+        val disabled = restored().snapshot().comments
+        assertFalse(disabled.hideFlaggedComments)
+        assertFalse(disabled.hideDeadComments)
+        assertTrue(disabled.hideDelayedComments)
+    }
+
+    @Test
     fun unknownQuoteAppearanceFallsBackToMaterialAndBoth() {
         val repository = AppSettingsRepository(
             TestKeyValueStore(mapOf(

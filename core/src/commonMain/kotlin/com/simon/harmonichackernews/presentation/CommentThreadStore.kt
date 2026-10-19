@@ -71,6 +71,7 @@ internal data class CommentThreadPreparationInput(
     val initialCommentIds: Set<Int>?,
     val hideDelayedComments: Boolean,
     val hideDeadComments: Boolean,
+    val hideFlaggedComments: Boolean,
     val searchIndex: Map<Int, SearchableCommentText>,
 )
 
@@ -93,6 +94,7 @@ class CommentThreadStore {
     internal val hasLoadedComments: Boolean get() = initialCommentIds != null
     private var hideDelayedComments = false
     private var hideDeadComments = true
+    private var hideFlaggedComments = false
     private var visibilityTopology: CommentVisibilityTopology? = null
     private var previousVisibilityTopology: CommentVisibilityTopology? = null
 
@@ -154,6 +156,7 @@ class CommentThreadStore {
         val prepared = CommentThreadStore().also { store ->
             store.hideDelayedComments = hideDelayedComments
             store.hideDeadComments = hideDeadComments
+            store.hideFlaggedComments = hideFlaggedComments
             store.reset(story, allComments.firstOrNull() ?: Comment(), sorting)
             store.replaceParsedComments(story, parsedComments, sorting, collapseTopLevel)
         }
@@ -201,7 +204,7 @@ class CommentThreadStore {
 
     /** Capture on the store's owner; a worker receives no live mutable comments or maps. */
     internal fun capturePreparationInput() = CommentThreadPreparationInput(
-        state.value, initialCommentIds, hideDelayedComments, hideDeadComments, searchableTextById.toMap(),
+        state.value, initialCommentIds, hideDelayedComments, hideDeadComments, hideFlaggedComments, searchableTextById.toMap(),
     )
 
     companion object {
@@ -221,6 +224,7 @@ class CommentThreadStore {
             } else input.initialCommentIds
             prepared.hideDelayedComments = input.hideDelayedComments
             prepared.hideDeadComments = input.hideDeadComments
+            prepared.hideFlaggedComments = input.hideFlaggedComments
             prepared.mutableState.value = input.state
             prepared.snapshotReuseCandidates = input.state.allComments.associateBy { it.id }
             prepared.searchableTextById.putAll(input.searchIndex)
@@ -287,6 +291,13 @@ class CommentThreadStore {
     fun setHideDeadComments(hide: Boolean) {
         if (hideDeadComments == hide) return
         hideDeadComments = hide
+        rebuildFilteredComments()
+        publish(rebuildSearch = true, rebuildVisibility = true)
+    }
+
+    fun setHideFlaggedComments(hide: Boolean) {
+        if (hideFlaggedComments == hide) return
+        hideFlaggedComments = hide
         rebuildFilteredComments()
         publish(rebuildSearch = true, rebuildVisibility = true)
     }
@@ -440,7 +451,7 @@ class CommentThreadStore {
         } else {
             allComments
         }
-        val next = if (hideDelayedComments || hideDeadComments) {
+        val next = if (hideDelayedComments || hideDeadComments || hideFlaggedComments) {
             filteredByOp.filterNot { it.isHiddenPlaceholder() }
         } else {
             filteredByOp
@@ -713,6 +724,7 @@ class CommentThreadStore {
     private fun Comment.isHiddenPlaceholder(): Boolean = when (text?.trim()) {
         "[delayed]" -> hideDelayedComments
         "[dead]" -> hideDeadComments
+        "[flagged]" -> hideFlaggedComments
         else -> false
     }
 }

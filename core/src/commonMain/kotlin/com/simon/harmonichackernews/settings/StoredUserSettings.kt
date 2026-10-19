@@ -86,6 +86,7 @@ object UserPreferenceKeys {
     const val COLLAPSE_TOP_LEVEL = "pref_collapse_top_level"
     const val HIDE_DELAYED_COMMENTS = "pref_hide_delayed_comments"
     const val HIDE_DEAD_COMMENTS = "pref_hide_dead_comments"
+    const val HIDE_FLAGGED_COMMENTS = "pref_hide_flagged_comments"
     const val PRELOAD_COMMENTS_MODE = "pref_preload_comments_mode"
     const val PRELOAD_COMMENTS_MINIMUM_BATTERY = "pref_preload_comments_minimum_battery"
     const val COMMENT_SORTING = "pref_comment_sorting"
@@ -259,6 +260,7 @@ class StoredUserSettings(
                 collapseTopLevel = boolean(UserPreferenceKeys.COLLAPSE_TOP_LEVEL, false),
                 hideDelayedComments = boolean(UserPreferenceKeys.HIDE_DELAYED_COMMENTS, false),
                 hideDeadComments = boolean(UserPreferenceKeys.HIDE_DEAD_COMMENTS, true),
+                hideFlaggedComments = boolean(UserPreferenceKeys.HIDE_FLAGGED_COMMENTS, false),
                 preloadCommentsMode = WebViewPreloadMode.fromStored(
                     string(
                         UserPreferenceKeys.PRELOAD_COMMENTS_MODE,
