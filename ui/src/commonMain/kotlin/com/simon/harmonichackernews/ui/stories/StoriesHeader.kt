@@ -139,7 +139,7 @@ internal fun StoriesHeader(
 ) {
     val density = LocalDensity.current
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val startInset = with(density) { controller.contentInsetStartPx.toDp() }
+    val startInset = with(density) { controller.presentation.contentInsetStartPx.toDp() }
     val settings = controller.displaySettings ?: return
     val compact = settings.compactHeader
     val topSpacing = if (compact) 8.dp else 28.dp
@@ -177,8 +177,8 @@ internal fun StoriesHeader(
                 }
                 if (settings.listSelector == StoryListSelector.CHIPS) {
                     StoryTypeChips(
-                        labels = controller.typeLabels,
-                        selectedIndex = controller.selectedTypeIndex,
+                        labels = controller.presentation.typeLabels,
+                        selectedIndex = controller.presentation.selectedTypeIndex,
                         fontFamily = rememberContentTypography(
                             settings.font,
                             settings.storyTextSize,
@@ -190,7 +190,7 @@ internal fun StoriesHeader(
                 }
             }
 
-            AnimatedVisibility(visible = !searchMode && controller.showSavedFilter) {
+            AnimatedVisibility(visible = !searchMode && controller.presentation.showSavedFilter) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -228,7 +228,7 @@ internal fun StoriesHeader(
                 }
             }
 
-            AnimatedVisibility(visible = !searchMode && controller.showFrontDate) {
+            AnimatedVisibility(visible = !searchMode && controller.presentation.showFrontDate) {
                 val dateButtonColors = ButtonDefaults.filledTonalButtonColors()
                 Row(
                     modifier = Modifier
@@ -238,7 +238,7 @@ internal fun StoriesHeader(
                 ) {
                     Button(
                         onClick = { controller.listener.onShiftFrontDate(-1) },
-                        enabled = controller.frontPreviousEnabled,
+                        enabled = controller.presentation.frontPreviousEnabled,
                         colors = dateButtonColors,
                         elevation = null,
                         contentPadding = PaddingValues(0.dp),
@@ -258,7 +258,7 @@ internal fun StoriesHeader(
                         Icon(painterResource(Res.drawable.ic_calendar_today), null)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            controller.frontDateLabel,
+                            controller.presentation.frontDateLabel,
                             fontFamily = rememberContentTypography(settings.font).family,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -266,7 +266,7 @@ internal fun StoriesHeader(
                     }
                     Button(
                         onClick = { controller.listener.onShiftFrontDate(1) },
-                        enabled = controller.frontNextEnabled,
+                        enabled = controller.presentation.frontNextEnabled,
                         colors = dateButtonColors,
                         elevation = null,
                         contentPadding = PaddingValues(0.dp),
@@ -277,7 +277,7 @@ internal fun StoriesHeader(
                 }
             }
 
-            val lastUpdated = controller.lastUpdatedText.takeIf { !searchMode }
+            val lastUpdated = controller.presentation.lastUpdatedText.takeIf { !searchMode }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -319,7 +319,7 @@ internal fun StoriesHeader(
             }
 
             AnimatedVisibility(
-                visible = !searchMode && controller.cacheProgressVisible,
+                visible = !searchMode && controller.presentation.cacheProgressVisible,
                 enter = fadeIn(
                     tween(
                         durationMillis = 180,
@@ -346,7 +346,7 @@ internal fun StoriesHeader(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     AnimatedContent(
-                        targetState = controller.cacheProgressStatus,
+                        targetState = controller.presentation.cacheProgressStatus,
                         transitionSpec = {
                             fadeIn(
                                 tween(
@@ -371,7 +371,7 @@ internal fun StoriesHeader(
                         )
                     }
                     val targetProgress =
-                        (controller.cacheProgress.toFloat() / controller.cacheProgressMax)
+                        (controller.presentation.cacheProgress.toFloat() / controller.presentation.cacheProgressMax)
                             .coerceIn(0f, 1f)
                     val animatedProgress by animateFloatAsState(
                         targetValue = targetProgress,
@@ -426,10 +426,10 @@ private fun MainHeader(
         if (!useDropdown) typesExpanded = false
     }
     val density = LocalDensity.current
-    val title = if (controller.showingCached) {
+    val title = if (controller.presentation.showingCached) {
         "Cached stories"
     } else {
-        controller.typeLabels.getOrNull(controller.selectedTypeIndex) ?: "Stories"
+        controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories"
     }
     val textMeasurer = rememberTextMeasurer()
     BoxWithConstraints(modifier.fillMaxWidth().height(56.dp)) {
@@ -472,7 +472,7 @@ private fun MainHeader(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AnimatedContent(
-                        targetState = Triple(title, sizing, controller.selectedTypeIndex),
+                        targetState = Triple(title, sizing, controller.presentation.selectedTypeIndex),
                         contentKey = { it.first },
                         modifier = Modifier.weight(1f, fill = false),
                         contentAlignment = Alignment.CenterStart,
@@ -529,13 +529,13 @@ private fun MainHeader(
                 StoryTypeDropdownMenu(
                     expanded = useDropdown && typesExpanded,
                     onDismiss = { typesExpanded = false },
-                    types = controller.typeLabels.map(StoryType::fromLabel),
-                    selectedType = StoryType.fromLabel(controller.typeLabels.getOrNull(controller.selectedTypeIndex)),
+                    types = controller.presentation.typeLabels.map(StoryType::fromLabel),
+                    selectedType = StoryType.fromLabel(controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex)),
                     fontFamily = typography.family,
                     fontSize = typography.storiesDropdownItemSize.sp,
                     onSelected = { type ->
                         typesExpanded = false
-                        onTypeSelected(controller.typeLabels.indexOf(type.label))
+                        onTypeSelected(controller.presentation.typeLabels.indexOf(type.label))
                     },
                 )
             }
@@ -556,7 +556,7 @@ private fun MainHeader(
                 exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
             ) {
                 StoriesTooltip("Refresh") {
-                    IconButton(onClick = controller::refresh, enabled = !controller.refreshing) {
+                    IconButton(onClick = controller::refresh, enabled = !controller.presentation.refreshing) {
                         Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -620,15 +620,15 @@ private fun SearchHeader(
             active = controller.searching,
             draft = controller.searchDraft,
             suppressAutoFocus = controller.suppressSearchAutoFocus,
-            sortLabel = controller.searchSortLabel,
-            dateLabel = controller.searchDateLabel,
-            pointsLabel = controller.searchPointsLabel,
-            commentsLabel = controller.searchCommentsLabel,
-            sortLabels = controller.searchSortLabels,
-            dateLabels = controller.searchDateLabels,
-            pointsLabels = controller.searchPointsLabels,
-            commentsLabels = controller.searchCommentsLabels,
-            onlyRead = controller.searchOnlyRead,
+            sortLabel = controller.presentation.searchSortLabel,
+            dateLabel = controller.presentation.searchDateLabel,
+            pointsLabel = controller.presentation.searchPointsLabel,
+            commentsLabel = controller.presentation.searchCommentsLabel,
+            sortLabels = controller.presentation.searchSortLabels,
+            dateLabels = controller.presentation.searchDateLabels,
+            pointsLabels = controller.presentation.searchPointsLabels,
+            commentsLabels = controller.presentation.searchCommentsLabels,
+            onlyRead = controller.presentation.searchOnlyRead,
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
@@ -687,17 +687,17 @@ private fun StoriesMoreMenu(
                 },
             )
         }
-        AnimatedMenuItem(visible = controller.loggedIn) {
+        AnimatedMenuItem(visible = controller.presentation.loggedIn) {
             Column {
                 MoreItem("Profile", StoriesMenuAction.PROFILE, controller, dismiss)
                 MoreItem("Submit", StoriesMenuAction.SUBMIT, controller, dismiss)
             }
         }
-        MoreItem(if (controller.loggedIn) "Log out" else "Log in", StoriesMenuAction.ACCOUNT, controller, dismiss)
-        AnimatedMenuItem(visible = controller.canCache) {
+        MoreItem(if (controller.presentation.loggedIn) "Log out" else "Log in", StoriesMenuAction.ACCOUNT, controller, dismiss)
+        AnimatedMenuItem(visible = controller.presentation.canCache) {
             MoreItem("Cache stories", StoriesMenuAction.CACHE, controller, dismiss)
         }
-        AnimatedMenuItem(visible = controller.canClearHistory) {
+        AnimatedMenuItem(visible = controller.presentation.canClearHistory) {
             MoreItem("Clear history", StoriesMenuAction.CLEAR_HISTORY, controller, dismiss)
         }
         MoreItem("Settings", StoriesMenuAction.SETTINGS, controller, dismiss)
@@ -717,7 +717,7 @@ private fun MoreItem(
             StoriesMenuIcon(when (action) {
                 StoriesMenuAction.PROFILE -> Res.drawable.ic_account_circle
                 StoriesMenuAction.SUBMIT -> Res.drawable.ic_send
-                StoriesMenuAction.ACCOUNT -> if (controller.loggedIn) Res.drawable.ic_logout else Res.drawable.ic_login
+                StoriesMenuAction.ACCOUNT -> if (controller.presentation.loggedIn) Res.drawable.ic_logout else Res.drawable.ic_login
                 StoriesMenuAction.CACHE -> Res.drawable.ic_file_download
                 StoriesMenuAction.CLEAR_HISTORY -> Res.drawable.ic_history
                 StoriesMenuAction.SETTINGS -> Res.drawable.ic_settings
@@ -747,7 +747,7 @@ private fun SavedFilterButton(
 ) {
     HarmonicFilterButton(
         label = label,
-        selected = controller.savedFilter == value,
+        selected = controller.presentation.savedFilter == value,
         onClick = { controller.listener.onSavedFilterSelected(value) },
         position = position,
         colors = colors,
@@ -765,7 +765,7 @@ internal fun HeaderStatus(
 ) {
     val colors = MaterialTheme.colorScheme
     if (!searchMode && controller.canFilterNewStories && controller.newStoriesFilter.active &&
-        controller.mainStories.isEmpty() && !controller.loading && !controller.loadingFailed
+        controller.mainStories.isEmpty() && !controller.presentation.loading && !controller.presentation.loadingFailed
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
             Text("No stories match these filters", color = colors.onSurface, fontFamily = ProductSansFontFamily)
@@ -774,15 +774,15 @@ internal fun HeaderStatus(
     }
     StoryListStatus(
         state = StoryListStatusState(
-            loading = controller.loading,
-            loadingFailed = controller.loadingFailed,
-            serverError = controller.loadingFailedServerError,
-            failureMessage = controller.loadingFailedMessage,
-            showCachedAction = controller.showCachedAction,
-            showEmptySavedList = controller.showEmptySavedList,
-            emptySavedListText = controller.emptySavedListText,
-            emptySavedListIcon = controller.emptySavedListIcon,
-            showEmptySearch = controller.showEmptySearch,
+            loading = controller.presentation.loading,
+            loadingFailed = controller.presentation.loadingFailed,
+            serverError = controller.presentation.loadingFailedServerError,
+            failureMessage = controller.presentation.loadingFailedMessage,
+            showCachedAction = controller.presentation.showCachedAction,
+            showEmptySavedList = controller.presentation.showEmptySavedList,
+            emptySavedListText = controller.presentation.emptySavedListText,
+            emptySavedListIcon = controller.presentation.emptySavedListIcon,
+            showEmptySearch = controller.presentation.showEmptySearch,
         ),
         searchMode = searchMode,
         normalColor = colors.onSurface,

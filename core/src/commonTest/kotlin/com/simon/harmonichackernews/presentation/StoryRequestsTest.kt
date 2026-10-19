@@ -22,6 +22,9 @@ import com.simon.harmonichackernews.network.AlgoliaSubmissionsCursor
 import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsListPage
 import com.simon.harmonichackernews.network.HackerNewsApi
+import com.simon.harmonichackernews.network.HackerNewsActionFailureReason
+import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HackerNewsUserItemsLoader
 import com.simon.harmonichackernews.network.HackerNewsUserItemsResult
@@ -60,6 +63,96 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun previewActionsPreserveOutcomeMessagesAndClearLoading() = runTest {
+        val rejected = HackerNewsActionResult.Failure("Rejected")
+        val captcha = HackerNewsActionResult.Captcha(HackerNewsCaptchaChallenge(
+            actionUrl = "https://news.ycombinator.com/favorite",
+            siteKey = "test", formFields = emptyList(), useCookies = false,
+        ))
+        val indeterminate = HackerNewsActionResult.Failure(
+            "Unknown", reason = HackerNewsActionFailureReason.INDETERMINATE,
+        )
+        val results = listOf(
+            HackerNewsActionResult.Success() to null,
+            rejected to "Action unsuccessful, see dialog for response",
+            captcha to "Action unsuccessful, see dialog for response",
+            indeterminate to "Action sent, but HN confirmation was interrupted",
+        )
+        for (action in listOf(StoryPreviewActionKind.Vote, StoryPreviewActionKind.Favorite)) {
+            for ((result, message) in results) {
+                val session = StoriesSessionState()
+                val saved = SavedItemsRepository(MemoryKeyValueStore())
+                val response = CompletableDeferred<HackerNewsActionResult>()
+                val actions = SavedItemActionUseCase(saved, { 0L },
+                    voteRequest = { _, _ -> response.await() },
+                    favoriteRequest = { _, _ -> response.await() })
+                val runtime = cacheRuntime(backgroundScope, session, saved,
+                    storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(),
+                    actions = actions)
+                val story = Story("Story", 42, true, false)
+                runtime.mainStore.replace(listOf(story))
+                val failures = mutableListOf<StoriesFeatureEffect.SavedActionFailed>()
+                backgroundScope.launch {
+                    runtime.effects.collect { if (it is StoriesFeatureEffect.SavedActionFailed) failures += it }
+                }
+                runCurrent()
+
+                runtime.handlePreviewAction(story, action)
+                runCurrent()
+                val loading = runtime.previewActionState.value
+                assertEquals(setOf(42), if (action == StoryPreviewActionKind.Vote) {
+                    loading.voteLoadingIds
+                } else loading.favoriteLoadingIds)
+                assertTrue(failures.isEmpty())
+
+                response.complete(result)
+                runCurrent()
+                assertEquals(StoriesPreviewActionState(), runtime.previewActionState.value)
+                assertEquals(
+                    if (message == null) emptyList() else listOf(ActionFailurePresentation(result, message, true)),
+                    failures.map { it.presentation },
+                )
+                assertEquals(0, saved.pendingMutationCount)
+            }
+        }
+    }
+
+    @Test
+    fun failedFavoriteRemovalRestoresItsPositionBeforePresentingTheFailure() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        saved.setMembership(SavedItemSource.FAVORITES, 42, true, 0L)
+        val response = CompletableDeferred<HackerNewsActionResult>()
+        val actions = SavedItemActionUseCase(saved, { 0L },
+            voteRequest = { _, _ -> error("Not used") },
+            favoriteRequest = { _, _ -> response.await() })
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(), actions = actions)
+        runtime.selectType(StoryListTarget.MAIN, StoryType.FAVORITES)
+        val stories = listOf(1, 42, 3).map { Story("Story $it", it, true, false) }
+        runtime.mainStore.replace(stories)
+        val rowsAtFailure = mutableListOf<List<Int>>()
+        backgroundScope.launch {
+            runtime.effects.collect {
+                if (it is StoriesFeatureEffect.SavedActionFailed) rowsAtFailure += runtime.mainStories.map(Story::id)
+            }
+        }
+        runCurrent()
+
+        runtime.handlePreviewAction(stories[1], StoryPreviewActionKind.Favorite)
+        runCurrent()
+        assertEquals(listOf(1, 3), runtime.mainStories.map(Story::id))
+        assertFalse(actions.isFavorited(42))
+
+        response.complete(HackerNewsActionResult.Failure("Rejected"))
+        runCurrent()
+        assertEquals(listOf(1, 42, 3), runtime.mainStories.map(Story::id))
+        assertEquals(listOf(listOf(1, 42, 3)), rowsAtFailure)
+        assertTrue(actions.isFavorited(42))
+        assertEquals(StoriesPreviewActionState(), runtime.previewActionState.value)
+    }
+
     @Test
     fun openingUnreadStoryPublishesEachListOnceAndPreservesNavigationAndHistory() = runTest {
         val session = StoriesSessionState()
@@ -1235,14 +1328,15 @@ class StoryRequestsTest {
         connectivity: ConnectivityService = AlwaysOnline,
         nowMillis: () -> Long = { 1_000L },
         hiddenPosts: com.simon.harmonichackernews.data.HiddenPostsStore? = null,
+        actions: SavedItemActionUseCase = SavedItemActionUseCase(saved, { 0L },
+            voteRequest = { _, _ -> error("Not used") },
+            favoriteRequest = { _, _ -> error("Not used") }),
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
         requests = requests,
         savedItems = saved,
-        savedItemActions = SavedItemActionUseCase(saved, { 0L },
-            voteRequest = { _, _ -> error("Not used") },
-            favoriteRequest = { _, _ -> error("Not used") }),
+        savedItemActions = actions,
         historyStore = history,
         accounts = accounts,
         connectivity = connectivity,

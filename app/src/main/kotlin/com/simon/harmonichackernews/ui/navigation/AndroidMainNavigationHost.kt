@@ -151,8 +151,8 @@ private fun MainNavigation(
     ReportDrawnWhen {
         navigationSnapshot.currentDestination != MainDestination.STORIES ||
             controller.storiesComposeController?.let { stories ->
-                stories.loadingFailed || stories.showEmptySavedList ||
-                    (!stories.loading && stories.mainStories.any { it.loaded })
+                stories.presentation.loadingFailed || stories.presentation.showEmptySavedList ||
+                    (!stories.presentation.loading && stories.mainStories.any { it.loaded })
             } == true
     }
     val appearance = controller.scene.app.appearance

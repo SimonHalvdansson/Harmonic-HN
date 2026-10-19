@@ -208,19 +208,22 @@ class SavedItemActionUseCaseTest {
     }
 
     @Test
-    fun toggleBookmarkPersistsPortableState() {
-        assertTrue(actions.toggleBookmark(42))
+    fun toggleBookmarkPersistsPortableState() = runTest {
+        assertTrue(actions.toggleBookmarkAtomic(42))
         assertTrue(actions.isBookmarked(42))
-        assertFalse(actions.toggleBookmark(42))
+        assertFalse(actions.toggleBookmarkAtomic(42))
         assertFalse(actions.isBookmarked(42))
     }
 
     @Test
     fun successfulStoryVoteKeepsOptimisticState() = runTest {
-        val pending = actions.beginVote(42, isComment = false, direction = "up")
-        assertTrue(actions.isUpvoted(42, isComment = false))
-
-        assertIs<SavedItemActionOutcome.Success>(actions.execute(pending))
+        val outcome = actions.updateVoteAndExecuteAtomic(
+            itemId = 42,
+            isComment = false,
+            direction = "up",
+            onPending = { assertTrue(actions.isUpvoted(42, isComment = false)) },
+        )
+        assertIs<SavedItemActionOutcome.Success>(outcome)
 
         assertEquals(42 to "up", requestedVote)
         assertTrue(actions.isUpvoted(42, isComment = false))
@@ -241,10 +244,14 @@ class SavedItemActionUseCaseTest {
     fun failedCommentVoteRestoresPreviousState() = runTest {
         repository.setCommentMembership(SavedItemSource.UPVOTED, 7, true)
         voteResult = HackerNewsActionResult.Failure("Nope")
-        val pending = actions.beginVote(7, isComment = true, direction = "un")
-        assertFalse(actions.isUpvoted(7, isComment = true))
-
-        val outcome = assertIs<SavedItemActionOutcome.Failure>(actions.execute(pending))
+        val outcome = assertIs<SavedItemActionOutcome.Failure>(
+            actions.updateVoteAndExecuteAtomic(
+                itemId = 7,
+                isComment = true,
+                direction = "un",
+                onPending = { assertFalse(actions.isUpvoted(7, isComment = true)) },
+            ),
+        )
 
         assertEquals(voteResult, outcome.result)
         assertTrue(actions.isUpvoted(7, isComment = true))
@@ -260,10 +267,11 @@ class SavedItemActionUseCaseTest {
                 useCookies = false,
             ),
         )
-        val pending = actions.beginFavorite(99)
-        assertTrue(actions.isFavorited(99))
-
-        assertIs<SavedItemActionOutcome.Failure>(actions.execute(pending))
+        val outcome = actions.toggleFavoriteAndExecuteAtomic(
+            itemId = 99,
+            onPending = { assertTrue(actions.isFavorited(99)) },
+        )
+        assertIs<SavedItemActionOutcome.Failure>(outcome)
 
         assertEquals(99 to true, requestedFavorite)
         assertFalse(actions.isFavorited(99))

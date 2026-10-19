@@ -213,8 +213,8 @@ class AndroidStoriesCoordinator(
         controller.updateContent(
             state,
             if (activity.windowEnterComplete.value) presentation else presentation.copy(
-                showRefreshPromptOverride = controller.showRefreshPrompt,
-                lastUpdatedText = controller.lastUpdatedText,
+                showRefreshPromptOverride = controller.presentation.showRefreshPrompt,
+                lastUpdatedText = controller.presentation.lastUpdatedText,
             ),
         )
     }

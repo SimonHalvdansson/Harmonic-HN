@@ -24,7 +24,7 @@ data class StoriesPlatformPresentation(
 )
 
 /** Display labels and visibility derived from feature state; no copy of feed contents. */
-internal data class StoriesScreenPresentation(
+data class StoriesScreenPresentation(
     val typeLabels: List<String> = emptyList(),
     val selectedTypeIndex: Int = 0,
     val searching: Boolean = false,

@@ -30,9 +30,7 @@ import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.presentation.StoryPreviewOverlayState
 import com.simon.harmonichackernews.presentation.StoryPreviewRemovalRequest
 import com.simon.harmonichackernews.presentation.StoryScrollRequest
-import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryCachePreferences
-import org.jetbrains.compose.resources.DrawableResource
 
 // StoriesRoot fades search out over the first half of the transition. Keep 25% visible
 // while held; the release animation can still settle all the way to 1f.
@@ -92,51 +90,9 @@ class StoriesScreenController private constructor(
             mutableStateOf(previewResourcesSnapshot[storyId])
         }.value
     val displaySettings: StoryDisplaySettings? get() = displaySettingsState
-    val typeLabels: List<String> get() = shellState.typeLabels
-    val selectedTypeIndex: Int get() = shellState.selectedTypeIndex
-    val lastSearch: String get() = shellState.lastSearch
-    val searchSortLabel: String get() = shellState.searchSortLabel
-    val searchDateLabel: String get() = shellState.searchDateLabel
-    val searchPointsLabel: String get() = shellState.searchPointsLabel
-    val searchCommentsLabel: String get() = shellState.searchCommentsLabel
-    val searchSortLabels: List<String> get() = shellState.searchSortLabels
-    val searchDateLabels: List<String> get() = shellState.searchDateLabels
-    val searchPointsLabels: List<String> get() = shellState.searchPointsLabels
-    val searchCommentsLabels: List<String> get() = shellState.searchCommentsLabels
-    val searchOnlyRead: Boolean get() = shellState.searchOnlyRead
-    val loading: Boolean get() = shellState.loading
-    val refreshing: Boolean get() = shellState.refreshing
-    val loadingFailed: Boolean get() = shellState.loadingFailed
-    val loadingFailedServerError: Boolean get() = shellState.loadingFailedServerError
-    val loadingFailedMessage: String get() = shellState.loadingFailedMessage
-    val showingCached: Boolean get() = shellState.showingCached
-    val showCachedAction: Boolean get() = shellState.showCachedAction
-    val showEmptySavedList: Boolean get() = shellState.showEmptySavedList
-    val emptySavedListText: String get() = shellState.emptySavedListText
-    val emptySavedListIcon: DrawableResource get() = shellState.emptySavedListIcon
-    val showEmptySearch: Boolean get() = shellState.showEmptySearch
-    val showRefreshPrompt: Boolean get() = shellState.showRefreshPrompt
-    val lastUpdatedText: String? get() = shellState.lastUpdatedText
-    val showLoadMore: Boolean get() = shellState.showLoadMore
-    val loadMoreLoading: Boolean get() = shellState.loadMoreLoading
-    val mainVisibleCount: Int get() = shellState.mainVisibleCount
-    val searchVisibleCount: Int get() = shellState.searchVisibleCount
-    val showSavedFilter: Boolean get() = shellState.showSavedFilter
-    val savedFilter: SavedItemFilter get() = shellState.savedFilter
-    val showFrontDate: Boolean get() = shellState.showFrontDate
-    val frontDateLabel: String get() = shellState.frontDateLabel
-    val frontPreviousEnabled: Boolean get() = shellState.frontPreviousEnabled
-    val frontNextEnabled: Boolean get() = shellState.frontNextEnabled
-    val loggedIn: Boolean get() = shellState.loggedIn
-    val canCache: Boolean get() = shellState.canCache
-    val canClearHistory: Boolean get() = shellState.canClearHistory
+    val presentation: StoriesScreenPresentation get() = shellState
     var canHidePosts by mutableStateOf(false)
         private set
-    val cacheProgressVisible: Boolean get() = shellState.cacheProgressVisible
-    val cacheProgress: Int get() = shellState.cacheProgress
-    val cacheProgressMax: Int get() = shellState.cacheProgressMax
-    val cacheProgressStatus: String get() = shellState.cacheProgressStatus
-    val contentInsetStartPx: Int get() = shellState.contentInsetStartPx
     var contentVersion by mutableIntStateOf(0)
         private set
     var scrollToTopRequestVersion by mutableIntStateOf(0)
@@ -335,13 +291,13 @@ class StoriesScreenController private constructor(
     /** Refreshes the active feed and requests an exact top anchor after its new data is applied. */
     fun refresh() {
         scrollToTopAfterRefresh = true
-        refreshInProgressObserved = refreshing
+        refreshInProgressObserved = shellState.refreshing
         listener.onRefresh(showMainLoadingIndicator = false)
     }
 
     /** Starts a UI-only removal pass; the network refresh is deferred until its exit finishes. */
     fun beginTapToUpdateExit() {
-        if (tapToUpdateExitInProgress || refreshing || loading) return
+        if (tapToUpdateExitInProgress || shellState.refreshing || shellState.loading) return
         scrollToTopAfterRefresh = false
         refreshInProgressObserved = false
         tapToUpdateRefreshStarted = false
@@ -353,7 +309,7 @@ class StoriesScreenController private constructor(
         if (!tapToUpdateExitInProgress || tapToUpdateRefreshStarted) return
         tapToUpdateRefreshStarted = true
         scrollToTopAfterRefresh = true
-        refreshInProgressObserved = refreshing
+        refreshInProgressObserved = shellState.refreshing
         // Keep the current snapshots in the store while the replacement feed loads. The UI layer
         // is already fully faded, so clearing 500 rows here only creates avoidable cache hydration
         // and layout work on the UI thread.

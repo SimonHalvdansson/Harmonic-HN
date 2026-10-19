@@ -134,18 +134,18 @@ internal fun StoriesList(
     }
 
     val visibleCount = (
-        if (searchMode) controller.searchVisibleCount else controller.mainVisibleCount
+        if (searchMode) controller.presentation.searchVisibleCount else controller.presentation.mainVisibleCount
     ).coerceIn(0, stories.size)
     // Refresh cached ages per feed/resume. A single arriving row must not expire other models.
     val modelTimeRefresh = rememberTimeOnResume(
         searchMode,
-        controller.selectedTypeIndex,
+        controller.presentation.selectedTypeIndex,
         controller.mainListGeneration,
         controller.scrollToTopRequestVersion,
-        controller.lastSearch.takeIf { searchMode },
+        controller.presentation.lastSearch.takeIf { searchMode },
     )
     val centerFailure = !searchMode && visibleCount == 0 &&
-        (controller.loadingFailed || controller.loadingFailedServerError)
+        (controller.presentation.loadingFailed || controller.presentation.loadingFailedServerError)
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
     val tapToUpdateExitOffsetPx = with(density) { 8.dp.toPx() }
@@ -154,7 +154,7 @@ internal fun StoriesList(
         WindowInsets.safeDrawing.getTop(density).toDp()
     }
     val pullIndicatorRestingInset = (pullIndicatorTopInset - 32.dp).coerceAtLeast(0.dp)
-    val startInset = with(density) { controller.contentInsetStartPx.toDp() }
+    val startInset = with(density) { controller.presentation.contentInsetStartPx.toDp() }
     // Keep one lazy list throughout header changes. Do not draw its initial zero-padding
     // measurement while the header size is being delivered to the next composition.
     var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
@@ -218,16 +218,16 @@ internal fun StoriesList(
                     contentPadding = PaddingValues(
                         start = startInset,
                         top = headerHeight,
-                        bottom = bottomPadding + if (controller.showRefreshPrompt) 88.dp else 8.dp,
+                        bottom = bottomPadding + if (controller.presentation.showRefreshPrompt) 88.dp else 8.dp,
                     ),
                     footerKey = "${if (searchMode) "search" else "main"}-load-more",
-                    footer = if (controller.showLoadMore) {
+                    footer = if (controller.presentation.showLoadMore) {
                         {
                             Box(
                                 Modifier.fillMaxWidth().padding(20.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (controller.loadMoreLoading) {
+                                if (controller.presentation.loadMoreLoading) {
                                     HarmonicLoadingIndicator(modifier = Modifier.size(40.dp))
                                 } else {
                                     OutlinedButton(
@@ -522,8 +522,8 @@ internal fun StoriesList(
         }
     }
 
-    LaunchedEffect(controller.refreshing) {
-        if (!controller.refreshing) {
+    LaunchedEffect(controller.presentation.refreshing) {
+        if (!controller.presentation.refreshing) {
             controller.finishPullToRefresh()
         }
     }
@@ -531,7 +531,7 @@ internal fun StoriesList(
     if (pullToRefreshEnabled) {
         PullToRefreshBox(
             isRefreshing = controller.pullToRefreshInProgress &&
-                controller.refreshing && !searchMode,
+                controller.presentation.refreshing && !searchMode,
             state = pullToRefreshState,
             indicator = {
                 HarmonicPullToRefreshIndicator(
@@ -544,7 +544,7 @@ internal fun StoriesList(
                                 pullToRefreshState.distanceFraction.coerceIn(0f, 1f),
                         ),
                     isRefreshing = controller.pullToRefreshInProgress &&
-                        controller.refreshing && !searchMode,
+                        controller.presentation.refreshing && !searchMode,
                     state = pullToRefreshState,
                 )
             },

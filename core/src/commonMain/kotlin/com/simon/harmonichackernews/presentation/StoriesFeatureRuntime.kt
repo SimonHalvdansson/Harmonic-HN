@@ -1080,36 +1080,17 @@ class StoriesFeatureRuntime(
                 return@launch
             }
             try {
-                when (
-                    val outcome = savedItemActions.toggleVoteAndExecuteAtomic(
-                        itemId = story.id,
-                        isComment = false,
-                        onPending = { changed(story) },
-                    )
+                val outcome = savedItemActions.toggleVoteAndExecuteAtomic(
+                    itemId = story.id,
+                    isComment = false,
+                    onPending = { changed(story) },
+                )
+                if (outcome is SavedItemActionOutcome.Failure &&
+                    isCurrentActionContext(generation, expectedStore)
                 ) {
-                    is SavedItemActionOutcome.Success -> Unit
-                    is SavedItemActionOutcome.Failure -> {
-                        if (isCurrentActionContext(generation, expectedStore)) changed(story)
-                        emit(
-                            StoriesFeatureEffect.SavedActionFailed(
-                                ActionFailurePresentation(
-                                    result = outcome.result,
-                                    message = "Action unsuccessful, see dialog for response",
-                                    showDetails = true,
-                                ),
-                            ),
-                        )
-                    }
-                    is SavedItemActionOutcome.Indeterminate -> emit(
-                        StoriesFeatureEffect.SavedActionFailed(
-                            ActionFailurePresentation(
-                                result = outcome.result,
-                                message = "Action sent, but HN confirmation was interrupted",
-                                showDetails = true,
-                            ),
-                        ),
-                    )
+                    changed(story)
                 }
+                emitSavedActionFailure(outcome)
             } finally {
                 sessionState.finishPreviewAction(story.id, StoryPreviewActionKind.Vote)
             }
@@ -1127,53 +1108,49 @@ class StoriesFeatureRuntime(
             }
             var wasFavorited = false
             try {
-                when (
-                    val outcome = savedItemActions.toggleFavoriteAndExecuteAtomic(
-                        itemId = story.id,
-                        onPending = { action ->
-                            wasFavorited = action.previousPresent
-                            if (wasFavorited && favoritesList && optimisticIndex >= 0) {
-                                removeStory(story, loadReplacement = true)
-                            } else {
-                                changed(story)
-                            }
-                        },
-                    )
-                ) {
-                    is SavedItemActionOutcome.Success -> Unit
-                    is SavedItemActionOutcome.Failure -> {
-                        if (isCurrentActionContext(generation, expectedStore)) {
-                            if (wasFavorited && favoritesList && !activeStories.contains(story)) {
-                                activeStore.insertAt(optimisticIndex.coerceAtLeast(0), story)
-                                changed()
-                            } else {
-                                changed(story)
-                            }
+                val outcome = savedItemActions.toggleFavoriteAndExecuteAtomic(
+                    itemId = story.id,
+                    onPending = { action ->
+                        wasFavorited = action.previousPresent
+                        if (wasFavorited && favoritesList && optimisticIndex >= 0) {
+                            removeStory(story, loadReplacement = true)
+                        } else {
+                            changed(story)
                         }
-                        emit(
-                            StoriesFeatureEffect.SavedActionFailed(
-                                ActionFailurePresentation(
-                                    result = outcome.result,
-                                    message = "Action unsuccessful, see dialog for response",
-                                    showDetails = true,
-                                ),
-                            ),
-                        )
+                    },
+                )
+                if (outcome is SavedItemActionOutcome.Failure &&
+                    isCurrentActionContext(generation, expectedStore)
+                ) {
+                    if (wasFavorited && favoritesList && !activeStories.contains(story)) {
+                        activeStore.insertAt(optimisticIndex.coerceAtLeast(0), story)
+                        changed()
+                    } else {
+                        changed(story)
                     }
-                    is SavedItemActionOutcome.Indeterminate -> emit(
-                        StoriesFeatureEffect.SavedActionFailed(
-                            ActionFailurePresentation(
-                                result = outcome.result,
-                                message = "Action sent, but HN confirmation was interrupted",
-                                showDetails = true,
-                            ),
-                        ),
-                    )
                 }
+                emitSavedActionFailure(outcome)
             } finally {
                 sessionState.finishPreviewAction(story.id, StoryPreviewActionKind.Favorite)
             }
         }
+    }
+
+    private fun emitSavedActionFailure(outcome: SavedItemActionOutcome) {
+        val presentation = when (outcome) {
+            is SavedItemActionOutcome.Success -> return
+            is SavedItemActionOutcome.Failure -> ActionFailurePresentation(
+                result = outcome.result,
+                message = "Action unsuccessful, see dialog for response",
+                showDetails = true,
+            )
+            is SavedItemActionOutcome.Indeterminate -> ActionFailurePresentation(
+                result = outcome.result,
+                message = "Action sent, but HN confirmation was interrupted",
+                showDetails = true,
+            )
+        }
+        emit(StoriesFeatureEffect.SavedActionFailed(presentation))
     }
 
     fun selectSavedFilter(filter: SavedItemFilter) {

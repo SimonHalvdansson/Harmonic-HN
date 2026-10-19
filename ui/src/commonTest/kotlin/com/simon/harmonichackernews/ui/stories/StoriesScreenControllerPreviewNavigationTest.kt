@@ -74,13 +74,13 @@ class StoriesScreenControllerPreviewNavigationTest {
         )
 
         assertSame(stories, controller.mainStories)
-        assertFalse(controller.showRefreshPrompt)
-        assertEquals("Previous time", controller.lastUpdatedText)
+        assertFalse(controller.presentation.showRefreshPrompt)
+        assertEquals("Previous time", controller.presentation.lastUpdatedText)
 
         controller.updateContent(state, StoriesPlatformPresentation(lastUpdatedText = "New time"))
 
-        assertTrue(controller.showRefreshPrompt)
-        assertEquals("New time", controller.lastUpdatedText)
+        assertTrue(controller.presentation.showRefreshPrompt)
+        assertEquals("New time", controller.presentation.lastUpdatedText)
         assertSame(stories, controller.mainStories)
     }
 
@@ -209,7 +209,7 @@ class StoriesScreenControllerPreviewNavigationTest {
         )
 
         assertSame(retainedStories, controller.mainStories)
-        assertEquals(true, controller.refreshing)
+        assertEquals(true, controller.presentation.refreshing)
         assertEquals(true, controller.previewResource(1)?.imageUrlResolved)
     }
 
@@ -275,7 +275,7 @@ class StoriesScreenControllerPreviewNavigationTest {
 
         controller.updateContent(storiesState(refreshing = true))
 
-        assertTrue(controller.refreshing)
+        assertTrue(controller.presentation.refreshing)
         assertFalse(controller.pullToRefreshInProgress)
 
         controller.beginPullToRefresh()
@@ -283,7 +283,7 @@ class StoriesScreenControllerPreviewNavigationTest {
 
         controller.finishPullToRefresh()
         assertFalse(controller.pullToRefreshInProgress)
-        assertTrue(controller.refreshing)
+        assertTrue(controller.presentation.refreshing)
     }
 
     @Test
@@ -392,13 +392,13 @@ class StoriesScreenControllerPreviewNavigationTest {
         controller.updateContent(cached)
         val cachedGeneration = controller.mainListGeneration
         controller.updateContent(cached.copy(refreshIndicatorShowing = true))
-        assertTrue(controller.showingCached)
+        assertTrue(controller.presentation.showingCached)
         assertEquals(cachedGeneration, controller.mainListGeneration)
         controller.updateContent(cached.copy(mainList = cached.mainList.copy(failure = StoryLoadFailure.GENERAL)))
         assertEquals(cachedGeneration, controller.mainListGeneration)
         controller.updateContent(cached.copy(refreshIndicatorShowing = true))
         controller.updateContent(storiesState(mainStories = listOf(storySnapshot(3))))
-        assertFalse(controller.showingCached)
+        assertFalse(controller.presentation.showingCached)
         assertEquals(cachedGeneration + 1, controller.mainListGeneration)
     }
 

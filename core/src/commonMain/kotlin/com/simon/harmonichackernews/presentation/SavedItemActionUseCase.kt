@@ -80,46 +80,11 @@ class SavedItemActionUseCase(
             repository.contains(SavedItemSource.UPVOTED, itemId)
         }
 
-    fun setBookmarked(itemId: Int, bookmarked: Boolean): Boolean =
-        repository.setMembership(
-            SavedItemSource.BOOKMARKS,
-            itemId,
-            bookmarked,
-            nowMillis(),
-        )
-
-    fun toggleBookmark(itemId: Int): Boolean {
-        val bookmarked = !isBookmarked(itemId)
-        setBookmarked(itemId, bookmarked)
-        return bookmarked
-    }
-
     suspend fun toggleBookmarkAtomic(itemId: Int): Boolean = repository.toggleMembershipAtomic(
         SavedItemSource.BOOKMARKS,
         itemId,
         nowMillis(),
     ).also { repository.releaseMutationToken(it.token) }.currentPresent
-
-    fun beginVote(
-        itemId: Int,
-        isComment: Boolean,
-        direction: String,
-    ): PendingSavedItemAction {
-        require(direction == "up" || direction == "down" || direction == "un")
-        val previous = isUpvoted(itemId, isComment)
-        val action = PendingSavedItemAction(
-            kind = SavedItemActionKind.VOTE,
-            itemId = itemId,
-            isComment = isComment,
-            targetPresent = direction == "up",
-            previousPresent = previous,
-            voteDirection = direction,
-            accountRevision = repository.currentAccountRevision,
-            accountName = repository.currentAccountName,
-        )
-        persist(action, action.targetPresent)
-        return action
-    }
 
     suspend fun beginVoteAtomic(
         itemId: Int,
@@ -217,21 +182,6 @@ class SavedItemActionUseCase(
         createPending = { beginVoteAtomic(itemId, isComment, direction) },
         onPending = onPending,
     )
-
-    fun beginFavorite(itemId: Int, isComment: Boolean = false): PendingSavedItemAction {
-        val previous = isFavorited(itemId)
-        val action = PendingSavedItemAction(
-            kind = SavedItemActionKind.FAVORITE,
-            itemId = itemId,
-            isComment = isComment,
-            targetPresent = !previous,
-            previousPresent = previous,
-            accountRevision = repository.currentAccountRevision,
-            accountName = repository.currentAccountName,
-        )
-        persist(action, action.targetPresent)
-        return action
-    }
 
     suspend fun beginFavoriteAtomic(
         itemId: Int,
@@ -400,30 +350,6 @@ class SavedItemActionUseCase(
         "Hacker News account changed",
         "This action belongs to the previous login. Try again with the current account.",
     )
-
-    private fun persist(action: PendingSavedItemAction, present: Boolean) {
-        when {
-            action.kind == SavedItemActionKind.FAVORITE -> repository.setMembership(
-                SavedItemSource.FAVORITES,
-                action.itemId,
-                present,
-                nowMillis(),
-            )
-
-            action.isComment -> repository.setCommentMembership(
-                SavedItemSource.UPVOTED,
-                action.itemId,
-                present,
-            )
-
-            else -> repository.setMembership(
-                SavedItemSource.UPVOTED,
-                action.itemId,
-                present,
-                nowMillis(),
-            )
-        }
-    }
 
     private suspend fun persistAtomic(action: PendingSavedItemAction, present: Boolean) {
         when {

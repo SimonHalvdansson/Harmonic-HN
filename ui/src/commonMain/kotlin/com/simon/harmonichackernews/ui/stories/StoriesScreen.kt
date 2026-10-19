@@ -296,7 +296,7 @@ fun BoxScope.StoryTapToUpdateButton(
 ) {
     val shape = RoundedCornerShape(16.dp)
     AnimatedVisibility(
-        visible = controller.showRefreshPrompt && !controller.searching &&
+        visible = controller.presentation.showRefreshPrompt && !controller.searching &&
             !controller.tapToUpdateExitInProgress,
         enter = fadeIn(tween(180, easing = StoriesEasing)),
         exit = fadeOut(tween(140, easing = StoriesEasing)),
