@@ -3,6 +3,11 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.HackerNewsApi
+import com.simon.harmonichackernews.network.KtorHackerNewsApi
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import com.simon.harmonichackernews.network.dto.HackerNewsUserDto
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +18,7 @@ import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -24,8 +30,48 @@ import kotlin.test.assertFalse
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRowLoadOrchestratorTest {
     @Test
-    fun simulatedFailureCoversAutomaticRetriesAndManualRetryResamples() = runTest {
-        val api = RetryingApi()
+    fun transportRetryBudgetIsNotMultipliedAndPermanentFailuresAreNotRetried() = runTest {
+        for (status in listOf(HttpStatusCode.ServiceUnavailable, HttpStatusCode.NotFound)) {
+            var attempts = 0
+            val client = HttpClient(MockEngine { attempts++; respond("failure", status) })
+            try {
+                val api = KtorHackerNewsApi(client, requestDispatcher = StandardTestDispatcher(testScheduler))
+                val orchestrator = StoryRowLoadOrchestrator(backgroundScope, api, 30_000) { testScheduler.currentTime }
+                val effects = async { orchestrator.effects.take(1).toList() }
+                runCurrent()
+                val story = Story("Loading", 42, false, false)
+                orchestrator.load(story, false)
+                val failure = assertIs<StoryRowLoadEffect.AttemptFailed>(effects.await().single())
+                assertTrue(failure.finalAttempt)
+                assertTrue(story.loadingFailed)
+                assertEquals(if (status.value == 503) 3 else 1, attempts)
+            } finally { client.close() }
+        }
+    }
+
+    @Test
+    fun transportRecoversWithinItsBudgetBeforePublishingLoadedRow() = runTest {
+        var attempts = 0
+        val client = HttpClient(MockEngine {
+            if (++attempts < 3) respond("unavailable", HttpStatusCode.ServiceUnavailable)
+            else respond("""{"id":42,"type":"story","by":"reader","title":"Recovered"}""")
+        })
+        try {
+            val api = KtorHackerNewsApi(client, requestDispatcher = StandardTestDispatcher(testScheduler))
+            val orchestrator = StoryRowLoadOrchestrator(backgroundScope, api, 30_000) { testScheduler.currentTime }
+            val effects = async { orchestrator.effects.take(1).toList() }
+            runCurrent()
+            val story = Story("Loading", 42, false, false)
+            orchestrator.load(story, false)
+            assertIs<StoryRowLoadEffect.Loaded>(effects.await().single())
+            assertEquals(3, attempts)
+            assertEquals("Recovered", story.title)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun simulatedFailureAndManualRetryResamples() = runTest {
+        val api = SuccessfulApi()
         var fail = true
         var samples = 0
         val orchestrator = StoryRowLoadOrchestrator(
@@ -62,7 +108,7 @@ class StoryRowLoadOrchestratorTest {
     }
 
     @Test
-    fun cachedContentArrivingDuringRetriesRemainsUsableWhenHttpFails() = runTest {
+    fun cachedContentArrivingDuringLoadRemainsUsableWhenHttpFails() = runTest {
         val reply = kotlinx.coroutines.CompletableDeferred<Unit>()
         val api = object : HackerNewsApi {
             override suspend fun getItem(id: Int): HackerNewsItemDto? { reply.await(); error("Offline") }
@@ -106,20 +152,20 @@ class StoryRowLoadOrchestratorTest {
             assertFalse(orchestrator.needsRefresh(1))
             orchestrator.load(story, false)
             runCurrent()
-            assertEquals((it + 1) * 3, attempts)
+            assertEquals(it + 1, attempts)
         }
     }
 
     @Test
-    fun retriesAndStoryMutationAreOwnedByCommonOrchestration() = runTest {
-        val api = RetryingApi()
+    fun successfulLoadAppliesStoryMutationAndPublishesOnce() = runTest {
+        val api = SuccessfulApi()
         val orchestrator = StoryRowLoadOrchestrator(
             scope = backgroundScope,
             hackerNewsApi = api,
             staleLoadMillis = 30_000,
             nowMillis = { testScheduler.currentTime },
         )
-        val effects = async { orchestrator.effects.take(3).toList() }
+        val effects = async { orchestrator.effects.take(1).toList() }
         runCurrent()
         val generation = orchestrator.beginGeneration()
         val story = Story("Loading", 42, false, false)
@@ -128,10 +174,8 @@ class StoryRowLoadOrchestratorTest {
         runCurrent()
 
         val results = effects.await()
-        assertEquals(3, api.attempts)
-        assertIs<StoryRowLoadEffect.AttemptFailed>(results[0])
-        assertIs<StoryRowLoadEffect.AttemptFailed>(results[1])
-        assertIs<StoryRowLoadEffect.Loaded>(results[2])
+        assertEquals(1, api.attempts)
+        assertIs<StoryRowLoadEffect.Loaded>(results.single())
         assertEquals("Shared row", story.title)
         assertTrue(story.loaded)
     }
@@ -183,12 +227,11 @@ class StoryRowLoadOrchestratorTest {
         nowMillis = { testScheduler.currentTime },
     )
 
-    private class RetryingApi : HackerNewsApi {
+    private class SuccessfulApi : HackerNewsApi {
         var attempts = 0
 
         override suspend fun getItem(id: Int): HackerNewsItemDto {
             attempts++
-            if (attempts < 3) error("temporary")
             return HackerNewsItemDto(
                 id = id,
                 type = "story",

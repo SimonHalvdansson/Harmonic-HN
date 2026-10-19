@@ -784,7 +784,7 @@ class StoryRequestsTest {
         runtime.refresh(false); runCurrent()
         worker.runAll(); runCurrent()
         assertEquals(listOf(1 to false), reads)
-        assertEquals(3, attempts)
+        assertEquals(1, attempts)
         worker.runAll(); runCurrent()
         val story = runtime.mainStories.single()
         assertTrue(story.loaded)
@@ -796,7 +796,7 @@ class StoryRequestsTest {
         runtime.loadVisibleStories()
         worker.runAll(); runCurrent()
         assertEquals(listOf(1 to false, 1 to true), reads)
-        assertEquals(3, attempts)
+        assertEquals(1, attempts)
     }
 
     @Test
@@ -827,7 +827,7 @@ class StoryRequestsTest {
         val fresh = CompletableDeferred<HackerNewsItemDto>()
         val api = object : HackerNewsApi by UnusedHackerNewsApi {
             override suspend fun getItem(id: Int): HackerNewsItemDto {
-                if (++attempts <= 3) error("Offline")
+                if (++attempts == 1) error("Offline")
                 return fresh.await()
             }
         }

@@ -36,7 +36,7 @@ sealed interface StoryRowLoadEffect {
     ) : StoryRowLoadEffect
 }
 
-/** Portable owner for story-row request deduplication, retries and stale-generation rejection. */
+/** Story-row request deduplication and stale-generation rejection. Read retries belong to the API. */
 class StoryRowLoadOrchestrator(
     private val scope: CoroutineScope,
     private val hackerNewsApi: HackerNewsApi,
@@ -93,44 +93,36 @@ class StoryRowLoadOrchestrator(
         ) return
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
-                // Sample once per row load, so automatic retries don't dilute the chosen rate.
-                // A manual retry starts a new load and samples again. Retain loaded content.
-                val simulateFailure = !story.loaded && shouldSimulateFailure()
-                for (attempt in 0 until MAX_ATTEMPTS) {
-                    val startedAt = session.markStoryStarted(story.id, nowMillis())
-                    try {
-                        check(!simulateFailure) { "Simulated story load failure" }
-                        val item = hackerNewsApi.getItem(story.id)
-                        if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
-                        session.clearStory(story.id, startedAt)
-                        if (!session.isCurrent(requestGeneration)) return@launch
-                        if (item == null || !item.applyTo(story, preserveTime)) {
-                            mutableEffects.emit(
-                                StoryRowLoadEffect.Rejected(story, requestGeneration),
-                            )
-                            return@launch
-                        }
-                        mutableEffects.emit(StoryRowLoadEffect.Loaded(story, requestGeneration))
+                val startedAt = session.markStoryStarted(story.id, nowMillis())
+                try {
+                    // The API owns the read retry budget. Retrying here would multiply it,
+                    // and would also retry permanent HTTP/decoding failures.
+                    check(story.loaded || !shouldSimulateFailure()) { "Simulated story load failure" }
+                    val item = hackerNewsApi.getItem(story.id)
+                    if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
+                    session.clearStory(story.id, startedAt)
+                    if (!session.isCurrent(requestGeneration)) return@launch
+                    if (item == null || !item.applyTo(story, preserveTime)) {
+                        mutableEffects.emit(StoryRowLoadEffect.Rejected(story, requestGeneration))
                         return@launch
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Throwable) {
-                        if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
-                        session.clearStory(story.id, startedAt)
-                        if (!session.isCurrent(requestGeneration)) return@launch
-                        if (!story.loaded) story.loadingFailed = true
-                        val finalAttempt = attempt == MAX_ATTEMPTS - 1
-                        mutableEffects.emit(
-                            StoryRowLoadEffect.AttemptFailed(
-                                story = story,
-                                generation = requestGeneration,
-                                attempt = attempt,
-                                finalAttempt = finalAttempt,
-                                cause = error,
-                            ),
-                        )
-                        if (finalAttempt) return@launch
                     }
+                    mutableEffects.emit(StoryRowLoadEffect.Loaded(story, requestGeneration))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    if (!session.isCurrentStoryLoad(story.id, startedAt)) return@launch
+                    session.clearStory(story.id, startedAt)
+                    if (!session.isCurrent(requestGeneration)) return@launch
+                    if (!story.loaded) story.loadingFailed = true
+                    mutableEffects.emit(
+                        StoryRowLoadEffect.AttemptFailed(
+                            story = story,
+                            generation = requestGeneration,
+                            attempt = 0,
+                            finalAttempt = true,
+                            cause = error,
+                        ),
+                    )
                 }
             } finally {
                 if (session.isCurrent(requestGeneration)) staleStoryIds.remove(story.id)
@@ -147,9 +139,5 @@ class StoryRowLoadOrchestrator(
         val jobs = jobsByStoryId.values.toList()
         jobsByStoryId.clear()
         jobs.forEach(Job::cancel)
-    }
-
-    private companion object {
-        const val MAX_ATTEMPTS = 3
     }
 }
