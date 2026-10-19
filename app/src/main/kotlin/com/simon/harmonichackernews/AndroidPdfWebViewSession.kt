@@ -5,7 +5,10 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import java.io.IOException
+import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 
 /** Owns the PDF viewer's file reference and JavaScript bridge lifecycle. */
 internal class AndroidPdfWebViewSession {
@@ -30,20 +33,24 @@ internal class AndroidPdfWebViewSession {
     }
 
     fun revokeBridge(view: WebView?) {
-        view?.removeJavascriptInterface(JAVASCRIPT_BRIDGE_NAME)
         bridge?.close()
         bridge = null
+        view?.removeJavascriptInterface(JAVASCRIPT_BRIDGE_NAME)
     }
 
     fun release(view: WebView?, removeJavascriptInterface: Boolean) {
         currentFilePath = null
-        if (removeJavascriptInterface) view?.removeJavascriptInterface(JAVASCRIPT_BRIDGE_NAME)
         bridge?.close()
         bridge = null
+        if (removeJavascriptInterface) view?.removeJavascriptInterface(JAVASCRIPT_BRIDGE_NAME)
     }
 
-    internal class PdfJavascriptBridge(filePath: String) {
-        private val chunkReader = PdfFileChunkReader(java.io.File(filePath))
+    internal class PdfJavascriptBridge(
+        private val chunkReader: PdfFileChunkReader,
+        private val closeExecutor: Executor = Dispatchers.IO.asExecutor(),
+    ) {
+        constructor(filePath: String) : this(PdfFileChunkReader(java.io.File(filePath)))
+
         private val active = AtomicBoolean(true)
 
         @JavascriptInterface
@@ -51,6 +58,7 @@ internal class AndroidPdfWebViewSession {
             if (!active.get()) return ""
             return try {
                 val data = chunkReader.read(begin, end) ?: return ""
+                if (!active.get()) return ""
                 Base64.encodeToString(data, Base64.NO_WRAP)
             } catch (error: IOException) {
                 Log.e(TAG, "Unable to read PDF data", error)
@@ -63,7 +71,7 @@ internal class AndroidPdfWebViewSession {
             get() {
                 if (!active.get()) return 0L
                 return try {
-                    chunkReader.size()
+                    chunkReader.size().takeIf { active.get() } ?: 0L
                 } catch (error: IOException) {
                     Log.e(TAG, "Unable to read PDF size", error)
                     0L
@@ -78,10 +86,15 @@ internal class AndroidPdfWebViewSession {
 
         fun close() {
             if (!active.compareAndSet(true, false)) return
-            try {
-                chunkReader.close()
-            } catch (error: IOException) {
-                Log.e(TAG, "Unable to close PDF data", error)
+            // A JavaScript read holds the reader's monitor during disk I/O. Revoke access now,
+            // but wait for that read and close the file away from the UI. This task must outlive
+            // the screen's cancelled coroutine scope so navigating away cannot leak the file.
+            closeExecutor.execute {
+                try {
+                    chunkReader.close()
+                } catch (error: IOException) {
+                    Log.e(TAG, "Unable to close PDF data", error)
+                }
             }
         }
 
