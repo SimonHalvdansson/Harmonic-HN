@@ -13,9 +13,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -23,6 +31,7 @@ import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -225,22 +234,29 @@ private fun SummaryMarkdownSingleText(
             )
         }
     }
-    val displayed = if (fadeRange == null || fadeAlpha.value >= 1f) {
-        rendered
-    } else {
-        buildAnnotatedString {
-            append(rendered)
-            addStyle(
-                SpanStyle(color = color.copy(alpha = color.alpha * fadeAlpha.value)),
-                fadeRange.first,
-                fadeRange.last + 1,
-            )
-        }
-    }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val fading by remember(fadeAlpha) { derivedStateOf { fadeAlpha.value < 1f } }
+    val fadeModifier = if (fadeRange != null && fading) Modifier
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithCache {
+            // Text may add link styles to its layout input. Match characters, not annotations.
+            val path = layout?.takeIf { it.layoutInput.text.text == rendered.text }
+                ?.getPathForRange(fadeRange.first, fadeRange.last + 1)
+            onDrawWithContent {
+                drawContent()
+                // Read animation state only while drawing. Keep text, links and layout stable.
+                if (path != null) drawPath(
+                    path, Color.Black, alpha = 1f - fadeAlpha.value, blendMode = BlendMode.DstOut,
+                )
+            }
+        } else Modifier
     Text(
-        onTextLayout = { onOverflowChanged?.invoke(it.hasVisualOverflow) },
-        text = displayed,
-        modifier = modifier,
+        onTextLayout = {
+            layout = it
+            onOverflowChanged?.invoke(it.hasVisualOverflow)
+        },
+        text = rendered,
+        modifier = modifier.then(fadeModifier),
         color = color,
         fontFamily = fontFamily,
         fontSize = fontSize,

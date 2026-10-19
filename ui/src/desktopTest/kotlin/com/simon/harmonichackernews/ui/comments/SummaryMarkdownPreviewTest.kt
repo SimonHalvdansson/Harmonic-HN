@@ -21,6 +21,55 @@ import kotlin.test.assertTrue
 
 class SummaryMarkdownPreviewTest {
     @Test
+    fun streamingFadePreservesExistingTextLayoutAndFinalLinkColors() = SwingUtilities.invokeAndWait {
+        val markdown = mutableStateOf("Existing ")
+        val streaming = mutableStateOf(true)
+        var layouts = 0
+        val scene = ImageComposeScene(400, 100, Density(1f)) {
+            Box(Modifier.fillMaxSize().background(Color.White)) {
+                SummaryMarkdownText(markdown.value, Color.Black, Color.Blue, FontFamily.SansSerif,
+                    18.sp, 24.sp, {}, animateStreamingText = streaming.value,
+                    onOverflowChanged = { layouts++ })
+            }
+        }
+        var time = 0L
+        fun frame() = scene.render(time.also { time += 16_000_000 }).use {
+            it.toComposeImageBitmap().toPixelMap()
+        }
+        fun ink(pixels: androidx.compose.ui.graphics.PixelMap, startX: Int): Float {
+            var total = 0f
+            for (y in 0 until 40) for (x in startX until 400) {
+                total += 1f - pixels[x, y].red
+            }
+            return total
+        }
+        try {
+            repeat(20) { frame() }
+            markdown.value = "Existing **new** [link](https://example.com)"
+            repeat(2) { frame() }
+            val early = frame()
+            val layoutCount = layouts
+            repeat(5) { frame() }
+            val middle = frame()
+            repeat(15) { frame() }
+            val final = frame()
+            assertEquals(layoutCount, layouts, "Alpha-only frames must not relayout text")
+            assertTrue(ink(early, 90) < ink(middle, 90),
+                "New text must fade in: ${ink(early, 90)}, ${ink(middle, 90)}, ${ink(final, 90)}")
+            assertTrue(ink(middle, 90) <= ink(final, 90))
+            for (y in 0 until 40) for (x in 0 until 65) {
+                assertEquals(final[x, y], early[x, y], "Existing text must not fade")
+            }
+            streaming.value = false
+            repeat(3) { frame() }
+            val static = frame()
+            for (y in 0 until 40) for (x in 0 until 400) {
+                assertEquals(static[x, y], final[x, y], "Streaming must preserve final span/link colors")
+            }
+        } finally { scene.close() }
+    }
+
+    @Test
     fun collapsedListsKeepMarkerSpacingAndHangingIndentWithAGlobalLineLimit() = SwingUtilities.invokeAndWait {
         for (marker in listOf("-", "10.")) {
             val expanded = mutableStateOf(true)

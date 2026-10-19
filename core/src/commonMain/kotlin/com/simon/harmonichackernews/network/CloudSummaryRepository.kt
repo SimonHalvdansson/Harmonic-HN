@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -164,8 +165,8 @@ class KtorCloudSummaryRepository(
         body: HttpResponseBody,
         anthropic: Boolean,
         onProgress: suspend (String) -> Unit,
-    ): String {
-        val summary = StringBuilder()
+    ): String = coroutineScope {
+        val summary = StreamingSummaryText(this, MAX_SUMMARY_RESPONSE_BYTES, onProgress)
         val eventData = StringBuilder()
         val plainResponse = StringBuilder()
         var sawSseData = false
@@ -179,7 +180,6 @@ class KtorCloudSummaryRepository(
                         eventData.toString(),
                         anthropic,
                         summary,
-                        onProgress,
                     )
                     eventData.clear()
                 }
@@ -203,27 +203,23 @@ class KtorCloudSummaryRepository(
         }
         if (!complete && eventData.isNotEmpty()) {
             sawSseData = true
-            complete = appendStreamEvent(eventData.toString(), anthropic, summary, onProgress)
+            complete = appendStreamEvent(eventData.toString(), anthropic, summary)
         }
         if (sawSseData && !complete) {
             throw CloudSummaryException("Response ended before completion. Please try again.")
         }
-        if (!sawSseData && summary.isEmpty() && plainResponse.isNotEmpty()) {
-            appendChunk(
-                summary,
-                parseNonStreamingResponse(plainResponse.toString(), anthropic),
-                onProgress,
-            )
+        if (!sawSseData && plainResponse.isNotEmpty()) {
+            summary.append(parseNonStreamingResponse(plainResponse.toString(), anthropic))
         }
-        if (summary.isEmpty()) throw CloudSummaryException("API response error")
-        return summary.toString()
+        summary.finish().also {
+            if (it.isEmpty()) throw CloudSummaryException("API response error")
+        }
     }
 
     private suspend fun appendStreamEvent(
         data: String,
         anthropic: Boolean,
-        summary: StringBuilder,
-        onProgress: suspend (String) -> Unit,
+        summary: StreamingSummaryText,
     ): Boolean {
         if (!anthropic && data == "[DONE]") return true
         val event = parseCloudSummaryObject(data, "Invalid streaming response")
@@ -231,7 +227,7 @@ class KtorCloudSummaryRepository(
             throw CloudSummaryException(apiErrorMessage(data, "Streaming request failed"))
         }
         val chunk = parseCloudSummaryStreamChunk(event, anthropic)
-        appendChunk(summary, chunk, onProgress)
+        summary.append(chunk)
         return if (anthropic) {
             event.string("type") == "message_stop"
         } else {
@@ -245,19 +241,6 @@ class KtorCloudSummaryRepository(
             parseCloudSummaryObject(responseBody, "Invalid API response"),
             anthropic,
         )
-
-    private suspend fun appendChunk(
-        summary: StringBuilder,
-        chunk: String,
-        onProgress: suspend (String) -> Unit,
-    ) {
-        if (chunk.isEmpty()) return
-        if (summary.length + chunk.length > MAX_SUMMARY_RESPONSE_BYTES) {
-            throw CloudSummaryException("Summary exceeded the response limit")
-        }
-        summary.append(chunk)
-        onProgress(summary.toString())
-    }
 
     private fun buildPayload(
         anthropic: Boolean,

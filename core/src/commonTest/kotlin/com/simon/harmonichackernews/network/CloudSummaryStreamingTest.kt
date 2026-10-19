@@ -27,6 +27,21 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CloudSummaryStreamingTest {
     @Test
+    fun fastTokenBurstCoalescesProgressAndPreservesTheCompleteResponse() = runTest {
+        val body = buildString {
+            repeat(100) { append("data: {\"choices\":[{\"delta\":{\"content\":\"x\"}}]}\n\n") }
+            append("data: [DONE]\n\n")
+        }
+        val transport = HttpClient(MockEngine { respond(body) })
+        try {
+            val events = KtorCloudSummaryRepository(KtorHttpClient(transport), "test", StandardTestDispatcher(testScheduler))
+                .summarize(streamConfig(false), "Article").toList()
+            assertEquals(listOf(CloudSummaryEvent.Progress("x")), events.filterIsInstance<CloudSummaryEvent.Progress>())
+            assertEquals(CloudSummaryEvent.Success("x".repeat(100)), events.last())
+        } finally { transport.close() }
+    }
+
+    @Test
     fun prematureEofNeverPublishesSuccessForEitherProvider() = runTest {
         for (anthropic in listOf(false, true)) for (ending in listOf("", "\n\n")) {
             val chunk = if (anthropic) {
