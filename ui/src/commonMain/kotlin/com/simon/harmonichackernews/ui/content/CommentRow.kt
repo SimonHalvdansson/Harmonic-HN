@@ -229,8 +229,20 @@ fun CommentRow(
         animationSpec = if (style.animateChanges) contentTween() else snap(),
         label = "comment preview indicator color",
     )
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     CommentSurface(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = verticalPadding),
+        modifier = modifier.fillMaxWidth().drawBehind {
+            if (style.showDivider) {
+                // Keep the divider in the preview's bottom gap, outside the comment surface.
+                val thickness = 1.dp.toPx()
+                val inset = 16.dp.toPx()
+                drawRect(
+                    color = dividerColor,
+                    topLeft = Offset(inset, size.height - verticalPadding.toPx() / 2 - thickness),
+                    size = Size((size.width - inset * 2).coerceAtLeast(0f), thickness),
+                )
+            }
+        }.padding(horizontal = 8.dp, vertical = verticalPadding),
         style = style,
         showIndicator = style.depthIndicatorMode != "none",
         indicatorColor = indicatorColor,
