@@ -3,7 +3,10 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,6 +15,57 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class ReplyNotificationUseCaseTest {
+    @Test
+    fun disablingWhilePreparingNotificationsDiscardsTheBatch() = runTest {
+        val scanner = FakeReplyScanner().apply {
+            scanResult = ReplyScanResult(listOf(HackerNewsReply(150, 1, "alice", "Reply")), 150)
+        }
+        val platform = RecordingNotificationPlatform()
+        val runtime = ReplyNotificationRuntime(
+            ReplyNotificationUseCase(scanner, subscribedStore()),
+            platform,
+            presentationDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        val checking = async(start = CoroutineStart.UNDISPATCHED) { runtime.checkNow() }
+        assertFalse(checking.isCompleted)
+
+        runtime.disable()
+
+        assertEquals(ReplyCheckResult.Disabled, checking.await())
+        assertTrue(platform.published.isEmpty())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkWaitsForDeliveryAndCancellationReachesThePublisher() = runTest {
+        val scanner = FakeReplyScanner().apply {
+            scanResult = ReplyScanResult(listOf(HackerNewsReply(150, 1, "alice", "Reply")), 150)
+        }
+        val delivery = CompletableDeferred<Unit>()
+        var publishing = false
+        val platform = object : ReplyNotificationPlatform {
+            override fun prepareNotifications() = Unit
+            override fun scheduleChecks(schedule: ReplyNotificationSchedule) = Unit
+            override fun cancelChecks() = Unit
+            override suspend fun publish(batch: ReplyNotificationBatch) {
+                publishing = true
+                try { delivery.await() } finally { publishing = false }
+            }
+        }
+        val runtime = ReplyNotificationRuntime(
+            ReplyNotificationUseCase(scanner, subscribedStore()), platform,
+            presentationDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        val checking = async(start = CoroutineStart.UNDISPATCHED) { runtime.checkNow() }
+        assertTrue(publishing)
+        assertFalse(checking.isCompleted)
+
+        checking.cancel()
+        checking.join()
+
+        assertFalse(publishing)
+    }
+
     @Test
     fun enablingNormalizesTheUsernameAndPersistsTheServerBaseline() = runTest {
         val scanner = FakeReplyScanner().apply {
@@ -187,7 +241,7 @@ class ReplyNotificationUseCaseTest {
         override fun prepareNotifications() = Unit
         override fun scheduleChecks(schedule: ReplyNotificationSchedule) { scheduledChecks++ }
         override fun cancelChecks() = Unit
-        override fun publish(batch: ReplyNotificationBatch) { published += batch }
+        override suspend fun publish(batch: ReplyNotificationBatch) { published += batch }
     }
 
     private class FakeReplyScanner : ReplyScanner {

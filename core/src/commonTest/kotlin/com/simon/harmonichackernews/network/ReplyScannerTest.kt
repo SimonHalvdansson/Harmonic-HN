@@ -9,6 +9,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,7 +37,7 @@ class ReplyScannerTest {
                 }
             } finally { active-- }
         }
-        val result = DefaultReplyScanner(api, clock).scan("me", 50)
+        val result = DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler)).scan("me", 50)
         assertEquals(listOf(400, 300, 301, 200, 201, 100, 101), result.replies.map { it.id })
         assertEquals(listOf(4, 3, 3, 2, 2, 1, 1), result.replies.map { it.parentId })
         assertEquals(401, result.lastSeenItemId)
@@ -66,7 +67,7 @@ class ReplyScannerTest {
                 else -> null
             }
         }
-        val scanner = DefaultReplyScanner(api, clock)
+        val scanner = DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler))
         val result = scanner.scan("me", 50)
         assertEquals(listOf(100), result.replies.map { it.id })
         assertEquals(107, result.lastSeenItemId)
@@ -82,7 +83,9 @@ class ReplyScannerTest {
             active++
             try { awaitCancellation() } finally { active-- }
         }
-        val scan = async { DefaultReplyScanner(api, clock).scan("me", 50) }
+        val scan = async {
+            DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler)).scan("me", 50)
+        }
         runCurrent()
         assertEquals(4, active)
         scan.cancel()

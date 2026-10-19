@@ -4,6 +4,9 @@ import com.simon.harmonichackernews.settings.ReplyNotificationFrequency
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.utils.HackerNewsLinks
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -57,7 +60,8 @@ interface ReplyNotificationPlatform {
     fun prepareNotifications()
     fun scheduleChecks(schedule: ReplyNotificationSchedule)
     fun cancelChecks()
-    fun publish(batch: ReplyNotificationBatch)
+    /** Completes after delivery; implementations must keep blocking platform calls off the caller. */
+    suspend fun publish(batch: ReplyNotificationBatch)
 }
 
 /** Common notification copy, grouping, ordering and deep-link policy. */
@@ -65,7 +69,7 @@ object ReplyNotificationPresentation {
     fun present(replies: List<HackerNewsReply>): ReplyNotificationBatch {
         val ordered = replies.distinctBy(HackerNewsReply::id).sortedBy(HackerNewsReply::id)
         if (ordered.isEmpty()) return ReplyNotificationBatch(emptyList())
-        val notifications = ordered.map(::individual)
+        val notifications = ordered.takeLast(MAX_INDIVIDUAL_NOTIFICATIONS).map(::individual)
         if (notifications.size == 1) return ReplyNotificationBatch(notifications)
 
         val latest = ordered.last()
@@ -94,6 +98,7 @@ object ReplyNotificationPresentation {
     }
 
     const val SUMMARY_NOTIFICATION_ID = 98_373
+    const val MAX_INDIVIDUAL_NOTIFICATIONS = 5
 }
 
 /** Common subscription, checkpoint and failure workflow for reply notifications. */
@@ -102,7 +107,8 @@ class ReplyNotificationUseCase(
     private val store: KeyValueStore,
 ) {
     private val checkMutex = Mutex()
-    private var subscriptionRevision = 0L
+    internal var subscriptionRevision = 0L
+        private set
 
     val configuredUsername: String
         get() = store.getString(ReplyNotificationKeys.USERNAME).orEmpty().trim()
@@ -200,6 +206,7 @@ class ReplyNotificationUseCase(
 class ReplyNotificationRuntime(
     private val useCase: ReplyNotificationUseCase,
     private val platform: ReplyNotificationPlatform,
+    private val presentationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val configuredUsername: String get() = useCase.configuredUsername
     val isEnabled: Boolean get() = useCase.isEnabled
@@ -227,10 +234,19 @@ class ReplyNotificationRuntime(
         platform.cancelChecks()
     }
 
-    suspend fun checkNow(): ReplyCheckResult = useCase.check().also { result ->
+    suspend fun checkNow(): ReplyCheckResult {
+        val revision = useCase.subscriptionRevision
+        val result = useCase.check()
         if (result is ReplyCheckResult.Success) {
-            platform.publish(ReplyNotificationPresentation.present(result.replies))
+            val batch = withContext(presentationDispatcher) {
+                ReplyNotificationPresentation.present(result.replies)
+            }
+            // Preparing a large backlog suspends the owner. Settings may disable or replace
+            // the subscription during that time; never publish that obsolete batch.
+            if (revision != useCase.subscriptionRevision) return ReplyCheckResult.Disabled
+            platform.publish(batch)
         }
+        return result
     }
 
     suspend fun publishLatest(username: String?): LatestReplyLookupResult =

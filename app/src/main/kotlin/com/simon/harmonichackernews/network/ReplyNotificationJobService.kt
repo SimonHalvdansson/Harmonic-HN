@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.network
 
 import android.app.job.JobParameters
 import android.app.job.JobService
+import android.util.Log
 import com.simon.harmonichackernews.harmonicAppComposition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -10,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel as cancelScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ReplyNotificationJobService : JobService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -19,14 +21,22 @@ class ReplyNotificationJobService : JobService() {
         checkJob?.cancel()
         checkJob = serviceScope.launch {
             try {
-                val result = checkNotNull(
-                    this@ReplyNotificationJobService.harmonicAppComposition.replyNotifications,
-                ).checkNow()
+                // A background launch can be the first graph consumer. Do not block the
+                // JobService callback on preference migration or platform initialization.
+                val runtime = withContext(Dispatchers.IO) {
+                    checkNotNull(this@ReplyNotificationJobService.harmonicAppComposition.replyNotifications)
+                }
+                // Subscription/checkpoint mutations retain the same owner as Settings.
+                // Scanning, presentation and native publication dispatch their heavy work.
+                val result = runtime.checkNow()
                 val success = result !is ReplyCheckResult.Failed &&
                     result != ReplyCheckResult.UserNotFound
                 jobFinished(params, !success)
             } catch (error: CancellationException) {
                 throw error
+            } catch (error: Exception) {
+                Log.e("ReplyNotifications", "Unable to complete reply check", error)
+                jobFinished(params, true)
             }
         }
         return true

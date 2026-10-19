@@ -3,9 +3,12 @@ package com.simon.harmonichackernews.network
 import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.network.dto.HackerNewsItemDto
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.time.Clock
 
@@ -42,6 +45,7 @@ class DefaultReplyScanner(
     private val api: HackerNewsApi,
     private val clock: Clock = Clock.System,
     private val maxSubmissionsPerCheck: Int = 1_000,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ReplyScanner {
     override suspend fun initialize(username: String): ReplySubscriptionBaseline? {
         val normalized = normalizeUsername(username)
@@ -87,7 +91,7 @@ class DefaultReplyScanner(
         username: String,
         submitted: List<Int>,
         minimumId: Int,
-    ): ScannedReplies = coroutineScope {
+    ): ScannedReplies = withContext(dispatcher) {
         val replies = mutableListOf<HackerNewsReply>()
         var highestProcessedId = minimumId
         // Only prefetch a small batch: older submissions terminate the scan. Await in source

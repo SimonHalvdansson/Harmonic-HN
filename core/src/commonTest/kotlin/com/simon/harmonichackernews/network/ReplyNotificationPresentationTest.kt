@@ -6,6 +6,16 @@ import kotlin.test.assertNull
 
 class ReplyNotificationPresentationTest {
     @Test
+    fun largeBacklogsKeepTheNewestRepliesAndSummarizeTheFullCount() {
+        val replies = (1..100).map { HackerNewsReply(it, 200, "alice", "Reply $it") }
+        val batch = ReplyNotificationPresentation.present(replies.reversed() + replies)
+
+        assertEquals(listOf(96, 97, 98, 99, 100), batch.notifications.map { it.id })
+        assertEquals("100 new replies", batch.summary?.title)
+        assertEquals("https://news.ycombinator.com/item?id=200#100", batch.summary?.deepLink)
+    }
+
+    @Test
     fun presentsOneReplyWithoutGroupSummary() {
         val batch = ReplyNotificationPresentation.present(
             listOf(HackerNewsReply(12, 10, "alice", "Hello")),

@@ -17,10 +17,17 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 
 /** Android scheduler and notification renderer for the application-scoped common runtime. */
 internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotificationPlatform {
     private val appContext = context.applicationContext
+    private val largeIcon by lazy {
+        BitmapFactory.decodeResource(appContext.resources, R.mipmap.ic_launcher)
+    }
 
     override fun prepareNotifications() {
         val channel = NotificationChannel(
@@ -51,15 +58,16 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
             ?.cancel(JOB_ID)
     }
 
-    override fun publish(batch: ReplyNotificationBatch) {
-        if (batch.notifications.isEmpty() || !canPostNotifications()) return
+    override suspend fun publish(batch: ReplyNotificationBatch): Unit = withContext(Dispatchers.IO) {
+        if (batch.notifications.isEmpty() || !canPostNotifications()) return@withContext
         if (batch.summary == null) {
             publishOne(batch.notifications.single(), grouped = false)
-            return
+            return@withContext
         }
         try {
             val manager = NotificationManagerCompat.from(appContext)
             batch.notifications.forEach { notification ->
+                currentCoroutineContext().ensureActive()
                 manager.notify(notification.id, buildNotification(notification, true).build())
             }
             val summary = checkNotNull(batch.summary)
@@ -69,9 +77,7 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
             }
             val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_comment)
-                .setLargeIcon(
-                    BitmapFactory.decodeResource(appContext.resources, R.mipmap.ic_launcher),
-                )
+                .setLargeIcon(largeIcon)
                 .setContentTitle(summary.title)
                 .setContentText(summary.body)
                 .setStyle(style)
@@ -82,6 +88,7 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
                 .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
                 .setAutoCancel(true)
                 .build()
+            currentCoroutineContext().ensureActive()
             manager.notify(GROUP_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
             // Permission can be revoked between the common runtime request and native publish.
@@ -105,7 +112,7 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
         grouped: Boolean,
     ): NotificationCompat.Builder = NotificationCompat.Builder(appContext, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_comment)
-        .setLargeIcon(BitmapFactory.decodeResource(appContext.resources, R.mipmap.ic_launcher))
+        .setLargeIcon(largeIcon)
         .setContentTitle(notification.title)
         .setContentText(notification.body)
         .setStyle(NotificationCompat.BigTextStyle().bigText(notification.body))
