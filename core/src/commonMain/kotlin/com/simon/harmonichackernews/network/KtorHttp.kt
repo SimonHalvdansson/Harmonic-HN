@@ -299,7 +299,7 @@ class HttpResponse internal constructor(
 
     internal suspend fun bufferedCopy(maxBytes: Int): HttpResponse = HttpResponse(
         delegate,
-        HttpResponseBody(ByteReadChannel(body.readBytes(maxBytes)), delegate.headers),
+        HttpResponseBody(body.readBytes(maxBytes), delegate.headers),
     )
 
     override fun close() {
@@ -309,10 +309,17 @@ class HttpResponse internal constructor(
     override fun toString(): String = "HTTP $code $message"
 }
 
-class HttpResponseBody internal constructor(
-    private val channel: ByteReadChannel,
+class HttpResponseBody private constructor(
+    private var channel: ByteReadChannel?,
+    private var bufferedBytes: ByteArray?,
     private val headers: io.ktor.http.Headers,
 ) : AutoCloseable {
+    internal constructor(channel: ByteReadChannel, headers: io.ktor.http.Headers) :
+        this(channel, null, headers)
+
+    internal constructor(bytes: ByteArray, headers: io.ktor.http.Headers) :
+        this(null, bytes, headers)
+
     fun contentLength(): Long = headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: -1L
 
     fun contentType(): HttpMediaType? = headers[HttpHeaders.ContentType]?.let(::HttpMediaType)
@@ -324,6 +331,14 @@ class HttpResponseBody internal constructor(
         require(maxBytes > 0) { "maxBytes must be positive" }
         val declaredLength = contentLength()
         if (declaredLength > maxBytes) throw HttpBodyLimitException(maxBytes, declaredLength)
+        bufferedBytes?.let { bytes ->
+            if (bytes.size > maxBytes) throw HttpBodyLimitException(maxBytes, bytes.size.toLong())
+            // Transfer the owned buffer once. Do not round-trip it through another channel.
+            bufferedBytes = null
+            channel = ByteReadChannel.Empty
+            return bytes
+        }
+        val channel = readableChannel()
         val bytes = channel.readBuffer(maxBytes.toLong() + 1L).readByteArray()
         // Ktor's bounded read can finish without throwing an already-closed channel's error.
         channel.closedCause?.let { throw it }
@@ -335,16 +350,26 @@ class HttpResponseBody internal constructor(
         buffer: ByteArray,
         offset: Int = 0,
         length: Int = buffer.size,
-    ): Int = channel.readAvailable(buffer, offset, length)
+    ): Int = readableChannel().readAvailable(buffer, offset, length)
 
     @Suppress("DEPRECATION")
     suspend fun readUtf8Line(maxChars: Int = DEFAULT_MAX_LINE_CHARS): String? {
         require(maxChars > 0) { "maxChars must be positive" }
-        return channel.readUTF8Line(maxChars)
+        return readableChannel().readUTF8Line(maxChars)
     }
 
     override fun close() {
-        channel.cancel()
+        bufferedBytes = null
+        channel?.cancel()
+        channel = ByteReadChannel.Empty
+    }
+
+    // Chunk/line consumers retain channel semantics, including reads after a partial read.
+    private fun readableChannel(): ByteReadChannel = channel ?: ByteReadChannel(
+        checkNotNull(bufferedBytes),
+    ).also {
+        channel = it
+        bufferedBytes = null
     }
 
     private companion object {
