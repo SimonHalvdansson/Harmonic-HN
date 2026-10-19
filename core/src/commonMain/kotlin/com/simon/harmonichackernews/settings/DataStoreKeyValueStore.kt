@@ -86,7 +86,7 @@ class DataStoreKeyValueStore private constructor(
     override fun getStringSet(key: String): Set<String> =
         snapshot.value.preferences[stringSetPreferencesKey(key)]?.toSet() ?: emptySet()
 
-    override fun clear() = edit { clear() }
+    override fun clear() = edit(unchanged = { it.asMap().isEmpty() }) { clear() }
     override fun remove(key: String) = update { remove(key) }
     override fun putString(key: String, value: String?) = update { putString(key, value) }
     override fun putBoolean(key: String, value: Boolean) = update { putBoolean(key, value) }
@@ -97,28 +97,41 @@ class DataStoreKeyValueStore private constructor(
 
     override fun update(block: KeyValueStore.Editor.() -> Unit) {
         // Evaluate callers once, before publishing anything. CAS retries only replay immutable edits.
-        val operations = mutableListOf<MutablePreferences.() -> Unit>()
+        val operations = mutableMapOf<String, PreferenceEdit>()
+        fun <T> set(key: Preferences.Key<T>, value: T?) {
+            operations[key.name] = PreferenceEdit(
+                unchanged = { it[key] == value },
+                apply = { if (value == null) remove(key) else this[key] = value },
+            )
+        }
         block(object : KeyValueStore.Editor {
-            override fun remove(key: String) { operations += { remove(stringPreferencesKey(key)) } }
+            override fun remove(key: String) = set(stringPreferencesKey(key), null)
             override fun putString(key: String, value: String?) {
-                if (value == null) remove(key) else operations.add { this[stringPreferencesKey(key)] = value }
+                set(stringPreferencesKey(key), value)
             }
-            override fun putBoolean(key: String, value: Boolean) { operations += { this[booleanPreferencesKey(key)] = value } }
-            override fun putInt(key: String, value: Int) { operations += { this[intPreferencesKey(key)] = value } }
-            override fun putLong(key: String, value: Long) { operations += { this[longPreferencesKey(key)] = value } }
-            override fun putFloat(key: String, value: Float) { operations += { this[floatPreferencesKey(key)] = value } }
+            override fun putBoolean(key: String, value: Boolean) = set(booleanPreferencesKey(key), value)
+            override fun putInt(key: String, value: Int) = set(intPreferencesKey(key), value)
+            override fun putLong(key: String, value: Long) = set(longPreferencesKey(key), value)
+            override fun putFloat(key: String, value: Float) = set(floatPreferencesKey(key), value)
             override fun putStringSet(key: String, value: Set<String>?) {
-                val copy = value?.toSet()
-                if (copy == null) remove(key) else operations.add { this[stringSetPreferencesKey(key)] = copy }
+                set(stringSetPreferencesKey(key), value?.toSet())
             }
         })
-        edit { operations.forEach { it() } }
+        edit(unchanged = { current -> operations.values.all { it.unchanged(current) } }) {
+            operations.values.forEach { it.apply(this) }
+        }
     }
 
-    private fun edit(block: MutablePreferences.() -> Unit) {
+    private data class PreferenceEdit(
+        val unchanged: (Preferences) -> Boolean,
+        val apply: MutablePreferences.() -> Unit,
+    )
+
+    private fun edit(unchanged: (Preferences) -> Boolean, block: MutablePreferences.() -> Unit) {
         check(writer.isActive) { "Preference writer is closed" }
         snapshot.update { current ->
-            Snapshot(current.revision + 1, current.preferences.toMutablePreferences().apply(block).toPreferences())
+            if (unchanged(current.preferences)) current else
+                Snapshot(current.revision + 1, current.preferences.toMutablePreferences().apply(block).toPreferences())
         }
     }
 

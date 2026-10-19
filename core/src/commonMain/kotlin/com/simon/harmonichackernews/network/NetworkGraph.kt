@@ -52,7 +52,7 @@ class ResettableAuthenticatedHttpClientProvider(
  */
 class NetworkGraph internal constructor(
     private val transport: NetworkTransport,
-    scope: CoroutineScope,
+    internal val scope: CoroutineScope,
     private val authenticatedClientProvider: AuthenticatedHttpClientProvider,
     val userAgent: String = "Harmonic-HN",
     private val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,

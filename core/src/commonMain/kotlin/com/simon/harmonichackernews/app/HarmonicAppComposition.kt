@@ -99,7 +99,7 @@ class HarmonicAppComposition(
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser
     }
-    val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore))
+    val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore), network.scope)
     val contentFilters = ContentFilterRepository(host.settingsStore)
     // User tags share the persistent content store with bookmarks, including Android 3.1 data.
     val userTags = UserTagsRepository(host.appDataStore)

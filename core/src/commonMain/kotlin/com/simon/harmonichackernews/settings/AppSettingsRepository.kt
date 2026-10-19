@@ -3,9 +3,12 @@ package com.simon.harmonichackernews.settings
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.data.LinkPreviewType
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.shareIn
 
 /** Typed story toggles accepted by [StoredSettingsMutator]. */
 enum class StoryBooleanPreference(internal val storageKey: String) {
@@ -95,6 +98,7 @@ enum class DebugBooleanPreference(internal val storageKey: String) {
 class AppSettingsRepository(
     private val reader: UserSettings,
     private val mutator: StoredSettingsMutator,
+    scope: CoroutineScope? = null,
 ) {
     constructor(
         store: KeyValueStore,
@@ -103,6 +107,7 @@ class AppSettingsRepository(
         showCommentsUpButtonByDefault: Boolean = false,
         preloadCommentsFromStoriesByDefault: Boolean = false,
         defaultSurfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
+        scope: CoroutineScope? = null,
     ) : this(
         reader = StoredUserSettings(
             store,
@@ -113,6 +118,7 @@ class AppSettingsRepository(
             defaultSurfaceEffectMode,
         ),
         mutator = StoredSettingsMutator(store),
+        scope = scope,
     )
 
     fun snapshot(): AppSettings = AppSettings(
@@ -125,10 +131,18 @@ class AppSettingsRepository(
         debug = reader.debug,
     )
 
-    val updates: Flow<AppSettings> = flow {
+    private val snapshotUpdates: Flow<AppSettings> = flow {
         emit(snapshot())
         reader.changes.collect { emit(snapshot()) }
     }.distinctUntilChanged()
+
+    // Application hosts share one projection. Unscoped previews/tests keep a cold flow;
+    // starting observation never opens storage while merely constructing the graph.
+    val updates: Flow<AppSettings> = if (scope == null) snapshotUpdates else snapshotUpdates.shareIn(
+        scope,
+        started = SharingStarted.WhileSubscribed(replayExpirationMillis = 0),
+        replay = 1,
+    )
 
     fun setStoryBoolean(preference: StoryBooleanPreference, value: Boolean) =
         mutator.setStoryBoolean(preference, value)

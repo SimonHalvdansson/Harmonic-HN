@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -19,6 +20,49 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DataStoreKeyValueStoreTest {
+    @Test
+    fun unchangedAndNetUnchangedEditsDoNotPublishOrWrite() = runTest {
+        val disk = TestDataStore()
+        val store = DataStoreKeyValueStore.open(disk, backgroundScope)
+        var notifications = 0
+        backgroundScope.launch { store.changes.collect { notifications++ } }
+        runCurrent()
+        store.update {
+            putInt("count", 7)
+            putStringSet("set", setOf("a", "b"))
+        }
+        store.awaitPersisted()
+        runCurrent()
+        val initialNotifications = notifications
+        val initialWrites = disk.writes
+        repeat(10) {
+            store.putInt("count", 7)
+            store.putStringSet("set", setOf("b", "a"))
+            store.remove("absent")
+            store.update { putInt("count", 8); putInt("count", 7) }
+            store.update { putString("absent", "temporary"); remove("absent") }
+            store.update { }
+            runCurrent()
+        }
+        store.awaitPersisted()
+        assertEquals(initialNotifications, notifications)
+        assertEquals(initialWrites, disk.writes)
+        // An absent value differs from an explicitly stored default, and key types may change.
+        store.putInt("zero", 0)
+        store.putString("count", "seven")
+        store.remove("set")
+        store.awaitPersisted()
+        assertTrue(store.contains("zero"))
+        assertEquals("seven", store.getString("count"))
+        assertFalse(store.contains("set"))
+        store.clear()
+        store.awaitPersisted()
+        val afterClear = disk.writes
+        store.clear()
+        runCurrent()
+        assertEquals(afterClear, disk.writes)
+    }
+
     @Test
     fun editsStayVisibleAndOrderedWhileDiskIsBlocked() = runTest {
         val disk = TestDataStore()
@@ -81,8 +125,10 @@ class DataStoreKeyValueStoreTest {
     private class TestDataStore : DataStore<Preferences> {
         override val data = MutableStateFlow(emptyPreferences())
         var beforeWrite: suspend () -> Unit = {}
+        var writes = 0
         override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
             beforeWrite()
+            writes++
             return transform(data.value).also { data.value = it }
         }
     }

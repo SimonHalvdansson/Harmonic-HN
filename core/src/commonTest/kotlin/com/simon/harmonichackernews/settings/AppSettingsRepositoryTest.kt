@@ -11,8 +11,47 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 
 class AppSettingsRepositoryTest {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun scopedObserversShareSnapshotsAndResumeWithFreshSettings() = runTest {
+        val store = InMemoryKeyValueStore()
+        val delegate = StoredUserSettings(store, store.changes, { null }, false, false)
+        var projections = 0
+        val reader = object : UserSettings by delegate {
+            override val story: StoryPreferences get() = delegate.story.also { projections++ }
+        }
+        val repository = AppSettingsRepository(reader, StoredSettingsMutator(store), backgroundScope)
+        assertEquals(0, projections)
+        val first = mutableListOf<AppSettings>()
+        val second = mutableListOf<AppSettings>()
+        val a = backgroundScope.launch { repository.updates.toList(first) }
+        val b = backgroundScope.launch { repository.updates.toList(second) }
+        runCurrent()
+        assertEquals(1, projections)
+        repository.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        runCurrent()
+        assertEquals(2, projections)
+        assertEquals(first, second)
+        assertFalse(first.last().story.showPoints)
+        a.cancel()
+        b.cancel()
+        runCurrent()
+        repository.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, true)
+        runCurrent()
+        assertEquals(2, projections)
+        val resumed = mutableListOf<AppSettings>()
+        backgroundScope.launch { repository.updates.toList(resumed) }
+        runCurrent()
+        assertEquals(3, projections)
+        assertEquals(1, resumed.size)
+        assertTrue(resumed.single().story.showPoints)
+    }
+
     @Test
     fun hideDeadCommentsDefaultsOnAndPersistsIndependentlyOfDelayedComments() {
         val store = TestKeyValueStore()
