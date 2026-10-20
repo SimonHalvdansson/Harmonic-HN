@@ -46,7 +46,7 @@ class StoryPreviewGestureTest {
     @Test fun shortSwipesPageEquallyInsideAndOutsideCard() {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
         // Preview reconciliation requires IDs from the active feed.
-        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.presentation.loading }
         val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
         val stories = ids.mapIndexed { index, id ->
             StoryListItemSnapshot(StorySnapshot(id, title = "Equal paging ${index + 1}"),
@@ -84,7 +84,7 @@ class StoryPreviewGestureTest {
     private fun assertPagesAfterSwipe(insideCard: Boolean) {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
         // Preview reconciliation requires IDs from the active feed.
-        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.presentation.loading }
         val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
         val stories = ids.mapIndexed { index, id ->
             StoryListItemSnapshot(
@@ -120,7 +120,7 @@ class StoryPreviewGestureTest {
     private fun assertHeldDrag(insideCard: Boolean, direction: Float, cancelled: Boolean = false) {
         val controller = requireNotNull(compose.activity.navigationController.storiesComposeController)
         // Preview reconciliation requires IDs from the active feed.
-        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.loading }
+        compose.waitUntil(20_000) { controller.mainStories.size >= 3 && !controller.presentation.loading }
         val ids = compose.runOnIdle { controller.mainStories.take(3).map { it.id } }
         val stories = ids.mapIndexed { index, id ->
             StoryListItemSnapshot(
