@@ -12,8 +12,11 @@ class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = StoriesGlanceWidget()
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        appWidgetIds.forEach {
+            WidgetSchedulingDiagnostics(context, it).recordAndroidUpdate()
+            WidgetRefreshWorker.enqueue(context, it, source = "Android update")
+        }
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        appWidgetIds.forEach { WidgetRefreshWorker.enqueue(context, it) }
     }
 
     override fun onReceive(context: Context, intent: Intent) {

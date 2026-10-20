@@ -27,6 +27,7 @@ import androidx.glance.appwidget.*
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.components.CircleIconButton
 import androidx.glance.layout.*
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -37,6 +38,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.color.ColorProvider
+import androidx.work.WorkManager
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.MainActivity
@@ -100,6 +102,12 @@ class StoriesGlanceWidget : GlanceAppWidget() {
             val width = state[WidgetState.width] ?: android.appwidget.AppWidgetManager.getInstance(context)
                 .getAppWidgetOptions(widgetId).getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280)
             val entries = remember(state[WidgetState.content]) { decodeWidgetEntries(state[WidgetState.content]) }
+            val schedulingDiagnostics = if (settings.debug.showWidgetDebugInfo) {
+                val workInfos by remember(context, widgetId) {
+                    WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WidgetRefreshWorker.workName(widgetId))
+                }.collectAsState(initial = emptyList())
+                WidgetSchedulingDiagnostics(context, widgetId).snapshot(workInfos, state[WidgetState.updated])
+            } else null
             val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, app.userSettings.story.paletteTintConfigKey) {
                 value = withContext(Dispatchers.IO) {
                     entries.associate { entry ->
@@ -160,16 +168,20 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                         style = TextStyle(color = colors.textSecondary, fontSize = WidgetTypography.METADATA_SIZE.sp, fontFamily = fontFamily),
                         maxLines = 4)
                 }
-                if (settings.debug.showWidgetDebugInfo) {
+                if (schedulingDiagnostics != null) {
                     val diagnostics = buildString {
-                        append("Widget $widgetId · last refresh snapshot\n")
+                        append("Widget $widgetId · diagnostics (tap to inspect)\n")
+                        append("$schedulingDiagnostics\nLast fetch snapshot:\n")
                         append(state[WidgetState.debug].orEmpty())
                         if (error != null) append("\nRefresh failed: $error")
-                        else state[WidgetState.lastFailure]?.let { append("\nPrevious failure: $it") }
+                        else state[WidgetState.lastFailure]?.let {
+                            append("\nPrevious failure: ${it.lineSequence().first()}\n${it.lineSequence().last()}")
+                        }
                     }
                     Text(diagnostics,
-                        GlanceModifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp),
-                        style = TextStyle(color = colors.textSecondary, fontSize = 10.sp, fontFamily = fontFamily), maxLines = 14)
+                        GlanceModifier.fillMaxWidth().clickable(actionRunCallback<InspectWidgetDiagnosticsAction>())
+                            .padding(horizontal = 16.dp).padding(bottom = 6.dp),
+                        style = TextStyle(color = colors.textSecondary, fontSize = 10.sp, fontFamily = fontFamily), maxLines = 20)
                 }
                 LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
                     itemsIndexed(entries, itemId = { _, entry -> entry.destination.storyId.toLong() }) { index, entry ->
@@ -337,7 +349,15 @@ internal fun widgetStoryIntent(context: Context, destination: StoryDestination):
 
 class RefreshStoriesAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        WidgetRefreshWorker.enqueue(context, GlanceAppWidgetManager(context).getAppWidgetId(glanceId))
+        WidgetRefreshWorker.enqueue(context, GlanceAppWidgetManager(context).getAppWidgetId(glanceId), source = "manual")
+    }
+}
+
+/** Inspect scheduling without replacing a pending refresh or erasing its retry evidence. */
+class InspectWidgetDiagnosticsAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        updateAppWidgetState(context, glanceId) { it[WidgetState.debugInspection] = System.currentTimeMillis() }
+        StoriesGlanceWidget().update(context, glanceId)
     }
 }
 

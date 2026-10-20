@@ -38,6 +38,7 @@ internal object WidgetState {
     val width = intPreferencesKey("width")
     val debug = stringPreferencesKey("debug")
     val lastFailure = stringPreferencesKey("lastFailure")
+    val debugInspection = longPreferencesKey("debugInspection")
 }
 
 internal data class WidgetEntry(val destination: StoryDestination, val imagePath: String?, val tintPath: String?, val faviconPath: String?)
@@ -56,6 +57,9 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
     override suspend fun doWork(): Result {
         val widgetId = inputData.getInt(WIDGET_ID, -1)
         if (widgetId < 0) return Result.failure()
+        if (!inputData.getBoolean(RESIZE_ONLY, false)) {
+            WidgetSchedulingDiagnostics(applicationContext, widgetId).recordStarted(id, runAttemptCount)
+        }
         return withWidgetStorage(widgetId) { refresh(widgetId) }
     }
 
@@ -226,16 +230,18 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     .setInputData(workDataOf(WIDGET_ID to widgetId, RESIZE_ONLY to true)).build(),
             )
         }
-        fun enqueue(context: Context, widgetId: Int) {
+        fun enqueue(context: Context, widgetId: Int, source: String = "app") {
+            val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
+                .setInputData(workDataOf(WIDGET_ID to widgetId))
+                // Let JobScheduler wait for network access for this app, including Doze.
+                // Otherwise a run without a usable network consumes the DNS retry budget.
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WIDGET_REFRESH_BACKOFF_SECONDS, TimeUnit.SECONDS)
+                .build()
+            WidgetSchedulingDiagnostics(context, widgetId).recordEnqueued(request.id, source)
             WorkManager.getInstance(context).enqueueUniqueWork(
                 workName(widgetId), ExistingWorkPolicy.REPLACE,
-                OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
-                    .setInputData(workDataOf(WIDGET_ID to widgetId))
-                    // Let JobScheduler wait for network access for this app, including Doze.
-                    // Otherwise a run without a usable network consumes the DNS retry budget.
-                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WIDGET_REFRESH_BACKOFF_SECONDS, TimeUnit.SECONDS)
-                    .build(),
+                request,
             )
         }
         internal fun imageDirectory(context: Context, widgetId: Int) = File(context.cacheDir, "widget-images/$widgetId")

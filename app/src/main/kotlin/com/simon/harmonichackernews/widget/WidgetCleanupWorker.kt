@@ -38,6 +38,7 @@ class WidgetCleanupWorker(context: Context, parameters: WorkerParameters) : Coro
                 return@withWidgetStorage Result.success()
             }
             context.harmonicAppComposition.widgets.clear(id)
+            WidgetSchedulingDiagnostics(context, id).clear()
             if (WidgetRefreshWorker.imageDirectory(context, id).deleteRecursively()) Result.success()
             else Result.retry()
         }

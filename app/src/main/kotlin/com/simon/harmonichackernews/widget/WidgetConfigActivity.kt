@@ -136,7 +136,7 @@ class WidgetConfigActivity : ComponentActivity() {
 
     private fun confirmConfiguration(configuration: WidgetConfiguration) {
         widgets.save(appWidgetId, configuration)
-        WidgetRefreshWorker.enqueue(this, appWidgetId)
+        WidgetRefreshWorker.enqueue(this, appWidgetId, source = "configuration")
 
         val resultValue = Intent()
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
