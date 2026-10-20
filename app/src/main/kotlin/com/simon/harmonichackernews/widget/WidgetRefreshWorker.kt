@@ -243,6 +243,9 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 workName(widgetId), ExistingWorkPolicy.REPLACE,
                 request,
             )
+            // Publish queued diagnostics even when no Glance session is active and the
+            // network-constrained refresh cannot start. This render needs no network.
+            enqueueResize(context, widgetId)
         }
         internal fun imageDirectory(context: Context, widgetId: Int) = File(context.cacheDir, "widget-images/$widgetId")
     }
