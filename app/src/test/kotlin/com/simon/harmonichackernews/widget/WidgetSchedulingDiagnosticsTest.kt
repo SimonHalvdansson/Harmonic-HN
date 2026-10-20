@@ -1,11 +1,14 @@
 package com.simon.harmonichackernews.widget
 
 import android.app.Application
+import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.WorkInfo
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -100,6 +103,39 @@ class WidgetSchedulingDiagnosticsTest {
         assertTrue(empty.contains("Job: not recorded"))
         assertTrue(empty.contains("Last success: not recorded"))
         assertTrue(other.snapshot(emptyList(), null, now = 3_000).contains("Android update: 01-01 00:00:02"))
+    }
+
+    @Test
+    fun offlineRenderOfAnotherFeedClearsPreviousStoriesAndRecoveryState() {
+        val state = mutablePreferencesOf(
+            WidgetState.feed to "old-feed", WidgetState.content to "saved stories",
+            WidgetState.updated to 1_000L, WidgetState.debug to "old fetch",
+            WidgetState.lastFailure to "old failure", WidgetState.error to "offline",
+            WidgetState.refreshing to true, WidgetState.retryScheduled to true,
+            WidgetState.width to 280,
+        )
+        state.reconcileWidgetFeed("new-feed")
+        assertEquals("new-feed", state[WidgetState.feed])
+        assertNull(state[WidgetState.content])
+        assertNull(state[WidgetState.updated])
+        assertNull(state[WidgetState.debug])
+        assertNull(state[WidgetState.lastFailure])
+        assertNull(state[WidgetState.error])
+        assertEquals(false, state[WidgetState.refreshing])
+        assertEquals(false, state[WidgetState.retryScheduled])
+        assertEquals(280, state[WidgetState.width])
+    }
+
+    @Test
+    fun offlineRenderOfTheSameFeedPreservesSavedStoriesAndRecoveryState() {
+        val state = mutablePreferencesOf(
+            WidgetState.feed to "same-feed", WidgetState.content to "saved stories",
+            WidgetState.updated to 1_000L, WidgetState.error to "offline",
+            WidgetState.retryScheduled to true,
+        )
+        val before = state.toPreferences()
+        state.reconcileWidgetFeed("same-feed")
+        assertEquals(before, state.toPreferences())
     }
 
     private fun work(

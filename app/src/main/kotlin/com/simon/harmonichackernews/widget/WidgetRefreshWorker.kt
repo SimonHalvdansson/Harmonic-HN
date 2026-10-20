@@ -41,6 +41,16 @@ internal object WidgetState {
     val debugInspection = longPreferencesKey("debugInspection")
 }
 
+/** Offline renders must not relabel saved stories and failures from another feed. */
+internal fun MutablePreferences.reconcileWidgetFeed(feedUrl: String) {
+    if (this[WidgetState.feed] == feedUrl) return
+    listOf(WidgetState.content, WidgetState.debug, WidgetState.lastFailure, WidgetState.error).forEach(::remove)
+    remove(WidgetState.updated)
+    this[WidgetState.refreshing] = false
+    this[WidgetState.retryScheduled] = false
+    this[WidgetState.feed] = feedUrl
+}
+
 internal data class WidgetEntry(val destination: StoryDestination, val imagePath: String?, val tintPath: String?, val faviconPath: String?)
 
 internal fun decodeWidgetEntries(value: String?): List<WidgetEntry> = try {
@@ -68,28 +78,24 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
         if (AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId) == null) return Result.success()
         val app = context.harmonicAppComposition
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(widgetId)
+        val configuration = app.widgets.configuration(widgetId)
         if (inputData.getBoolean(RESIZE_ONLY, false)) {
             val width = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
                 .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280)
-            updateAppWidgetState(context, glanceId) { it[WidgetState.width] = width }
+            updateAppWidgetState(context, glanceId) {
+                it.reconcileWidgetFeed(configuration.feedUrl)
+                it[WidgetState.width] = width
+            }
             StoriesGlanceWidget().update(context, glanceId)
             return Result.success()
         }
-        val configuration = app.widgets.configuration(widgetId)
         val started = SystemClock.elapsedRealtime()
         fun diagnostics(outcome: String) = widgetRefreshDiagnostics(
             context, runAttemptCount, SystemClock.elapsedRealtime() - started, outcome,
         )
         try {
             updateAppWidgetState(context, glanceId) { state ->
-                // Never label a previous feed's stories as the newly selected feed.
-                if (state[WidgetState.feed] != configuration.feedUrl) {
-                    state.remove(WidgetState.content)
-                    state.remove(WidgetState.updated)
-                    state.remove(WidgetState.debug)
-                    state.remove(WidgetState.lastFailure)
-                }
-                state[WidgetState.feed] = configuration.feedUrl
+                state.reconcileWidgetFeed(configuration.feedUrl)
                 state[WidgetState.refreshing] = true
                 state[WidgetState.retryScheduled] = false
                 state.remove(WidgetState.error)
