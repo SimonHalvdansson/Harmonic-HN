@@ -230,7 +230,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     .setInputData(workDataOf(WIDGET_ID to widgetId, RESIZE_ONLY to true)).build(),
             )
         }
-        fun enqueue(context: Context, widgetId: Int, source: String = "app") {
+        fun enqueue(context: Context, widgetId: Int, source: String = "app", renderQueued: Boolean = true) {
             val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
                 .setInputData(workDataOf(WIDGET_ID to widgetId))
                 // Let JobScheduler wait for network access for this app, including Doze.
@@ -245,7 +245,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
             )
             // Publish queued diagnostics even when no Glance session is active and the
             // network-constrained refresh cannot start. This render needs no network.
-            enqueueResize(context, widgetId)
+            if (renderQueued) enqueueResize(context, widgetId)
         }
         internal fun imageDirectory(context: Context, widgetId: Int) = File(context.cacheDir, "widget-images/$widgetId")
     }

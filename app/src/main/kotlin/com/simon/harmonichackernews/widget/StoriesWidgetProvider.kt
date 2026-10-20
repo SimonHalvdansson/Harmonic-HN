@@ -14,7 +14,8 @@ class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach {
             WidgetSchedulingDiagnostics(context, it).recordAndroidUpdate()
-            WidgetRefreshWorker.enqueue(context, it, source = "Android update")
+            // super.onUpdate already requests a Glance render for this broadcast.
+            WidgetRefreshWorker.enqueue(context, it, source = "Android update", renderQueued = false)
         }
         super.onUpdate(context, appWidgetManager, appWidgetIds)
     }
