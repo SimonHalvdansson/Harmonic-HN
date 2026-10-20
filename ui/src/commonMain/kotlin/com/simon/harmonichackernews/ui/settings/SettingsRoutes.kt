@@ -554,6 +554,13 @@ fun CommentsSettingsRoute(
             { dialog = null },
             presenter::setVolumeNavigation,
         )
+        CommentsSettingsDialog.HiddenComments -> HiddenCommentsDialog(
+            hideFlaggedComments = state.hideFlaggedComments,
+            hideDeadComments = state.hideDeadComments,
+            hideDelayedComments = state.hideDelayedComments,
+            onBooleanChanged = presenter::setBoolean,
+            onDismiss = { dialog = null },
+        )
         CommentsSettingsDialog.Preload -> PreloadCommentsDialog(
             initialMode = settings.comments.preloadCommentsMode,
             initialBattery = settings.comments.preloadCommentsMinimumBattery,

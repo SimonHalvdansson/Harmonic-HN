@@ -95,7 +95,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
 
-enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, Preload }
+enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, Preload, HiddenComments }
 
 @Composable
 fun CommentsSettingsScreen(
@@ -209,31 +209,12 @@ fun CommentsSettingsScreen(
                 SettingsDivider()
                 BooleanRow("Auto-collapse top level comments", Res.drawable.ic_minimize, state.collapseTopLevel, CommentsBooleanSetting.CollapseTopLevel, onBooleanChanged)
                 SettingsDivider()
-                BooleanRow(
-                    "Hide delayed comments",
-                    Res.drawable.ic_visibility_off,
-                    state.hideDelayedComments,
-                    CommentsBooleanSetting.HideDelayedComments,
-                    onBooleanChanged,
-                    summary = "Hides comments whose text is exactly [delayed]",
-                )
-                SettingsDivider()
-                BooleanRow(
-                    "Hide dead comments",
-                    Res.drawable.ic_visibility_off,
-                    state.hideDeadComments,
-                    CommentsBooleanSetting.HideDeadComments,
-                    onBooleanChanged,
-                    summary = "Hides comments whose text is exactly [dead]",
-                )
-                SettingsDivider()
-                BooleanRow(
-                    "Hide flagged comments",
-                    Res.drawable.ic_visibility_off,
-                    state.hideFlaggedComments,
-                    CommentsBooleanSetting.HideFlaggedComments,
-                    onBooleanChanged,
-                    summary = "Hides comments whose text is exactly [flagged]",
+                DialogRow(
+                    title = "Hide comments",
+                    summary = "Flagged, dead and delayed comments",
+                    icon = Res.drawable.ic_visibility_off,
+                    dialog = CommentsSettingsDialog.HiddenComments,
+                    onDialogRequested = onDialogRequested,
                 )
                 SettingsDivider()
                 SettingRow(
