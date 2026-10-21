@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -62,8 +63,10 @@ fun CommentsHeaderMetadata(
     onReplyClick: () -> Unit = {},
     upvoted: Boolean = false,
     voteLoading: Boolean = false,
+    commented: Boolean = false,
     headerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
+    val commentIcon = if (commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment
     if (!story.loaded || settings.headerMetaInfo == com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.ON_IMAGE) return
     val typography = rememberContentTypography(settings.font)
     val combineActions = settings.combineHeaderActions && settings.hasAccountDetails
@@ -101,13 +104,15 @@ fun CommentsHeaderMetadata(
                     loading = voteLoading, selected = upvoted, onClick = onVoteClick,
                 )
                 HeaderDetailButton(
-                    icon = Res.drawable.ic_comment, label = story.descendants.toString(),
-                    description = if (story.isComment) "Reply to comment" else "Reply to post",
+                    icon = commentIcon, label = story.descendants.toString(),
+                    description = (if (story.isComment) "Reply to comment" else "Reply to post") +
+                        if (commented) ", you commented" else "",
                     typography = typography, textStyle = textStyle,
                     headerColor = headerColor,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 24.dp, bottomEnd = 24.dp),
                     enabled = !AgePolicy.isOlderThanTwoWeeks(story.createdAtEpochSeconds),
+                    highlighted = commented,
                     onClick = onReplyClick,
                 )
             }
@@ -130,7 +135,7 @@ fun CommentsHeaderMetadata(
             if (!story.isComment) {
                 HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography, textStyle)
             }
-            HeaderMetaItem(Res.drawable.ic_comment, story.descendants.toString(), typography, textStyle)
+            HeaderMetaItem(commentIcon, story.descendants.toString(), typography, textStyle, highlighted = commented)
             HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle)
             HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography, textStyle)
 
@@ -159,6 +164,8 @@ private fun HeaderDetailButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     selected: Boolean = false,
+    /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
+    highlighted: Boolean = false,
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -187,7 +194,10 @@ private fun HeaderDetailButton(
                     transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
                     label = "header detail button icon") { (visibleIcon, busy) ->
                     if (busy) HarmonicLoadingIndicator(Modifier.size(18.dp))
-                    else Icon(painterResource(visibleIcon), null, Modifier.size(18.dp))
+                    else Icon(
+                        painterResource(visibleIcon), null, Modifier.size(18.dp),
+                        tint = if (highlighted) colors.primary else LocalContentColor.current,
+                    )
                 }
                 if (label.isNotEmpty()) {
                     Text(label, Modifier.padding(start = 6.dp).weight(1f, fill = false),
@@ -207,13 +217,14 @@ private fun HeaderMetaItem(
     typography: ContentTypography,
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painterResource(icon),
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             label,

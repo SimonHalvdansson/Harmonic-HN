@@ -106,11 +106,14 @@ private fun HeaderMetricItems(
             headerColor = headerColor,
         )
     }
+    val commented = controller.storyCommented
     ImageMetric(
-        icon = Res.drawable.ic_comment, count = story.descendants,
-        description = "${story.descendants} comments",
+        icon = if (commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment,
+        count = story.descendants,
+        description = "${story.descendants} comments" + if (commented) ", you commented" else "",
         settings = settings, hazeState = hazeState, textStyle = textStyle,
         headerColor = headerColor,
+        highlighted = commented,
     )
 }
 
@@ -125,6 +128,8 @@ private fun ImageMetric(
     headerColor: Color,
     selected: Boolean = false,
     loading: Boolean = false,
+    /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
+    highlighted: Boolean = false,
 ) {
     val typography = rememberContentTypography(settings.font)
     val onImage = hazeState != null
@@ -152,7 +157,10 @@ private fun ImageMetric(
                 transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
                 label = "image metric state") { (visibleIcon, busy) ->
                 if (busy) HarmonicLoadingIndicator(Modifier.size(14.dp))
-                else Icon(painterResource(visibleIcon), null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface)
+                else Icon(
+                    painterResource(visibleIcon), null, Modifier.size(14.dp),
+                    tint = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
             }
             Text(compactStoryMetric(count), Modifier.weight(1f, fill = false),
                 color = MaterialTheme.colorScheme.onSurface, fontFamily = typography.family,

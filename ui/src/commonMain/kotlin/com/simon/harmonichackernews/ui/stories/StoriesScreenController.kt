@@ -93,6 +93,8 @@ class StoriesScreenController private constructor(
     val presentation: StoriesScreenPresentation get() = shellState
     var canHidePosts by mutableStateOf(false)
         private set
+    var commentedStoryIds by mutableStateOf<Set<Int>>(emptySet())
+        private set
     var contentVersion by mutableIntStateOf(0)
         private set
     var scrollToTopRequestVersion by mutableIntStateOf(0)
@@ -186,6 +188,7 @@ class StoriesScreenController private constructor(
         val structureChanged = !sameStoryIds(mainStoriesState, state.mainList.items) ||
             !sameStoryIds(searchStoriesState, state.searchList.items)
         canHidePosts = state.canHidePosts
+        commentedStoryIds = state.commentedStoryIds
         newStoriesFilter = state.newStoriesFilter
         canFilterNewStories = !state.searching && state.currentType == StoryType.NEW_STORIES
         if (!canFilterNewStories) dismissNewStoriesFilterDialog()

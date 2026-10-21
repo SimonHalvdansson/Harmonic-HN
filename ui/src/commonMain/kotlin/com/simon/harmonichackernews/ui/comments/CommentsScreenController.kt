@@ -45,6 +45,7 @@ data class CommentsScreenState(
     val contentInsetLeftPx: Int = 0,
     val contentInsetRightPx: Int = 0,
     val storyVoteLoading: Boolean = false,
+    val storyCommented: Boolean = false,
     val storyFavoriteLoading: Boolean = false,
     val pollVoteInFlightOptionId: Int? = null,
     val storySummaryLoading: Boolean = false,
@@ -114,6 +115,7 @@ class CommentsScreenController private constructor(
     val showSheetControls: Boolean get() = screenState.showSheetControls
     val currentSorting: String get() = screenState.currentSorting
     val storyVoteLoading: Boolean get() = screenState.storyVoteLoading
+    val storyCommented: Boolean get() = screenState.storyCommented
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
     val storySummaryLoading: Boolean get() = screenState.storySummaryLoading

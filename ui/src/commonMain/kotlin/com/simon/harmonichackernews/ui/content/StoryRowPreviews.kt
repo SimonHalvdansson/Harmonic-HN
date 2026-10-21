@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_drop_up
 import com.simon.harmonichackernews.resources.ic_comment
+import com.simon.harmonichackernews.resources.ic_comment_filled
 import com.simon.harmonichackernews.ui.common.onSecondaryClick
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -179,7 +180,9 @@ internal fun StoryMediumPreviewRail(
     }
     val pointsDescription = "${model.points} ${if (model.points == 1) "point" else "points"}"
     val commentsDescription =
-        "${model.commentCount} ${if (model.commentCount == 1) "comment" else "comments"}"
+        "${model.commentCount} ${if (model.commentCount == 1) "comment" else "comments"}" +
+            if (style.commented) ", you commented" else ""
+    val commentIcon = if (style.commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment
 
     Box(
         modifier = modifier
@@ -300,19 +303,20 @@ internal fun StoryMediumPreviewRail(
                         exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
                     ) {
                         StoryMetricPill(
-                            icon = Res.drawable.ic_comment,
+                            icon = commentIcon,
                             text = model.commentCount
                                 .takeIf { showCommentText }
                                 ?.let(::compactStoryMetric),
                             contentDescription = if (showCommentText) {
                                 commentsDescription
                             } else {
-                                "Comments"
+                                if (style.commented) "Comments, you commented" else "Comments"
                             },
                             typography = typography,
                             dimAlpha = dimAlpha,
                             hazeState = hazeState,
                             iconSize = 12.dp,
+                            highlighted = style.commented,
                         )
                     }
                 }
@@ -364,18 +368,19 @@ internal fun StoryMediumPreviewRail(
                     exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
                 ) {
                     StoryMetricPill(
-                        icon = Res.drawable.ic_comment,
+                        icon = commentIcon,
                         text = model.commentCount
                             .takeIf { showCommentText }
                             ?.let(::compactStoryMetric),
                         contentDescription = if (showCommentText) {
                             commentsDescription
                         } else {
-                            "Comments"
+                            if (style.commented) "Comments, you commented" else "Comments"
                         },
                         typography = typography,
                         dimAlpha = dimAlpha,
                         iconSize = 12.dp,
+                        highlighted = style.commented,
                     )
                 }
             }
