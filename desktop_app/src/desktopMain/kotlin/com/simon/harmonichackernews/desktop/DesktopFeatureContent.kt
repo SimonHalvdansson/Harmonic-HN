@@ -114,6 +114,7 @@ internal fun DesktopEditorContent(
                 scope = scope,
                 type = destination.type,
                 itemId = destination.itemId,
+                rootStoryId = destination.rootStoryId,
             ),
         )
     }

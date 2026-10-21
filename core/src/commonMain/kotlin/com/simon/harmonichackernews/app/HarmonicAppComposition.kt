@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.app
 
+import com.simon.harmonichackernews.data.CommentedStoriesStore
 import com.simon.harmonichackernews.data.HiddenPostsStore
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.network.StoryFeedRepository
@@ -110,6 +111,12 @@ class HarmonicAppComposition(
         }
     }
     val hiddenPosts = HiddenPostsStore(host.appDataStore)
+    val commentedStories = CommentedStoriesStore(
+        storage = host.appDataStore,
+        algolia = network.algoliaRepository,
+        currentUser = { platform.accounts.awaitAccount()?.username },
+        nowMillis = nowMillis,
+    )
     val storyResourceTints = host.storyResourceTints ?: StoryResourceTintRepository(host.appDataStore)
     val aiSummarySettings = AiSummarySettingsRepository(
         store = host.settingsStore,
