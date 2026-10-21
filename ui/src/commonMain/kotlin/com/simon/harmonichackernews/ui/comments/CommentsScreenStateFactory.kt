@@ -41,6 +41,8 @@ object CommentsScreenStateFactory {
             lastRefreshed = state.lastLoadedMillis,
             opThreadFilterEnabled = thread.opThreadFilterEnabled,
             hasCommentsByOp = thread.hasCommentsByOp,
+            userThreadFilterEnabled = thread.userThreadFilterEnabled,
+            hasCommentsByUser = thread.hasCommentsByUser,
             adBlockActive = platform.adBlockActive,
             integratedWebView = settings.integratedWebView && platform.integratedWebViewAvailable,
             readerModeAvailable = platform.readerModeAvailable,

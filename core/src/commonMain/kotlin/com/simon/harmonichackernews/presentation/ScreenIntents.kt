@@ -69,6 +69,7 @@ enum class CommentsMoreAction {
     TOGGLE_BOOKMARK,
     SEARCH,
     COMMENTS_BY_OP,
+    COMMENTS_BY_ME,
     OPEN_BROWSER,
     DISABLE_AD_BLOCK,
     ARCHIVE_ORG,

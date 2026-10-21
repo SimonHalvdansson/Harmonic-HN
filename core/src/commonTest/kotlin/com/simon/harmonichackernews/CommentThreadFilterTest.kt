@@ -28,6 +28,25 @@ class CommentThreadFilterTest {
         )
     }
 
+    @Test
+    fun anyAuthorCanBeFiltered() {
+        val comments = listOf(
+            comment(0, 0, 0, null),
+            comment(1, -1, 0, "someone"),
+            comment(2, 1, 1, "me"),
+            comment(3, 2, 2, "someone"),
+            comment(4, -1, 0, "someone"),
+        )
+
+        assertEquals(true, CommentThreadFilter.hasCommentsBy("me", comments))
+        assertEquals(false, CommentThreadFilter.hasCommentsBy("nobody", comments))
+        assertEquals(false, CommentThreadFilter.hasCommentsBy(null, comments))
+        assertEquals(
+            listOf(0, 1, 2, 3),
+            CommentThreadFilter.buildThreadListFor("me", comments).map(Comment::id),
+        )
+    }
+
     private fun comment(id: Int, parent: Int, depth: Int, author: String?) = Comment().also {
         it.id = id
         it.parent = parent

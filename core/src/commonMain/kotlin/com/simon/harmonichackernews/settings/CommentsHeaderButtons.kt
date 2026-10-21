@@ -6,6 +6,7 @@ enum class CommentsHeaderButton(val label: String) {
     BOOKMARK("Bookmark"), SUMMARIZE("Summarize"), SHARE("Share"), REFRESH("Refresh"),
     SIDE_BY_SIDE("Read side by side"), OPEN_PARENT("Open parent"), OPEN_TOP_LEVEL("Open top level"),
     SEARCH("Search comments"), SORT("Sort comments"), COMMENTS_BY_OP("Comments by OP"),
+    COMMENTS_BY_ME("Comments by me"),
     OPEN_BROWSER("Open in browser"), DISABLE_AD_BLOCK("Disable AdBlock"), ARCHIVE("View on archive");
 
     val configurable: Boolean get() = this != OPEN_PARENT && this != OPEN_TOP_LEVEL

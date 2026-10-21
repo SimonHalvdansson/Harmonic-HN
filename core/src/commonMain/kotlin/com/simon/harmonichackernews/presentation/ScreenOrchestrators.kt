@@ -116,6 +116,7 @@ object CommentsUiOrchestrator {
         action: CommentsMoreAction,
         story: Story,
         opThreadFilterEnabled: Boolean,
+        userThreadFilterEnabled: Boolean = false,
     ): FeatureDecision<CommentsAction, CommentsPlatformEffect> = when (action) {
         CommentsMoreAction.REFRESH -> FeatureDecision()
         CommentsMoreAction.OPEN_PARENT -> itemEffect(story.parentId)
@@ -125,7 +126,7 @@ object CommentsUiOrchestrator {
             refreshState = true,
         )
         CommentsMoreAction.SEARCH -> FeatureDecision(
-            actions = listOf(CommentsAction.ResetOpThreadFilter),
+            actions = listOf(CommentsAction.ResetOpThreadFilter, CommentsAction.ResetUserThreadFilter),
             effects = listOf(CommentsPlatformEffect.ShowSearch),
             refreshState = true,
             refreshNavigation = true,
@@ -135,6 +136,15 @@ object CommentsUiOrchestrator {
                 CommentsAction.ResetOpThreadFilter
             } else {
                 CommentsAction.EnableOpThreadFilter
+            },
+            refreshState = true,
+            refreshNavigation = true,
+        )
+        CommentsMoreAction.COMMENTS_BY_ME -> action(
+            if (userThreadFilterEnabled) {
+                CommentsAction.ResetUserThreadFilter
+            } else {
+                CommentsAction.EnableUserThreadFilter
             },
             refreshState = true,
             refreshNavigation = true,

@@ -4,8 +4,16 @@ import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.data.Story
 
 object CommentThreadFilter {
-    fun hasCommentsByOp(story: Story?, sourceComments: List<Comment>?): Boolean {
-        val author = story?.by
+    fun hasCommentsByOp(story: Story?, sourceComments: List<Comment>?): Boolean =
+        hasCommentsBy(story?.by, sourceComments)
+
+    fun buildCommentsByOpThreadList(
+        story: Story?,
+        sourceComments: List<Comment>?
+    ): MutableList<Comment> = buildThreadListFor(story?.by, sourceComments)
+
+    /** Whether [author] wrote any comment after the header at index 0. */
+    fun hasCommentsBy(author: String?, sourceComments: List<Comment>?): Boolean {
         if (author.isNullOrEmpty() || sourceComments == null) {
             return false
         }
@@ -18,11 +26,11 @@ object CommentThreadFilter {
         return false
     }
 
-    fun buildCommentsByOpThreadList(
-        story: Story?,
+    /** Keeps the header and every thread [author] took part in, with ancestors and replies. */
+    fun buildThreadListFor(
+        author: String?,
         sourceComments: List<Comment>?
     ): MutableList<Comment> {
-        val author = story?.by
         if (author.isNullOrEmpty() || sourceComments.isNullOrEmpty()) {
             return mutableListOf()
         }
@@ -52,10 +60,10 @@ object CommentThreadFilter {
                 includedCommentIds,
                 sourceComments.size
             )
-            val opCommentDepth = comment.depth
+            val authorCommentDepth = comment.depth
             for (j in i + 1..<sourceComments.size) {
                 val candidate = sourceComments[j]
-                if (candidate.depth <= opCommentDepth) {
+                if (candidate.depth <= authorCommentDepth) {
                     break
                 }
                 includedCommentIds.add(candidate.id)

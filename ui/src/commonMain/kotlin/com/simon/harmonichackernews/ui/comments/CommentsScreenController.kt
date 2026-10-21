@@ -35,6 +35,8 @@ data class CommentsScreenState(
     val lastRefreshed: Long = 0L,
     val opThreadFilterEnabled: Boolean = false,
     val hasCommentsByOp: Boolean = false,
+    val userThreadFilterEnabled: Boolean = false,
+    val hasCommentsByUser: Boolean = false,
     val adBlockActive: Boolean = false,
     val integratedWebView: Boolean = false,
     val readerModeAvailable: Boolean = false,
@@ -107,6 +109,8 @@ class CommentsScreenController private constructor(
     val lastRefreshed: Long get() = screenState.lastRefreshed
     val opThreadFilterEnabled: Boolean get() = screenState.opThreadFilterEnabled
     val hasCommentsByOp: Boolean get() = screenState.hasCommentsByOp
+    val userThreadFilterEnabled: Boolean get() = screenState.userThreadFilterEnabled
+    val hasCommentsByUser: Boolean get() = screenState.hasCommentsByUser
     val adBlockActive: Boolean get() = screenState.adBlockActive
     val integratedWebView: Boolean get() = screenState.integratedWebView
     val readerModeAvailable: Boolean get() = screenState.readerModeAvailable

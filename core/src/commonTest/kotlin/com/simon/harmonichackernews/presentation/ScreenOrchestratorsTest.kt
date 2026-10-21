@@ -78,6 +78,19 @@ class ScreenOrchestratorsTest {
         assertEquals(listOf(CommentsAction.ResetOpThreadFilter), reset.actions)
         assertTrue(show.refreshState)
         assertTrue(show.refreshNavigation)
+
+        val showMine = CommentsUiOrchestrator.more(
+            CommentsMoreAction.COMMENTS_BY_ME, story, opThreadFilterEnabled = false, userThreadFilterEnabled = false,
+        )
+        val resetMine = CommentsUiOrchestrator.more(
+            CommentsMoreAction.COMMENTS_BY_ME, story, opThreadFilterEnabled = false, userThreadFilterEnabled = true,
+        )
+        assertEquals(listOf(CommentsAction.EnableUserThreadFilter), showMine.actions)
+        assertEquals(listOf(CommentsAction.ResetUserThreadFilter), resetMine.actions)
+        assertEquals(
+            listOf(CommentsAction.ResetOpThreadFilter, CommentsAction.ResetUserThreadFilter),
+            CommentsUiOrchestrator.more(CommentsMoreAction.SEARCH, story, opThreadFilterEnabled = false).actions,
+        )
     }
 
     @Test

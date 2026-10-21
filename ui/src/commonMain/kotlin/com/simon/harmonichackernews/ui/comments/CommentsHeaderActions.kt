@@ -143,6 +143,8 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.SORT -> previewCommentActions || controller.comments.size > 2
             CommentsHeaderButton.COMMENTS_BY_OP -> previewCommentActions ||
                 (!controller.opThreadFilterEnabled && controller.hasCommentsByOp)
+            CommentsHeaderButton.COMMENTS_BY_ME -> previewCommentActions ||
+                (!controller.userThreadFilterEnabled && controller.hasCommentsByUser)
             CommentsHeaderButton.DISABLE_AD_BLOCK -> controller.adBlockActive
             CommentsHeaderButton.ARCHIVE -> story.isLink
             else -> true
@@ -212,6 +214,7 @@ fun CommentsHeaderActions(
                     CommentsHeaderButton.OPEN_TOP_LEVEL -> CommentsMoreAction.OPEN_TOP_LEVEL
                     CommentsHeaderButton.SEARCH -> CommentsMoreAction.SEARCH
                     CommentsHeaderButton.COMMENTS_BY_OP -> CommentsMoreAction.COMMENTS_BY_OP
+                    CommentsHeaderButton.COMMENTS_BY_ME -> CommentsMoreAction.COMMENTS_BY_ME
                     CommentsHeaderButton.OPEN_BROWSER -> CommentsMoreAction.OPEN_BROWSER
                     CommentsHeaderButton.DISABLE_AD_BLOCK -> CommentsMoreAction.DISABLE_AD_BLOCK
                 })

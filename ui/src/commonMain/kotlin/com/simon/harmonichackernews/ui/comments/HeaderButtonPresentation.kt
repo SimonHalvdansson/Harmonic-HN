@@ -20,6 +20,7 @@ internal val CommentsHeaderButton.icon: DrawableResource
         CommentsHeaderButton.SEARCH -> Res.drawable.ic_search
         CommentsHeaderButton.SORT -> Res.drawable.ic_filter_list
         CommentsHeaderButton.COMMENTS_BY_OP -> Res.drawable.ic_person
+        CommentsHeaderButton.COMMENTS_BY_ME -> Res.drawable.ic_rate_review
         CommentsHeaderButton.OPEN_BROWSER -> Res.drawable.ic_open_in_browser
         CommentsHeaderButton.DISABLE_AD_BLOCK -> Res.drawable.ic_block
         CommentsHeaderButton.ARCHIVE -> Res.drawable.ic_history

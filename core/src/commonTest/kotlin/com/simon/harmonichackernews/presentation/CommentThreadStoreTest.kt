@@ -540,6 +540,47 @@ class CommentThreadStoreTest {
     }
 
     @Test
+    fun userFilterKeepsOwnThreadsExcludesOpFilterAndFollowsTheAccount() {
+        val store = CommentThreadStore()
+        val story = story().also { it.by = "author" }
+        val thread = listOf(
+            comment(1, -1, 0, "mine").also { it.by = "me" },
+            comment(2, 1, 1, "reply to me").also { it.by = "other" },
+            comment(3, -1, 0, "op").also { it.by = "author" },
+            comment(4, -1, 0, "unrelated").also { it.by = "other" },
+        )
+        store.reset(story)
+        store.appendLoadedComments(story, thread, "Default", collapseTopLevel = false)
+
+        assertFalse(store.enableUserThreadFilter())
+        store.setAccountUser("me")
+        assertTrue(store.state.value.hasCommentsByUser)
+        assertTrue(store.enableUserThreadFilter())
+        assertEquals(listOf(1, 2), store.state.value.filteredComments.drop(1).map { it.id })
+
+        assertTrue(store.enableOpThreadFilter())
+        assertFalse(store.state.value.userThreadFilterEnabled)
+        assertTrue(store.enableUserThreadFilter())
+        assertFalse(store.state.value.opThreadFilterEnabled)
+
+        // Off-thread refreshes keep the filter and the account it refers to.
+        val prepared = CommentThreadStore.prepareUpdate(
+            store.capturePreparationInput(), story.toSnapshot(),
+            // Parsed threads arrive in tree order, so the new reply follows its sibling.
+            thread.take(2) + comment(5, 1, 1, "new reply").also { it.by = "other" } + thread.drop(2),
+            false, true,
+        )
+        store.commitPreparedInitialComments(story, prepared)
+        assertTrue(store.state.value.userThreadFilterEnabled)
+        assertEquals(listOf(1, 2, 5), store.state.value.filteredComments.drop(1).map { it.id }.sorted())
+
+        store.setAccountUser("someone-else")
+        assertFalse(store.state.value.userThreadFilterEnabled)
+        assertFalse(store.state.value.hasCommentsByUser)
+        assertEquals(5, store.state.value.filteredComments.size - 1)
+    }
+
+    @Test
     fun portableStateDoesNotExposeLaterLegacyMutations() {
         val store = CommentThreadStore()
         val sourceStory = story()

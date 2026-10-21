@@ -64,8 +64,12 @@ fun OpFilterBanner(controller: CommentsScreenController) {
     val colors = MaterialTheme.colorScheme
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
     val contentColor = if (HarmonicTheme.isDark) colors.onSurface else colors.onSecondaryContainer
+    val active = controller.opThreadFilterEnabled || controller.userThreadFilterEnabled
+    // Keep the last filter's copy while the banner animates out.
+    var showingUserFilter by remember { mutableStateOf(controller.userThreadFilterEnabled) }
+    if (active) showingUserFilter = controller.userThreadFilterEnabled
     AnimatedVisibility(
-        visible = controller.opThreadFilterEnabled,
+        visible = active,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
@@ -79,7 +83,7 @@ fun OpFilterBanner(controller: CommentsScreenController) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Showing comment threads with OP",
+                if (showingUserFilter) "Showing your comment threads" else "Showing comment threads with OP",
                 modifier = Modifier.weight(1f),
                 color = contentColor,
                 fontFamily = ProductSansFontFamily,
@@ -88,7 +92,11 @@ fun OpFilterBanner(controller: CommentsScreenController) {
             )
             CommentsTooltip("Show all comments") {
                 IconButton(
-                    onClick = { controller.listener.onMoreAction(CommentsMoreAction.COMMENTS_BY_OP) },
+                    onClick = {
+                        controller.listener.onMoreAction(
+                            if (showingUserFilter) CommentsMoreAction.COMMENTS_BY_ME else CommentsMoreAction.COMMENTS_BY_OP,
+                        )
+                    },
                 ) {
                     Icon(painterResource(Res.drawable.ic_close), contentDescription = "Show all comments", tint = contentColor)
                 }

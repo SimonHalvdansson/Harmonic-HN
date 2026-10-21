@@ -263,6 +263,7 @@ class CommentsFeatureRuntime(
         thread.setHideDelayedComments(settings.comments.hideDelayedComments)
         thread.setHideDeadComments(settings.comments.hideDeadComments)
         thread.setHideFlaggedComments(settings.comments.hideFlaggedComments)
+        thread.setAccountUser(accountUser)
         val aiSnapshot = summarySettings?.snapshot()
         val canProvideSummary = settings.debug.mockAiAnswers || (aiSnapshot?.let { snapshot ->
             AiSummaryAvailabilityPolicy.canProvideSummary(
@@ -632,7 +633,15 @@ class CommentsFeatureRuntime(
             resolveArchive(it)
             return
         }
-        execute(CommentsUiOrchestrator.more(action, story, thread.state.value.opThreadFilterEnabled))
+        val threadState = thread.state.value
+        execute(
+            CommentsUiOrchestrator.more(
+                action,
+                story,
+                threadState.opThreadFilterEnabled,
+                threadState.userThreadFilterEnabled,
+            ),
+        )
     }
 
     fun handleSheetAction(action: CommentsSheetAction) = platform(CommentsUiOrchestrator.sheet(action))
