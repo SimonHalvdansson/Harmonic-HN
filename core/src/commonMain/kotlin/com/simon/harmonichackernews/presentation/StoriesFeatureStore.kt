@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
@@ -202,7 +203,9 @@ class StoriesFeatureStore internal constructor(
             // Signing in, out, or switching accounts rebinds the set. The first settled state
             // performs the startup sync; later syncs come from refreshes and resumes.
             jobs += scope.launch {
-                accountStates.collect { if (it !is HackerNewsAccountState.Loading) commented.sync() }
+                accountStates.collectLatest {
+                    if (it !is HackerNewsAccountState.Loading) commented.sync()
+                }
             }
         }
         jobs += scope.launch {

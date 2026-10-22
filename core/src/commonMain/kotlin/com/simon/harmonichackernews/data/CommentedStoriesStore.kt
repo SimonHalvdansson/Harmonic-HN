@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +30,7 @@ class CommentedStoriesStore(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val mutex = Mutex()
-    private val syncMutex = Mutex()
+    private var activeSync: SyncRequest? = null
     private var initialized = false
     private var owner: String? = null
     // Insertion ordered, oldest first, so trimming keeps the most recent stories.
@@ -42,48 +43,55 @@ class CommentedStoriesStore(
     /** Marks [storyId] right after posting, before Algolia has indexed the new comment. */
     suspend fun record(storyId: Int): Boolean {
         if (storyId <= 0) return false
-        val user = currentUser()
         return withContext(dispatcher) {
             mutex.withLock {
-                bindLocked(user) && addLocked(listOf(storyId))
+                bindLocked(currentUser()) && addLocked(listOf(storyId))
             }
         }
     }
 
     /**
      * Fetches comments made since the previous sync. Requests within [SYNC_INTERVAL_MILLIS] of a
-     * successful sync are skipped unless [force] is set, as are requests while one is running.
+     * successful sync are skipped unless [force] is set, as are requests already running for the
+     * current account session. Account changes always discard the previous session's stories.
      * Returns whether the set of commented stories changed.
      */
     suspend fun sync(force: Boolean = false): Boolean = withContext(dispatcher) {
-        if (!syncMutex.tryLock()) return@withContext false
-        try {
-            val user = currentUser()?.trim()?.takeIf(String::isNotEmpty)
-            val since = mutex.withLock {
-                if (!bindLocked(user)) return@withContext false
-                val syncedRecently = lastSyncMillis > 0L &&
-                    nowMillis() - lastSyncMillis in 0 until SYNC_INTERVAL_MILLIS
-                if (!force && syncedRecently) {
-                    return@withContext false
-                }
-                newestCommentEpochSeconds.takeIf { it > 0 }
+        val request = mutex.withLock {
+            if (!bindLocked(currentUser())) return@withContext false
+            if (activeSync != null) return@withContext false
+            val syncedRecently = lastSyncMillis > 0L &&
+                nowMillis() - lastSyncMillis in 0 until SYNC_INTERVAL_MILLIS
+            if (!force && syncedRecently) return@withContext false
+            SyncRequest(requireNotNull(owner), newestCommentEpochSeconds.takeIf { it > 0 }).also {
+                activeSync = it
             }
+        }
+        try {
             val comments = try {
-                algolia.getUserComments(requireNotNull(user), since)
+                algolia.getUserComments(request.user, request.sinceEpochSeconds)
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
                 return@withContext false
             }
             mutex.withLock {
-                // The account changed while the request was in flight.
-                if (owner != user) return@withLock false
+                // The account observer may not have processed a change yet. Request identity also
+                // rejects an old response after signing out and back in with the same username.
+                bindLocked(currentUser())
+                if (activeSync !== request) return@withLock false
                 applySyncLocked(comments)
             }
         } finally {
-            syncMutex.unlock()
+            withContext(NonCancellable) {
+                mutex.withLock {
+                    if (activeSync === request) activeSync = null
+                }
+            }
         }
     }
+
+    private class SyncRequest(val user: String, val sinceEpochSeconds: Int?)
 
     private fun applySyncLocked(comments: List<AlgoliaUserComment>): Boolean {
         lastSyncMillis = nowMillis()
@@ -102,6 +110,7 @@ class CommentedStoriesStore(
         val normalized = user?.trim()?.takeIf(String::isNotEmpty)
         if (normalized != owner) {
             owner = normalized
+            activeSync = null
             storyIds.clear()
             newestCommentEpochSeconds = 0
             lastSyncMillis = 0L
