@@ -4,10 +4,13 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.navigation.MainLaunchIntentRouter
@@ -15,6 +18,7 @@ import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationControlle
 import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationHost.install
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,25 +29,41 @@ open class MainActivity : BaseActivity() {
     internal lateinit var navigationController: AndroidMainNavigationController
         private set
     private lateinit var launchIntentRouter: MainLaunchIntentRouter
+    private var pendingSavedState: Bundle? = null
     private val mutableWindowEnterComplete = MutableStateFlow(false)
     internal val windowEnterComplete = mutableWindowEnterComplete.asStateFlow()
 
     protected override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Keep the system launch surface until preferences and the initial UI are ready. Vetoing
+        // a draw leaves the main thread free to process the asynchronous preference load.
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (!::navigationController.isInitialized) return false
+                content.viewTreeObserver.removeOnPreDrawListener(this)
+                return true
+            }
+        })
         fullyDrawnReporter.addOnReportDrawnListener {
             window.decorView.post {
                 (application as HarmonicApplication).startDeferredServices()
             }
         }
-        AndroidActivityTheme.setupTheme(this)
-
-        prepareScene()
-        navigationController = install(this, savedInstanceState)
-        launchIntentRouter = MainLaunchIntentRouter(navigationController)
-        // A singleTask can be recreated with saved navigation state while also receiving a new
-        // deep link or feature intent. Always apply that launch intent after restoring state so
-        // the newly requested destination wins.
-        consumeLaunchIntent(getIntent())
+        pendingSavedState = savedInstanceState
+        lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            (application as HarmonicApplication).awaitStartupPreferences()
+            AndroidActivityTheme.setupTheme(this@MainActivity)
+            prepareScene()
+            navigationController = install(this@MainActivity, pendingSavedState)
+            pendingSavedState = null
+            launchIntentRouter = MainLaunchIntentRouter(navigationController)
+            // Use the latest intent, including one delivered while preference loading suspended.
+            consumeLaunchIntent(intent)
+            // A cold load may finish after these lifecycle callbacks have already run.
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) navigationController.onStart()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) navigationController.onResume()
+        }
     }
 
     /** Benchmark hosts can seed a retained scene before the production feature store starts. */
@@ -52,7 +72,7 @@ open class MainActivity : BaseActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        consumeLaunchIntent(intent)
+        if (::launchIntentRouter.isInitialized) consumeLaunchIntent(intent)
     }
 
     private fun consumeLaunchIntent(intent: Intent?) {
@@ -101,19 +121,20 @@ open class MainActivity : BaseActivity() {
     }
 
     protected override fun onSaveInstanceState(outState: Bundle) {
-        navigationController.saveState(outState)
+        if (::navigationController.isInitialized) navigationController.saveState(outState)
+        else pendingSavedState?.let(outState::putAll)
         super.onSaveInstanceState(outState)
     }
 
     protected override fun onDestroy() {
-        navigationController.onDestroy()
+        if (::navigationController.isInitialized) navigationController.onDestroy()
         super.onDestroy()
     }
 
     protected override fun onStart() {
         super.onStart()
         mutableWindowEnterComplete.value = false
-        navigationController.onStart()
+        if (::navigationController.isInitialized) navigationController.onStart()
     }
 
     override fun onEnterAnimationComplete() {
@@ -123,6 +144,7 @@ open class MainActivity : BaseActivity() {
 
     protected override fun onResume() {
         super.onResume()
+        if (!::navigationController.isInitialized) return
         // Reconcile retained UI with the current system mode after returning from the background,
         // even if a configuration-change refresh was missed. Apply native colors before Compose.
         refreshTheme()
@@ -130,11 +152,12 @@ open class MainActivity : BaseActivity() {
     }
 
     protected override fun onStop() {
-        navigationController.onStop()
+        if (::navigationController.isInitialized) navigationController.onStop()
         super.onStop()
     }
 
     public override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (!::navigationController.isInitialized) return super.onKeyDown(keyCode, event)
         val volumeNavigationMode = harmonicAppComposition
             .userSettings.comments.volumeNavigationMode
         if (CommentVolumeNavigationMode.DISABLED != volumeNavigationMode) {
@@ -172,6 +195,7 @@ open class MainActivity : BaseActivity() {
 
     public override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (!::navigationController.isInitialized) return
         refreshTheme()
         navigationController.onConfigurationChanged(newConfig)
     }

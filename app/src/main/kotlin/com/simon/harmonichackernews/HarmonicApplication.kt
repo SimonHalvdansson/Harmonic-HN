@@ -14,6 +14,7 @@ import coil3.svg.SvgDecoder
 import com.simon.harmonichackernews.data.BufferedEditorDraftStorage
 import com.simon.harmonichackernews.data.FileEditorDraftStorage
 import com.simon.harmonichackernews.network.PreviewCachePolicy
+import com.simon.harmonichackernews.app.AppBootstrapPolicy
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,16 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         // Overlap independent file reads with activity construction. Consumers keep their normal
         // lifecycle and wait only if their particular snapshot has not finished loading yet.
         startupPreferences.start()
+    }
+
+    /** Activities suspend here before constructing any preference-dependent theme or UI. */
+    internal suspend fun awaitStartupPreferences() {
+        startupPreferences.await()
+    }
+
+    internal suspend fun awaitWidgetPreferences() {
+        awaitStartupPreferences()
+        AndroidKeyValueStore.named(this, AppBootstrapPolicy.WIDGET_CONFIGURATION_STORE).awaitLoaded()
     }
 
     override fun attachBaseContext(base: Context?) {

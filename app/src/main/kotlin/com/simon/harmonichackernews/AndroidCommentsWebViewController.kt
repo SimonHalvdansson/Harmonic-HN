@@ -1088,33 +1088,38 @@ internal class AndroidCommentsWebViewController(
         val context = hostGateway.context ?: return
         currentWebView.visibility = View.GONE
         currentOverlay.showDownload {
-            try {
-                val request = DownloadManager.Request(Uri.parse(url))
-
-                request.allowScanningByMediaScanner()
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                request.setDestinationInExternalPublicDir(
-                    Environment.DIRECTORY_DOWNLOADS,
-                    URLUtil.guessFileName(url, contentDisposition, mimetype)
-                )
-                val dm = context
-                    .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                dm.enqueue(request)
-                callbacks.showMessage("Downloading...", UserMessageDuration.LONG)
-            } catch (e: Exception) {
-                callbacks.showMessage(
-                    "Failed to download, opening in browser",
-                    UserMessageDuration.LONG,
-                )
-                if (!AndroidExternalLinkLauncher.openExternalBrowser(
-                        context,
-                        ExternalLinkRequest(
-                            url.orEmpty(),
-                            preferInApp = false,
-                        ),
+            coroutineScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val request = DownloadManager.Request(Uri.parse(url))
+                        request.allowScanningByMediaScanner()
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        request.setDestinationInExternalPublicDir(
+                            Environment.DIRECTORY_DOWNLOADS,
+                            URLUtil.guessFileName(url, contentDisposition, mimetype)
+                        )
+                        val dm = context
+                            .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                        dm.enqueue(request)
+                    }
+                    callbacks.showMessage("Downloading...", UserMessageDuration.LONG)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (e: Exception) {
+                    callbacks.showMessage(
+                        "Failed to download, opening in browser",
+                        UserMessageDuration.LONG,
                     )
-                ) {
-                    callbacks.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
+                    if (!AndroidExternalLinkLauncher.openExternalBrowser(
+                            context,
+                            ExternalLinkRequest(
+                                url.orEmpty(),
+                                preferInApp = false,
+                            ),
+                        )
+                    ) {
+                        callbacks.showMessage(WebContentCopy.DOWNLOAD_LINK_FAILED)
+                    }
                 }
             }
         }

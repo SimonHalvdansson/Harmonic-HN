@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.common
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
@@ -34,18 +35,28 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HackerNewsCaptchaWebProtocol
 import com.simon.harmonichackernews.utils.HackerNewsLinks
+import com.simon.harmonichackernews.awaitAndroidWebViewStartup
+import kotlinx.coroutines.CancellationException
 
 /**
  * Compose CAPTCHA dialog. The embedded browser is the only intentionally retained View because
  * Android does not provide a native Compose WebView.
  */
-// The AndroidX detector does not recognize the Kotlin anonymous-class override below.
-@SuppressLint("SetJavaScriptEnabled", "MissingOnRenderProcessGone")
 @Composable
 fun CaptchaDialog(
     challenge: HackerNewsCaptchaChallenge,
     onDismiss: () -> Unit,
     onCaptchaResponse: (String) -> Unit,
+) = CaptchaDialogContent(challenge, onDismiss, onCaptchaResponse)
+
+// The AndroidX detector does not recognize the Kotlin anonymous-class override below.
+@SuppressLint("SetJavaScriptEnabled", "MissingOnRenderProcessGone")
+@Composable
+internal fun CaptchaDialogContent(
+    challenge: HackerNewsCaptchaChallenge,
+    onDismiss: () -> Unit,
+    onCaptchaResponse: (String) -> Unit,
+    startWebView: suspend (Context) -> Unit = ::awaitAndroidWebViewStartup,
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -58,10 +69,23 @@ fun CaptchaDialog(
     var loading by remember(challenge) { mutableStateOf(true) }
     var error by remember(challenge) { mutableStateOf<String?>(null) }
     var rendererGone by remember(challenge) { mutableStateOf(false) }
+    var startupComplete by remember(challenge, context) { mutableStateOf(false) }
     val webDescription = stringResource(Res.string.captcha_dialog_web_content_description)
     val incompleteError = stringResource(Res.string.captcha_dialog_complete_error)
     val webViewError = stringResource(Res.string.captcha_dialog_webview_error)
-    val webView = remember(challenge, context, webViewError) {
+    LaunchedEffect(challenge, context, webViewError) {
+        try {
+            startWebView(context)
+            startupComplete = true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            loading = false
+            error = webViewError
+        }
+    }
+    val webView = remember(challenge, context, webViewError, startupComplete) {
+        if (!startupComplete) return@remember null
         try {
             WebView(context).apply webView@ {
                 settings.javaScriptEnabled = true
@@ -100,8 +124,8 @@ fun CaptchaDialog(
         }
     }
 
-    LaunchedEffect(webView, webViewError) {
-        if (webView == null) {
+    LaunchedEffect(startupComplete, webView, webViewError) {
+        if (startupComplete && webView == null) {
             loading = false
             error = webViewError
         }

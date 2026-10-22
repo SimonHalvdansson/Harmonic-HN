@@ -5,23 +5,27 @@ import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import android.graphics.drawable.ColorDrawable
-import android.graphics.Color
-import android.view.WindowManager
+import androidx.lifecycle.lifecycleScope
+import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.getPageBackgroundColor
 import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 
 class WidgetConfigActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -30,12 +34,11 @@ class WidgetConfigActivity : ComponentActivity() {
     private var wallpaperColorsListener: WallpaperManager.OnColorsChangedListener? = null
     private var wallpaperUsesDarkIcons = false
     private var settingsCoverStatusBar = false
+    private var preferencesReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setupTheme(this)
-        showWallpaper()
 
         // Set canceled result initially — if user backs out, widget won't be added
         setResult(RESULT_CANCELED)
@@ -51,11 +54,18 @@ class WidgetConfigActivity : ComponentActivity() {
             return
         }
 
-        setupComposeUi()
+        lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            (application as HarmonicApplication).awaitWidgetPreferences()
+            preferencesReady = true
+            setupTheme(this@WidgetConfigActivity)
+            showWallpaper()
+            setupComposeUi()
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (!preferencesReady) return
         setupTheme(this)
         harmonicAppComposition.appearance.refreshSelection()
         showWallpaper()

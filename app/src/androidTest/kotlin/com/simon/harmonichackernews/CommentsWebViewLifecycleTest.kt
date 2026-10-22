@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews
 
 import android.content.Context
+import android.app.DownloadManager
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -53,6 +54,39 @@ import org.junit.runner.RunWith
 /** Real WebView and HTTP transfers, isolated from the user's pages, files and account. */
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
+    @Test
+    fun downloadButtonEnqueuesAnAttachmentAndReportsSuccess() {
+        TestServer().use { server ->
+            fixture().use { browser ->
+                val url = server.url("/attachment.txt")
+                val manager = InstrumentationRegistry.getInstrumentation().targetContext
+                    .getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                fun downloadId(): Long? = manager.query(DownloadManager.Query()).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        if (cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI)) == url) {
+                            return@use cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
+                        }
+                    }
+                    null
+                }
+                try {
+                    onMain { browser.webView.loadUrl(url) }
+                    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
+                    while (!onMain { browser.host.overlayState.onDownload != null }) {
+                        assertTrue("Attachment did not offer a download", System.nanoTime() < deadline)
+                        Thread.sleep(25)
+                    }
+                    onMain { checkNotNull(browser.host.overlayState.onDownload).invoke() }
+                    browser.awaitDownloads()
+                    assertTrue(onMain { "Downloading..." in browser.messages })
+                    assertTrue("DownloadManager must contain the attachment", downloadId() != null)
+                } finally {
+                    downloadId()?.let { manager.remove(it) }
+                }
+            }
+        }
+    }
+
     @Test
     fun forbiddenHtmlChallengeCanRunScriptsAndNavigateToArticle() {
         TestServer().use { server ->
@@ -737,6 +771,7 @@ class CommentsWebViewLifecycleTest {
         val host = CommentsWebViewHost(context)
         private val previews = LinkPreviewController(null, app, reading) {}
         var externalUrl: String? = null
+        val messages = mutableListOf<String?>()
         val controller = AndroidCommentsWebViewController(
             hostGateway = object : CommentsWebViewHostGateway {
                 override val context: Context get() = this@BrowserFixture.context
@@ -761,7 +796,7 @@ class CommentsWebViewLifecycleTest {
             startWebView = startWebView,
             callbacks = object : AndroidCommentsWebViewController.Callbacks {
                 override fun openExternalLink(url: String) { externalUrl = url }
-                override fun showMessage(message: String?, duration: UserMessageDuration) = Unit
+                override fun showMessage(message: String?, duration: UserMessageDuration) { messages += message }
                 override fun setFullscreenSystemBarsHidden(hidden: Boolean) = Unit
                 override fun syncOnBackPressedCallbackEnabledState() = Unit
                 override fun onReaderModeChanged(enabled: Boolean) = Unit
@@ -858,6 +893,7 @@ class CommentsWebViewLifecycleTest {
                                 "/document.pdf" -> "application/pdf"
                                 "/challenge.js" -> "application/javascript"
                                 "/unavailable" -> "text/plain"
+                                "/attachment.txt" -> "application/octet-stream"
                                 else -> "text/html"
                             }
                             val status = when (path) {
@@ -866,6 +902,7 @@ class CommentsWebViewLifecycleTest {
                                 else -> "200 OK"
                             }
                             val headers = "HTTP/1.1 $status\r\nContent-Type: $type\r\n" +
+                                (if (path == "/attachment.txt") "Content-Disposition: attachment; filename=harmonic-anr-test.txt\r\n" else "") +
                                 "Content-Length: ${bytes.size}\r\nCache-Control: " +
                                 (if (pdf) "no-store" else "public, max-age=3600") +
                                 "\r\nConnection: close\r\n\r\n"
