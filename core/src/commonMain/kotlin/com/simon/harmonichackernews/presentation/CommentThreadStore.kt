@@ -49,6 +49,10 @@ data class PortableCommentThreadState(
     val sorting: String = CommentSorter.DEFAULT,
     val opThreadFilterEnabled: Boolean = false,
     val hasCommentsByOp: Boolean = false,
+    /** The signed-in user, whose threads [userThreadFilterEnabled] keeps. */
+    val accountUser: String? = null,
+    val userThreadFilterEnabled: Boolean = false,
+    val hasCommentsByUser: Boolean = false,
     val searchQuery: String = "",
     val searchPreparing: Boolean = false,
     val searchResults: List<PortableCommentItem> = emptyList(),
@@ -89,6 +93,7 @@ class CommentThreadStore {
     private val mutableState = MutableStateFlow(PortableCommentThreadState())
     val state: StateFlow<PortableCommentThreadState> = mutableState.asStateFlow()
     private var currentStory: Story? = null
+    private var accountUser: String? = null
     // The presenter may extend this baseline while completing an unviewed initial load.
     private var initialCommentIds: Set<Int>? = null
     internal val hasLoadedComments: Boolean get() = initialCommentIds != null
@@ -115,6 +120,7 @@ class CommentThreadStore {
             story = story,
             sorting = sorting,
             opThreadFilterEnabled = false,
+            userThreadFilterEnabled = false,
             searchQuery = "",
             rebuildSearch = true,
             rebuildVisibility = true,
@@ -157,6 +163,7 @@ class CommentThreadStore {
             store.hideDelayedComments = hideDelayedComments
             store.hideDeadComments = hideDeadComments
             store.hideFlaggedComments = hideFlaggedComments
+            store.accountUser = accountUser
             store.reset(story, allComments.firstOrNull() ?: Comment(), sorting)
             store.replaceParsedComments(story, parsedComments, sorting, collapseTopLevel)
         }
@@ -225,6 +232,7 @@ class CommentThreadStore {
             prepared.hideDelayedComments = input.hideDelayedComments
             prepared.hideDeadComments = input.hideDeadComments
             prepared.hideFlaggedComments = input.hideFlaggedComments
+            prepared.accountUser = input.state.accountUser
             prepared.mutableState.value = input.state
             prepared.snapshotReuseCandidates = input.state.allComments.associateBy { it.id }
             prepared.searchableTextById.putAll(input.searchIndex)
@@ -368,8 +376,8 @@ class CommentThreadStore {
     fun enableOpThreadFilter(): Boolean {
         val story = currentStory
         if (!CommentThreadFilter.hasCommentsByOp(story, allComments)) return false
-        rebuildFilteredComments(opThreadFilterEnabled = true)
-        publish(opThreadFilterEnabled = true, rebuildVisibility = true)
+        rebuildFilteredComments(opThreadFilterEnabled = true, userThreadFilterEnabled = false)
+        publish(opThreadFilterEnabled = true, userThreadFilterEnabled = false, rebuildVisibility = true)
         return true
     }
 
@@ -377,6 +385,28 @@ class CommentThreadStore {
         if (!state.value.opThreadFilterEnabled) return
         rebuildFilteredComments(opThreadFilterEnabled = false)
         publish(opThreadFilterEnabled = false, rebuildVisibility = true)
+    }
+
+    /** A different account turns the user filter off, since it no longer describes "me". */
+    fun setAccountUser(user: String?) {
+        val normalized = user?.trim()?.takeIf(String::isNotEmpty)
+        if (normalized == accountUser) return
+        accountUser = normalized
+        rebuildFilteredComments(userThreadFilterEnabled = false)
+        publish(userThreadFilterEnabled = false, rebuildVisibility = true)
+    }
+
+    fun enableUserThreadFilter(): Boolean {
+        if (!CommentThreadFilter.hasCommentsBy(accountUser, allComments)) return false
+        rebuildFilteredComments(opThreadFilterEnabled = false, userThreadFilterEnabled = true)
+        publish(opThreadFilterEnabled = false, userThreadFilterEnabled = true, rebuildVisibility = true)
+        return true
+    }
+
+    fun resetUserThreadFilter() {
+        if (!state.value.userThreadFilterEnabled) return
+        rebuildFilteredComments(userThreadFilterEnabled = false)
+        publish(userThreadFilterEnabled = false, rebuildVisibility = true)
     }
 
     fun setSearchQuery(query: String) {
@@ -443,18 +473,25 @@ class CommentThreadStore {
         )
     }
 
-    private fun rebuildFilteredComments(opThreadFilterEnabled: Boolean = state.value.opThreadFilterEnabled) {
-        val shouldFilterByOp = opThreadFilterEnabled &&
-            CommentThreadFilter.hasCommentsByOp(currentStory, allComments)
-        val filteredByOp = if (shouldFilterByOp) {
-            CommentThreadFilter.buildCommentsByOpThreadList(currentStory, allComments)
+    private fun rebuildFilteredComments(
+        opThreadFilterEnabled: Boolean = state.value.opThreadFilterEnabled,
+        userThreadFilterEnabled: Boolean = state.value.userThreadFilterEnabled,
+    ) {
+        // The filters are exclusive; OP wins if a caller ever passes both.
+        val filterAuthor = when {
+            opThreadFilterEnabled -> currentStory?.by
+            userThreadFilterEnabled -> accountUser
+            else -> null
+        }
+        val filteredByAuthor = if (CommentThreadFilter.hasCommentsBy(filterAuthor, allComments)) {
+            CommentThreadFilter.buildThreadListFor(filterAuthor, allComments)
         } else {
             allComments
         }
         val next = if (hideDelayedComments || hideDeadComments || hideFlaggedComments) {
-            filteredByOp.filterNot { it.isHiddenPlaceholder() }
+            filteredByAuthor.filterNot { it.isHiddenPlaceholder() }
         } else {
-            filteredByOp
+            filteredByAuthor
         }
         filteredComments.clear()
         filteredComments.addAll(next)
@@ -488,13 +525,18 @@ class CommentThreadStore {
         story: Story? = currentStory,
         sorting: String = state.value.sorting,
         opThreadFilterEnabled: Boolean = state.value.opThreadFilterEnabled,
+        userThreadFilterEnabled: Boolean = state.value.userThreadFilterEnabled,
         searchQuery: String = state.value.searchQuery,
         rebuildSearch: Boolean = false,
         rebuildVisibility: Boolean = false,
     ) {
         val hasCommentsByOp = CommentThreadFilter.hasCommentsByOp(story, allComments)
+        val hasCommentsByUser = CommentThreadFilter.hasCommentsBy(accountUser, allComments)
         val opThreadFilterActive = opThreadFilterEnabled && hasCommentsByOp
-        if (opThreadFilterActive != opThreadFilterEnabled) rebuildFilteredComments(opThreadFilterEnabled = false)
+        val userThreadFilterActive = userThreadFilterEnabled && hasCommentsByUser && !opThreadFilterActive
+        if (opThreadFilterActive != opThreadFilterEnabled || userThreadFilterActive != userThreadFilterEnabled) {
+            rebuildFilteredComments(opThreadFilterActive, userThreadFilterActive)
+        }
         val previous = state.value
         val resultIds = if (rebuildSearch || searchQuery != previous.searchQuery) {
             searchResultIds(searchQuery)
@@ -519,6 +561,9 @@ class CommentThreadStore {
             sorting = sorting,
             opThreadFilterEnabled = opThreadFilterActive,
             hasCommentsByOp = hasCommentsByOp,
+            accountUser = accountUser,
+            userThreadFilterEnabled = userThreadFilterActive,
+            hasCommentsByUser = hasCommentsByUser,
             searchQuery = searchQuery,
             searchPreparing = previous.searchPreparing,
             searchResults = searchSnapshots,

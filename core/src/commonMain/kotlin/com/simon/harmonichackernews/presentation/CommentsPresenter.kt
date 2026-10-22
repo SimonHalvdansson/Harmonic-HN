@@ -66,6 +66,8 @@ sealed interface CommentsAction {
     data class RestoreCollapsedComments(val collapsedIds: Set<Int>) : CommentsAction
     data object EnableOpThreadFilter : CommentsAction
     data object ResetOpThreadFilter : CommentsAction
+    data object EnableUserThreadFilter : CommentsAction
+    data object ResetUserThreadFilter : CommentsAction
     data class SetSearchQuery(val query: String) : CommentsAction
     data class SetSearchActive(val active: Boolean) : CommentsAction
     data class BeginThreadLoad(val nowMillis: Long) : CommentsAction
@@ -250,6 +252,8 @@ class CommentsPresenter(
                 thread.restoreCollapsedComments(action.collapsedIds)
             CommentsAction.EnableOpThreadFilter -> thread.enableOpThreadFilter()
             CommentsAction.ResetOpThreadFilter -> thread.resetOpThreadFilter()
+            CommentsAction.EnableUserThreadFilter -> thread.enableUserThreadFilter()
+            CommentsAction.ResetUserThreadFilter -> thread.resetUserThreadFilter()
             is CommentsAction.SetSearchQuery -> thread.setSearchQuery(action.query)
             is CommentsAction.SetSearchActive -> search.setActive(action.active)
             is CommentsAction.BeginThreadLoad -> publish(
