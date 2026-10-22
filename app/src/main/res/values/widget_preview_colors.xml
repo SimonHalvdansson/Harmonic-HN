@@ -2,4 +2,9 @@
 <resources>
     <color name="widget_preview_card">#FFFFFF</color>
     <color name="widget_preview_metric">#EBFFFFFF</color>
+    <!-- Precomputed from the bundled 96px thumbnail samples using HarmonicPaletteExtractor
+         and PreviewTintPolicy (default settings), including the widget background contrast floor. -->
+    <color name="widget_preview_equations_tint">#D2DFD9</color>
+    <color name="widget_preview_github_tint">#DBDCDC</color>
+    <color name="widget_preview_patterns_tint">#D8DDE4</color>
 </resources>

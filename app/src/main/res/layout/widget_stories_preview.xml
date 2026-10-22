@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Launcher picker RemoteViews use platform tint, not AppCompat app:tint. -->
 <!-- Match the medium image layout in StoriesGlanceWidget and WidgetDimensions. -->
+<!-- Bundled thumbnails and precomputed tints keep the picker preview independent of loading. -->
+<!-- GitHub favicon source: https://github.githubassets.com/favicons/favicon.png -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent" android:layout_height="match_parent"
@@ -22,7 +24,8 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:minHeight="88dp" android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
-        android:background="@drawable/widget_preview_card">
+        android:background="@drawable/widget_preview_card"
+        android:backgroundTint="@color/widget_preview_equations_tint">
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="horizontal" android:baselineAligned="true">
             <TextView android:layout_width="20dp" android:layout_height="wrap_content"
@@ -32,9 +35,17 @@
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="Algorithm breaks speed limit for solving linear equations" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
                     android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="4" android:ellipsize="end" />
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                    android:text="science.org · 2h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
-                    android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp"
+                        android:layout_marginTop="2dp" android:layout_marginEnd="4dp"
+                        android:src="@drawable/widget_preview_quanta" android:scaleType="fitCenter"
+                        android:background="@drawable/widget_preview_favicon" android:clipToOutline="true"
+                        android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="quantamagazine.org · 2h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                        android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
         <FrameLayout android:layout_width="120dp" android:layout_height="72dp"
@@ -71,7 +82,8 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:minHeight="88dp" android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
-        android:background="@drawable/widget_preview_card">
+        android:background="@drawable/widget_preview_card"
+        android:backgroundTint="@color/widget_preview_github_tint">
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="horizontal" android:baselineAligned="true">
             <TextView android:layout_width="20dp" android:layout_height="wrap_content"
@@ -79,18 +91,27 @@
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                 android:baselineAlignedChildIndex="0" android:orientation="vertical">
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="The hidden gardens of New York City" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                    android:text="Show HN: An offline-first reading list" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
                     android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="4" android:ellipsize="end" />
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                    android:text="nytimes.com · 4h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
-                    android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp"
+                        android:layout_marginTop="2dp" android:layout_marginEnd="4dp"
+                        android:src="@drawable/github_favicon" android:scaleType="fitCenter"
+                        android:tint="@color/widget_story_meta"
+                        android:background="@drawable/widget_preview_favicon" android:clipToOutline="true"
+                        android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="github.com · 4h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                        android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
         <FrameLayout android:layout_width="120dp" android:layout_height="72dp"
             android:layout_marginStart="6dp" android:layout_marginEnd="8dp" android:layout_marginVertical="8dp"
             android:background="@drawable/widget_preview_image" android:clipToOutline="true">
             <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
-                android:src="@drawable/widget_preview_gardens" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+                android:src="@drawable/widget_preview_github" android:scaleType="centerCrop" android:importantForAccessibility="no" />
             <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end" android:layout_margin="4dp"
                 android:orientation="horizontal" android:gravity="center_vertical">
@@ -120,7 +141,8 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:minHeight="88dp" android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
-        android:background="@drawable/widget_preview_card">
+        android:background="@drawable/widget_preview_card"
+        android:backgroundTint="@color/widget_preview_patterns_tint">
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="horizontal" android:baselineAligned="true">
             <TextView android:layout_width="20dp" android:layout_height="wrap_content"
@@ -130,16 +152,24 @@
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="Finding new patterns in old mathematics" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
                     android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="4" android:ellipsize="end" />
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                    android:text="science.org · 5h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
-                    android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp"
+                        android:layout_marginTop="2dp" android:layout_marginEnd="4dp"
+                        android:src="@drawable/widget_preview_quanta" android:scaleType="fitCenter"
+                        android:background="@drawable/widget_preview_favicon" android:clipToOutline="true"
+                        android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="quantamagazine.org · 5h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                        android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
         <FrameLayout android:layout_width="120dp" android:layout_height="72dp"
             android:layout_marginStart="6dp" android:layout_marginEnd="8dp" android:layout_marginVertical="8dp"
             android:background="@drawable/widget_preview_image" android:clipToOutline="true">
             <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
-                android:src="@drawable/widget_preview_equations" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+                android:src="@drawable/widget_preview_patterns" android:scaleType="centerCrop" android:importantForAccessibility="no" />
             <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end" android:layout_margin="4dp"
                 android:orientation="horizontal" android:gravity="center_vertical">
@@ -169,7 +199,8 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginHorizontal="12dp" android:layout_marginBottom="7dp"
         android:minHeight="88dp" android:paddingStart="8dp" android:gravity="center_vertical" android:orientation="horizontal"
-        android:background="@drawable/widget_preview_card">
+        android:background="@drawable/widget_preview_card"
+        android:backgroundTint="@color/widget_preview_github_tint">
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:paddingVertical="12dp" android:orientation="horizontal" android:baselineAligned="true">
             <TextView android:layout_width="20dp" android:layout_height="wrap_content"
@@ -177,18 +208,27 @@
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
                 android:baselineAlignedChildIndex="0" android:orientation="vertical">
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="A quieter corner of the city" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
+                    android:text="A small home for saved articles" android:fontFamily="variable-body-medium-emphasized" android:textStyle="bold"
                     android:textSize="14sp" android:textColor="@color/widget_story_title" android:maxLines="4" android:ellipsize="end" />
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
-                    android:text="nytimes.com · 6h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
-                    android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp"
+                        android:layout_marginTop="2dp" android:layout_marginEnd="4dp"
+                        android:src="@drawable/github_favicon" android:scaleType="fitCenter"
+                        android:tint="@color/widget_story_meta"
+                        android:background="@drawable/widget_preview_favicon" android:clipToOutline="true"
+                        android:importantForAccessibility="no" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:text="github.com · 6h" android:fontFamily="variable-body-medium-emphasized" android:textSize="11sp"
+                        android:textColor="@color/widget_story_meta" android:maxLines="2" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
         <FrameLayout android:layout_width="120dp" android:layout_height="72dp"
             android:layout_marginStart="6dp" android:layout_marginEnd="8dp" android:layout_marginVertical="8dp"
             android:background="@drawable/widget_preview_image" android:clipToOutline="true">
             <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
-                android:src="@drawable/widget_preview_gardens" android:scaleType="centerCrop" android:importantForAccessibility="no" />
+                android:src="@drawable/widget_preview_github" android:scaleType="centerCrop" android:importantForAccessibility="no" />
             <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end" android:layout_margin="4dp"
                 android:orientation="horizontal" android:gravity="center_vertical">

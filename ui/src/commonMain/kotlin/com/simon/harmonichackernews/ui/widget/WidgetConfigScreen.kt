@@ -244,17 +244,17 @@ private val PreviewScrollBoundary = object : NestedScrollConnection {
 }
 
 private val WidgetPreviewStories = listOf(
-    SettingsStoryPreviewModel.copy(index = "1."),
+    SettingsStoryPreviewModel.copy(index = "1.", domain = "quantamagazine.org", domainWithoutTopLevel = "quantamagazine"),
     SettingsStoryPreviewModel.copy(
-        index = "2.", title = "The hidden gardens of New York City",
-        domain = "nytimes.com", domainWithoutTopLevel = "nytimes", age = "4h", points = 128,
-        commentCount = 42, previewImageFallback = Res.drawable.palette2,
-        faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,
+        index = "2.", title = "Show HN: An offline-first reading list",
+        domain = "github.com", domainWithoutTopLevel = "github", age = "4h", points = 128,
+        commentCount = 42, previewImageFallback = Res.drawable.github_preview,
+        faviconFallback = Res.drawable.github_favicon, tintFaviconFallback = true,
     ),
     SettingsStoryPreviewModel.copy(
         index = "3.", title = "Ask HN: What have you been building this weekend?",
         domain = "news.ycombinator.com", domainWithoutTopLevel = "news.ycombinator", age = "5h", points = 76, commentCount = 103,
-        previewImageFallback = null, faviconFallback = Res.drawable.ic_public, tintFaviconFallback = true,
+        previewImageFallback = null, faviconFallback = Res.drawable.hacker_news_favicon, tintFaviconFallback = false,
     ),
     SettingsStoryPreviewModel.copy(
         index = "4.", title = "A small database that fits in your pocket",
