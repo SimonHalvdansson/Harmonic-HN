@@ -75,6 +75,8 @@ data class EditorDestination(
     val parentText: String? = null,
     val postTitle: String? = null,
     val userName: String? = null,
+    /** The story a comment belongs to, used to mark it as commented on. Unknown when not positive. */
+    val rootStoryId: Int = -1,
 ) : AppDestination {
     val isValid: Boolean
         get() = type == EditorType.POST || itemId > 0

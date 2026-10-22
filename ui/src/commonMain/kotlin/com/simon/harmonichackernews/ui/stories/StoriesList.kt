@@ -344,12 +344,14 @@ internal fun StoriesList(
                                     Clock.System.now().toEpochMilliseconds(),
                                 )
                             }
-                            val style = remember(story, settings, storyRevision, model.previewText) {
+                            val commented = story.id in controller.commentedStoryIds
+                            val style = remember(story, settings, storyRevision, model.previewText, commented) {
                                 settings.toStoryRowStyle(
                                     StoryRowStyleContext(
                                         score = story.score,
                                         commentCount = story.descendantCount,
                                         isRead = story.isRead,
+                                        commented = commented,
                                         previewTextAvailable = model.previewText.isNotBlank(),
                                     ),
                                 )

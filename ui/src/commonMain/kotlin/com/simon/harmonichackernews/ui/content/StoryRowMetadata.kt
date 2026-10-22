@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_comment
+import com.simon.harmonichackernews.resources.ic_comment_filled
 import com.simon.harmonichackernews.resources.ic_whatshot
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
@@ -95,6 +96,8 @@ internal fun StoryMetricPill(
     startPadding: Dp = 5.dp,
     endPadding: Dp = 7.dp,
     iconTextSpacing: Dp = 2.dp,
+    /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
+    highlighted: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val container = colors.surfaceContainerHighest
@@ -141,7 +144,7 @@ internal fun StoryMetricPill(
                 modifier = Modifier
                     .size(iconSize)
                     .graphicsLayer(scaleX = iconScale, scaleY = iconScale),
-                tint = foreground,
+                tint = if (highlighted) colors.primary.copy(alpha = dimAlpha) else foreground,
             )
         }
         if (text != null) {
@@ -482,7 +485,8 @@ internal fun StoryCommentRail(
                 onClick = { onClick?.invoke() },
             ).onSecondaryClick { onLongClick?.invoke() }
             .semantics(mergeDescendants = true) {
-                contentDescription = "Open comments, ${model.commentCount} comments"
+                contentDescription = "Open comments, ${model.commentCount} comments" +
+                    if (style.commented) ", you commented" else ""
             }
             .padding(horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -490,11 +494,19 @@ internal fun StoryCommentRail(
     ) {
         Icon(
             painter = painterResource(
-                if (style.useHotnessIcon) Res.drawable.ic_whatshot else Res.drawable.ic_comment,
+                when {
+                    style.commented -> Res.drawable.ic_comment_filled
+                    style.useHotnessIcon -> Res.drawable.ic_whatshot
+                    else -> Res.drawable.ic_comment
+                },
             ),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dimAlpha),
+            tint = if (style.commented) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }.copy(alpha = dimAlpha),
         )
         StoryVisibility(
             visible = style.showCommentCount && !style.compact,

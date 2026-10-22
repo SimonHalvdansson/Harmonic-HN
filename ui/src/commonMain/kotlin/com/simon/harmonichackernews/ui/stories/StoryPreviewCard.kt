@@ -44,6 +44,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.ElevatedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
@@ -137,6 +138,7 @@ fun StoryPreviewCard(
     val bookmarked = remember(contentVersion, story.id) { controller.isBookmarked(story.id) }
     val favorited = remember(contentVersion, story.id) { controller.isFavorited(story.id) }
     val read = controller.isStoryPreviewRead(story.id, story.isRead)
+    val commented = story.id in controller.commentedStoryIds
     val voteLoading = controller.isStoryPreviewVoteLoading(story.id)
     val favoriteLoading = controller.isStoryPreviewFavoriteLoading(story.id)
     val imageUrl = summaryState.result?.imageUrl?.takeIf(String::isNotBlank)
@@ -478,7 +480,8 @@ fun StoryPreviewCard(
                                         .trackStoryPreviewCommentsButton()
                                         .semantics {
                                             contentDescription =
-                                                "Comments (${story.descendantCount})"
+                                                "Comments (${story.descendantCount})" +
+                                                    if (commented) ", you commented" else ""
                                         },
                                     colors = ButtonDefaults.elevatedButtonColors(
                                         containerColor =
@@ -487,9 +490,20 @@ fun StoryPreviewCard(
                                     ),
                                 ) {
                                     Icon(
-                                        painterResource(Res.drawable.ic_comment),
+                                        painterResource(
+                                            if (commented) {
+                                                Res.drawable.ic_comment_filled
+                                            } else {
+                                                Res.drawable.ic_comment
+                                            },
+                                        ),
                                         contentDescription = null,
                                         modifier = Modifier.size(20.dp),
+                                        tint = if (commented) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            LocalContentColor.current
+                                        },
                                     )
                                     Spacer(Modifier.width(4.dp))
                                     Text(

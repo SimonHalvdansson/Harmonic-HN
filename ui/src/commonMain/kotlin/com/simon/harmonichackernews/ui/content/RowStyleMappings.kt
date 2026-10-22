@@ -9,6 +9,7 @@ internal data class StoryRowStyleContext(
     val score: Int,
     val commentCount: Int,
     val isRead: Boolean,
+    val commented: Boolean = false,
     val previewTextAvailable: Boolean = true,
     val showIndex: Boolean? = null,
 )
@@ -33,6 +34,7 @@ internal fun StoryDisplaySettings.toStoryRowStyle(
     preferredFont = font,
     textSize = storyTextSize,
     dimmed = dimReadStories && context.isRead,
+    commented = context.commented,
     paletteTintConfigKey = paletteTintMode,
 )
 

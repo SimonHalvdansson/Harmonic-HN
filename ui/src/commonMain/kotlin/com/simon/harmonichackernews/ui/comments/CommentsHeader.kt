@@ -573,6 +573,7 @@ fun CommentsHeader(
                                         onReplyClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REPLY) },
                                         upvoted = controller.isUpvoted(story.id, story.isComment),
                                         voteLoading = controller.storyVoteLoading,
+                                        commented = controller.storyCommented,
                                         headerColor = visibleHeaderBackground,
                                     )
                                 }

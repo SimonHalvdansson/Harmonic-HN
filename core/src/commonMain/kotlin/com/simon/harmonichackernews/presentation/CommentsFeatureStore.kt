@@ -28,6 +28,8 @@ data class CommentsState(
     val summaryLoading: Boolean = false,
     val summaryDiagnostics: StorySummaryDiagnostics? = null,
     val headerPreviewResource: StoryPreviewResourceState? = null,
+    /** The signed-in user has commented on the opened story. */
+    val commented: Boolean = false,
 ) {
     val thread: PortableCommentThreadState get() = presenter.thread
 }
@@ -57,6 +59,7 @@ class CommentsFeatureStore internal constructor(
     private val scope: CoroutineScope,
     private val runtime: CommentsFeatureRuntime,
     val referencePreview: ReferenceLinkPreviewRuntime? = null,
+    private val commentedStoryIds: StateFlow<Set<Int>>? = null,
 ) : FeatureStore<CommentsIntent, CommentsState, CommentsFeatureEffect> {
     private val mutableState = MutableStateFlow(snapshot())
     override val state: StateFlow<CommentsState> = mutableState.asStateFlow()
@@ -191,6 +194,7 @@ class CommentsFeatureStore internal constructor(
         jobs += scope.launch { runtime.presenter.state.collect { publish() } }
         jobs += scope.launch { runtime.thread.state.collect { publish() } }
         jobs += scope.launch { runtime.settingsState.collect { publish() } }
+        commentedStoryIds?.let { ids -> jobs += scope.launch { ids.collect { publish() } } }
     }
 
     private fun publish() {
@@ -207,5 +211,6 @@ class CommentsFeatureStore internal constructor(
         summaryLoading = runtime.summaryLoading,
         summaryDiagnostics = runtime.summaryDiagnostics,
         headerPreviewResource = runtime.headerPreviewResource,
+        commented = runtime.story?.let { !it.isComment && it.id in commentedStoryIds?.value.orEmpty() } == true,
     )
 }

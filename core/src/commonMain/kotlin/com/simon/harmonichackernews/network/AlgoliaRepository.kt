@@ -39,6 +39,9 @@ data class AlgoliaSearchPage(
     val nextPage: Int? get() = (page + 1).takeIf { it < pageCount }
 }
 
+/** A user's comment reduced to what is needed to mark the story it belongs to. */
+data class AlgoliaUserComment(val storyId: Int, val createdAtEpochSeconds: Int)
+
 interface AlgoliaRepository {
     /** Set [pageSize] to zero for totals without content. Reuse the returned cursor for older pages. */
     suspend fun getSubmissions(
@@ -49,6 +52,23 @@ interface AlgoliaRepository {
     ): AlgoliaSubmissionsPage
     suspend fun search(url: String): AlgoliaSearchPage
     suspend fun getItemJson(id: Int): String
+
+    /** Up to the newest 1,000 comments, limited to those created at or after [sinceEpochSeconds]. */
+    suspend fun getUserComments(
+        userName: String,
+        sinceEpochSeconds: Int? = null,
+    ): List<AlgoliaUserComment> =
+        getSubmissions(userName, USER_COMMENTS_LIMIT, AlgoliaSubmissionType.COMMENTS).items
+            .filter { sinceEpochSeconds == null || it.createdAtEpochSeconds >= sinceEpochSeconds }
+            .mapNotNull { comment ->
+                comment.rootStoryId.takeIf { it > 0 }?.let {
+                    AlgoliaUserComment(it, comment.createdAtEpochSeconds)
+                }
+            }
+
+    companion object {
+        const val USER_COMMENTS_LIMIT = 1000
+    }
 }
 
 class KtorAlgoliaRepository(
@@ -119,6 +139,24 @@ class KtorAlgoliaRepository(
             error("Submissions date window did not advance")
         }
         return AlgoliaSubmissionsCursor(throughEpochSeconds = oldest)
+    }
+
+    override suspend fun getUserComments(
+        userName: String,
+        sinceEpochSeconds: Int?,
+    ): List<AlgoliaUserComment> = withContext(requestDispatcher) {
+        require(userName.isNotBlank()) { "A username is required" }
+        val url = URLBuilder("$ALGOLIA_API/search_by_date").apply {
+            parameters.append("tags", "author_$userName,comment")
+            parameters.append("hitsPerPage", AlgoliaRepository.USER_COMMENTS_LIMIT.toString())
+            // Only story IDs are needed; this keeps a full page around 70 KB instead of 1.6 MB.
+            parameters.append("attributesToRetrieve", "story_id,created_at_i")
+            parameters.append("attributesToHighlight", "[]")
+            sinceEpochSeconds?.let { parameters.append("numericFilters", "created_at_i>=$it") }
+        }.buildString()
+        searchResponse(url).hits.mapNotNull { hit ->
+            hit.storyId?.takeIf { it > 0 }?.let { AlgoliaUserComment(it, hit.createdAt ?: 0) }
+        }
     }
 
     override suspend fun search(url: String): AlgoliaSearchPage = withContext(requestDispatcher) {

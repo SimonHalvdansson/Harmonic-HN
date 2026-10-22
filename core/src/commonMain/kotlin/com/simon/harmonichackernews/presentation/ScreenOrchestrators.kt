@@ -49,6 +49,7 @@ data class CommentsHeaderContext(
 data class CommentActionContext(
     val comment: CommentSnapshot,
     val storyTitle: String?,
+    val rootStoryId: Int = -1,
     val hasAccount: Boolean,
     val voteLoading: Boolean,
     val upvoted: Boolean,
@@ -80,6 +81,7 @@ object CommentsUiOrchestrator {
                             itemId = story.id,
                             parentText = story.title,
                             postTitle = story.title,
+                            rootStoryId = if (story.isComment) story.rootStoryId else story.id,
                         ),
                     ),
                 )
@@ -211,6 +213,7 @@ object CommentsUiOrchestrator {
                             parentText = comment.text,
                             postTitle = context.storyTitle,
                             userName = comment.author,
+                            rootStoryId = context.rootStoryId,
                         ),
                     ),
                 )

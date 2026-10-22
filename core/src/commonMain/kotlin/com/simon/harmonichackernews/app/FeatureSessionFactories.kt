@@ -50,20 +50,22 @@ class EditorFeatureSession internal constructor(
     private val scope: CoroutineScope,
     private val workflow: EditorSubmissionWorkflow,
     private val mutableEvents: MutableSharedFlow<EditorFeatureSessionEvent>,
+    private val onSuccess: () -> Unit = {},
 ) {
     val events: SharedFlow<EditorFeatureSessionEvent> = mutableEvents.asSharedFlow()
     val isSubmitting: Boolean get() = workflow.isSubmitting
 
     fun submit(submission: EditorSubmission) {
-        scope.launch { mutableEvents.emit(EditorFeatureSessionEvent.Result(workflow.submit(submission))) }
+        scope.launch { emitResult(workflow.submit(submission)) }
     }
 
     fun respondToCaptcha(challenge: HackerNewsCaptchaChallenge, response: String) {
-        scope.launch {
-            mutableEvents.emit(
-                EditorFeatureSessionEvent.Result(workflow.respondToCaptcha(challenge, response)),
-            )
-        }
+        scope.launch { emitResult(workflow.respondToCaptcha(challenge, response)) }
+    }
+
+    private suspend fun emitResult(result: EditorWorkflowResult) {
+        if (result == EditorWorkflowResult.Success) onSuccess()
+        mutableEvents.emit(EditorFeatureSessionEvent.Result(result))
     }
 
     fun cancelCaptcha() {
@@ -164,6 +166,8 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
         storyCache = storyCacheRuntime,
         observeSavedItems = { emit -> savedItems.changes.collect { emit(it.source) } },
         observeStoryUpdates = { emit -> storyUpdates.updates.collect { emit(it) } },
+        commentedStories = commentedStories,
+        accountStates = host.platform.accounts.accountState,
     )
 }
 
@@ -232,7 +236,12 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         previewResourceService = previewResources,
         storyResourceTints = storyResourceTints,
     )
-    return CommentsFeatureStore(featureScope, runtime, createReferenceLinkPreviewRuntime(featureScope))
+    return CommentsFeatureStore(
+        featureScope,
+        runtime,
+        createReferenceLinkPreviewRuntime(featureScope),
+        commentedStoryIds = commentedStories.ids,
+    )
 }
 
 private fun CoroutineScope.childFeatureScope(): CoroutineScope = CoroutineScope(
@@ -254,6 +263,7 @@ fun HarmonicAppComposition.createEditorFeatureSession(
     scope: CoroutineScope,
     type: EditorType,
     itemId: Int,
+    rootStoryId: Int = -1,
     connectivity: ConnectivityService = platform.connectivity,
 ): EditorFeatureSession {
     val events = MutableSharedFlow<EditorFeatureSessionEvent>(extraBufferCapacity = 16)
@@ -264,7 +274,12 @@ fun HarmonicAppComposition.createEditorFeatureSession(
         connectivity = connectivity,
         onSubmittingChanged = { events.tryEmit(EditorFeatureSessionEvent.Submitting(it)) },
     )
-    return EditorFeatureSession(scope, workflow, events)
+    return EditorFeatureSession(scope, workflow, events) {
+        // The editor closes on success, so record outside its scope.
+        if (type != EditorType.POST && rootStoryId > 0) {
+            network.scope.launch { commentedStories.record(rootStoryId) }
+        }
+    }
 }
 
 fun HarmonicAppComposition.createStoryLinkPreviewSession(

@@ -116,6 +116,7 @@ internal fun IosEditorContent(
                 scope = scope,
                 type = destination.type,
                 itemId = destination.itemId,
+                rootStoryId = destination.rootStoryId,
             ),
         )
     }

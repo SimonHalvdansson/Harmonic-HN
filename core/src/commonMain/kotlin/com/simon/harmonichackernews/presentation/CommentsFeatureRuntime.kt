@@ -658,6 +658,7 @@ class CommentsFeatureRuntime(
                 context = CommentActionContext(
                     comment = comment.comment,
                     storyTitle = story?.title,
+                    rootStoryId = story?.let { if (it.isComment) it.rootStoryId else it.id } ?: -1,
                     hasAccount = hasAccount,
                     voteLoading = voteLoading,
                     upvoted = savedItems.isUpvoted(comment.id, true),

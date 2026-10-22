@@ -145,6 +145,8 @@ data class StoryRowStyle(
     val preferredFont: String,
     val textSize: Float,
     val dimmed: Boolean = false,
+    /** The signed-in user has commented on this story. */
+    val commented: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     val mediumPreviewImageHeight: Dp = 88.dp,
 ) {

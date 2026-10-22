@@ -33,6 +33,7 @@ class AndroidEditorCoordinator(
         scope = activity.lifecycleScope,
         type = type,
         itemId = id,
+        rootStoryId = destination.rootStoryId,
     )
     private val screenSession = EditorScreenSession(activity.lifecycleScope, featureSession)
     private val submittingCollectionJob: Job = activity.lifecycleScope.launch {

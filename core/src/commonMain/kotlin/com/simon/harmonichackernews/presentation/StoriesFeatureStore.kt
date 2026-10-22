@@ -3,18 +3,22 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.cache.StoryCacheState
+import com.simon.harmonichackernews.data.CommentedStoriesStore
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.StoryResourceTintKind
+import com.simon.harmonichackernews.platform.HackerNewsAccountState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 
@@ -64,6 +68,8 @@ data class StoriesState(
     val loggedIn: Boolean = false,
     val canClearHistory: Boolean = false,
     val canHidePosts: Boolean = false,
+    /** Stories the signed-in user has commented on. */
+    val commentedStoryIds: Set<Int> = emptySet(),
     val cache: StoryCacheState = StoryCacheState(),
     val lastUpdatedMillis: Long? = null,
 ) {
@@ -135,6 +141,8 @@ class StoriesFeatureStore internal constructor(
     private val storyCache: StoryCacheRuntime,
     private val observeSavedItems: suspend (suspend (SavedItemSource) -> Unit) -> Unit,
     private val observeStoryUpdates: suspend (suspend (Story) -> Unit) -> Unit,
+    private val commentedStories: CommentedStoriesStore? = null,
+    private val accountStates: Flow<HackerNewsAccountState> = emptyFlow(),
 ) : FeatureStore<StoriesIntent, StoriesState, StoriesFeatureEffect> {
     private val mutableState = MutableStateFlow(snapshot())
     override val state: StateFlow<StoriesState> = mutableState.asStateFlow()
@@ -189,6 +197,14 @@ class StoriesFeatureStore internal constructor(
             }
         }
         jobs += scope.launch { storyCache.state.collect { publish() } }
+        commentedStories?.let { commented ->
+            jobs += scope.launch { commented.ids.collect { publish() } }
+            // Signing in, out, or switching accounts rebinds the set. The first settled state
+            // performs the startup sync; later syncs come from refreshes and resumes.
+            jobs += scope.launch {
+                accountStates.collect { if (it !is HackerNewsAccountState.Loading) commented.sync() }
+            }
+        }
         jobs += scope.launch {
             observeStoryUpdates { story ->
                 runtime.mergeExternalStoryUpdate(story)
@@ -220,6 +236,7 @@ class StoriesFeatureStore internal constructor(
 
     fun onResume() {
         runtime.resume(hostStarted)
+        syncCommentedStories()
         publish()
     }
 
@@ -244,10 +261,13 @@ class StoriesFeatureStore internal constructor(
             is StoriesIntent.SelectSearchOption ->
                 runtime.selectSearchOption(intent.kind, intent.index)
             StoriesIntent.ToggleOnlyRead -> runtime.toggleOnlyRead()
-            is StoriesIntent.Refresh -> runtime.refresh(
-                showSwipeRefreshIndicator = true,
-                showMainLoadingIndicator = intent.showMainLoadingIndicator,
-            )
+            is StoriesIntent.Refresh -> {
+                runtime.refresh(
+                    showSwipeRefreshIndicator = true,
+                    showMainLoadingIndicator = intent.showMainLoadingIndicator,
+                )
+                syncCommentedStories()
+            }
             StoriesIntent.ShowCached -> runtime.showCachedStories()
             StoriesIntent.LoadMore -> runtime.loadMore()
             is StoriesIntent.SetNewStoriesFilter -> runtime.setNewStoriesFilter(intent.filter)
@@ -317,6 +337,12 @@ class StoriesFeatureStore internal constructor(
         scope.cancel()
     }
 
+    /** Throttled by the store, so refreshes and resumes stay cheap. */
+    private fun syncCommentedStories() {
+        val commented = commentedStories ?: return
+        if (!closed) scope.launch { commented.sync() }
+    }
+
     private inline fun withActiveStory(storyId: Int, action: (Story) -> Unit) {
         runtime.activeStory(storyId)?.let(action)
     }
@@ -369,6 +395,7 @@ class StoriesFeatureStore internal constructor(
             loggedIn = runtime.loggedIn,
             canClearHistory = runtime.canClearHistory,
             canHidePosts = runtime.canHidePosts,
+            commentedStoryIds = commentedStories?.ids?.value.orEmpty(),
             cache = storyCache.state.value,
             lastUpdatedMillis = runtime.lastUpdatedMillisForHeader(),
         )

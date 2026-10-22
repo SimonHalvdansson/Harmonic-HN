@@ -53,6 +53,7 @@ object CommentsScreenStateFactory {
             contentInsetLeftPx = platform.contentInsetLeftPx,
             contentInsetRightPx = platform.contentInsetRightPx,
             storyVoteLoading = state.storyVoteLoading,
+            storyCommented = feature.commented,
             storyFavoriteLoading = state.storyFavoriteLoading,
             pollVoteInFlightOptionId = state.pollVoteInFlightOptionId,
             storySummaryLoading = feature.summaryLoading,
