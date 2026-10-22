@@ -8,7 +8,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.simon.harmonichackernews.harmonicAppComposition
+import com.simon.harmonichackernews.awaitHarmonicAppComposition
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -32,13 +32,14 @@ class WidgetCleanupWorker(context: Context, parameters: WorkerParameters) : Coro
         val manager = WorkManager.getInstance(context)
         manager.cancelUniqueWork(WidgetRefreshWorker.workName(id)).result.get()
         manager.cancelUniqueWork(WidgetRefreshWorker.resizeWorkName(id)).result.get()
+        manager.cancelUniqueWork(WidgetSchedulingDiagnosticsWorker.workName(id)).result.get()
         withWidgetStorage(id) {
             // Do not clear a replacement widget if its ID is reused before cleanup executes.
             if (AppWidgetManager.getInstance(context).getAppWidgetInfo(id) != null) {
                 return@withWidgetStorage Result.success()
             }
-            context.harmonicAppComposition.widgets.clear(id)
-            WidgetSchedulingDiagnostics(context, id).clear()
+            context.awaitHarmonicAppComposition().widgets.clear(id)
+            withWidgetDiagnostics(id) { WidgetSchedulingDiagnostics(context, id).clear() }
             if (WidgetRefreshWorker.imageDirectory(context, id).deleteRecursively()) Result.success()
             else Result.retry()
         }

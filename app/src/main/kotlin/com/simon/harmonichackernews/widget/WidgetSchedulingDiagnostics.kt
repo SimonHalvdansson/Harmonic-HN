@@ -2,56 +2,87 @@ package com.simon.harmonichackernews.widget
 
 import android.content.Context
 import androidx.work.WorkInfo
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
 /** Persist receiver/enqueue events even when the network-constrained worker never starts. */
-internal class WidgetSchedulingDiagnostics(context: Context, widgetId: Int) {
-    private val preferences = context.getSharedPreferences("widget-scheduling-$widgetId", Context.MODE_PRIVATE)
+internal class WidgetSchedulingDiagnostics(context: Context, private val widgetId: Int) {
+    private val appContext = context.applicationContext
 
-    fun recordAndroidUpdate(now: Long = System.currentTimeMillis()) {
-        preferences.edit().putLong("androidUpdate", now).apply()
+    // Even locating the DataStore file stays off Main. Opening migrates the existing diagnostics.
+    private suspend fun store(): AndroidKeyValueStore = withContext(Dispatchers.IO) {
+        AndroidKeyValueStore.named(appContext, "widget-scheduling-$widgetId").also { it.awaitLoaded() }
     }
 
-    fun recordEnqueued(workId: UUID, source: String, now: Long = System.currentTimeMillis()) {
-        preferences.edit()
-            .putString("workId", workId.toString())
-            .putString("source", source)
-            .putLong("enqueued", now)
-            .apply()
+    suspend fun recordAndroidUpdate(now: Long = System.currentTimeMillis()) {
+        val preferences = store()
+        preferences.putLong("androidUpdate", now)
+        preferences.awaitPersisted()
     }
 
-    fun recordStarted(workId: UUID, attempt: Int, now: Long = System.currentTimeMillis()) {
-        preferences.edit()
-            .putString("startedWorkId", workId.toString())
-            .putInt("attempt", attempt + 1)
-            .putLong("started", now)
-            .apply()
+    suspend fun recordEnqueued(
+        workId: UUID,
+        source: String,
+        now: Long = System.currentTimeMillis(),
+        androidUpdate: Long? = null,
+    ) {
+        val preferences = store()
+        preferences.update {
+            putString("workId", workId.toString())
+            putString("source", source)
+            putLong("enqueued", now)
+            androidUpdate?.let { putLong("androidUpdate", it) }
+        }
+        preferences.awaitPersisted()
     }
 
-    fun clear() {
-        preferences.edit().clear().apply()
+    suspend fun recordStarted(workId: UUID, attempt: Int, now: Long = System.currentTimeMillis()) {
+        val preferences = store()
+        preferences.update {
+            putString("startedWorkId", workId.toString())
+            putInt("attempt", attempt + 1)
+            putLong("started", now)
+        }
+        preferences.awaitPersisted()
     }
 
-    fun snapshot(workInfos: List<WorkInfo>, lastSuccess: Long?, now: Long = System.currentTimeMillis()): String {
-        val recorded = preferences.all
+    suspend fun clear() {
+        val preferences = store()
+        preferences.clear()
+        preferences.awaitPersisted()
+    }
+
+    fun snapshots(workInfos: List<WorkInfo>, lastSuccess: Long?): Flow<String> = flow {
+        emitAll(store().changes.map { snapshot(workInfos, lastSuccess) })
+    }.flowOn(Dispatchers.IO)
+
+    suspend fun snapshot(workInfos: List<WorkInfo>, lastSuccess: Long?, now: Long = System.currentTimeMillis()): String {
+        val preferences = store()
         val dateFormat = SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault())
         fun time(value: Long?) = value?.takeIf { it > 0 && it != Long.MAX_VALUE }
             ?.let { dateFormat.format(Date(it)) } ?: "not recorded"
-        fun eventTime(key: String) = time(recorded[key] as? Long)
-        val workId = recorded["workId"] as? String
+        fun eventTime(key: String) = time(preferences.getLong(key, 0))
+        val workId = preferences.getString("workId")
         // A replaced/cancelled predecessor must not be presented as the current request.
         val work = workInfos.firstOrNull { it.id.toString() == workId }
         return buildString {
             append("Observed: ${time(now)}\n")
             append("Android update: ${eventTime("androidUpdate")}\n")
             append("Queued: ${eventTime("enqueued")}")
-            (recorded["source"] as? String)?.let { append(" · $it") }
+            preferences.getString("source")?.let { append(" · $it") }
             workId?.let { append(" · ${it.take(8)}") }
             append("\nStarted: ${eventTime("started")}")
-            (recorded["startedWorkId"] as? String)?.let { append(" · ${it.take(8)} · attempt ${recorded["attempt"]}") }
+            preferences.getString("startedWorkId")?.let { append(" · ${it.take(8)} · attempt ${preferences.getInt("attempt", 0)}") }
             append("\nJob: ")
             if (work == null) {
                 append(if (workId == null) "not recorded" else "not found (pending enqueue or pruned)")

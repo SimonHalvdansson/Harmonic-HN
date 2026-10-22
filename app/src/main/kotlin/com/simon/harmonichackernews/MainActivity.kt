@@ -35,8 +35,8 @@ open class MainActivity : BaseActivity() {
 
     protected override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep the system launch surface until preferences and the initial UI are ready. Vetoing
-        // a draw leaves the main thread free to process the asynchronous preference load.
+        // Keep the system launch surface until the app graph and initial UI are ready. Vetoing
+        // a draw leaves the main thread free while startup prepares storage in the background.
         val content = findViewById<View>(android.R.id.content)
         content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
@@ -52,13 +52,13 @@ open class MainActivity : BaseActivity() {
         }
         pendingSavedState = savedInstanceState
         lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            (application as HarmonicApplication).awaitStartupPreferences()
+            (application as HarmonicApplication).awaitStartup()
             AndroidActivityTheme.setupTheme(this@MainActivity)
             prepareScene()
             navigationController = install(this@MainActivity, pendingSavedState)
             pendingSavedState = null
             launchIntentRouter = MainLaunchIntentRouter(navigationController)
-            // Use the latest intent, including one delivered while preference loading suspended.
+            // Use the latest intent, including one delivered while startup suspended.
             consumeLaunchIntent(intent)
             // A cold load may finish after these lifecycle callbacks have already run.
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) navigationController.onStart()

@@ -29,11 +29,18 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 
 /** The largest supported feed must fit comfortably in the launcher's shared Binder buffer. */
 @RunWith(AndroidJUnit4::class)
 class WidgetPayloadTest {
+    @Before
+    fun awaitApplicationStartup() = runBlocking {
+        InstrumentationRegistry.getInstrumentation().targetContext.awaitHarmonicAppComposition()
+        Unit
+    }
+
     @Test
     fun renderingErrorsAreActionableAndDetailsRequireOptIn() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {

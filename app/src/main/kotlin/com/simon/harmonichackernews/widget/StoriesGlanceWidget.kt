@@ -45,6 +45,7 @@ import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.CommentsIntentExtras
 import com.simon.harmonichackernews.harmonicAppComposition
+import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.network.WidgetConfiguration
@@ -79,6 +80,7 @@ class StoriesGlanceWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        (context.applicationContext as HarmonicApplication).awaitWidgetPreferences()
         val app = context.harmonicAppComposition
         provideContent {
             val state = currentState<Preferences>()
@@ -106,7 +108,10 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 val workInfos by remember(context, widgetId) {
                     WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WidgetRefreshWorker.workName(widgetId))
                 }.collectAsState(initial = emptyList())
-                WidgetSchedulingDiagnostics(context, widgetId).snapshot(workInfos, state[WidgetState.updated])
+                val diagnostics by remember(context, widgetId, workInfos, state[WidgetState.updated]) {
+                    WidgetSchedulingDiagnostics(context, widgetId).snapshots(workInfos, state[WidgetState.updated])
+                }.collectAsState(initial = null)
+                diagnostics
             } else null
             val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, app.userSettings.story.paletteTintConfigKey) {
                 value = withContext(Dispatchers.IO) {
@@ -383,10 +388,9 @@ internal fun widgetFailureDescription(error: Throwable?): String = error?.let {
 }?.take(300) ?: "No items returned"
 
 internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable): RemoteViews {
-    val app = context.harmonicAppComposition
-    val selection = app.appearance.selection()
-    val colors = harmonicThemePalette(context, selection).colorScheme
-    val message = if (app.userSettings.debug.showWidgetDebugInfo) {
+    val app = (context.applicationContext as HarmonicApplication).compositionOrNull
+    val colors = app?.appearance?.selection()?.let { harmonicThemePalette(context, it).colorScheme }
+    val message = if (app?.userSettings?.debug?.showWidgetDebugInfo == true) {
         "Widget $widgetId could not render\n${widgetFailureDescription(error)}\nTap to retry."
     } else "Could not display stories. Tap to retry."
     val retry = Intent(context, StoriesWidgetProvider::class.java)
@@ -394,8 +398,10 @@ internal fun widgetErrorViews(context: Context, widgetId: Int, error: Throwable)
         .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(widgetId))
     return RemoteViews(context.packageName, R.layout.widget_error).apply {
         setTextViewText(R.id.widget_error_message, message)
-        setTextColor(R.id.widget_error_message, colors.onSurface.toArgb())
-        setInt(R.id.widget_error_message, "setBackgroundColor", colors.pageBackground.toArgb())
+        if (colors != null) {
+            setTextColor(R.id.widget_error_message, colors.onSurface.toArgb())
+            setInt(R.id.widget_error_message, "setBackgroundColor", colors.pageBackground.toArgb())
+        }
         setOnClickPendingIntent(R.id.widget_error_message,
             PendingIntent.getBroadcast(context, widgetId, retry, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }

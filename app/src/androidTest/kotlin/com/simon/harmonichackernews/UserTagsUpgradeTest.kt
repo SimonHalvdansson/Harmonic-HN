@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.simon.harmonichackernews.settings.UserTagCodec
 import com.simon.harmonichackernews.settings.UserTagKeys
 import org.junit.Assert.assertEquals
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -12,7 +13,7 @@ import org.junit.runner.RunWith
 class UserTagsUpgradeTest {
     @Test
     fun applicationReadsAndEditsTagsInTheLegacyContentStore() {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.harmonicAppComposition
+        val app = runBlocking { InstrumentationRegistry.getInstrumentation().targetContext.awaitHarmonicAppComposition() }
         val content = app.host.appDataStore
         val settings = app.host.settingsStore
         val originalTags = content.getString(UserTagKeys.TAGS)

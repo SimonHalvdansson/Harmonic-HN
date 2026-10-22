@@ -29,7 +29,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.io.files.Path
 
 /** Android storage and WorkManager adapters for the shared local-model service. */
-internal fun createAndroidLocalModelService(context: Context): LocalModelService {
+internal fun createAndroidLocalModelService(
+    context: Context,
+    runtimeDelivery: AndroidLocalRuntimeDelivery,
+): LocalModelService {
     val appContext = context.applicationContext
     val modelsRoot = androidLocalModelsRoot(appContext)
     val files = FileLocalModelStorage(
@@ -43,7 +46,7 @@ internal fun createAndroidLocalModelService(context: Context): LocalModelService
         storageDispatcher = kotlinx.coroutines.Dispatchers.IO,
         storage = files,
         transfers = transfers,
-        runtimeDelivery = createAndroidLocalRuntimeDelivery(appContext),
+        runtimeDelivery = runtimeDelivery,
         capabilities = LocalModelDeviceCapabilities(
             supportsDownloadableModels = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
             supportsLiteRtModels = Process.is64Bit(),

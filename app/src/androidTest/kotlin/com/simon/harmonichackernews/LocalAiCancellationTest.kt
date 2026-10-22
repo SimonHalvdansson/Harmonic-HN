@@ -18,7 +18,7 @@ class LocalAiCancellationTest {
     @Test fun cancellationReleasesNativeInferenceAndAllowsAnotherRequest() = runBlocking {
         val modelId = InstrumentationRegistry.getArguments().getString("localModelId")
         assumeNotNull(modelId)
-        val app = ApplicationProvider.getApplicationContext<Context>().harmonicAppComposition
+        val app = ApplicationProvider.getApplicationContext<Context>().awaitHarmonicAppComposition()
         val models = checkNotNull(app.localModels)
         val previousModel = models.selectedModel.id
         val engine = checkNotNull(app.localSummaryEngine)

@@ -13,7 +13,7 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.simon.harmonichackernews.harmonicAppComposition
+import com.simon.harmonichackernews.awaitHarmonicAppComposition
 import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
@@ -67,16 +67,30 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
     override suspend fun doWork(): Result {
         val widgetId = inputData.getInt(WIDGET_ID, -1)
         if (widgetId < 0) return Result.failure()
-        if (!inputData.getBoolean(RESIZE_ONLY, false)) {
-            WidgetSchedulingDiagnostics(applicationContext, widgetId).recordStarted(id, runAttemptCount)
+        return withWidgetStorage(widgetId) {
+            if (AppWidgetManager.getInstance(applicationContext).getAppWidgetInfo(widgetId) == null) {
+                return@withWidgetStorage Result.success()
+            }
+            if (!inputData.getBoolean(RESIZE_ONLY, false)) {
+                try {
+                    withWidgetDiagnostics(widgetId) {
+                        WidgetSchedulingDiagnostics(applicationContext, widgetId).recordStarted(id, runAttemptCount)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    // Optional diagnostics must not prevent stories from refreshing.
+                    HarmonicLog.debug("Unable to record widget start: $error")
+                }
+            }
+            refresh(widgetId)
         }
-        return withWidgetStorage(widgetId) { refresh(widgetId) }
     }
 
     private suspend fun refresh(widgetId: Int): Result {
         val context = applicationContext
         if (AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId) == null) return Result.success()
-        val app = context.harmonicAppComposition
+        val app = context.awaitHarmonicAppComposition()
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(widgetId)
         val configuration = app.widgets.configuration(widgetId)
         if (inputData.getBoolean(RESIZE_ONLY, false)) {
@@ -236,7 +250,14 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     .setInputData(workDataOf(WIDGET_ID to widgetId, RESIZE_ONLY to true)).build(),
             )
         }
-        fun enqueue(context: Context, widgetId: Int, source: String = "app", renderQueued: Boolean = true) {
+        fun enqueue(
+            context: Context,
+            widgetId: Int,
+            source: String = "app",
+            renderQueued: Boolean = true,
+            androidUpdate: Long? = null,
+        ) {
+            val enqueuedAt = System.currentTimeMillis()
             val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
                 .setInputData(workDataOf(WIDGET_ID to widgetId))
                 // Let JobScheduler wait for network access for this app, including Doze.
@@ -244,7 +265,10 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WIDGET_REFRESH_BACKOFF_SECONDS, TimeUnit.SECONDS)
                 .build()
-            WidgetSchedulingDiagnostics(context, widgetId).recordEnqueued(request.id, source)
+            WidgetSchedulingDiagnosticsWorker.enqueue(
+                context, widgetId,
+                WidgetSchedulingDiagnosticsWorker.request(widgetId, request.id, source, enqueuedAt, androidUpdate),
+            )
             WorkManager.getInstance(context).enqueueUniqueWork(
                 workName(widgetId), ExistingWorkPolicy.REPLACE,
                 request,

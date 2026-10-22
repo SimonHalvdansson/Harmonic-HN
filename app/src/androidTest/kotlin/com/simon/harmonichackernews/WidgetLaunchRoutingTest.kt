@@ -12,12 +12,20 @@ import com.simon.harmonichackernews.widget.widgetStoryIntent
 import com.simon.harmonichackernews.widget.widgetStoriesIntent
 import com.simon.harmonichackernews.navigation.MainDestination
 import org.junit.Assert.*
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 
 /** Verifies the intent supplied to Glance's activity action against the real launch decoder. */
 @RunWith(AndroidJUnit4::class)
 class WidgetLaunchRoutingTest {
+    @Before
+    fun awaitApplicationStartup() = runBlocking {
+        InstrumentationRegistry.getInstrumentation().targetContext.awaitHarmonicAppComposition()
+        Unit
+    }
+
     @Test
     fun widgetHeaderReturnsToStoriesFromAnExistingSettingsTask() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {

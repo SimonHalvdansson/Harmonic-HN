@@ -49,11 +49,18 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 
 /** Real WebView and HTTP transfers, isolated from the user's pages, files and account. */
 @RunWith(AndroidJUnit4::class)
 class CommentsWebViewLifecycleTest {
+    @Before
+    fun awaitApplicationStartup() = runBlocking {
+        InstrumentationRegistry.getInstrumentation().targetContext.awaitHarmonicAppComposition()
+        Unit
+    }
+
     @Test
     fun downloadButtonEnqueuesAnAttachmentAndReportsSuccess() {
         TestServer().use { server ->

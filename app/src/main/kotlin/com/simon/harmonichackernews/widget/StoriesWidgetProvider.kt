@@ -12,10 +12,12 @@ class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = StoriesGlanceWidget()
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        val receivedAt = System.currentTimeMillis()
         appWidgetIds.forEach {
-            WidgetSchedulingDiagnostics(context, it).recordAndroidUpdate()
             // super.onUpdate already requests a Glance render for this broadcast.
-            WidgetRefreshWorker.enqueue(context, it, source = "Android update", renderQueued = false)
+            WidgetRefreshWorker.enqueue(
+                context, it, source = "Android update", renderQueued = false, androidUpdate = receivedAt,
+            )
         }
         super.onUpdate(context, appWidgetManager, appWidgetIds)
     }

@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.widget
 
 import android.app.Application
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.work.Constraints
 import androidx.work.NetworkType
@@ -18,6 +20,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.util.TimeZone
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -26,8 +29,10 @@ class WidgetSchedulingDiagnosticsTest {
     private val context get() = RuntimeEnvironment.getApplication()
 
     @Before
-    fun setUp() {
+    fun setUp() = runBlocking {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        WidgetSchedulingDiagnostics(context, 25).clear()
+        WidgetSchedulingDiagnostics(context, 26).clear()
     }
 
     @After
@@ -36,7 +41,7 @@ class WidgetSchedulingDiagnosticsTest {
     }
 
     @Test
-    fun manualRefreshKeepsTheLastAndroidUpdateAndPreviousStartAcrossRecreation() {
+    fun manualRefreshKeepsTheLastAndroidUpdateAndPreviousStartAcrossRecreation() = runBlocking {
         val automatic = UUID.randomUUID()
         val manual = UUID.randomUUID()
         WidgetSchedulingDiagnostics(context, 25).apply {
@@ -57,7 +62,7 @@ class WidgetSchedulingDiagnosticsTest {
     }
 
     @Test
-    fun showsLatestRequestInsteadOfItsCancelledPredecessorAndReportsRetryEligibility() {
+    fun showsLatestRequestInsteadOfItsCancelledPredecessorAndReportsRetryEligibility() = runBlocking {
         val previous = UUID.randomUUID()
         val current = UUID.randomUUID()
         val diagnostics = WidgetSchedulingDiagnostics(context, 25)
@@ -76,7 +81,7 @@ class WidgetSchedulingDiagnosticsTest {
     }
 
     @Test
-    fun completedJobsDoNotImplyAnotherRunAndMissingJobsAreNotReportedAsSuccessful() {
+    fun completedJobsDoNotImplyAnotherRunAndMissingJobsAreNotReportedAsSuccessful() = runBlocking {
         val id = UUID.randomUUID()
         val diagnostics = WidgetSchedulingDiagnostics(context, 25)
         diagnostics.recordEnqueued(id, "manual", 1_000)
@@ -90,7 +95,7 @@ class WidgetSchedulingDiagnosticsTest {
     }
 
     @Test
-    fun missingHistoryIsExplicitAndCleanupIsIsolatedToTheDeletedWidget() {
+    fun missingHistoryIsExplicitAndCleanupIsIsolatedToTheDeletedWidget() = runBlocking {
         val first = WidgetSchedulingDiagnostics(context, 25)
         val other = WidgetSchedulingDiagnostics(context, 26)
         first.recordAndroidUpdate(1_000)
@@ -103,6 +108,48 @@ class WidgetSchedulingDiagnosticsTest {
         assertTrue(empty.contains("Job: not recorded"))
         assertTrue(empty.contains("Last success: not recorded"))
         assertTrue(other.snapshot(emptyList(), null, now = 3_000).contains("Android update: 01-01 00:00:02"))
+    }
+
+    @Test
+    fun coldStoreMigrationAndWritesStayOffTheCallerAndPreserveLegacyEvents() = runBlocking {
+        val widgetId = 10_000 + java.util.Random().nextInt(1_000_000)
+        val caller = Thread.currentThread()
+        val automatic = UUID.randomUUID()
+        context.getSharedPreferences("widget-scheduling-$widgetId", Context.MODE_PRIVATE).edit()
+            .putLong("androidUpdate", 1_000)
+            .putLong("started", 2_000)
+            .putString("startedWorkId", automatic.toString())
+            .putInt("attempt", 2)
+            .commit()
+        val checkingContext = object : ContextWrapper(context) {
+            override fun getApplicationContext(): Context = this
+            override fun getFilesDir(): java.io.File {
+                assertTrue("File lookup must not run on the caller", Thread.currentThread() !== caller)
+                return super.getFilesDir()
+            }
+            override fun getSharedPreferences(name: String, mode: Int): android.content.SharedPreferences {
+                assertTrue("Migration must not run on the caller", Thread.currentThread() !== caller)
+                return super.getSharedPreferences(name, mode)
+            }
+        }
+        val diagnostics = WidgetSchedulingDiagnostics(checkingContext, widgetId)
+        val manual = UUID.randomUUID()
+        diagnostics.recordEnqueued(manual, "manual", now = 3_000)
+        val snapshot = diagnostics.snapshot(emptyList(), null, now = 4_000)
+        assertTrue(snapshot.contains("Android update: 01-01 00:00:01"))
+        assertTrue(snapshot.contains("Started: 01-01 00:00:02 · ${automatic.toString().take(8)} · attempt 2"))
+        assertTrue(snapshot.contains("Queued: 01-01 00:00:03 · manual · ${manual.toString().take(8)}"))
+        diagnostics.clear()
+    }
+
+    @Test
+    fun diagnosticWorkCapturesReceiptTimeAndCanRunWithoutNetwork() {
+        val id = UUID.randomUUID()
+        val request = WidgetSchedulingDiagnosticsWorker.request(25, id, "Android update", 2_000, 1_000)
+        assertEquals(NetworkType.NOT_REQUIRED, request.workSpec.constraints.requiredNetworkType)
+        assertEquals(1_000, request.workSpec.input.getLong("androidUpdate", 0))
+        assertEquals(2_000, request.workSpec.input.getLong("enqueued", 0))
+        assertEquals(id.toString(), request.workSpec.input.getString("workId"))
     }
 
     @Test

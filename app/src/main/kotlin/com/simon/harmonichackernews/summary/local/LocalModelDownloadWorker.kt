@@ -12,7 +12,7 @@ import androidx.work.Data
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.simon.harmonichackernews.harmonicAppComposition
+import com.simon.harmonichackernews.awaitHarmonicAppComposition
 import com.simon.harmonichackernews.network.FileResumableDownloadDestination
 import com.simon.harmonichackernews.network.KtorTransferClient
 import com.simon.harmonichackernews.network.ResumableDownloadService
@@ -58,7 +58,7 @@ class LocalModelDownloadWorker(
             var lastUpdateAt = SystemClock.elapsedRealtime()
             var lastPercent = 0
             ResumableDownloadService(
-                KtorTransferClient(applicationContext.harmonicAppComposition.network.httpClient),
+                KtorTransferClient(applicationContext.awaitHarmonicAppComposition().network.httpClient),
             ).download(
                 url = modelUrl,
                 expectedBytes = expectedBytes,
