@@ -8,6 +8,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
@@ -172,8 +174,7 @@ fun LocalModelsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(itemBackgroundColor())
-            .animateContentSize(),
+            .background(itemBackgroundColor()),
     ) {
         nanoRow?.let { row ->
             LocalModelGroup(
@@ -210,7 +211,12 @@ fun LocalModelsPanel(
                 iconModifier = Modifier.graphicsLayer { rotationZ = caretRotation },
                 onClick = { expansionChoice = !expanded },
             )
-            AnimatedVisibility(visible = expanded) {
+            // This transition owns the height; an outer size animation trails it with an empty gap.
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(tween(240), expandFrom = Alignment.Top) + fadeIn(tween(180)),
+                exit = shrinkVertically(tween(240), shrinkTowards = Alignment.Top) + fadeOut(tween(180)),
+            ) {
                 LocalModelGroup(
                     label = null,
                     bottomPadding = 12.dp,
