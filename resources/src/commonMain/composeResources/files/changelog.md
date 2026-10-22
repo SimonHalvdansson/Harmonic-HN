@@ -1,4 +1,19 @@
-﻿# Version 3.1
+﻿# Version 3.2
+For Version 3.2, Harmonic has been rewritten from the ground up as a Compose Multiplatform app, securing making maintenance and porting easier in the future. Moving to Compose has large implications for the general behavior but I have tried to stay close the the earlier version and deviate where Compose has opened up new opportunities. This has been a very large undertaking, and some things are bound to have been broken in the process. After months of testing, I can't find any more issues though and deem this version ready for wide release. Below are some change highlights which are far from complete.
+
+- Performance improvements - this has been iterated on relentlessly and Harmonic should be even smoother now
+- New display options for posts and comments, together with new defaults. Rest assured that the earlier look and feel can be restored if you want it
+- Significant redesign of settings with many new screens and options
+- Improved AI summary features, and "Ask AI" about comments or stories (again, easy to turn off)
+- Redesigned widget
+- Improved layout on foldables and tablets
+- New theme engine
+- Much, much more, this release is more than 1000 commits all in all
+
+I hope you'll like it, a lot of care has gone into this release. As always, issues on GitHub are welcome to help improve the app further!
+
+
+# Version 3.1
 Version 3.1 is packed with additional fixes and refinements since 3.0 packages through more than 300 commits, most of which are not mentioned in the changelog below. 
 
 - Substantial performance improvements
