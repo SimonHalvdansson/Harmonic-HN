@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.platform.ConnectivityService
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -86,6 +88,7 @@ private fun StoryPreviewResourceState.withReconciledResources(
 }
 
 interface StoryPreviewResourceService {
+    val connectivity: ConnectivityService? get() = null
     val imageFailures: PreviewImageFailureCache? get() = null
     fun peekCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource? = null
     suspend fun readCached(request: StoryPreviewResourceRequest): CachedStoryPreviewResource
@@ -110,6 +113,14 @@ class StoryPreviewResourceRuntime(
         scope.launch {
             failures.changes.collect {
                 mutableStates.value.values.toList().forEach { update(it.withImageFailure()) }
+            }
+        }
+    }
+
+    private val connectivityJob = service.connectivity?.let { connectivity ->
+        scope.launch {
+            connectivity.onlineChanges.collect { online ->
+                if (online) service.imageFailures?.retryOfflineFailures()
             }
         }
     }
@@ -293,6 +304,7 @@ class StoryPreviewResourceRuntime(
     }
 
     fun dispose() {
+        connectivityJob?.cancel()
         imageFailureJob?.cancel()
         val pendingJobs = jobs.values.toList()
         // Cancellation can run completion handlers immediately and remove entries from these maps.

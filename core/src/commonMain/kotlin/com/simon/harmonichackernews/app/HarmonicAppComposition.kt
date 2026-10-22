@@ -137,6 +137,7 @@ class HarmonicAppComposition(
         coordinator = network.previewContentCoordinator,
         linkSummaries = network.linkSummaryRepository,
         store = host.previewCacheStore,
+        connectivity = platform.connectivity,
     )
     val supportsArticleSnapshots: Boolean = host.articleSnapshotStore != null
     val storyCache = StoryCacheService(

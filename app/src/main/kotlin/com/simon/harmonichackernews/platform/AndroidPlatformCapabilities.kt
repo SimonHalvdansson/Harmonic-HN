@@ -21,6 +21,8 @@ import com.simon.harmonichackernews.summary.LocalModelService
 import java.util.Calendar
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 internal class AndroidCredentialStore(
     context: Context,
@@ -80,6 +82,8 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
         appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     @Volatile
     private var connectivityStatus = AndroidConnectivityStatus.Offline
+    private val mutableOnline = MutableStateFlow(false)
+    override val onlineChanges = mutableOnline.asStateFlow()
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             manager?.getNetworkCapabilities(network)?.let(::updateCapabilities)
@@ -99,6 +103,7 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
                 ?.let { manager.getNetworkCapabilities(it) }
             if (activeCapabilities == null) {
                 connectivityStatus = AndroidConnectivityStatus.Offline
+                mutableOnline.value = false
             } else {
                 updateCapabilities(activeCapabilities)
             }
@@ -124,6 +129,7 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
 
     private fun updateCapabilities(capabilities: NetworkCapabilities) {
         connectivityStatus = AndroidConnectivityCapabilities.evaluate(capabilities)
+        mutableOnline.value = connectivityStatus.online
     }
 }
 

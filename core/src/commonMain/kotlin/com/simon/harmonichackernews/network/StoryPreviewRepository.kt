@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.settings.KeyValueStore
+import com.simon.harmonichackernews.platform.ConnectivityService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,7 +19,10 @@ class StoryPreviewRepository(
     private val linkSummaries: LinkSummaryRepository,
     private val store: KeyValueStore,
     private val cache: PreviewContentCache = PreviewContentCache(),
-    override val imageFailures: PreviewImageFailureCache = PreviewImageFailureCache(store),
+    override val connectivity: ConnectivityService? = null,
+    override val imageFailures: PreviewImageFailureCache = PreviewImageFailureCache(
+        store, isOnline = { connectivity?.isOnline() ?: true },
+    ),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoryPreviewResourceService {
     private val cacheMutex = Mutex()

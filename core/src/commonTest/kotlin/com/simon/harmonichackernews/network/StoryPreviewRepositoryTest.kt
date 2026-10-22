@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.settings.TestKeyValueStore
+import com.simon.harmonichackernews.platform.ConnectivityService
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -13,6 +15,44 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewRepositoryTest {
+    @Test
+    fun reconnectRetriesOfflineImagesOnAlreadyOpenScreensWithoutWaitingForCooldown() = runTest {
+        val online = MutableStateFlow(false)
+        val connectivity = object : ConnectivityService {
+            override fun isOnline() = online.value
+            override fun isUnmetered() = online.value
+            override val onlineChanges = online
+        }
+        val store = TestKeyValueStore()
+        val failures = PreviewImageFailureCache(store, isOnline = connectivity::isOnline)
+        val repository = repository(backgroundScope, store, failures, connectivity)
+        val stories = StoryPreviewResourceRuntime(backgroundScope, repository)
+        val comments = StoryPreviewResourceRuntime(backgroundScope, repository)
+        stories.request(request)
+        comments.request(request)
+        runCurrent()
+        assertTrue(stories.beginImageLoad(1, PAGE, IMAGE))
+        stories.completeImageLoad(1, PAGE, IMAGE, success = false)
+        runCurrent()
+        assertTrue(stories.stateFor(1)?.imageLoadFailed == true)
+        assertTrue(comments.stateFor(1)?.imageLoadFailed == true)
+        assertFalse(comments.beginImageLoad(1, PAGE, IMAGE))
+        assertFalse(PreviewImageFailureCache(store).isFailed(IMAGE))
+
+        // No request(), navigation, clock advance, refresh, or process restart.
+        online.value = true
+        runCurrent()
+        assertFalse(stories.stateFor(1)?.imageLoadFailed == true)
+        assertFalse(comments.stateFor(1)?.imageLoadFailed == true)
+        assertEquals(IMAGE, stories.stateFor(1)?.imageUrl)
+        assertTrue(stories.beginImageLoad(1, PAGE, IMAGE))
+        stories.completeImageLoad(1, PAGE, IMAGE, success = true)
+        runCurrent()
+        assertTrue(stories.stateFor(1)?.imageLoaded == true)
+        stories.dispose()
+        comments.dispose()
+    }
+
     @Test
     fun failedListImageIsSuppressedOnTheFirstCommentsStateAndAfterRepositoryRecreation() = runTest {
         val store = TestKeyValueStore()
@@ -100,6 +140,7 @@ class StoryPreviewRepositoryTest {
         scope: CoroutineScope,
         store: TestKeyValueStore,
         failures: PreviewImageFailureCache = PreviewImageFailureCache(store),
+        connectivity: ConnectivityService? = null,
     ) = StoryPreviewRepository(
         coordinator = PreviewContentCoordinator(scope),
         linkSummaries = object : LinkSummaryRepository {
@@ -108,6 +149,7 @@ class StoryPreviewRepositoryTest {
         },
         store = store,
         imageFailures = failures,
+        connectivity = connectivity,
         dispatcher = scope.coroutineContext[kotlin.coroutines.ContinuationInterceptor] as kotlinx.coroutines.CoroutineDispatcher,
     )
 

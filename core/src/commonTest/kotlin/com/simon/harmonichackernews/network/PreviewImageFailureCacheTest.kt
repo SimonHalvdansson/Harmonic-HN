@@ -3,9 +3,44 @@ package com.simon.harmonichackernews.network
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PreviewImageFailureCacheTest {
+    @Test
+    fun offlineFailuresDoNotSurviveRestartOrSuppressOnlineRetries() {
+        var online = false
+        val store = TestKeyValueStore()
+        val cache = PreviewImageFailureCache(store, isOnline = { online })
+        cache.record("offline-image", success = false)
+        assertTrue(cache.isFailed("offline-image"))
+        assertFalse(PreviewImageFailureCache(store).isFailed("offline-image"))
+
+        online = true
+        assertFalse(cache.isFailed("offline-image"))
+        val version = cache.changes.value
+        cache.retryOfflineFailures()
+        assertEquals(version + 1, cache.changes.value)
+        online = false
+        assertFalse(cache.isFailed("offline-image"))
+    }
+
+    @Test
+    fun reconnectOnlyRetriesOfflineFailuresAndKeepsOnlineCooldown() {
+        var online = true
+        val cache = PreviewImageFailureCache(TestKeyValueStore(), isOnline = { online })
+        cache.record("broken-image", success = false)
+        online = false
+        cache.record("offline-image", success = false)
+        cache.retryOfflineFailures()
+        assertTrue(cache.isFailed("offline-image"))
+
+        online = true
+        cache.retryOfflineFailures()
+        assertFalse(cache.isFailed("offline-image"))
+        assertTrue(cache.isFailed("broken-image"))
+    }
+
     @Test
     fun failuresAreBoundedPersistedAndClearedBySuccess() {
         val store = TestKeyValueStore()

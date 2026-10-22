@@ -15,11 +15,16 @@ class PreviewImageFailureCache(
     private val cooldownMillis: Long = 15L * 60L * 1_000L,
     private val maxEntries: Int = PreviewCachePolicy.MAX_DISK_ENTRIES,
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    private val isOnline: () -> Boolean = { true },
 ) {
+    // Offline downloads say nothing about whether an image URL is broken. Suppress retries
+    // within this session only, until connectivity returns; never persist these failures.
+    private val offlineFailures = linkedSetOf<String>()
     private val mutableChanges = MutableStateFlow(0L)
     val changes = mutableChanges.asStateFlow()
 
     fun isFailed(imageUrl: String): Boolean {
+        if (imageUrl in offlineFailures && !isOnline()) return true
         val failedAt = store.getLong(key(imageUrl), 0L)
         val now = nowMillis()
         return failedAt > 0L && now >= failedAt && now - failedAt < cooldownMillis
@@ -27,6 +32,14 @@ class PreviewImageFailureCache(
 
     fun record(imageUrl: String, success: Boolean) {
         if (imageUrl.isBlank()) return
+        if (!success && !isOnline()) {
+            if (offlineFailures.add(imageUrl)) {
+                while (offlineFailures.size > maxEntries) offlineFailures.remove(offlineFailures.first())
+                mutableChanges.value++
+            }
+            return
+        }
+        if (offlineFailures.remove(imageUrl)) mutableChanges.value++
         val key = key(imageUrl)
         if (success && !store.contains(key) || !success && isFailed(imageUrl)) return
         val order = PreviewCachePolicy.decodeOrder(store.getString(ORDER_KEY))
@@ -45,6 +58,14 @@ class PreviewImageFailureCache(
 
     /** The owner has cleared the backing preview store. */
     fun onStoreCleared() {
+        offlineFailures.clear()
+        mutableChanges.value++
+    }
+
+    /** Publish recovery to already-visible story and comment previews without a refresh. */
+    fun retryOfflineFailures() {
+        if (!isOnline() || offlineFailures.isEmpty()) return
+        offlineFailures.clear()
         mutableChanges.value++
     }
 
