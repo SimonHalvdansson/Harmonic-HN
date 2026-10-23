@@ -148,16 +148,21 @@ private final class IosConnectivityService: ConnectivityService {
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "Harmonic.NetworkPath")
     private let lock = NSLock()
+    private let connectivityState = IosConnectivityState()
     private var online = true
     private var unmetered = true
+
+    var onlineChanges: any Flow { connectivityState.onlineChanges }
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
+            let pathOnline = path.status == .satisfied
             lock.lock()
-            online = path.status == .satisfied
+            online = pathOnline
             unmetered = online && !path.isExpensive && !path.isConstrained
             lock.unlock()
+            connectivityState.updateOnline(online: pathOnline)
         }
         monitor.start(queue: queue)
     }
