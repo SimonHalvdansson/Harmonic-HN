@@ -230,20 +230,36 @@ baselineProfile {
     }
 }
 
-tasks.register("installBenchmarkBaselineProfile", Copy) {
+def benchmarkProfileDirectory = project(":benchmark").layout.buildDirectory
+        .dir("intermediates/baselineprofiles/nonMinifiedBenchmark")
+def installedBaselineProfile = layout.projectDirectory.file("src/main/baseline-prof.txt")
+def installedStartupProfile = layout.projectDirectory.file("src/main/baselineProfiles/startup-prof.txt")
+
+tasks.register("installBenchmarkBaselineProfile") {
     dependsOn(":benchmark:collectNonMinifiedBenchmarkBaselineProfile")
-    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
-        include("*-baseline-prof-*.txt")
-        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
-        rename { "baseline-prof.txt" }
+    inputs.dir(benchmarkProfileDirectory)
+    outputs.files(installedBaselineProfile, installedStartupProfile)
+    doLast {
+        def files = benchmarkProfileDirectory.get().asFile.listFiles().toList()
+        def readRules = { String kind ->
+            files.findAll { it.name.contains("-${kind}-prof-") && it.name.endsWith(".txt") }
+                    .collectMany { it.readLines("UTF-8") }
+                    .findAll { it.contains("com/simon/harmonichackernews") &&
+                            !it.contains("StoriesScrollBenchmarkActivity") }
+                    .unique().sort()
+        }
+        def startupRules = readRules("startup")
+        def collectedBaselineRules = readRules("baseline")
+        if (startupRules.isEmpty() || collectedBaselineRules.isEmpty()) {
+            throw new GradleException("Expected generated baseline and startup profile rules")
+        }
+        def baselineRules = (collectedBaselineRules + startupRules).unique().sort()
+        // Each journey emits a separate file. Renaming them all in a Copy task overwrites
+        // earlier journeys; merge their rules explicitly and retain startup in the baseline.
+        installedBaselineProfile.asFile.write(baselineRules.join("\n") + "\n", "UTF-8")
+        installedStartupProfile.asFile.parentFile.mkdirs()
+        installedStartupProfile.asFile.write(startupRules.join("\n") + "\n", "UTF-8")
     }
-    from(project(":benchmark").layout.buildDirectory.dir("intermediates/baselineprofiles/nonMinifiedBenchmark")) {
-        include("*-startup-prof-*.txt")
-        filter { line -> line.contains("com/simon/harmonichackernews") ? line : null }
-        rename { "startup-prof.txt" }
-        into("baselineProfiles")
-    }
-    into(layout.projectDirectory.dir("src/main"))
 }
 
 afterEvaluate {

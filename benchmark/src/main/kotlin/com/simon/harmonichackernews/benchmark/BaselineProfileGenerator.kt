@@ -10,32 +10,64 @@ import org.junit.runner.RunWith
 @LargeTest
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
-    @get:Rule
+    @get:Rule(order = 0)
+    val environment = ReadingProfileEnvironment()
+
+    @get:Rule(order = 1)
     val rule = BaselineProfileRule()
 
     @Test
     fun startup() = rule.collect(
         packageName = BenchmarkPackageName,
         includeInStartupProfile = true,
-        filterPredicate = { rule -> rule.contains("com/simon/harmonichackernews") },
+        filterPredicate = ::isProductionProfileRule,
     ) {
+        keepReadingProfileDeviceAwake()
         pressHome()
-        startActivityAndWait()
-        // DEX layout should prioritize the first screen, without post-launch AI warm-up,
-        // scrolling, or the comments fixture. The broader profile below covers those journeys.
+        startReadingProfileStories()
+        // DEX layout prioritizes the rendered first feed. Scrolling, comments and the browser
+        // belong only to the broader baseline; no deliberate post-launch warm-up is added.
     }
 
     @Test
-    fun generate() = rule.collect(
+    fun stories() = rule.collect(
         packageName = BenchmarkPackageName,
-        filterPredicate = { rule -> rule.contains("com/simon/harmonichackernews") },
+        filterPredicate = ::isProductionProfileRule,
     ) {
+        keepReadingProfileDeviceAwake()
         pressHome()
-        startActivityAndWait()
-        awaitStoryContent()
+        startReadingProfileStories()
         scrollStoryList()
-        prepareDeterministicCommentsFixture(CommentsBenchmarkFixture.LARGE)
-        openDeterministicCommentsFixture(CommentsBenchmarkFixture.LARGE)
+    }
+
+    @Test
+    fun comments() = rule.collect(
+        packageName = BenchmarkPackageName,
+        filterPredicate = ::isProductionProfileRule,
+    ) {
+        keepReadingProfileDeviceAwake()
+        pressHome()
+        startReadingProfileStories()
+        prepareReadingProfileComments()
+        openReadingProfileComments()
+        collapseAndExpandProfileComments()
         scrollComments(repetitions = 6)
+        returnToReadingProfileStories()
+    }
+
+    @Test
+    fun reader() = rule.collect(
+        packageName = BenchmarkPackageName,
+        filterPredicate = ::isProductionProfileRule,
+    ) {
+        keepReadingProfileDeviceAwake()
+        pressHome()
+        startReadingProfileStories()
+        openProfileArticle()
+        readProfileArticle()
+        returnToReadingProfileStories()
     }
 }
+
+private fun isProductionProfileRule(rule: String): Boolean =
+    rule.contains("com/simon/harmonichackernews") && !rule.contains("StoriesScrollBenchmarkActivity")

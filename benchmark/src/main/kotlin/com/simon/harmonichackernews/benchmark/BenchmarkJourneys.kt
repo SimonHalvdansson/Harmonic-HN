@@ -110,6 +110,7 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
     firstCommentAuthor: String? = null,
     returnToStories: Boolean = true,
+    activityName: String = "com.simon.harmonichackernews.MainActivity",
 ) {
     // A warm launch resumes the previous iteration's Comments screen. Close it before seeding:
     // otherwise the old title/rows can satisfy the waits while the asynchronous cache write is
@@ -121,7 +122,7 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
         }
         device.waitForIdle()
     }
-    device.executeShellCommand(commentsBenchmarkCommand(SeedCommentsBenchmarkAction, fixture))
+    device.executeShellCommand(commentsBenchmarkCommand(SeedCommentsBenchmarkAction, fixture, activityName))
     check(device.wait(Until.hasObject(By.text(fixture.title)), 30_000)) {
         "The ${fixture.intentValue} deterministic Comments fixture did not parse and render"
     }
@@ -143,8 +144,9 @@ internal fun MacrobenchmarkScope.prepareDeterministicCommentsFixture(
 /** Opens the already-seeded fixed JSON through the normal Comments route without UI lookup. */
 internal fun MacrobenchmarkScope.openDeterministicCommentsFixture(
     fixture: CommentsBenchmarkFixture,
+    activityName: String = "com.simon.harmonichackernews.MainActivity",
 ) {
-    device.executeShellCommand(commentsBenchmarkCommand(OpenCommentsBenchmarkAction, fixture))
+    device.executeShellCommand(commentsBenchmarkCommand(OpenCommentsBenchmarkAction, fixture, activityName))
     // Include the complete destination animation, then wait for actual comment rows. The cached
     // title can be visible while ordering, parsing, or snapshot preparation is still pending.
     SystemClock.sleep(550)
@@ -153,7 +155,7 @@ internal fun MacrobenchmarkScope.openDeterministicCommentsFixture(
 }
 
 /** Tall story bodies can initially push every comment below the phone's viewport. */
-private fun MacrobenchmarkScope.revealFixtureComment(author: String) {
+internal fun MacrobenchmarkScope.revealFixtureComment(author: String) {
     repeat(4) {
         val target = device.findObject(By.text(author))
         if (target != null && target.visibleBounds.centerY() < device.displayHeight * 0.45f) return
@@ -185,7 +187,8 @@ private val StoryRankPattern = Pattern.compile("[0-9]+\\.")
 private fun commentsBenchmarkCommand(
     action: String,
     fixture: CommentsBenchmarkFixture,
+    activityName: String,
 ): String =
     "am start -W --activity-single-top -a $action " +
         "--es $CommentsBenchmarkFixtureExtra ${fixture.intentValue} " +
-        "-n $BenchmarkPackageName/com.simon.harmonichackernews.MainActivity"
+        "-n $BenchmarkPackageName/$activityName"

@@ -54,7 +54,9 @@ class StoriesScrollBenchmarkActivity : MainActivity() {
                 score = 23 + index * 7
                 descendants = 0 // No unrelated discussion preloads for synthetic IDs.
                 createdAtEpochSeconds = 1_700_000_000
-                url = "https://stories-scroll.invalid/$index"
+                url = if (index == 0 && intent.getBooleanExtra("profile_reading", false)) {
+                    "http://127.0.0.1:18765/article"
+                } else "https://stories-scroll.invalid/$index"
                 loaded = true
                 isLink = true
                 previewImageUrl = "https://stories-scroll.invalid/image/$index.webp"
