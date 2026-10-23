@@ -88,18 +88,21 @@ class StoredSettingsMutatorTest {
     }
 
     @Test
-    fun welcomePresetsSetBothStylesAndTintTogether() {
+    fun welcomePresetsSetBothStylesTintAndAvatarsTogether() {
         val store = TestKeyValueStore()
         val mutator = StoredSettingsMutator(store)
         val settings = StoredUserSettings(store, kotlinx.coroutines.flow.emptyFlow())
         mutator.setStoryString(StoryStringPreference.DISPLAY_STYLE, "card")
         mutator.setCommentDisplayStyle("card")
+        mutator.setUserAvatarsEnabled(true)
         mutator.applyWelcomePreset(expressive = false)
+        assertFalse(settings.comments.userAvatarsEnabled)
         assertEquals(StoryPreviewMode.OFF, settings.story.previewImageMode)
         assertEquals(DisplayStyle.FLAT, settings.story.displayStyle)
         assertEquals(DisplayStyle.FLAT, settings.comments.displayStyle)
         assertFalse(settings.story.tintCardsFromImages)
         mutator.applyWelcomePreset(expressive = true)
+        assertTrue(settings.comments.userAvatarsEnabled)
         assertEquals(StoryPreviewMode.MEDIUM, settings.story.previewImageMode)
         assertEquals(DisplayStyle.STANDARD, settings.story.displayStyle)
         assertEquals(DisplayStyle.STANDARD, settings.comments.displayStyle)

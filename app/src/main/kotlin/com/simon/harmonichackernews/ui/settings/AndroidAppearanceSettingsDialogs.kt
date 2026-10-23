@@ -49,7 +49,7 @@ fun AndroidNighttimeRangeDialog(
 }
 
 @Composable
-fun AndroidWelcomeSettingsDialog(
+fun AndroidWelcomeScreen(
     styleChooser: Boolean,
     onDismiss: () -> Unit,
 ) {
@@ -59,10 +59,11 @@ fun AndroidWelcomeSettingsDialog(
         app.aiModelDefaults.ensureInitialDefault()
     }
     val storyPreferences = presenter.snapshot.story
-    WelcomeSettingsDialog(
+    WelcomeScreen(
         styleChooser = styleChooser,
         initialExpressive = !styleChooser || storyPreferences.displayStyle != DisplayStyle.FLAT,
-        paletteTintConfigKey = storyPreferences.paletteTintConfigKey,
+        storyPreferences = storyPreferences,
+        commentPreferences = presenter.snapshot.comments,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
             if (!styleChooser) app.appearance.markWelcomeShown()

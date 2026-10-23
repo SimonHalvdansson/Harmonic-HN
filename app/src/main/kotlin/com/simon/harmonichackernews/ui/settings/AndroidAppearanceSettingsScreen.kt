@@ -43,7 +43,7 @@ fun AndroidAppearanceSettingsScreen(
         onThemeChanged = onThemeChanged,
         dialogContent = { dialog, _, dismiss ->
             when (dialog) {
-                AppearanceSettingsDialog.Style -> AndroidWelcomeSettingsDialog(
+                AppearanceSettingsDialog.Style -> AndroidWelcomeScreen(
                     styleChooser = true,
                     onDismiss = dismiss,
                 )

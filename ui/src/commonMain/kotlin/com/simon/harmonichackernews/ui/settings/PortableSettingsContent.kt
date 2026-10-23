@@ -262,10 +262,11 @@ private fun PortableAppearanceSettings(
         dialogContent = { dialog, presenter, dismiss ->
             when (dialog) {
                 AppearanceSettingsDialog.Style -> {
-                    WelcomeSettingsDialog(
+                    WelcomeScreen(
                         styleChooser = true,
                         initialExpressive = snapshot.story.displayStyle != DisplayStyle.FLAT,
-                        paletteTintConfigKey = snapshot.story.paletteTintConfigKey,
+                        storyPreferences = snapshot.story,
+                        commentPreferences = snapshot.comments,
                         onApplyPreset = { expressive ->
                             presenter.applyWelcomePreset(expressive)
                             themeChanged()
@@ -409,7 +410,7 @@ private fun PortableDebugSettings(
                     onDismiss = dismiss,
                     onOpenGithub = { scene.links.open(app.metadata.projectUrl) },
                 )
-                DebugSettingsDialog.WELCOME -> PortableWelcomeDialog(app, appIcon, dismiss)
+                DebugSettingsDialog.WELCOME -> PortableWelcomeScreen(app, appIcon, dismiss)
                 DebugSettingsDialog.NOTIFICATIONS -> MessageActionDialog(
                     title = "Notifications",
                     message = notificationsMessage,
@@ -438,15 +439,16 @@ private fun PortableLinkPreviewsDebugScreen(
 }
 
 @Composable
-fun PortableWelcomeDialog(
+fun PortableWelcomeScreen(
     app: HarmonicAppComposition,
     appIcon: Painter,
     onDismiss: () -> Unit,
 ) {
-    WelcomeSettingsDialog(
+    WelcomeScreen(
         styleChooser = false,
         initialExpressive = app.settings.snapshot().story.displayStyle != DisplayStyle.FLAT,
-        paletteTintConfigKey = app.settings.snapshot().story.paletteTintConfigKey,
+        storyPreferences = app.settings.snapshot().story,
+        commentPreferences = app.settings.snapshot().comments,
         onApplyPreset = { expressive ->
             app.settings.applyWelcomePreset(expressive)
             app.appearance.markWelcomeShown()

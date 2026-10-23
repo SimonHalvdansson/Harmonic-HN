@@ -236,7 +236,7 @@ fun DebugSettingsScreen(
         item {
             SettingsCategory("Dialogs") {
                 SettingRow(
-                    title = "Welcome dialog",
+                    title = "Welcome screen",
                     icon = Res.drawable.ic_explore,
                     onClick = { navigate { onDialogRequested(DebugSettingsDialog.WELCOME) } },
                 )

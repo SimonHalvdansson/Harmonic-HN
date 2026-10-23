@@ -316,6 +316,7 @@ class StoredSettingsMutator(
             val style = if (expressive) DisplayStyle.STANDARD else DisplayStyle.FLAT
             putString(UserPreferenceKeys.STORY_DISPLAY_STYLE, style.storedValue)
             putString(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, style.storedValue)
+            putBoolean(UserPreferenceKeys.USER_AVATARS_ENABLED, expressive)
             putBoolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, expressive)
             putString(
                 UserPreferenceKeys.FONT,

@@ -66,7 +66,7 @@ fun AndroidDebugSettingsScreen(
                         dismiss()
                     },
                 )
-                DebugSettingsDialog.WELCOME -> AndroidWelcomeSettingsDialog(
+                DebugSettingsDialog.WELCOME -> AndroidWelcomeScreen(
                     styleChooser = false,
                     onDismiss = dismiss,
                 )

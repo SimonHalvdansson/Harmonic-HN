@@ -35,7 +35,7 @@ fun BoxScope.PortableAppForeground(
     captchaMessage: String,
 ) {
     if (navigation.welcomeDialogVisible) {
-        PortableWelcomeDialog(app, appIcon, scene.navigation::dismissWelcomeDialog)
+        PortableWelcomeScreen(app, appIcon, scene.navigation::dismissWelcomeDialog)
     }
     if (navigation.changelogDialogVisible) {
         SettingsChangelogDialog(

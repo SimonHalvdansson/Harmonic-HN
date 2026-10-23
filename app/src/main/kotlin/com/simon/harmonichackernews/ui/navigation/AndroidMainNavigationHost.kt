@@ -63,7 +63,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsShell
 import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.AndroidUserSettingsDialog
-import com.simon.harmonichackernews.ui.settings.AndroidWelcomeSettingsDialog
+import com.simon.harmonichackernews.ui.settings.AndroidWelcomeScreen
 import com.simon.harmonichackernews.ui.submissions.AndroidSubmissionsCoordinator
 import com.simon.harmonichackernews.ui.submissions.AndroidSubmissionsScreen
 import com.simon.harmonichackernews.ui.stories.CacheStoriesDialog
@@ -617,7 +617,7 @@ private fun MainNavigation(
         },
         foreground = {
             if (navigationSnapshot.welcomeDialogVisible) {
-            AndroidWelcomeSettingsDialog(
+            AndroidWelcomeScreen(
                 styleChooser = false,
                 onDismiss = controller::dismissWelcomeDialog,
             )
