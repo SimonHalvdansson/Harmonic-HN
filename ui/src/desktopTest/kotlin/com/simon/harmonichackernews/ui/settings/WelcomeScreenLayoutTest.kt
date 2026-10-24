@@ -41,12 +41,13 @@ class WelcomeScreenLayoutTest {
         val rightInset: Int = 0,
         val topInset: Int = 0,
         val bottomInset: Int = 0,
+        val density: Float = 1f,
     )
 
     @Test
     fun contentIsConstrainedAndActionRemainsReachableAcrossWindowSizes() = SwingUtilities.invokeAndWait {
         val settings = AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot()
-        for ((width, height, fontScale, rightInset, topInset, bottomInset) in listOf(
+        for ((width, height, fontScale, rightInset, topInset, bottomInset, density) in listOf(
             WindowCase(400, 900),
             WindowCase(840, 1000),
             WindowCase(1280, 900),
@@ -54,10 +55,11 @@ class WelcomeScreenLayoutTest {
             WindowCase(400, 800, 1.6f),
             WindowCase(466, 678, rightInset = 84, topInset = 17, bottomInset = 34),
             WindowCase(678, 466, rightInset = 84, topInset = 17, bottomInset = 34),
+            WindowCase(1080, 2424, density = 2.625f),
         )) {
             val bootstrap = DesktopHarmonicAppBootstrap.inMemory("WelcomeLayoutTest")
             var applied: Boolean? = null
-            val scene = ImageComposeScene(width, height, Density(1f, fontScale)) {
+            val scene = ImageComposeScene(width, height, Density(density, fontScale)) {
                 val theme = HarmonicThemeCatalog.resolve("material_light", false)
                 HarmonicTheme(theme.colorScheme, theme.dark) {
                     CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
@@ -102,17 +104,19 @@ class WelcomeScreenLayoutTest {
                 assertEquals(0f, surface.top, 1f)
                 assertEquals(width.toFloat(), surface.right, 1f)
                 assertEquals(height.toFloat(), surface.bottom, 1f)
-                assertTrue(content.width <= 560f, "Content must stay readable on wide windows")
+                assertTrue(content.width <= 560f * density, "Content must stay readable on wide windows")
                 assertEquals(width / 2f, content.center.x, 1f)
                 assertEquals((width - rightInset) / 2f, action.center.x, 1f)
                 assertTrue(action.right <= width - rightInset)
-                assertTrue(action.bottom <= height - bottomInset && action.top > height - bottomInset - 140f)
+                assertTrue(action.bottom <= height - bottomInset && action.top > height - bottomInset - 140f * density)
                 val title = allNodes().single {
                     it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Welcome to Harmonic" } == true
                 }.boundsInRoot
-                assertTrue(tagged("welcome-icon").boundsInRoot.right <= title.left)
+                assertTrue(tagged("welcome-artwork").boundsInRoot.bottom <= title.top + 8f)
+                assertTrue(tagged("welcome-icon").boundsInRoot.bottom <= title.top)
+                assertTrue(tagged("welcome-icon").boundsInRoot.width <= 120f * density, "Launcher artwork must scale once with screen density")
                 assertTrue(title.top >= topInset)
-                assertTrue(title.right <= width - rightInset - 24f)
+                assertTrue(title.right <= width - rightInset - 24f * density)
                 capture("expressive")
                 // On short screens, scrolling the final content into view must not move the action.
                 tagged("welcome-content").config[SemanticsActions.ScrollBy].action?.invoke(0f, 10000f)
@@ -129,10 +133,7 @@ class WelcomeScreenLayoutTest {
                 assertEquals(previewBounds, tagged("welcome-preview").boundsInRoot)
                 assertEquals(presetBounds, tagged("welcome-presets").boundsInRoot)
 
-                val lastText = allNodes().single {
-                    it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text.startsWith("There are a ton") } == true
-                }.boundsInRoot
-                assertTrue(lastText.bottom < action.top, "Last content must clear the floating action")
+                assertTrue(presetBounds.bottom < action.top, "Style presets must clear the floating action")
                 scene.sendPointerEvent(PointerEventType.Press, action.center)
                 scene.sendPointerEvent(PointerEventType.Release, action.center)
                 settle()

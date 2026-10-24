@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -159,19 +156,11 @@ internal fun WelcomeScreenContent(
                 ),
             ) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        if (!styleChooser) {
-                            Box(Modifier.clip(RoundedCornerShape(16.dp))) {
-                                launcherIcon()
-                            }
-                        }
+                    if (!styleChooser) {
+                        WelcomeAnimatedHeader(launcherIcon)
+                    } else {
                         Text(
-                            text = if (styleChooser) "Choose your style" else "Welcome to Harmonic",
-                            modifier = Modifier.weight(1f),
+                            text = "Choose your style",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = GoogleSansFlexRoundedFontFamily,
                             fontWeight = FontWeight.Bold,
@@ -179,26 +168,17 @@ internal fun WelcomeScreenContent(
                             lineHeight = 34.sp,
                             style = welcomeTextStyle,
                         )
+                        Text(
+                            text = "Choose a preset for the app. This changes the font, " +
+                                "story images, palette tint, comment style and profile images.",
+                            modifier = Modifier.padding(top = 16.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = GoogleSansFlexRoundedFontFamily,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            style = welcomeTextStyle,
+                        )
                     }
-                }
-                item {
-                    Text(
-                        text = if (styleChooser) {
-                            "Choose a preset for the app. This changes the font, " +
-                                "story images, palette tint, comment style and profile images."
-                        } else {
-                            "I hope you'll love the app and feel how much care was put " +
-                                "into creating it. If you have an issue or want to submit " +
-                                "a PR, you can visit the GitHub repository.\n\nBefore we " +
-                                "get started you can select a UI preset below."
-                        },
-                        modifier = Modifier.padding(top = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = GoogleSansFlexRoundedFontFamily,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                        style = welcomeTextStyle,
-                    )
                 }
                 item {
                     WelcomePreviewArea(
@@ -233,20 +213,7 @@ internal fun WelcomeScreenContent(
                         )
                     }
                 }
-                if (!styleChooser) {
-                    item {
-                        Text(
-                            text = "There are a ton of customization options beyond " +
-                                "this available in the settings for you to explore.",
-                            modifier = Modifier.padding(top = 12.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = GoogleSansFlexRoundedFontFamily,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            style = welcomeTextStyle,
-                        )
-                    }
-                }
+
             }
         }
     }

@@ -81,7 +81,8 @@ fun AndroidWelcomeScreen(
 @Composable
 private fun WelcomeLauncherIcon() {
     val context = LocalContext.current
-    val size = 64.dp
+    // Rasterize at the header's displayed size, so the animated layer stays sharp.
+    val size = 114.dp
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
     val bitmap = remember(context, sizePx) {
         requireNotNull(AppCompatResources.getDrawable(context, R.mipmap.ic_launcher))

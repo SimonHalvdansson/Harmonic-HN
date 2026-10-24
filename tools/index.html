@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Harmonic · Design tools</title>
+<style>
+  @font-face{font-family:Harmonic;src:url('../resources/src/commonMain/composeResources/font/google_sans_flex_rounded_variable_latin.ttf');font-weight:100 1000}
+  *{box-sizing:border-box}body{margin:0;background:#f7f6f8;color:#29242e;font:16px Harmonic,system-ui,sans-serif}main{max-width:860px;margin:12vh auto;padding:32px}h1{font-size:44px;letter-spacing:-1.5px;margin-bottom:12px}p{color:#726a79;line-height:1.6}nav{display:grid;gap:16px;margin-top:40px}a{color:inherit;text-decoration:none;background:white;border:1px solid #e7e1eb;border-radius:24px;padding:28px;display:flex;gap:24px;align-items:center}a:hover{border-color:#8d73aa}strong{display:block;font-size:22px;margin-bottom:8px}span{color:#726a79}b{font-size:32px;font-weight:400;margin-left:auto}small{display:block;margin-top:36px;color:#726a79}
+</style>
+<main>
+  <h1>Harmonic design tools</h1>
+  <p>A place to shape the little things.</p>
+  <nav aria-label="Design tools">
+    <a href="welcome-animation/"><div><strong>Welcome header</strong><span>SVG composition, arrival and ambient motion</span></div><b aria-hidden="true">↗</b></a>
+    <a href="splash-animation/"><div><strong>Splash icon</strong><span>The original motion study and Android vector exporter</span></div><b aria-hidden="true">↗</b></a>
+  </nav>
+  <small>Serve the repository root: <code>python3 -m http.server 8765 --bind 127.0.0.1</code><br>Palette generator: <code>node tools/generate-material-colors.mjs &lt;material-color-utilities module&gt;</code></small>
+</main>
+</html>
