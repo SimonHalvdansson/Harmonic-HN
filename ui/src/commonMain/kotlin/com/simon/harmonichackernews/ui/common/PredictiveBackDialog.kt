@@ -162,6 +162,7 @@ internal expect fun platformDialogProperties(
     dismissOnBackPress: Boolean,
     dismissOnClickOutside: Boolean,
     usePlatformDefaultWidth: Boolean,
+    usePlatformInsets: Boolean = true,
 ): DialogProperties
 
 @Composable

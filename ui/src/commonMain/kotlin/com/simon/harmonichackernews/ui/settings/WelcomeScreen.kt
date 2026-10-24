@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -85,6 +87,9 @@ fun WelcomeScreen(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
             usePlatformDefaultWidth = false,
+            // The full-screen surface owns its insets through Scaffold, rather than
+            // leaving a dimmed frame around the device's safe area.
+            usePlatformInsets = false,
         ),
     ) {
         WelcomeScreenContent(
@@ -107,6 +112,7 @@ internal fun WelcomeScreenContent(
     commentPreferences: CommentPreferences,
     onApplyPreset: (Boolean) -> Unit,
     filterButtonColors: HarmonicFilterButtonColors,
+    contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
     launcherIcon: @Composable () -> Unit,
 ) {
     var expressive by rememberSaveable(initialExpressive) { mutableStateOf(initialExpressive) }
@@ -117,7 +123,8 @@ internal fun WelcomeScreenContent(
     var actionHeight by remember { mutableStateOf(56.dp) }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("welcome-surface"),
+        contentWindowInsets = contentWindowInsets,
         containerColor = MaterialTheme.colorScheme.pageBackground,
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {

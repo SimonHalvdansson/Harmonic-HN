@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
@@ -33,15 +34,26 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class WelcomeScreenLayoutTest {
+    private data class WindowCase(
+        val width: Int,
+        val height: Int,
+        val fontScale: Float = 1f,
+        val rightInset: Int = 0,
+        val topInset: Int = 0,
+        val bottomInset: Int = 0,
+    )
+
     @Test
     fun contentIsConstrainedAndActionRemainsReachableAcrossWindowSizes() = SwingUtilities.invokeAndWait {
         val settings = AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot()
-        for ((width, height, fontScale) in listOf(
-            Triple(400, 900, 1f),
-            Triple(840, 1000, 1f),
-            Triple(1280, 900, 1f),
-            Triple(740, 420, 1f),
-            Triple(400, 800, 1.6f),
+        for ((width, height, fontScale, rightInset, topInset, bottomInset) in listOf(
+            WindowCase(400, 900),
+            WindowCase(840, 1000),
+            WindowCase(1280, 900),
+            WindowCase(740, 420),
+            WindowCase(400, 800, 1.6f),
+            WindowCase(466, 678, rightInset = 84, topInset = 17, bottomInset = 34),
+            WindowCase(678, 466, rightInset = 84, topInset = 17, bottomInset = 34),
         )) {
             val bootstrap = DesktopHarmonicAppBootstrap.inMemory("WelcomeLayoutTest")
             var applied: Boolean? = null
@@ -56,6 +68,7 @@ class WelcomeScreenLayoutTest {
                             commentPreferences = settings.comments,
                             onApplyPreset = { applied = it },
                             filterButtonColors = harmonicFilterButtonColors(),
+                            contentWindowInsets = WindowInsets(top = topInset, right = rightInset, bottom = bottomInset),
                             launcherIcon = { Image(painterResource(Res.drawable.harmonic_app_icon), null, Modifier.size(64.dp).testTag("welcome-icon")) },
                         )
                     }
@@ -84,14 +97,22 @@ class WelcomeScreenLayoutTest {
                 settle()
                 val content = tagged("welcome-content").boundsInRoot
                 val action = tagged("welcome-action").boundsInRoot
+                val surface = tagged("welcome-surface").boundsInRoot
+                assertEquals(0f, surface.left, 1f)
+                assertEquals(0f, surface.top, 1f)
+                assertEquals(width.toFloat(), surface.right, 1f)
+                assertEquals(height.toFloat(), surface.bottom, 1f)
                 assertTrue(content.width <= 560f, "Content must stay readable on wide windows")
                 assertEquals(width / 2f, content.center.x, 1f)
-                assertEquals(width / 2f, action.center.x, 1f)
-                assertTrue(action.bottom <= height && action.top > height - 140f)
+                assertEquals((width - rightInset) / 2f, action.center.x, 1f)
+                assertTrue(action.right <= width - rightInset)
+                assertTrue(action.bottom <= height - bottomInset && action.top > height - bottomInset - 140f)
                 val title = allNodes().single {
                     it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Welcome to Harmonic" } == true
                 }.boundsInRoot
                 assertTrue(tagged("welcome-icon").boundsInRoot.right <= title.left)
+                assertTrue(title.top >= topInset)
+                assertTrue(title.right <= width - rightInset - 24f)
                 capture("expressive")
                 // On short screens, scrolling the final content into view must not move the action.
                 tagged("welcome-content").config[SemanticsActions.ScrollBy].action?.invoke(0f, 10000f)

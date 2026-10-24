@@ -84,6 +84,40 @@ final class IosLiteRtSettingsUITests: XCTestCase {
     }
 }
 
+final class HarmonicIosWelcomeLayoutTests: XCTestCase {
+    func testWelcomeFillsDuoAndKeepsContentClearOfSystemIndicators() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["HARMONIC_UI_TESTING"] = "1"
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        let title = app.staticTexts["Welcome to Harmonic"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        let surface = app.otherElements["welcome-surface"]
+        XCTAssertTrue(surface.waitForExistence(timeout: 5))
+        XCTAssertEqual(surface.frame.minX, app.frame.minX, accuracy: 1)
+        XCTAssertEqual(surface.frame.minY, app.frame.minY, accuracy: 1)
+        XCTAssertEqual(surface.frame.width, app.frame.width, accuracy: 1)
+        XCTAssertEqual(surface.frame.height, app.frame.height, accuracy: 1)
+        XCTAssertLessThan(title.frame.maxX, app.frame.maxX - 56)
+        let action = app.labeledButton("Get started")
+        XCTAssertTrue(action.isHittable)
+        let actionFrame = action.frame
+        XCTAssertLessThan(actionFrame.midX, app.frame.midX, "Center the action in the usable content area")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Duo full-screen Welcome with safe content"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.swipeUp(velocity: .slow)
+        app.tapVisibleButton("Simple")
+        XCTAssertEqual(action.frame, actionFrame, "Scrolling and changing presets must keep the action fixed")
+        XCTAssertTrue(action.isHittable)
+        action.tapCenter()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Top Stories")).firstMatch.waitForExistence(timeout: 15))
+    }
+}
+
 final class HarmonicIosUITests: XCTestCase {
     private var app: XCUIApplication!
 

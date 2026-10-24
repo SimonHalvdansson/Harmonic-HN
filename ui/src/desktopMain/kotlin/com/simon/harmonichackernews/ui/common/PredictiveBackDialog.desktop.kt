@@ -12,10 +12,12 @@ internal actual fun platformDialogProperties(
     dismissOnBackPress: Boolean,
     dismissOnClickOutside: Boolean,
     usePlatformDefaultWidth: Boolean,
+    usePlatformInsets: Boolean,
 ): DialogProperties = DialogProperties(
     dismissOnBackPress = dismissOnBackPress,
     dismissOnClickOutside = dismissOnClickOutside,
     usePlatformDefaultWidth = usePlatformDefaultWidth,
+    usePlatformInsets = usePlatformInsets,
 )
 
 @Composable
