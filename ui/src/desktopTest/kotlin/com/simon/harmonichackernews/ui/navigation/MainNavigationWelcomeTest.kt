@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.navigation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.NavigationEventDispatcher
@@ -30,6 +33,54 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class MainNavigationWelcomeTest {
+    @Test
+    fun completingWelcomeMovesLeftWhileBackMovesRight() = SwingUtilities.invokeAndWait {
+        for (forward in listOf(true, false)) {
+            val navigation = MainNavigationStore().apply { openWelcome() }
+            var requestForwardExit: () -> Unit = {}
+            val scene = ImageComposeScene(300, 600, Density(1f)) {
+                val theme = HarmonicThemeCatalog.resolve("material_light", false)
+                HarmonicTheme(theme.colorScheme, theme.dark) {
+                    val snapshot by navigation.state.collectAsState()
+                    ActivityNavigationStack(
+                        entries = snapshot.destinationStack.drop(1),
+                        entryKey = { it.surfaceKey },
+                        root = { Box(Modifier.fillMaxSize().background(Color.Black)) },
+                        content = {
+                            requestForwardExit = LocalActivityNavigationForwardExit.current
+                            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                                Box(Modifier.offset(140.dp, 0.dp).size(20.dp, 600.dp).background(Color.Red))
+                            }
+                        },
+                    )
+                }
+            }
+            var time = 0L
+            fun frame() = scene.render(time.also { time += 16_666_667L }).use {
+                it.toComposeImageBitmap().toPixelMap()
+            }
+            try {
+                repeat(10) { frame() }
+                if (forward) requestForwardExit()
+                navigation.closeWelcome()
+                repeat(4) { frame() }
+                val pixels = frame()
+                val stripe = (0 until 300).filter {
+                    val color = pixels[it, 300]
+                    color.red > color.green + .1f && color.red > color.blue + .1f
+                }
+                assertTrue(stripe.isNotEmpty(), "Sample while the outgoing welcome is visible")
+                val center = stripe.average()
+                assertTrue(if (forward) center < 149.5 else center > 149.5,
+                    "Welcome must move ${if (forward) "left on completion" else "right on Back"}; center=$center")
+                repeat(60) { frame() }
+                assertEquals(MainDestination.STORIES, navigation.state.value.currentDestination)
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
     @Test
     fun welcomeUsesTheNormalActivityTransitionAndRetainsItsSettingsParent() = SwingUtilities.invokeAndWait {
         val navigation = MainNavigationStore().apply { openSettings("appearance") }

@@ -50,6 +50,7 @@ private class ActivityStackLayer<T, K : Any>(
     var entry by mutableStateOf(entry)
     val visibility = MutableTransitionState(initiallyVisible).apply { targetState = true }
     var exitCompleted by mutableStateOf(false)
+    var forwardExit by mutableStateOf(false)
 }
 
 /**
@@ -185,7 +186,10 @@ internal fun <T, K : Any> ActivityNavigationStack(
                         Box(Modifier.fillMaxSize().background(background)) {
                             // An opaque surface alone does not consume taps in blank areas.
                             Box(Modifier.fillMaxSize().consumeAllPointerGestures())
-                            CompositionLocalProvider(LocalActivityNavigationTransition provides transition) {
+                            CompositionLocalProvider(
+                                LocalActivityNavigationTransition provides transition,
+                                LocalActivityNavigationForwardExit provides { layer.forwardExit = true },
+                            ) {
                                 content(layer.entry)
                             }
                         }
@@ -198,6 +202,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
                             transitionOffsetPx = offsetPx,
                             baseTranslationX = { if (preview == null && !skipExit) offset else 0f },
                             skipExitAnimation = skipExit,
+                            forwardExit = layer.forwardExit,
                             modifier = Modifier.fillMaxSize(),
                             contentModifier = backModifier,
                             content = surface,

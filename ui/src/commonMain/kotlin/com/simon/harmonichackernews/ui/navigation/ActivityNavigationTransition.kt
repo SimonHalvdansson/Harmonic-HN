@@ -43,6 +43,9 @@ const val ActivityNavigationOpenContentOpaqueMillis =
 internal val LocalActivityNavigationTransition =
     staticCompositionLocalOf<Transition<EnterExitState>?> { null }
 
+/** Marks an explicit completion action as forward navigation before its entry is removed. */
+internal val LocalActivityNavigationForwardExit = staticCompositionLocalOf<() -> Unit> { {} }
+
 internal fun activityNavigationOpenContentTransform(
     transitionOffsetPx: Int,
 ): ContentTransform = ContentTransform(
@@ -105,6 +108,7 @@ internal fun ActivityNavigationTransitionViewport(
     transitionOffsetPx: Int,
     baseTranslationX: () -> Float = { 0f },
     skipExitAnimation: Boolean = false,
+    forwardExit: Boolean = false,
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -122,7 +126,11 @@ internal fun ActivityNavigationTransitionViewport(
         },
         label = "activity navigation translation",
     ) { state ->
-        if (state == EnterExitState.Visible) 0f else transitionOffsetPx.toFloat()
+        when (state) {
+            EnterExitState.Visible -> 0f
+            EnterExitState.PreEnter -> transitionOffsetPx.toFloat()
+            EnterExitState.PostExit -> if (forwardExit) -transitionOffsetPx.toFloat() else transitionOffsetPx.toFloat()
+        }
     }
     val transitionAlpha by transition.animateFloat(
         transitionSpec = {

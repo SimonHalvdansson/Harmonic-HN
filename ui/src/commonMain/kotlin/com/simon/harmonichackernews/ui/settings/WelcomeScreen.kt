@@ -72,6 +72,7 @@ import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.cardBackground
+import com.simon.harmonichackernews.ui.navigation.LocalActivityNavigationForwardExit
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -84,12 +85,16 @@ fun WelcomeScreen(
     filterButtonColors: HarmonicFilterButtonColors,
     launcherIcon: @Composable () -> Unit,
 ) {
+    val forwardExit = LocalActivityNavigationForwardExit.current
     WelcomeScreenContent(
         styleChooser = styleChooser,
         initialExpressive = initialExpressive,
         storyPreferences = storyPreferences,
         commentPreferences = commentPreferences,
-        onApplyPreset = onApplyPreset,
+        onApplyPreset = { expressive ->
+            forwardExit()
+            onApplyPreset(expressive)
+        },
         filterButtonColors = filterButtonColors,
         launcherIcon = launcherIcon,
     )
