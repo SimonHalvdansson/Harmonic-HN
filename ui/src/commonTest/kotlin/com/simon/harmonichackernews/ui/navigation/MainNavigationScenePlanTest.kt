@@ -10,6 +10,22 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MainNavigationScenePlanTest {
+    @Test fun welcomeOwnsANormalSurfaceAndKeepsTheSettingsBackTargetInBothLayouts() {
+        for (twoPane in listOf(false, true)) {
+            val navigation = MainNavigationStore()
+            navigation.openSettings("appearance")
+            val before = mainNavigationScenePlan(navigation.state.value, twoPane)
+            navigation.openWelcome(styleChooser = true)
+            val plan = mainNavigationScenePlan(navigation.state.value, twoPane)
+            assertEquals(before.surfaces, plan.surfaces.dropLast(1))
+            assertEquals(MainDestination.WELCOME, plan.current.key.destination)
+            assertEquals(navigation.state.value.welcomeRequest?.serial, plan.current.key.serial)
+            assertEquals(null, plan.current.detail)
+            navigation.closeWelcome()
+            assertEquals(before, mainNavigationScenePlan(navigation.state.value, twoPane))
+        }
+    }
+
     @Test fun phoneSurfacesFollowTheEntireHistoryIncludingRepeatedScreenTypes() {
         val navigation = nestedVisits()
         val plan = mainNavigationScenePlan(navigation.state.value, false)

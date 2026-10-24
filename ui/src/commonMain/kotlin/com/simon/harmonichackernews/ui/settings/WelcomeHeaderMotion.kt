@@ -59,5 +59,16 @@ internal object WelcomeHeaderMotion {
     }
 
     fun textAlpha(millis: Double): Float = if (millis < 0) 1f else smooth(((millis - 210 * Arrival) / (460 * Arrival)).toFloat())
+    // Follow the header from top to bottom, keeping every element in its final layout position.
+    fun contentAlpha(millis: Double, order: Int): Float =
+        if (millis < 0) 1f else smooth(((millis - (420 + order * 90)) / 300).toFloat())
+
+    /** A little over 1dp of flex at the icon's displayed size; shared endpoints stay anchored. */
+    fun logoBend(index: Int, millis: Double): Float {
+        if (millis < 0) return 0f
+        val idle = (millis - SettledMillis).coerceAtLeast(0.0)
+        val ramp = smooth((idle / 1400).toFloat())
+        return (6f * ramp * sin(idle / 7500 * 2 * PI + index * PI * .6)).toFloat()
+    }
     private fun smooth(value: Float): Float = value.coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
 }

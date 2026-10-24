@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.navigation.MainNavigationEntry
 import com.simon.harmonichackernews.navigation.MainSettingsRequest
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.navigation.MainSubmissionsRequest
+import com.simon.harmonichackernews.navigation.MainWelcomeRequest
 
 /**
  * One owner for ordering, retention, input isolation and transition completion on every host.
@@ -32,6 +33,7 @@ fun HarmonicAppRoot(
     submissions: @Composable (MainSubmissionsRequest, MainStoryRequest?, @Composable (MainStoryRequest) -> Unit) -> Unit,
     editor: @Composable (MainEditorRequest) -> Unit,
     immersive: @Composable () -> Unit,
+    welcome: @Composable (MainWelcomeRequest) -> Unit,
     foreground: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
     preview: MainNavigationBackPreview? = null,
@@ -72,6 +74,7 @@ fun HarmonicAppRoot(
                 is MainNavigationEntry.Submissions -> scopes.Content(surface.key) { submissions(entry.request, surface.detail, paneComments) }
                 is MainNavigationEntry.Editor -> scopes.Content(surface.key) { editor(entry.request) }
                 MainNavigationEntry.Immersive -> scopes.Content(surface.key) { immersive() }
+                is MainNavigationEntry.Welcome -> scopes.Content(surface.key) { welcome(entry.request) }
             }
         }
     }

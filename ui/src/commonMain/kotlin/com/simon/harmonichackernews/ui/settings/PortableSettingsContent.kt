@@ -66,7 +66,7 @@ fun PortableSettingsDetail(
     when (section) {
         SettingsSection.Appearance -> PortableAppearanceSettings(
             app,
-            appIcon,
+            scene,
             singlePane,
             onBack,
             splitRatioTitle,
@@ -134,7 +134,6 @@ fun PortableSettingsDetail(
         SettingsSection.Debug -> PortableDebugSettings(
             app = app,
             scene = scene,
-            appIcon = appIcon,
             platformVersion = debugPlatformVersion,
             platformLabel = debugPlatformLabel,
             platformIcon = debugPlatformIcon,
@@ -240,13 +239,12 @@ private fun PortableWebLinksSettings(
 @Composable
 private fun PortableAppearanceSettings(
     app: HarmonicAppComposition,
-    appIcon: Painter,
+    scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
     splitRatioTitle: String?,
     onNavigate: (SettingsSection) -> Unit,
 ) {
-    val snapshot = app.settings.snapshot()
     fun themeChanged() = app.appearance.refreshSelection()
 
     AppearanceSettingsRoute(
@@ -259,32 +257,7 @@ private fun PortableAppearanceSettings(
         onBack = onBack,
         onNavigate = onNavigate,
         onThemeChanged = ::themeChanged,
-        dialogContent = { dialog, presenter, dismiss ->
-            when (dialog) {
-                AppearanceSettingsDialog.Style -> {
-                    WelcomeScreen(
-                        styleChooser = true,
-                        initialExpressive = snapshot.story.displayStyle != DisplayStyle.FLAT,
-                        storyPreferences = snapshot.story,
-                        commentPreferences = snapshot.comments,
-                        onApplyPreset = { expressive ->
-                            presenter.applyWelcomePreset(expressive)
-                            themeChanged()
-                            dismiss()
-                        },
-                        onDismiss = dismiss,
-                        filterButtonColors = harmonicFilterButtonColors(),
-                        launcherIcon = {
-                            Image(
-                                painter = appIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(72.dp),
-                            )
-                        },
-                    )
-                }
-            }
-        },
+        onStyleRequested = { scene.navigation.openWelcome(styleChooser = true) },
     )
 }
 
@@ -361,7 +334,6 @@ private fun PortableStoriesSettings(
 private fun PortableDebugSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
-    appIcon: Painter,
     platformVersion: String,
     platformLabel: String,
     platformIcon: DrawableResource,
@@ -404,16 +376,13 @@ private fun PortableDebugSettings(
         onOpenLinkPreviews = onOpenLinkPreviews,
         onOpenGlassSettings = onOpenGlassSettings,
         onEasterEggRequested = scene.navigation::openCoulombGas,
-        // The settings detail is recreated when its pane layout changes. Keep Welcome
-        // in the scene foreground so both its visibility and preset survive that reflow.
-        onWelcomeRequested = scene.navigation::showWelcomeDialog,
+        onWelcomeRequested = { scene.navigation.openWelcome() },
         dialogContent = { dialog, dismiss ->
             when (dialog) {
                 DebugSettingsDialog.CHANGELOG -> SettingsChangelogDialog(
                     onDismiss = dismiss,
                     onOpenGithub = { scene.links.open(app.metadata.projectUrl) },
                 )
-                DebugSettingsDialog.WELCOME -> PortableWelcomeScreen(app, appIcon, dismiss)
                 DebugSettingsDialog.NOTIFICATIONS -> MessageActionDialog(
                     title = "Notifications",
                     message = notificationsMessage,
@@ -446,19 +415,16 @@ fun PortableWelcomeScreen(
     app: HarmonicAppComposition,
     appIcon: Painter,
     onDismiss: () -> Unit,
+    styleChooser: Boolean = false,
 ) {
     WelcomeScreen(
-        styleChooser = false,
-        initialExpressive = app.settings.snapshot().story.displayStyle != DisplayStyle.FLAT,
+        styleChooser = styleChooser,
+        initialExpressive = !styleChooser || app.settings.snapshot().story.displayStyle != DisplayStyle.FLAT,
         storyPreferences = app.settings.snapshot().story,
         commentPreferences = app.settings.snapshot().comments,
         onApplyPreset = { expressive ->
             app.settings.applyWelcomePreset(expressive)
-            app.appearance.markWelcomeShown()
-            onDismiss()
-        },
-        onDismiss = {
-            app.appearance.markWelcomeShown()
+            app.appearance.refreshSelection()
             onDismiss()
         },
         filterButtonColors = harmonicFilterButtonColors(),

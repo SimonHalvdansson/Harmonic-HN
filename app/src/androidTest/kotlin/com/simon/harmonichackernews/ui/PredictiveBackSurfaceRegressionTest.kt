@@ -137,7 +137,7 @@ class PredictiveBackSurfaceRegressionTest {
                     },
                     settings = {},
                     submissions = { _, detail, paneComments -> if (detail != null) paneComments(detail) },
-                    editor = {}, immersive = {}, foreground = {},
+                    editor = {}, immersive = {}, welcome = {}, foreground = {},
                 )
             }
         }
@@ -565,7 +565,7 @@ class PredictiveBackSurfaceRegressionTest {
                 completedPredictiveBack = if (completed) setOfNotNull(lastSource) else emptySet(),
                 modifier = Modifier.background(Color.White).testTag("viewport"),
                 stories = { _, _ -> stories() }, comments = { request, _ -> comments(request) }, settings = { settings() },
-                submissions = { request, detail, _ -> submissions(request, detail) }, editor = {}, immersive = {}, foreground = {},
+                submissions = { request, detail, _ -> submissions(request, detail) }, editor = {}, immersive = {}, welcome = {}, foreground = {},
             )
         }
     }

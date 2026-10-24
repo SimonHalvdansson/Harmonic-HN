@@ -98,7 +98,7 @@ class CommentsRetentionTest {
         try {
             compose.runOnIdle {
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.openSubmissions("pg")
             }

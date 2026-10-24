@@ -269,7 +269,7 @@ class EditorDraftRestorationTest {
     private fun openEditor(type: EditorType) {
         compose.runOnIdle {
             compose.activity.navigationController.apply {
-                dismissWelcomeDialog()
+                closeWelcome()
                 dismissChangelogDialog()
                 openEditor(EditorDestination(type = type, itemId = 1, parentText = "Parent comment", postTitle = "Draft test"))
             }

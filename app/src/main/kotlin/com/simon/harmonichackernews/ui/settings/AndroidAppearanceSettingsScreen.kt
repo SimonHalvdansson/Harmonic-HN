@@ -41,14 +41,7 @@ fun AndroidAppearanceSettingsScreen(
         onBack = onBack,
         onNavigate = onNavigate,
         onThemeChanged = onThemeChanged,
-        dialogContent = { dialog, _, dismiss ->
-            when (dialog) {
-                AppearanceSettingsDialog.Style -> AndroidWelcomeScreen(
-                    styleChooser = true,
-                    onDismiss = dismiss,
-                )
-            }
-        },
+        onStyleRequested = { app.navigation.openWelcome(styleChooser = true) },
     )
 }
 

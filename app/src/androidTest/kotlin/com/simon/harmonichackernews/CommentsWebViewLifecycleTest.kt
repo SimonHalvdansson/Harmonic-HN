@@ -233,7 +233,7 @@ class CommentsWebViewLifecycleTest {
                         "A detailed article must stay scrollable and preserve the original page when reading ends. ".repeat(4) + "</p>"
                 }
                 scenario.onActivity { activity ->
-                    activity.navigationController.dismissWelcomeDialog()
+                    activity.navigationController.closeWelcome()
                     activity.navigationController.dismissChangelogDialog()
                     (activity.window.decorView as ViewGroup).addView(browser.host.root,
                         ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -379,7 +379,7 @@ class CommentsWebViewLifecycleTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 fixture().use { browser ->
                     scenario.onActivity { activity ->
-                        activity.navigationController.dismissWelcomeDialog()
+                        activity.navigationController.closeWelcome()
                         activity.navigationController.dismissChangelogDialog()
                         browser.host.root.setBackgroundColor(Color.WHITE)
                         (activity.window.decorView as ViewGroup).addView(browser.host.root,

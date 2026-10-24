@@ -13,8 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -24,6 +26,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -39,6 +43,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.pageBackground
+import com.simon.harmonichackernews.ui.common.setHarmonicLogoStroke
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
@@ -47,12 +52,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 @Composable
-internal fun WelcomeAnimatedHeader(launcherIcon: @Composable () -> Unit) {
-    val time = remember { mutableDoubleStateOf(0.0) }
+internal fun rememberWelcomeAnimationTime(): State<Double> {
+    val time = rememberSaveable { mutableDoubleStateOf(0.0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
         val motionScale = currentCoroutineContext()[MotionDurationScale]
-        var elapsed = 0.0
+        var elapsed = time.doubleValue.coerceAtLeast(0.0)
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             snapshotFlow { motionScale?.scaleFactor ?: 1f }.collectLatest { durationScale ->
                 if (durationScale == 0f) {
@@ -69,7 +74,18 @@ internal fun WelcomeAnimatedHeader(launcherIcon: @Composable () -> Unit) {
             }
         }
     }
+    return time
+}
+
+@Composable
+internal fun WelcomeAnimatedHeader(
+    time: State<Double>,
+    title: String = "Welcome to Harmonic",
+    subtitle: String = "Choose a style to get started.",
+    launcherIcon: @Composable () -> Unit,
+) {
     val paths = remember { headerPaths() }
+    val logoStrokes = remember { List(2) { Path() } }
     val scheme = MaterialTheme.colorScheme
     val bubble = lerp(scheme.primaryContainer, scheme.onPrimaryContainer, .08f)
     val reply = lerp(scheme.secondaryContainer, scheme.pageBackground, .25f)
@@ -81,7 +97,7 @@ internal fun WelcomeAnimatedHeader(launcherIcon: @Composable () -> Unit) {
                 val scale = size.width / 360f
                 withTransform({ scale(scale, scale, Offset.Zero) }) {
                     for (shape in WelcomeHeaderMotion.Shape.entries) {
-                        val p = WelcomeHeaderMotion.pose(shape, time.doubleValue)
+                        val p = WelcomeHeaderMotion.pose(shape, time.value)
                         if (p.alpha == 0f) continue
                         withTransform({
                             translate(shape.x, shape.y + p.enterY)
@@ -107,10 +123,10 @@ internal fun WelcomeAnimatedHeader(launcherIcon: @Composable () -> Unit) {
                     }
                 }
             }
-            // Keep each host's real launcher artwork. Its peach disk fits inside the rotating bloom.
+            // Retain the host artwork for reduced motion; its disk fits inside the rotating bloom.
             Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
                 Box(Modifier.graphicsLayer {
-                    val p = WelcomeHeaderMotion.pose(WelcomeHeaderMotion.Shape.Bloom, time.doubleValue)
+                    val p = WelcomeHeaderMotion.pose(WelcomeHeaderMotion.Shape.Bloom, time.value)
                     val designScale = artworkWidth.toPx() / 360f
                     val iconScale = 114f * designScale / size.width
                     alpha = p.alpha
@@ -120,23 +136,40 @@ internal fun WelcomeAnimatedHeader(launcherIcon: @Composable () -> Unit) {
                     rotationZ = p.enterAngle
                     shape = CircleShape
                     clip = true
-                }) { launcherIcon() }
+                }) {
+                    launcherIcon()
+                    Canvas(Modifier.matchParentSize()) {
+                        val millis = time.value
+                        // Preserve the host's original artwork when reduced motion is requested.
+                        if (millis < 0) return@Canvas
+                        drawCircle(Color(0xFFFFDBC9))
+                        withTransform({ scale(size.width / 512f, size.height / 512f, Offset.Zero) }) {
+                            logoStrokes.forEachIndexed { index, path ->
+                                path.setHarmonicLogoStroke(index, WelcomeHeaderMotion.logoBend(index, millis))
+                                drawPath(
+                                    path, Color(0xFF341000),
+                                    style = Stroke(33f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
         Column(
             Modifier.graphicsLayer {
-                alpha = WelcomeHeaderMotion.textAlpha(time.doubleValue)
+                alpha = WelcomeHeaderMotion.textAlpha(time.value)
                 translationY = (1f - alpha) * 8.dp.toPx()
             }, horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Welcome to Harmonic", Modifier.widthIn(max = 240.dp),
+                title, Modifier.widthIn(max = 240.dp),
                 color = scheme.onSurface, fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp,
                 textAlign = TextAlign.Center, style = LocalSettingsPlatformStyle.current.textStyle,
             )
             Text(
-                "Choose a style to get started.", Modifier.padding(top = 10.dp),
+                subtitle, Modifier.padding(top = 10.dp),
                 color = scheme.onSurfaceVariant, fontFamily = GoogleSansFlexRoundedFontFamily,
                 fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center,
                 style = LocalSettingsPlatformStyle.current.textStyle,

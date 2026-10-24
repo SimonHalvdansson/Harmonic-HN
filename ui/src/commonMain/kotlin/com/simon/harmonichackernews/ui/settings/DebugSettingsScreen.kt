@@ -43,7 +43,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class DebugSettingsDialog {
-    WELCOME,
     CHANGELOG,
     NOTIFICATIONS,
 }
@@ -114,6 +113,7 @@ fun DebugSettingsScreen(
     onOpenLink: (String) -> Unit,
     onLinkPreviewsRequested: () -> Unit,
     onDialogRequested: (DebugSettingsDialog) -> Unit,
+    onWelcomeRequested: () -> Unit,
     onEasterEggRequested: () -> Unit,
     mockAiAnswers: Boolean = false,
     onMockAiAnswersChanged: (Boolean) -> Unit = {},
@@ -238,7 +238,7 @@ fun DebugSettingsScreen(
                 SettingRow(
                     title = "Welcome screen",
                     icon = Res.drawable.ic_explore,
-                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.WELCOME) } },
+                    onClick = { navigate(onWelcomeRequested) },
                 )
                 SettingsDivider()
                 SettingRow(

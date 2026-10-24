@@ -26,7 +26,7 @@ class StoryPreviewGestureTest {
 
     @Before fun showStories() {
         compose.runOnIdle {
-            compose.activity.navigationController.dismissWelcomeDialog()
+            compose.activity.navigationController.closeWelcome()
             compose.activity.navigationController.dismissChangelogDialog()
             compose.activity.navigationController.closeEditor()
             compose.activity.navigationController.closeSettings()

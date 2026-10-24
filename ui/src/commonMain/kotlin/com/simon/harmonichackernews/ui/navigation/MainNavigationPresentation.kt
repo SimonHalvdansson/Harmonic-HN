@@ -17,6 +17,7 @@ val MainNavigationEntry.surfaceKey: MainNavigationSurfaceKey
         is MainNavigationEntry.Settings -> request.serial
         is MainNavigationEntry.Submissions -> request.serial
         is MainNavigationEntry.Editor -> request.serial
+        is MainNavigationEntry.Welcome -> request.serial
         else -> 0
     })
 

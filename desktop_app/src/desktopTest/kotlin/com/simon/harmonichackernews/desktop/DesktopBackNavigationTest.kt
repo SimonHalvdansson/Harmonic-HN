@@ -9,6 +9,22 @@ import kotlin.test.assertTrue
 
 class DesktopBackNavigationTest {
     @Test
+    fun escapeClosesWelcomeAndRestoresTheSettingsVisit() {
+        val bootstrap = DesktopHarmonicAppBootstrap.inMemory("WelcomeBackTest")
+        try {
+            val scene = bootstrap.scene
+            scene.navigation.openSettings("appearance")
+            val settings = scene.navigation.state.value.settingsRequest
+            scene.navigation.openWelcome(styleChooser = true)
+            assertTrue(handleDesktopBack(scene.navigation.state.value, scene, null, null, null, {}))
+            assertEquals(MainDestination.SETTINGS, scene.navigation.state.value.currentDestination)
+            assertEquals(settings, scene.navigation.state.value.settingsRequest)
+        } finally {
+            bootstrap.close()
+        }
+    }
+
+    @Test
     fun escapePopsTheVisibleStoryAboveRetainedSettingsAndSubmissions() {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("BackTest")
         try {

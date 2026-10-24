@@ -47,7 +47,7 @@ class CommentsVolumeNavigationTest {
             compose.runOnIdle {
                 app.settings.setCommentsVolumeNavigation(CommentVolumeNavigationMode.TOP_LEVEL)
                 app.settings.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, false)
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.openStory(StoryDestination(storyId))
             }

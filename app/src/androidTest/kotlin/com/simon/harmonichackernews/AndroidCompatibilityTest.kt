@@ -38,7 +38,7 @@ class AndroidCompatibilityTest {
     fun everySettingsScreenOpensAndReturnsToStories() {
         val navigation = compose.activity.navigationController
         compose.runOnIdle {
-            navigation.dismissWelcomeDialog()
+            navigation.closeWelcome()
             navigation.dismissChangelogDialog()
         }
         for (section in SettingsSection.entries) {

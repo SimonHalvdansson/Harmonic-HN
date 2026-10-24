@@ -112,12 +112,12 @@ class AndroidMainNavigationController internal constructor(
     internal fun getInitialSettingsSectionRoute(request: MainSettingsRequest): String? =
         navigationState.initialSettingsSectionRoute(request)
 
-    fun showWelcomeDialog() {
-        navigationState.showWelcomeDialog()
+    fun openWelcome() {
+        navigationState.openWelcome()
     }
 
-    internal fun dismissWelcomeDialog() {
-        navigationState.dismissWelcomeDialog()
+    internal fun closeWelcome() {
+        scene.closeWelcome()
     }
 
     fun showChangelogDialog() {

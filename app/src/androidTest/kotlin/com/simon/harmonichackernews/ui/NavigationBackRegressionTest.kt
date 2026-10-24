@@ -29,7 +29,7 @@ class NavigationBackRegressionTest {
         val activity = compose.activity
         val navigation = activity.navigationController
         compose.runOnIdle {
-            navigation.dismissWelcomeDialog()
+            navigation.closeWelcome()
             navigation.dismissChangelogDialog()
             // Exercise the production VIEW decoder without relaunching the ActivityScenario's
             // singleTask activity into another task. Cross-app dispatch is verified on device.
@@ -74,7 +74,7 @@ class NavigationBackRegressionTest {
         try {
             compose.runOnIdle {
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.openSubmissions("starkparker")
             }
@@ -151,7 +151,7 @@ class NavigationBackRegressionTest {
             for (reopenChild in listOf(false, true)) {
                 compose.runOnIdle {
                     navigation.navigationState.returnToStories()
-                    navigation.dismissWelcomeDialog()
+                    navigation.closeWelcome()
                     navigation.dismissChangelogDialog()
                     navigation.openSettings("debug")
                     navigation.navigationState.openStory(StoryRoute(47938725))
@@ -213,7 +213,7 @@ class NavigationBackRegressionTest {
         try {
             compose.runOnIdle {
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.openSettings("debug")
                 navigation.navigationState.openStory(StoryRoute(47938725))
@@ -261,7 +261,7 @@ class NavigationBackRegressionTest {
         try {
             compose.runOnIdle {
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.openSettings("debug")
                 navigation.navigationState.openStory(StoryRoute(47938725))
@@ -412,7 +412,7 @@ class NavigationBackRegressionTest {
         try {
             compose.runOnIdle {
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 navigation.navigationState.openStory(StoryRoute(49805972))
             }

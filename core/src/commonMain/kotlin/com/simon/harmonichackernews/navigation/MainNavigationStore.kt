@@ -12,7 +12,7 @@ data class MainNavigationSnapshot(
     val lastStoryRequest: MainStoryRequest?,
     val settingsRequest: MainSettingsRequest?,
     val lastSettingsRequest: MainSettingsRequest?,
-    val welcomeDialogVisible: Boolean,
+    val welcomeRequest: MainWelcomeRequest?,
     val changelogDialogVisible: Boolean,
     val cacheStoriesDialogVisible: Boolean,
     val loginDialogVisible: Boolean,
@@ -90,8 +90,8 @@ class MainNavigationStore(
     fun updateSettingsSection(route: String) = mutate { updateSettingsSection(route) }
     fun initialSettingsSectionRoute(request: MainSettingsRequest): String? =
         machine.initialSettingsSectionRoute(request)
-    fun showWelcomeDialog() = mutate { showWelcomeDialog() }
-    fun dismissWelcomeDialog() = mutate { dismissWelcomeDialog() }
+    fun openWelcome(styleChooser: Boolean = false) = mutate { openWelcome(styleChooser) }
+    fun closeWelcome() = mutate { closeWelcome() }
     fun showChangelogDialog() = mutate { showChangelogDialog() }
     fun dismissChangelogDialog() = mutate { dismissChangelogDialog() }
     fun showCacheStoriesDialog() = mutate { showCacheStoriesDialog() }
@@ -155,7 +155,6 @@ private fun MainNavigationSnapshot.toRestoration(
     settingsOpen = settingsRequest != null,
     settingsRequestSerial = settingsRequestSerial,
     settingsSectionRoute = currentSettingsSectionRoute,
-    welcomeDialogVisible = welcomeDialogVisible,
     changelogDialogVisible = changelogDialogVisible,
     cacheStoriesDialogVisible = cacheStoriesDialogVisible,
     loginDialogVisible = loginDialogVisible,
@@ -175,7 +174,7 @@ private fun MainNavigationState.snapshot() = MainNavigationSnapshot(
     lastStoryRequest = lastStoryRequest,
     settingsRequest = settingsRequest,
     lastSettingsRequest = lastSettingsRequest,
-    welcomeDialogVisible = welcomeDialogVisible,
+    welcomeRequest = welcomeRequest,
     changelogDialogVisible = changelogDialogVisible,
     cacheStoriesDialogVisible = cacheStoriesDialogVisible,
     loginDialogVisible = loginDialogVisible,

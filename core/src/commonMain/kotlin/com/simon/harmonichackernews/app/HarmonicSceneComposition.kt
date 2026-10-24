@@ -5,6 +5,7 @@ import com.simon.harmonichackernews.navigation.CommentsOpeningRequests
 import com.simon.harmonichackernews.navigation.AppLaunchRouter
 import com.simon.harmonichackernews.navigation.AppLinkNavigator
 import com.simon.harmonichackernews.navigation.MainNavigationStore
+import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.presentation.UserMessageStore
 
@@ -42,6 +43,14 @@ class HarmonicSceneComposition internal constructor(
     )
 
     private var closed = false
+
+    fun closeWelcome() {
+        if (navigation.state.value.currentDestination != MainDestination.WELCOME) return
+        if (navigation.state.value.welcomeRequest?.styleChooser == false) {
+            app.appearance.markWelcomeShown()
+        }
+        navigation.closeWelcome()
+    }
 
     fun close() {
         if (closed) return

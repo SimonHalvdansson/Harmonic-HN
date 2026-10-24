@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import com.simon.harmonichackernews.ui.theme.HarmonicRipple
+import com.simon.harmonichackernews.ui.common.setHarmonicLogoStroke
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
@@ -143,19 +144,9 @@ private enum class LogoMotion { Ink, Counterpoint, Gather }
 
 private fun smooth(value: Float): Float = value.coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
 
-// Source geometry and timing: docs/design/splash-animation/motion.js (all three variants).
+// Source geometry and timing: tools/splash-animation/motion.js (all three variants).
 // Keep the two continuous cubic strokes and rounded ends used by the Android splash.
-private fun logoStrokes(): List<PathMeasure> = listOf(
-    Path().apply {
-        moveTo(83f, 298f)
-        cubicTo(120f, 233f, 142f, 168f, 205f, 168f)
-        cubicTo(269f, 168f, 281f, 304f, 350f, 304f)
-        cubicTo(390f, 304f, 410f, 248f, 429f, 214f)
-    },
-    Path().apply {
-        moveTo(83f, 298f)
-        cubicTo(113f, 245f, 129f, 207f, 159f, 207f)
-        cubicTo(223f, 207f, 215f, 344f, 305f, 344f)
-        cubicTo(370f, 344f, 401f, 263f, 429f, 214f)
-    },
-).map { path -> PathMeasure().apply { setPath(path, forceClosed = false) } }
+private fun logoStrokes(): List<PathMeasure> = List(2) { index ->
+    val path = Path().apply { setHarmonicLogoStroke(index) }
+    PathMeasure().apply { setPath(path, forceClosed = false) }
+}

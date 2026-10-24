@@ -16,6 +16,8 @@ data class MainSettingsRequest(
     val initialSectionRoute: String?,
 )
 
+data class MainWelcomeRequest(val serial: Int, val styleChooser: Boolean = false)
+
 data class MainEditorRequest(
     val serial: Int,
     val destination: EditorDestination,
@@ -53,6 +55,7 @@ enum class MainDestination {
     SUBMISSIONS,
     EDITOR,
     IMMERSIVE,
+    WELCOME,
 }
 
 sealed interface MainNavigationEntry {
@@ -81,6 +84,10 @@ sealed interface MainNavigationEntry {
     data object Immersive : MainNavigationEntry {
         override val destination = MainDestination.IMMERSIVE
     }
+
+    data class Welcome(val request: MainWelcomeRequest) : MainNavigationEntry {
+        override val destination = MainDestination.WELCOME
+    }
 }
 
 @Serializable
@@ -91,6 +98,7 @@ data class MainNavigationEntryRestoration(
     val settingsSectionRoute: String? = null,
     val submissionsUserName: String? = null,
     val editorDestination: EditorDestination? = null,
+    val welcomeStyleChooser: Boolean = false,
 )
 
 @Serializable
@@ -101,6 +109,7 @@ data class MainNavigationRestoration(
     val settingsOpen: Boolean = false,
     val settingsRequestSerial: Int = 0,
     val settingsSectionRoute: String? = null,
+    // Read only to migrate saved states from before Welcome became a navigation destination.
     val welcomeDialogVisible: Boolean = false,
     val changelogDialogVisible: Boolean = false,
     val cacheStoriesDialogVisible: Boolean = false,
@@ -133,8 +142,8 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         get() = backStack.filterIsInstance<MainNavigationEntry.Settings>().lastOrNull()?.request
     var lastSettingsRequest: MainSettingsRequest? = null
         private set
-    var welcomeDialogVisible: Boolean = restored.welcomeDialogVisible
-        private set
+    val welcomeRequest: MainWelcomeRequest?
+        get() = backStack.filterIsInstance<MainNavigationEntry.Welcome>().lastOrNull()?.request
     var changelogDialogVisible: Boolean = restored.changelogDialogVisible
         private set
     var cacheStoriesDialogVisible: Boolean = restored.cacheStoriesDialogVisible
@@ -168,6 +177,7 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     private var captchaRequestSerial = 0
     private var userRequestSerial = 0
     private var failureRequestSerial = 0
+    private var welcomeRequestSerial = 0
     var currentSettingsSectionRoute: String? = null
         private set
 
@@ -181,6 +191,8 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
         } else {
             restoreLegacyStack(restored)
         }
+        // Older saved states stored welcome separately from the destination history.
+        if (restored.welcomeDialogVisible && welcomeRequest == null) openWelcome()
         lastStoryRequest = storyRequest
         lastSettingsRequest = settingsRequest
         lastEditorRequest = editorRequest
@@ -235,8 +247,11 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
     fun initialSettingsSectionRoute(request: MainSettingsRequest): String? =
         request.initialSectionRoute
 
-    fun showWelcomeDialog() { welcomeDialogVisible = true }
-    fun dismissWelcomeDialog() { welcomeDialogVisible = false }
+    fun openWelcome(styleChooser: Boolean = false) {
+        if (currentDestination == MainDestination.WELCOME && welcomeRequest?.styleChooser == styleChooser) return
+        replaceTopOrPush(MainNavigationEntry.Welcome(MainWelcomeRequest(++welcomeRequestSerial, styleChooser)))
+    }
+    fun closeWelcome() { pop(MainDestination.WELCOME) }
     fun showChangelogDialog() { changelogDialogVisible = true }
     fun dismissChangelogDialog() { changelogDialogVisible = false }
     fun showCacheStoriesDialog() { cacheStoriesDialogVisible = true }
@@ -344,6 +359,11 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
             )
             MainNavigationEntry.Immersive ->
                 MainNavigationEntryRestoration(MainDestination.IMMERSIVE)
+            is MainNavigationEntry.Welcome -> MainNavigationEntryRestoration(
+                destination = MainDestination.WELCOME,
+                serial = entry.request.serial,
+                welcomeStyleChooser = entry.request.styleChooser,
+            )
         }
     }
 
@@ -383,6 +403,11 @@ class MainNavigationState(restored: MainNavigationRestoration = MainNavigationRe
                 MainNavigationEntry.Editor(MainEditorRequest(serial, destination))
             }
         MainDestination.IMMERSIVE -> MainNavigationEntry.Immersive
+        MainDestination.WELCOME -> {
+            val serial = restored.serial.coerceAtLeast(1)
+            welcomeRequestSerial = maxOf(welcomeRequestSerial, serial)
+            MainNavigationEntry.Welcome(MainWelcomeRequest(serial, restored.welcomeStyleChooser))
+        }
     }
 
     private fun restoreLegacyStack(restored: MainNavigationRestoration) {

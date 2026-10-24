@@ -57,6 +57,7 @@ fun AndroidDebugSettingsScreen(
         onOpenLinkPreviews = onOpenLinkPreviews,
         onOpenGlassSettings = onOpenGlassSettings,
         onEasterEggRequested = app.navigation::openCoulombGas,
+        onWelcomeRequested = { app.navigation.openWelcome() },
         dialogContent = { dialog, dismiss ->
             when (dialog) {
                 DebugSettingsDialog.CHANGELOG -> SettingsChangelogDialog(
@@ -65,10 +66,6 @@ fun AndroidDebugSettingsScreen(
                         app.links.open(app.metadata.projectUrl)
                         dismiss()
                     },
-                )
-                DebugSettingsDialog.WELCOME -> AndroidWelcomeScreen(
-                    styleChooser = false,
-                    onDismiss = dismiss,
                 )
                 DebugSettingsDialog.NOTIFICATIONS -> AndroidDebugNotificationsDialog(
                     onDismiss = dismiss,

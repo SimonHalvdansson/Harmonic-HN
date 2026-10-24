@@ -80,6 +80,7 @@ import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
 import com.simon.harmonichackernews.ui.navigation.rememberMainNavigationBackPreview
 import com.simon.harmonichackernews.ui.navigation.MainNavigationSurfaceKey
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
+import com.simon.harmonichackernews.ui.settings.PortableWelcomeScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
@@ -102,7 +103,7 @@ internal val LocalIosForeground = staticCompositionLocalOf { false }
 
 private data object IosApplicationBackInfo : NavigationEventInfo()
 
-internal enum class IosBackVisualTarget { None, Story, Settings, Submissions, Editor }
+internal enum class IosBackVisualTarget { None, Story, Settings, Submissions, Editor, Welcome }
 
 private class IosBackSettle(
     val visualTarget: IosBackVisualTarget,
@@ -212,7 +213,7 @@ private fun IosApp(
                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
             )
         ) {
-            AppLaunchDialog.WELCOME -> scene.navigation.showWelcomeDialog()
+            AppLaunchDialog.WELCOME -> scene.navigation.openWelcome()
             AppLaunchDialog.CHANGELOG -> scene.navigation.showChangelogDialog()
             AppLaunchDialog.NONE -> Unit
         }
@@ -297,6 +298,9 @@ private fun IosApp(
     LaunchedEffect(navigation.editorRequest?.serial) {
         if (navigation.editorRequest != null) completedBackTarget = IosBackVisualTarget.None
     }
+    LaunchedEffect(navigation.welcomeRequest?.serial) {
+        if (navigation.welcomeRequest != null) completedBackTarget = IosBackVisualTarget.None
+    }
 
     ProvideHarmonicUiDependencies(
         HarmonicUiDependencies(bootstrap.app, scene),
@@ -329,7 +333,7 @@ private fun canHandleIosBack(
 ): Boolean = navigation.failureRequest != null ||
     navigation.userRequest != null || navigation.captchaRequest != null ||
     navigation.loginDialogVisible || navigation.cacheStoriesDialogVisible ||
-    navigation.changelogDialogVisible || navigation.welcomeDialogVisible ||
+    navigation.changelogDialogVisible || navigation.welcomeRequest != null ||
     navigation.coulombGasVisible || navigation.editorRequest != null ||
     navigation.submissionsRequest != null || navigation.settingsRequest != null ||
     commentsController?.isLinkPreviewOverlayShowing() == true ||
@@ -348,11 +352,12 @@ internal fun iosBackVisualTarget(
     navigation.failureRequest != null || navigation.userRequest != null ||
         navigation.captchaRequest != null || navigation.loginDialogVisible ||
         navigation.cacheStoriesDialogVisible || navigation.changelogDialogVisible ||
-        navigation.welcomeDialogVisible || navigation.coulombGasVisible ||
+        navigation.coulombGasVisible ||
         commentsController?.isLinkPreviewOverlayShowing() == true ||
         commentsController?.isCommentActionOverlayShowing() == true ||
         commentsController?.searchDialogVisible == true ||
         commentsController?.isWebsiteVisible() == true -> IosBackVisualTarget.None
+    navigation.currentDestination == MainDestination.WELCOME -> IosBackVisualTarget.Welcome
     navigation.currentDestination == MainDestination.EDITOR -> IosBackVisualTarget.Editor
     navigation.currentDestination == MainDestination.SUBMISSIONS -> IosBackVisualTarget.Submissions
     navigation.currentDestination == MainDestination.SETTINGS ->
@@ -378,7 +383,7 @@ internal fun handleIosBack(
         navigation.loginDialogVisible -> scene.navigation.dismissLoginDialog()
         navigation.cacheStoriesDialogVisible -> scene.navigation.dismissCacheStoriesDialog()
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
-        navigation.welcomeDialogVisible -> return true
+        navigation.currentDestination == MainDestination.WELCOME -> scene.closeWelcome()
         navigation.coulombGasVisible -> scene.navigation.closeCoulombGas()
         navigation.currentDestination == MainDestination.EDITOR -> onEditorBackRequested()
         navigation.currentDestination == MainDestination.SUBMISSIONS -> scene.navigation.closeSubmissions()
@@ -527,6 +532,9 @@ private fun IosAppContent(
             )
         },
         immersive = { CoulombGasScreen() },
+        welcome = { request ->
+            PortableWelcomeScreen(app, rememberIosAppIconPainter(), scene::closeWelcome, request.styleChooser)
+        },
         foreground = {
             IosAppForeground(app, scene, navigation, storiesController)
         },

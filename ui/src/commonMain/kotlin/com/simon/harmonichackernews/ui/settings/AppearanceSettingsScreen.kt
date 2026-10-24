@@ -53,7 +53,6 @@ enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPr
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
 }
-enum class AppearanceSettingsDialog { Style }
 
 @Composable
 fun AppearanceSettingsScreen(
@@ -62,7 +61,7 @@ fun AppearanceSettingsScreen(
     onBack: () -> Unit,
     onNavigate: (SettingsSection) -> Unit,
     onBooleanChanged: (AppearanceBooleanSetting, Boolean) -> Unit,
-    onDialogRequested: (AppearanceSettingsDialog) -> Unit,
+    onStyleRequested: () -> Unit,
     contentVersion: Int = 0,
     onSplitRatioChanged: (Float) -> Unit = {},
     onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
@@ -195,7 +194,7 @@ fun AppearanceSettingsScreen(
                 SettingRow(
                     title = "Preset",
                     icon = Res.drawable.ic_design_services,
-                    onClick = { onDialogRequested(AppearanceSettingsDialog.Style) },
+                    onClick = onStyleRequested,
                 )
                 SettingsDivider()
                 SettingRow(

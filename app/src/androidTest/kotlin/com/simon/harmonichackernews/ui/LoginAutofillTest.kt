@@ -34,7 +34,7 @@ class LoginAutofillTest {
     @Test fun autofillTargetsDistinctFieldsEvenWhenPasswordIsVisible() {
         val navigation = compose.activity.navigationController
         compose.runOnIdle {
-            navigation.dismissWelcomeDialog()
+            navigation.closeWelcome()
             navigation.dismissChangelogDialog()
             navigation.showLoginDialog()
         }

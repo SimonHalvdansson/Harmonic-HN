@@ -233,7 +233,7 @@ fun DebugSettingsRoute(
     onEasterEggRequested: () -> Unit,
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
     onWidgetDebugInfoChanged: () -> Unit = {},
-    onWelcomeRequested: (() -> Unit)? = null,
+    onWelcomeRequested: () -> Unit,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
@@ -264,13 +264,8 @@ fun DebugSettingsRoute(
         onCachePost = onCachePost,
         onOpenLink = onOpenLink,
         onLinkPreviewsRequested = onOpenLinkPreviews,
-        onDialogRequested = {
-            if (it == DebugSettingsDialog.WELCOME && onWelcomeRequested != null) {
-                onWelcomeRequested()
-            } else {
-                dialog = it
-            }
-        },
+        onWelcomeRequested = onWelcomeRequested,
+        onDialogRequested = { dialog = it },
         onEasterEggRequested = onEasterEggRequested,
     )
     dialog?.let { dialogContent(it) { dialog = null } }
@@ -297,13 +292,8 @@ fun AppearanceSettingsRoute(
     onBack: () -> Unit,
     onNavigate: (SettingsSection) -> Unit,
     onThemeChanged: () -> Unit,
-    dialogContent: @Composable (
-        dialog: AppearanceSettingsDialog,
-        presenter: AppearanceSettingsPresenter,
-        onDismiss: () -> Unit,
-    ) -> Unit,
+    onStyleRequested: () -> Unit,
 ) {
-    var dialog by rememberSaveable { mutableStateOf<AppearanceSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val splitLayout = LocalSplitPaneLayout.current
@@ -334,7 +324,7 @@ fun AppearanceSettingsRoute(
                 onThemeChanged()
             }
         },
-        onDialogRequested = { dialog = it },
+        onStyleRequested = onStyleRequested,
         onSplitRatioChanged = {
             repository.setSplitRatio(
                 splitLayout.orientation,
@@ -346,7 +336,6 @@ fun AppearanceSettingsRoute(
         onSurfaceEffectChanged = repository::setSurfaceEffectMode,
         contentVersion = settings.hashCode(),
     )
-    dialog?.let { dialogContent(it, presenter) { dialog = null } }
 }
 
 @Composable

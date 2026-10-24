@@ -20,7 +20,6 @@ internal fun BoxScope.IosAppForeground(
         scene = scene,
         navigation = navigation,
         storiesController = storiesController,
-        appIcon = rememberIosAppIconPainter(),
         captchaMessage = "The CAPTCHA handoff is not yet connected to the iOS in-app " +
             "browser. Open Hacker News in Safari to complete the challenge.",
     )

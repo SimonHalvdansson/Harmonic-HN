@@ -92,6 +92,7 @@ import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.ui.navigation.MainNavigationScene
 import com.simon.harmonichackernews.ui.navigation.mainNavigationScenePlan
 import com.simon.harmonichackernews.ui.settings.SettingsListScreen
+import com.simon.harmonichackernews.ui.settings.PortableWelcomeScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
@@ -201,7 +202,7 @@ fun main() {
                                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
                             )
                         ) {
-                            AppLaunchDialog.WELCOME -> sceneOwner.scene.navigation.showWelcomeDialog()
+                            AppLaunchDialog.WELCOME -> sceneOwner.scene.navigation.openWelcome()
                             AppLaunchDialog.CHANGELOG -> sceneOwner.scene.navigation.showChangelogDialog()
                             AppLaunchDialog.NONE -> Unit
                         }
@@ -310,7 +311,7 @@ internal fun handleDesktopBack(
         navigation.loginDialogVisible -> scene.navigation.dismissLoginDialog()
         navigation.cacheStoriesDialogVisible -> scene.navigation.dismissCacheStoriesDialog()
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
-        navigation.welcomeDialogVisible -> return true
+        navigation.currentDestination == MainDestination.WELCOME -> scene.closeWelcome()
         navigation.coulombGasVisible -> scene.navigation.closeCoulombGas()
         navigation.currentDestination == MainDestination.EDITOR -> onEditorBackRequested()
         navigation.currentDestination == MainDestination.SUBMISSIONS -> scene.navigation.closeSubmissions()
@@ -361,8 +362,7 @@ private fun DesktopAppContent(
             destinationTransitionSettled = true
         }
     }
-    val composeOverlayVisible = navigation.welcomeDialogVisible ||
-        navigation.changelogDialogVisible ||
+    val composeOverlayVisible = navigation.changelogDialogVisible ||
         navigation.cacheStoriesDialogVisible ||
         navigation.loginDialogVisible ||
         navigation.captchaRequest != null ||
@@ -469,6 +469,9 @@ private fun DesktopAppContent(
             )
         },
         immersive = { CoulombGasScreen() },
+        welcome = { request ->
+            PortableWelcomeScreen(app, rememberDesktopAppIconPainter(), scene::closeWelcome, request.styleChooser)
+        },
         foreground = {
             DesktopAppForeground(app, scene, navigation, storiesController)
         },

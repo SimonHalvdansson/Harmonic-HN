@@ -12,6 +12,50 @@ import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
     @Test
+    fun welcomeIsAVisitAboveTheOriginalSettingsPage() {
+        val navigation = MainNavigationStore()
+        navigation.openSettings("appearance")
+        val settings = navigation.state.value.settingsRequest
+        navigation.openWelcome(styleChooser = true)
+        val first = requireNotNull(navigation.state.value.welcomeRequest)
+        assertEquals(MainDestination.WELCOME, navigation.state.value.currentDestination)
+        assertEquals(MainDestination.SETTINGS, navigation.state.value.parentDestination(MainDestination.WELCOME))
+        assertTrue(first.styleChooser)
+        navigation.closeWelcome()
+        assertEquals(MainDestination.SETTINGS, navigation.state.value.currentDestination)
+        assertEquals(settings, navigation.state.value.settingsRequest)
+        navigation.openWelcome()
+        assertTrue(requireNotNull(navigation.state.value.welcomeRequest).serial > first.serial)
+        assertFalse(requireNotNull(navigation.state.value.welcomeRequest).styleChooser)
+    }
+
+    @Test
+    fun welcomeModeAndVisitSurviveRestorationAndLegacyDialogStateMigrates() {
+        val navigation = MainNavigationStore()
+        navigation.openSettings("appearance")
+        navigation.openWelcome(styleChooser = true)
+        val encoded = Json.encodeToString(navigation.restoration())
+        val restored = MainNavigationStore(Json.decodeFromString<MainNavigationRestoration>(encoded))
+        assertEquals(navigation.state.value.destinationStack, restored.state.value.destinationStack)
+        assertEquals(navigation.state.value.welcomeRequest, restored.state.value.welcomeRequest)
+        restored.openWelcome(styleChooser = true)
+        assertEquals(navigation.state.value.destinationStack, restored.state.value.destinationStack,
+            "A launch check must not replace a restored welcome visit or reset its saved preset")
+        assertFalse(restored.restoration().welcomeDialogVisible)
+        restored.closeWelcome()
+        assertEquals(MainDestination.SETTINGS, restored.state.value.currentDestination)
+
+        val legacy = MainNavigationStore(MainNavigationRestoration(
+            settingsOpen = true, settingsSectionRoute = "debug", welcomeDialogVisible = true,
+        ))
+        assertEquals(MainDestination.WELCOME, legacy.state.value.currentDestination)
+        assertFalse(requireNotNull(legacy.state.value.welcomeRequest).styleChooser)
+        assertFalse(legacy.restoration().welcomeDialogVisible)
+        legacy.closeWelcome()
+        assertEquals(MainDestination.SETTINGS, legacy.state.value.currentDestination)
+    }
+
+    @Test
     fun cachedStoriesOriginSurvivesNavigationSerializationAndRouteConversion() {
         val destination = StoryDestination(storyId = 42, openedFromCachedStories = true)
         val restored = AppDestinationCodec.decode(AppDestinationCodec.encode(destination)) as StoryDestination

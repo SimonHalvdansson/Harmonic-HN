@@ -374,7 +374,7 @@ class SideBySideNavigationTest {
                 settings.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, true)
                 settings.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
                 navigation.navigationState.returnToStories()
-                navigation.dismissWelcomeDialog()
+                navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
                 val destination = StoryDestination(id, seed = StoryNavigationSeed(
                     StorySnapshot(id, title = "Reading beside the discussion", url = "https://example.invalid/side-by-side"),

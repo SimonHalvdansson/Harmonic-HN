@@ -12,7 +12,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -31,12 +30,8 @@ fun BoxScope.PortableAppForeground(
     scene: HarmonicSceneComposition,
     navigation: MainNavigationSnapshot,
     storiesController: StoriesScreenController?,
-    appIcon: Painter,
     captchaMessage: String,
 ) {
-    if (navigation.welcomeDialogVisible) {
-        PortableWelcomeScreen(app, appIcon, scene.navigation::dismissWelcomeDialog)
-    }
     if (navigation.changelogDialogVisible) {
         SettingsChangelogDialog(
             onDismiss = scene.navigation::dismissChangelogDialog,

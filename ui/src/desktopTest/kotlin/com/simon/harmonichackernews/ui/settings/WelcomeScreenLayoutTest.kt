@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -52,6 +54,7 @@ class WelcomeScreenLayoutTest {
             WindowCase(840, 1000),
             WindowCase(1280, 900),
             WindowCase(740, 420),
+            WindowCase(1280, 420),
             WindowCase(400, 800, 1.6f),
             WindowCase(466, 678, rightInset = 84, topInset = 17, bottomInset = 34),
             WindowCase(678, 466, rightInset = 84, topInset = 17, bottomInset = 34),
@@ -98,14 +101,17 @@ class WelcomeScreenLayoutTest {
                 }
                 settle()
                 val content = tagged("welcome-content").boundsInRoot
+                val column = tagged("welcome-content-column").boundsInRoot
                 val action = tagged("welcome-action").boundsInRoot
                 val surface = tagged("welcome-surface").boundsInRoot
                 assertEquals(0f, surface.left, 1f)
                 assertEquals(0f, surface.top, 1f)
                 assertEquals(width.toFloat(), surface.right, 1f)
                 assertEquals(height.toFloat(), surface.bottom, 1f)
-                assertTrue(content.width <= 560f * density, "Content must stay readable on wide windows")
+                assertEquals(width.toFloat(), content.width, 1f, "The scroll surface must cover both side gutters")
+                assertTrue(column.width <= 560f * density, "Content must stay readable on wide windows")
                 assertEquals(width / 2f, content.center.x, 1f)
+                assertEquals((width - rightInset) / 2f, column.center.x, 1f)
                 assertEquals((width - rightInset) / 2f, action.center.x, 1f)
                 assertTrue(action.right <= width - rightInset)
                 assertTrue(action.bottom <= height - bottomInset && action.top > height - bottomInset - 140f * density)
@@ -116,22 +122,55 @@ class WelcomeScreenLayoutTest {
                 assertTrue(tagged("welcome-icon").boundsInRoot.bottom <= title.top)
                 assertTrue(tagged("welcome-icon").boundsInRoot.width <= 120f * density, "Launcher artwork must scale once with screen density")
                 assertTrue(title.top >= topInset)
-                assertTrue(title.right <= width - rightInset - 24f * density)
+                assertTrue(title.right <= width - rightInset - 16f * density)
                 capture("expressive")
+                if (column.left > 32f * density && height / density < 500f) {
+                    for (side in listOf(12f * density, width - rightInset - 12f * density)) {
+                        tagged("welcome-content").config[SemanticsActions.ScrollBy].action?.invoke(0f, -10000f)
+                        settle()
+                        fun pointer(event: PointerEventType, y: Float) {
+                            scene.sendPointerEvent(event, Offset(side, y), timeMillis = time / 1_000_000,
+                                type = PointerType.Touch)
+                            scene.render(time.also { time += 16_666_667L }).close()
+                        }
+                        val startY = height / 2f + 50f * density
+                        pointer(PointerEventType.Press, startY)
+                        repeat(8) { pointer(PointerEventType.Move, startY - (it + 1) * 16f * density) }
+                        pointer(PointerEventType.Release, startY - 128f * density)
+                        settle()
+                        assertTrue(tagged("welcome-content").config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f,
+                            "A touch swipe in either side gutter must scroll the welcome page")
+                        assertEquals(action, tagged("welcome-action").boundsInRoot)
+                    }
+                }
                 // On short screens, scrolling the final content into view must not move the action.
                 tagged("welcome-content").config[SemanticsActions.ScrollBy].action?.invoke(0f, 10000f)
                 settle()
                 assertEquals(action, tagged("welcome-action").boundsInRoot)
                 val previewBounds = tagged("welcome-preview").boundsInRoot
                 val presetBounds = tagged("welcome-presets").boundsInRoot
+                assertEquals(column.left + 16f * density, presetBounds.left, 1f)
+                assertEquals(column.right - 16f * density, presetBounds.right, 1f)
+                val expressiveBounds = tagged("welcome-preview-content").boundsInRoot
                 val simple = allNodes().single {
                     it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Simple" } == true
                 }.boundsInRoot.center
                 scene.sendPointerEvent(PointerEventType.Press, simple)
                 scene.sendPointerEvent(PointerEventType.Release, simple)
+                repeat(6) { scene.render(time.also { time += 16_666_667L }).close() }
+                val transitioningBounds = tagged("welcome-preview-content").boundsInRoot
                 settle()
                 assertEquals(previewBounds, tagged("welcome-preview").boundsInRoot)
                 assertEquals(presetBounds, tagged("welcome-presets").boundsInRoot)
+                // Use the tall phone case so clipping on short windows cannot obscure the geometry.
+                if (width == 400 && height == 900) {
+                    val simpleBounds = tagged("welcome-preview-content").boundsInRoot
+                    assertEquals(previewBounds.center.y, expressiveBounds.center.y, 1f)
+                    assertEquals(previewBounds.center.y, simpleBounds.center.y, 1f)
+                    assertTrue(transitioningBounds.height < expressiveBounds.height)
+                    assertTrue(transitioningBounds.height > simpleBounds.height,
+                        "The live preview must animate through intermediate sizes")
+                }
 
                 assertTrue(presetBounds.bottom < action.top, "Style presets must clear the floating action")
                 scene.sendPointerEvent(PointerEventType.Press, action.center)

@@ -22,7 +22,7 @@ class NavigationViewModelRestorationTest {
     fun rotationRetainsEachStorySessionAndItsSettingsParent() {
         val navigation = compose.activity.navigationController
         compose.runOnIdle {
-            navigation.dismissWelcomeDialog()
+            navigation.closeWelcome()
             navigation.dismissChangelogDialog()
             navigation.openSettings("debug")
         }

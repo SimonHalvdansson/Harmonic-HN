@@ -20,7 +20,6 @@ internal fun BoxScope.DesktopAppForeground(
         scene = scene,
         navigation = navigation,
         storiesController = storiesController,
-        appIcon = rememberDesktopAppIconPainter(),
         captchaMessage = "The desktop host does not yet bundle an embedded browser engine " +
             "for Hacker News CAPTCHA challenges.",
     )

@@ -30,6 +30,35 @@ class WelcomeHeaderMotionTest {
             assertEquals(WelcomeHeaderMotion.Pose(1f, 1f, 0f, 0f, 0f, 0f, 0f), WelcomeHeaderMotion.pose(shape, -1.0))
         }
         assertEquals(1f, WelcomeHeaderMotion.textAlpha(-1.0))
+        for (order in -1..3) {
+            assertEquals(1f, WelcomeHeaderMotion.contentAlpha(-1.0, order))
+        }
+    }
+
+    @Test
+    fun contentFadesInFromTopToBottomAndStaysVisible() {
+        val duringEntrance = (0..3).map { WelcomeHeaderMotion.contentAlpha(650.0, it) }
+        assertTrue(duringEntrance.zipWithNext().all { (above, below) -> above > below })
+        for (order in 0..3) {
+            assertEquals(0f, WelcomeHeaderMotion.contentAlpha(0.0, order))
+            assertEquals(1f, WelcomeHeaderMotion.contentAlpha(1000.0, order))
+            assertEquals(1f, WelcomeHeaderMotion.contentAlpha(5000.0, order))
+        }
+    }
+
+    @Test
+    fun logoWavesEaseIntoSubtleIndependentMotion() {
+        for (index in 0..1) {
+            assertEquals(0f, WelcomeHeaderMotion.logoBend(index, -1.0))
+            assertEquals(0f, WelcomeHeaderMotion.logoBend(index, 0.0))
+            assertEquals(0f, WelcomeHeaderMotion.logoBend(index, WelcomeHeaderMotion.SettledMillis.toDouble()))
+            assertEquals(0f, WelcomeHeaderMotion.logoBend(index, WelcomeHeaderMotion.SettledMillis + .01), .000001f)
+            for (time in 0..20000 step 10) {
+                assertTrue(WelcomeHeaderMotion.logoBend(index, time.toDouble()) in -6f..6f)
+            }
+            assertNotEquals(WelcomeHeaderMotion.logoBend(index, 5000.0), WelcomeHeaderMotion.logoBend(index, 7000.0))
+        }
+        assertNotEquals(WelcomeHeaderMotion.logoBend(0, 5000.0), WelcomeHeaderMotion.logoBend(1, 5000.0))
     }
 
     @Test

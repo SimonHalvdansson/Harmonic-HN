@@ -96,7 +96,7 @@ object AndroidMainNavigationHost {
                 showChangelog = appComposition.userSettings.general.showChangelog,
             )
         ) {
-            AppLaunchDialog.WELCOME -> controller.showWelcomeDialog()
+            AppLaunchDialog.WELCOME -> controller.openWelcome()
             AppLaunchDialog.CHANGELOG -> controller.showChangelogDialog()
             AppLaunchDialog.NONE -> Unit
         }
@@ -370,6 +370,14 @@ private fun MainNavigation(
         onBack = controller::closeEditor,
     )
 
+    val welcomeRequest = navigationSnapshot.welcomeRequest
+    val welcomePredictiveBack = rememberDefaultActivityPredictiveBackState(
+        requestKey = welcomeRequest?.let { MainNavigationSurfaceKey(MainDestination.WELCOME, it.serial) },
+        enabled = navigationSnapshot.currentDestination == MainDestination.WELCOME,
+        completedFrameHoldCount = 3,
+        onBack = controller::closeWelcome,
+    )
+
     PredictiveNavigationBackHandler(
         enabled = navigationSnapshot.currentDestination == MainDestination.IMMERSIVE,
     ) { events ->
@@ -405,7 +413,7 @@ private fun MainNavigation(
     }
 
     val gesture = activeBackAnimation ?: settingsPredictiveBack.animation ?:
-        submissionsPredictiveBack.animation ?: editorPredictiveBack.animation
+        submissionsPredictiveBack.animation ?: editorPredictiveBack.animation ?: welcomePredictiveBack.animation
     val preview = rememberMainNavigationBackPreview(
         scenePlan, gesture, gesture?.enterModifier ?: Modifier, gesture?.exitModifier ?: Modifier,
     )
@@ -417,6 +425,7 @@ private fun MainNavigation(
             settingsPredictiveBack.completedRequestKey,
             submissionsPredictiveBack.completedRequestKey,
             editorPredictiveBack.completedRequestKey,
+            welcomePredictiveBack.completedRequestKey,
         ),
         modifier = Modifier.background(MaterialTheme.colorScheme.pageBackground)
             .semantics { testTagsAsResourceId = true },
@@ -615,14 +624,13 @@ private fun MainNavigation(
             }
             CoulombGasScreen()
         },
-        foreground = {
-            if (navigationSnapshot.welcomeDialogVisible) {
+        welcome = { request ->
             AndroidWelcomeScreen(
-                styleChooser = false,
-                onDismiss = controller::dismissWelcomeDialog,
+                styleChooser = request.styleChooser,
+                onDismiss = controller::closeWelcome,
             )
-        }
-
+        },
+        foreground = {
         if (navigationSnapshot.changelogDialogVisible) {
             SettingsChangelogDialog(
                 onDismiss = controller::dismissChangelogDialog,
