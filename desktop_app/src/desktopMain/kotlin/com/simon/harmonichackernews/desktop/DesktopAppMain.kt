@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.desktop
 
+import com.simon.harmonichackernews.ui.settings.SettingsScrollPage
+
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.runtime.CompositionLocalProvider
 import com.simon.harmonichackernews.ui.session.HarmonicSceneOwner
@@ -699,7 +701,7 @@ private fun DesktopSettingsShell(
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only
     // the scene machinery at the breakpoint; the navigation store stays outside this key so the
     // selected section and detail stack survive both directions of the layout change.
-    val scrollHistory = remember { SettingsScrollHistory() }
+    val scrollHistory = navigation.scrollHistory
     val density = LocalDensity.current
     val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
     key(isTwoPane) {

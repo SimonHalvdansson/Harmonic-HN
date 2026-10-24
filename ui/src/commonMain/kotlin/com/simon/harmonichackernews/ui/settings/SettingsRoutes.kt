@@ -233,6 +233,7 @@ fun DebugSettingsRoute(
     onEasterEggRequested: () -> Unit,
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
     onWidgetDebugInfoChanged: () -> Unit = {},
+    onWelcomeRequested: (() -> Unit)? = null,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
@@ -263,7 +264,13 @@ fun DebugSettingsRoute(
         onCachePost = onCachePost,
         onOpenLink = onOpenLink,
         onLinkPreviewsRequested = onOpenLinkPreviews,
-        onDialogRequested = { dialog = it },
+        onDialogRequested = {
+            if (it == DebugSettingsDialog.WELCOME && onWelcomeRequested != null) {
+                onWelcomeRequested()
+            } else {
+                dialog = it
+            }
+        },
         onEasterEggRequested = onEasterEggRequested,
     )
     dialog?.let { dialogContent(it) { dialog = null } }

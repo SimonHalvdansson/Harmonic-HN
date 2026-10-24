@@ -83,6 +83,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
+import com.simon.harmonichackernews.ui.settings.SettingsScrollPage
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
@@ -747,6 +748,9 @@ private fun IosSettingsShell(
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only
     // the scene machinery at the breakpoint; the navigation store stays outside this key so the
     // selected section and detail stack survive both directions of the layout change.
+    val scrollHistory = navigation.scrollHistory
+    val density = LocalDensity.current
+    val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
     key(isTwoPane) {
         SettingsNavigationShell(
             navigation = navigation,
@@ -760,24 +764,28 @@ private fun IosSettingsShell(
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
             animateDetailChanges = false,
             renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
-                SettingsListScreen(
-                    selectedSection = selectedSection,
-                    showSelection = showSelection,
-                    showDebugSettings = app.metadata.debugSettingsEnabled,
-                    loggedIn = settingsAccountState.accountOrNull != null,
-                    onBack = onBack,
-                    onSectionSelected = onSectionSelected,
-                )
+                SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
+                    SettingsListScreen(
+                        selectedSection = selectedSection,
+                        showSelection = showSelection,
+                        showDebugSettings = app.metadata.debugSettingsEnabled,
+                        loggedIn = settingsAccountState.accountOrNull != null,
+                        onBack = onBack,
+                        onSectionSelected = onSectionSelected,
+                    )
+                }
             },
             renderDetail = { section, singlePane, onBack, onNavigate ->
-                IosSettingsDetail(
-                    section,
-                    app,
-                    scene,
-                    singlePane,
-                    onBack,
-                    onNavigate,
-                )
+                SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
+                    IosSettingsDetail(
+                        section,
+                        app,
+                        scene,
+                        singlePane,
+                        onBack,
+                        onNavigate,
+                    )
+                }
             },
         )
     }

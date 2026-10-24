@@ -340,6 +340,76 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 5))
     }
 
+    func testDebugWelcomeSurvivesDuoFolding() throws {
+        // Opt in with TEST_RUNNER_HARMONIC_DUO_FOLD_TEST=1 and use Device Hub's
+        // Open/Closed controls when the DUO_FOLD_READY markers appear in the test log.
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HARMONIC_DUO_FOLD_TEST"] == "1",
+                         "Requires an operator to fold the Duo in Device Hub")
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openDebugSettings()
+        app.tapVisibleButton("Welcome screen")
+        XCTAssertTrue(app.staticTexts["Welcome to Harmonic"].waitForExistence(timeout: 10))
+        app.swipeUp(velocity: .slow)
+        app.tapVisibleButton("Simple")
+        print("DUO_FOLD_READY_OPEN")
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.app.frame.width > 600 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 60), .completed)
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.labeledButton("Simple").isSelected, "Keep the pending preset when unfolding")
+        keepScreenshot("Welcome retained on open Duo")
+        print("DUO_FOLD_READY_CLOSE")
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.app.frame.width < 600 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 60), .completed)
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.labeledButton("Simple").isSelected, "Keep the pending preset when folding")
+        keepScreenshot("Welcome retained on closed Duo")
+        app.buttons["Get started"].tapCenter()
+        XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 10))
+    }
+
+    func testSettingsScrollSurvivesDuoFolding() throws {
+        // Device Hub supplies the fold actions, as in the Welcome fold test above.
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HARMONIC_DUO_FOLD_TEST"] == "1",
+                         "Requires an operator to fold the Duo in Device Hub")
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openSettings()
+        let debug = app.labeledButton("Debug")
+        for _ in 0..<4 where !debug.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(debug.isHittable)
+        app.tapVisibleButton("Data")
+        // Exercise a long settings page without opening dialogs or changing preferences.
+        let lastSetting = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Show update changelogs")).firstMatch
+        for _ in 0..<7 where !lastSetting.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(lastSetting.isHittable)
+        keepScreenshot("Settings scrolled before folding")
+        print("DUO_SETTINGS_READY_OPEN")
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            min(self.app.frame.width, self.app.frame.height) > 600
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 60), .completed)
+        // Wait for the restored content after the display migration, rather than
+        // using the app frame's briefly stale orientation as a layout assertion.
+        let restoredOpen = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in lastSetting.isHittable }, object: nil)
+        let detailRetainedOnOpen = XCTWaiter.wait(for: [restoredOpen], timeout: 5) == .completed
+        let restoredList = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in debug.isHittable }, object: nil)
+        let listRetainedOnOpen = XCTWaiter.wait(for: [restoredList], timeout: 5) == .completed
+        keepScreenshot("Settings scroll retained on open Duo")
+        print("DUO_SETTINGS_READY_CLOSE")
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            min(self.app.frame.width, self.app.frame.height) < 600
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 60), .completed)
+        XCUIDevice.shared.orientation = .portrait
+        let restoredClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in lastSetting.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [restoredClosed], timeout: 5), .completed,
+                       "Folding must retain the settings detail's reading position")
+        keepScreenshot("Settings scroll retained on closed Duo")
+        XCTAssertTrue(detailRetainedOnOpen, "Unfolding must retain the settings detail's reading position")
+        XCTAssertTrue(listRetainedOnOpen, "The settings list keeps its own scroll position")
+        app.labeledButton("Navigate up").tapCenter()
+        XCTAssertTrue(app.labeledButton("Debug").isHittable, "Returning to the settings list keeps its independent position")
+    }
+
     func testAskQuestionAndAnswerRespectCommentTextSize() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
         let question = "Explain the main idea in simpler terms"

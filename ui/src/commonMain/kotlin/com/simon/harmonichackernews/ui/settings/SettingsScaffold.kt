@@ -102,7 +102,7 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsListGroup.App, SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
 )
 
-/** Desktop keeps scroll owners outside Navigation 3's pane-count recreation boundary. */
+/** Hosts keep scroll owners outside Navigation 3's pane-count recreation boundary. */
 val LocalSettingsListState = staticCompositionLocalOf<LazyListState?> { null }
 
 @Composable

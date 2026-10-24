@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.desktop
+package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -16,10 +16,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import com.simon.harmonichackernews.ui.settings.LocalSettingsListState
 
 /** Layout clamping must not overwrite the reading position chosen by scrolling. */
-internal class SettingsScrollHistory {
+class SettingsScrollHistory {
     private data class Anchor(val index: Int, val offset: Int)
     private val anchors = mutableMapOf<String, Anchor>()
 
@@ -38,7 +37,7 @@ internal class SettingsScrollHistory {
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-internal fun SettingsScrollPage(history: SettingsScrollHistory, layout: Any, page: String, content: @Composable () -> Unit) {
+fun SettingsScrollPage(history: SettingsScrollHistory, layout: Any, page: String, content: @Composable () -> Unit) {
     val state = remember(history, layout, page) { history.createState(page) }
     LaunchedEffect(state, page) {
         var wasScrolling = false

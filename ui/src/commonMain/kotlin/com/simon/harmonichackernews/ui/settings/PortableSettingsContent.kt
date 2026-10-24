@@ -404,6 +404,9 @@ private fun PortableDebugSettings(
         onOpenLinkPreviews = onOpenLinkPreviews,
         onOpenGlassSettings = onOpenGlassSettings,
         onEasterEggRequested = scene.navigation::openCoulombGas,
+        // The settings detail is recreated when its pane layout changes. Keep Welcome
+        // in the scene foreground so both its visibility and preset survive that reflow.
+        onWelcomeRequested = scene.navigation::showWelcomeDialog,
         dialogContent = { dialog, dismiss ->
             when (dialog) {
                 DebugSettingsDialog.CHANGELOG -> SettingsChangelogDialog(

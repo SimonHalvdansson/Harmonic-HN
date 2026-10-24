@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.desktop
+package com.simon.harmonichackernews.ui.settings
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

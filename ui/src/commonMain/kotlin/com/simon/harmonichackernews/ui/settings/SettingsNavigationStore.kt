@@ -37,6 +37,10 @@ class SettingsNavigationStore(
     twoPane: Boolean = false,
     restoredRoutes: List<String>? = null,
 ) {
+    // Keep reading positions for the whole Settings visit, including recreation of the
+    // outer navigation surface when its retained transition changes pane layout.
+    val scrollHistory = SettingsScrollHistory()
+
     private val mutableState = MutableStateFlow(
         SettingsNavigationState(
             detailStack = restoredRoutes
