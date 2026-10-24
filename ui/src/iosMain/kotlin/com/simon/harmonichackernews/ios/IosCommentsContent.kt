@@ -137,6 +137,10 @@ internal fun IosCommentsContent(
     val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
     val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
     val contentInsetRight = contentInsets.getRight(density, layoutDirection)
+    // Duo reserves an asymmetric strip for status indicators. Ordinary landscape iPhones
+    // have matching side insets and keep their controls in the sheet.
+    val browserActionsOnRight = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone &&
+        with(density) { (contentInsetRight - contentInsetLeft).toDp() } >= 56.dp
     val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
     val openingProfile = remember(app, request.serial) {
         IosCommentsOpeningProfile.create(app.metadata.debug, request.storyId)
@@ -322,7 +326,7 @@ internal fun IosCommentsContent(
                     reserveUpButtonInset = showFloatingUpButton && !backInTopInset,
                     listState = listState,
                     headerContent = { settings ->
-                        IosCommentsHeader(app, scene, host.controller, settings) {
+                        IosCommentsHeader(app, scene, host.controller, settings, !browserActionsOnRight) {
                             val browser = host.webView
                             if (browser?.canGoBack() == true) browser.goBack()
                             else if (isTwoPane) host.controller.requestExpandSheet()
@@ -397,6 +401,12 @@ internal fun IosCommentsContent(
                     webView = webView,
                     reserveUpButtonInset = showFloatingUpButton,
                     backInTopInset = backInTopInset,
+                    browserActionsOnRight = browserActionsOnRight,
+                    onBrowserBack = {
+                        if (webView.canGoBack()) webView.goBack()
+                        else if (isTwoPane) host.controller.requestExpandSheet()
+                        else scene.navigation.returnToStories()
+                    },
                     listState = listState,
                     comments = comments,
                 )
@@ -484,6 +494,7 @@ private fun IosCommentsHeader(
     scene: HarmonicSceneComposition,
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
+    sheetActionsInHeader: Boolean,
     onBrowserBack: () -> Unit,
 ) {
     val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
@@ -529,6 +540,7 @@ private fun IosCommentsHeader(
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
         includeStatusBarSpacer = true,
+        sheetActionsInHeader = sheetActionsInHeader,
         onBrowserBack = onBrowserBack,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             presentation.tint.previewImageAvailable,

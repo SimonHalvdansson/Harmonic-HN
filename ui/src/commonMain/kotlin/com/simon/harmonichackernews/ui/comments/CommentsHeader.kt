@@ -17,6 +17,8 @@ import com.simon.harmonichackernews.ui.content.contentTween
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
@@ -125,6 +127,7 @@ fun CommentsHeader(
     textStyle: TextStyle,
     previewPlatform: CommentsPreviewPlatform,
     includeStatusBarSpacer: Boolean = true,
+    sheetActionsInHeader: Boolean = true,
     headerPreviewImageDisplayed: Boolean = false,
     onBrowserBack: (() -> Unit)? = null,
     headerTintProgress: Float? = null,
@@ -260,6 +263,7 @@ fun CommentsHeader(
                     readerModeEnabled = controller.readerModeEnabled,
                     showInvert = settings.showInvert,
                     progress = 1f - headerSheetProgress,
+                    showActions = sheetActionsInHeader,
                     contentAlpha = if (controller.sideBySideActive) {
                         0f
                     } else if (controller.predictiveBackActive) {
@@ -280,6 +284,15 @@ fun CommentsHeader(
                             layout(placeable.width, height) { placeable.place(0, 0) }
                         },
                 )
+            }
+
+            if (includeStatusBarSpacer && !sheetActionsInHeader) {
+                // Without the growing button row, removing the top inset can shorten the
+                // lazy header during a drag. Retain that space below the handle so the list
+                // stays at its top and does not cancel the sheet gesture.
+                Spacer(Modifier.height(with(density) {
+                    WindowInsets.statusBars.getTop(this).toDp()
+                } - topSpacer))
             }
 
             Column(
@@ -710,9 +723,10 @@ fun CommentsSheetControls(
     onAction: (CommentsSheetAction) -> Unit,
     onBrowserBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    showActions: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    val collapsedProgress = progress.coerceIn(0f, 1f)
+    val collapsedProgress = if (showActions) progress.coerceIn(0f, 1f) else 0f
     val navigationBarClearance = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
@@ -785,7 +799,57 @@ fun CommentsSheetControls(
         }
         // The peek height includes the system navigation inset. Keep header content below that
         // inset while collapsed, then remove the clearance as the comments sheet expands.
-        Spacer(Modifier.height(navigationBarClearance * collapsedProgress))
+        Spacer(Modifier.height(navigationBarClearance * progress.coerceIn(0f, 1f)))
+    }
+}
+
+/** Fixed controls for hosts with a system-status strip beside the browser. */
+@Composable
+internal fun CommentsBrowserActionRail(
+    readerModeAvailable: Boolean,
+    readerModeEnabled: Boolean,
+    showInvert: Boolean,
+    onAction: (CommentsSheetAction) -> Unit,
+    onBrowserBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        SheetButtonContent(Res.drawable.ic_arrow_back, "Back", colors.onSurfaceVariant, onBrowserBack)
+        SheetButtonContent(Res.drawable.ic_refresh, "Refresh website", colors.onSurfaceVariant) {
+            onAction(CommentsSheetAction.REFRESH)
+        }
+        SheetButtonContent(Res.drawable.ic_arrow_upward, "Show comments", colors.onSurfaceVariant) {
+            onAction(CommentsSheetAction.EXPAND)
+        }
+        SheetButtonContent(Res.drawable.ic_public, "Open in browser", colors.onSurfaceVariant) {
+            onAction(CommentsSheetAction.BROWSER)
+        }
+        // Availability changes animate independently of the sheet exposing the fixed rail.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = readerModeAvailable,
+            enter = expandVertically(tween(180), expandFrom = Alignment.Top) +
+                fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.8f),
+            exit = shrinkVertically(tween(140), shrinkTowards = Alignment.Top) +
+                fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
+        ) {
+            SheetButtonContent(
+                Res.drawable.ic_book_ribbon,
+                if (readerModeEnabled) "Reader mode on" else "Reader mode",
+                if (readerModeEnabled) colors.secondary else colors.onSurfaceVariant,
+            ) { onAction(CommentsSheetAction.READER) }
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showInvert,
+            enter = expandVertically(tween(180), expandFrom = Alignment.Top) +
+                fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.8f),
+            exit = shrinkVertically(tween(140), shrinkTowards = Alignment.Top) +
+                fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
+        ) {
+            SheetButtonContent(Res.drawable.ic_invert_colors, "Invert colors", colors.onSurfaceVariant) {
+                onAction(CommentsSheetAction.INVERT)
+            }
+        }
     }
 }
 

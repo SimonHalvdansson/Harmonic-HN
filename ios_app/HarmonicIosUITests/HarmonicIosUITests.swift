@@ -300,10 +300,13 @@ final class HarmonicIosUITests: XCTestCase {
         let usesTwoPanes = storyListHeader.isHittable
         articleHeader.tapCenter()
         XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 15))
-        // The browser back button is in the bottom bar, to the left of refresh.
         let refresh = app.labeledButton("Refresh website")
         let browserBack = app.buttons.matching(identifier: "Back").allElementsBoundByIndex.max { $0.frame.minY < $1.frame.minY }!
-        XCTAssertLessThan(browserBack.frame.midX, refresh.frame.midX)
+        if refresh.frame.minX > app.frame.width * 0.8 {
+            XCTAssertLessThan(browserBack.frame.midY, refresh.frame.midY)
+        } else {
+            XCTAssertLessThan(browserBack.frame.midX, refresh.frame.midX)
+        }
         browserBack.tapCenter()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
         if usesTwoPanes {
@@ -632,16 +635,86 @@ final class HarmonicIosUITests: XCTestCase {
     func testDragCommentsRevealsDeferredBrowser() throws {
         openFirstComments()
         XCTAssertEqual(app.webViews.count, 0)
+        waitForCommentsBeforeDraggingSheet()
         // The header can contain an image button that consumes its own gestures.
         let handle = app.otherElements["comments-sheet-handle"]
         XCTAssertTrue(handle.waitForExistence(timeout: 10))
         let start = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
+        // Duo's compact peek leaves more sheet travel than the horizontal toolbar.
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96))
         start.press(forDuration: 0.05, thenDragTo: end)
         XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 10))
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
         app.labeledButton("Show comments").tapCenter()
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+    }
+
+    func testDuoBrowserRailAndCompactSheet() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openDebugSettings()
+        app.tapVisibleButton("Link post")
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        waitForCommentsBeforeDraggingSheet()
+        let handle = app.otherElements["comments-sheet-handle"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        let start = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96)
+        ))
+        let refresh = app.labeledButton("Refresh website")
+        XCTAssertTrue(refresh.waitForExistence(timeout: 15))
+        XCTAssertGreaterThan(refresh.frame.minX, app.frame.width * 0.8, "Controls belong in Duo's right status strip")
+        let showComments = app.labeledButton("Show comments")
+        let browser = app.webViews.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 10))
+        XCTAssertTrue(refresh.isHittable)
+        XCTAssertTrue(showComments.isHittable)
+        XCTAssertEqual(refresh.frame.midX, showComments.frame.midX, accuracy: 1)
+        XCTAssertLessThan(refresh.frame.maxY, showComments.frame.minY + 1)
+        XCTAssertGreaterThan(refresh.frame.minX, browser.frame.maxX - 1)
+        XCTAssertLessThan(app.frame.maxY - handle.frame.minY, 60, "Only the handle and system inset remain below the page")
+        keepScreenshot("Duo fixed browser rail and compact sheet")
+        refresh.tapCenter()
+        XCTAssertTrue(showComments.isHittable)
+        showComments.tapCenter()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        XCTAssertFalse(showComments.isHittable, "Expanded comments cover the rail")
+        articleHeader.tapCenter()
+        XCTAssertTrue(showComments.waitForExistence(timeout: 10))
+        showComments.tapCenter()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        keepScreenshot("Duo comments restored after browser controls")
+    }
+
+    private func waitForCommentsBeforeDraggingSheet() {
+        // The story header arrives before the comments and saved-position restoration.
+        // The sheet intentionally rejects downward drags until that initial load finishes.
+        XCTAssertTrue(app.otherElements["comment-row"].firstMatch.waitForExistence(timeout: 20))
+        let loading = app.otherElements["comments-loading-indicator"]
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: loading
+        )], timeout: 10), .completed)
+    }
+
+    func testDuoReaderModeAndAvailabilityAfterRefresh() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openFirstComments()
+        articleHeader.tapCenter()
+        let reader = app.labeledButton("Reader mode")
+        XCTAssertTrue(reader.waitForExistence(timeout: 30))
+        reader.tapCenter()
+        let enabledReader = app.labeledButton("Reader mode on")
+        XCTAssertTrue(enabledReader.waitForExistence(timeout: 15))
+        enabledReader.tapCenter()
+        XCTAssertTrue(reader.waitForExistence(timeout: 15))
+        app.labeledButton("Refresh website").tapCenter()
+        // Navigation removes reader availability, then detection restores its animated slot.
+        XCTAssertTrue(reader.waitForExistence(timeout: 30))
+        reader.tapCenter()
+        XCTAssertTrue(enabledReader.waitForExistence(timeout: 15))
+        keepScreenshot("Duo reader mode after website refresh")
+        enabledReader.tapCenter()
+        XCTAssertTrue(reader.waitForExistence(timeout: 15))
     }
 
     func testPreloadPreferenceSurvivesRelaunchAndArticleOpening() throws {
