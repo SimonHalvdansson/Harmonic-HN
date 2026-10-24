@@ -159,6 +159,7 @@ class CommentsScreenController private constructor(
         retainedListState ?: initial.also { retainedListState = it }
 
     private var sideBySideLeftExpandedSheet = false
+    var browserPaneState: com.simon.harmonichackernews.ui.navigation.BrowserPaneState? = null
     var committedSheetBackProgress by mutableFloatStateOf(0f)
         private set
 
@@ -388,8 +389,15 @@ class CommentsScreenController private constructor(
         statusBarHeaderCoverage = coverage.coerceIn(0f, 1f)
     }
 
+    fun requestExpandSheetFromBack() {
+        if (sideBySideActive) committedSheetBackProgress = predictiveBackProgress.coerceAtLeast(0.001f)
+        requestExpandSheet()
+    }
+
     fun requestExpandSheet() {
-        if (sideBySideActive && predictiveBackActive) committedSheetBackProgress = predictiveBackProgress
+        if (sideBySideActive && predictiveBackActive) {
+            committedSheetBackProgress = predictiveBackProgress.coerceAtLeast(0.001f)
+        }
         interactionStore.requestSheet(expanded = true)
         syncInteractionState()
     }

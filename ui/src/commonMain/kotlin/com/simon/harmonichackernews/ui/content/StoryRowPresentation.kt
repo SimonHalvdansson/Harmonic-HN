@@ -174,6 +174,8 @@ internal fun rememberStoryRowPresentation(
     val targetBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.hasBackground -> colors.cardBackground
+        // Transparent black would darken the surface during the color interpolation.
+        style.transparentNonCardBackground -> colors.cardBackground.copy(alpha = 0f)
         else -> pageBackground
     }
     // Image palette extraction finishes after a list row is first composed. Preserve the old

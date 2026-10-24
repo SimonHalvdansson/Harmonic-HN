@@ -72,7 +72,6 @@ import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.cardBackground
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -264,11 +263,11 @@ private fun WelcomePreviewArea(
             Column(Modifier.testTag("welcome-preview-content")) {
                 WelcomeStoryPreview(
                     expressive, storyPreferences,
-                    modifier = Modifier.welcomeEntrance(entranceTime, order = 0),
+                    modifier = Modifier.testTag("welcome-story-preview").welcomeEntrance(entranceTime, order = 0),
                 )
                 WelcomeCommentPreview(
                     expressive, commentPreferences,
-                    modifier = Modifier.welcomeEntrance(entranceTime, order = 1),
+                    modifier = Modifier.testTag("welcome-comment-preview").welcomeEntrance(entranceTime, order = 1),
                 )
             }
             for (previewExpressive in listOf(true, false)) {
@@ -361,12 +360,11 @@ private fun WelcomeStoryPreview(
                 isRead = false,
                 previewTextAvailable = false,
             ),
-        ),
+        ).copy(transparentNonCardBackground = true),
         modifier = modifier,
         animateChanges = animateChanges,
         // Both rows already have an 8dp outer margin; match CommentRow's surface gutter.
         cardPadding = PaddingValues(horizontal = previewGutter, vertical = 4.dp),
-        pageBackground = if (expressive) MaterialTheme.colorScheme.pageBackground else Color.Transparent,
     )
 }
 

@@ -138,9 +138,9 @@ data class CommentRowStyle(
 }
 
 internal fun commentSurfaceColor(baseBackground: Color, textColor: Color, highlighted: Boolean): Color {
-    val overlayAlpha = if (highlighted) {
-        if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
-    } else 0f
+    // Compositing two zero-alpha colors discards the RGB needed for a clean fade.
+    if (!highlighted) return baseBackground
+    val overlayAlpha = if (baseBackground.luminance() < 0.5f) 0.14f else 0.08f
     return textColor.copy(alpha = overlayAlpha).compositeOver(baseBackground)
 }
 
@@ -902,7 +902,7 @@ private fun CommentSurface(
     )
     val baseBackground = when {
         style.hasBackground -> colors.cardBackground
-        style.transparentNonCardBackground -> Color.Transparent
+        style.transparentNonCardBackground -> colors.cardBackground.copy(alpha = 0f)
         else -> colors.pageBackground
     }
     val targetBackground = commentSurfaceColor(baseBackground, colors.onSurface, highlighted)

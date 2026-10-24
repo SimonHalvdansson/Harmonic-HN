@@ -69,6 +69,82 @@ class SideBySideNavigationTest {
 
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun repeatedBrowserToolbarSplitKeepsBackInsideTheStory() = withStory(splitOnOpen = false) { coordinator, browser ->
+        val controller = requireNotNull(coordinator.composeUiController)
+        val navigation = compose.activity.navigationController
+        val request = requireNotNull(navigation.navigationState.state.value.storyRequest)
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        val inBrowserPane = hasAnyAncestor(hasTestTag("comments-story-pane-${request.serial}"))
+        val inWindow = SemanticsMatcher("visible browser toolbar") {
+            it.boundsInRoot.height > 0f && it.boundsInRoot.top >= 0f &&
+                it.boundsInRoot.bottom <= compose.activity.window.decorView.height
+        }
+        repeat(3) { attempt ->
+            compose.onNode(hasContentDescription("Read side by side") and inBrowserPane and inWindow).performClick()
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertTrue("Attempt ${attempt + 1}: split should be active, offset=${controller.sheetSlideOffset}", controller.sideBySideActive)
+                assertTrue("Attempt ${attempt + 1}: the visible split must handle Back, offset=${controller.sheetSlideOffset}, history=${browser.canGoBack()}",
+                    dispatcher.hasEnabledCallbacks())
+                dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+                dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
+            }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertTrue("Attempt ${attempt + 1}: Back must preview the comments transfer", controller.predictiveBackActive)
+                dispatcher.onBackPressed()
+            }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertFalse(controller.sideBySideActive)
+                assertTrue(controller.isSheetExpanded())
+                assertEquals(request, navigation.navigationState.state.value.storyRequest)
+            }
+            if (attempt < 2) {
+                compose.runOnIdle { controller.requestCollapseSheet() }
+                compose.waitForIdle()
+                compose.runOnIdle { assertTrue("Reopening after attempt ${attempt + 1}: offset=${controller.sheetSlideOffset}", controller.isWebsiteVisible()) }
+            }
+        }
+    }
+
+    @Test fun feedStoryRemainsSelectedAtTheAndroidBackBoundary() = withStory { coordinator, _ ->
+        val navigation = compose.activity.navigationController
+        val request = navigation.navigationState.state.value.storyRequest
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        compose.runOnIdle { dispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(requireNotNull(coordinator.composeUiController).isSheetExpanded())
+            assertEquals(request, navigation.navigationState.state.value.storyRequest)
+            assertFalse("A selected root detail must let Android handle Back", dispatcher.hasEnabledCallbacks())
+            dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+            dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
+            dispatcher.dispatchOnBackCancelled()
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(request, navigation.navigationState.state.value.storyRequest) }
+        compose.onNodeWithText("Open a story").assertDoesNotExist()
+    }
+
+    @Test fun nestedStoryBackReturnsToTheSelectedRootDetail() = withStory { coordinator, _ ->
+        val navigation = compose.activity.navigationController
+        val parent = requireNotNull(navigation.navigationState.state.value.storyRequest)
+        compose.runOnIdle { requireNotNull(coordinator.composeUiController).requestExpandSheet() }
+        compose.waitForIdle()
+        compose.runOnIdle { navigation.navigationState.openLinkedStory(parent.destination) }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(compose.activity.onBackPressedDispatcher.hasEnabledCallbacks())
+            compose.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals(parent, navigation.navigationState.state.value.storyRequest)
+            assertFalse(compose.activity.onBackPressedDispatcher.hasEnabledCallbacks())
+        }
+    }
+
     @Test fun interceptedFullScreenStoryCanSplitThenReturnToFullScreen() = verifyStandaloneSplit(Entry.External)
 
     @Test fun nestedStoryCanSplitWithoutLosingItsParent() = verifyStandaloneSplit(Entry.Nested)
@@ -111,12 +187,21 @@ class SideBySideNavigationTest {
         val navigation = compose.activity.navigationController
         val request = navigation.navigationState.state.value.storyRequest
         val dispatcher = compose.activity.onBackPressedDispatcher
+        val header = compose.onNodeWithContentDescription("Open article: Reading beside the discussion")
+        val headerBefore = header.fetchSemanticsNode().boundsInRoot
+        val browserBefore = storyPane().fetchSemanticsNode().boundsInRoot
         compose.runOnIdle {
             browser.scrollTo(0, 400)
             dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
             dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
         }
         compose.waitForIdle()
+        val headerDuring = header.fetchSemanticsNode().boundsInRoot
+        val browserDuring = storyPane().fetchSemanticsNode().boundsInRoot
+        assertTrue("Comments must cross toward the right pane", headerDuring.left > headerBefore.left + 100f)
+        assertEquals("Comments must keep their vertical position", headerBefore.top, headerDuring.top, 1f)
+        assertTrue("The browser must move right with the comments", browserDuring.left > browserBefore.left + 100f)
+        assertEquals(browserBefore.top, browserDuring.top, 1f)
         compose.runOnIdle {
             assertTrue(controller.predictiveBackActive)
             assertTrue(controller.sideBySideActive)
@@ -162,6 +247,62 @@ class SideBySideNavigationTest {
             assertFalse(controller.sideBySideActive)
             assertTrue(controller.isSheetExpanded())
             assertEquals("third", browser.title)
+        }
+    }
+
+    @Test fun backPreviewKeepsBrowserControlsAndReservesMostTravelForRelease() = withStory { coordinator, _ ->
+        val controller = requireNotNull(coordinator.composeUiController)
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        val paneTag = "comments-story-pane-${requireNotNull(compose.activity.navigationController.navigationState.state.value.storyRequest).serial}"
+        val inBrowserPane = hasAnyAncestor(hasTestTag(paneTag))
+        val header = compose.onNodeWithContentDescription("Open article: Reading beside the discussion")
+        val refresh = compose.onNode(hasContentDescription("Refresh website") and inBrowserPane)
+        val headerBefore = header.fetchSemanticsNode().boundsInRoot
+        val toolbarBefore = refresh.fetchSemanticsNode().boundsInRoot
+        val destinationLeft = storyPane().fetchSemanticsNode().boundsInRoot.left
+        compose.runOnIdle {
+            dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+        }
+        var previousLeft = headerBefore.left
+        for (progress in listOf(0.5f, 1f)) {
+            compose.runOnIdle {
+                dispatcher.dispatchOnBackProgressed(BackEventCompat(500f * progress, 700f, progress, BackEventCompat.EDGE_LEFT))
+            }
+            compose.waitForIdle()
+            refresh.assertIsDisplayed()
+            compose.onNode(hasContentDescription("Exit side by side") and inBrowserPane).assertIsDisplayed()
+            val toolbar = refresh.fetchSemanticsNode().boundsInRoot
+            val comments = header.fetchSemanticsNode().boundsInRoot
+            assertEquals("The toolbar must stay attached to the browser", toolbarBefore.top, toolbar.top, 1f)
+            assertTrue("Controls must move with the browser", toolbar.left > toolbarBefore.left)
+            assertTrue("Preview travel must follow the finger", comments.left > previousLeft)
+            assertTrue("Even a held full-progress gesture must leave most travel for release",
+                comments.left - headerBefore.left < (destinationLeft - headerBefore.left) * 0.5f)
+            previousLeft = comments.left
+        }
+        compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
+        compose.waitForIdle()
+        refresh.assertIsDisplayed()
+        assertEquals(toolbarBefore, refresh.fetchSemanticsNode().boundsInRoot)
+        compose.runOnIdle {
+            dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 700f, 0f, BackEventCompat.EDGE_LEFT))
+            dispatcher.dispatchOnBackProgressed(BackEventCompat(500f, 700f, 1f, BackEventCompat.EDGE_LEFT))
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.runOnIdle { dispatcher.onBackPressed() }
+            compose.mainClock.advanceTimeBy(100)
+            compose.waitForIdle()
+            assertTrue("Releasing must animate beyond the gesture preview",
+                header.fetchSemanticsNode().boundsInRoot.left > previousLeft)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertFalse(controller.sideBySideActive)
+            assertTrue(controller.isSheetExpanded())
         }
     }
 
@@ -216,13 +357,19 @@ class SideBySideNavigationTest {
             dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
         }
         compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue("The comments controller must receive the gesture", controller.predictiveBackActive)
+            assertTrue("The pane host must retain the horizontal preview", controller.browserPaneState?.backSlideActive == true)
+        }
         grip.assertIsDisplayed().assertIsNotEnabled()
+        val previewBounds = storyPane().fetchSemanticsNode().boundsInRoot
         grip.performTouchInput { swipe(center, center + Offset(200f, 0f), durationMillis = 150) }
         compose.waitForIdle()
-        assertEquals(initialWidth, storyPane().fetchSemanticsNode().boundsInRoot.width, 1f)
+        assertEquals(previewBounds, storyPane().fetchSemanticsNode().boundsInRoot)
         compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
         compose.waitForIdle()
         grip.assertIsDisplayed().assertIsEnabled()
+        assertEquals(initialWidth, storyPane().fetchSemanticsNode().boundsInRoot.width, 1f)
 
         for (expand in listOf(true, false)) {
             compose.mainClock.autoAdvance = false
@@ -256,6 +403,7 @@ class SideBySideNavigationTest {
 
     @Test fun predictiveBackFromFullWidthCanCancelThenRestoreTheOpeningRatio() = withStory { coordinator, _ ->
         val pane = storyPane()
+        setSplit(0.6f)
         val initialWidth = pane.fetchSemanticsNode().boundsInRoot.width
         val dispatcher = compose.activity.onBackPressedDispatcher
         setSplit(0f)
@@ -264,15 +412,39 @@ class SideBySideNavigationTest {
             dispatcher.dispatchOnBackProgressed(BackEventCompat(350f, 700f, 0.7f, BackEventCompat.EDGE_LEFT))
         }
         compose.waitForIdle()
-        assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        val previewWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        assertTrue(previewWidth > initialWidth)
+        assertTrue(previewWidth < compose.activity.window.decorView.width)
         compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
         compose.waitForIdle()
         assertEquals(compose.activity.window.decorView.width.toFloat(), pane.fetchSemanticsNode().boundsInRoot.width, 1f)
         compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed()
-        compose.runOnIdle { dispatcher.onBackPressed() }
+        compose.runOnIdle {
+            dispatcher.dispatchOnBackStarted(BackEventCompat(2000f, 700f, 0f, BackEventCompat.EDGE_RIGHT))
+            dispatcher.dispatchOnBackProgressed(BackEventCompat(1600f, 700f, 0.6f, BackEventCompat.EDGE_RIGHT))
+            dispatcher.onBackPressed()
+        }
         compose.waitForIdle()
-        assertFalse(requireNotNull(coordinator.composeUiController).sideBySideActive)
+        assertTrue(requireNotNull(coordinator.composeUiController).sideBySideActive)
         assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+    }
+
+    @Test fun fullWidthBrowserWithoutSideBySideRestoresStoriesBeforeLeavingTheStory() = withStory(splitOnOpen = false) { coordinator, browser ->
+        val pane = storyPane()
+        val initialWidth = pane.fetchSemanticsNode().boundsInRoot.width
+        val request = compose.activity.navigationController.navigationState.state.value.storyRequest
+        setSplit(0f)
+        compose.runOnIdle {
+            assertFalse(browser.canGoBack())
+            compose.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        compose.waitForIdle()
+        assertEquals(initialWidth, pane.fetchSemanticsNode().boundsInRoot.width, 1f)
+        compose.runOnIdle {
+            assertEquals(request, compose.activity.navigationController.navigationState.state.value.storyRequest)
+            assertTrue(requireNotNull(coordinator.composeUiController).isWebsiteVisible())
+            assertFalse(requireNotNull(coordinator.composeUiController).sideBySideActive)
+        }
     }
 
     @Test fun disablingAdjustmentsRestoresAFullWidthBrowser() = withStory { _, _ ->

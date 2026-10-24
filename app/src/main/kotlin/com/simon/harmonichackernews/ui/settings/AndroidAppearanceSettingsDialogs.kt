@@ -66,6 +66,7 @@ fun AndroidWelcomeScreen(
         commentPreferences = presenter.snapshot.comments,
         onApplyPreset = { expressive ->
             presenter.applyWelcomePreset(expressive)
+            if (!styleChooser) app.launchState.completeWelcome()
             onDismiss()
         },
         filterButtonColors = rememberAndroidHarmonicFilterColors(),

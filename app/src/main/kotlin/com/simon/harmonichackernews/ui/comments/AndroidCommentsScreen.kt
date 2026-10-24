@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +48,7 @@ import com.simon.harmonichackernews.network.StoryResourceTintKind
 import com.simon.harmonichackernews.utils.AndroidPdfOpener
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.SideEffect
 import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneState
 
@@ -66,6 +69,7 @@ internal fun CommentsScaffold(
     val logicalExpansion = controller.sheetSlideOffset
     val background = MaterialTheme.colorScheme.pageBackground
     SideEffect {
+        controller.browserPaneState = browserPane
         browserPane?.let {
             it.owner = controller
             it.integrated = integratedBrowser
@@ -92,7 +96,8 @@ internal fun CommentsScaffold(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
         val travelPx = with(density) { (fullHeight - peekHeight).toPx().coerceAtLeast(1f) }
-        val backPreviewLiftPx = if (controller.sideBySideActive) travelPx * 0.35f
+        val horizontalBack = portal != null && browserPane?.standalone != true && sideBySide
+        val backPreviewLiftPx = if (horizontalBack) 0f else if (controller.sideBySideActive) travelPx * 0.35f
             else with(density) { 48.dp.toPx() }.coerceAtMost(travelPx)
         val backPreviewLift = animateFloatAsState(
             targetValue = if (controller.predictiveBackActive) {
@@ -119,6 +124,9 @@ internal fun CommentsScaffold(
 
         LaunchedEffect(controller.sheetRequest) {
             val request = controller.sheetRequest ?: return@LaunchedEffect
+            if (request.expanded && horizontalBack && controller.committedSheetBackProgress > 0f) {
+                snapshotFlow { portal.horizontalProgress.value }.first { it >= 1f }
+            }
             if (request.expanded) sheetState.expand() else sheetState.partialExpand()
             controller.consumeSheetRequest(request)
         }
@@ -146,6 +154,9 @@ internal fun CommentsScaffold(
         BottomSheetScaffold(
             modifier = Modifier
                 .fillMaxSize()
+                .onGloballyPositioned {
+                    if (portal != null && !portal.horizontalBack) portal.detailLeft = it.positionInRoot().x
+                }
                 .graphicsLayer {
                     // Keep the logical sheet collapsed during the preview so returning to
                     // comments remains the back target throughout the gesture. Translate the
@@ -160,7 +171,7 @@ internal fun CommentsScaffold(
             sheetShape = RectangleShape,
             // Stay neutral when collapsed. Follow the incoming header's reveal directly,
             // including predictive back, so its background and these controls meet seamlessly.
-            sheetContainerColor = if (sideBySide) lerpCommentsColor(
+            sheetContainerColor = if (sideBySide && portal?.horizontalBack != true) lerpCommentsColor(
                 background,
                 controller.headerBackgroundColor ?: background,
                 controller.statusBarHeaderCoverage * (portal?.sheetExpansion ?: visualExpansion()),
@@ -178,10 +189,15 @@ internal fun CommentsScaffold(
                         .fillMaxWidth()
                         .height(fullHeight),
                 ) {
-                    if (controller.sideBySideActive && portal != null && retainedContent != null) {
-                        SideBySideCommentsSheetMirror(portal, with(density) { peekHeight.toPx() })
+                    if ((controller.sideBySideActive || portal?.horizontalBack == true) &&
+                        portal != null && retainedContent != null
+                    ) {
+                        if (!portal.horizontalBack) {
+                            SideBySideCommentsSheetMirror(portal, with(density) { peekHeight.toPx() })
+                        }
                         Column {
-                            Spacer(Modifier.height(with(density) { controller.topInsetPx.toDp() } * portal.sheetExpansion))
+                            val expansion = if (portal.horizontalBack) 0f else portal.sheetExpansion
+                            Spacer(Modifier.height(with(density) { controller.topInsetPx.toDp() } * expansion))
                             CommentsSheetControls(
                                 readerModeAvailable = controller.readerModeAvailable,
                                 readerModeEnabled = controller.readerModeEnabled,
@@ -189,7 +205,7 @@ internal fun CommentsScaffold(
                                 sideBySideActive = true,
                                 onSideBySide = controller::toggleSideBySide,
                                 showInvert = controller.displaySettings?.showInvert == true,
-                                progress = 1f - portal.sheetExpansion,
+                                progress = 1f - expansion,
                                 contentAlpha = 1f,
                                 onAction = controller.listener::onSheetAction,
                                 onBrowserBack = null,

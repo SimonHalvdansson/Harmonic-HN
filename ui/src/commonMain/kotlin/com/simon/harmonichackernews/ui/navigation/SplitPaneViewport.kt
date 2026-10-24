@@ -122,6 +122,7 @@ internal fun SplitPaneViewport(
     val browserAdjustable = integrated && temporary && logicalExpansion <= 0.001f &&
         settings.appearance.allowSplitAdjustment
     val normalRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
+    val restoring = browser?.restoreBackActive == true
     val ratio = session.target(
         normalRatio, browser?.standalone == true, browser?.sideBySide == true,
         visualExpansion,
@@ -129,7 +130,12 @@ internal fun SplitPaneViewport(
         if (temporary && !settings.appearance.allowSplitAdjustment &&
             (browser?.standalone != true || browser.sideBySide)) session.openingRatio ?: normalRatio
         else target
-    }.let { SplitRatioPreferences.snapToCenter(it, snapToCenter) }
+    }.let {
+        if (restoring) session.restoreRatio * (browser?.restoreBackProgress ?: 0f)
+        else if (browser?.backSlideActive == true && temporary && !browser.standalone) {
+            session.ratio + ((session.openingRatio ?: normalRatio) - session.ratio) * browser.backSlideProgress()
+        } else SplitRatioPreferences.snapToCenter(it, snapToCenter)
+    }
     // Ratios are fractions: the default 0.01 threshold would end a crease animation
     // while it was still visibly several pixels away from the target.
     val animatedRatio = remember(orientation) { Animatable(ratio, visibilityThreshold = 0.0001f) }
@@ -167,7 +173,7 @@ internal fun SplitPaneViewport(
             }
             settlingAtCrease = false
             creaseVelocity[0] = 0f
-        } else if (dragging || !animateChanges) {
+        } else if (dragging || restoring || browser?.backSlideActive == true || !animateChanges) {
             creaseVelocity[0] = 0f
             animatedRatio.snapTo(ratio)
             expansion.setFirstPaneProportion(ratio)
@@ -197,12 +203,26 @@ internal fun SplitPaneViewport(
     val targetWidth = with(density) { 48.dp.roundToPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val adjustmentEnabled = !sheetTransition && (!temporary || browserAdjustable) &&
+        !restoring && browser?.backSlideActive != true &&
         ratio > 0f && (browser?.standalone != true || browser.sideBySide)
+
+    SideEffect {
+        browser?.splitPosition = {
+            val animatedGap = normalGap * (animatedRatio.value / SplitRatioPreferences.Minimum).coerceIn(0f, 1f)
+            (width - animatedGap) * animatedRatio.value + animatedGap
+        }
+        browser?.restoreOnBack = browserAdjustable && session.ratio == 0f
+        browser?.restoreFromBack = {
+            session.adjust(session.restoreRatio)
+            browser.restoreBackActive = false
+            if (browser.standalone && !browser.sideBySide) browser.showSideBySide()
+        }
+    }
 
     fun updateRatio(value: Float, persist: Boolean) {
         if (!adjustmentEnabled) return
         if (browserAdjustable) {
-            session.adjust(value)
+            session.adjust(value, rememberForBack = persist)
             if (persist) session.settle()
             return
         }

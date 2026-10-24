@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -47,6 +48,7 @@ fun MainNavigationScene(
     listPaneOverlay: @Composable () -> Unit = {},
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
+    val browser = LocalBrowserPaneState.current
     SplitPaneViewport(
         directive, paneProportion, modifier, isFoldable = isFoldable, snapToCenter = snapToCenter,
     ) { expansion, layoutDirective ->
@@ -93,7 +95,13 @@ fun MainNavigationScene(
                         }
                     },
                 ),
-            ) { SplitPaneListContent { stories(); listPaneOverlay() } }
+            ) { SplitPaneListContent {
+                Box(Modifier.fillMaxSize().graphicsLayer {
+                    translationX = if (browser?.backSlideActive == true)
+                        -browser.backSlideDistance() * (1f - browser.backSlideProgress()) else 0f
+                }) { stories() }
+                listPaneOverlay()
+            } }
             entry<CommentsDestination>(
                 metadata = ListDetailSceneStrategy.detailPane(),
             ) { destination ->
@@ -104,7 +112,10 @@ fun MainNavigationScene(
                         contentKey = destination.request.serial,
                         animate = animatedStorySerial == destination.request.serial,
                     ) {
-                        comments(destination.request)
+                        Box(Modifier.fillMaxSize().graphicsLayer {
+                            translationX = if (browser?.backSlideActive == true)
+                                browser.backSlideDistance() * browser.backSlideProgress() else 0f
+                        }) { comments(destination.request) }
                     }
                 }
             }

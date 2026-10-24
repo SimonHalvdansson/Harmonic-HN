@@ -4,6 +4,20 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CommentsHostPolicyTest {
+    @Test
+    fun fullWidthBrowserRestoresTheSplitBeforeClosingOrLeavingTheStory() {
+        for (split in listOf(false, true)) for (close in listOf(false, true)) {
+            val fullWidth = readingWebsite.copy(
+                sideBySideActive = split, closeWebsiteOnBack = close, restoreTwoPaneAvailable = true,
+            )
+            assertEquals(CommentsBackTarget.RESTORE_TWO_PANE, CommentsBackPolicy.target(fullWidth))
+            assertEquals(CommentsBackTarget.LINK_PREVIEW,
+                CommentsBackPolicy.target(fullWidth.copy(linkPreviewVisible = true)))
+            if (!close) assertEquals(CommentsBackTarget.WEB_HISTORY,
+                CommentsBackPolicy.target(fullWidth.copy(webHistoryAvailable = true)))
+        }
+    }
+
     private val readingWebsite = CommentsBackContext(
         linkPreviewVisible = false,
         commentActionVisible = false,

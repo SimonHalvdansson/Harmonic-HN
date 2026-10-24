@@ -7,6 +7,36 @@ import kotlin.test.assertTrue
 
 class AppLaunchStateStoreTest {
     @Test
+    fun acceptingWelcomeQueuesHintUntilDismissedEvenAcrossRestarts() {
+        val preferences = TestKeyValueStore()
+        val store = AppLaunchStateStore(preferences)
+        assertFalse(store.storiesMenuHintPending.value)
+
+        store.completeWelcome()
+        assertFalse(store.shouldShowWelcomeDialog)
+        assertTrue(store.storiesMenuHintPending.value)
+
+        val restarted = AppLaunchStateStore(preferences)
+        assertTrue(restarted.storiesMenuHintPending.value)
+        restarted.dismissStoriesMenuHint()
+        assertFalse(restarted.storiesMenuHintPending.value)
+        assertFalse(AppLaunchStateStore(preferences).storiesMenuHintPending.value)
+
+        restarted.completeWelcome()
+        assertFalse(restarted.storiesMenuHintPending.value, "Reopening Welcome must not offer the hint again")
+    }
+
+    @Test
+    fun existingUsersAndWelcomeBackDismissalDoNotOfferHint() {
+        val preferences = TestKeyValueStore()
+        val store = AppLaunchStateStore(preferences)
+        store.markWelcomeDialogShown()
+        store.completeWelcome()
+        assertFalse(store.storiesMenuHintPending.value)
+        assertFalse(AppLaunchStateStore(preferences).storiesMenuHintPending.value)
+    }
+
+    @Test
     fun welcomeIsShownOnceAfterBeingMarked() {
         val store = AppLaunchStateStore(TestKeyValueStore())
 

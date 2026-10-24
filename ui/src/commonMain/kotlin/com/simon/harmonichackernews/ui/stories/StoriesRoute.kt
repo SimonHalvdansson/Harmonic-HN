@@ -4,6 +4,10 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.navigation.MainDestination
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.data.StoryResourceTintStore
@@ -23,6 +27,9 @@ fun StoriesRoute(
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
 ) {
+    val dependencies = LocalHarmonicUiDependencies.current
+    val menuHintPending by dependencies.launchState.storiesMenuHintPending.collectAsStateWithLifecycle()
+    val navigation by dependencies.navigation.state.collectAsStateWithLifecycle()
     val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     StoriesScreen(
         controller = controller,
@@ -44,5 +51,8 @@ fun StoriesRoute(
         pullToRefreshEnabled = pullToRefreshEnabled,
         showRefreshMenuItem = showRefreshMenuItem,
         onVisibleStoriesChanged = onVisibleStoriesChanged,
+        showWelcomeHint = menuHintPending && navigation.currentDestination == MainDestination.STORIES &&
+            !controller.searching && !controller.headerMenuVisible,
+        onDismissWelcomeHint = dependencies.launchState::dismissStoriesMenuHint,
     )
 }

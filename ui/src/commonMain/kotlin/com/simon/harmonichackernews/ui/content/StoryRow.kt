@@ -149,6 +149,7 @@ data class StoryRowStyle(
     val commented: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     val mediumPreviewImageHeight: Dp = 88.dp,
+    val transparentNonCardBackground: Boolean = false,
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

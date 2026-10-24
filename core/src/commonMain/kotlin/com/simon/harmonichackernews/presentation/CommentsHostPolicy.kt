@@ -7,6 +7,7 @@ enum class CommentsBackTarget {
     COMMENT_ACTION,
     CUSTOM_WEB_CONTENT,
     READER_MODE,
+    RESTORE_TWO_PANE,
     CLOSE_WEBSITE,
     WEB_HISTORY,
     NONE,
@@ -23,6 +24,7 @@ data class CommentsBackContext(
     val closeWebsiteOnBack: Boolean,
     val readerModeDefault: Boolean = false,
     val sideBySideActive: Boolean = false,
+    val restoreTwoPaneAvailable: Boolean = false,
 )
 
 /** Back priority shared by native comments hosts, including predictive-back eligibility. */
@@ -32,6 +34,8 @@ object CommentsBackPolicy {
         context.linkPreviewVisible -> CommentsBackTarget.LINK_PREVIEW
         context.commentActionVisible -> CommentsBackTarget.COMMENT_ACTION
         context.customWebContentVisible -> CommentsBackTarget.CUSTOM_WEB_CONTENT
+        context.websiteVisible && context.restoreTwoPaneAvailable &&
+            (context.closeWebsiteOnBack || !context.webHistoryAvailable) -> CommentsBackTarget.RESTORE_TWO_PANE
         context.websiteVisible && context.sideBySideActive &&
             (context.closeWebsiteOnBack || !context.webHistoryAvailable) -> CommentsBackTarget.CLOSE_WEBSITE
         context.websiteVisible && context.readerModeEnabled && !context.readerModeDefault ->

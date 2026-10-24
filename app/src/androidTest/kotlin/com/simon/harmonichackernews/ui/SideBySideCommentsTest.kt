@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.unit.dp
@@ -39,22 +38,22 @@ class SideBySideCommentsTest {
 
     @Test fun unequalPanesRetainScrollWhenReturningToTheSheet() = verifyScrollRetention(leftWeight = 0.43f)
 
-    @Test fun narrowerLeftPaneKeepsItsWidthDuringSheetTransfer() = verifyFixedTransferWidth(0.35f)
+    @Test fun narrowerLeftPaneMovesContinuouslyToTheRight() = verifyHorizontalTransfer(0.35f)
 
-    @Test fun widerLeftPaneKeepsItsWidthDuringSheetTransfer() = verifyFixedTransferWidth(0.65f)
+    @Test fun widerLeftPaneMovesContinuouslyToTheRight() = verifyHorizontalTransfer(0.65f)
 
-    private fun verifyFixedTransferWidth(leftWeight: Float) = withFixture(leftWeight = leftWeight) {
+    private fun verifyHorizontalTransfer(leftWeight: Float) = withFixture(leftWeight = leftWeight) {
         visibleAction("Read side by side").performClick()
         compose.waitForIdle()
         val initialWidth = compose.runOnIdle { portal.contentSize.width }
         val rightWidth = compose.onRoot().fetchSemanticsNode().boundsInRoot.width.toInt() - initialWidth
         compose.runOnIdle { controller.beginPredictiveBack(0.8f) }
         compose.waitForIdle()
-        compose.waitUntil(5_000) { compose.runOnIdle { !portal.liveInLeft } }
         compose.runOnIdle {
-            assertTrue(portal.sheetExpansion in 0.2f..0.4f)
-            assertEquals("The departing left pane must keep its own width", initialWidth, portal.leftSnapshot?.width)
-            assertEquals("The right preview must already use its native width", rightWidth, portal.contentSize.width)
+            assertTrue(portal.horizontalBack)
+            assertEquals(0f, portal.sheetExpansion, 0.001f)
+            assertEquals("One live surface interpolates between pane widths",
+                initialWidth + (rightWidth - initialWidth) * 0.28f, portal.contentSize.width.toFloat(), 1f)
             controller.endPredictiveBack()
         }
         compose.waitForIdle()
@@ -157,17 +156,22 @@ class SideBySideCommentsTest {
         assertTrue(rightComment.center.x > compose.onRoot().fetchSemanticsNode().boundsInRoot.width / 2)
     }
 
-    @Test fun predictiveBackCancellationAndCommitRetainScrollAndUseSheetMotion() = withFixture {
+    @Test fun predictiveBackMovesCommentsHorizontallyAndRetainsScrollOnCancelAndCommit() = withFixture {
         visibleAction("Read side by side").performClick()
         compose.waitForIdle()
         compose.runOnIdle { controller.scrollToComment(20, 0, false) }
         compose.waitForIdle()
         awaitScrollTo(20)
         val progress = scrollPosition()
+        val before = compose.onNodeWithText("reader20").fetchSemanticsNode().boundsInRoot
         compose.runOnIdle { controller.beginPredictiveBack(0.8f) }
         compose.waitForIdle()
+        val during = compose.onNodeWithText("reader20").fetchSemanticsNode().boundsInRoot
+        assertTrue("The retained comment must move toward the right pane", during.left > before.left + 100f)
+        assertEquals("Back must not move comments vertically", before.top, during.top, 1f)
         compose.runOnIdle {
-            assertTrue("Back must progressively transfer the comments", portal.sheetExpansion > 0.2f)
+            assertTrue("Back previews a partial transfer", portal.horizontalProgress.value in 0.2f..0.4f)
+            assertEquals(0f, portal.sheetExpansion, 0.001f)
             assertTrue(controller.sideBySideActive)
             controller.endPredictiveBack()
         }
@@ -204,7 +208,7 @@ class SideBySideCommentsTest {
         compose.runOnIdle { assertTrue(controller.sideBySideActive) }
     }
 
-    @Test fun browserToolbarStaysNeutralUntilTheVisibleHeaderIsPulledUp() = withFixture {
+    @Test fun browserToolbarStaysNeutralDuringHorizontalBack() = withFixture {
         visibleAction("Read side by side").performClick()
         compose.waitForIdle()
         compose.runOnIdle {
@@ -222,19 +226,10 @@ class SideBySideCommentsTest {
                 compose.runOnIdle { controller.beginPredictiveBack(backProgress) }
                 compose.waitForIdle()
                 val reveal = compose.runOnIdle { portal.sheetExpansion }
-                assertTrue(reveal > 0f && reveal < 1f)
-                assertToolbarColor(tint.copy(alpha = coverage * reveal).compositeOver(background))
-                if (coverage == 1f) {
-                    val pixels = compose.onRoot().captureToImage().toPixelMap()
-                    val headerTop = (pixels.height * (1f - reveal)).toInt() + 3
-                    val incomingHeader = pixels[pixels.width - 4, headerTop].toArgb()
-                    assertSurfaceColor(tint.copy(alpha = reveal).compositeOver(background), incomingHeader,
-                        "The status-bar gradient must not leave a fully tinted strip below the controls")
-                }
-                compose.runOnIdle {
-                    assertEquals("The incoming header uses the same fade as a normal sheet",
-                        tint.copy(alpha = reveal).compositeOver(background).toArgb(), controller.statusBarHeaderColor?.toArgb())
-                }
+                assertEquals(0f, reveal, 0.001f)
+                // The browser toolbar moves away with its surface; the comments keep their
+                // own header and status-bar treatment throughout the horizontal transfer.
+                compose.runOnIdle { assertTrue(portal.horizontalBack) }
             }
             compose.runOnIdle { controller.endPredictiveBack() }
             compose.waitForIdle()
@@ -250,7 +245,7 @@ class SideBySideCommentsTest {
         val progress = scrollPosition()
         compose.runOnIdle { controller.beginPredictiveBack(0.6f) }
         compose.waitForIdle()
-        assertToolbarColor(background)
+        compose.runOnIdle { assertTrue(portal.horizontalBack) }
         compose.runOnIdle { controller.endPredictiveBack() }
         compose.waitForIdle()
         assertEquals(progress, scrollPosition())

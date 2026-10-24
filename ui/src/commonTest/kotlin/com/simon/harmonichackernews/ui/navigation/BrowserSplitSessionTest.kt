@@ -5,6 +5,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class BrowserSplitSessionTest {
+    @Test fun collapsingRemembersTheLastReadableSplitForBack() {
+        val session = BrowserSplitSession()
+        session.update(0.43f, true, false, 0f)
+        session.adjust(0.6f)
+        session.adjust(0.4f, rememberForBack = false)
+        session.adjust(0.2f, rememberForBack = false)
+        session.adjust(0f, rememberForBack = false)
+        session.settle()
+        assertEquals(0.6f, session.restoreRatio)
+        session.adjust(session.restoreRatio)
+        assertEquals(0.6f, session.target(0.43f, false, true, 0f))
+        assertEquals(0.43f, session.openingRatio)
+    }
+
     @Test fun browserAdjustmentsRestoreTheOpeningRatioAndNeverBecomeTheNextOpening() {
         val session = BrowserSplitSession()
         session.update(0.43f, true, true, 1f)

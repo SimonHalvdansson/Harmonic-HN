@@ -14,6 +14,10 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.simon.harmonichackernews.presentation.CommentsSessionState
 import androidx.navigationevent.NavigationEvent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import com.simon.harmonichackernews.ui.comments.CommentsNavigationEventHandler
 import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
@@ -146,6 +150,7 @@ class AndroidCommentsCoordinator(
     internal val composeUiController: CommentsScreenController?
         get() = composeController
     private var hostActive = true
+    private var internalBackEnabled by mutableStateOf(false)
     private val openingWork = CommentsOpeningWork(
         integrated = { integratedWebview },
         showingWebsite = { showWebsite },
@@ -449,8 +454,7 @@ class AndroidCommentsCoordinator(
     }
 
     fun handlesBackInternally(): Boolean {
-        syncOnBackPressedCallbackEnabledState()
-        return backPressedCallback?.isBackEnabled == true
+        return internalBackEnabled
     }
 
     fun setHostActive(active: Boolean) {
@@ -561,6 +565,11 @@ class AndroidCommentsCoordinator(
         syncComposeState()
         if (restoringSession && restoringStoredProgress) restoreScrollProgress()
         syncOnBackPressedCallbackEnabledState()
+        // Toolbar split toggles can leave an already collapsed sheet at the same offset.
+        // Observe the policy inputs instead of relying on another sheet-settled callback.
+        coroutineScope.launch {
+            snapshotFlow { commentsBackTarget() }.collect(::updateBackTarget)
+        }
     }
 
     private fun syncComposeState() {
@@ -691,6 +700,7 @@ class AndroidCommentsCoordinator(
                     commentsStore.state.value.settings?.reading?.readerModeDefault == true,
                 websiteVisible = websiteVisible,
                 sideBySideActive = commentsController?.sideBySideActive == true,
+                restoreTwoPaneAvailable = commentsController?.browserPaneState?.restoreOnBack == true,
                 webHistoryAvailable = websiteController?.canGoBack() == true,
                 closeWebsiteOnBack =
                     commentsStore.state.value.settings?.reading?.closeWebViewOnBack == true,
@@ -699,7 +709,12 @@ class AndroidCommentsCoordinator(
     }
 
     private fun syncOnBackPressedCallbackEnabledState() {
-        backPressedCallback?.isBackEnabled = commentsBackTarget() != CommentsBackTarget.NONE
+        updateBackTarget(commentsBackTarget())
+    }
+
+    private fun updateBackTarget(target: CommentsBackTarget) {
+        internalBackEnabled = target != CommentsBackTarget.NONE
+        backPressedCallback?.isBackEnabled = internalBackEnabled
     }
 
     private fun updateBottomSheetMargin(navbarHeight: Int) {
@@ -958,6 +973,7 @@ class AndroidCommentsCoordinator(
             ViewCompat.setOnApplyWindowInsetsListener(rootView, null)
         }
 
+        updateBackTarget(CommentsBackTarget.NONE)
         session?.backPressedCallback?.remove()
 
         commentsStore.close()

@@ -92,6 +92,8 @@ fun StoriesScreen(
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
+    showWelcomeHint: Boolean = false,
+    onDismissWelcomeHint: () -> Unit = {},
 ) {
     val settings = controller.displaySettings ?: return
     val localHazeState = rememberHazeState()
@@ -235,6 +237,8 @@ fun StoriesScreen(
                     pullToRefreshEnabled = pullToRefreshEnabled,
                     showRefreshMenuItem = showRefreshMenuItem,
                     onVisibleStoriesChanged = onVisibleStoriesChanged,
+                    showWelcomeHint = showWelcomeHint,
+                    onDismissWelcomeHint = onDismissWelcomeHint,
                 )
             }
         },

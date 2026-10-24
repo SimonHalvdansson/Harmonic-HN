@@ -6,6 +6,8 @@ package com.simon.harmonichackernews.ui.stories
 
 import com.simon.harmonichackernews.ui.content.AnimatedMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.material3.IconButtonDefaults
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.theme.menuBackground
 import com.simon.harmonichackernews.presentation.NewStoriesFilter
@@ -103,6 +105,7 @@ import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.flow.first
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -136,6 +139,8 @@ internal fun StoriesHeader(
     showRefreshMenuItem: Boolean,
     showFailureStatus: Boolean,
     modifier: Modifier = Modifier,
+    showWelcomeHint: Boolean = false,
+    onDismissWelcomeHint: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -165,6 +170,8 @@ internal fun StoriesHeader(
                     controller = controller,
                     onTypeSelected = onTypeSelected,
                     showRefreshMenuItem = showRefreshMenuItem,
+                    showWelcomeHint = showWelcomeHint,
+                    onDismissWelcomeHint = onDismissWelcomeHint,
                     modifier = Modifier.padding(start = sideStart, end = sideEnd),
                 )
                 if (controller.canFilterNewStories && controller.newStoriesFilter.active) {
@@ -402,6 +409,8 @@ private fun MainHeader(
     controller: StoriesScreenController,
     onTypeSelected: (Int) -> Unit,
     showRefreshMenuItem: Boolean,
+    showWelcomeHint: Boolean,
+    onDismissWelcomeHint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var typesExpanded by remember { mutableStateOf(false) }
@@ -563,9 +572,18 @@ private fun MainHeader(
                 }
             }
             Box {
-                StoriesTooltip("More options") {
+                StoriesMenuWelcomeHint(showWelcomeHint, onDismissWelcomeHint) { highlighted ->
+                    val highlight by animateColorAsState(
+                        MaterialTheme.colorScheme.primary.copy(alpha = if (highlighted) .12f else 0f),
+                        animationSpec = contentTween(),
+                        label = "welcome menu highlight",
+                    )
                     IconButton(
-                        onClick = { moreExpanded = true },
+                        onClick = {
+                            onDismissWelcomeHint()
+                            moreExpanded = true
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = highlight),
                     ) {
                         Icon(
                             painterResource(Res.drawable.ic_more_vert),
@@ -587,8 +605,9 @@ private fun MainHeader(
 }
 
 @Composable
-private fun StoriesTooltip(
+internal fun StoriesTooltip(
     description: String,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val tooltipState = rememberTooltipState()
@@ -604,6 +623,7 @@ private fun StoriesTooltip(
         ),
         tooltip = { PlainTooltip { Text(description) } },
         state = tooltipState,
+        enableUserInput = enabled,
         content = content,
     )
 }

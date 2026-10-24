@@ -28,11 +28,15 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import kotlin.math.roundToInt
 
 /** One live composition and list state, with complementary slices during a sheet transfer. */
 internal class SideBySideCommentsPortal {
@@ -43,19 +47,78 @@ internal class SideBySideCommentsPortal {
     var liveInLeft by mutableStateOf(false)
     var leftSnapshot by mutableStateOf<ImageBitmap?>(null)
     var rightSnapshot by mutableStateOf<ImageBitmap?>(null)
+    var horizontalBack by mutableStateOf(false)
+    val horizontalProgress = Animatable(0f)
+    var leftWidth by mutableFloatStateOf(0f)
+    var hostLeft by mutableFloatStateOf(0f)
+    var detailLeft by mutableFloatStateOf(0f)
 }
 
 internal val LocalSideBySideCommentsPortal = compositionLocalOf<SideBySideCommentsPortal?> { null }
+
+// The gesture previews the destination; releasing is what completes the pane transfer.
+private const val SideBySideBackPreviewTravel = 0.35f
 
 @Composable
 internal fun SideBySideCommentsHost(standalone: Boolean = false, content: @Composable (listOverlay: @Composable () -> Unit) -> Unit) {
     val portal = remember { SideBySideCommentsPortal() }
     val browserPane = remember(standalone) { BrowserPaneState(standalone) }
+    val controller = portal.controller
+    val predictive = controller?.predictiveBackActive == true && controller.sideBySideActive && !standalone
+    val committed = controller?.committedSheetBackProgress ?: 0f
+    LaunchedEffect(predictive, controller?.predictiveBackProgress, committed, controller?.sideBySideActive) {
+        if (predictive) {
+            portal.horizontalBack = true
+            portal.horizontalProgress.snapTo(
+                controller.predictiveBackProgress.coerceIn(0f, 1f) * SideBySideBackPreviewTravel,
+            )
+        } else if (portal.horizontalBack || committed > 0f && !standalone) {
+            if (controller?.sideBySideActive != true) {
+                portal.horizontalBack = false
+                portal.horizontalProgress.snapTo(0f)
+                return@LaunchedEffect
+            }
+            // A complete gesture can arrive between two Compose frames.
+            if (!portal.horizontalBack) {
+                portal.horizontalBack = true
+                portal.horizontalProgress.snapTo(committed.coerceIn(0f, 1f) * SideBySideBackPreviewTravel)
+            }
+            portal.horizontalProgress.animateTo(
+                if (committed > 0f) 1f else 0f,
+                tween(250, easing = FastOutSlowInEasing),
+            )
+            if (committed == 0f) portal.horizontalBack = false
+        }
+    }
+    val horizontalBack = portal.horizontalBack
+    SideEffect {
+        browserPane.backSlideActive = horizontalBack
+        browserPane.backSlideProgress = { portal.horizontalProgress.value }
+        browserPane.backSlideDistance = {
+            browserPane.splitPosition?.invoke() ?: (portal.detailLeft - portal.hostLeft)
+        }
+    }
     CompositionLocalProvider(
         LocalSideBySideCommentsPortal provides portal,
         LocalBrowserPaneState provides browserPane,
     ) {
-        content { SideBySideCommentsListPane(portal) }
+        Box(Modifier.fillMaxSize().clipToBounds().onGloballyPositioned { portal.hostLeft = it.positionInRoot().x }) {
+            content { SideBySideCommentsListPane(portal) }
+            if (portal.horizontalBack) {
+                // The same movable list crosses the divider; it is never replaced by a preview.
+                Box(Modifier.layout { measurable, constraints ->
+                    val progress = portal.horizontalProgress.value
+                    val destinationX = browserPane.backSlideDistance()
+                    val destinationWidth = constraints.maxWidth - destinationX
+                    val width = (portal.leftWidth + (destinationWidth - portal.leftWidth) * progress)
+                        .roundToInt().coerceAtLeast(1)
+                    val child = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        child.place((destinationX * progress).roundToInt(), 0)
+                    }
+                }) { portal.content?.invoke() }
+            }
+        }
     }
 }
 
@@ -69,7 +132,7 @@ private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
         if (portal.liveInLeft) reveal.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
     }
     Box(
-        Modifier.fillMaxSize().zIndex(10f)
+        Modifier.fillMaxSize().zIndex(10f).onSizeChanged { portal.leftWidth = it.width.toFloat() }
             .clipToBounds()
             .graphicsLayer { translationX = if (standalone) 0f else size.width * (1f - reveal.value) }
             .then(if (portal.sheetExpansion > 0.001f) {
@@ -85,7 +148,8 @@ private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
                 }
             },
     ) {
-        if (portal.liveInLeft) portal.content?.invoke()
+        if (portal.horizontalBack) Unit
+        else if (portal.liveInLeft) portal.content?.invoke()
         else PaneSnapshot(portal.leftSnapshot)
     }
 }
@@ -122,7 +186,8 @@ internal fun rememberSideBySideCommentsContent(
         // would flash its fully tinted header while the next pull captures the left pane.
         if (sheetCollapsed && leftSettled) portal?.rightSnapshot = null
     }
-    val targetLeft = controller.sideBySideActive && (entering || (portal?.sheetExpansion ?: 1f) <= 0.001f)
+    val targetLeft = controller.sideBySideActive &&
+        (portal?.horizontalBack == true || entering || (portal?.sheetExpansion ?: 1f) <= 0.001f)
     LaunchedEffect(portal, controller, targetLeft, controller.sideBySideActive) {
         if (portal == null) return@LaunchedEffect
         if (!controller.sideBySideActive) {
@@ -134,7 +199,7 @@ internal fun rememberSideBySideCommentsContent(
         // destination. A bitmap is intentional: a recorded layer would retain references to
         // child layers that reflow when the live composition changes panes.
         // A fully collapsed pane has no drawable layer. It needs no departing snapshot.
-        if (controller.sideBySideActive && layer.size.width > 0 && layer.size.height > 0) {
+        if (!portal.horizontalBack && controller.sideBySideActive && layer.size.width > 0 && layer.size.height > 0) {
             val snapshot = layer.toImageBitmap()
             if (portal.liveInLeft) {
                 portal.leftSnapshot = snapshot
@@ -177,7 +242,8 @@ internal fun SideBySideCommentsSheetMirror(portal: SideBySideCommentsPortal, pee
     Box(Modifier.fillMaxSize().clearAndSetSemantics { }.graphicsLayer {
         translationY = peekHeightPx * (1f - portal.sheetExpansion)
     }) {
-        if (portal.liveInLeft) PaneSnapshot(portal.rightSnapshot)
+        if (portal.horizontalBack) Unit
+        else if (portal.liveInLeft) PaneSnapshot(portal.rightSnapshot)
         else portal.content?.invoke()
     }
 }

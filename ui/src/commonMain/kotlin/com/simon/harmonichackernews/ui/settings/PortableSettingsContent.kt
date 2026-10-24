@@ -425,6 +425,7 @@ fun PortableWelcomeScreen(
         onApplyPreset = { expressive ->
             app.settings.applyWelcomePreset(expressive)
             app.appearance.refreshSelection()
+            if (!styleChooser) app.launchState.completeWelcome()
             onDismiss()
         },
         filterButtonColors = harmonicFilterButtonColors(),

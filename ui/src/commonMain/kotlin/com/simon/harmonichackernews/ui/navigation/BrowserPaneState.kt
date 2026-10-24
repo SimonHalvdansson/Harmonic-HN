@@ -17,6 +17,14 @@ class BrowserPaneState(val standalone: Boolean = false) {
     var sheetExpansion by mutableFloatStateOf(1f)
     var logicalExpansion by mutableFloatStateOf(1f)
     var showSideBySide: () -> Unit = {}
+    var restoreOnBack by mutableStateOf(false)
+    var restoreBackActive by mutableStateOf(false)
+    var restoreBackProgress by mutableFloatStateOf(0f)
+    var restoreFromBack: () -> Unit = {}
+    var backSlideActive by mutableStateOf(false)
+    var backSlideProgress: () -> Float = { 0f }
+    var backSlideDistance: () -> Float = { 0f }
+    var splitPosition: (() -> Float)? = null
 }
 
 internal class BrowserSplitSession {
@@ -25,6 +33,8 @@ internal class BrowserSplitSession {
     var ratio by mutableFloatStateOf(0.5f)
         private set
     var reachedBrowser by mutableStateOf(false)
+        private set
+    var restoreRatio by mutableFloatStateOf(0.5f)
         private set
 
     fun update(savedRatio: Float, integrated: Boolean, opening: Boolean, expansion: Float) {
@@ -35,13 +45,15 @@ internal class BrowserSplitSession {
             if (openingRatio == null) {
                 openingRatio = savedRatio
                 ratio = savedRatio
+                restoreRatio = savedRatio
             }
             if (expansion <= 0.001f) reachedBrowser = true
         }
     }
 
-    fun adjust(value: Float) {
+    fun adjust(value: Float, rememberForBack: Boolean = true) {
         if (value.isFinite()) ratio = value.coerceIn(0f, SplitRatioPreferences.Maximum)
+        if (rememberForBack && ratio >= SplitRatioPreferences.Minimum) restoreRatio = ratio
     }
 
     fun settle() {
@@ -49,6 +61,7 @@ internal class BrowserSplitSession {
         if (ratio < SplitRatioPreferences.Minimum) {
             ratio = if (ratio < SplitRatioPreferences.Minimum / 2) 0f else SplitRatioPreferences.Minimum
         }
+        if (ratio >= SplitRatioPreferences.Minimum) restoreRatio = ratio
     }
 
     fun target(savedRatio: Float, standalone: Boolean, sideBySide: Boolean, visualExpansion: Float): Float {

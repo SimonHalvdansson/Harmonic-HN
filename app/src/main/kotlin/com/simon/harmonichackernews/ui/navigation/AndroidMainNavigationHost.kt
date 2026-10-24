@@ -212,6 +212,9 @@ private fun MainNavigation(
     val scenePlan = mainNavigationScenePlan(
         navigationSnapshot, isTwoPane, controller.externalStoryEntrySerial,
     )
+    // Selecting a detail does not add a screen above the root Stories/Comments surface.
+    val storyAtTaskRoot = controller.isExternalStoryEntry ||
+        (scenePlan.storyUsesTwoPane && scenePlan.surfaces.size == 1)
     val paneStatusBarColor = MaterialTheme.colorScheme.pageBackground
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
@@ -225,10 +228,10 @@ private fun MainNavigation(
     }
 
     PredictiveNavigationBackHandler(
-        // Let Android own the return-to-caller gesture at an external entry. Nested web/history
-        // navigation still consumes Back before reaching this boundary.
+        // Let Android own Back at the task root, including a selected two-pane detail.
+        // Browser history, split restoration, and comments overlays still consume Back first.
         enabled = navigationSnapshot.currentDestination == MainDestination.STORY &&
-            (!controller.isExternalStoryEntry ||
+            (!storyAtTaskRoot ||
                 controller.getCommentsCoordinator()?.handlesBackInternally() == true),
     ) { events ->
         val storySerialAtGestureStart = controller.navigationState.state.value.storyRequest?.serial

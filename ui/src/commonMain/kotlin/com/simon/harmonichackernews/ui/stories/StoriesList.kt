@@ -114,6 +114,8 @@ internal fun StoriesList(
     showRefreshMenuItem: Boolean,
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
     modifier: Modifier = Modifier,
+    showWelcomeHint: Boolean = false,
+    onDismissWelcomeHint: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -503,6 +505,8 @@ internal fun StoriesList(
                 filterColors = filterColors,
                 showRefreshMenuItem = showRefreshMenuItem,
                 showFailureStatus = !centerFailure,
+                showWelcomeHint = showWelcomeHint,
+                onDismissWelcomeHint = onDismissWelcomeHint,
                 modifier = Modifier
                     .zIndex(1f)
                     .graphicsLayer { translationY = -headerCollapsePx.toFloat() }
