@@ -58,6 +58,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +81,7 @@ import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.content.CommentRow
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import com.simon.harmonichackernews.data.ItemTimeFormatter
@@ -804,6 +806,9 @@ private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifie
 
 @Composable
 fun EmptyCommentsScreen() {
+    val repository = LocalHarmonicUiDependencies.current.settings
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
+    val typography = rememberContentTypography(preferredFont = settings.story.font)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -822,7 +827,7 @@ fun EmptyCommentsScreen() {
         Text(
             "Open a story",
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = typography.family,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
         )
