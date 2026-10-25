@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -150,6 +152,15 @@ fun HeaderDisplaySettingsRoute(
     var sampleIndex by rememberSaveable { mutableIntStateOf(0) }
     val sample = HeaderPreviewSample.entries[sampleIndex]
     val listState = rememberSettingsListState()
+    val windowSize = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val navigationBarInsets = WindowInsets.navigationBars
+    var previewCanPin by remember(windowSize, density.density, density.fontScale) { mutableStateOf(true) }
+    LaunchedEffect(listState, windowSize, density.density, density.fontScale) {
+        snapshotFlow { listState.canScrollBackward }.collect { scrolled ->
+            if (!scrolled) previewCanPin = true
+        }
+    }
     val horizontalInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
     val background = MaterialTheme.colorScheme.pageBackground
     var headerColor by remember { mutableStateOf(background) }
@@ -165,8 +176,10 @@ fun HeaderDisplaySettingsRoute(
         extraBottomPadding = 72.dp,
         listState = listState,
         horizontalInsets = WindowInsets(0),
+        previewCanPin = previewCanPin,
         topOverlay = {
-            HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
+            HeaderSettingsStatusBarProtection(listState, headerColor,
+                previewCanPin = previewCanPin, protection = statusBarProtection)
             HeaderButtonOverflowSnackbar(overflowButtons)
             if (platformStyle.backButtonRequired && !platformStyle.navigationInSideRail) {
                 // iOS navigation must remain reachable even when a tall preview scrolls away.
@@ -184,7 +197,11 @@ fun HeaderDisplaySettingsRoute(
         },
         floatingContent = {
             Box(Modifier.windowInsetsPadding(horizontalInsets)) {
-                HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
+                HeaderPreviewSampleSelector(sample) {
+                    previewCanPin = headerPreviewPinningAfterSampleChange(listState, previewCanPin,
+                        navigationBarInsets.getBottom(density))
+                    sampleIndex = it.ordinal
+                }
             }
         },
         pinnedContent = {
@@ -360,16 +377,17 @@ internal fun HeaderSettingsStatusBarProtection(
     listState: LazyListState,
     headerColor: Color,
     statusBarHeight: Dp = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+    previewCanPin: Boolean = true,
     protection: @Composable (Color, Dp) -> Unit,
 ) {
     if (statusBarHeight <= 0.dp) return
     val insetPx = with(LocalDensity.current) { statusBarHeight.roundToPx() }
     val navigationPx = WindowInsets.navigationBars.getBottom(LocalDensity.current)
-    val coverage by remember(listState, insetPx, navigationPx) {
+    val coverage by remember(listState, insetPx, navigationPx, previewCanPin) {
         derivedStateOf {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "settings-preview" }
             if (header == null || insetPx <= 0) 0f else {
-                val offset = settingsPreviewOffset(listState, header, navigationPx)
+                val offset = settingsPreviewOffset(listState, header, navigationPx, previewCanPin)
                 val overlap = minOf(offset + header.size, insetPx) - maxOf(offset, 0)
                 (overlap.toFloat() / insetPx).coerceIn(0f, 1f)
             }
@@ -382,6 +400,19 @@ internal fun HeaderSettingsStatusBarProtection(
     )
     // Like an expanded real post, the unscrolled preview already fills the status bar.
     if (listState.canScrollBackward) protection(color, statusBarHeight)
+}
+
+/** Keep a preview that already scrolled away out of the settings while samples crossfade. */
+internal fun headerPreviewPinningAfterSampleChange(
+    state: LazyListState,
+    currentlyAllowed: Boolean,
+    bottomInset: Int,
+): Boolean {
+    if (!state.canScrollBackward) return true
+    if (!currentlyAllowed) return false
+    val header = state.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "settings-preview" }
+        ?: return false
+    return settingsPreviewOffset(state, header, bottomInset) >= 0
 }
 
 @Composable

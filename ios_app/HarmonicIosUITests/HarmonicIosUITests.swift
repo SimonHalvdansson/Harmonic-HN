@@ -800,6 +800,43 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.labeledButton("Post header").waitForExistence(timeout: 10))
     }
 
+    func testPostHeaderSampleChangesWhileScrolledKeepPreviewOffscreen() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openSettings()
+        app.tapVisibleButton("Post header")
+        for _ in 0..<3 { app.labeledButton("Next preview post").tapCenter() }
+        let user = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "User")).firstMatch
+        func userIsVisible() -> Bool {
+            guard user.exists else { return false }
+            let frame = user.frame
+            return frame.height > 0 && frame.minY > app.frame.minY + 100 && frame.maxY < app.frame.maxY - 120
+        }
+        for _ in 0..<10 where !userIsVisible() { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(userIsVisible())
+        // Clear the last part of the tall header without flinging the User row offscreen.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.65)).press(
+            forDuration: 0.1,
+            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.40)),
+            withVelocity: .slow, thenHoldForDuration: 0.3
+        )
+        let original = user.frame
+        let preview = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Header preview")
+        ).firstMatch
+        let next = app.labeledButton("Next preview post")
+        if preview.exists { XCTAssertEqual(preview.frame.intersection(app.frame).height, 0, accuracy: 1) }
+        keepScreenshot("Scrolled before switching preview samples")
+        for index in 0..<8 {
+            next.tapCenter()
+            XCTAssertEqual(user.frame.minY, original.minY, accuracy: 1)
+            if preview.exists {
+                XCTAssertEqual(preview.frame.intersection(app.frame).height, 0, accuracy: 1,
+                    "A scrolled-away preview must not reappear when selecting another sample")
+            }
+            keepScreenshot("Scrolled sample change \(index + 1)")
+        }
+    }
+
     func testShortPostHeaderSettingsEditsKeepRowsStable() throws {
         let duo = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true
         defer { if !duo { XCUIDevice.shared.orientation = .portrait } }
@@ -814,6 +851,14 @@ final class HarmonicIosUITests: XCTestCase {
         app.tapVisibleButton("Post header")
         // The repository-card sample stays taller than the pinning limit in short windows.
         for _ in 0..<3 { app.labeledButton("Next preview post").tapCenter() }
+        // Let the sample's height animation finish, then bring the layout rows into view
+        // before querying them. XCTest may retain an offscreen node after Compose removes it.
+        Thread.sleep(forTimeInterval: 0.5)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.75)).press(
+            forDuration: 0.1,
+            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.30)),
+            withVelocity: .slow, thenHoldForDuration: 0.3
+        )
         let domain = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Domain")).firstMatch
         func domainIsInViewport() -> Bool {
             guard domain.exists else { return false }
@@ -823,7 +868,19 @@ final class HarmonicIosUITests: XCTestCase {
         }
         // On Duo, XCTest can throw when asked for hittability of an offscreen Compose node.
         // Scroll by its visible bounds before asking the native hit tester.
-        for _ in 0..<8 where !domainIsInViewport() { app.swipeUp(velocity: .slow) }
+        var sawDomain = false
+        for _ in 0..<24 where !domainIsInViewport() {
+            let frame = domain.exists ? domain.frame : .zero
+            let aboveViewport = (frame.height > 0 && frame.maxY < app.frame.minY + 100) ||
+                (sawDomain && frame.height == 0)
+            if frame.height > 0 { sawDomain = true }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.55)).press(
+                forDuration: 0.1,
+                thenDragTo: app.coordinate(withNormalizedOffset:
+                    CGVector(dx: 0.35, dy: aboveViewport ? 0.70 : 0.40)),
+                withVelocity: .slow, thenHoldForDuration: 0.3
+            )
+        }
         XCTAssertTrue(domain.isHittable)
         let rowFrame = domain.frame
         let back = duo ? app.labeledButton("Navigate up") : app.labeledButton("Back")

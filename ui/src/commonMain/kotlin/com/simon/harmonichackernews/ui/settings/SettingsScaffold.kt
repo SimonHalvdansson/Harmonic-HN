@@ -342,6 +342,7 @@ fun SettingsPage(
     headerContent: (@Composable () -> Unit)? = null,
     topOverlay: (@Composable () -> Unit)? = null,
     horizontalInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+    previewCanPin: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
@@ -395,7 +396,7 @@ fun SettingsPage(
                                     val header = listState.layoutInfo.visibleItemsInfo
                                         .firstOrNull { it.key == "settings-preview" }
                                     translationY = if (header == null) 0f else {
-                                        (settingsPreviewOffset(listState, header, navigationBarPx) -
+                                        (settingsPreviewOffset(listState, header, navigationBarPx, previewCanPin) -
                                             header.offset).toFloat()
                                     }
                                 }
@@ -425,8 +426,9 @@ internal fun settingsPreviewOffset(
     state: LazyListState,
     header: LazyListItemInfo,
     bottomInset: Int,
+    canPin: Boolean = true,
 ): Int = when {
-    header.size <= (state.layoutInfo.viewportSize.height - bottomInset) * 0.7f -> header.offset
+    canPin && header.size <= (state.layoutInfo.viewportSize.height - bottomInset) * 0.7f -> header.offset
     state.firstVisibleItemIndex > header.index -> -header.size
     state.firstVisibleItemIndex == header.index -> -state.firstVisibleItemScrollOffset
     else -> header.offset

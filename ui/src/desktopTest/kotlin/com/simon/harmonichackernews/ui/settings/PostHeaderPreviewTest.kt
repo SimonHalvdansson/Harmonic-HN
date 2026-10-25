@@ -64,6 +64,56 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun changingSamplesWhileScrolledDoesNotBringThePreviewBackOverSettings() = SwingUtilities.invokeAndWait {
+        val sample = mutableStateOf(HeaderPreviewSample.LINK_PREVIEW)
+        val canPin = mutableStateOf(true)
+        val settings = CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, false, false,
+        ).copy(headerLayout = CommentsHeaderLayout.STANDARD, showHeaderPreviewImage = true)
+        val list = LazyListState()
+        val scene = ImageComposeScene(382, 678, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false, listState = list,
+                    contentVersion = sample.value.ordinal,
+                    previewCanPin = canPin.value,
+                    pinnedContent = { HeaderDisplayPreview(settings, true, {}, sample.value) },
+                ) { items(30) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Magenta)) } }
+            }
+        }
+        try {
+            var time = 0L
+            fun frame(checkHidden: Boolean = false) {
+                scene.render(time.also { time += 16_666_667L }).use { image ->
+                    if (checkHidden) {
+                        val pixels = image.toComposeImageBitmap().toPixelMap()
+                        for (y in 24 until 600 step 32) {
+                            assertEquals(Color.Magenta.toArgb(), pixels[190, y].toArgb(),
+                                "Switching to ${sample.value} must not flash the preview over scrolled settings")
+                        }
+                    }
+                }
+            }
+            repeat(40) { frame() }
+            list.dispatchRawDelta(1400f)
+            repeat(5) { frame(true) }
+            val position = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
+            repeat(2) {
+                for (next in HeaderPreviewSample.entries) {
+                    canPin.value = headerPreviewPinningAfterSampleChange(list, canPin.value, 0)
+                    sample.value = next
+                    repeat(40) { frame(true) }
+                    assertEquals(position, list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset)
+                }
+            }
+            list.dispatchRawDelta(-10000f)
+            repeat(5) { frame() }
+            assertTrue(headerPreviewPinningAfterSampleChange(list, canPin.value, 0),
+                "Returning to the top restores the ordinary pinning policy")
+        } finally { scene.close() }
+    }
+
     @Test fun landscapeHeaderTintCoversInsetsAndKeepsContentAndControlsSafe() = SwingUtilities.invokeAndWait {
         val settings = mutableStateOf(CommentDisplaySettings.from(
             AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
