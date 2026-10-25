@@ -740,6 +740,7 @@ fun BoxScope.CommentNavigationControls(
                 onLast = controller::navigateLast,
                 modalScrimAlpha = modalScrimAlpha,
                 modalScrimActive = modalScrimActive,
+                onModalDismiss = controller::requestDismissModalOverlay,
             )
         }
     }
@@ -877,6 +878,7 @@ internal fun CommentNavigationButtons(
     onLast: () -> Unit,
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
+    onModalDismiss: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(28.dp)
     val navigationRipple = ripple(
@@ -962,6 +964,6 @@ internal fun CommentNavigationButtons(
                 )
             }
         }
-        ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
+        ModalControlScrim(modalScrimAlpha, shape, modalScrimActive, onModalDismiss)
     }
 }

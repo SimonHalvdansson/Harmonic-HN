@@ -44,6 +44,7 @@ import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
+import com.simon.harmonichackernews.ui.common.modalCardTapBoundary
 import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
 import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
@@ -440,10 +441,9 @@ fun CommentActionOverlay(
                         }
                     }
                     .then(if (discussionProgress > 0f) Modifier.clearAndSetSemantics { } else Modifier)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
+                    .modalCardTapBoundary(
+                        cornerRadius = HarmonicDimens.compose_comment_action_corner_radius,
+                        onOutsideTap = controller::requestDismissCommentActions,
                     ),
             ) {
                 CompositionLocalProvider(

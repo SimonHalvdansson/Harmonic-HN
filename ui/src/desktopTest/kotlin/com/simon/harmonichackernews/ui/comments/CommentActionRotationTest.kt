@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -155,7 +156,10 @@ class CommentActionRotationTest {
             landscape.value = false
             repeat(20) { frame() }
             frame("portrait-dialog-after-rotation")
-            controller.requestDismissCommentActions()
+            // Exercise the scrim hit path as well as the shared return animation.
+            scene.sendPointerEvent(PointerEventType.Press, Offset(8f, 400f), timeMillis = time / 1_000_000)
+            scene.sendPointerEvent(PointerEventType.Release, Offset(8f, 400f), timeMillis = time / 1_000_000 + 1)
+            assertTrue(controller.commentActionDismissRequest != 0)
             var lastCovered: PixelMap? = null
             repeat(45) {
                 val image = frame()

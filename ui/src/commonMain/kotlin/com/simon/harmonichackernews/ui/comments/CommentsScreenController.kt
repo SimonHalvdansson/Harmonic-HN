@@ -572,6 +572,11 @@ class CommentsScreenController private constructor(
         askBackProgress = 0f
     }
 
+    fun requestDismissModalOverlay() {
+        if (linkPreviewOverlay != null) requestDismissLinkPreview()
+        else requestDismissCommentActions()
+    }
+
     fun requestDismissCommentActions() {
         if (askOpen) {
             closeAsk()

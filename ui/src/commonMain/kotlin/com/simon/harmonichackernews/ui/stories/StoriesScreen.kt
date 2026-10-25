@@ -351,7 +351,10 @@ fun BoxScope.StoryTapToUpdateButton(
                     )
                 },
             )
-            ModalControlScrim(modalScrimAlpha, shape, modalScrimActive)
+            ModalControlScrim(
+                modalScrimAlpha, shape, modalScrimActive,
+                onDismiss = controller::requestDismissStoryPreview,
+            )
         }
     }
 }

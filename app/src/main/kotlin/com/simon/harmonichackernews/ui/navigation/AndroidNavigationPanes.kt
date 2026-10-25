@@ -239,6 +239,7 @@ internal fun CommentsPane(
                 if (showFloatingUpButton) {
                     CommentsUpButton(
                         onClick = controller::closeStory,
+                        onModalDismiss = commentsController::requestDismissModalOverlay,
                         modalScrimAlpha = persistentControlScrimAlpha,
                         modalScrimActive = modalOverlayVisible,
                         modifier = Modifier

@@ -60,6 +60,7 @@ fun TranslucentBackButton(
     modifier: Modifier = Modifier,
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
+    onModalDismiss: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
@@ -170,7 +171,7 @@ fun TranslucentBackButton(
                                 colorFilter = ColorFilter.tint(colors.onSurfaceVariant),
                             )
                         }
-                        ModalControlScrim(0f, shape, modalScrimActive)
+                        ModalControlScrim(0f, shape, modalScrimActive, onModalDismiss)
                     }
                 }
             }

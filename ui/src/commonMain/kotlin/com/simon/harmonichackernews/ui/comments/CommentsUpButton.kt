@@ -11,9 +11,11 @@ fun CommentsUpButton(
     modifier: Modifier = Modifier,
     modalScrimAlpha: Float = 0f,
     modalScrimActive: Boolean = modalScrimAlpha > 0f,
+    onModalDismiss: (() -> Unit)? = null,
 ) = TranslucentBackButton(
     onClick = onClick,
     modifier = modifier,
     modalScrimAlpha = modalScrimAlpha,
     modalScrimActive = modalScrimActive,
+    onModalDismiss = onModalDismiss,
 )

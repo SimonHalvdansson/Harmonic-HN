@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.GraphicsLayerSnapshot
+import com.simon.harmonichackernews.ui.common.modalCardTapBoundary
 import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import kotlinx.coroutines.Job
@@ -721,10 +722,9 @@ fun StoryPreviewOverlay(
                                 Modifier
                             }
                         )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
+                        .modalCardTapBoundary(
+                            cornerRadius = HarmonicDimens.compose_comment_action_corner_radius,
+                            onOutsideTap = controller::requestDismissStoryPreview,
                         )
                     if (currentPage) {
                         CompositionLocalProvider(
