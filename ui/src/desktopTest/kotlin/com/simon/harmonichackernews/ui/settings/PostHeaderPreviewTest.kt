@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.ImageComposeScene
@@ -62,6 +64,100 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun landscapeHeaderTintCoversInsetsAndKeepsContentAndControlsSafe() = SwingUtilities.invokeAndWait {
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, false, false,
+        ).copy(showUpButton = true, tintHeader = true))
+        val sample = mutableStateOf(HeaderPreviewSample.LINK_WITH_IMAGE)
+        val scene = ImageComposeScene(740, 1000, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                HeaderDisplayPreview(settings.value, true, {}, sample.value,
+                    contentWindowInsets = WindowInsets(left = 52, right = 28))
+            }
+        }
+        try {
+            var time = 0L
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            for (edge in CommentsHeaderEdge.entries) for (post in HeaderPreviewSample.entries) {
+                settings.value = settings.value.copy(headerEdge = edge)
+                sample.value = post
+                repeat(25) { scene.render(time.also { time += 16_666_667L }).close() }
+                scene.render(time).use { image ->
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    assertEquals(pixels[56, 40].toArgb(), pixels[4, 40].toArgb(),
+                        "Header tint must extend behind the left cutout: $edge / $post")
+                    assertEquals(pixels[708, 40].toArgb(), pixels[736, 40].toArgb(),
+                        "Header tint must extend behind the right inset: $edge / $post")
+                }
+                val all = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }
+                val protectedNodes = all.filter {
+                    it.config.getOrNull(SemanticsProperties.ContentDescription)?.any { label ->
+                        label == "Back" || label == "Story preview image" || label.startsWith("Preview ")
+                    } == true
+                }
+                assertTrue(protectedNodes.isNotEmpty())
+                protectedNodes.forEach {
+                    assertTrue(it.boundsInRoot.left >= 52f && it.boundsInRoot.right <= 712f,
+                        "Header controls and images must remain inside the safe content area: ${it.boundsInRoot}")
+                }
+            }
+        } finally { scene.close() }
+    }
+
+    @Test fun scrolledTallPreviewNeverFlashesOrLosesStateAfterEditsAndResizes() = SwingUtilities.invokeAndWait {
+        val version = mutableStateOf(0)
+        val previewHeight = mutableStateOf(400.dp)
+        val list = LazyListState()
+        var instances = 0
+        val scene = ImageComposeScene(700, 320, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false, listState = list,
+                    contentVersion = version.value,
+                    pinnedContent = {
+                        remember { instances++ }
+                        Box(Modifier.fillMaxWidth().height(previewHeight.value).background(Color.Red))
+                    },
+                ) { items(30) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Green)) } }
+            }
+        }
+        try {
+            var time = 0L
+            fun frames(checkHidden: Boolean = false) {
+                repeat(8) {
+                    scene.render(time.also { time += 16_666_667L }).use { image ->
+                        if (checkHidden) assertEquals(Color.Green.toArgb(),
+                            image.toComposeImageBitmap().toPixelMap()[350, 100].toArgb(),
+                            "An offscreen preview must not flash back over the settings on any frame")
+                    }
+                }
+            }
+            frames()
+            list.dispatchRawDelta(900f)
+            frames(true)
+            val index = list.firstVisibleItemIndex
+            val offset = list.firstVisibleItemScrollOffset
+            repeat(6) {
+                version.value++
+                previewHeight.value = if (it % 2 == 0) 500.dp else 400.dp
+                frames(true)
+                assertEquals(index, list.firstVisibleItemIndex)
+                assertEquals(offset, list.firstVisibleItemScrollOffset)
+            }
+            scene.constraints = androidx.compose.ui.unit.Constraints.fixed(480, 320)
+            frames(true)
+            assertEquals(1, instances, "Keep the preview's state through edits, scrolling, and width changes")
+            previewHeight.value = 100.dp
+            frames()
+            scene.render(time).use { image ->
+                assertEquals(Color.Red.toArgb(), image.toComposeImageBitmap().toPixelMap()[240, 40].toArgb(),
+                    "A preview that becomes small enough should pin without returning to the top")
+            }
+        } finally { scene.close() }
+    }
+
     @Test fun selectingExtraButtonsKeepsSettingsRowsFixedAndUsable() = SwingUtilities.invokeAndWait {
         val repository = AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow())
         CommentsHeaderButton.entries.forEach { repository.setCommentsHeaderButton(it, false) }

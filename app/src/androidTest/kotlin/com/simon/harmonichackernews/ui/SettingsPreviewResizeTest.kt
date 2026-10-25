@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -34,6 +35,46 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SettingsPreviewResizeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun editingAnOffscreenTallPreviewKeepsItHiddenThroughoutTheUpdate() {
+        val version = mutableIntStateOf(0)
+        val height = mutableStateOf(500.dp)
+        lateinit var list: LazyListState
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.size(360.dp, 300.dp)) {
+                    list = rememberLazyListState()
+                    SettingsPage("Preview", false, {}, showTopAppBar = false,
+                        listState = list, contentVersion = version.intValue,
+                        pinnedContent = {
+                            Box(Modifier.fillMaxWidth().height(height.value).testTag("preview"))
+                        },
+                    ) { items(30) { Text("Setting $it", Modifier.height(64.dp)) } }
+                }
+            }
+        }
+        compose.runOnIdle { runBlocking { list.scrollToItem(12) } }
+        compose.onNodeWithTag("preview").assertIsNotDisplayed()
+        val originalIndex = list.firstVisibleItemIndex
+        val originalOffset = list.firstVisibleItemScrollOffset
+        compose.mainClock.autoAdvance = false
+        repeat(6) { edit ->
+            compose.runOnIdle {
+                version.intValue++
+                height.value = if (edit % 2 == 0) 600.dp else 500.dp
+            }
+            repeat(8) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.onNodeWithTag("preview").assertIsNotDisplayed()
+            }
+            compose.runOnIdle {
+                assertEquals(originalIndex, list.firstVisibleItemIndex)
+                assertEquals(originalOffset, list.firstVisibleItemScrollOffset)
+            }
+        }
+    }
 
     @Test
     fun previewsUnpinAndRepinWhenThePaneOrTextSizeChangesWhileScrolled() {

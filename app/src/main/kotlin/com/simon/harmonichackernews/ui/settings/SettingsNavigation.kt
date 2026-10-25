@@ -124,7 +124,6 @@ fun SettingsShell(
                     onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
                     onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
-                SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(dependencies.settings, onBack)
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(
                     dependencies.settings, onBack,

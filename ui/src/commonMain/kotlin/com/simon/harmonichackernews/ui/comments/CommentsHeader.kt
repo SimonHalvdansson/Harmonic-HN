@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -134,6 +135,7 @@ fun CommentsHeader(
     faviconPreview: Painter? = null,
     previewCommentActions: Boolean = false,
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
+    contentWindowInsets: WindowInsets = WindowInsets(0),
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
@@ -251,6 +253,7 @@ fun CommentsHeader(
                     clip = true
                 }
                 .background(visibleHeaderBackground)
+                .windowInsetsPadding(contentWindowInsets)
                 .padding(bottom = bottomPadding),
         ) {
             Spacer(Modifier.height(topSpacer))
@@ -615,7 +618,8 @@ fun CommentsHeader(
         Box(Modifier.fillMaxWidth().height(edgeHeight)) {
             Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.background(fadeBrush))
         }
-        Column(Modifier.commentsReadingWidth().padding(start = sideMarginStart, end = sideMarginEnd)) {
+        Column(Modifier.windowInsetsPadding(contentWindowInsets).commentsReadingWidth()
+            .padding(start = sideMarginStart, end = sideMarginEnd)) {
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
         }

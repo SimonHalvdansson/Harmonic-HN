@@ -800,6 +800,47 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.labeledButton("Post header").waitForExistence(timeout: 10))
     }
 
+    func testShortPostHeaderSettingsEditsKeepRowsStable() throws {
+        let duo = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true
+        defer { if !duo { XCUIDevice.shared.orientation = .portrait } }
+        if !duo {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                self.app.frame.width > self.app.frame.height
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 10), .completed)
+        }
+        openSettings()
+        app.tapVisibleButton("Post header")
+        // The repository-card sample stays taller than the pinning limit in short windows.
+        for _ in 0..<3 { app.labeledButton("Next preview post").tapCenter() }
+        let domain = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Domain")).firstMatch
+        func domainIsInViewport() -> Bool {
+            guard domain.exists else { return false }
+            let frame = domain.frame
+            return frame.height > 0 && frame.minY > app.frame.minY + 80 &&
+                frame.maxY < app.frame.maxY - 100
+        }
+        // On Duo, XCTest can throw when asked for hittability of an offscreen Compose node.
+        // Scroll by its visible bounds before asking the native hit tester.
+        for _ in 0..<8 where !domainIsInViewport() { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(domain.isHittable)
+        let rowFrame = domain.frame
+        let back = duo ? app.labeledButton("Navigate up") : app.labeledButton("Back")
+        XCTAssertTrue(back.isHittable)
+        let backFrame = back.frame
+        for _ in 0..<4 {
+            domain.tapCenter()
+            XCTAssertTrue(domain.isHittable)
+            XCTAssertEqual(domain.frame.minY, rowFrame.minY, accuracy: 1,
+                "Editing a scrolled preview must not repin it over the settings")
+            XCTAssertEqual(back.frame, backFrame)
+        }
+        keepScreenshot("Short Post header settings after repeated edits")
+        back.tapCenter()
+        XCTAssertTrue(app.labeledButton("Post header").waitForExistence(timeout: 10))
+    }
+
     func testDuoSettingsRailBackAndRequiredHeaderBack() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
         openSettings()

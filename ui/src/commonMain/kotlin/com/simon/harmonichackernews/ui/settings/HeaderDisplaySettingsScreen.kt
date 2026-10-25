@@ -20,6 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -145,6 +150,7 @@ fun HeaderDisplaySettingsRoute(
     var sampleIndex by rememberSaveable { mutableIntStateOf(0) }
     val sample = HeaderPreviewSample.entries[sampleIndex]
     val listState = rememberSettingsListState()
+    val horizontalInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
     val background = MaterialTheme.colorScheme.pageBackground
     var headerColor by remember { mutableStateOf(background) }
     var overflowButtons by remember { mutableStateOf(emptyList<CommentsHeaderButton>()) }
@@ -158,6 +164,7 @@ fun HeaderDisplaySettingsRoute(
         pinnedContentBackground = Color.Transparent,
         extraBottomPadding = 72.dp,
         listState = listState,
+        horizontalInsets = WindowInsets(0),
         topOverlay = {
             HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
             HeaderButtonOverflowSnackbar(overflowButtons)
@@ -166,6 +173,7 @@ fun HeaderDisplaySettingsRoute(
                 CommentsUpButton(
                     onClick = onBack,
                     modifier = Modifier
+                        .windowInsetsPadding(horizontalInsets)
                         .padding(
                             start = 16.dp,
                             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
@@ -175,7 +183,9 @@ fun HeaderDisplaySettingsRoute(
             }
         },
         floatingContent = {
-            HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
+            Box(Modifier.windowInsetsPadding(horizontalInsets)) {
+                HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
+            }
         },
         pinnedContent = {
             HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
@@ -185,72 +195,78 @@ fun HeaderDisplaySettingsRoute(
         },
     ) {
         item {
-            SettingsCategory("Layout") {
-                SegmentedSetting(
-                    title = "Preview image",
-                    options = CommentsHeaderImage.entries.map { it to it.label },
-                    selected = CommentsHeaderImage.from(state.headerPreviewImage, settings.comments.headerLayout),
-                    enabled = state.storyPreviewEnabled,
-                    onSelected = repository::setCommentsHeaderImage,
-                )
-                SettingsDivider()
-                SegmentedSetting(
-                    title = "Post details",
-                    options = CommentsHeaderMetaInfo.entries.map { it to it.label },
-                    selected = settings.comments.headerMetaInfo,
-                    disabledOptions = buildSet {
-                        if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
-                    },
-                    onSelected = repository::setCommentsHeaderMetaInfo,
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Domain",
-                    icon = Res.drawable.ic_public,
-                    checked = settings.comments.showHeaderDomain,
-                    onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_DOMAIN, it) },
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Thumbnail",
-                    enabled = settings.comments.showHeaderDomain,
-                    summary = if (!settings.comments.showHeaderDomain) "Turn on Domain" else null,
-                    icon = Res.drawable.ic_public,
-                    checked = settings.comments.showFavicons,
-                    onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_FAVICON, it) },
-                )
-                if (!platformStyle.backButtonRequired) {
+            Box(Modifier.windowInsetsPadding(horizontalInsets)) {
+                SettingsCategory("Layout") {
+                    SegmentedSetting(
+                        title = "Preview image",
+                        options = CommentsHeaderImage.entries.map { it to it.label },
+                        selected = CommentsHeaderImage.from(state.headerPreviewImage, settings.comments.headerLayout),
+                        enabled = state.storyPreviewEnabled,
+                        onSelected = repository::setCommentsHeaderImage,
+                    )
+                    SettingsDivider()
+                    SegmentedSetting(
+                        title = "Post details",
+                        options = CommentsHeaderMetaInfo.entries.map { it to it.label },
+                        selected = settings.comments.headerMetaInfo,
+                        disabledOptions = buildSet {
+                            if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
+                        },
+                        onSelected = repository::setCommentsHeaderMetaInfo,
+                    )
                     SettingsDivider()
                     SwitchSettingRow(
-                        title = "Back",
-                        icon = Res.drawable.ic_arrow_back,
-                        checked = state.showUpButton,
-                        onCheckedChange = { presenter.setBoolean(CommentsBooleanSetting.ShowUpButton, it) },
+                        title = "Domain",
+                        icon = Res.drawable.ic_public,
+                        checked = settings.comments.showHeaderDomain,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_DOMAIN, it) },
                     )
-                }
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Thumbnail",
+                        enabled = settings.comments.showHeaderDomain,
+                        summary = if (!settings.comments.showHeaderDomain) "Turn on Domain" else null,
+                        icon = Res.drawable.ic_public,
+                        checked = settings.comments.showFavicons,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_FAVICON, it) },
+                    )
+                    if (!platformStyle.backButtonRequired) {
+                        SettingsDivider()
+                        SwitchSettingRow(
+                            title = "Back",
+                            icon = Res.drawable.ic_arrow_back,
+                            checked = state.showUpButton,
+                            onCheckedChange = { presenter.setBoolean(CommentsBooleanSetting.ShowUpButton, it) },
+                        )
+                    }
 
+                }
             }
         }
         item {
-            HeaderButtonSettings(settings, displaySettings,
-                repository::setCommentsHeaderButton, repository::resetCommentsHeaderButtons)
+            Box(Modifier.windowInsetsPadding(horizontalInsets)) {
+                HeaderButtonSettings(settings, displaySettings,
+                    repository::setCommentsHeaderButton, repository::resetCommentsHeaderButtons)
+            }
         }
         item {
-            SettingsCategory("Background") {
-                SegmentedSetting(
-                    title = "Background tint",
-                    options = CommentsHeaderTint.entries.map { it to it.label },
-                    selected = settings.comments.headerTint,
-                    onSelected = repository::setCommentsHeaderTint,
-                )
-                SettingsDivider()
-                SegmentedSetting(
-                    title = "Bottom edge",
-                    options = CommentsHeaderEdge.entries.map { it to it.label },
-                    selected = settings.comments.headerEdge,
-                    enabled = displaySettings.tintHeader,
-                    onSelected = repository::setCommentsHeaderEdge,
-                )
+            Box(Modifier.windowInsetsPadding(horizontalInsets)) {
+                SettingsCategory("Background") {
+                    SegmentedSetting(
+                        title = "Background tint",
+                        options = CommentsHeaderTint.entries.map { it to it.label },
+                        selected = settings.comments.headerTint,
+                        onSelected = repository::setCommentsHeaderTint,
+                    )
+                    SettingsDivider()
+                    SegmentedSetting(
+                        title = "Bottom edge",
+                        options = CommentsHeaderEdge.entries.map { it to it.label },
+                        selected = settings.comments.headerEdge,
+                        enabled = displaySettings.tintHeader,
+                        onSelected = repository::setCommentsHeaderEdge,
+                    )
+                }
             }
         }
     }
@@ -330,6 +346,7 @@ internal fun HeaderButtonOverflowSnackbar(
         SnackbarHost(
             hostState = hostState,
             modifier = Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .navigationBarsPadding().imePadding()
                 // Clear the 56dp sample selector and its 16dp bottom margin.
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
@@ -347,11 +364,13 @@ internal fun HeaderSettingsStatusBarProtection(
 ) {
     if (statusBarHeight <= 0.dp) return
     val insetPx = with(LocalDensity.current) { statusBarHeight.roundToPx() }
-    val coverage by remember(listState, insetPx) {
+    val navigationPx = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val coverage by remember(listState, insetPx, navigationPx) {
         derivedStateOf {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "settings-preview" }
             if (header == null || insetPx <= 0) 0f else {
-                val overlap = minOf(header.offset + header.size, insetPx) - maxOf(header.offset, 0)
+                val offset = settingsPreviewOffset(listState, header, navigationPx)
+                val overlap = minOf(offset + header.size, insetPx) - maxOf(offset, 0)
                 (overlap.toFloat() / insetPx).coerceIn(0f, 1f)
             }
         }
@@ -374,6 +393,7 @@ internal fun HeaderDisplayPreview(
     onHeaderColorChanged: (Color) -> Unit = {},
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     showBackButton: Boolean = true,
+    contentWindowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
@@ -402,6 +422,7 @@ internal fun HeaderDisplayPreview(
                     label = "header preview sample",
                 ) { visibleSample ->
                     HeaderDisplayPreviewContent(settings, bookmarksEnabled, visibleSample,
+                        contentWindowInsets = contentWindowInsets,
                         onHeaderColorChanged = { color ->
                             if (visibleSample == sample) onHeaderColorChanged(color)
                         },
@@ -414,7 +435,9 @@ internal fun HeaderDisplayPreview(
                 visible = settings.showUpButton && showBackButton,
                 // Fading creates an offscreen layer. Include the shadow in its bounds so it
                 // doesn't get clipped during the fade and pop back at full opacity.
-                modifier = Modifier.align(Alignment.TopStart).offset(y = statusBarPadding - 12.dp).zIndex(1f),
+                modifier = Modifier.align(Alignment.TopStart)
+                    .windowInsetsPadding(contentWindowInsets)
+                    .offset(y = statusBarPadding - 12.dp).zIndex(1f),
                 enter = fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.9f),
                 exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.9f),
             ) {
@@ -425,6 +448,7 @@ internal fun HeaderDisplayPreview(
             }
             Surface(
                 modifier = Modifier.align(Alignment.TopEnd)
+                    .windowInsetsPadding(contentWindowInsets)
                     .padding(top = statusBarPadding + 8.dp, end = 16.dp)
                     .zIndex(1f)
                     .clearAndSetSemantics {
@@ -455,6 +479,7 @@ private fun HeaderDisplayPreviewContent(
     sample: HeaderPreviewSample,
     onHeaderColorChanged: (Color) -> Unit,
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit,
+    contentWindowInsets: WindowInsets,
 ) {
     val hasPreviewImage = sample == HeaderPreviewSample.LINK_WITH_IMAGE || sample == HeaderPreviewSample.LINK_PREVIEW
     val imageDisplayed = settings.showHeaderPreviewImage && hasPreviewImage
@@ -543,6 +568,7 @@ private fun HeaderDisplayPreviewContent(
         textStyle = textStyle,
         previewPlatform = platform,
         previewCommentActions = true,
+        contentWindowInsets = contentWindowInsets,
         onButtonsOverflowChanged = onButtonsOverflowChanged,
         includeStatusBarSpacer = true,
         headerPreviewImageDisplayed = imageDisplayed,

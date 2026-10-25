@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,12 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,10 +55,10 @@ import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.positionInRoot
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.Role
@@ -72,7 +68,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -346,34 +341,23 @@ fun SettingsPage(
     extraBottomPadding: Dp = 0.dp,
     headerContent: (@Composable () -> Unit)? = null,
     topOverlay: (@Composable () -> Unit)? = null,
+    horizontalInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
-    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    // A preview that scrolled out of composition must be measured again after width/font changes.
-    // Temporarily declaring it sticky brings it back without changing its key or list position.
-    var previewSize by remember(viewportSize.width, density.density, density.fontScale, contentVersion) {
-        mutableStateOf<IntSize?>(null)
-    }
-    val contentHeight = viewportSize.height - with(density) { navigationBarPadding.roundToPx() }
-    val pinPreview = previewSize?.let { it.height <= contentHeight * 0.7f } ?: true
-    val currentPinnedContent by rememberUpdatedState(pinnedContent)
-    // Changing between item and stickyHeader changes composition sites. Move the existing
-    // preview between them so a size change cannot reset its animation or local state.
-    val previewContent = remember { movableContentOf { currentPinnedContent?.invoke() } }
+    val navigationBarPx = with(density) { navigationBarPadding.roundToPx() }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.pageBackground)
             .consumeSettingsPaneBounds()
+            .windowInsetsPadding(horizontalInsets)
             .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    if (showTopAppBar) WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-                    else WindowInsetsSides.Horizontal,
-                ),
+                if (showTopAppBar) WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                else WindowInsets(0),
             ),
     ) {
         if (showTopAppBar) {
@@ -381,7 +365,7 @@ fun SettingsPage(
         }
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },
+                modifier = Modifier.fillMaxSize(),
                 state = listState,
                 contentPadding = PaddingValues(
                     start = 0.dp,
@@ -398,21 +382,27 @@ fun SettingsPage(
                 headerContent?.let { header ->
                     item(key = "settings-header") { header() }
                 }
-                pinnedContent?.let {
-                    val previewItem: @Composable () -> Unit = {
+                pinnedContent?.let { preview ->
+                    // Always keep the same sticky item composed and measured. A tall preview
+                    // follows its natural scroll position instead of sticking. Replacing an item
+                    // with a stickyHeader (or briefly pinning it to remeasure after an edit)
+                    // flashes the preview over the settings and resets animation state.
+                    stickyHeader(key = "settings-preview") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .onGloballyPositioned { previewSize = it.size }
+                                .graphicsLayer {
+                                    val header = listState.layoutInfo.visibleItemsInfo
+                                        .firstOrNull { it.key == "settings-preview" }
+                                    translationY = if (header == null) 0f else {
+                                        (settingsPreviewOffset(listState, header, navigationBarPx) -
+                                            header.offset).toFloat()
+                                    }
+                                }
                                 .background(pinnedContentBackground),
                         ) {
-                            previewContent()
+                            preview()
                         }
-                    }
-                    if (pinPreview) {
-                        stickyHeader(key = "settings-preview") { previewItem() }
-                    } else {
-                        item(key = "settings-preview") { previewItem() }
                     }
                 }
                 content()
@@ -428,6 +418,18 @@ fun SettingsPage(
             }
         }
     }
+}
+
+/** Natural position of a preview that LazyColumn retains as a sticky item for measurement. */
+internal fun settingsPreviewOffset(
+    state: LazyListState,
+    header: LazyListItemInfo,
+    bottomInset: Int,
+): Int = when {
+    header.size <= (state.layoutInfo.viewportSize.height - bottomInset) * 0.7f -> header.offset
+    state.firstVisibleItemIndex > header.index -> -header.size
+    state.firstVisibleItemIndex == header.index -> -state.firstVisibleItemScrollOffset
+    else -> header.offset
 }
 
 @Composable
