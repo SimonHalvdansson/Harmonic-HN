@@ -226,6 +226,8 @@ final class HarmonicIosUITests: XCTestCase {
     }
 
     private func openFirstComments() {
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 15))
         XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 5))
         firstCommentsButton.tapCenter()
@@ -252,7 +254,7 @@ final class HarmonicIosUITests: XCTestCase {
     private func keepScreenshot(_ name: String) {
         // Compose accessibility can settle one frame before the destination is drawn.
         Thread.sleep(forTimeInterval: 0.5)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
@@ -341,10 +343,34 @@ final class HarmonicIosUITests: XCTestCase {
     private func openDebugSettings() {
         openSettings()
         let debug = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Debug")).firstMatch
-        for _ in 0..<4 where !debug.isHittable { app.swipeUp(velocity: .slow) }
+        let listAnchor = app.labeledButton("Appearance").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        for _ in 0..<6 where !debug.isHittable {
+            listAnchor.withOffset(CGVector(dx: 0, dy: 220)).press(
+                forDuration: 0.1,
+                thenDragTo: listAnchor.withOffset(CGVector(dx: 0, dy: -40)),
+                withVelocity: .slow, thenHoldForDuration: 0.2
+            )
+        }
         XCTAssertTrue(debug.waitForExistence(timeout: 5))
         debug.tapCenter()
         XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 5))
+    }
+
+    private func openLinkPostFromDebugSettings() {
+        openDebugSettings()
+        let link = app.labeledButton("Link post")
+        let detailX = app.staticTexts.matching(identifier: "Debug").allElementsBoundByIndex.map { $0.frame.minX }.max()! + 8
+        let bounds = app.windows.firstMatch.frame
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        for _ in 0..<8 where !link.isHittable {
+            origin.withOffset(CGVector(dx: detailX, dy: bounds.height * 0.75)).press(
+                forDuration: 0.1,
+                thenDragTo: origin.withOffset(CGVector(dx: detailX, dy: bounds.height * 0.30)),
+                withVelocity: .slow, thenHoldForDuration: 0.2
+            )
+        }
+        XCTAssertTrue(link.waitForExistence(timeout: 5))
+        link.tapCenter()
     }
 
     func testDebugWelcomeSurvivesDuoFolding() throws {
@@ -696,15 +722,21 @@ final class HarmonicIosUITests: XCTestCase {
         if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
         let search = app.labeledButton("Search")
         XCTAssertTrue(search.waitForExistence(timeout: 10))
-        XCTAssertGreaterThan(search.frame.midX, app.frame.width * 0.8)
-        XCTAssertGreaterThan(search.frame.minY, app.frame.height * 0.75)
+        let usesRail = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true &&
+            min(app.frame.width, app.frame.height) < 600
+        if usesRail {
+            XCTAssertGreaterThan(search.frame.midX, app.frame.width * 0.8)
+            XCTAssertGreaterThan(search.frame.minY, app.frame.height * 0.75)
+        } else {
+            XCTAssertEqual(search.frame.midY, app.labeledButton("More options").frame.midY, accuracy: 2)
+        }
         keepScreenshot("Stories bottom right search")
         search.tapCenter()
         XCTAssertTrue(app.textViews["Search posts"].waitForExistence(timeout: 10))
         app.labeledButton("Back").tapCenter()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
         XCTAssertTrue(search.waitForExistence(timeout: 5))
-        if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true {
+        if usesRail {
             let searchAxis = search.frame.midX
             openSettings()
             XCTAssertEqual(app.labeledButton("Navigate up").frame.midX, searchAxis, accuracy: 1,
@@ -1045,14 +1077,19 @@ final class HarmonicIosUITests: XCTestCase {
     }
 
     func testSubmissionsBackUsesPlatformPlacementAndStaysFixed() throws {
-        let usesRail = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true
+        defer { XCUIDevice.shared.orientation = .portrait }
+        if min(app.frame.width, app.frame.height) >= 600 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+        }
+
+        let usesRail = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true &&
+            min(app.frame.width, app.frame.height) < 600
         let hint = app.labeledButton("Got it")
         if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
         let more = app.labeledButton("More options")
         XCTAssertTrue(more.waitForExistence(timeout: 10))
         let railControlFrame = more.frame
-        openDebugSettings()
-        app.tapVisibleButton("Link post")
+        openLinkPostFromDebugSettings()
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
         XCTAssertTrue(app.labeledButton("User").waitForExistence(timeout: 15))
         app.labeledButton("User").tapCenter()
@@ -1072,7 +1109,8 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 15))
         XCTAssertTrue(app.labeledButton("Stories").waitForExistence(timeout: 5))
         let backFrame = back.frame
-        XCTAssertGreaterThanOrEqual(backFrame.minY, 24)
+        XCTAssertGreaterThanOrEqual(backFrame.minY, usesRail ? 24 : 0)
+        XCTAssertLessThan(backFrame.maxY, app.windows.firstMatch.frame.height * 0.35)
         if usesRail {
             XCTAssertGreaterThan(backFrame.minX, app.frame.width * 0.8)
             XCTAssertEqual(backFrame.midX, railControlFrame.midX, accuracy: 1)
@@ -1090,6 +1128,163 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("Submissions fixed Back after scrolling")
         back.tapCenter()
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+    }
+
+    func testExpandedStoriesControlsStayInHeader() throws {
+        try XCTSkipUnless(min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600)
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
+        let more = app.labeledButton("More options")
+        let search = app.labeledButton("Search")
+        XCTAssertTrue(more.waitForExistence(timeout: 10))
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        XCTAssertEqual(search.frame.midY, more.frame.midY, accuracy: 2)
+        XCTAssertLessThan(more.frame.maxY, app.windows.firstMatch.frame.height * 0.35)
+        keepScreenshot("Expanded Stories standard header controls")
+        search.tapCenter()
+        XCTAssertTrue(app.textViews["Search posts"].waitForExistence(timeout: 10))
+        app.labeledButton("Back").tapCenter()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+    }
+
+    func testSideBySideSurvivesDuoFolding() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HARMONIC_DUO_FOLD_TEST"] == "1")
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openLinkPostFromDebugSettings()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        waitForCommentsBeforeDraggingSheet()
+        let split = app.labeledButton("Read side by side")
+        if !split.exists { app.labeledButton("More options").tapCenter() }
+        XCTAssertTrue(split.waitForExistence(timeout: 5))
+        split.tapCenter()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let exit = app.labeledButton("Exit side by side")
+        XCTAssertTrue(exit.waitForExistence(timeout: 10))
+        let window = app.windows.firstMatch
+        func appBack() -> XCUIElement {
+            let candidates = app.buttons.matching(NSPredicate(format: "label == %@ OR label == %@", "Navigate up", "Back"))
+            return candidates.allElementsBoundByIndex.first {
+                $0.isHittable && $0.frame.maxY < window.frame.height * 0.35
+            } ?? app.labeledButton("Back")
+        }
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.22, dy: 0.8)).press(
+            forDuration: 0.1,
+            thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.22, dy: 0.35)),
+            withVelocity: .slow, thenHoldForDuration: 0.3
+        )
+        XCTAssertTrue(exit.exists, "Scrolling comments must keep side by side active")
+        print("DUO_SPLIT_READY_CLOSE")
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            min(window.frame.width, window.frame.height) < 600
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 60), .completed)
+        XCTAssertTrue(app.otherElements["comment-row"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(appBack().waitForExistence(timeout: 10))
+        keepScreenshot("Scrolled side by side comments retained on Duo cover")
+        print("DUO_SPLIT_READY_OPEN")
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            min(window.frame.width, window.frame.height) >= 600
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 60), .completed)
+        XCTAssertTrue(app.otherElements["comment-row"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(appBack().waitForExistence(timeout: 10))
+        keepScreenshot("Scrolled comments retained after unfolding Duo")
+        appBack().tapCenter()
+        XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 10))
+    }
+
+    func testExpandedSettingsSurviveRotationAndFolding() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HARMONIC_DUO_FOLD_TEST"] == "1")
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+        openSettings()
+        app.labeledButton("Post header").tapCenter()
+        let preview = app.descendants(matching: .any)["Header preview"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 10))
+        func waitForLayout(_ marker: String, _ matches: @escaping (CGRect) -> Bool) {
+            print(marker)
+            let layout = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                matches(self.app.windows.firstMatch.frame)
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [layout], timeout: 60), .completed)
+            XCTAssertTrue(preview.waitForExistence(timeout: 10))
+        }
+        waitForLayout("DUO_QA_READY_PORTRAIT") { $0.width < $0.height && min($0.width, $0.height) >= 600 }
+        keepScreenshot("Settings retained after rotating expanded Duo")
+        waitForLayout("DUO_QA_READY_CLOSE") { min($0.width, $0.height) < 600 }
+        keepScreenshot("Settings retained on Duo cover")
+        waitForLayout("DUO_QA_READY_OPEN") { min($0.width, $0.height) >= 600 }
+        waitForLayout("DUO_QA_READY_LANDSCAPE") { $0.width > $0.height && min($0.width, $0.height) >= 600 }
+        keepScreenshot("Settings retained after unfolding and rotating Duo")
+        app.labeledButton("Navigate up").tapCenter()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+    }
+
+    func testExpandedSettingsCategorySwitching() throws {
+        try XCTSkipUnless(min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        // Duo's app-level AX frame can retain portrait bounds while its active display is landscape.
+        openSettings()
+        for _ in 0..<3 {
+            for category in ["Stories", "Comments", "Post header", "Appearance", "Web and links"] {
+                let row = app.labeledButton(category)
+                XCTAssertTrue(row.waitForExistence(timeout: 5))
+                row.tapCenter()
+                if category == "Post header" {
+                    XCTAssertTrue(app.descendants(matching: .any)["Header preview"].waitForExistence(timeout: 5))
+                } else {
+                    XCTAssertTrue(app.staticTexts[category].waitForExistence(timeout: 5))
+                }
+                XCTAssertTrue(app.labeledButton("Appearance").exists)
+            }
+        }
+        keepScreenshot("Expanded Settings after repeated detail transitions")
+    }
+
+    func testExpandedSideBySideFromStories() throws {
+        try XCTSkipUnless(min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        // Duo's app-level AX frame can retain portrait bounds while its active display is landscape.
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
+        openFirstComments()
+        let split = app.labeledButton("Read side by side")
+        if !split.exists { app.buttons.matching(NSPredicate(format: "label == %@", "More options")).allElementsBoundByIndex.last?.tapCenter() }
+        XCTAssertTrue(split.waitForExistence(timeout: 5))
+        split.tapCenter()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let exit = app.labeledButton("Exit side by side")
+        XCTAssertTrue(exit.waitForExistence(timeout: 10))
+        XCTAssertLessThan(articleHeader.frame.maxX, app.windows.firstMatch.frame.midX + app.windows.firstMatch.frame.width * 0.1)
+        keepScreenshot("Stories replaced by side by side comments")
+        exit.tapCenter()
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+        keepScreenshot("Stories restored after leaving side by side")
+    }
+
+    func testExpandedSideBySideBrowserAndComments() throws {
+        try XCTSkipUnless(min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        // Duo's app-level AX frame can retain portrait bounds while its active display is landscape.
+        openLinkPostFromDebugSettings()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        let split = app.labeledButton("Read side by side")
+        if !split.exists {
+            app.labeledButton("More options").tapCenter()
+        }
+        XCTAssertTrue(split.waitForExistence(timeout: 5))
+        split.tapCenter()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let exit = app.labeledButton("Exit side by side")
+        XCTAssertTrue(exit.waitForExistence(timeout: 10))
+        XCTAssertLessThan(articleHeader.frame.maxX, app.windows.firstMatch.frame.midX + app.windows.firstMatch.frame.width * 0.1)
+        XCTAssertGreaterThan(app.webViews.firstMatch.frame.minX, app.windows.firstMatch.frame.width * 0.25)
+        keepScreenshot("Expanded side by side browser and comments")
+        exit.tapCenter()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        keepScreenshot("Expanded comments after leaving side by side")
     }
 
     func testSettingsAndNavigateUp() throws {
@@ -1195,7 +1390,9 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("Search results for Kotlin")
         firstCommentsButton.tapCenter()
         XCTAssertTrue(app.labeledButton("User").waitForExistence(timeout: 15))
-        app.labeledButton("Back").firstMatch.tapCenter()
+        let appBack = app.labeledButton("Navigate up").exists
+            ? app.labeledButton("Navigate up") : app.labeledButton("Back")
+        appBack.tapCenter()
         // The placeholder stops being the accessibility label once the field has a value.
         let restoredSearch = app.textViews.matching(NSPredicate(format: "value == %@", "Kotlin")).firstMatch
         XCTAssertTrue(restoredSearch.waitForExistence(timeout: 10))

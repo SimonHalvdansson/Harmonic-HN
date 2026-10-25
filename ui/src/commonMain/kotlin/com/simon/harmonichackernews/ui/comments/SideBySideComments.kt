@@ -39,7 +39,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import kotlin.math.roundToInt
 
 /** One live composition and list state, with complementary slices during a sheet transfer. */
-internal class SideBySideCommentsPortal {
+class SideBySideCommentsPortal {
     var controller by mutableStateOf<CommentsScreenController?>(null)
     var content by mutableStateOf<(@Composable () -> Unit)?>(null)
     var contentSize by mutableStateOf(IntSize.Zero)
@@ -54,13 +54,13 @@ internal class SideBySideCommentsPortal {
     var detailLeft by mutableFloatStateOf(0f)
 }
 
-internal val LocalSideBySideCommentsPortal = compositionLocalOf<SideBySideCommentsPortal?> { null }
+val LocalSideBySideCommentsPortal = compositionLocalOf<SideBySideCommentsPortal?> { null }
 
 // The gesture previews the destination; releasing is what completes the pane transfer.
 private const val SideBySideBackPreviewTravel = 0.35f
 
 @Composable
-internal fun SideBySideCommentsHost(standalone: Boolean = false, content: @Composable (listOverlay: @Composable () -> Unit) -> Unit) {
+fun SideBySideCommentsHost(standalone: Boolean = false, content: @Composable (listOverlay: @Composable () -> Unit) -> Unit) {
     val portal = remember { SideBySideCommentsPortal() }
     val browserPane = remember(standalone) { BrowserPaneState(standalone) }
     val controller = portal.controller
@@ -156,7 +156,7 @@ private fun SideBySideCommentsListPane(portal: SideBySideCommentsPortal) {
 
 /** Retains local row/menu state and the lazy-list position when its outlet changes. */
 @Composable
-internal fun rememberSideBySideCommentsContent(
+fun rememberSideBySideCommentsContent(
     controller: CommentsScreenController,
     content: @Composable () -> Unit,
 ): @Composable () -> Unit {
@@ -238,7 +238,7 @@ private fun PaneSnapshot(snapshot: ImageBitmap?) {
 
 /** Both panes draw at their native widths; only the departing pane uses a frozen image. */
 @Composable
-internal fun SideBySideCommentsSheetMirror(portal: SideBySideCommentsPortal, peekHeightPx: Float) {
+fun SideBySideCommentsSheetMirror(portal: SideBySideCommentsPortal, peekHeightPx: Float) {
     Box(Modifier.fillMaxSize().clearAndSetSemantics { }.graphicsLayer {
         translationY = peekHeightPx * (1f - portal.sheetExpansion)
     }) {

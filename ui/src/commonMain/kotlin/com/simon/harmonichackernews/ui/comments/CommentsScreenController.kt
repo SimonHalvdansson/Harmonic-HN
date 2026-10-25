@@ -147,7 +147,7 @@ class CommentsScreenController private constructor(
         private set
     var headerMenuDismissRequestVersion by mutableIntStateOf(0)
         private set
-    /** The Android two-pane host supplies this capability; other hosts retain their own layouts. */
+    /** Two-pane hosts supply this capability when the integrated browser can share their panes. */
     var sideBySideAvailable by mutableStateOf(false)
         private set
     var sideBySideActive by mutableStateOf(false)

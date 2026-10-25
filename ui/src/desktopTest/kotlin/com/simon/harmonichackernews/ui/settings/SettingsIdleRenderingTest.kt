@@ -28,7 +28,9 @@ class SettingsIdleRenderingTest {
     @Test fun stationarySettingsListStopsRequestingFrames() = verify(true, false)
     @Test fun stationarySettingsDetailStopsRequestingFrames() = verify(false, true)
 
-    private fun verify(realList: Boolean, realDetail: Boolean) = SwingUtilities.invokeAndWait {
+    @Test fun interruptedTwoPaneCategoryChangesRemainRenderable() = verify(true, true, interrupted = true)
+
+    private fun verify(realList: Boolean, realDetail: Boolean, interrupted: Boolean = false) = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("SettingsIdleTest")
         val dependencies = HarmonicUiDependencies(bootstrap.app, bootstrap.scene)
         val lifecycleOwner = object : LifecycleOwner {
@@ -53,11 +55,17 @@ class SettingsIdleRenderingTest {
         }
         try {
             var time = 0L
-            for (section in listOf(SettingsSection.Appearance, SettingsSection.WebLinks, SettingsSection.Appearance)) {
+            val sections = if (interrupted) List(5) {
+                listOf(SettingsSection.Appearance, SettingsSection.Stories, SettingsSection.Comments,
+                    SettingsSection.HeaderDisplay, SettingsSection.WebLinks)
+            }.flatten() else listOf(SettingsSection.Appearance, SettingsSection.WebLinks, SettingsSection.Appearance)
+            for (section in sections) {
                 navigation.navigateTo(section)
-                repeat(180) { scene.render(time.also { time += 16_666_667 }).close() }
-                assertFalse(scene.hasInvalidations(), "Stationary $section must settle after its transition")
+                repeat(if (interrupted) 3 else 180) { scene.render(time.also { time += 16_666_667 }).close() }
+                if (!interrupted) assertFalse(scene.hasInvalidations(), "Stationary $section must settle after its transition")
             }
+            repeat(180) { scene.render(time.also { time += 16_666_667 }).close() }
+            assertFalse(scene.hasInvalidations(), "Interrupted category transitions must settle")
         } finally {
             scene.close()
             bootstrap.close()

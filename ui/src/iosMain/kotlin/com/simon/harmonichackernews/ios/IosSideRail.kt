@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,10 @@ import platform.UIKit.UIUserInterfaceIdiomPhone
 @Composable
 internal fun iosSideRailWidth(insets: WindowInsets = WindowInsets.safeDrawing): Dp {
     val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    // Expanded windows use ordinary pane toolbars. Their asymmetric status inset belongs
+    // to the outer window, and must never turn into a rail inside the list pane.
+    if (with(density) { minOf(windowSize.width, windowSize.height).toDp() } >= 600.dp) return 0.dp
     val direction = LocalLayoutDirection.current
     val left = insets.getLeft(density, direction)
     val right = insets.getRight(density, direction)

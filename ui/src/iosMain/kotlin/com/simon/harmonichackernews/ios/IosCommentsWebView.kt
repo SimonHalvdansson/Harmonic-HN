@@ -23,6 +23,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.SideEffect
+import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneState
+import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
+import com.simon.harmonichackernews.ui.comments.SideBySideCommentsSheetMirror
+import com.simon.harmonichackernews.ui.comments.CommentsSheetControls
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
@@ -491,6 +496,20 @@ internal fun IosCommentsScaffold(
     listState: LazyListState,
     comments: @Composable () -> Unit,
 ) {
+    val portal = LocalSideBySideCommentsPortal.current
+    val browserPane = LocalBrowserPaneState.current
+    SideEffect {
+        controller.browserPaneState = browserPane
+        browserPane?.let {
+            it.owner = controller
+            it.integrated = controller.integratedWebView
+            it.opening = controller.sheetRequest?.expanded == false
+            it.sideBySide = controller.sideBySideActive
+            it.canShowSideBySide = controller.sideBySideAvailable
+            it.logicalExpansion = controller.sheetSlideOffset
+            it.showSideBySide = { if (!controller.sideBySideActive) controller.toggleSideBySide() }
+        }
+    }
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val webViewTopInset = if (reserveUpButtonInset) {
@@ -539,7 +558,7 @@ internal fun IosCommentsScaffold(
         }
     }
     val sheetState = rememberBottomSheetState(
-        initialValue = if (controller.initialShowWebsite) {
+        initialValue = if (!controller.isSheetExpanded()) {
             SheetValue.PartiallyExpanded
         } else {
             SheetValue.Expanded
@@ -553,7 +572,7 @@ internal fun IosCommentsScaffold(
             val scrolled = listState.layoutInfo.totalItemsCount > 0 &&
                 (listState.firstVisibleItemIndex > 0 ||
                     listState.firstVisibleItemScrollOffset > 0 || listState.canScrollBackward)
-            scrolled && (runCatching { sheetState.requireOffset() }.getOrNull() ?: 0f) > 0.5f
+            scrolled && !controller.sideBySideActive && (runCatching { sheetState.requireOffset() }.getOrNull() ?: 0f) > 0.5f
         }.distinctUntilChanged().collect { invalidPosition ->
             // A saved position may be restored during a window/fold transition. Keep comments
             // fully expanded if that makes the list and the sheet disagree.
@@ -582,6 +601,8 @@ internal fun IosCommentsScaffold(
                         ?.let { 1f - (it / travelPx) }
                         ?.coerceIn(0f, 1f)
                         ?: if (sheetState.currentValue == SheetValue.Expanded) 1f else 0f
+                    portal?.sheetExpansion = expandedFraction
+                    browserPane?.sheetExpansion = expandedFraction
                     controller.updateSheet(expandedFraction, controller.topInsetPx)
                     // Reveal the native view with the first exposed portion of the page,
                     // including a partial drag that returns to fully expanded comments.
@@ -622,8 +643,24 @@ internal fun IosCommentsScaffold(
                 ) {
                     // The iOS rubber-band effect otherwise retains downward motion at the top
                     // instead of consistently handing it to the containing sheet.
-                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
-                        comments()
+                    if (controller.sideBySideActive && portal != null) {
+                        SideBySideCommentsSheetMirror(portal, with(density) { peekHeight.toPx() })
+                        CommentsSheetControls(
+                            readerModeAvailable = controller.readerModeAvailable,
+                            readerModeEnabled = controller.readerModeEnabled,
+                            sideBySideAvailable = controller.sideBySideAvailable,
+                            sideBySideActive = true,
+                            onSideBySide = controller::toggleSideBySide,
+                            showInvert = showInvert,
+                            progress = 1f - portal.sheetExpansion,
+                            contentAlpha = 1f,
+                            onAction = controller.listener::onSheetAction,
+                            onBrowserBack = onBrowserBack,
+                        )
+                    } else {
+                        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                            comments()
+                        }
                     }
                 }
             },

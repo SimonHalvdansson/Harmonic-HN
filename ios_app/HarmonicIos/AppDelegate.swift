@@ -107,10 +107,14 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
                 )
             },
             systemDark: { [weak self, weak windowScene] in
-                let style = self?.window?.traitCollection.userInterfaceStyle
-                    ?? windowScene?.traitCollection.userInterfaceStyle
-                    ?? .light
-                return KotlinBoolean(bool: style == .dark)
+                let readAppearance = {
+                    let style = self?.window?.traitCollection.userInterfaceStyle
+                        ?? windowScene?.traitCollection.userInterfaceStyle
+                        ?? .light
+                    return KotlinBoolean(bool: style == .dark)
+                }
+                // Settings updates can resolve the appearance on a Kotlin worker thread.
+                return Thread.isMainThread ? readAppearance() : DispatchQueue.main.sync(execute: readAppearance)
             },
             filesDirectory: filesDirectory.path,
             cacheDirectory: cacheDirectory.path,
@@ -191,6 +195,7 @@ final class HarmonicWindow: UIWindow {
 final class HarmonicRootViewController: UIViewController {
     private let content: UIViewController
     private var darkAppearance = false
+    private var themeBackground: UIColor = .systemBackground
     var onScreenCornersChanged: ((CGFloat, CGFloat, CGFloat, CGFloat) -> Void)?
 
     init(content: UIViewController) {
@@ -237,14 +242,35 @@ final class HarmonicRootViewController: UIViewController {
             blue: CGFloat(argb & 0xff) / 255,
             alpha: CGFloat((argb >> 24) & 0xff) / 255
         )
-        // Rotation can expose any of these layers while Compose resizes its surface.
-        view.backgroundColor = background
-        content.view.backgroundColor = background
-        view.window?.backgroundColor = background
-        guard darkAppearance != dark || overrideUserInterfaceStyle == .unspecified else { return }
-        darkAppearance = dark
-        overrideUserInterfaceStyle = dark ? .dark : .light
-        setNeedsStatusBarAppearanceUpdate()
+        themeBackground = background
+        if darkAppearance != dark || overrideUserInterfaceStyle == .unspecified {
+            darkAppearance = dark
+            overrideUserInterfaceStyle = dark ? .dark : .light
+            setNeedsStatusBarAppearanceUpdate()
+        }
+        updateBackgrounds()
+    }
+
+    private func updateBackgrounds() {
+        view.backgroundColor = themeBackground
+        content.view.backgroundColor = themeBackground
+        view.window?.backgroundColor = themeBackground
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Keep the host background current while Compose resizes its transparent surface.
+        updateBackgrounds()
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        updateBackgrounds()
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            self?.updateBackgrounds()
+        }, completion: { [weak self] _ in
+            self?.updateBackgrounds()
+        })
     }
 
 }

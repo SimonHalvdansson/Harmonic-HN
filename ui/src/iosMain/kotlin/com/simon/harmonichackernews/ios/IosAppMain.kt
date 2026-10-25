@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -70,6 +71,8 @@ import com.simon.harmonichackernews.ui.ProvideHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.EmptyCommentsScreen
+import com.simon.harmonichackernews.ui.comments.SideBySideCommentsHost
+import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
 import com.simon.harmonichackernews.ui.debug.CoulombGasScreen
 import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
 import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
@@ -103,11 +106,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.size
@@ -175,7 +173,13 @@ class IosHarmonicApplication(
         if (!closed) bootstrap.app.appearance.refreshSelection()
     }
 
-    fun makeViewController(): UIViewController = ComposeUIViewController {
+    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    fun makeViewController(): UIViewController = ComposeUIViewController(configure = {
+        // During rotation Compose temporarily renders a surface larger than its content.
+        // Its opaque Metal surface clears that extra area to system white/black. Let the
+        // native host's theme background show through until the content fills the new size.
+        opaque = false
+    }) {
         CompositionLocalProvider(
             LocalViewModelStoreOwner provides sceneOwner,
             LocalIosForeground provides foreground,
@@ -475,13 +479,6 @@ private fun IosAppContent(
     )
     var lastGestureSource by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
     SideEffect { if (preview != null) lastGestureSource = preview.source }
-    val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, fullScreen ->
-        IosCommentsContent(
-            app = app, scene = scene, request = request,
-            isTablet = supportsTwoPane, isTwoPane = !fullScreen, showUpButton = fullScreen,
-            controllers = commentsControllers,
-        )
-    }
     HarmonicAppRoot(
         plan = plan,
         preview = preview,
@@ -506,23 +503,58 @@ private fun IosAppContent(
                 )
             }
             if (isTwoPane) {
-                MainNavigationScene(
-                    storyRequest = detail,
-                    directive = mainDirective,
-                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
-                    isFoldable = expandedPhone,
-                    snapToCenter = false,
-                    onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = stories,
-                    emptyDetail = { EmptyCommentsScreen() },
-                    animateDetailVisibilityChanges = true,
-                    comments = paneComments,
-                )
+                SideBySideCommentsHost { listOverlay ->
+                    MainNavigationScene(
+                        listPaneOverlay = listOverlay,
+                        storyRequest = detail,
+                        directive = mainDirective,
+                        paneProportion = if (expandedPhone) 0.45f else 0.4f,
+                        isFoldable = expandedPhone,
+                        snapToCenter = false,
+                        onBack = scene.navigation::detailRemovedFromBackStack,
+                        stories = stories,
+                        emptyDetail = { EmptyCommentsScreen() },
+                        animateDetailVisibilityChanges = true,
+                        comments = paneComments,
+                    )
+                }
             } else {
                 stories()
             }
         },
-        comments = renderComments,
+        comments = { request, fullScreen ->
+            // The session owns the browser and reading position across layout changes.
+            // Recreate the layout nodes when entering or leaving the adaptive scaffold.
+            val host = rememberIosCommentsHost(app, scene, request, commentsControllers)
+            if (fullScreen && isTwoPane) {
+                SideBySideCommentsHost(standalone = true) { listOverlay ->
+                    val split = LocalSideBySideCommentsPortal.current?.controller?.sideBySideActive == true
+                    val comments = remember(request.serial, host) {
+                        movableContentOf { showUp: Boolean ->
+                            IosCommentsContent(
+                                app, scene, request, isTablet = supportsTwoPane,
+                                isTwoPane = false, showUpButton = showUp, host = host,
+                            )
+                        }
+                    }
+                    MainNavigationScene(
+                        storyRequest = request,
+                        directive = mainDirective,
+                        paneProportion = if (expandedPhone) 0.45f else 0.4f,
+                        isFoldable = expandedPhone,
+                        snapToCenter = false,
+                        onBack = scene.navigation::detailRemovedFromBackStack,
+                        stories = {}, emptyDetail = {}, listPaneOverlay = listOverlay,
+                        comments = { comments(!split) },
+                    )
+                }
+            } else {
+                IosCommentsContent(
+                    app, scene, request, isTablet = supportsTwoPane,
+                    isTwoPane = !fullScreen, showUpButton = fullScreen, host = host,
+                )
+            }
+        },
         settings = { request ->
             IosSettingsShell(
                 app = app,
@@ -536,17 +568,20 @@ private fun IosAppContent(
         },
         submissions = { request, detail, paneComments ->
             if (isTwoPane) {
-                MainNavigationScene(
-                    storyRequest = detail, directive = mainDirective,
-                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
-                    isFoldable = expandedPhone,
-                    snapToCenter = false,
-                    onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = { IosSubmissionsContent(app, scene, request) },
-                    emptyDetail = { EmptyCommentsScreen() },
-                    animateDetailVisibilityChanges = true,
-                    comments = paneComments,
-                )
+                SideBySideCommentsHost { listOverlay ->
+                    MainNavigationScene(
+                        listPaneOverlay = listOverlay,
+                        storyRequest = detail, directive = mainDirective,
+                        paneProportion = if (expandedPhone) 0.45f else 0.4f,
+                        isFoldable = expandedPhone,
+                        snapToCenter = false,
+                        onBack = scene.navigation::detailRemovedFromBackStack,
+                        stories = { IosSubmissionsContent(app, scene, request) },
+                        emptyDetail = { EmptyCommentsScreen() },
+                        animateDetailVisibilityChanges = true,
+                        comments = paneComments,
+                    )
+                }
             } else {
                 IosSubmissionsContent(app, scene, request)
             }
@@ -741,7 +776,7 @@ private fun IosStoriesContent(
             .background(MaterialTheme.colorScheme.pageBackground),
     ) {
         CompositionLocalProvider(
-            LocalStoriesSearchInHeader provides false,
+            LocalStoriesSearchInHeader provides (railWidth == 0.dp),
             LocalStoriesMoreMenuInHeader provides (railWidth == 0.dp),
             LocalStoriesHeaderMenus provides headerMenus,
         ) {
@@ -769,25 +804,17 @@ private fun IosStoriesContent(
                     )
                 }
             }
-            Box(
-                Modifier.align(if (railWidth > 0.dp) AbsoluteAlignment.BottomRight else Alignment.BottomEnd)
-                    .then(if (railWidth > 0.dp) Modifier.iosSideRailContent(railWidth) else
-                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)))
-                    .padding(
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
-                        end = if (railWidth > 0.dp) 0.dp else 16.dp,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (railWidth > 0.dp) {
+            if (railWidth > 0.dp) {
+                Box(
+                    Modifier.align(AbsoluteAlignment.BottomRight)
+                        .iosSideRailContent(railWidth)
+                        .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     IconButton(
                         onClick = controller.listener::onOpenSearch,
                         modifier = Modifier.size(56.dp),
                     ) {
-                        Icon(painterResource(Res.drawable.ic_search), "Search")
-                    }
-                } else {
-                    FloatingActionButton(onClick = controller.listener::onOpenSearch) {
                         Icon(painterResource(Res.drawable.ic_search), "Search")
                     }
                 }
@@ -852,7 +879,7 @@ private fun IosSettingsShell(
                     tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
                     onBackFromSettings = scene.navigation::closeSettings,
                     onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
-                    animateDetailChanges = false,
+                    animateDetailChanges = true,
                     renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
                         SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
                             SettingsListScreen(

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
 import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -59,6 +60,8 @@ import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
+import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
+import com.simon.harmonichackernews.ui.comments.rememberSideBySideCommentsContent
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
@@ -92,10 +95,12 @@ import com.simon.harmonichackernews.data.NitterInfo
 import com.simon.harmonichackernews.presentation.NativeReaderModeSession
 import com.simon.harmonichackernews.ui.reader.ReaderModeResources
 
-private class IosCommentsHost(
+internal class IosCommentsHost(
     val binding: CommentsFeatureBinding,
     private val scope: CoroutineScope,
     private val createBrowser: (String) -> IosCommentsWebView,
+    val firstDraw: CompletableDeferred<Unit>,
+    val openingProfile: IosCommentsOpeningProfile?,
 ) {
     val store get() = binding.store
     val controller get() = binding.controller
@@ -121,25 +126,14 @@ private class IosCommentsHost(
 }
 
 @Composable
-internal fun IosCommentsContent(
+internal fun rememberIosCommentsHost(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
-    isTablet: Boolean,
-    isTwoPane: Boolean,
-    showUpButton: Boolean,
     controllers: RetainedDestinationControllers<CommentsScreenController>,
-) {
+): IosCommentsHost {
     val viewModel = commentsViewModel(scene, request)
     val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
-    var consumedInsets by remember { mutableStateOf<WindowInsets>(WindowInsets(0)) }
-    val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
-    val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
-    val contentInsetRight = contentInsets.getRight(density, layoutDirection)
-    val sideRailWidth = iosSideRailWidth(contentInsets)
-    val browserActionsOnRight = sideRailWidth > 0.dp
     val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
     val openingProfile = remember(app, request.serial) {
         IosCommentsOpeningProfile.create(app.metadata.debug, request.storyId)
@@ -169,14 +163,74 @@ internal fun IosCommentsContent(
                 }
             },
             scope = scope,
+            firstDraw = firstDraw,
+            openingProfile = openingProfile,
         ).also { createdHost ->
             createdHost.prepareBrowser()
             binding.setBeforeWebsiteCollapse { createdHost.prepareBrowser()?.ensureLoaded() }
             openingProfile?.event("bindingReady")
         }
     }
-    val featureState by host.store.state.collectAsState()
     LaunchedEffect(openingProfile) { openingProfile?.recordFrames() }
+    RegisterDestinationController(controllers, request.serial, host.controller)
+    DisposableEffect(host) {
+        onDispose {
+            host.webView?.dispose()
+            host.binding.close()
+        }
+    }
+    LaunchedEffect(host) {
+        host.store.effects.collect { effect ->
+            if (effect is CommentsFeatureEffect.ThreadReady) {
+                openingProfile?.event("threadReady")
+            }
+            host.binding.handleEffect(
+                effect, scene,
+                onSummaryPageTextRetry = { host.summarize(loadIfNeeded = true) },
+            ) { platformEffect ->
+                handleIosCommentsPlatformEffect(
+                    platformEffect,
+                    app,
+                    scene,
+                    host,
+                )
+            }
+        }
+    }
+    LaunchedEffect(host) {
+        // LaunchedEffect often already runs after draw on iOS, but make that ordering explicit.
+        // Waiting for another frame delayed cached comments in simulator profiles; start as soon
+        // as this draw completes and overlap cache/network work with the opening transition.
+        if (openingProfile?.waitForFirstDraw != false) firstDraw.await()
+        if (openingProfile?.waitForAnotherFrame == true) androidx.compose.runtime.withFrameNanos { }
+        openingProfile?.event("loadInitial")
+        host.binding.loadInitial()
+    }
+
+    return host
+}
+
+@Composable
+internal fun IosCommentsContent(
+    app: HarmonicAppComposition,
+    scene: HarmonicSceneComposition,
+    request: MainStoryRequest,
+    isTablet: Boolean,
+    isTwoPane: Boolean,
+    showUpButton: Boolean,
+    host: IosCommentsHost,
+) {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    var consumedInsets by remember { mutableStateOf<WindowInsets>(WindowInsets(0)) }
+    val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
+    val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
+    val contentInsetRight = contentInsets.getRight(density, layoutDirection)
+    val sideRailWidth = iosSideRailWidth(contentInsets)
+    val browserActionsOnRight = sideRailWidth > 0.dp
+    val firstDraw = host.firstDraw
+    val openingProfile = host.openingProfile
+    val featureState by host.store.state.collectAsState()
     val reading = featureState.settings?.reading
     val foreground = LocalIosForeground.current
     val navigation by scene.navigation.state.collectAsState()
@@ -243,13 +297,6 @@ internal fun IosCommentsContent(
         }
     }
 
-    RegisterDestinationController(controllers, request.serial, host.controller)
-    DisposableEffect(host) {
-        onDispose {
-            host.webView?.dispose()
-            host.binding.close()
-        }
-    }
     val appearance by app.appearance.selections.collectAsState(app.appearance.selection())
     val readerState = host.webView?.reader?.state?.collectAsState()?.value
     val readerColors = MaterialTheme.colorScheme
@@ -274,35 +321,8 @@ internal fun IosCommentsContent(
             ),
         )
     }
-    LaunchedEffect(host) {
-        host.store.effects.collect { effect ->
-            if (effect is CommentsFeatureEffect.ThreadReady) {
-                openingProfile?.event("threadReady")
-            }
-            host.binding.handleEffect(
-                effect, scene,
-                onSummaryPageTextRetry = { host.summarize(loadIfNeeded = true) },
-            ) { platformEffect ->
-                handleIosCommentsPlatformEffect(
-                    platformEffect,
-                    app,
-                    scene,
-                    host,
-                )
-            }
-        }
-    }
     LaunchedEffect(host, isTablet) {
         host.binding.updatePresentationCapabilities(isTablet)
-    }
-    LaunchedEffect(host) {
-        // LaunchedEffect often already runs after draw on iOS, but make that ordering explicit.
-        // Waiting for another frame delayed cached comments in simulator profiles; start as soon
-        // as this draw completes and overlap cache/network work with the opening transition.
-        if (openingProfile?.waitForFirstDraw != false) firstDraw.await()
-        if (openingProfile?.waitForAnotherFrame == true) androidx.compose.runtime.withFrameNanos { }
-        openingProfile?.event("loadInitial")
-        host.binding.loadInitial()
     }
 
     val showFloatingUpButton = showUpButton
@@ -382,6 +402,44 @@ internal fun IosCommentsContent(
     )
     val showStatusBarProtection = !(host.controller.integratedWebView &&
         host.controller.isScrolledToTop)
+    val portal = LocalSideBySideCommentsPortal.current
+    val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
+    SideEffect {
+        host.controller.updateSideBySideAvailability(
+            portal != null && appSettings.appearance.sideBySideEnabled &&
+                host.controller.story.isLink,
+        )
+    }
+    DisposableEffect(portal, host.controller) {
+        onDispose { host.controller.leaveSideBySideHost() }
+    }
+    val actionOverlay: @Composable () -> Unit = {
+        host.controller.displaySettings?.let { settings ->
+            Box(Modifier.fillMaxSize().zIndex(102f)) {
+                CommentActionOverlay(
+                    controller = host.controller,
+                    settings = settings,
+                    hasAccount = accountState.accountOrNull != null,
+                    bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
+                    textStyle = TextStyle.Default,
+                    onOpenLink = { scene.links.open(it) },
+                )
+            }
+        }
+    }
+    val retainedComments = if (portal != null) {
+        rememberSideBySideCommentsContent(host.controller) {
+            CommentsHazeHost {
+                Box(Modifier.fillMaxSize().background(background)) {
+                    comments()
+                    if (showStatusBarProtection || host.controller.sideBySideActive) {
+                        IosStatusBarProtection(protectionColor)
+                    }
+                    actionOverlay()
+                }
+            }
+        }
+    } else null
     CommentsHazeHost {
         Box(
             Modifier
@@ -409,12 +467,12 @@ internal fun IosCommentsContent(
                         else scene.navigation.returnToStories()
                     },
                     listState = listState,
-                    comments = comments,
+                    comments = retainedComments ?: comments,
                 )
             } else {
-                comments()
+                (retainedComments ?: comments)()
             }
-            if (showStatusBarProtection) {
+            if (showStatusBarProtection && portal == null) {
                 IosStatusBarProtection(protectionColor)
             }
             if (showFloatingUpButton && browserActionsOnRight) {
@@ -434,18 +492,7 @@ internal fun IosCommentsContent(
                         .zIndex(101f),
                 )
             }
-            host.controller.displaySettings?.let { settings ->
-                Box(Modifier.fillMaxSize().zIndex(102f)) {
-                    CommentActionOverlay(
-                        controller = host.controller,
-                        settings = settings,
-                        hasAccount = accountState.accountOrNull != null,
-                        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
-                        textStyle = TextStyle.Default,
-                        onOpenLink = { scene.links.open(it) },
-                    )
-                }
-            }
+            if (portal == null) actionOverlay()
         }
     }
 }
