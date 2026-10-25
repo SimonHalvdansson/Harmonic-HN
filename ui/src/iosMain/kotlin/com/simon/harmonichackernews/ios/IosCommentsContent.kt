@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.toArgb
@@ -137,10 +138,8 @@ internal fun IosCommentsContent(
     val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
     val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
     val contentInsetRight = contentInsets.getRight(density, layoutDirection)
-    // Duo reserves an asymmetric strip for status indicators. Ordinary landscape iPhones
-    // have matching side insets and keep their controls in the sheet.
-    val browserActionsOnRight = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone &&
-        with(density) { (contentInsetRight - contentInsetLeft).toDp() } >= 56.dp
+    val sideRailWidth = iosSideRailWidth(contentInsets)
+    val browserActionsOnRight = sideRailWidth > 0.dp
     val firstDraw = remember(app, scene, request.serial) { CompletableDeferred<Unit>() }
     val openingProfile = remember(app, request.serial) {
         IosCommentsOpeningProfile.create(app.metadata.debug, request.storyId)
@@ -265,6 +264,7 @@ internal fun IosCommentsContent(
     LaunchedEffect(featureState, host.controller, contentInsetLeft, contentInsetRight, readerState) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
+                backButtonRequired = true,
                 adBlockActive = false,
                 readerModeAvailable = readerState?.available == true,
                 readerModeEnabled = readerState?.enabled == true,
@@ -305,8 +305,7 @@ internal fun IosCommentsContent(
         host.binding.loadInitial()
     }
 
-    val showFloatingUpButton = showUpButton &&
-        host.controller.displaySettings?.showUpButton == true
+    val showFloatingUpButton = showUpButton
     val topInset = with(density) { contentInsets.getTop(this).toDp() }
     // Duo's inner portrait display keeps status indicators on the right. Its tall top inset
     // has room for Back on the left; ordinary iPhones must still clear their status bar.
@@ -323,10 +322,12 @@ internal fun IosCommentsContent(
             Box(Modifier.fillMaxSize()) {
                 CommentsRoute(
                     controller = host.controller,
-                    reserveUpButtonInset = showFloatingUpButton && !backInTopInset,
+                    reserveUpButtonInset = showFloatingUpButton && !backInTopInset && !browserActionsOnRight,
                     listState = listState,
                     headerContent = { settings ->
-                        IosCommentsHeader(app, scene, host.controller, settings, !browserActionsOnRight) {
+                        IosCommentsHeader(app, scene, host.controller,
+                            settings.copy(showUpButton = settings.showUpButton && !browserActionsOnRight),
+                            !browserActionsOnRight) {
                             val browser = host.webView
                             if (browser?.canGoBack() == true) browser.goBack()
                             else if (isTwoPane) host.controller.requestExpandSheet()
@@ -399,7 +400,7 @@ internal fun IosCommentsContent(
                 IosCommentsScaffold(
                     controller = host.controller,
                     webView = webView,
-                    reserveUpButtonInset = showFloatingUpButton,
+                    reserveUpButtonInset = showFloatingUpButton && !browserActionsOnRight,
                     backInTopInset = backInTopInset,
                     browserActionsOnRight = browserActionsOnRight,
                     onBrowserBack = {
@@ -416,7 +417,14 @@ internal fun IosCommentsContent(
             if (showStatusBarProtection) {
                 IosStatusBarProtection(protectionColor)
             }
-            if (showFloatingUpButton) {
+            if (showFloatingUpButton && browserActionsOnRight) {
+                IosSideRailUpButton(
+                    railWidth = sideRailWidth,
+                    contentDescription = "Navigate up",
+                    onClick = scene.navigation::detailRemovedFromBackStack,
+                    modifier = Modifier.align(AbsoluteAlignment.TopRight).zIndex(101f),
+                )
+            } else if (showFloatingUpButton) {
                 CommentsUpButton(
                     onClick = scene.navigation::detailRemovedFromBackStack,
                     modifier = Modifier

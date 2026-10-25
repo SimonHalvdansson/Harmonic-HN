@@ -14,6 +14,8 @@ data class SettingsPlatformStyle(
     val topBarNavigationHeight: Dp = 56.dp,
     val topBarNavigationInset: Dp = 0.dp,
     val textStyle: TextStyle = TextStyle.Default,
+    val navigationInSideRail: Boolean = false,
+    val backButtonRequired: Boolean = false,
 )
 
 val LocalSettingsPlatformStyle = staticCompositionLocalOf { SettingsPlatformStyle() }

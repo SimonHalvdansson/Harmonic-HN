@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -52,6 +53,7 @@ internal fun IosSubmissionsContent(
     val displaySettings = remember(store) {
         StoryDisplaySettings.from(app.userSettings.story).withShowIndex(false)
     }
+    val railWidth = iosSideRailWidth()
 
     LaunchedEffect(store, scene) {
         store.effects.collect { effect ->
@@ -69,33 +71,43 @@ internal fun IosSubmissionsContent(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.pageBackground)
-                .windowInsetsPadding(
-                    WindowInsets.safeDrawing.only(
-                        WindowInsetsSides.Horizontal,
-                    ),
-                ),
+                .background(MaterialTheme.colorScheme.pageBackground),
         ) {
-            SubmissionsRoute(
-                userName = request.userName,
-                store = store,
-                displaySettings = displaySettings,
-                initialScrollRestoration = initialScrollRestoration,
-                previewService = app.previewResources,
-                tintStore = app.storyResourceTints,
-                includeStatusBarInset = true,
-                reserveBackButtonSpace = true,
-                onOpenLink = { scene.links.open(it) },
-            )
-            IosStatusBarProtection(MaterialTheme.colorScheme.pageBackground)
-            TranslucentBackButton(
-                onClick = scene.navigation::closeSubmissions,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, top = 4.dp)
-                    .zIndex(101f),
-            )
+            Box(
+                Modifier.fillMaxSize().windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                ),
+            ) {
+                SubmissionsRoute(
+                    userName = request.userName,
+                    store = store,
+                    displaySettings = displaySettings,
+                    initialScrollRestoration = initialScrollRestoration,
+                    previewService = app.previewResources,
+                    tintStore = app.storyResourceTints,
+                    includeStatusBarInset = true,
+                    reserveBackButtonSpace = railWidth == 0.dp,
+                    onOpenLink = { scene.links.open(it) },
+                )
+                IosStatusBarProtection(MaterialTheme.colorScheme.pageBackground)
+                if (railWidth == 0.dp) {
+                    TranslucentBackButton(
+                        onClick = scene.navigation::closeSubmissions,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(start = 16.dp, top = 4.dp)
+                            .zIndex(101f),
+                    )
+                }
+            }
+            if (railWidth > 0.dp) {
+                IosSideRailUpButton(
+                    railWidth = railWidth,
+                    onClick = scene.navigation::closeSubmissions,
+                    modifier = Modifier.align(AbsoluteAlignment.TopRight),
+                )
+            }
         }
     }
 }

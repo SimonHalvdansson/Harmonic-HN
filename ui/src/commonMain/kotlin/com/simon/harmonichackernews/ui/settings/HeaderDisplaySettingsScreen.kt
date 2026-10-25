@@ -118,6 +118,7 @@ fun HeaderDisplaySettingsRoute(
     statusBarProtection: @Composable (Color, Dp) -> Unit = { _, _ -> },
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
+    val platformStyle = LocalSettingsPlatformStyle.current
     val account by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val aiSettings by dependencies.aiSummarySettings.updates.collectAsStateWithLifecycle(
         initialValue = dependencies.aiSummarySettings.snapshot(),
@@ -136,7 +137,10 @@ fun HeaderDisplaySettingsRoute(
             localAvailable = dependencies.localSummaryEngine?.isReady() == true,
             cloudApiKeyAvailable = aiSettings.apiKey.isNotBlank(),
         ),
-    )
+    ).let { display ->
+        display.copy(showUpButton = !platformStyle.navigationInSideRail &&
+            (platformStyle.backButtonRequired || display.showUpButton))
+    }
 
     var sampleIndex by rememberSaveable { mutableIntStateOf(0) }
     val sample = HeaderPreviewSample.entries[sampleIndex]
@@ -157,6 +161,18 @@ fun HeaderDisplaySettingsRoute(
         topOverlay = {
             HeaderSettingsStatusBarProtection(listState, headerColor, protection = statusBarProtection)
             HeaderButtonOverflowSnackbar(overflowButtons)
+            if (platformStyle.backButtonRequired && !platformStyle.navigationInSideRail) {
+                // iOS navigation must remain reachable even when a tall preview scrolls away.
+                CommentsUpButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .padding(
+                            start = 16.dp,
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
+                        )
+                        .zIndex(1f),
+                )
+            }
         },
         floatingContent = {
             HeaderPreviewSampleSelector(sample) { sampleIndex = it.ordinal }
@@ -164,7 +180,8 @@ fun HeaderDisplaySettingsRoute(
         pinnedContent = {
             HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
                 onHeaderColorChanged = { headerColor = it },
-                onButtonsOverflowChanged = { overflowButtons = it })
+                onButtonsOverflowChanged = { overflowButtons = it },
+                showBackButton = !platformStyle.backButtonRequired)
         },
     ) {
         item {
@@ -202,13 +219,15 @@ fun HeaderDisplaySettingsRoute(
                     checked = settings.comments.showFavicons,
                     onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_FAVICON, it) },
                 )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Back",
-                    icon = Res.drawable.ic_arrow_back,
-                    checked = state.showUpButton,
-                    onCheckedChange = { presenter.setBoolean(CommentsBooleanSetting.ShowUpButton, it) },
-                )
+                if (!platformStyle.backButtonRequired) {
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Back",
+                        icon = Res.drawable.ic_arrow_back,
+                        checked = state.showUpButton,
+                        onCheckedChange = { presenter.setBoolean(CommentsBooleanSetting.ShowUpButton, it) },
+                    )
+                }
 
             }
         }
@@ -354,6 +373,7 @@ internal fun HeaderDisplayPreview(
     sample: HeaderPreviewSample = HeaderPreviewSample.LINK_WITH_IMAGE,
     onHeaderColorChanged: (Color) -> Unit = {},
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
+    showBackButton: Boolean = true,
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
@@ -391,7 +411,7 @@ internal fun HeaderDisplayPreview(
                 }
             }
             AnimatedVisibility(
-                visible = settings.showUpButton,
+                visible = settings.showUpButton && showBackButton,
                 // Fading creates an offscreen layer. Include the shadow in its bounds so it
                 // doesn't get clipped during the fade and pop back at full opacity.
                 modifier = Modifier.align(Alignment.TopStart).offset(y = statusBarPadding - 12.dp).zIndex(1f),

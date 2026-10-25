@@ -12,6 +12,7 @@ data class CommentsPlatformPresentation(
     val contentInsetLeftPx: Int,
     val contentInsetRightPx: Int,
     val integratedWebViewAvailable: Boolean = true,
+    val backButtonRequired: Boolean = false,
 )
 
 /** Builds the portable comments rendering snapshot from the common feature state. */
@@ -28,7 +29,9 @@ object CommentsScreenStateFactory {
             story = story,
             accountUser = feature.accountUser,
             comments = thread.filteredComments,
-            displaySettings = settings.displaySettings,
+            displaySettings = settings.displaySettings.copy(
+                showUpButton = platform.backButtonRequired || settings.displaySettings.showUpButton,
+            ),
             commentsLoaded = state.loaded,
             showingCached = state.showingCached,
             initialThreadCached = feature.initialThreadCached,

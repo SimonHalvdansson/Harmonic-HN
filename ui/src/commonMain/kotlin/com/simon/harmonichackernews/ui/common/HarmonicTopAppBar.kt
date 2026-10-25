@@ -53,6 +53,7 @@ fun HarmonicTopAppBar(
     navigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
     navigationContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    titleStartPadding: Dp = 16.dp,
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -105,7 +106,7 @@ fun HarmonicTopAppBar(
             }
             Spacer(modifier = Modifier.width(12.dp))
         } else {
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(titleStartPadding))
         }
 
         Text(

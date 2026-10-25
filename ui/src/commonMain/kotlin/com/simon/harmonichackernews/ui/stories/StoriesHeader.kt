@@ -73,6 +73,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -126,6 +127,34 @@ internal inline fun calculateStoriesHeaderCollapsePx(
         precedingIndex++
     }
     return collapsePx.coerceAtMost(headerHeightPx)
+}
+
+/** Hosts can provide a separate search control outside the scrolling header. */
+internal val LocalStoriesSearchInHeader = staticCompositionLocalOf { true }
+internal val LocalStoriesMoreMenuInHeader = staticCompositionLocalOf { true }
+internal val LocalStoriesHeaderMenus = staticCompositionLocalOf<StoriesHeaderMenus?> { null }
+
+internal class StoriesHeaderMenus {
+    var typesExpanded by mutableStateOf(false)
+    var moreExpanded by mutableStateOf(false)
+}
+
+@Composable
+internal fun rememberStoriesHeaderMenus(controller: StoriesScreenController): StoriesHeaderMenus {
+    val menus = remember(controller) { StoriesHeaderMenus() }
+    LaunchedEffect(menus.typesExpanded, menus.moreExpanded) {
+        controller.updateHeaderMenuVisibility(menus.typesExpanded || menus.moreExpanded)
+    }
+    LaunchedEffect(controller.headerMenuDismissRequestVersion) {
+        if (controller.headerMenuDismissRequestVersion > 0) {
+            menus.typesExpanded = false
+            menus.moreExpanded = false
+        }
+    }
+    DisposableEffect(controller) {
+        onDispose { controller.updateHeaderMenuVisibility(false) }
+    }
+    return menus
 }
 
 @Composable
@@ -413,26 +442,15 @@ private fun MainHeader(
     onDismissWelcomeHint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var typesExpanded by remember { mutableStateOf(false) }
-    var moreExpanded by remember { mutableStateOf(false) }
-    val menuVisible = typesExpanded || moreExpanded
-    LaunchedEffect(menuVisible) {
-        controller.updateHeaderMenuVisibility(menuVisible)
-    }
-    LaunchedEffect(controller.headerMenuDismissRequestVersion) {
-        if (controller.headerMenuDismissRequestVersion > 0) {
-            typesExpanded = false
-            moreExpanded = false
-        }
-    }
-    DisposableEffect(controller) {
-        onDispose { controller.updateHeaderMenuVisibility(false) }
+    val menus = LocalStoriesHeaderMenus.current ?: rememberStoriesHeaderMenus(controller)
+    DisposableEffect(menus) {
+        onDispose { menus.typesExpanded = false }
     }
     val settings = controller.displaySettings ?: return
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
     val useDropdown = settings.listSelector == StoryListSelector.DROPDOWN
     LaunchedEffect(useDropdown) {
-        if (!useDropdown) typesExpanded = false
+        if (!useDropdown) menus.typesExpanded = false
     }
     val density = LocalDensity.current
     val title = if (controller.presentation.showingCached) {
@@ -440,6 +458,8 @@ private fun MainHeader(
     } else {
         controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories"
     }
+    val searchInHeader = LocalStoriesSearchInHeader.current
+    val moreInHeader = LocalStoriesMoreMenuInHeader.current
     val textMeasurer = rememberTextMeasurer()
     BoxWithConstraints(modifier.fillMaxWidth().height(56.dp)) {
         val preferredSize = typography.storiesDropdownSelectedSize
@@ -458,11 +478,14 @@ private fun MainHeader(
         }
         // Leave a pixel-rounding margin, and use the same tracking for measuring and drawing.
         val showRefreshButton = showRefreshMenuItem &&
-            maxWidth.value >= titleWidth + 24f + 32f + 3 * 48f
+            maxWidth.value >= titleWidth + 24f + 32f +
+                (1 + (if (searchInHeader) 1 else 0) + (if (moreInHeader) 1 else 0)) * 48f
         val sizing = storyHeaderSizing(
-            maxWidth.value - if (showRefreshButton) 48f else 0f,
+            maxWidth.value - (if (showRefreshButton) 48f else 0f),
             titleWidth + 1f,
             minimumSize / preferredSize,
+            searchInHeader = searchInHeader,
+            moreInHeader = moreInHeader,
         )
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.weight(1f)) {
@@ -473,7 +496,7 @@ private fun MainHeader(
                         .clip(RoundedCornerShape(8.dp))
                         .then(
                             if (useDropdown) Modifier.combinedClickable(
-                                onClick = { typesExpanded = true },
+                                onClick = { menus.typesExpanded = true },
                                 onLongClick = null,
                             ) else Modifier,
                         )
@@ -536,19 +559,19 @@ private fun MainHeader(
                     }
                 }
                 StoryTypeDropdownMenu(
-                    expanded = useDropdown && typesExpanded,
-                    onDismiss = { typesExpanded = false },
+                    expanded = useDropdown && menus.typesExpanded,
+                    onDismiss = { menus.typesExpanded = false },
                     types = controller.presentation.typeLabels.map(StoryType::fromLabel),
                     selectedType = StoryType.fromLabel(controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex)),
                     fontFamily = typography.family,
                     fontSize = typography.storiesDropdownItemSize.sp,
                     onSelected = { type ->
-                        typesExpanded = false
+                        menus.typesExpanded = false
                         onTypeSelected(controller.presentation.typeLabels.indexOf(type.label))
                     },
                 )
             }
-            if (!sizing.searchInMenu) StoriesTooltip("Search") {
+            if (searchInHeader && !sizing.searchInMenu) StoriesTooltip("Search") {
                 IconButton(
                     onClick = controller.listener::onOpenSearch,
                 ) {
@@ -571,36 +594,62 @@ private fun MainHeader(
                     }
                 }
             }
-            Box {
-                StoriesMenuWelcomeHint(showWelcomeHint, onDismissWelcomeHint) { highlighted ->
-                    val highlight by animateColorAsState(
-                        MaterialTheme.colorScheme.primary.copy(alpha = if (highlighted) .12f else 0f),
-                        animationSpec = contentTween(),
-                        label = "welcome menu highlight",
-                    )
-                    IconButton(
-                        onClick = {
-                            onDismissWelcomeHint()
-                            moreExpanded = true
-                        },
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = highlight),
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_more_vert),
-                            "More options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                StoriesMoreMenu(
+            if (moreInHeader) {
+                StoriesMoreMenuControl(
                     controller = controller,
-                    expanded = moreExpanded,
+                    menus = menus,
                     showRefreshItem = showRefreshMenuItem && !showRefreshButton,
-                    showSearchItem = sizing.searchInMenu,
-                    dismiss = { moreExpanded = false },
+                    showSearchItem = searchInHeader && sizing.searchInMenu,
+                    showWelcomeHint = showWelcomeHint,
+                    onDismissWelcomeHint = onDismissWelcomeHint,
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun StoriesMoreMenuControl(
+    controller: StoriesScreenController,
+    menus: StoriesHeaderMenus,
+    showRefreshItem: Boolean = false,
+    showSearchItem: Boolean = false,
+    showWelcomeHint: Boolean = false,
+    onDismissWelcomeHint: () -> Unit = {},
+    buttonModifier: Modifier = Modifier,
+) {
+    DisposableEffect(menus) {
+        onDispose { menus.moreExpanded = false }
+    }
+    Box {
+        StoriesMenuWelcomeHint(showWelcomeHint, onDismissWelcomeHint) { highlighted ->
+            val highlight by animateColorAsState(
+                MaterialTheme.colorScheme.primary.copy(alpha = if (highlighted) .12f else 0f),
+                animationSpec = contentTween(),
+                label = "welcome menu highlight",
+            )
+            IconButton(
+                onClick = {
+                    onDismissWelcomeHint()
+                    menus.moreExpanded = true
+                },
+                modifier = buttonModifier,
+                colors = IconButtonDefaults.iconButtonColors(containerColor = highlight),
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_more_vert),
+                    "More options",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        StoriesMoreMenu(
+            controller = controller,
+            expanded = menus.moreExpanded,
+            showRefreshItem = showRefreshItem,
+            showSearchItem = showSearchItem,
+            dismiss = { menus.moreExpanded = false },
+        )
     }
 }
 
@@ -819,12 +868,19 @@ internal fun HeaderStatus(
 internal data class StoryHeaderSizing(val textScale: Float, val arrowGap: Float, val searchInMenu: Boolean)
 
 /** Prefer a 20dp caret gap, reducing it before shrinking the title or moving Search. */
-internal fun storyHeaderSizing(width: Float, titleWidth: Float, minimumScale: Float): StoryHeaderSizing {
-    // Title padding, dropdown arrow, and two 48dp action targets.
-    val fixedWidth = 12f + 24f + 96f
+internal fun storyHeaderSizing(
+    width: Float,
+    titleWidth: Float,
+    minimumScale: Float,
+    searchInHeader: Boolean = true,
+    moreInHeader: Boolean = true,
+): StoryHeaderSizing {
+    // Title padding, dropdown arrow, More, and an optional Search action.
+    val fixedWidth = 12f + 24f + (if (moreInHeader) 48f else 0f) +
+        if (searchInHeader) 48f else 0f
     val minimumGap = 4f
     val minimum = minimumScale.coerceIn(0f, 1f)
-    val searchInMenu = titleWidth * minimum + fixedWidth + minimumGap > width
+    val searchInMenu = searchInHeader && titleWidth * minimum + fixedWidth + minimumGap > width
     val available = (width - fixedWidth + if (searchInMenu) 48f else 0f).coerceAtLeast(0f)
     val scale = if (titleWidth > 0f) ((available - minimumGap) / titleWidth).coerceIn(minimum, 1f) else 1f
     val gap = (available - titleWidth * scale).coerceIn(minimumGap, 20f)

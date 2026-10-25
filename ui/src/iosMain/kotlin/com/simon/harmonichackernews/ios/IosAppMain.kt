@@ -99,6 +99,32 @@ import com.simon.harmonichackernews.ui.session.HarmonicSceneOwner
 import platform.UIKit.UIDevice
 import platform.UIKit.UIUserInterfaceIdiomPhone
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
+import com.simon.harmonichackernews.ui.stories.LocalStoriesHeaderMenus
+import com.simon.harmonichackernews.ui.stories.LocalStoriesMoreMenuInHeader
+import com.simon.harmonichackernews.ui.stories.StoriesMoreMenuControl
+import com.simon.harmonichackernews.ui.stories.rememberStoriesHeaderMenus
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.ui.zIndex
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_search
+import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
+import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
+import com.simon.harmonichackernews.ui.stories.LocalStoriesSearchInHeader
+import org.jetbrains.compose.resources.painterResource
+
 internal val LocalIosForeground = staticCompositionLocalOf { false }
 
 private data object IosApplicationBackInfo : NavigationEventInfo()
@@ -706,17 +732,67 @@ private fun IosStoriesContent(
         }
     }
 
+    val railWidth = iosSideRailWidth()
+    val headerMenus = rememberStoriesHeaderMenus(controller)
+    val menuHintPending by app.launchState.storiesMenuHintPending.collectAsState()
     Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.pageBackground),
     ) {
-        StoriesRoute(
-            controller = controller,
-            tintStore = app.storyResourceTints,
-            filterColors = filterColors,
-            onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
-        )
+        CompositionLocalProvider(
+            LocalStoriesSearchInHeader provides false,
+            LocalStoriesMoreMenuInHeader provides (railWidth == 0.dp),
+            LocalStoriesHeaderMenus provides headerMenus,
+        ) {
+            StoriesRoute(
+                controller = controller,
+                tintStore = app.storyResourceTints,
+                filterColors = filterColors,
+                onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
+            )
+        }
+        if (!controller.searching && !controller.isStoryPreviewShowing()) {
+            if (railWidth > 0.dp) {
+                Box(
+                    Modifier.align(AbsoluteAlignment.TopRight)
+                        .iosSideRailContent(railWidth)
+                        .padding(top = iosSideRailTopPadding()),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    StoriesMoreMenuControl(
+                        controller = controller,
+                        menus = headerMenus,
+                        showWelcomeHint = menuHintPending && visible && !controller.headerMenuVisible,
+                        onDismissWelcomeHint = app.launchState::dismissStoriesMenuHint,
+                        buttonModifier = Modifier.size(56.dp),
+                    )
+                }
+            }
+            Box(
+                Modifier.align(if (railWidth > 0.dp) AbsoluteAlignment.BottomRight else Alignment.BottomEnd)
+                    .then(if (railWidth > 0.dp) Modifier.iosSideRailContent(railWidth) else
+                        Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)))
+                    .padding(
+                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
+                        end = if (railWidth > 0.dp) 0.dp else 16.dp,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (railWidth > 0.dp) {
+                    IconButton(
+                        onClick = controller.listener::onOpenSearch,
+                        modifier = Modifier.size(56.dp),
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_search), "Search")
+                    }
+                } else {
+                    FloatingActionButton(onClick = controller.listener::onOpenSearch) {
+                        Icon(painterResource(Res.drawable.ic_search), "Search")
+                    }
+                }
+            }
+        }
         IosStatusBarProtection(MaterialTheme.colorScheme.pageBackground)
         if (controller.isStoryPreviewShowing()) {
             IosStoryPreviewOverlay(app, controller)
@@ -759,43 +835,59 @@ private fun IosSettingsShell(
     val scrollHistory = navigation.scrollHistory
     val density = LocalDensity.current
     val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
-    key(isTwoPane) {
-        SettingsNavigationShell(
-            navigation = navigation,
-            directive = directive,
-            supportsTwoPane = supportsTwoPane,
-            isFoldable = expandedPhone,
-            paneProportion = if (expandedPhone) 0.45f else 0.4f,
-            snapToCenter = false,
-            tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
-            onBackFromSettings = scene.navigation::closeSettings,
-            onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
-            animateDetailChanges = false,
-            renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
-                SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
-                    SettingsListScreen(
-                        selectedSection = selectedSection,
-                        showSelection = showSelection,
-                        showDebugSettings = app.metadata.debugSettingsEnabled,
-                        loggedIn = settingsAccountState.accountOrNull != null,
-                        onBack = onBack,
-                        onSectionSelected = onSectionSelected,
-                    )
-                }
-            },
-            renderDetail = { section, singlePane, onBack, onNavigate ->
-                SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
-                    IosSettingsDetail(
-                        section,
-                        app,
-                        scene,
-                        singlePane,
-                        onBack,
-                        onNavigate,
-                    )
-                }
-            },
-        )
+    val railWidth = iosSideRailWidth()
+    Box(Modifier.fillMaxSize()) {
+        ProvideSettingsPlatformStyle(SettingsPlatformStyle(
+            navigationInSideRail = railWidth > 0.dp,
+            backButtonRequired = true,
+        )) {
+            key(isTwoPane) {
+                SettingsNavigationShell(
+                    navigation = navigation,
+                    directive = directive,
+                    supportsTwoPane = supportsTwoPane,
+                    isFoldable = expandedPhone,
+                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
+                    snapToCenter = false,
+                    tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
+                    onBackFromSettings = scene.navigation::closeSettings,
+                    onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
+                    animateDetailChanges = false,
+                    renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
+                        SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
+                            SettingsListScreen(
+                                selectedSection = selectedSection,
+                                showSelection = showSelection,
+                                showDebugSettings = app.metadata.debugSettingsEnabled,
+                                loggedIn = settingsAccountState.accountOrNull != null,
+                                onBack = onBack,
+                                onSectionSelected = onSectionSelected,
+                            )
+                        }
+                    },
+                    renderDetail = { section, singlePane, onBack, onNavigate ->
+                        SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
+                            IosSettingsDetail(
+                                section,
+                                app,
+                                scene,
+                                singlePane,
+                                onBack,
+                                onNavigate,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+        if (railWidth > 0.dp) {
+            IosSideRailUpButton(
+                railWidth = railWidth,
+                onClick = { handleSettingsBack(navigation, scene.navigation::closeSettings) },
+                modifier = Modifier.align(AbsoluteAlignment.TopRight).zIndex(101f),
+                contentDescription = "Navigate up",
+            )
+        }
     }
 }
 

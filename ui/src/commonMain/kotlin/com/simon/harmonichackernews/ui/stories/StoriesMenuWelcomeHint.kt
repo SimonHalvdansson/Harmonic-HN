@@ -9,9 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -57,6 +61,7 @@ import kotlinx.coroutines.delay
 internal fun StoriesMenuWelcomeHint(
     visible: Boolean,
     onDismiss: () -> Unit,
+    contentInsets: WindowInsets = WindowInsets.safeDrawing,
     content: @Composable (highlighted: Boolean) -> Unit,
 ) {
     val state = rememberTooltipState(isPersistent = true)
@@ -75,19 +80,24 @@ internal fun StoriesMenuWelcomeHint(
     }
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    val insets = WindowInsets.safeDrawing
-    val left = insets.getLeft(density, layoutDirection)
-    val right = insets.getRight(density, layoutDirection)
-    val top = insets.getTop(density)
-    val bottom = insets.getBottom(density)
+    fun WindowInsets.snapshot() = StoriesMenuHintInsets(
+        getLeft(density, layoutDirection), getTop(density),
+        getRight(density, layoutDirection), getBottom(density),
+    )
+    val insets = contentInsets.snapshot()
+    val systemInsets = WindowInsets.systemBars.snapshot()
+    val containerSize = LocalWindowInfo.current.containerSize
     val margin = with(density) { 16.dp.roundToPx() }
     val gap = with(density) { 8.dp.roundToPx() }
-    val position = remember(left, right, top, bottom, margin, gap) {
-        StoriesMenuHintPositionProvider(left + margin, right + margin, top + margin, bottom + margin, gap)
+    val position = remember(insets, systemInsets, containerSize, margin, gap) {
+        StoriesMenuHintPositionProvider(insets, systemInsets, containerSize, margin, gap)
     }
     val maxWidth = with(density) {
-        (LocalWindowInfo.current.containerSize.width - left - right - 2 * margin).coerceAtLeast(1).toDp()
+        (containerSize.width - insets.left - insets.right - 2 * margin).coerceAtLeast(1).toDp()
     }.coerceAtMost(320.dp)
+    val maxHeight = with(density) {
+        (containerSize.height - insets.top - insets.bottom - 2 * margin).coerceAtLeast(1).toDp()
+    }
     val colors = TooltipDefaults.richTooltipColors()
     TooltipBox(
         positionProvider = position,
@@ -104,13 +114,16 @@ internal fun StoriesMenuWelcomeHint(
                 contentColor = colors.contentColor,
                 shadowElevation = 3.dp,
             ) {
-                Column(Modifier.width(maxWidth).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
-                    Text("Make it yours", fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
-                        color = colors.titleContentColor, modifier = Modifier.semantics { heading() })
-                    Spacer(Modifier.height(4.dp))
-                    Text("Don't forget to sign in and explore the extensive customization options from the menu",
-                        fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodyMedium)
+                Column(Modifier.width(maxWidth).heightIn(max = maxHeight)
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
+                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                        Text("Make it yours", fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
+                            color = colors.titleContentColor, modifier = Modifier.semantics { heading() })
+                        Spacer(Modifier.height(4.dp))
+                    Text("Login and extensive customization options are available from here when you feel like it",
+                            fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodyMedium)
+                    }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(
@@ -128,17 +141,26 @@ internal fun StoriesMenuWelcomeHint(
     }
 }
 
+internal data class StoriesMenuHintInsets(
+    val left: Int = 0,
+    val top: Int = 0,
+    val right: Int = 0,
+    val bottom: Int = 0,
+)
+
+internal enum class StoriesMenuHintPlacement { Above, Below, Left, Right }
+
 /** Position the container and its caret together, including edge and cutout corrections. */
-private class StoriesMenuHintPositionProvider(
-    private val left: Int,
-    private val right: Int,
-    private val top: Int,
-    private val bottom: Int,
+internal class StoriesMenuHintPositionProvider(
+    private val insets: StoriesMenuHintInsets,
+    private val platformInsets: StoriesMenuHintInsets,
+    private val containerSize: IntSize,
+    private val margin: Int,
     private val gap: Int,
 ) : PopupPositionProvider {
-    var caretX by mutableFloatStateOf(0f)
+    var caretOffset by mutableFloatStateOf(0f)
         private set
-    var below by mutableStateOf(true)
+    var placement by mutableStateOf(StoriesMenuHintPlacement.Below)
         private set
 
     override fun calculatePosition(
@@ -147,29 +169,69 @@ private class StoriesMenuHintPositionProvider(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset {
+        // Some popup hosts (including iOS) remove system bars before calling the provider.
+        // Work in that same coordinate space rather than subtracting those insets twice.
+        val horizontalInsetsRemoved = containerSize.width - windowSize.width ==
+            platformInsets.left + platformInsets.right
+        val verticalInsetsRemoved = containerSize.height - windowSize.height ==
+            platformInsets.top + platformInsets.bottom
+        val left = margin + (insets.left - if (horizontalInsetsRemoved) platformInsets.left else 0).coerceAtLeast(0)
+        val right = margin + (insets.right - if (horizontalInsetsRemoved) platformInsets.right else 0).coerceAtLeast(0)
+        val top = margin + (insets.top - if (verticalInsetsRemoved) platformInsets.top else 0).coerceAtLeast(0)
+        val bottom = margin + (insets.bottom - if (verticalInsetsRemoved) platformInsets.bottom else 0).coerceAtLeast(0)
         val maxX = (windowSize.width - right - popupContentSize.width).coerceAtLeast(left)
-        val x = (anchorBounds.center.x - popupContentSize.width / 2).coerceIn(left, maxX)
         val maxY = (windowSize.height - bottom - popupContentSize.height).coerceAtLeast(top)
+        // A menu outside the safe content area belongs to a side rail. Point sideways at it,
+        // independent of device name, screen proportions, or the rail's physical width.
+        val besideRightRail = anchorBounds.center.x > windowSize.width - right &&
+            anchorBounds.left - gap - popupContentSize.width >= left
+        val besideLeftRail = anchorBounds.center.x < left &&
+            anchorBounds.right + gap + popupContentSize.width <= windowSize.width - right
+        if (besideRightRail || besideLeftRail) {
+            placement = if (besideRightRail) StoriesMenuHintPlacement.Left else StoriesMenuHintPlacement.Right
+            val x = (if (besideRightRail) anchorBounds.left - gap - popupContentSize.width
+                else anchorBounds.right + gap).coerceIn(left, maxX)
+            val y = (anchorBounds.center.y - popupContentSize.height / 2).coerceIn(top, maxY)
+            caretOffset = (anchorBounds.center.y - y).toFloat()
+            return IntOffset(x, y)
+        }
+        val x = (anchorBounds.center.x - popupContentSize.width / 2).coerceIn(left, maxX)
         val preferredY = anchorBounds.bottom + gap
-        below = preferredY <= maxY
+        val below = preferredY <= maxY
+        placement = if (below) StoriesMenuHintPlacement.Below else StoriesMenuHintPlacement.Above
         val y = (if (below) preferredY else anchorBounds.top - gap - popupContentSize.height).coerceIn(top, maxY)
-        caretX = (anchorBounds.center.x - x).toFloat()
+        caretOffset = (anchorBounds.center.x - x).toFloat()
         return IntOffset(x, y)
     }
 }
 
 private class StoriesMenuHintShape(private val position: StoriesMenuHintPositionProvider) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val radius = with(density) { 12.dp.toPx() }
-        val halfCaret = with(density) { 8.dp.toPx() }
-        val x = position.caretX.coerceIn(radius + halfCaret, size.width - radius - halfCaret)
-        val y = if (position.below) 0f else size.height
-        val tip = y + if (position.below) -halfCaret else halfCaret
+        val horizontal = position.placement == StoriesMenuHintPlacement.Left ||
+            position.placement == StoriesMenuHintPlacement.Right
+        val edgeLength = if (horizontal) size.height else size.width
+        val radius = minOf(with(density) { 12.dp.toPx() }, size.minDimension / 2f)
+        val halfCaret = minOf(with(density) { 8.dp.toPx() }, (edgeLength / 2f - radius).coerceAtLeast(0f))
+        val offset = position.caretOffset.coerceIn(radius + halfCaret, edgeLength - radius - halfCaret)
         val body = Path().apply { addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(radius))) }
+        if (halfCaret == 0f) return Outline.Generic(body)
         val caret = Path().apply {
-            moveTo(x - halfCaret, y)
-            lineTo(x, tip)
-            lineTo(x + halfCaret, y)
+            when (position.placement) {
+                StoriesMenuHintPlacement.Left, StoriesMenuHintPlacement.Right -> {
+                    val x = if (position.placement == StoriesMenuHintPlacement.Left) size.width else 0f
+                    val tip = x + if (position.placement == StoriesMenuHintPlacement.Left) halfCaret else -halfCaret
+                    moveTo(x, offset - halfCaret)
+                    lineTo(tip, offset)
+                    lineTo(x, offset + halfCaret)
+                }
+                StoriesMenuHintPlacement.Above, StoriesMenuHintPlacement.Below -> {
+                    val y = if (position.placement == StoriesMenuHintPlacement.Below) 0f else size.height
+                    val tip = y + if (position.placement == StoriesMenuHintPlacement.Below) -halfCaret else halfCaret
+                    moveTo(offset - halfCaret, y)
+                    lineTo(offset, tip)
+                    lineTo(offset + halfCaret, y)
+                }
+            }
             close()
         }
         return Outline.Generic(Path.combine(PathOperation.Union, body, caret))

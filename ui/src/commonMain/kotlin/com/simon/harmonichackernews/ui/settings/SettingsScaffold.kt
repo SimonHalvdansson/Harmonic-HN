@@ -120,11 +120,16 @@ private fun SettingsTopAppBar(
     val platformStyle = LocalSettingsPlatformStyle.current
     HarmonicTopAppBar(
         title = title,
-        onBack = onBack,
+        onBack = onBack.takeUnless { platformStyle.navigationInSideRail },
         toolbarHeight = platformStyle.topBarHeight,
         navigationHeight = platformStyle.topBarNavigationHeight,
         navigationInset = platformStyle.topBarNavigationInset,
         platformTextStyle = platformStyle.textStyle,
+        titleStartPadding = if (platformStyle.navigationInSideRail) {
+            HarmonicDimens.settings_list_segment_horizontal_margin
+        } else {
+            16.dp
+        },
     )
 }
 

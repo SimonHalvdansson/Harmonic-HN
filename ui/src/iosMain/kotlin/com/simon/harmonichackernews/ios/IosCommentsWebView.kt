@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.ios
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.background
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.only
@@ -55,7 +52,6 @@ import com.simon.harmonichackernews.ui.comments.canDragCommentsSheet
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsSheetCollapsedHeight
 import com.simon.harmonichackernews.ui.comments.CommentsSheetHandleAreaHeight
-import com.simon.harmonichackernews.ui.comments.CommentsSheetButtonSize
 import com.simon.harmonichackernews.ui.comments.CommentsBrowserActionRail
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -92,6 +88,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.AbsoluteAlignment
 import com.simon.harmonichackernews.presentation.NativeReaderModeSession
 
 /**
@@ -510,7 +507,6 @@ internal fun IosCommentsScaffold(
     val rightInset = with(density) {
         controller.contentInsetRightPx.toDp()
     }
-    val railTopInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
     // Read the actual list state in gesture callbacks, not the asynchronously published
     // controller flag. Rotation/restoration can temporarily leave that flag stale.
     val canDragSheet = remember(controller, listState) {
@@ -572,18 +568,6 @@ internal fun IosCommentsScaffold(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
         val showInvert = controller.displaySettings?.showInvert == true
-        val railButtonCount = 4 + (if (controller.readerModeAvailable) 1 else 0) +
-            (if (showInvert) 1 else 0)
-        // Duo's status indicators extend below the top safe area. Leave room for them,
-        // while keeping the last action above the sheet in shorter orientations.
-        val railTopPadding by animateDpAsState(
-            targetValue = minOf(
-                maxOf(railTopInset + 80.dp, 160.dp) + 8.dp,
-                (fullHeight - peekHeight - CommentsSheetButtonSize * railButtonCount).coerceAtLeast(0.dp),
-            ),
-            animationSpec = tween(if (controller.readerModeAvailable) 180 else 140),
-            label = "browser action rail clearance",
-        )
         val travelPx = with(density) { (fullHeight - peekHeight).toPx().coerceAtLeast(1f) }
 
         LaunchedEffect(controller.sheetRequest) {
@@ -652,9 +636,9 @@ internal fun IosCommentsScaffold(
                         showInvert = showInvert,
                         onAction = controller.listener::onSheetAction,
                         onBrowserBack = onBrowserBack,
-                        modifier = Modifier.align(Alignment.TopEnd)
-                            .padding(top = railTopPadding)
-                            .width(rightInset),
+                        modifier = Modifier.align(AbsoluteAlignment.BottomRight)
+                            .padding(bottom = peekHeight + 8.dp)
+                            .iosSideRailContent(rightInset),
                     )
                 }
                 Box(

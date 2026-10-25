@@ -47,4 +47,33 @@ class CommentsBrowserCapabilityTest {
             feature, platform.copy(integratedWebViewAvailable = true),
         )).integratedWebView)
     }
+    @Test
+    fun requiredBackButtonOverridesAnImportedHiddenButtonPreference() {
+        val settings = StoredUserSettings(InMemoryKeyValueStore(), emptyFlow())
+        val display = CommentDisplaySettings.from(
+            settings.comments, showInvert = false, isTablet = false,
+            hasAccountDetails = false, canProvideSummary = false,
+        ).copy(showUpButton = false)
+        val feature = CommentsState(
+            story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()),
+            settings = CommentsSettingsState(
+                displaySettings = display,
+                reading = settings.reading,
+                integratedWebView = true,
+                smoothScroll = true,
+                transparentStatusBar = false,
+            ),
+        )
+        val platform = CommentsPlatformPresentation(
+            adBlockActive = false, readerModeAvailable = false, readerModeEnabled = false,
+            topInsetPx = 0, contentInsetLeftPx = 0, contentInsetRightPx = 0,
+        )
+        assertFalse(assertNotNull(assertNotNull(CommentsScreenStateFactory.create(feature, platform))
+            .displaySettings).showUpButton)
+        assertTrue(assertNotNull(assertNotNull(CommentsScreenStateFactory.create(
+            feature, platform.copy(backButtonRequired = true),
+        )).displaySettings).showUpButton)
+        assertFalse(display.showUpButton, "Host requirements must not rewrite shared preferences")
+    }
+
 }

@@ -7,6 +7,21 @@ import kotlin.test.assertTrue
 
 class StoryHeaderSizingTest {
     @Test
+    fun separateRailActionsLeaveRoomForTheFullTitle() {
+        val sizing = storyHeaderSizing(300f, 240f, 0.8f, searchInHeader = false, moreInHeader = false)
+        assertEquals(1f, sizing.textScale)
+        assertEquals(20f, sizing.arrowGap)
+        assertFalse(sizing.searchInMenu)
+    }
+
+    @Test
+    fun separateSearchControlLeavesRoomForTheFullTitle() {
+        val sizing = storyHeaderSizing(300f, 200f, 0.8f, searchInHeader = false)
+        assertEquals(1f, sizing.textScale)
+        assertFalse(sizing.searchInMenu)
+    }
+
+    @Test
     fun wideHeaderKeepsFullTitleAndSearch() {
         val sizing = storyHeaderSizing(500f, 200f, 0.8f)
         assertEquals(1f, sizing.textScale)
