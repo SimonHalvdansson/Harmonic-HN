@@ -97,6 +97,11 @@ object AiSummaryProviders {
                 break
             }
         }
+        // Anthropic's own IDs are fully dash-delimited ("claude-haiku-5-5"), whereas OpenRouter
+        // uses dots in version numbers ("claude-haiku-5.5").
+        if (PROVIDER_ANTHROPIC == provider.id) {
+            modelId = modelId.replace('.', '-')
+        }
         return modelId
     }
 
@@ -107,8 +112,26 @@ object AiSummaryProviders {
         ) {
             return modelId
         }
+        if (PROVIDER_ANTHROPIC == provider.id) {
+            return provider.catalogAuthor + "/" + restoreVersionDots(modelId)
+        }
         return provider.catalogAuthor + "/" + modelId
     }
+
+    private fun restoreVersionDots(dashedModelId: String): String {
+        val segments = dashedModelId.split('-')
+        return buildString {
+            segments.forEachIndexed { index, segment ->
+                if (index > 0) {
+                    val joinsVersionDigits = isSingleDigit(segments[index - 1]) && isSingleDigit(segment)
+                    append(if (joinsVersionDigits) '.' else '-')
+                }
+                append(segment)
+            }
+        }
+    }
+
+    private fun isSingleDigit(segment: String): Boolean = segment.length == 1 && segment[0].isDigit()
 
     fun translateModelId(
         oldProvider: Provider, newProvider: Provider,
