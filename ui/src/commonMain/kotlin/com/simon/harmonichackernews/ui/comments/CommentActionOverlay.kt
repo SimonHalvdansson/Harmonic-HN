@@ -43,7 +43,6 @@ import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.Button
-import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import com.simon.harmonichackernews.ui.common.modalCardTapBoundary
 import com.simon.harmonichackernews.ui.common.predictiveBackVisualProgress
 import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
@@ -351,8 +350,6 @@ fun CommentActionOverlay(
             }
         },
     )
-    val modalGestures = Modifier.consumeAllPointerGestures()
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -364,7 +361,8 @@ fun CommentActionOverlay(
                 .background(
                     Color.Black.copy(alpha = scrimAlpha),
                 )
-                .then(modalGestures)
+                // This scrim owns the touch sequence. An additional gesture consumer would
+                // cancel clickable on even a tiny move between the finger going down and up.
                 .clickable(
                     enabled = dismissRequest == 0,
                     interactionSource = remember { MutableInteractionSource() },

@@ -5,6 +5,7 @@ package com.simon.harmonichackernews.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -592,6 +593,73 @@ class CommentAppearanceRegressionTest {
         compose.waitUntil(5_000) { !controller.isCommentActionOverlayShowing() }
         compose.onNodeWithText("Body 1").assertDoesNotExist()
     }
+    @Test
+    fun outsideTapsWithSmallMovementDismissWithoutClickingThrough() {
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        val mode = mutableStateOf(SurfaceEffectMode.Solid)
+        var scrim = 0f
+        var backgroundClicks = 0
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(
+                    LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
+                    LocalHazePreferences provides SurfaceEffectPreferences(mode = mode.value),
+                ) {
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
+                        HazeHost {
+                            Box(Modifier.fillMaxSize().testTag("outside-tap-root")) {
+                                Box(Modifier.fillMaxSize().clickable { backgroundClicks++ })
+                                CommentActionOverlay(controller, settings, false, false, TextStyle.Default,
+                                    onOpenLink = {}, onScrimAlphaChanged = { scrim = it })
+                            }
+                        }
+                    }
+                }
+            }
+            val regions = listOf(
+                "above" to Offset(0.5f, 0.10f), "below" to Offset(0.5f, 0.90f),
+                "left" to Offset(0.02f, 0.50f), "right" to Offset(0.98f, 0.50f),
+            )
+            for (appearance in listOf(SurfaceEffectMode.Solid, SurfaceEffectMode.Frosted, SurfaceEffectMode.Glass)) {
+                compose.runOnIdle { mode.value = appearance }
+                for ((region, fraction) in regions) for (jitter in listOf(false, true)) {
+                    compose.runOnIdle { controller.restoreCommentActions(comment(1, 0)) }
+                    compose.waitUntil(5_000) { abs(scrim - 0.32f) < 0.001f }
+                    compose.onNodeWithText("Body 1").performTouchInput { click() }
+                    compose.runOnIdle {
+                        assertEquals("A tap inside the card must not dismiss it", 0, controller.commentActionDismissRequest)
+                    }
+                    compose.onNodeWithTag("outside-tap-root").performTouchInput {
+                        val point = Offset(width * fraction.x, height * fraction.y)
+                        if (jitter) {
+                            down(point)
+                            moveTo(point + Offset(1f, 1f), delayMillis = 32)
+                            up()
+                        } else click(point)
+                    }
+                    compose.runOnIdle {
+                        assertTrue("$appearance $region jitter=$jitter must dismiss",
+                            !controller.isCommentActionOverlayShowing() || controller.commentActionDismissRequest != 0)
+                        assertEquals("Outside taps must not activate the underlying screen", 0, backgroundClicks)
+                    }
+                    compose.waitUntil(5_000) { !controller.isCommentActionOverlayShowing() }
+                }
+            }
+        } finally { scene.close() }
+    }
+
     /** Also exports clock-matched frames when commentComparisonDir is supplied to instrumentation. */
     @Test
     fun nestedCollapsePreservesMotionContentAndScrollAcrossDisplayStyles() {

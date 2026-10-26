@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.PixelMap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
@@ -156,9 +157,14 @@ class CommentActionRotationTest {
             landscape.value = false
             repeat(20) { frame() }
             frame("portrait-dialog-after-rotation")
-            // Exercise the scrim hit path as well as the shared return animation.
-            scene.sendPointerEvent(PointerEventType.Press, Offset(8f, 400f), timeMillis = time / 1_000_000)
-            scene.sendPointerEvent(PointerEventType.Release, Offset(8f, 400f), timeMillis = time / 1_000_000 + 1)
+            // Real finger taps can move slightly. They must still dismiss through the shared
+            // return animation rather than being cancelled by the modal's gesture handling.
+            scene.sendPointerEvent(PointerEventType.Press, Offset(8f, 400f),
+                timeMillis = time / 1_000_000, type = PointerType.Touch)
+            scene.sendPointerEvent(PointerEventType.Move, Offset(9f, 401f),
+                timeMillis = time / 1_000_000 + 16, type = PointerType.Touch)
+            scene.sendPointerEvent(PointerEventType.Release, Offset(9f, 401f),
+                timeMillis = time / 1_000_000 + 32, type = PointerType.Touch)
             assertTrue(controller.commentActionDismissRequest != 0)
             var lastCovered: PixelMap? = null
             repeat(45) {
