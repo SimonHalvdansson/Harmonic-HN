@@ -214,6 +214,116 @@ class CommentAppearanceRegressionTest {
     fun newCommentDotMovesSmoothlyToTheLeftOfCollapsedReplyCount() = assertReplyCountMotion(isNew = true)
 
     @Test
+    fun hnPreviewUsesPdfAndVideoTitleBadges() {
+        val sample = mutableStateOf("pdf")
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.fillMaxSize().background(palette.colorScheme.pageBackground), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    ReferenceCardContent(
+                        url = "https://news.ycombinator.com/item?id=42", fallbackTitle = "", favicon = null,
+                        summary = ReferenceSummaryUiState(result = com.simon.harmonichackernews.network.LinkSummary(
+                            title = if (sample.value == "pdf") "Attention Is All You Need [pdf]" else "The Mother of All Demos [video]",
+                            contentType = com.simon.harmonichackernews.network.LinkSummaryParser.HACKER_NEWS_ITEM_CONTENT_TYPE,
+                            siteName = com.simon.harmonichackernews.network.LinkSummaryParser.HACKER_NEWS_STORY_SITE_NAME,
+                            author = "reader", publishedTime = "2h", storyPoints = 128, storyComments = 42,
+                            storyUrl = if (sample.value == "pdf") "https://example.com/paper.pdf" else "https://www.youtube.com/watch?v=yJDv-zdhzMY",
+                        )), preferredFont = "default", commentTextSize = 14f, offline = false, textStyle = TextStyle.Default,
+                        referenceImage = { _, _, _, _, _, _, _, _ -> }, onOpen = {},
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        capturePolishFrame("pdf")
+        if (!polishBaseline()) compose.onNodeWithContentDescription("PDF", useUnmergedTree = true).assertExists()
+        compose.runOnIdle { sample.value = "video" }
+        compose.waitForIdle()
+        capturePolishFrame("video")
+        if (!polishBaseline()) compose.onNodeWithContentDescription("Video", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun commentActionUsesSharedOpBadge() {
+        val story = StoryListItemSnapshot(StorySnapshot(42, author = "reader"), StoryPresentationSnapshot(loaded = true))
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = story, initialThreadCached = true,
+            showWebsite = false, initialScrollRestorationPending = false, accountUser = null,
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            }, listener = NoOpListener(),
+        )
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.fillMaxSize().background(palette.colorScheme.pageBackground)) {
+                    CommentActionOverlay(controller, settings, false, false, TextStyle.Default, onOpenLink = {})
+                }
+            }
+        }
+        compose.runOnIdle { controller.restoreCommentActions(PortableCommentItem(CommentSnapshot(1, author = "reader", text = "A comment from the original poster.", expandedAnchorText = "A comment from the original poster."), CommentPresentationSnapshot(expanded = true))) }
+        compose.waitForIdle()
+        capturePolishFrame("op")
+        if (!polishBaseline()) compose.onNodeWithText("OP", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun storyFailureRetryRemainsOneCompactClickableTarget() {
+        var retries = 0
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.fillMaxSize().background(palette.colorScheme.pageBackground), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    com.simon.harmonichackernews.ui.stories.StoryLoadFailureItem(onRetry = { retries++ })
+                }
+            }
+        }
+        compose.waitForIdle()
+        capturePolishFrame("retry")
+        compose.onNodeWithText("Tap to try again").performClick()
+        assertEquals(1, retries)
+    }
+
+    private fun polishBaseline() = InstrumentationRegistry.getArguments().getString("polishBaseline") == "true"
+
+    @Test
+    fun debugNewCommentsOverrideIsLimitedToTheOpenedStory() {
+        val rows = listOf(comment(1, 0), comment(2, 1))
+        val story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true))
+        val thread = PortableCommentThreadState(
+            allComments = listOf(comment(-1, 0)) + rows,
+            filteredComments = listOf(comment(-1, 0)) + rows,
+            searchResults = rows,
+            visibleComments = rows.mapIndexed { i, row -> PortableVisibleComment(i + 1, row, 0) },
+        )
+        val feature = CommentsState(story = story, presenter = CommentsPresenterState(thread = thread),
+            settings = CommentsSettingsState(settings.copy(markNewComments = false),
+                (compose.activity.application as HarmonicApplication).composition.userSettings.reading, false, true, false),
+            debugMarkAllCommentsNew = true)
+        val platform = CommentsPlatformPresentation(false, false, false, topInsetPx = 0, contentInsetLeftPx = 0, contentInsetRightPx = 0)
+        val debug = requireNotNull(CommentsScreenStateFactory.create(feature, platform))
+        assertTrue(debug.visibleComments.all { it.comment.isNew })
+        assertTrue(debug.searchResults.all { it.isNew })
+        assertTrue(requireNotNull(debug.displaySettings).markNewComments)
+        assertFalse(debug.comments.first().isNew)
+        val normal = requireNotNull(CommentsScreenStateFactory.create(feature.copy(debugMarkAllCommentsNew = false), platform))
+        assertTrue(normal.visibleComments.none { it.comment.isNew })
+        assertFalse(requireNotNull(normal.displaySettings).markNewComments)
+        assertTrue(rows.none { it.isNew })
+    }
+
+    private fun capturePolishFrame(name: String) {
+        val label = InstrumentationRegistry.getArguments().getString("polishEvidence") ?: return
+        val directory = File(compose.activity.getExternalFilesDir(null), "polish/$label").apply { mkdirs() }
+        InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot().let { bitmap ->
+            File(directory, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun olderCommentReplyCountFadesAtFullWidthWithoutClipping() = assertReplyCountMotion(isNew = false)
 
     private fun assertReplyCountMotion(isNew: Boolean) {
@@ -235,7 +345,7 @@ class CommentAppearanceRegressionTest {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies) {
                     HarmonicTheme(palette.colorScheme.copy(tertiary = Color(0xFF0066CC)), palette.dark) {
                         CommentRow(
-                            modifier = Modifier.background(Color.White),
+                            modifier = Modifier.padding(top = 96.dp).background(Color.White),
                             comment = item.value,
                             style = CommentRowStyle(
                                 displayStyle = DisplayStyle.FLAT, textSize = 14f, collectLinks = false,
@@ -243,7 +353,7 @@ class CommentAppearanceRegressionTest {
                                 preferredFont = "default", animateChanges = true,
                             ),
                             storyAuthor = null, accountUser = null, userTag = null,
-                            subtreeReplyCount = 1, collapseParent = false, showTopLevelIndicator = true,
+                            subtreeReplyCount = 1, collapseParent = true, showTopLevelIndicator = true,
                             onToggleExpanded = {}, onShowActions = {}, onLinkLongClick = { _, _, _ -> },
                             onReferenceLongClick = { _, _, _ -> },
                         )
@@ -255,12 +365,14 @@ class CommentAppearanceRegressionTest {
             fun dotX() = compose.onNodeWithContentDescription("New comment", useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot.center.x
             val expandedX = if (isNew) dotX() else 0f
+            if (isNew) capturePolishFrame("dot-expanded")
             compose.runOnIdle {
                 store.toggleExpanded(1)
                 item.value = store.state.value.visibleComments.first().comment
             }
             compose.mainClock.advanceTimeBy(64)
             val movingX = if (isNew) dotX() else 0f
+            if (isNew) capturePolishFrame("dot-collapse-64")
             val fadingCount = compose.onNodeWithText("+1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             // Bounds alone miss offscreen alpha layers clipping raised drawing. Inspect the
             // actual pill pixels while it is still fading, including its topmost straight edge.
@@ -271,8 +383,14 @@ class CommentAppearanceRegressionTest {
             val top = pixels[(pillCenterX - rootBounds.left).toInt(), (fadingCount.top - rootBounds.top + 1).toInt()]
             val middle = pixels[(fadingCount.right - rootBounds.left - 2 * density).toInt(), (fadingCount.center.y - rootBounds.top).toInt()]
             fun contrastFromWhite(color: Color) = abs(1f - color.red) + abs(1f - color.green) + abs(1f - color.blue)
-            assertTrue("Pill top must remain painted during fade: top=$top middle=$middle",
+            if (!isNew) assertTrue("Pill top must remain painted during fade: top=$top middle=$middle",
                 contrastFromWhite(top) > contrastFromWhite(middle) * 0.7f)
+            val collapseSamples = mutableListOf<Pair<Long, Float>>()
+            if (isNew) repeat(12) { frame ->
+                compose.mainClock.advanceTimeBy(16)
+                collapseSamples += (80 + frame * 16L) to dotX()
+                if (frame in listOf(0, 3, 6, 7, 8, 9, 10, 11)) capturePolishFrame("dot-collapse-${80 + frame * 16}")
+            }
             compose.mainClock.advanceTimeBy(800)
             val collapsedX = if (isNew) dotX() else 0f
             val count = compose.onNodeWithText("+1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -285,6 +403,7 @@ class CommentAppearanceRegressionTest {
                 return
             }
             val dot = compose.onNodeWithContentDescription("New comment", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            capturePolishFrame("dot-collapsed")
             assertEquals("Dot and count share the raised center", count.center.y, dot.center.y, 1f)
             assertTrue("Dot moves gradually while the count appears", movingX < expandedX && movingX > collapsedX)
             assertTrue("Reply count is to the right of the dot", count.left > collapsedX)
@@ -292,9 +411,48 @@ class CommentAppearanceRegressionTest {
                 store.toggleExpanded(1)
                 item.value = store.state.value.visibleComments.first().comment
             }
-            compose.mainClock.advanceTimeBy(64)
-            assertTrue("Dot animates back when expanded", dotX() > collapsedX && dotX() < expandedX)
+            val samples = mutableListOf<Pair<Long, Float>>()
+            var expandingPillEdges: Pair<Color, Color>? = null
+            repeat(16) { frame ->
+                compose.mainClock.advanceTimeBy(16)
+                samples += (frame + 1) * 16L to dotX()
+                if (frame in listOf(0, 3, 7, 11, 12, 13, 15)) capturePolishFrame("dot-expand-${(frame + 1) * 16}")
+                if (frame == 3) {
+                    val framePixels = compose.onRoot().captureToImage().toPixelMap()
+                    val y = (count.center.y - rootBounds.top).toInt()
+                    // Probe the painted padding outside the glyphs, rather than the white
+                    // '+'/'1' pixels inside the Text semantics bounds.
+                    expandingPillEdges = framePixels[(count.left - rootBounds.left - 3 * density).toInt(), y] to
+                        framePixels[(count.right - rootBounds.left + 3 * density).toInt(), y]
+                }
+            }
+            val label = InstrumentationRegistry.getArguments().getString("polishEvidence")
+            if (label != null) File(compose.activity.getExternalFilesDir(null), "polish/$label/dot-positions.txt")
+                .writeText("expanded=$expandedX collapsed=$collapsedX\ncollapse\n" + collapseSamples.joinToString("\n") + "\nexpand\n" + samples.joinToString("\n"))
+            assertTrue("Collapse must keep moving toward its resting position", collapseSamples.zipWithNext().all { (a, b) -> b.second <= a.second })
+            assertTrue("Expansion must keep moving toward its resting position", samples.zipWithNext().all { (a, b) -> b.second >= a.second })
+            assertTrue("No final-frame jump when the count disappears", samples.takeLast(3).all { abs(it.second - expandedX) <= 1f })
             compose.mainClock.advanceTimeBy(800)
+            assertEquals(expandedX, dotX(), 1f)
+            if (!polishBaseline()) {
+                val (left, right) = requireNotNull(expandingPillEdges)
+                assertEquals("The fading pill must remain painted at both edges while expanding", right.red, left.red, 0.05f)
+            }
+            compose.runOnIdle {
+                store.toggleExpanded(1)
+                item.value = store.state.value.visibleComments.first().comment
+            }
+            compose.mainClock.advanceTimeBy(64)
+            val beforeReversalX = dotX()
+            compose.mainClock.advanceTimeBy(16)
+            val reversalX = dotX()
+            compose.runOnIdle {
+                store.toggleExpanded(1)
+                item.value = store.state.value.visibleComments.first().comment
+            }
+            compose.mainClock.advanceTimeByFrame()
+            assertTrue("Reversal must not exceed the preceding frame's motion", abs(dotX() - reversalX) <= abs(reversalX - beforeReversalX) + 1f)
+            compose.mainClock.advanceTimeBy(400)
             assertEquals(expandedX, dotX(), 1f)
         } finally {
             compose.mainClock.autoAdvance = true
@@ -666,6 +824,7 @@ class CommentAppearanceRegressionTest {
         val store = CommentThreadStore()
         val story = Story().apply { id = 100 }
         store.reset(story)
+        store.replaceParsedComments(story, emptyList(), "Default", false)
         store.replaceParsedComments(story, (1..40).map { id ->
             Comment().apply {
                 this.id = id
@@ -754,6 +913,17 @@ class CommentAppearanceRegressionTest {
                 captureComparisonFrame("$label-collapse64")
                 compose.mainClock.advanceTimeBy(64)
                 captureComparisonFrame("$label-collapse128")
+                val dotSamples = mutableListOf<Float>()
+                repeat(10) { frame ->
+                    compose.mainClock.advanceTimeBy(16)
+                    dotSamples += compose.onAllNodesWithContentDescription("New comment", useUnmergedTree = true)
+                        .fetchSemanticsNodes().first().boundsInRoot.center.x
+                    if (display == DisplayStyle.FLAT && collapseBody) capturePolishFrame("thread-collapse-${144 + frame * 16}")
+                }
+                InstrumentationRegistry.getArguments().getString("polishEvidence")?.let { evidence ->
+                    val dir = File(compose.activity.getExternalFilesDir(null), "polish/$evidence").apply { mkdirs() }
+                    File(dir, "thread-$label.txt").writeText(dotSamples.joinToString("\n"))
+                }
                 compose.mainClock.advanceTimeBy(400)
                 compose.onNodeWithText("reader2").assertDoesNotExist()
                 captureComparisonFrame("$label-collapsed")

@@ -53,6 +53,13 @@ fun AndroidDebugSettingsScreen(
                 }
             }
         },
+        onOpenNewCommentsPost = {
+            scope.launch {
+                if (DebugCachedPostFixture.seed(app.storyCache::storeStory)) {
+                    app.navigation.openStory(DebugCachedPostFixture.story().toDestination().copy(debugMarkAllCommentsNew = true))
+                }
+            }
+        },
         onOpenLink = { app.links.open(it) },
         onOpenLinkPreviews = onOpenLinkPreviews,
         onOpenGlassSettings = onOpenGlassSettings,

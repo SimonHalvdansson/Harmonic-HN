@@ -372,6 +372,13 @@ private fun PortableDebugSettings(
                 }
             }
         },
+        onOpenNewCommentsPost = {
+            scope.launch {
+                if (DebugCachedPostFixture.seed(app.storyCache::storeStory)) {
+                    scene.navigation.openStory(DebugCachedPostFixture.story().toDestination().copy(debugMarkAllCommentsNew = true))
+                }
+            }
+        },
         onOpenLink = scene.links::open,
         onOpenLinkPreviews = onOpenLinkPreviews,
         onOpenGlassSettings = onOpenGlassSettings,

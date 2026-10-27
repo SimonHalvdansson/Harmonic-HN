@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.presentation.CommentsState
 import com.simon.harmonichackernews.presentation.StoryLoadFailure
+import com.simon.harmonichackernews.debug.DebugCachedPostFixture
 
 data class CommentsPlatformPresentation(
     val adBlockActive: Boolean,
@@ -25,22 +26,32 @@ object CommentsScreenStateFactory {
         val settings = feature.settings ?: return null
         val state = feature.presenter
         val thread = state.thread
+        val headerId = thread.allComments.firstOrNull()?.id
+        val comments = if (feature.debugMarkAllCommentsNew) {
+            thread.filteredComments.map { if (it.id == headerId) it else it.copy(isNew = true) }
+        } else thread.filteredComments
+        val debugComments = if (feature.debugMarkAllCommentsNew) comments.associateBy { it.id } else emptyMap()
+        // This seeded sample has no remote HN item. Once its cached thread is present,
+        // keep expected refresh failures out of the animation-testing surface.
+        val debugSampleLoaded = feature.debugMarkAllCommentsNew &&
+            story.id == DebugCachedPostFixture.storyId && thread.visibleComments.isNotEmpty()
         return CommentsScreenState(
             story = story,
             accountUser = feature.accountUser,
-            comments = thread.filteredComments,
+            comments = comments,
             displaySettings = settings.displaySettings.copy(
                 showUpButton = platform.backButtonRequired || settings.displaySettings.showUpButton,
+                markNewComments = feature.debugMarkAllCommentsNew || settings.displaySettings.markNewComments,
             ),
-            commentsLoaded = state.loaded,
+            commentsLoaded = state.loaded || debugSampleLoaded,
             showingCached = state.showingCached,
             initialThreadCached = feature.initialThreadCached,
-            commentsRefreshInProgress = state.refreshing,
-            loadingFailed = state.failure != null,
+            commentsRefreshInProgress = state.refreshing && !debugSampleLoaded,
+            loadingFailed = state.failure != null && !debugSampleLoaded,
             loadingFailedServerError = state.failure ==
-                StoryLoadFailure.NOT_FOUND,
-            usingOfficialApiFallback = state.usingOfficialApiFallback,
-            showRefreshPrompt = state.showRefreshPrompt,
+                StoryLoadFailure.NOT_FOUND && !debugSampleLoaded,
+            usingOfficialApiFallback = state.usingOfficialApiFallback && !debugSampleLoaded,
+            showRefreshPrompt = state.showRefreshPrompt && !debugSampleLoaded,
             lastRefreshed = state.lastLoadedMillis,
             opThreadFilterEnabled = thread.opThreadFilterEnabled,
             hasCommentsByOp = thread.hasCommentsByOp,
@@ -68,8 +79,12 @@ object CommentsScreenStateFactory {
             downvotedCommentIds = state.downvotedCommentIds,
             searchQuery = thread.searchQuery,
             searchPreparing = thread.searchPreparing,
-            searchResults = thread.searchResults,
-            visibleComments = thread.visibleComments,
+            searchResults = if (feature.debugMarkAllCommentsNew) {
+                thread.searchResults.map { debugComments[it.id] ?: it }
+            } else thread.searchResults,
+            visibleComments = if (feature.debugMarkAllCommentsNew) {
+                thread.visibleComments.map { it.copy(comment = debugComments[it.comment.id] ?: it.comment) }
+            } else thread.visibleComments,
         )
     }
 }

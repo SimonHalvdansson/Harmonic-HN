@@ -172,6 +172,7 @@ class CommentsFeatureBinding private constructor(
                 scrollToCommentId = request.route.scrollToCommentId,
                 restoring = restoring,
                 restoredSorting = null,
+                debugMarkAllCommentsNew = request.destination.debugMarkAllCommentsNew,
             )
             lateinit var binding: CommentsFeatureBinding
             lateinit var controller: CommentsScreenController

@@ -52,12 +52,14 @@ internal fun StoryLoadFailureItem(onRetry: () -> Unit, modifier: Modifier = Modi
                     fontFamily = ProductSansFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
+                    lineHeight = 20.sp,
                 )
                 Text(
                     text = "Tap to try again",
                     color = colors.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
+                    lineHeight = 18.sp,
                 )
             }
         }

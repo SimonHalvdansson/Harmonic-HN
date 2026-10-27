@@ -69,6 +69,10 @@ import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewState
 import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.StoryTitleText
+import com.simon.harmonichackernews.ui.content.storyTitlePresentation
+import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.network.StoryTextProcessor
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.delay
@@ -483,6 +487,14 @@ private fun HackerNewsStoryCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val domain = DomainNamePolicy.fromUrl(summary.storyUrl)
+    val title = remember(summary.title, summary.storyUrl) {
+        val story = Story().apply {
+            this.title = summary.title
+            url = summary.storyUrl
+            StoryTextProcessor.applyTitleBadges(this)
+        }
+        storyTitlePresentation(story.title, story.pdfTitle, story.videoTitle)
+    }
     Column(modifier.padding(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -517,8 +529,9 @@ private fun HackerNewsStoryCard(
             }
         }
         SelectionContainer {
-            Text(
-                summary.title,
+            StoryTitleText(
+                text = title.text,
+                badge = title.badge,
                 modifier = Modifier.padding(top = 20.dp),
                 color = colors.onSurface,
                 fontFamily = fontFamily,

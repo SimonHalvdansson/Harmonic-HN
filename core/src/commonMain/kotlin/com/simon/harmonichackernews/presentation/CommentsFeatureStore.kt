@@ -30,6 +30,8 @@ data class CommentsState(
     val headerPreviewResource: StoryPreviewResourceState? = null,
     /** The signed-in user has commented on the opened story. */
     val commented: Boolean = false,
+    /** Story-scoped debug presentation; never changes the stored read baseline. */
+    val debugMarkAllCommentsNew: Boolean = false,
 ) {
     val thread: PortableCommentThreadState get() = presenter.thread
 }
@@ -61,6 +63,7 @@ class CommentsFeatureStore internal constructor(
     val referencePreview: ReferenceLinkPreviewRuntime? = null,
     private val commentedStoryIds: StateFlow<Set<Int>>? = null,
 ) : FeatureStore<CommentsIntent, CommentsState, CommentsFeatureEffect> {
+    private var debugMarkAllCommentsNew = false
     private val mutableState = MutableStateFlow(snapshot())
     override val state: StateFlow<CommentsState> = mutableState.asStateFlow()
     private val mutableEffects = MutableSharedFlow<CommentsFeatureEffect>(extraBufferCapacity = 64)
@@ -77,8 +80,10 @@ class CommentsFeatureStore internal constructor(
         scrollToCommentId: Int,
         restoring: Boolean,
         restoredSorting: String?,
+        debugMarkAllCommentsNew: Boolean = false,
     ) {
         if (closed) return
+        this.debugMarkAllCommentsNew = debugMarkAllCommentsNew
         observeOnce()
         runtime.initializeFromSettings(
             initialStory = initialStory,
@@ -212,5 +217,6 @@ class CommentsFeatureStore internal constructor(
         summaryDiagnostics = runtime.summaryDiagnostics,
         headerPreviewResource = runtime.headerPreviewResource,
         commented = runtime.story?.let { !it.isComment && it.id in commentedStoryIds?.value.orEmpty() } == true,
+        debugMarkAllCommentsNew = debugMarkAllCommentsNew,
     )
 }

@@ -16,6 +16,7 @@ data class StoryRoute(
     val showWebsite: Boolean = false,
     val scrollToCommentId: Int = -1,
     val openedFromCachedStories: Boolean = false,
+    val debugMarkAllCommentsNew: Boolean = false,
 ) {
     init {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
@@ -45,13 +46,14 @@ data class StoryDestination(
     val scrollToCommentId: Int = -1,
     val seed: StoryNavigationSeed? = null,
     val openedFromCachedStories: Boolean = false,
+    val debugMarkAllCommentsNew: Boolean = false,
 ) : AppDestination {
     init {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
     }
 
     val route: StoryRoute
-        get() = StoryRoute(storyId, showWebsite, scrollToCommentId, openedFromCachedStories)
+        get() = StoryRoute(storyId, showWebsite, scrollToCommentId, openedFromCachedStories, debugMarkAllCommentsNew)
 }
 
 fun StoryRoute.toDestination(): StoryDestination = StoryDestination(
@@ -59,6 +61,7 @@ fun StoryRoute.toDestination(): StoryDestination = StoryDestination(
     showWebsite = showWebsite,
     scrollToCommentId = scrollToCommentId,
     openedFromCachedStories = openedFromCachedStories,
+    debugMarkAllCommentsNew = debugMarkAllCommentsNew,
 )
 
 @Serializable

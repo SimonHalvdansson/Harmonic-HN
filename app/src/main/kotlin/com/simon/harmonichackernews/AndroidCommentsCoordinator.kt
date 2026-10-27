@@ -236,6 +236,7 @@ class AndroidCommentsCoordinator(
             scrollToCommentId = destination.scrollToCommentId,
             restoring = restoringSession,
             restoredSorting = restoredSorting,
+            debugMarkAllCommentsNew = destination.debugMarkAllCommentsNew,
         )
 
         statusBars.capture()

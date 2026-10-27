@@ -12,6 +12,18 @@ import kotlin.test.assertTrue
 
 class MainNavigationStateTest {
     @Test
+    fun newCommentDebugOpeningSurvivesRestorationWithoutAffectingNormalOpenings() {
+        val navigation = MainNavigationStore()
+        navigation.openStory(StoryDestination(42, debugMarkAllCommentsNew = true))
+        val restored = MainNavigationStore(Json.decodeFromString<MainNavigationRestoration>(
+            Json.encodeToString(navigation.restoration()),
+        ))
+        assertTrue(requireNotNull(restored.state.value.storyRequest).destination.debugMarkAllCommentsNew)
+        restored.openStory(StoryDestination(43))
+        assertFalse(requireNotNull(restored.state.value.storyRequest).destination.debugMarkAllCommentsNew)
+    }
+
+    @Test
     fun welcomeIsAVisitAboveTheOriginalSettingsPage() {
         val navigation = MainNavigationStore()
         navigation.openSettings("appearance")

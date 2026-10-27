@@ -112,6 +112,7 @@ fun DebugSettingsScreen(
     onOpenUserProfile: (String) -> Unit,
     onOpenWithoutCache: () -> Unit,
     onCachePost: () -> Unit,
+    onOpenNewCommentsPost: () -> Unit,
     onOpenLink: (String) -> Unit,
     onLinkPreviewsRequested: () -> Unit,
     onDialogRequested: (DebugSettingsDialog) -> Unit,
@@ -219,6 +220,13 @@ fun DebugSettingsScreen(
 
         item {
             SettingsCategory("Sample content") {
+                SettingRow(
+                    title = "All comments marked as new",
+                    summary = "Open the sample story with new-comment dots",
+                    icon = Res.drawable.ic_comment,
+                    onClick = { navigate(onOpenNewCommentsPost) },
+                )
+                SettingsDivider()
                 DebugLinkRows(DebugSampleContentLinks) { url -> navigate { onOpenLink(url) } }
                 SettingsDivider()
                 SettingRow(

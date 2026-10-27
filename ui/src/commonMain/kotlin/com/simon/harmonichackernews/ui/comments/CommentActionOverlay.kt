@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
+import com.simon.harmonichackernews.ui.content.CommentAuthorBadge
 import kotlin.time.Duration.Companion.milliseconds
 
 import com.simon.harmonichackernews.ui.theme.cardBackground
@@ -522,10 +524,6 @@ private fun CommentActionCardContent(
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
     val commentTextSize = settings.preferredTextSize - 1f
     val author = comment.by?.takeIf(String::isNotBlank)
-    val userLabel = buildString {
-        append(author ?: "Unknown user")
-        if (comment.by == controller.story.by) append(" (OP)")
-    }
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { link ->
             val url = (link as? LinkAnnotation.Url)?.url ?: return@LinkInteractionListener
@@ -573,12 +571,15 @@ private fun CommentActionCardContent(
                         Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
                     }
                     Text(
-                        userLabel,
-                        modifier = Modifier.padding(start = 8.dp),
+                        author ?: "Unknown user",
+                        modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
+                    if (author != null && author == controller.story.by) {
+                        CommentAuthorBadge("OP", LocalContentColor.current, ProductSansFontFamily)
+                    }
                 }
                 if (settings.canAsk) {
                     TextButton(

@@ -11,8 +11,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -29,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +37,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.roundToInt
 
 @Composable
 internal fun CommentMeta(
@@ -92,11 +96,19 @@ internal fun CommentMeta(
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "comment meta border",
     )
-    val hiddenReplyCountAlpha by animateFloatAsState(
+    val hiddenReplyCountProgress by animateFloatAsState(
         if (showHiddenReplyCount) 1f else 0f,
         animationSpec = if (animateChanges) contentTween() else snap(),
         label = "hidden reply count",
     )
+    var hiddenReplyCountWidth by remember { mutableIntStateOf(0) }
+    // Keep the pill whole while it fades. Release its space only after it is invisible;
+    // the reverse transition reserves the full space before revealing it again.
+    val replyCountWidthProgress = (hiddenReplyCountProgress * 2f).coerceIn(0f, 1f)
+    val replyCountAlpha = if (isNew) {
+        (hiddenReplyCountProgress * 2f - 1f).coerceIn(0f, 1f)
+    } else hiddenReplyCountProgress
+    val layoutDirection = LocalLayoutDirection.current
     val metaShape = RoundedCornerShape(metaRadius)
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
@@ -156,7 +168,17 @@ internal fun CommentMeta(
         }
         AnimatedVisibility(
             visible = isNew,
-            modifier = Modifier.offset(y = (-2).dp),
+            modifier = Modifier.offset(y = (-2).dp).graphicsLayer {
+                if (isNew && subtreeReplyCount != null) {
+                    // Row widths are whole pixels. Preserve the fractional travel on the
+                    // dot itself so its last movement does not snap to a layout pixel.
+                    val width = hiddenReplyCountWidth * replyCountWidthProgress
+                    val rounding = width.roundToInt() - width
+                    translationX = if (layoutDirection == LayoutDirection.Ltr) rounding else -rounding
+                } else {
+                    translationX = 0f
+                }
+            },
             enter = fadeIn(if (animateChanges) tween(120) else snap()),
             exit = fadeOut(if (animateChanges) tween(120) else snap()),
         ) {
@@ -171,7 +193,7 @@ internal fun CommentMeta(
                 "+${subtreeReplyCount ?: 0}",
                 modifier = Modifier
                     .padding(start = if (isNew) 6.dp else 0.dp)
-                    .graphicsLayer { alpha = hiddenReplyCountAlpha }
+                    .graphicsLayer { alpha = replyCountAlpha }
                     .clip(RoundedCornerShape(7.dp))
                     .background(colors.tertiary)
                     .padding(horizontal = 5.dp, vertical = 1.dp)
@@ -185,15 +207,21 @@ internal fun CommentMeta(
                 style = compactCommentTextStyle,
             )
         }
-        if (isNew) {
-            AnimatedVisibility(
-                // Move the fade layer itself. Offsetting its child draws above the layer's
-                // offscreen buffer and clips the pill while alpha is below one.
+        if (isNew && subtreeReplyCount != null) {
+            // Keep the full pill measured, including its gap. A single progress value owns
+            // opacity and occupied width; no visibility-content removal can move the dot
+            // again at the end of the transition or when its direction is reversed.
+            Layout(
+                content = { replyCount() },
                 modifier = Modifier.offset(y = (-2).dp),
-                visible = showHiddenReplyCount && subtreeReplyCount != null,
-                enter = fadeIn(contentTween()) + expandHorizontally(contentTween(), expandFrom = Alignment.End, clip = true),
-                exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween(), shrinkTowards = Alignment.End, clip = true),
-            ) { replyCount() }
+            ) { measurables, constraints ->
+                val pill = measurables.single().measure(constraints.copy(minWidth = 0))
+                hiddenReplyCountWidth = pill.width
+                val width = (pill.width * replyCountWidthProgress).roundToInt()
+                layout(width, pill.height) {
+                    pill.placeRelative(width - pill.width, 0)
+                }
+            }
         } else if (subtreeReplyCount != null) {
             // Older comments retain the original fixed-width, opacity-only count animation.
             Box(Modifier.offset(y = (-2).dp)) { replyCount() }
@@ -202,7 +230,7 @@ internal fun CommentMeta(
 }
 
 @Composable
-private fun CommentAuthorBadge(
+internal fun CommentAuthorBadge(
     label: String,
     color: Color,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
