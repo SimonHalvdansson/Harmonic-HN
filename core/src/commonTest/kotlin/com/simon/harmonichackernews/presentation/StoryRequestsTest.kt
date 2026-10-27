@@ -580,6 +580,31 @@ class StoryRequestsTest {
     }
 
     @Test
+    fun searchKeyboardRequestIsConsumedOnceAcrossHostRecreation() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        fun recreate() = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
+            QueuedCacheDispatcher(),
+        )
+        val runtime = recreate()
+        assertFalse(session.consumeSearchFocusRequest())
+        runtime.openSearch()
+        assertTrue(session.consumeSearchFocusRequest())
+        runtime.submitSearch("Waymo")
+
+        val restored = recreate()
+        assertTrue(restored.searching)
+        assertFalse(session.consumeSearchFocusRequest(), "Restoring results must not reopen the keyboard")
+        restored.openSearch()
+        assertFalse(session.consumeSearchFocusRequest(), "An already open search is not a new request")
+        restored.closeSearch()
+        restored.openSearch()
+        assertTrue(session.consumeSearchFocusRequest(), "Explicitly reopening search must focus it")
+        assertFalse(session.consumeSearchFocusRequest())
+    }
+
+    @Test
     fun searchOptionsSurviveRuntimeRecreationWithoutWaitingForCollectors() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())

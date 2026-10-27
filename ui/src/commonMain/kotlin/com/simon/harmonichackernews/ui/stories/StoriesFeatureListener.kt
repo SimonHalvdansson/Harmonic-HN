@@ -30,6 +30,8 @@ class StoriesFeatureListener(
         activeListChanged(searching = false)
     }
 
+    override fun consumeSearchFocusRequest(): Boolean = store.consumeSearchFocusRequest()
+
     override fun onSearch(query: String) = store.accept(StoriesIntent.Search(query))
     override fun onSearchOption(kind: StorySearchOption, index: Int) =
         store.accept(StoriesIntent.SelectSearchOption(kind, index))

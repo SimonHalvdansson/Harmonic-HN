@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.presentation.EditorSubmission
 import java.util.UUID
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
@@ -35,6 +36,7 @@ import com.simon.harmonichackernews.HarmonicApplication
 
 /** Android lifecycle/back-dispatch adapter around the platform-neutral editor screen. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun ComposeEditorScreen(
     type: EditorType,
     parentText: String?,

@@ -31,6 +31,15 @@ class StoriesSessionState {
     var searchStoryType: StoryType = StoryType.TOP_STORIES
 
     var searching: Boolean = false
+    internal var searchFocusPending: Boolean = false
+
+    /** A keyboard request belongs to opening search, rather than recreating its header. */
+    internal fun consumeSearchFocusRequest(): Boolean {
+        if (!searching || !searchFocusPending) return false
+        searchFocusPending = false
+        return true
+    }
+
     var lastSearch: String = ""
     var lastLoaded: Long = 0
     // Retain the cause and cooldown across host recreation, without exposing details in the UI.

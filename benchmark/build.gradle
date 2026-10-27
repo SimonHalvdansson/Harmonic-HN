@@ -5,7 +5,9 @@ plugins {
 
 android {
     namespace = "com.simon.harmonichackernews.benchmark"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
     targetProjectPath = ":app"
 
     defaultConfig {

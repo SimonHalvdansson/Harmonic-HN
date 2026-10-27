@@ -156,6 +156,8 @@ class StoriesFeatureStore internal constructor(
 
     val savedItemState: SavedItemStateReader get() = runtime.savedItemActions
 
+    fun consumeSearchFocusRequest(): Boolean = sessionState.consumeSearchFocusRequest()
+
     /** Starts retained state and all repository observation exactly once. */
     fun start(): Boolean {
         if (closed) return sessionState.initialized

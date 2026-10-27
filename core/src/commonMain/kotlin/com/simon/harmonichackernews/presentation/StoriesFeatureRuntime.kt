@@ -661,6 +661,7 @@ class StoriesFeatureRuntime(
         searchOptions.resetOptions()
         retainSearchOptions()
         sessionState.searching = true
+        sessionState.searchFocusPending = true
         selectType(StoryListTarget.SEARCH, sessionState.mainStoryType)
         clearStore(searchStore, sessionState.searchStoryType)
         refreshIndicatorShowing = false
@@ -676,6 +677,7 @@ class StoriesFeatureRuntime(
         retainSearchOptions()
         beginGeneration()
         sessionState.searching = false
+        sessionState.searchFocusPending = false
         clearStore(searchStore, sessionState.searchStoryType)
         refreshIndicatorShowing = false
         rateLimited = false

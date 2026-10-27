@@ -88,6 +88,7 @@ fun StorySearchHeader(
     onDraftChanged: (String) -> Unit,
     onSearch: (String) -> Unit,
     onClose: () -> Unit,
+    consumeFocusRequest: () -> Boolean,
     onOptionSelected: (kind: StorySearchOption, index: Int) -> Unit,
     onToggleOnlyRead: () -> Unit,
 ) {
@@ -105,8 +106,10 @@ fun StorySearchHeader(
     }
     LaunchedEffect(state.active, state.suppressAutoFocus) {
         if (state.active && !state.suppressAutoFocus) {
-            focusRequester.requestFocus()
-            keyboard?.show()
+            if (consumeFocusRequest()) {
+                focusRequester.requestFocus()
+                keyboard?.show()
+            }
         } else {
             keyboard?.hide()
             focusManager.clearFocus(force = true)

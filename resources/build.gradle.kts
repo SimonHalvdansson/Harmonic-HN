@@ -139,7 +139,9 @@ val verifyGeneratedAdblocklist =
 kotlin {
     android {
         namespace = "com.simon.harmonichackernews.resources"
-        compileSdk = 37
+        compileSdk {
+            version = release(37) { minorApiLevel = 1 }
+        }
         minSdk = 26
         androidResources.enable = true
 

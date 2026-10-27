@@ -44,6 +44,7 @@ class SearchFilterHoverTest {
                         iconColor = colors.onSurfaceVariant, menuColor = colors.surface,
                         menuTextColor = colors.onSurface, fontFamily = FontFamily.Default,
                         onDraftChanged = {}, onSearch = {}, onClose = {},
+                        consumeFocusRequest = { false },
                         onOptionSelected = { _, _ -> }, onToggleOnlyRead = {},
                     )
                 }

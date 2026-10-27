@@ -1,14 +1,18 @@
 package com.simon.harmonichackernews.ui.common
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListDefaults
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /** Stateless list container shared by the stories and comments presentation shells. */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun <T> LazyContentList(
     items: List<T>,
     itemCount: Int = items.size,
@@ -17,6 +21,7 @@ fun <T> LazyContentList(
     contentType: (T) -> Any?,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    cacheWindow: LazyLayoutCacheWindow = LazyListDefaults.cacheWindow(state),
     headerKey: Any = "shared-list-header",
     header: (@Composable () -> Unit)? = null,
     footerKey: Any = "shared-list-footer",
@@ -28,6 +33,7 @@ fun <T> LazyContentList(
         state = state,
         modifier = modifier,
         contentPadding = contentPadding,
+        cacheWindow = cacheWindow,
     ) {
         if (header != null) item(key = headerKey, contentType = "header") { header() }
         items(

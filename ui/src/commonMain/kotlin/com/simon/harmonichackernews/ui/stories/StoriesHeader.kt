@@ -708,6 +708,7 @@ private fun SearchHeader(
         onDraftChanged = controller::updateSearchDraft,
         onSearch = controller.listener::onSearch,
         onClose = controller.listener::onCloseSearch,
+        consumeFocusRequest = controller.listener::consumeSearchFocusRequest,
         onOptionSelected = controller.listener::onSearchOption,
         onToggleOnlyRead = controller.listener::onToggleOnlyRead,
     )

@@ -680,6 +680,7 @@ class StoriesScreenController private constructor(
     interface Listener {
         fun onTypeSelected(index: Int)
         fun onOpenSearch()
+        fun consumeSearchFocusRequest(): Boolean = true
         fun onCloseSearch()
         fun onSearch(query: String)
         fun onSearchOption(kind: StorySearchOption, index: Int)

@@ -9,7 +9,9 @@ def nativeCompilerCache = providers.environmentVariable("HARMONIC_NATIVE_COMPILE
 
 android {
     namespace = "com.simon.harmonichackernews.localai.runtime"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
     ndkVersion = "29.0.13113456"
     testBuildType = providers.gradleProperty("harmonic.testBuildType").getOrElse("debug")
 

@@ -110,14 +110,8 @@ private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
 private const val COMMENT_PLACEMENT_DURATION_MILLIS = 220
 
 /** Hosts may share the live list position with a containing sheet's gesture arbitration. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun rememberCommentsListState(): LazyListState = rememberLazyListState(
-    cacheWindow = LazyLayoutCacheWindow(
-        aheadFraction = COMMENTS_CACHE_AHEAD_FRACTION,
-        behindFraction = COMMENTS_CACHE_BEHIND_FRACTION,
-    ),
-)
+fun rememberCommentsListState(): LazyListState = rememberLazyListState()
 
 /** Only structural list changes need placement motion; animated row/header sizes already move it. */
 @Composable
@@ -436,6 +430,12 @@ fun CommentsScreen(
                 }
                 .then(listModifier),
             state = listState,
+            cacheWindow = remember {
+                LazyLayoutCacheWindow(
+                    aheadFraction = COMMENTS_CACHE_AHEAD_FRACTION,
+                    behindFraction = COMMENTS_CACHE_BEHIND_FRACTION,
+                )
+            },
             contentPadding = PaddingValues(bottom = bottomPadding),
             headerKey = "header",
             header = {
