@@ -10,7 +10,7 @@ For Version 3.2, Harmonic has been rewritten from the ground up as a Compose Mul
 - New theme engine
 - Much, much more, this release is more than 1000 commits all in all
 
-Thanks to [Lorenzoantonelli](https://github.com/Lorenzoantonelli), [chauhanvikki](https://github.com/chauhanvikki), [chaosmanage](https://github.com/chaosmanage), [Cuento3yLlevo2](https://github.com/Cuento3yLlevo2), and [oliver-leung](https://github.com/oliver-leung) for contributing features and fixes to Harmonic 3.2!
+Thanks to Lorenzo Antonelli, Vishvendra Singh, chaosmanage, Cuento3yLlevo2, and Oliver Leung for contributing features and fixes to this release!
 
 I hope you'll like it, a lot of care has gone into this release. As always, issues on GitHub are welcome to help improve the app further!
 
