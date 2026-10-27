@@ -178,8 +178,9 @@ internal class LocalAiRuntimeManager(
         if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return true
         }
+        val moduleName = getModuleName(runtime) ?: return false
         initialize(context)
-        return requireNotNull(installManager).installedModules.contains(getModuleName(runtime))
+        return requireNotNull(installManager).installedModules.contains(moduleName)
     }
 
     fun requestRuntimeAndModelDownload(context: Context, model: LocalModelDefinition): String? {
@@ -187,6 +188,8 @@ internal class LocalAiRuntimeManager(
         if (!model.downloadable) {
             return "${model.displayName} is built into supported devices."
         }
+        val moduleName = getModuleName(model.runtime)
+            ?: return "${getRuntimeLabel(model.runtime)} cannot be downloaded on Android."
 
         findActivity(context)?.let { confirmationActivity = WeakReference(it) }
 
@@ -229,7 +232,7 @@ internal class LocalAiRuntimeManager(
             )
         )
         val request = SplitInstallRequest.newBuilder()
-            .addModule(getModuleName(model.runtime))
+            .addModule(moduleName)
             .build()
         requireNotNull(installManager).startInstall(request)
             .addOnSuccessListener { sessionId ->
@@ -641,13 +644,13 @@ internal class LocalAiRuntimeManager(
         }
     }
 
-    private fun getModuleName(runtime: LocalModelRuntime): String = when (runtime) {
+    // Shared callers can query every runtime, including ones owned by another platform.
+    private fun getModuleName(runtime: LocalModelRuntime): String? = when (runtime) {
         LocalModelRuntime.LLAMA_CPP,
         LocalModelRuntime.LITERT_LM,
         -> MODULE_RUNTIME
         LocalModelRuntime.APPLE_FOUNDATION_MODELS,
-        LocalModelRuntime.GEMINI_NANO ->
-            throw IllegalArgumentException("Gemini Nano has no feature module")
+        LocalModelRuntime.GEMINI_NANO -> null
     }
 
     private fun getRuntimeForModules(
@@ -699,8 +702,9 @@ internal class LocalAiRuntimeManager(
     private fun isRuntimeInstalledWithoutInitialization(
         runtime: LocalModelRuntime
     ): Boolean {
+        val moduleName = getModuleName(runtime) ?: return false
         val manager = installManager ?: return false
-        return manager.installedModules.contains(getModuleName(runtime))
+        return manager.installedModules.contains(moduleName)
     }
 
     private fun findActivity(context: Context): Activity? {
