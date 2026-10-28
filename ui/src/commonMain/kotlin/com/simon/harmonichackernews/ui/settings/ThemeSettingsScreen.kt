@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -174,6 +175,15 @@ private fun ThemeSettingsVisibility(visible: Boolean, content: @Composable () ->
     }
 }
 
+private val ColorSchemeSwatchWidth = 66.dp
+
+/** Minimize the difference between full and final rows without adding or removing a row. */
+internal fun balancedSwatchesPerRow(itemCount: Int, capacity: Int): Int {
+    if (itemCount == 0) return 1
+    val rows = (itemCount - 1) / capacity.coerceAtLeast(1) + 1
+    return (itemCount - 1) / rows + 1
+}
+
 @Composable
 private fun ColorSchemePicker(
     selected: String,
@@ -191,24 +201,31 @@ private fun ColorSchemePicker(
             dynamicColorAvailable || it.value != ColorSchemePreferences.DYNAMIC
         }
     }
-    FlowRow(
+    val swatchWidthPx = with(LocalDensity.current) { ColorSchemeSwatchWidth.roundToPx() }
+    BoxWithConstraints(
         modifier = Modifier.fillMaxWidth().themeBackground { cardBackground }
             .testTag(tag).selectableGroup()
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        options.forEach { option ->
-            ColorSchemeSwatch(
-                value = option.value,
-                label = option.label,
-                checked = selected == option.value,
-                dark = dark,
-                style = style,
-                tag = tag,
-                resolveScheme = resolveScheme,
-                onSelected = onSelected,
-            )
+        val capacity = (constraints.maxWidth / swatchWidthPx).coerceAtLeast(1)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            maxItemsInEachRow = balancedSwatchesPerRow(options.size, capacity),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            options.forEach { option ->
+                ColorSchemeSwatch(
+                    value = option.value,
+                    label = option.label,
+                    checked = selected == option.value,
+                    dark = dark,
+                    style = style,
+                    tag = tag,
+                    resolveScheme = resolveScheme,
+                    onSelected = onSelected,
+                )
+            }
         }
     }
     Box(Modifier.testTag("$tag style")) {
@@ -255,7 +272,7 @@ private fun ColorSchemeSwatch(
     val tertiary = animateColorAsState(target.tertiary, tween(250))
     val onPrimary = animateColorAsState(target.onPrimary, tween(250))
     Column(
-        modifier = Modifier.width(66.dp).clip(RoundedCornerShape(16.dp))
+        modifier = Modifier.width(ColorSchemeSwatchWidth).clip(RoundedCornerShape(16.dp))
             .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(value) })
             .semantics { contentDescription = "$label color scheme" }
             .padding(vertical = 2.dp),
