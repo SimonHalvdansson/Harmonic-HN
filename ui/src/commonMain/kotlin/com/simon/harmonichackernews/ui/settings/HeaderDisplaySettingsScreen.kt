@@ -97,7 +97,6 @@ import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import kotlinx.coroutines.delay
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.commentsHazeSource
-import com.simon.harmonichackernews.ui.comments.currentCommentsHazeState
 import com.simon.harmonichackernews.ui.comments.headerPreviewImageGestures
 import com.simon.harmonichackernews.ui.comments.ZoomableImageViewport
 import com.simon.harmonichackernews.ui.comments.previewImageViewport
@@ -117,6 +116,8 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
 fun HeaderDisplaySettingsRoute(
@@ -165,6 +166,10 @@ fun HeaderDisplaySettingsRoute(
     val background = MaterialTheme.colorScheme.pageBackground
     var headerColor by remember { mutableStateOf(background) }
     var overflowButtons by remember { mutableStateOf(emptyList<CommentsHeaderButton>()) }
+    val fixedBackButton = platformStyle.backButtonRequired && !platformStyle.navigationInSideRail
+    // Capture the viewport on iOS: the retained sticky preview can translate offscreen,
+    // and the fixed Back button must then sample the settings rows instead of that preview.
+    val previewHazeState = rememberHazeState()
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_header_display),
@@ -177,22 +182,25 @@ fun HeaderDisplaySettingsRoute(
         listState = listState,
         horizontalInsets = WindowInsets(0),
         previewCanPin = previewCanPin,
+        scrollContentModifier = Modifier.commentsHazeSource(previewHazeState.takeIf { fixedBackButton }),
         topOverlay = {
             HeaderSettingsStatusBarProtection(listState, headerColor,
                 previewCanPin = previewCanPin, protection = statusBarProtection)
             HeaderButtonOverflowSnackbar(overflowButtons)
-            if (platformStyle.backButtonRequired && !platformStyle.navigationInSideRail) {
+            if (fixedBackButton) {
                 // iOS navigation must remain reachable even when a tall preview scrolls away.
-                CommentsUpButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .windowInsetsPadding(horizontalInsets)
-                        .padding(
-                            start = 16.dp,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
-                        )
-                        .zIndex(1f),
-                )
+                CommentsHazeHost(previewHazeState) {
+                    CommentsUpButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .windowInsetsPadding(horizontalInsets)
+                            .padding(
+                                start = 16.dp,
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
+                            )
+                            .zIndex(1f),
+                    )
+                }
             }
         },
         floatingContent = {
@@ -208,7 +216,8 @@ fun HeaderDisplaySettingsRoute(
             HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
                 onHeaderColorChanged = { headerColor = it },
                 onButtonsOverflowChanged = { overflowButtons = it },
-                showBackButton = !platformStyle.backButtonRequired)
+                showBackButton = !platformStyle.backButtonRequired,
+                backdropState = previewHazeState.takeIf { fixedBackButton })
         },
     ) {
         item {
@@ -425,6 +434,7 @@ internal fun HeaderDisplayPreview(
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     showBackButton: Boolean = true,
     contentWindowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+    backdropState: HazeState? = null,
 ) {
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val counterStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
@@ -439,11 +449,13 @@ internal fun HeaderDisplayPreview(
             ).size.width
         }.toDp()
     }
-    CommentsHazeHost {
-        val hazeState = currentCommentsHazeState()
+    val hazeState = backdropState ?: rememberHazeState()
+    CommentsHazeHost(hazeState) {
         Box(Modifier.fillMaxWidth().semantics { contentDescription = "Header preview" }) {
             // Keep the floating controls composed while only the post content crossfades.
-            Box(Modifier.commentsHazeSource(hazeState)) {
+            // A host with a fixed control captures its scrolling viewport instead.
+            // Standalone previews (including Android) retain their local source.
+            Box(Modifier.commentsHazeSource(hazeState.takeIf { backdropState == null })) {
                 AnimatedContent(
                     targetState = sample,
                     transitionSpec = {

@@ -92,8 +92,7 @@ internal fun Modifier.sharedHazeDialogBackground(
 }
 
 @Composable
-fun HazeHost(content: @Composable () -> Unit) {
-    val hazeState = rememberHazeState()
+fun HazeHost(hazeState: HazeState = rememberHazeState(), content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSharedHazeState provides hazeState) {
         content()
     }

@@ -6,10 +6,12 @@ import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.common.currentSharedHazeState
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.rememberHazeState
 
 /** Provides the shared backdrop source used by the comments screen's floating controls. */
 @Composable
-fun CommentsHazeHost(content: @Composable () -> Unit) = HazeHost(content)
+fun CommentsHazeHost(hazeState: HazeState = rememberHazeState(), content: @Composable () -> Unit) =
+    HazeHost(hazeState, content)
 
 internal const val CommentsModalHazeSourceZIndex = 1f
 

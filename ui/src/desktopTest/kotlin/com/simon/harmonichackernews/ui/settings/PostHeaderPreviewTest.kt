@@ -54,6 +54,9 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.comments.CommentsHeader
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
+import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
+import com.simon.harmonichackernews.ui.comments.commentsHazeSource
+import dev.chrisbanes.haze.HazeState
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import kotlinx.coroutines.flow.emptyFlow
 import javax.swing.SwingUtilities
@@ -64,6 +67,66 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun fixedBackButtonSamplesThePreviewAndStaysFixedWhenItScrollsAway() = SwingUtilities.invokeAndWait {
+        val previewHaze = HazeState()
+        val unrelatedHaze = HazeState()
+        val shareBackdrop = mutableStateOf(false)
+        val list = LazyListState()
+        var backBounds = Rect.Zero
+        var clicks = 0
+        val settings = CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, false, false,
+        ).copy(showUpButton = true, showHeaderPreviewImage = true)
+        val scene = ImageComposeScene(600, 320, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsPage("Post header", true, {}, showTopAppBar = false, listState = list,
+                    pinnedContent = {
+                        HeaderDisplayPreview(settings, true, {}, showBackButton = false,
+                            backdropState = previewHaze)
+                    },
+                    scrollContentModifier = Modifier.commentsHazeSource(previewHaze),
+                    topOverlay = {
+                        CommentsHazeHost(if (shareBackdrop.value) previewHaze else unrelatedHaze) {
+                            CommentsUpButton({ clicks++ }, Modifier.padding(start = 16.dp, top = 64.dp)
+                                .onGloballyPositioned { backBounds = it.boundsInRoot() })
+                        }
+                    },
+                ) { items(20) { Box(Modifier.fillMaxWidth().height(100.dp).background(Color.Magenta)) } }
+            }
+        }
+        try {
+            var time = 0L
+            fun settle() = repeat(30) { scene.render(time.also { time += 16_666_667L }).close() }
+            fun buttonPixels(): List<Int> = scene.render(time).use { image ->
+                val pixels = image.toComposeImageBitmap().toPixelMap()
+                // Sample the material around the arrow, inside the circular surface.
+                (78..98).flatMap { y -> (24..32).map { x -> pixels[x, y].toArgb() } }
+            }
+            settle()
+            val fixedBounds = backBounds
+            val missingSource = buttonPixels()
+            shareBackdrop.value = true
+            settle()
+            assertTrue(missingSource != buttonPixels(), "The fixed button must sample the preview image")
+            assertEquals(fixedBounds, backBounds)
+            list.dispatchRawDelta(1800f)
+            settle()
+            assertEquals(fixedBounds, backBounds, "The Back button must not scroll with the preview")
+            val scrolled = buttonPixels()
+            assertTrue(scrolled != missingSource, "The scrolled settings must supply the backdrop")
+            assertTrue(scrolled.all { pixel ->
+                val color = Color(pixel)
+                color.red > color.green && color.blue > color.green
+            }, "The button must sample the magenta settings rows, without stale preview pixels")
+            scene.sendPointerEvent(PointerEventType.Press, backBounds.center)
+            scene.sendPointerEvent(PointerEventType.Release, backBounds.center)
+            settle()
+            assertEquals(1, clicks, "Back must remain usable after the preview scrolls away")
+        } finally { scene.close() }
+    }
+
     @Test fun changingSamplesWhileScrolledDoesNotBringThePreviewBackOverSettings() = SwingUtilities.invokeAndWait {
         val sample = mutableStateOf(HeaderPreviewSample.LINK_PREVIEW)
         val canPin = mutableStateOf(true)

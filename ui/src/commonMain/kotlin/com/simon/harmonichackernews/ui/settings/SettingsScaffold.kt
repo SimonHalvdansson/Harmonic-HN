@@ -348,6 +348,7 @@ fun SettingsPage(
     topOverlay: (@Composable () -> Unit)? = null,
     horizontalInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
     previewCanPin: Boolean = true,
+    scrollContentModifier: Modifier = Modifier,
     content: LazyListScope.() -> Unit,
 ) {
     val navigationBarPadding =
@@ -371,7 +372,7 @@ fun SettingsPage(
         }
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().then(scrollContentModifier),
                 state = listState,
                 contentPadding = PaddingValues(
                     start = 0.dp,
