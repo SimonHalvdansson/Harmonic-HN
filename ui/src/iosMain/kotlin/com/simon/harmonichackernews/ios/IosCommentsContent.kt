@@ -600,6 +600,7 @@ private fun IosCommentsHeader(
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
         includeStatusBarSpacer = true,
+        horizontalContentInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         sheetActionsInHeader = sheetActionsInHeader,
         onBrowserBack = onBrowserBack,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&

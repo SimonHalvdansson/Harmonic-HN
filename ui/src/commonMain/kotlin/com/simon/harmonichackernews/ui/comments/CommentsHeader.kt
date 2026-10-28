@@ -136,6 +136,7 @@ fun CommentsHeader(
     previewCommentActions: Boolean = false,
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     contentWindowInsets: WindowInsets = WindowInsets(0),
+    horizontalContentInsets: WindowInsets? = null,
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
@@ -204,6 +205,13 @@ fun CommentsHeader(
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
+    // Native Compose hosts can resolve safe areas during measurement, before animated image
+    // bounds are initialized. Controller insets may arrive a frame later through host effects.
+    val horizontalContentPadding = if (horizontalContentInsets != null) {
+        Modifier.windowInsetsPadding(horizontalContentInsets)
+    } else {
+        Modifier.padding(start = sideMarginStart, end = sideMarginEnd)
+    }
     val sheetHandleInset = if (controller.integratedWebView && controller.showSheetControls) {
         (CommentsSheetHandleTopPadding + CommentsSheetHandleHeight + CommentsSheetHandleBottomPadding) *
             if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
@@ -276,7 +284,7 @@ fun CommentsHeader(
                     },
                     onAction = controller.listener::onSheetAction,
                     onBrowserBack = onBrowserBack,
-                    modifier = Modifier.padding(start = sideMarginStart, end = sideMarginEnd)
+                    modifier = horizontalContentPadding
                         .graphicsLayer { alpha = if (controller.sideBySideActive) 0f else 1f }
                         .then(if (controller.sideBySideActive) Modifier.clearAndSetSemantics { } else Modifier)
                         .layout { measurable, constraints ->
@@ -301,7 +309,7 @@ fun CommentsHeader(
             Column(
                 modifier = Modifier
                     .commentsReadingWidth()
-                    .padding(start = sideMarginStart, end = sideMarginEnd),
+                    .then(horizontalContentPadding),
             ) {
                 AnimatedContent(
                     targetState = showHeaderShimmer,
@@ -619,7 +627,7 @@ fun CommentsHeader(
             Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.background(fadeBrush))
         }
         Column(Modifier.windowInsetsPadding(contentWindowInsets).commentsReadingWidth()
-            .padding(start = sideMarginStart, end = sideMarginEnd)) {
+            .then(horizontalContentPadding)) {
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
         }
