@@ -95,8 +95,8 @@ fun StoriesSettingsScreen(
             )
         },
     ) {
-        item {
-            SettingsCategory("Layout") {
+        settingsCategory("Layout") {
+            row {
                 SegmentedSetting(
                     title = "Preview image",
                     options = listOf(
@@ -108,7 +108,8 @@ fun StoriesSettingsScreen(
                     selected = state.previewImageMode,
                     onSelected = onPreviewImageModeChanged,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow(
                     "Borderless image",
                     Res.drawable.ic_fullscreen,
@@ -118,7 +119,8 @@ fun StoriesSettingsScreen(
                     enabled = state.previewImageMode == StoryPreviewMode.MEDIUM ||
                         state.previewImageMode == StoryPreviewMode.LARGE,
                 )
-                SettingsDivider()
+            }
+            row {
                 SliderSetting(
                     title = "Text size",
                     valueLabel = formatOffset(state.textSizeOffset),
@@ -128,7 +130,8 @@ fun StoriesSettingsScreen(
                     steps = state.maxTextSizeOffset - state.minTextSizeOffset - 1,
                     onValueChange = { onTextSizeOffsetChanged(it.toInt()) },
                 )
-                SettingsDivider()
+            }
+            row {
                 SegmentedSetting(
                     title = "Display style",
                     options = listOf(
@@ -141,7 +144,8 @@ fun StoriesSettingsScreen(
                     disabledOptions = if (state.tint) setOf(DisplayStyle.FLAT.storedValue) else emptySet(),
                     onSelected = { onStringChanged(StoriesStringSetting.DisplayStyle, it) },
                 )
-                SettingsDivider()
+            }
+            row {
                 NavigationSwitchSettingRow(
                     title = "Tint",
                     summary = "Uses preview or favicon",
@@ -150,15 +154,20 @@ fun StoriesSettingsScreen(
                     onClick = onPaletteTintRequested,
                     onCheckedChange = { onBooleanChanged(StoriesBooleanSetting.Tint, it) },
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Compact layout", Res.drawable.ic_view_agenda, state.compact, StoriesBooleanSetting.Compact, onBooleanChanged, summary = "Hides points, domain and time")
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Summary", Res.drawable.ic_subject, state.showPreviewText, StoriesBooleanSetting.ShowPreviewText, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Thumbnails", Res.drawable.ic_public, state.showFavicons, StoriesBooleanSetting.ShowFavicons, onBooleanChanged, enabled = !state.compact)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Points", Res.drawable.ic_thumbs_up_down, state.showPoints, StoriesBooleanSetting.ShowPoints, onBooleanChanged, enabled = !state.compact)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow(
                     "Compact points",
                     Res.drawable.ic_thumb_up,
@@ -169,13 +178,17 @@ fun StoriesSettingsScreen(
                         state.showPoints &&
                         state.previewImageMode != StoryPreviewMode.MEDIUM,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Include top level domain", Res.drawable.ic_public, state.includeTopLevelDomain, StoriesBooleanSetting.IncludeTopLevelDomain, onBooleanChanged, enabled = !state.compact)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Comment count", Res.drawable.ic_comment, state.showComments, StoriesBooleanSetting.ShowComments, onBooleanChanged, enabled = !state.compact)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Show story indices", Res.drawable.ic_format_list_numbered, state.showIndex, StoriesBooleanSetting.ShowIndex, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow(
                     "Left align comments button",
                     Res.drawable.ic_pan_tool,
@@ -184,14 +197,16 @@ fun StoriesSettingsScreen(
                     onBooleanChanged,
                     enabled = state.previewImageMode != StoryPreviewMode.MEDIUM,
                 )
-                SettingsDivider()
+            }
+            row {
                 SettingRow(
                     title = "Highlight hot stories",
                     summary = state.hotnessLabel,
                     icon = Res.drawable.ic_whatshot,
                     onClick = { onDialogRequested(StoriesSettingsDialog.Hotness) },
                 )
-                SettingsDivider()
+            }
+            row {
                 SettingRow(
                     title = "Reset",
                     icon = Res.drawable.ic_refresh,
@@ -199,25 +214,31 @@ fun StoriesSettingsScreen(
                 )
             }
         }
-        item {
-            SettingsCategory("Behavior") {
+        settingsCategory("Behavior") {
+            row {
                 SettingRow(
                     title = "Manage frontpages",
                     summary = "Default: ${state.startingPage}",
                     icon = Res.drawable.ic_library_books,
                     onClick = onManageFrontpages,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Always open comments", Res.drawable.ic_keyboard_double_arrow_right, state.alwaysOpenComments, StoriesBooleanSetting.AlwaysOpenComments, onBooleanChanged, summary = "Clicking a story takes you directly to the comments view")
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Use pagination", Res.drawable.ic_swipe_vertical, state.pagination, StoriesBooleanSetting.Pagination, onBooleanChanged, summary = "Load 30 stories at a time")
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Swipe to hide", Res.drawable.ic_visibility_off, state.swipeToHide, StoriesBooleanSetting.SwipeToHide, onBooleanChanged, summary = "Swipe left or right to hide posts from frontpages.")
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideRead, StoriesBooleanSetting.HideRead, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.dimReadStories, StoriesBooleanSetting.DimReadStories, onBooleanChanged, enabled = !state.hideRead)
-                SettingsDivider()
+            }
+            row {
                 SettingRow(
                     title = "Favicon provider",
                     summary = state.faviconProvider,

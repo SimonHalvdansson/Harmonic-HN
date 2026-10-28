@@ -1,13 +1,13 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.material3.MaterialTheme
+import com.simon.harmonichackernews.ui.theme.themeBackground
+import androidx.compose.ui.draw.drawBehind
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
-import com.simon.harmonichackernews.ui.theme.cardBackground
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.foundation.background
@@ -105,7 +105,7 @@ internal fun rememberSettingsListState(): LazyListState =
     LocalSettingsListState.current ?: rememberLazyListState()
 
 @Composable
-internal fun itemBackgroundColor(): Color = MaterialTheme.colorScheme.cardBackground
+internal fun itemBackgroundColor(): Color = HarmonicTheme.colors.cardBackground
 
 @Composable
 private fun SettingsTopAppBar(
@@ -143,17 +143,19 @@ fun SettingsListScreen(
     val settingsCardShape = RoundedCornerShape(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
-    val visibleGroups = MainSettingsEntries.filter {
-        (it.section != SettingsSection.Debug || showDebugSettings) &&
-            (it.section != SettingsSection.Notifications || (loggedIn && showNotifications))
-    }.groupBy { it.group }
+    val visibleGroups = remember(showDebugSettings, loggedIn, showNotifications) {
+        MainSettingsEntries.filter {
+            (it.section != SettingsSection.Debug || showDebugSettings) &&
+                (it.section != SettingsSection.Notifications || (loggedIn && showNotifications))
+        }.groupBy { it.group }
+    }
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.pageBackground)
+            .themeBackground { pageBackground }
             .consumeSettingsPaneBounds()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(
@@ -180,12 +182,6 @@ fun SettingsListScreen(
         ) {
             visibleGroups.forEach { (group, visibleEntries) ->
                 item(key = group.name) {
-                    val colors = MaterialTheme.colorScheme
-                    val (iconContainerColor, iconContentColor) = when (group) {
-                        SettingsListGroup.Reading -> colors.primaryContainer to colors.onPrimaryContainer
-                        SettingsListGroup.Tools -> colors.tertiaryContainer to colors.onTertiaryContainer
-                        SettingsListGroup.App -> colors.secondaryContainer to colors.onSecondaryContainer
-                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -218,8 +214,7 @@ fun SettingsListScreen(
                                     stringResource(entry.summary)
                                 },
                                 icon = entry.icon,
-                                iconContainerColor = iconContainerColor,
-                                iconContentColor = iconContentColor,
+                                group = group,
                                 selected = showSelection && isSelected,
                                 onClick = { onSectionSelected(entry.section) },
                             )
@@ -239,12 +234,11 @@ private fun SettingsNavigationRow(
     title: String,
     summary: String,
     icon: DrawableResource,
-    iconContainerColor: Color,
-    iconContentColor: Color,
+    group: SettingsListGroup,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = HarmonicTheme.colors
     val useDarkSelection = selected && HarmonicTheme.isDark
     Row(
         modifier = Modifier
@@ -252,14 +246,14 @@ private fun SettingsNavigationRow(
             .defaultMinSize(
                 minHeight = 72.dp,
             )
-            .background(
-                when {
+            .drawBehind {
+                drawRect(when {
                     useDarkSelection -> colors.secondaryContainer.copy(alpha = 0.45f)
-                        .compositeOver(itemBackgroundColor())
+                        .compositeOver(colors.cardBackground)
                     selected -> colors.surfaceContainerHigh
-                    else -> itemBackgroundColor()
-                },
-            )
+                    else -> colors.cardBackground
+                })
+            }
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { this.selected = selected }
             .padding(
@@ -268,25 +262,12 @@ private fun SettingsNavigationRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(iconContainerColor),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(22.dp),
-                tint = iconContentColor,
-            )
-        }
+        SettingsNavigationIcon(icon, group)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = if (useDarkSelection) colors.onSecondaryContainer else colors.onSurface,
+                color = { if (useDarkSelection) colors.onSecondaryContainer else colors.onSurface },
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
@@ -295,12 +276,36 @@ private fun SettingsNavigationRow(
             Text(
                 text = summary,
                 modifier = Modifier.padding(top = 1.dp),
-                color = if (useDarkSelection) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                color = { if (useDarkSelection) colors.onSecondaryContainer else colors.onSurfaceVariant },
                 fontFamily = ProductSansFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsNavigationIcon(icon: DrawableResource, group: SettingsListGroup) {
+    val colors = HarmonicTheme.colors
+    val (iconContainerColor, iconContentColor) = when (group) {
+        SettingsListGroup.Reading -> colors.primaryContainer to colors.onPrimaryContainer
+        SettingsListGroup.Tools -> colors.tertiaryContainer to colors.onTertiaryContainer
+        SettingsListGroup.App -> colors.secondaryContainer to colors.onSecondaryContainer
+    }
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(iconContainerColor),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = iconContentColor,
+        )
     }
 }
 
@@ -335,7 +340,7 @@ fun SettingsPage(
     contentVersion: Int = 0,
     showTopAppBar: Boolean = true,
     pinnedContent: (@Composable () -> Unit)? = null,
-    pinnedContentBackground: Color = MaterialTheme.colorScheme.pageBackground,
+    pinnedContentBackground: Color? = null,
     floatingContent: (@Composable () -> Unit)? = null,
     listState: LazyListState = rememberSettingsListState(),
     extraBottomPadding: Dp = 0.dp,
@@ -353,7 +358,7 @@ fun SettingsPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.pageBackground)
+            .themeBackground { pageBackground }
             .consumeSettingsPaneBounds()
             .windowInsetsPadding(horizontalInsets)
             .windowInsetsPadding(
@@ -400,7 +405,7 @@ fun SettingsPage(
                                             header.offset).toFloat()
                                     }
                                 }
-                                .background(pinnedContentBackground),
+                                .themeBackground { pinnedContentBackground ?: pageBackground },
                         ) {
                             preview()
                         }
@@ -441,6 +446,52 @@ fun SettingsCategory(
     content: @Composable () -> Unit,
 ) {
     Column {
+        SettingsCategoryHeading(title, titleTopPadding)
+        SettingsCard(content = content)
+    }
+}
+
+/** Keep long groups lazy at row granularity, with the same continuous card and dividers. */
+internal fun LazyListScope.settingsCategory(
+    title: String,
+    content: SettingsCategoryScope.() -> Unit,
+) {
+    val rows = SettingsCategoryScope().apply(content).rows
+    item(key = "settings-category-$title", contentType = "settings-category-heading") {
+        SettingsCategoryHeading(title, HarmonicDimens.compose_settings_category_padding_top)
+    }
+    rows.forEachIndexed { index, row ->
+        item(key = "settings-category-$title-$index", contentType = "settings-category-row") {
+            val radius = HarmonicDimens.settings_list_segment_corner_radius
+            Column(
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = HarmonicDimens.settings_list_segment_horizontal_margin)
+                    .clip(RoundedCornerShape(
+                        topStart = if (index == 0) radius else 0.dp,
+                        topEnd = if (index == 0) radius else 0.dp,
+                        bottomStart = if (index == rows.lastIndex) radius else 0.dp,
+                        bottomEnd = if (index == rows.lastIndex) radius else 0.dp,
+                    )),
+            ) {
+                if (index > 0) SettingsDivider()
+                row()
+            }
+        }
+    }
+}
+
+internal class SettingsCategoryScope {
+    internal val rows = mutableListOf<@Composable () -> Unit>()
+
+    fun row(content: @Composable () -> Unit) {
+        rows.add(content)
+    }
+}
+
+@Composable
+private fun SettingsCategoryHeading(title: String, titleTopPadding: Dp) {
+    val colors = HarmonicTheme.colors
+    Column {
         Crossfade(
             targetState = title,
             animationSpec = tween(180),
@@ -456,11 +507,11 @@ fun SettingsCategory(
         ) { displayedTitle ->
             Text(
                 text = displayedTitle,
-                color = lerp(
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    MaterialTheme.colorScheme.primary,
+                color = { lerp(
+                    colors.onSurfaceVariant,
+                    colors.primary,
                     0.45f,
-                ),
+                ) },
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
@@ -472,7 +523,6 @@ fun SettingsCategory(
                 HarmonicDimens.compose_settings_category_segment_gap,
             ),
         )
-        SettingsCard(content = content)
     }
 }
 

@@ -1,6 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.themeBackground
+import androidx.compose.ui.draw.drawBehind
+
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,8 +12,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -22,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -33,7 +37,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.cardBackground
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppearancePreferences
 import com.simon.harmonichackernews.settings.ColorSchemeSelection
@@ -49,6 +52,7 @@ import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryRow
+import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.StoryRowStyle
 import com.simon.harmonichackernews.ui.content.rememberPainterPaletteTint
 import com.simon.harmonichackernews.ui.theme.*
@@ -181,51 +185,30 @@ private fun ColorSchemePicker(
     onSelected: (String) -> Unit,
     onStyleSelected: (ColorSchemeStyle) -> Unit,
 ) {
-    val options = ColorSchemeCatalog.options.filter {
-        dynamicColorAvailable || it.value != ColorSchemePreferences.DYNAMIC
+    val colors = HarmonicTheme.colors
+    val options = remember(dynamicColorAvailable) {
+        ColorSchemeCatalog.options.filter {
+            dynamicColorAvailable || it.value != ColorSchemePreferences.DYNAMIC
+        }
     }
     FlowRow(
-        modifier = Modifier.fillMaxWidth().background(itemBackgroundColor())
+        modifier = Modifier.fillMaxWidth().themeBackground { cardBackground }
             .testTag(tag).selectableGroup()
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         options.forEach { option ->
-            val checked = selected == option.value
-            val targetScheme = resolveScheme(option.value, dark, style).colorScheme
-            val scheme = targetScheme.copy(
-                primary = animateThemeColor(targetScheme.primary),
-                secondary = animateThemeColor(targetScheme.secondary),
-                tertiary = animateThemeColor(targetScheme.tertiary),
-                onPrimary = animateThemeColor(targetScheme.onPrimary),
+            ColorSchemeSwatch(
+                value = option.value,
+                label = option.label,
+                checked = selected == option.value,
+                dark = dark,
+                style = style,
+                tag = tag,
+                resolveScheme = resolveScheme,
+                onSelected = onSelected,
             )
-            Column(
-                modifier = Modifier.width(66.dp).clip(RoundedCornerShape(16.dp))
-                    .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(option.value) })
-                    .semantics { contentDescription = "${option.label} color scheme" }
-                    .padding(vertical = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(Modifier.size(60.dp)
-                    .border(2.dp, if (checked) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
-                    .padding(5.dp)) {
-                    // Primary occupies the top half; secondary and tertiary share the bottom.
-                    Canvas(Modifier.fillMaxSize().testTag("Swatch-$tag-${option.value}")) {
-                        drawArc(scheme.primary, 180f, 180f, useCenter = true)
-                        drawArc(scheme.secondary, 0f, 90f, useCenter = true)
-                        drawArc(scheme.tertiary, 90f, 90f, useCenter = true)
-                    }
-                    if (checked) Icon(painterResource(Res.drawable.ic_check), null,
-                        Modifier.align(Alignment.TopCenter).padding(top = 5.dp).size(20.dp),
-                        tint = scheme.onPrimary)
-                }
-                Text(option.label, Modifier.fillMaxWidth().heightIn(min = 28.dp).padding(top = 2.dp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
-                    textAlign = TextAlign.Center,
-                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium)
-            }
         }
     }
     Box(Modifier.testTag("$tag style")) {
@@ -243,8 +226,7 @@ private fun ColorSchemePicker(
                         ColorSchemeStyle.Vibrant -> "Vibrant"
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
-                    color = if (checked) MaterialTheme.colorScheme.onSecondaryContainer
-                        else MaterialTheme.colorScheme.onSurface,
+                    color = { if (checked) colors.onSecondaryContainer else colors.onSurface },
                     fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp, lineHeight = 18.sp, textAlign = TextAlign.Center,
                 )
@@ -252,6 +234,62 @@ private fun ColorSchemePicker(
             onSelected = onStyleSelected,
         )
     }
+}
+
+@Composable
+private fun ColorSchemeSwatch(
+    value: String,
+    label: String,
+    checked: Boolean,
+    dark: Boolean,
+    style: ColorSchemeStyle,
+    tag: String,
+    resolveScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette,
+    onSelected: (String) -> Unit,
+) {
+    val colors = HarmonicTheme.colors
+    val target = remember(value, dark, style, resolveScheme) { resolveScheme(value, dark, style).colorScheme }
+    // Read animated swatch colors while drawing; they do not change its text or layout.
+    val primary = animateColorAsState(target.primary, tween(250))
+    val secondary = animateColorAsState(target.secondary, tween(250))
+    val tertiary = animateColorAsState(target.tertiary, tween(250))
+    val onPrimary = animateColorAsState(target.onPrimary, tween(250))
+    Column(
+        modifier = Modifier.width(66.dp).clip(RoundedCornerShape(16.dp))
+            .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(value) })
+            .semantics { contentDescription = "$label color scheme" }
+            .padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.size(60.dp)
+            .drawBehind {
+                if (checked) {
+                    val width = 2.dp.toPx()
+                    drawCircle(colors.primary, radius = size.minDimension / 2 - width / 2,
+                        style = Stroke(width))
+                }
+            }
+            .padding(5.dp)) {
+            // Primary occupies the top half; secondary and tertiary share the bottom.
+            Canvas(Modifier.fillMaxSize().testTag("Swatch-$tag-$value")) {
+                drawArc(primary.value, 180f, 180f, useCenter = true)
+                drawArc(secondary.value, 0f, 90f, useCenter = true)
+                drawArc(tertiary.value, 90f, 90f, useCenter = true)
+            }
+            if (checked) SwatchCheck(onPrimary,
+                Modifier.align(Alignment.TopCenter).padding(top = 5.dp).size(20.dp))
+        }
+        Text(label, modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp).padding(top = 2.dp),
+            color = { colors.onSurface },
+            fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
+            textAlign = TextAlign.Center,
+            fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun SwatchCheck(color: State<Color>, modifier: Modifier) {
+    Icon(painterResource(Res.drawable.ic_check), null, modifier, tint = color.value)
 }
 
 @Composable
@@ -265,13 +303,21 @@ private fun ThemeLivePreview(
         targetValue = if (state.followSystem) 0.5f else if (state.manualDark) 0f else 1f,
         animationSpec = tween(250), label = "scheme preview split",
     )
-    Box(Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
-        StoryThemePreview(resolveScheme(state.schemes.light, false, state.schemes.lightStyle), style, commentStyle,
+    val lightPalette = remember(state.schemes.light, state.schemes.lightStyle, resolveScheme) {
+        resolveScheme(state.schemes.light, false, state.schemes.lightStyle)
+    }
+    val darkPalette = remember(state.schemes.dark, state.schemes.darkStyle, resolveScheme) {
+        resolveScheme(state.schemes.dark, true, state.schemes.darkStyle)
+    }
+    // Both halves have identical content and typography, so their natural heights match.
+    // Let Box measure them normally instead of walking both text trees for intrinsic height.
+    Box(Modifier.fillMaxWidth()) {
+        StoryThemePreview(lightPalette, style, commentStyle,
             Modifier.clip(GenericShape { size, _ ->
                 lineTo(size.width * lightFraction, 0f); lineTo(size.width * lightFraction, size.height)
                 lineTo(0f, size.height); close()
             }).then(if (state.manualDark && !state.followSystem) Modifier.clearAndSetSemantics {} else Modifier))
-        StoryThemePreview(resolveScheme(state.schemes.dark, true, state.schemes.darkStyle), style, commentStyle,
+        StoryThemePreview(darkPalette, style, commentStyle,
             Modifier.clip(GenericShape { size, _ ->
                 moveTo(size.width * lightFraction, 0f); lineTo(size.width, 0f)
                 lineTo(size.width, size.height); lineTo(size.width * lightFraction, size.height); close()
@@ -299,13 +345,21 @@ private fun StoryThemePreview(
     LaunchedEffect(faviconTint) {
         faviconTint?.let { retainedFaviconTint = it }
     }
+    val resolvedTint = faviconTint ?: retainedFaviconTint ?: tintBase
+    val storyModel = remember(resolvedTint) {
+        SettingsStoryPreviewModel.copy(title = "A faster algorithm", faviconTintArgb = resolvedTint)
+    }
+    val storyStyle = remember(style) {
+        style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false)
+    }
+    val commentModel = remember {
+        SettingsCommentPreviewModel.copy(body = "A neat result.", referenceMarker = "", referenceUrl = "")
+    }
     HarmonicTheme(palette.colorScheme, palette.dark) {
-        val colors = MaterialTheme.colorScheme
-        val pageBackground = colors.pageBackground
         HazeHost {
             val hazeState = currentSharedHazeState()
             Box(
-                modifier = modifier.fillMaxWidth().fillMaxHeight().background(pageBackground),
+                modifier = modifier.fillMaxWidth().themeBackground { pageBackground },
             ) {
                 Column(
                     Modifier.fillMaxWidth().sharedHazeSource(hazeState)
@@ -318,26 +372,9 @@ private fun StoryThemePreview(
                         ThemePreviewPalettePills()
                         ThemePreviewPalettePills()
                     }
-                    StoryRow(
-                        model = SettingsStoryPreviewModel.copy(
-                            title = "A faster algorithm",
-                            faviconTintArgb = faviconTint ?: retainedFaviconTint ?: tintBase,
-                        ),
-                        // Keep the preview compact even with large image settings.
-                        style = style.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false),
-                        pageBackground = pageBackground,
-                        animateChanges = false,
-                        cardPadding = PaddingValues(
-                            start = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
-                            top = 4.dp,
-                            end = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
-                            bottom = 0.dp,
-                        ),
-                    )
+                    ThemePreviewStory(storyModel, storyStyle)
                     CommentRow(
-                        model = SettingsCommentPreviewModel.copy(
-                            body = "A neat result.", referenceMarker = "", referenceUrl = "",
-                        ),
+                        model = commentModel,
                         style = commentStyle,
                         verticalPadding = 2.dp,
                     )
@@ -354,16 +391,35 @@ private fun StoryThemePreview(
 }
 
 @Composable
+private fun ThemePreviewStory(model: StoryRowModel, style: StoryRowStyle) {
+    val cardPadding = remember(style.hasBackground, style.tintCard) {
+        PaddingValues(
+            start = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
+            top = 4.dp,
+            end = if (style.hasBackground || style.tintCard) 12.dp else 8.dp,
+            bottom = 0.dp,
+        )
+    }
+    StoryRow(model = model, style = style, pageBackground = HarmonicTheme.colors.pageBackground,
+        animateChanges = false, cardPadding = cardPadding)
+}
+
+@Composable
 private fun ThemePreviewPalettePills() {
-    val colors = MaterialTheme.colorScheme
+    val colors = HarmonicTheme.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.clearAndSetSemantics {
             contentDescription = "Primary, secondary, and tertiary colors"
         },
     ) {
-        listOf(colors.primary, colors.secondary, colors.tertiary).forEach { color ->
-            Box(Modifier.size(width = 24.dp, height = 12.dp).background(color, CircleShape))
+        repeat(3) { role ->
+            Box(Modifier.size(width = 24.dp, height = 12.dp).drawBehind {
+                drawRoundRect(
+                    when (role) { 0 -> colors.primary; 1 -> colors.secondary; else -> colors.tertiary },
+                    cornerRadius = CornerRadius(size.minDimension / 2),
+                )
+            })
         }
     }
 }

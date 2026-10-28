@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.background
+import com.simon.harmonichackernews.ui.theme.themeBackground
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -9,7 +9,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.navigation.ActivityBackPreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationStack
 import com.simon.harmonichackernews.ui.navigation.SplitPaneViewport
@@ -100,7 +99,7 @@ fun SettingsNavigationShell(
         supportsTwoPane = supportsTwoPane,
         isFoldable = isFoldable,
         snapToCenter = snapToCenter,
-        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
+        modifier = modifier.fillMaxSize().themeBackground { pageBackground }
             .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
     ) { paneExpansionState, layoutDirective ->
         val navigationState by navigation.state.collectAsStateWithLifecycle()
@@ -248,7 +247,7 @@ private fun SinglePaneSettingsNavigation(
         },
         modifier = modifier,
         root = {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
+            Box(Modifier.fillMaxSize().themeBackground { pageBackground }) {
                 renderList(selectedSection, false, onBackFromSettings) { onNavigateTo(it, false) }
             }
         },

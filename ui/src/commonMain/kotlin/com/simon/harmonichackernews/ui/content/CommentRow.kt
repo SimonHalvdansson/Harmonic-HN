@@ -15,7 +15,6 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -31,6 +30,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -219,14 +219,14 @@ fun CommentRow(
     val inlineReferenceHtml = remember(model.referenceMarker, model.referenceUrl) {
         "${model.referenceMarker} <a href=\"${model.referenceUrl}\">${model.referenceUrl}</a>"
     }
-    val bodySize by animateFloatAsState(
-        targetValue = typography.commentTextSize,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+    val bodySize = animatedCommentValue(
+        typography.commentTextSize,
+        animateChanges = style.animateChanges,
         label = "comment preview text size",
     )
-    val indicatorColor by animateColorAsState(
-        targetValue = commentDepthColor(style.depthIndicatorMode, 0, model.author),
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+    val indicatorColor = animatedCommentValue(
+        commentDepthColor(style.depthIndicatorMode, 0, model.author),
+        animateChanges = style.animateChanges,
         label = "comment preview indicator color",
     )
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
@@ -376,9 +376,9 @@ fun CommentRow(
     age: String = relativeTimeOnResume(comment.time),
 ) {
     val colors = MaterialTheme.colorScheme
-    val bodySize by animateFloatAsState(
-        targetValue = typography.commentTextSize,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+    val bodySize = animatedCommentValue(
+        typography.commentTextSize,
+        animateChanges = style.animateChanges,
         label = "runtime comment text size",
     )
     val effectiveDepth = if (flattenHierarchy) 0 else comment.depth
@@ -386,9 +386,9 @@ fun CommentRow(
         (effectiveDepth > 0 || showTopLevelIndicator)
     val indicatorIndex = (effectiveDepth + if (showTopLevelIndicator) 0 else -1)
         .coerceAtLeast(0)
-    val indicatorColor by animateColorAsState(
-        targetValue = commentDepthColor(style.depthIndicatorMode, indicatorIndex, comment.by.orEmpty()),
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+    val indicatorColor = animatedCommentValue(
+        commentDepthColor(style.depthIndicatorMode, indicatorIndex, comment.by.orEmpty()),
+        animateChanges = style.animateChanges,
         label = "runtime comment indicator color",
     )
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
@@ -730,7 +730,9 @@ internal fun CommentBodyText(
             (paragraphs - 2 * singleLine).coerceAtLeast(0)
         }
     } else 0
-    val gap = with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
+    val gap = {
+        with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
+    }
     QuoteSpacedContent(segments, gap, modifier) { segment, textModifier ->
         // Most comments contain no links. Keep their text free of gesture nodes and geometry
         // callbacks; quoted text still receives the layout callback needed for its decoration.
@@ -820,7 +822,7 @@ private class CommentQuoteLayout(private val quotes: List<AnnotatedString.Range<
 @Composable
 internal fun QuoteSpacedContent(
     segments: List<AnnotatedString>,
-    gap: androidx.compose.ui.unit.Dp,
+    gap: () -> Dp,
     modifier: Modifier = Modifier,
     content: @Composable (AnnotatedString, Modifier) -> Unit,
 ) {
@@ -830,37 +832,56 @@ internal fun QuoteSpacedContent(
     }
     Column(modifier) {
         segments.forEachIndexed { index, segment ->
-            if (index > 0) Spacer(Modifier.height(gap))
+            if (index > 0) Spacer(Modifier.layout { measurable, constraints ->
+                // Spacing changes only the gap. Keep paragraph composition and text measurement
+                // out of the animation's invalidation scope.
+                val height = gap().roundToPx().coerceIn(constraints.minHeight, constraints.maxHeight)
+                val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+            })
             if (segment.isNotEmpty()) content(segment, Modifier)
         }
     }
 }
+
+/** Disabled row animation needs no per-property coroutine, channel, or animation state. */
+@Composable
+private fun animatedCommentValue(target: Float, animateChanges: Boolean, label: String): Float =
+    if (animateChanges) animateFloatAsState(target, contentTween(), label = label).value else target
+
+@Composable
+private fun animatedCommentValue(target: Dp, animateChanges: Boolean, label: String): Dp =
+    if (animateChanges) animateDpAsState(target, contentTween(), label = label).value else target
+
+@Composable
+private fun animatedCommentValue(target: Color, animateChanges: Boolean, label: String): Color =
+    if (animateChanges) animateColorAsState(target, contentTween(), label = label).value else target
 
 @Composable
 private fun animatedCommentIndicatorGeometry(
     style: CommentRowStyle,
     showIndicator: Boolean,
 ): CommentIndicatorGeometry {
-    val width by animateDpAsState(
+    val width = animatedCommentValue(
         if (showIndicator || style.hasBackground) style.indicatorThickness.widthDp.dp else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment indicator width",
     )
-    val rounding by animateFloatAsState(
+    val rounding = animatedCommentValue(
         if (style.roundedDepthIndicators) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment indicator rounding",
     )
-    val detached by animateFloatAsState(
+    val detached = animatedCommentValue(
         if (showIndicator && style.hasBackground && style.roundedDepthIndicators) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment indicator outside card",
     )
-    val continuous by animateFloatAsState(
+    val continuous = animatedCommentValue(
         if (showIndicator && style.continuousDepthIndicators &&
             style.depthIndicatorMode != CommentDepthPreferences.AUTHOR
         ) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "continuous comment indicators",
     )
     return CommentIndicatorGeometry(width, rounding, detached, continuous)
@@ -889,9 +910,9 @@ private fun CommentSurface(
     content: @Composable () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val shapeRadius by animateDpAsState(
+    val shapeRadius = animatedCommentValue(
         if (style.hasBackground) 8.dp else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment corner radius",
     )
     val shape = RoundedCornerShape(
@@ -906,29 +927,29 @@ private fun CommentSurface(
         else -> colors.pageBackground
     }
     val targetBackground = commentSurfaceColor(baseBackground, colors.onSurface, highlighted)
-    val background by animateColorAsState(
-        targetValue = targetBackground,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+    val background = animatedCommentValue(
+        targetBackground,
+        animateChanges = style.animateChanges,
         label = "comment background",
     )
-    val shadowPadding by animateDpAsState(
+    val shadowPadding = animatedCommentValue(
         if (style.hasBackground) 4.dp else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment card padding",
     )
-    val cardProgress by animateFloatAsState(
+    val cardProgress = animatedCommentValue(
         if (style.cardStyle) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment card progress",
     )
-    val outlineAlpha by animateFloatAsState(
+    val outlineAlpha = animatedCommentValue(
         if (style.showOutline) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment outline",
     )
-    val indicatorAlpha by animateFloatAsState(
+    val indicatorAlpha = animatedCommentValue(
         if (showIndicator) 1f else 0f,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment indicator",
     )
     val indicatorWidth = indicatorGeometry.width
@@ -937,26 +958,26 @@ private fun CommentSurface(
     // Keep the rail aligned with ancestor lines while the card separates from it.
     val externalInset = (indicatorWidth + 4.dp) * detachedProgress
     val internalIndicatorWidth = indicatorWidth * (1f - detachedProgress)
-    val indicatorMargin by animateDpAsState(
+    val indicatorMargin = animatedCommentValue(
         if (showIndicator || style.hasBackground) {
             if (style.hasBackground) 4.dp else 8.dp
         } else 0.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment indicator margin",
     )
-    val contentStartPadding by animateDpAsState(
+    val contentStartPadding = animatedCommentValue(
         if (style.hasBackground) 4.5.dp else 5.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment content start padding",
     )
-    val contentEndPadding by animateDpAsState(
+    val contentEndPadding = animatedCommentValue(
         if (style.hasBackground) 8.dp else 4.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment content end padding",
     )
-    val contentVerticalPadding by animateDpAsState(
+    val contentVerticalPadding = animatedCommentValue(
         if (style.hasBackground) 7.dp else 5.dp,
-        animationSpec = if (style.animateChanges) contentTween() else snap(),
+        animateChanges = style.animateChanges,
         label = "comment content vertical padding",
     )
     SideEffect {

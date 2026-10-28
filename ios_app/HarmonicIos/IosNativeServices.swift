@@ -129,6 +129,7 @@ final class IosAppearanceService: IosAppearanceController {
     func setAppearance(dark: Bool, backgroundArgb: Int32) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            guard self.dark != dark || self.backgroundArgb != backgroundArgb else { return }
             self.dark = dark
             self.backgroundArgb = backgroundArgb
             self.root?.applyAppearance(dark: dark, backgroundArgb: backgroundArgb)

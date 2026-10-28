@@ -128,8 +128,8 @@ fun CommentsSettingsScreen(
             }
         },
     ) {
-        item {
-            SettingsCategory("Comments display") {
+        settingsCategory("Comments display") {
+            row {
                 SegmentedSetting(
                     title = "Display style",
                     options = listOf(
@@ -141,7 +141,8 @@ fun CommentsSettingsScreen(
                     selected = state.displayStyle.storedValue,
                     onSelected = { onDisplayStyleChanged(DisplayStyle.fromStored(it)) },
                 )
-                SettingsDivider()
+            }
+            row {
                 SliderSetting(
                     title = "Text size",
                     valueLabel = if (state.textSizeOffset >= 0) {
@@ -155,16 +156,19 @@ fun CommentsSettingsScreen(
                     steps = state.maxTextSizeOffset - state.minTextSizeOffset - 1,
                     onValueChange = { onTextSizeOffsetChanged(it.toInt()) },
                 )
-                SettingsDivider()
+            }
+            row {
                 SegmentedSetting(
                     title = "Collect links",
                     options = CollectedLinksMode.entries.map { it to it.label },
                     selected = CollectedLinksMode.from(state.collectLinks, state.expandedReferenceLinks),
                     onSelected = onCollectedLinksModeChanged,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Emphasize username and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 NavigationSwitchSettingRow(
                     title = "User profile images",
                     summary = if (!state.userAvatarsEnabled) "Off" else state.userAvatarOptions.summary,
@@ -173,7 +177,8 @@ fun CommentsSettingsScreen(
                     checked = state.userAvatarsEnabled,
                     onCheckedChange = onUserAvatarsEnabledChanged,
                 )
-                SettingsDivider()
+            }
+            row {
                 NavigationSwitchSettingRow(
                     title = "Thread depth indicators",
                     summary = state.depthModeLabel,
@@ -182,7 +187,8 @@ fun CommentsSettingsScreen(
                     checked = CommentDepthPreferences.shouldShowIndicators(state.depthMode),
                     onCheckedChange = onThreadDepthEnabledChanged,
                 )
-                SettingsDivider()
+            }
+            row {
                 NavigationSwitchSettingRow(
                     title = "Quote highlighting",
                     icon = Res.drawable.ic_format_quote,
@@ -190,9 +196,11 @@ fun CommentsSettingsScreen(
                     checked = state.highlightQuotes,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.HighlightQuotes, it) },
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow(
                     "Mark new comments",
                     Res.drawable.ic_fiber_manual_record,
@@ -203,12 +211,14 @@ fun CommentsSettingsScreen(
                 )
             }
         }
-        item {
-            SettingsCategory("Interactions") {
+        settingsCategory("Interactions") {
+            row {
                 BooleanRow("Hide text of collapsed comments", Res.drawable.ic_comment, state.collapseParent, CommentsBooleanSetting.CollapseParent, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Auto-collapse top level comments", Res.drawable.ic_minimize, state.collapseTopLevel, CommentsBooleanSetting.CollapseTopLevel, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 DialogRow(
                     title = "Hide comments",
                     summary = "Flagged, dead and delayed comments",
@@ -216,14 +226,16 @@ fun CommentsSettingsScreen(
                     dialog = CommentsSettingsDialog.HiddenComments,
                     onDialogRequested = onDialogRequested,
                 )
-                SettingsDivider()
+            }
+            row {
                 SettingRow(
                     title = "Preload comments from stories screen",
                     summary = state.preloadCommentsSummary,
                     icon = Res.drawable.ic_database,
                     onClick = { onDialogRequested(CommentsSettingsDialog.Preload) },
                 )
-                SettingsDivider()
+            }
+            row {
                 SegmentedSetting(
                     title = "Comment tap action",
                     summary = if (state.swapTap) "Long press: Toggle visibility" else "Long press: Details",
@@ -233,14 +245,16 @@ fun CommentsSettingsScreen(
                         onBooleanChanged(CommentsBooleanSetting.SwapTap, it == "details")
                     },
                 )
-                SettingsDivider()
+            }
+            row {
                 DialogRow("Comment sorting", state.sorting.label, Res.drawable.ic_filter_list, CommentsSettingsDialog.Sorting, onDialogRequested)
-                SettingsDivider()
+            }
+            row {
                 DialogRow("Comments provider", state.provider.label, Res.drawable.ic_api, CommentsSettingsDialog.Provider, onDialogRequested)
             }
         }
-        item {
-            SettingsCategory("Navigation") {
+        settingsCategory("Navigation") {
+            row {
                 BooleanRow(
                     "Show navigation buttons",
                     Res.drawable.ic_explore,
@@ -249,7 +263,8 @@ fun CommentsSettingsScreen(
                     onBooleanChanged,
                     summary = "Navigate between top level comments",
                 )
-                SettingsDivider()
+            }
+            row {
                 DialogRow(
                     "Volume buttons for navigation",
                     state.volumeNavigation.label,
@@ -257,9 +272,11 @@ fun CommentsSettingsScreen(
                     CommentsSettingsDialog.VolumeNavigation,
                     onDialogRequested,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Show scrollbar", Res.drawable.ic_swipe_vertical, state.showScrollbar, CommentsBooleanSetting.Scrollbar, onBooleanChanged)
-                SettingsDivider()
+            }
+            row {
                 BooleanRow(
                     "Smooth scroll comments",
                     Res.drawable.ic_comments_animation_navigation,
@@ -267,7 +284,8 @@ fun CommentsSettingsScreen(
                     CommentsBooleanSetting.SmoothScroll,
                     onBooleanChanged,
                 )
-                SettingsDivider()
+            }
+            row {
                 BooleanRow("Animate comment expand/collapse", Res.drawable.ic_animation, state.animateChanges, CommentsBooleanSetting.AnimateChanges, onBooleanChanged)
             }
         }

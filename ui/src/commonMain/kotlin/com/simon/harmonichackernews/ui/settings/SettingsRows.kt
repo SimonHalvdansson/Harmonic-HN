@@ -1,8 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.theme.themeBackground
+
 import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.AnimatedContent
@@ -60,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 
 @Composable
@@ -202,6 +204,7 @@ fun SettingRow(
     iconModifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val colors = HarmonicTheme.colors
     val resolvedIconPainter = when {
         icon != null -> painterResource(icon)
         else -> iconPainter
@@ -212,7 +215,7 @@ fun SettingRow(
             .defaultMinSize(
                 minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
-            .background(itemBackgroundColor())
+            .themeBackground { cardBackground }
             .alpha(if (enabled) 1f else 0.38f)
             .then(
                 if (onClick != null) {
@@ -236,14 +239,7 @@ fun SettingRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (resolvedIconPainter != null) {
-            Icon(
-                painter = resolvedIconPainter,
-                contentDescription = null,
-                modifier = iconModifier.size(
-                    HarmonicDimens.compose_settings_row_icon_size,
-                ),
-                tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            SettingsRowIcon(resolvedIconPainter, iconTint, iconModifier)
             Spacer(
                 modifier = Modifier.width(
                     HarmonicDimens.compose_settings_row_icon_end_space,
@@ -261,7 +257,7 @@ fun SettingRow(
         ) {
             Text(
                 text = title,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = { colors.onSurface },
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -269,7 +265,7 @@ fun SettingRow(
             if (!summary.isNullOrBlank()) {
                 Text(
                     text = summary,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = { colors.onSurfaceVariant },
                     fontFamily = ProductSansFontFamily,
                     fontSize = summaryFontSizeSp.sp,
                     lineHeight = summaryLineHeightSp.sp,
@@ -287,6 +283,16 @@ fun SettingRow(
             it()
         }
     }
+}
+
+@Composable
+private fun SettingsRowIcon(painter: Painter, tint: Color?, modifier: Modifier) {
+    Icon(
+        painter = painter,
+        contentDescription = null,
+        modifier = modifier.size(HarmonicDimens.compose_settings_row_icon_size),
+        tint = tint ?: HarmonicTheme.colors.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -322,7 +328,7 @@ fun SettingsDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(HarmonicDimens.settings_list_segment_internal_gap)
-            .background(MaterialTheme.colorScheme.pageBackground),
+            .themeBackground { pageBackground },
     )
 }
 
@@ -341,15 +347,16 @@ fun <T> SegmentedSetting(
     buttonHeight: Dp = HarmonicDimens.compose_settings_segmented_button_height,
     optionWeights: Map<T, Float> = emptyMap(),
     disabledOptions: Set<T> = emptySet(),
-    containerColor: Color = itemBackgroundColor(),
+    containerColor: Color? = null,
     optionContent: (@Composable (T, Boolean) -> Unit)? = null,
     onSelected: (T) -> Unit,
 ) {
+    val colors = HarmonicTheme.colors
     val hasHeader = !title.isNullOrBlank() || !summary.isNullOrBlank()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(containerColor)
+            .themeBackground { containerColor ?: cardBackground }
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
@@ -359,7 +366,7 @@ fun <T> SegmentedSetting(
         if (!title.isNullOrBlank()) {
             Text(
                 text = title,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = { colors.onSurface },
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -375,7 +382,7 @@ fun <T> SegmentedSetting(
                         top = HarmonicDimens.compose_settings_inline_control_summary_top_margin,
                     )
                 },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = { colors.onSurfaceVariant },
                 fontFamily = ProductSansFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
@@ -395,100 +402,123 @@ fun <T> SegmentedSetting(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             options.forEachIndexed { index, (value, label) ->
-                val isSelected = selected == value
-                val optionEnabled = enabled && value !in disabledOptions
-                val outerCorner = HarmonicDimens.compose_settings_segmented_button_corner_radius
-                val defaultInnerCorner = HarmonicDimens.compose_settings_segmented_button_inner_corner_radius
-                val pressedInnerCorner = HarmonicDimens.compose_settings_segmented_button_pressed_inner_corner_radius
-                val interactionSource = remember(value) { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-                val innerCorner by animateDpAsState(
-                    targetValue = when {
-                        isPressed -> pressedInnerCorner
-                        isSelected -> outerCorner
-                        else -> defaultInnerCorner
-                    },
-                    animationSpec = spring(
-                        dampingRatio = 0.6f,
-                        stiffness = 800f,
-                    ),
-                    label = "settings segmented button corners",
+                SegmentedSettingOption(
+                    value, label, index, options.lastIndex, selected == value,
+                    enabled && value !in disabledOptions, value in disabledOptions,
+                    buttonHeight, optionIcons[value], Modifier.weight(optionWeights[value] ?: 1f),
+                    optionContent, onSelected,
                 )
-                val shape = segmentedSettingShape(
-                    first = index == 0,
-                    last = index == options.lastIndex,
-                    outerCorner = outerCorner,
-                    animatedInnerCorner = innerCorner,
-                    buttonHeight = buttonHeight,
-                )
-                val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
-                Row(
-                    modifier = Modifier
-                        .weight(optionWeights[value] ?: 1f)
-                        .alpha(if (value in disabledOptions) 0.38f else 1f)
-                        .height(
-                            buttonHeight,
-                        )
-                        .background(
-                            if (isSelected) {
-                                selectedBackground
-                            } else {
-                                androidx.compose.ui.graphics.Color.Transparent
-                            },
-                            shape,
-                        )
-                        .border(
-                            1.dp,
-                            if (isSelected) {
-                                selectedBackground
-                            } else {
-                                MaterialTheme.colorScheme.outlineVariant
-                            },
-                            shape,
-                        )
-                        .clip(shape)
-                        .selectable(
-                            selected = isSelected,
-                            enabled = optionEnabled,
-                            role = Role.RadioButton,
-                            interactionSource = interactionSource,
-                            onClick = { onSelected(value) },
-                        ),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (optionContent != null) {
-                        optionContent(value, isSelected)
-                    } else {
-                        optionIcons[value]?.let { icon ->
-                            Icon(
-                                painter = painterResource(icon),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = if (isSelected) {
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = label,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            lineHeight = 18.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun <T> SegmentedSettingOption(
+    value: T,
+    label: String,
+    index: Int,
+    lastIndex: Int,
+    isSelected: Boolean,
+    optionEnabled: Boolean,
+    disabled: Boolean,
+    buttonHeight: Dp,
+    icon: DrawableResource?,
+    modifier: Modifier,
+    optionContent: (@Composable (T, Boolean) -> Unit)?,
+    onSelected: (T) -> Unit,
+) {
+    val colors = HarmonicTheme.colors
+    val outerCorner = HarmonicDimens.compose_settings_segmented_button_corner_radius
+    val defaultInnerCorner = HarmonicDimens.compose_settings_segmented_button_inner_corner_radius
+    val pressedInnerCorner = HarmonicDimens.compose_settings_segmented_button_pressed_inner_corner_radius
+    val interactionSource = remember(value) { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val innerCorner by animateDpAsState(
+        targetValue = when {
+            isPressed -> pressedInnerCorner
+            isSelected -> outerCorner
+            else -> defaultInnerCorner
+        },
+        animationSpec = spring(
+            dampingRatio = 0.6f,
+            stiffness = 800f,
+        ),
+        label = "settings segmented button corners",
+    )
+    val shape = remember(index, lastIndex, innerCorner, buttonHeight) {
+        segmentedSettingShape(
+            first = index == 0,
+            last = index == lastIndex,
+            outerCorner = outerCorner,
+            animatedInnerCorner = innerCorner,
+            buttonHeight = buttonHeight,
+        )
+    }
+    val selectedBackground = colors.secondaryContainer
+    Row(
+        modifier = modifier
+            .alpha(if (disabled) 0.38f else 1f)
+            .height(
+                buttonHeight,
+            )
+            .background(
+                if (isSelected) {
+                    selectedBackground
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
+                shape,
+            )
+            .border(
+                1.dp,
+                if (isSelected) {
+                    selectedBackground
+                } else {
+                    colors.outlineVariant
+                },
+                shape,
+            )
+            .clip(shape)
+            .selectable(
+                selected = isSelected,
+                enabled = optionEnabled,
+                role = Role.RadioButton,
+                interactionSource = interactionSource,
+                onClick = { onSelected(value) },
+            ),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (optionContent != null) {
+            optionContent(value, isSelected)
+        } else {
+            icon?.let { icon ->
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (isSelected) {
+                        colors.onSecondaryContainer
+                    } else {
+                        colors.onSurfaceVariant
+                    },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = label,
+                color = if (isSelected) {
+                    colors.onSecondaryContainer
+                } else {
+                    colors.onSurface
+                },
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -504,10 +534,11 @@ fun SliderSetting(
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
+    val colors = HarmonicTheme.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(itemBackgroundColor())
+            .themeBackground { cardBackground }
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
@@ -521,14 +552,14 @@ fun SliderSetting(
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = { colors.onSurface },
                 fontFamily = ProductSansFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
             Text(
                 text = valueLabel,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = { colors.onSurface },
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,

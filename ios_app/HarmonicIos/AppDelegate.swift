@@ -252,9 +252,11 @@ final class HarmonicRootViewController: UIViewController {
     }
 
     private func updateBackgrounds() {
-        view.backgroundColor = themeBackground
-        content.view.backgroundColor = themeBackground
-        view.window?.backgroundColor = themeBackground
+        if view.backgroundColor != themeBackground { view.backgroundColor = themeBackground }
+        if content.view.backgroundColor != themeBackground { content.view.backgroundColor = themeBackground }
+        if let window = view.window, window.backgroundColor != themeBackground {
+            window.backgroundColor = themeBackground
+        }
     }
 
     override func viewDidLayoutSubviews() {

@@ -1,20 +1,22 @@
 package com.simon.harmonichackernews.ui.theme
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -38,9 +40,16 @@ val ColorScheme.cardBackground: Color
     get() = if (surface.luminance() > onSurface.luminance()) surfaceBright else surfaceContainer
 
 private val LocalHarmonicDarkTheme = staticCompositionLocalOf { false }
-private val LocalTargetColorScheme = staticCompositionLocalOf<ColorScheme?> { null }
+private val LocalTargetColorScheme = compositionLocalOf<ColorScheme?> { null }
+private val LocalHarmonicColors = compositionLocalOf<HarmonicColors?> { null }
 
 object HarmonicTheme {
+    val colors: HarmonicColors
+        @Composable get() = LocalHarmonicColors.current ?: run {
+            val scheme = MaterialTheme.colorScheme
+            remember(scheme) { HarmonicColors(scheme) }
+        }
+
     val isDark: Boolean
         @Composable get() = LocalHarmonicDarkTheme.current
 
@@ -50,7 +59,8 @@ object HarmonicTheme {
 }
 
 /**
- * All UI colors come from MaterialTheme.colorScheme, including custom components.
+ * Custom components can observe individual roles through HarmonicTheme.colors. Material components
+ * receive the same animated palette through the compatibility provider below.
  * Use pageBackground for the canvas, cardBackground + onSurface for cards, primary + onPrimary for actions,
  * secondaryContainer + onSecondaryContainer for selections, and outlineVariant for dividers.
  * Hosts use the same ColorScheme for native views, widgets, and reader-mode CSS.
@@ -65,28 +75,68 @@ fun HarmonicTheme(
     val typography = remember(fontFamily) { Typography(fontFamily = fontFamily) }
     // Scheme/style changes blend within the current appearance. Reset only the color animation
     // on light/dark changes, avoiding an intermediate palette that flips the surface hierarchy.
-    val displayedScheme = key(darkTheme) { animateThemeColorScheme(colorScheme) }
+    val colors = key(darkTheme) { rememberAnimatedThemeColors(colorScheme) }
+    val initialScheme = remember(colors) { colors.colorScheme }
     CompositionLocalProvider(
         LocalHarmonicDarkTheme provides darkTheme,
         LocalTargetColorScheme provides colorScheme,
-        LocalContentColor provides displayedScheme.onSurface,
+        LocalHarmonicColors provides colors,
     ) {
-        MaterialTheme(colorScheme = displayedScheme, typography = typography, content = content)
+        // Keep Material's static provider stable. Only consumers of the computed values below
+        // observe animation frames, rather than invalidating the entire screen on every frame.
+        MaterialTheme(colorScheme = initialScheme, typography = typography) {
+            AnimatedMaterialTheme(colors, content)
+        }
     }
+}
+
+@Composable
+private fun AnimatedMaterialTheme(colors: HarmonicColors, content: @Composable () -> Unit) {
+    val base = MaterialTheme.LocalMaterialTheme.current
+    // Material exposes this local as read-only, although 1.13 supplies a ProvidableCompositionLocal.
+    // Isolate that dependency here and fall back to normal MaterialTheme if its implementation
+    // changes. ThemeRecompositionTest protects this compatibility seam when upgrading Compose.
+    val materialLocal = MaterialTheme.LocalMaterialTheme as? ProvidableCompositionLocal<MaterialTheme.Values>
+    if (materialLocal == null) {
+        CompositionLocalProvider(LocalContentColor provides colors.onSurface) {
+            MaterialTheme(colorScheme = colors.colorScheme, typography = base.typography,
+                shapes = base.shapes, motionScheme = base.motionScheme, content = content)
+        }
+        return
+    }
+    val values by remember(colors, base) {
+        derivedStateOf {
+            MaterialTheme.Values(colors.colorScheme, base.typography, base.shapes, base.motionScheme)
+        }
+    }
+    val providers = remember(colors, base) {
+        arrayOf(
+            materialLocal providesComputed { values },
+            LocalContentColor providesComputed { colors.onSurface },
+            LocalTextSelectionColors providesComputed {
+                TextSelectionColors(colors.primary, colors.primary.copy(alpha = 0.4f))
+            },
+        )
+    }
+    CompositionLocalProvider(*providers, content = content)
 }
 
 /** One frame-clock animation per palette, shared by all Material roles. */
 @Composable
-internal fun animateThemeColorScheme(target: ColorScheme): ColorScheme {
-    var displayed by remember { mutableStateOf(target) }
+internal fun animateThemeColorScheme(target: ColorScheme): ColorScheme =
+    rememberAnimatedThemeColors(target).colorScheme
+
+@Composable
+private fun rememberAnimatedThemeColors(target: ColorScheme): HarmonicColors {
+    val displayed = remember { HarmonicColors(target) }
     // Hosts may supply a new ColorScheme instance with identical roles on recomposition.
     val targetColors = remember(target) { target.colors() }
     LaunchedEffect(targetColors) {
-        if (displayed === target) return@LaunchedEffect
+        if (displayed.colorScheme === target) return@LaunchedEffect
         // Capture the currently displayed palette before retargeting, including mid-animation.
-        val interpolation = ThemePaletteInterpolation(displayed, target)
+        val interpolation = ThemePaletteInterpolation(displayed.colorScheme, target)
         animate(0f, 1f, animationSpec = tween(250)) { fraction, _ ->
-            displayed = interpolation.at(fraction)
+            displayed.update(interpolation.at(fraction))
         }
     }
     return displayed
@@ -170,11 +220,3 @@ private inline fun ColorScheme.mapColors(transform: (Color) -> Color): ColorSche
     background = transform(background),
     onBackground = transform(onBackground),
 )
-
-@Composable
-internal fun animateThemeColor(target: Color): Color = animateColorAsState(
-    targetValue = target,
-    // Compose interpolates in OKLab and retargets from the currently displayed color.
-    animationSpec = tween(250),
-    label = "theme color",
-).value

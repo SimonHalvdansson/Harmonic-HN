@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.ui.common
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,6 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.theme.themeBackground
 import org.jetbrains.compose.resources.painterResource
 
 /** Platform-neutral app bar used by settings and informational screens. */
@@ -52,10 +52,10 @@ fun HarmonicTopAppBar(
     navigationHeight: Dp = 56.dp,
     navigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
-    navigationContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    navigationContainerColor: Color? = null,
     titleStartPadding: Dp = 16.dp,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = HarmonicTheme.colors
 
     Row(
         modifier = modifier
@@ -92,16 +92,11 @@ fun HarmonicTopAppBar(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(navigationContainerColor)
+                        .themeBackground { navigationContainerColor ?: surfaceContainerHighest }
                         .indication(navigationInteractionSource, ripple(bounded = true)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        colorFilter = ColorFilter.tint(colors.onSurfaceVariant),
-                    )
+                    NavigationArrow()
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -112,11 +107,21 @@ fun HarmonicTopAppBar(
         Text(
             text = title,
             modifier = Modifier.padding(top = 1.dp),
-            color = colors.onSurface,
+            color = { colors.onSurface },
             fontFamily = ProductSansFontFamily,
             fontSize = 22.sp,
             fontWeight = FontWeight.Normal,
             style = platformTextStyle,
         )
     }
+}
+
+@Composable
+private fun NavigationArrow() {
+    Image(
+        painter = painterResource(Res.drawable.ic_arrow_back),
+        contentDescription = null,
+        modifier = Modifier.size(24.dp),
+        colorFilter = ColorFilter.tint(HarmonicTheme.colors.onSurfaceVariant),
+    )
 }
