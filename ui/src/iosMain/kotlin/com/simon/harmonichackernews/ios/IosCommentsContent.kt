@@ -224,8 +224,12 @@ internal fun IosCommentsContent(
     val layoutDirection = LocalLayoutDirection.current
     var consumedInsets by remember { mutableStateOf<WindowInsets>(WindowInsets(0)) }
     val contentInsets = WindowInsets.safeDrawing.exclude(consumedInsets)
-    val contentInsetLeft = contentInsets.getLeft(density, layoutDirection)
-    val contentInsetRight = contentInsets.getRight(density, layoutDirection)
+    // The live comments can move to the opposite pane while this browser host stays put.
+    // Observe consumption inside that movable content, not at the browser's outer surface.
+    var commentsConsumedInsets by remember { mutableStateOf<WindowInsets>(WindowInsets(0)) }
+    val commentsInsets = WindowInsets.safeDrawing.exclude(commentsConsumedInsets)
+    val contentInsetLeft = commentsInsets.getLeft(density, layoutDirection)
+    val contentInsetRight = commentsInsets.getRight(density, layoutDirection)
     val sideRailWidth = iosSideRailWidth(contentInsets)
     val browserActionsOnRight = sideRailWidth > 0.dp
     val firstDraw = host.firstDraw
@@ -339,7 +343,8 @@ internal fun IosCommentsContent(
         // pane scaffold. Keep measuring in lookahead on both sides of that transition, otherwise
         // subsequent ordinary measurements never update the retained scroll position.
         LookaheadScope {
-            Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize()
+                .onConsumedWindowInsetsChanged { commentsConsumedInsets = it }) {
                 CommentsRoute(
                     controller = host.controller,
                     reserveUpButtonInset = showFloatingUpButton && !backInTopInset && !browserActionsOnRight,
@@ -460,7 +465,7 @@ internal fun IosCommentsContent(
                     webView = webView,
                     reserveUpButtonInset = showFloatingUpButton && !browserActionsOnRight,
                     backInTopInset = backInTopInset,
-                    browserActionsOnRight = browserActionsOnRight,
+                    sideRailWidth = sideRailWidth,
                     onBrowserBack = {
                         if (webView.canGoBack()) webView.goBack()
                         else if (isTwoPane) host.controller.requestExpandSheet()

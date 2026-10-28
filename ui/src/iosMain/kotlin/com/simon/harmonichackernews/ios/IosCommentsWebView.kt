@@ -502,7 +502,7 @@ internal fun IosCommentsScaffold(
     webView: IosCommentsWebView,
     reserveUpButtonInset: Boolean,
     backInTopInset: Boolean,
-    browserActionsOnRight: Boolean,
+    sideRailWidth: androidx.compose.ui.unit.Dp,
     onBrowserBack: () -> Unit,
     listState: LazyListState,
     comments: @Composable () -> Unit,
@@ -529,13 +529,11 @@ internal fun IosCommentsScaffold(
     } else {
         0.dp
     }
+    val browserActionsOnRight = sideRailWidth > 0.dp
     val peekHeight = navigationBottom + if (browserActionsOnRight) {
         CommentsSheetHandleAreaHeight
     } else {
         CommentsSheetCollapsedHeight
-    }
-    val rightInset = with(density) {
-        controller.contentInsetRightPx.toDp()
     }
     // Read the actual list state in gesture callbacks, not the asynchronously published
     // controller flag. Rotation/restoration can temporarily leave that flag stale.
@@ -686,7 +684,7 @@ internal fun IosCommentsScaffold(
                         onBrowserBack = onBrowserBack,
                         modifier = Modifier.align(AbsoluteAlignment.BottomRight)
                             .padding(bottom = peekHeight + 8.dp)
-                            .iosSideRailContent(rightInset),
+                            .iosSideRailContent(sideRailWidth),
                     )
                 }
                 Box(
