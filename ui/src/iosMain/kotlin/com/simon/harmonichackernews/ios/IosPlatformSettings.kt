@@ -61,10 +61,6 @@ internal fun IosSettingsDetail(
             readerMode = true,
             closeWebViewOnBack = false,
         ),
-        aboutBody = "Harmonic is an open-source Hacker News client. " +
-            "This iOS host uses the same Kotlin Multiplatform application logic and " +
-            "Compose screens as the Android app, with iOS-native storage, links, and " +
-            "keyboard/window behavior.",
         debugPlatformLabel = "iOS version",
         debugPlatformIcon = Res.drawable.ic_smartphone,
         debugPlatformVersion = UIDevice.currentDevice.systemName + " " +

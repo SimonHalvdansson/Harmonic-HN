@@ -78,10 +78,6 @@ internal fun DesktopSettingsDetail(
         onBack = onBack,
         onNavigate = onNavigate,
         appIcon = appIcon,
-        aboutBody = "Harmonic is an open-source Hacker News client. " +
-            "This desktop host uses the same Kotlin Multiplatform application logic and " +
-            "Compose screens as the Android app, with desktop-native storage, links, and " +
-            "keyboard/window behavior.",
         debugPlatformLabel = "Operating system",
         debugPlatformIcon = Res.drawable.ic_info,
         debugPlatformVersion =

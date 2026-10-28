@@ -64,7 +64,7 @@ import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-const val DefaultAboutBody =
+private const val AboutBody =
     "Harmonic is developed by me, Simon Halvdansson, and since 2023 " +
         "the app is open source.\n\nThe name 'Harmonic', apart from being vaguely similar to 'hacker' comes from me choosing to study " +
         "harmonic analysis at around the time of Harmonic's inception. I guess you could say " +
@@ -92,7 +92,6 @@ fun AboutScreen(
     topBarHeight: Dp = 64.dp,
     topBarNavigationHeight: Dp = 56.dp,
     topBarNavigationInset: Dp = 0.dp,
-    aboutBody: String = DefaultAboutBody,
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -144,7 +143,7 @@ fun AboutScreen(
                     )
 
                     Text(
-                        text = aboutBody,
+                        text = AboutBody,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 22.dp, bottom = 18.dp),

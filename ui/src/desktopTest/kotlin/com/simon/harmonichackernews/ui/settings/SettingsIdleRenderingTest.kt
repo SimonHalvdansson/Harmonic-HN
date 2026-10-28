@@ -47,7 +47,7 @@ class SettingsIdleRenderingTest {
                         renderList = { selected, selection, back, navigate -> if (realList) SettingsListScreen(selected, selection, false, false, back, navigate) else Text("List") },
                         renderDetail = { section, singlePane, back, navigate ->
                             if (realDetail) PortableSettingsDetail(section, bootstrap.app, bootstrap.scene, singlePane, back, navigate,
-                                ColorPainter(Color.Red), "About", "Test", "Test", {}, {}, { _, _ -> }) else Text("Detail")
+                                ColorPainter(Color.Red), "Test", "Test", {}, {}, { _, _ -> }) else Text("Detail")
                         },
                     )
                 }

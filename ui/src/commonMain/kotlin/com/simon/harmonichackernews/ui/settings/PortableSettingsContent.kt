@@ -52,7 +52,6 @@ fun PortableSettingsDetail(
     onBack: () -> Unit,
     onNavigate: (SettingsSection, Boolean) -> Unit,
     appIcon: Painter,
-    aboutBody: String,
     debugPlatformVersion: String,
     debugNotificationsMessage: String,
     aiSettings: @Composable () -> Unit,
@@ -154,7 +153,6 @@ fun PortableSettingsDetail(
             onOpenLicenses = { onNavigate(SettingsSection.Licenses, true) },
             onOpenPrivacy = { scene.links.open(app.metadata.privacyUrl) },
             showNavigation = singlePane,
-            aboutBody = aboutBody,
         )
         SettingsSection.Licenses -> LicensesScreen(
             licenses = CommonLicenseCatalog.entries,
