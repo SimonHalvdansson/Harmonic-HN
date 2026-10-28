@@ -24,6 +24,13 @@
     <true/>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <!-- HN links can use HTTP. Both WebKit and URLSession article extraction need access.
+         Do not add NSAllowsArbitraryLoadsInWebContent: it overrides this URLSession exception. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
     <key>UIFileSharingEnabled</key>

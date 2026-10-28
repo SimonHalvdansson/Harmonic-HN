@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
+import com.simon.harmonichackernews.summary.AppleSummaryPromptBudget
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Completion object used instead of exporting a Kotlin suspend function to Swift. */
@@ -46,7 +47,13 @@ class IosNativeLocalSummaryEngine(
         check(bridge.isAvailable()) {
             bridge.availabilityMessage() ?: "Apple Intelligence is unavailable"
         }
-        return suspendCancellableCoroutine { continuation ->
+        return AppleSummaryPromptBudget.generate(content, request.preserveInput) { candidate ->
+            generateAttempt(candidate, request)
+        }
+    }
+
+    private suspend fun generateAttempt(content: String, request: SummaryRequest): SummaryResult =
+        suspendCancellableCoroutine { continuation ->
             bridge.summarize(
                 text = content,
                 instruction = request.prompt
@@ -79,5 +86,4 @@ class IosNativeLocalSummaryEngine(
                 },
             )
         }
-    }
 }

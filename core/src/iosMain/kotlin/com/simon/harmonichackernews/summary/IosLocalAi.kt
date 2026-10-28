@@ -278,7 +278,7 @@ private class IosLocalSummaryEngine(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            send(StorySummaryEvent.Failure("Local summarization failed: ${error.message ?: "Unknown error"}"))
+            send(StorySummaryEvent.Failure(error.message ?: "The local model couldn't create a summary. Try again."))
         }
     }
 }

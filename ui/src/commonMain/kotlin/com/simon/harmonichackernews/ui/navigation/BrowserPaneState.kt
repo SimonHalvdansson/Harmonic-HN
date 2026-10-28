@@ -65,7 +65,9 @@ internal class BrowserSplitSession {
     }
 
     fun target(savedRatio: Float, standalone: Boolean, sideBySide: Boolean, visualExpansion: Float): Float {
-        val returning = reachedBrowser && visualExpansion > 0.001f
+        // The departing comments snapshot has a fixed width. Preserve both panes until
+        // the transfer finishes, including a drag that is later cancelled.
+        val returning = reachedBrowser && visualExpansion >= 0.999f
         return when {
             standalone && (!sideBySide || returning) -> 0f
             returning -> openingRatio ?: savedRatio

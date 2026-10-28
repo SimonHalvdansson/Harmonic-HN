@@ -76,11 +76,34 @@ final class IosFoundationModelsSummaryBridge: IosNativeSummaryBridge {
         if #available(iOS 26.0, *) {
             Task {
                 do {
-                    let session = LanguageModelSession(instructions: instruction)
-                    let response = try await session.respond(to: text)
+                    let model = SystemLanguageModel.default
+                    let session = LanguageModelSession(model: model, instructions: instruction)
+                    if #available(iOS 26.4, *) {
+                        let instructionTokens = try await model.tokenCount(for: Instructions(instruction))
+                        let inputTokens = try await model.tokenCount(for: Prompt(text))
+                        guard instructionTokens + inputTokens + Int(AppleSummaryPromptBudget.shared.CONTEXT_HEADROOM_TOKENS) <= model.contextSize else {
+                            callback.complete(summary: nil, errorMessage: AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE)
+                            return
+                        }
+                    }
+                    let response = try await session.respond(
+                        to: text,
+                        options: GenerationOptions(maximumResponseTokens: Int(AppleSummaryPromptBudget.shared.MAX_OUTPUT_TOKENS))
+                    )
                     callback.complete(summary: response.content, errorMessage: nil)
                 } catch {
-                    callback.complete(summary: nil, errorMessage: error.localizedDescription)
+                    let contextExceeded: Bool
+                    if #available(iOS 27.0, *), case LanguageModelError.contextSizeExceeded = error {
+                        contextExceeded = true
+                    } else if case LanguageModelSession.GenerationError.exceededContextWindowSize = error {
+                        contextExceeded = true
+                    } else {
+                        contextExceeded = false
+                    }
+                    callback.complete(
+                        summary: nil,
+                        errorMessage: contextExceeded ? AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE : error.localizedDescription
+                    )
                 }
             }
             return

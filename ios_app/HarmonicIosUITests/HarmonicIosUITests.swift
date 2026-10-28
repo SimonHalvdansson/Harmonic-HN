@@ -1263,6 +1263,70 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("Stories restored after leaving side by side")
     }
 
+    func testIpadInteractiveBackFromSubmissions() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openFirstComments()
+        app.labeledButton("User").tapCenter()
+        let submissions = app.labeledButton("Submissions")
+        XCTAssertTrue(submissions.waitForExistence(timeout: 15))
+        submissions.tapCenter()
+        XCTAssertTrue(app.labeledButton("Stories").waitForExistence(timeout: 15))
+        keepScreenshot("iPad submissions before interactive back")
+        // Slow drags leave enough frames in the simulator recording to inspect the retained feed.
+        edgeSwipeBack(endX: 0.85, velocity: .slow)
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        keepScreenshot("iPad feed after interactive back")
+    }
+
+    func testIpadPullCommentsFromAdjustedSplit() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openFirstComments()
+        let split = app.labeledButton("Read side by side")
+        if !split.exists { app.buttons.matching(NSPredicate(format: "label == %@", "More options")).allElementsBoundByIndex.last?.tapCenter() }
+        XCTAssertTrue(split.waitForExistence(timeout: 5))
+        split.tapCenter()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20))
+        let divider = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Adjust split ratio")).firstMatch
+        XCTAssertTrue(divider.waitForExistence(timeout: 5))
+        let start = divider.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 140, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        keepScreenshot("iPad adjusted split before pulling comments")
+        let handle = app.otherElements["comments-sheet-handle"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        let handleStart = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        handleStart.press(forDuration: 0.1, thenDragTo: handleStart.withOffset(CGVector(dx: 0, dy: -220)), withVelocity: .slow, thenHoldForDuration: 1)
+        keepScreenshot("iPad comments after partial pull")
+        // Complete the transfer using the current, observed handle position.
+        if handle.exists && handle.isHittable {
+            let current = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            current.press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.04)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+        XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
+        keepScreenshot("iPad comments after completing pull")
+    }
+
+    func testReportedHttpArticleLoadsInBrowser() throws {
+        openDebugSettings()
+        let field = app.textViews["HN ID"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tapCenter()
+        field.typeText("50227400")
+        app.labeledButton("Open HN ID").tapCenter()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        articleHeader.tapCenter()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20))
+        let title = app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "MacOS Extensions")).firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 30))
+        XCTAssertFalse(app.staticTexts["Couldn't load this page"].exists)
+        keepScreenshot("Reported HTTP article loaded on iPad")
+    }
+
     func testExpandedSideBySideBrowserAndComments() throws {
         try XCTSkipUnless(min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600)
         defer { XCUIDevice.shared.orientation = .portrait }

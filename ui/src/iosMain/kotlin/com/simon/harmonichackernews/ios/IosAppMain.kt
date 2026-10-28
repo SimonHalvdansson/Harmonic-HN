@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import com.simon.harmonichackernews.ui.navigation.navigationSurfaceTranslation
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.runtime.CompositionLocalProvider
@@ -602,17 +603,15 @@ private fun IosAppContent(
     )
 }
 
-private fun Modifier.iosBackOutgoing(progress: Float): Modifier = graphicsLayer {
-    translationX = size.width * progress
-    shadowElevation = if (progress in 0f..0.999f) 12f else 0f
-}
+private fun Modifier.iosBackOutgoing(progress: Float): Modifier =
+    navigationSurfaceTranslation { size.width * progress }.graphicsLayer {
+        shadowElevation = if (progress in 0f..0.999f) 12f else 0f
+    }
 
 private fun Modifier.iosBackIncoming(progress: Float): Modifier =
-    drawWithContent {
+    navigationSurfaceTranslation { -size.width * 0.24f * (1f - progress) }.drawWithContent {
         drawContent()
         drawRect(Color.Black.copy(alpha = 0.14f * (1f - progress)))
-    }.graphicsLayer {
-        translationX = -size.width * 0.24f * (1f - progress)
     }
 
 @Composable

@@ -46,6 +46,15 @@ internal val LocalActivityNavigationTransition =
 /** Marks an explicit completion action as forward navigation before its entry is removed. */
 internal val LocalActivityNavigationForwardExit = staticCompositionLocalOf<() -> Unit> { {} }
 
+/** Translate pixels without changing the coordinates used to recalculate pane safe areas. */
+internal fun Modifier.navigationSurfaceTranslation(offset: DrawScope.() -> Float): Modifier =
+    drawWithContent {
+        val translation = offset()
+        withTransform({ translate(left = translation) }) {
+            this@drawWithContent.drawContent()
+        }
+    }
+
 internal fun activityNavigationOpenContentTransform(
     transitionOffsetPx: Int,
 ): ContentTransform = ContentTransform(

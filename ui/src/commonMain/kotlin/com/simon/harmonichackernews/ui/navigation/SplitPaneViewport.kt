@@ -112,8 +112,8 @@ internal fun SplitPaneViewport(
     val visualExpansion = browser?.sheetExpansion ?: 1f
     val opening = browser?.opening == true
     val integrated = browser?.integrated == true
-    LaunchedEffect(session, savedRatio, integrated, opening, logicalExpansion) {
-        session.update(savedRatio, integrated, opening, logicalExpansion)
+    LaunchedEffect(session, savedRatio, integrated, opening, visualExpansion) {
+        session.update(savedRatio, integrated, opening, visualExpansion)
     }
     val temporary = session.openingRatio != null
     val sheetTransition = integrated && (opening ||

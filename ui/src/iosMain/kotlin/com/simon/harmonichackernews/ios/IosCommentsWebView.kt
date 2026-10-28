@@ -86,6 +86,17 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextAlign
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_error
+import com.simon.harmonichackernews.resources.ic_refresh
+import com.simon.harmonichackernews.resources.ic_open_in_browser
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -696,16 +707,28 @@ internal fun IosCommentsScaffold(
                     webView.failure?.let { message ->
                         Column(
                             Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).padding(24.dp),
-                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text(message)
-                            TextButton(onClick = webView::reload) { Text("Retry") }
+                            Icon(painterResource(Res.drawable.ic_error), null,
+                                Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Couldn't load this page", style = MaterialTheme.typography.titleLarge)
+                            Text(message, textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = webView::reload) {
+                                Icon(painterResource(Res.drawable.ic_refresh), null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Retry")
+                            }
                             TextButton(onClick = {
                                 controller.listener.onSheetAction(
                                     CommentsSheetAction.BROWSER,
                                 )
-                            }) { Text("Open in browser") }
+                            }) {
+                                Icon(painterResource(Res.drawable.ic_open_in_browser), null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Open in browser")
+                            }
                         }
                     }
                 }

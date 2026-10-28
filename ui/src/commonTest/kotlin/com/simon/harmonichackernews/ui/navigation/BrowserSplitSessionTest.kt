@@ -25,7 +25,10 @@ class BrowserSplitSessionTest {
         session.update(0.43f, true, false, 0f)
         session.adjust(0.65f)
         assertEquals(0.65f, session.target(0.43f, false, true, 0f))
-        assertEquals(0.43f, session.target(0.43f, false, true, 0.2f))
+        for (progress in listOf(0.01f, 0.2f, 0.5f, 0.9f, 0.998f, 0f)) {
+            assertEquals(0.65f, session.target(0.43f, false, true, progress))
+        }
+        assertEquals(0.43f, session.target(0.43f, false, true, 1f))
         session.update(0.43f, true, false, 1f)
         assertNull(session.openingRatio)
         session.update(0.43f, true, true, 1f)
@@ -36,7 +39,8 @@ class BrowserSplitSessionTest {
         val session = BrowserSplitSession()
         session.update(0.6f, true, false, 0f)
         session.adjust(0f)
-        assertEquals(0.6f, session.target(0.6f, false, false, 0.15f))
+        assertEquals(0f, session.target(0.6f, false, false, 0.15f))
+        assertEquals(0.6f, session.target(0.6f, false, false, 1f))
         assertEquals(0f, session.target(0.6f, false, false, 0f))
         assertEquals(0.6f, session.openingRatio)
     }
@@ -47,7 +51,8 @@ class BrowserSplitSessionTest {
         session.update(0.5f, true, true, 1f)
         assertEquals(0.5f, session.target(0.5f, true, true, 1f))
         session.update(0.5f, true, false, 0f)
-        assertEquals(0f, session.target(0.5f, true, true, 0.2f))
+        assertEquals(0.5f, session.target(0.5f, true, true, 0.2f))
+        assertEquals(0f, session.target(0.5f, true, true, 1f))
     }
 
     @Test fun releasingTheDividerSettlesToFullWidthOrTheMinimumUsablePane() {

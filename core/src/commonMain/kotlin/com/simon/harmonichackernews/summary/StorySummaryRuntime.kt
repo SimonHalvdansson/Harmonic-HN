@@ -24,7 +24,7 @@ enum class StorySummaryMode {
 
 const val LOCAL_SUMMARY_ARTICLE_TOO_SHORT = "Article is too short for local summarization"
 const val SUMMARY_ARTICLE_HTTP_UNAUTHORIZED =
-    "Extraction failed: Article returned HTTP 401"
+    "Couldn't read this article because it requires signing in."
 const val GEMINI_NANO_POLICY_BLOCKED_MESSAGE = "Blocked by Gemini Nano policy check."
 
 data class StorySummaryInput(
@@ -285,20 +285,7 @@ class StorySummaryRuntime(
     }
 
     private fun fail(mode: StorySummaryMode, detail: String, elapsedMillis: Long) {
-        val policyBlocked = mode == StorySummaryMode.LOCAL &&
-            (detail.contains("[ErrorCode 4]", ignoreCase = true) ||
-                detail.contains("[ErrorCode 11]", ignoreCase = true)) &&
-            detail.contains("policy check", ignoreCase = true)
-        val prefix = when (mode) {
-            StorySummaryMode.CLOUD -> "Failed to generate summary"
-            StorySummaryMode.LOCAL -> "Failed to generate local summary"
-        }
-        val message = when {
-            policyBlocked -> GEMINI_NANO_POLICY_BLOCKED_MESSAGE
-            mode == StorySummaryMode.LOCAL && detail == LOCAL_SUMMARY_ARTICLE_TOO_SHORT ->
-                LOCAL_SUMMARY_ARTICLE_TOO_SHORT
-            else -> "$prefix: $detail"
-        }
+        val message = summaryFailureMessage(mode, detail)
         mutableState.value = mutableState.value.copy(
             text = message,
             diagnostics = mutableState.value.diagnostics?.copy(totalTimeMillis = elapsedMillis),
@@ -341,6 +328,38 @@ class StorySummaryRuntime(
             estimatedOutputTokens = estimatedTokens,
             estimatedTokensPerSecond = estimatedRate,
         )
+    }
+}
+
+internal fun summaryFailureMessage(mode: StorySummaryMode, detail: String): String {
+    val policyBlocked = mode == StorySummaryMode.LOCAL &&
+        (detail.contains("[ErrorCode 4]", ignoreCase = true) ||
+            detail.contains("[ErrorCode 11]", ignoreCase = true)) &&
+        detail.contains("policy check", ignoreCase = true)
+    var reason = detail.trim()
+    val prefixes = listOf("Failed to generate local summary:", "Failed to generate summary:", "Local summarization failed:")
+    while (true) {
+        val prefix = prefixes.firstOrNull { reason.startsWith(it, ignoreCase = true) } ?: break
+        reason = reason.drop(prefix.length).trim()
+    }
+    return when {
+        policyBlocked -> GEMINI_NANO_POLICY_BLOCKED_MESSAGE
+        reason == LOCAL_SUMMARY_ARTICLE_TOO_SHORT || reason == SUMMARY_ARTICLE_HTTP_UNAUTHORIZED ||
+            reason == AppleSummaryPromptBudget.CONTEXT_LIMIT_MESSAGE -> reason
+        reason.contains("context window", ignoreCase = true) ||
+            reason.contains("context limit", ignoreCase = true) ->
+            "This article or prompt is too long for the selected model. Try a shorter prompt or another model."
+        reason.startsWith("Extraction failed:", ignoreCase = true) -> when {
+            reason.contains("HTTP 401") -> SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
+            reason.contains("HTTP 403") -> "This website doesn't allow Harmonic to read the article for a summary."
+            reason.contains("App Transport Security", ignoreCase = true) ->
+                "Couldn't load the article for a summary because the connection was blocked. Try opening it in your browser."
+            else -> "Couldn't read the article for a summary. Check your connection and try again."
+        }
+        // Native networking diagnostics contain URLs, task IDs and nested NSError dictionaries.
+        reason.contains("NSURLErrorDomain") || reason.length > 400 ->
+            "Couldn't create a summary. Please try again."
+        else -> "${if (mode == StorySummaryMode.LOCAL) "Failed to generate local summary" else "Failed to generate summary"}: $reason"
     }
 }
 

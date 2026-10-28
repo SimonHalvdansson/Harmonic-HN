@@ -19,6 +19,30 @@ import com.simon.harmonichackernews.platform.SummaryResult
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySummaryRuntimeTest {
     @Test
+    fun nativeFailuresDoNotExposeNestedPrefixesOrNetworkDiagnostics() {
+        assertEquals(
+            "Failed to generate local summary: unavailable",
+            summaryFailureMessage(StorySummaryMode.LOCAL, "Local summarization failed: unavailable"),
+        )
+        val context = summaryFailureMessage(StorySummaryMode.LOCAL,
+            "Local summarization failed: Exceeded model context window size")
+        assertTrue(context.contains("too long"))
+        assertFalse(context.contains(":"))
+        for (mode in StorySummaryMode.entries) {
+            val message = summaryFailureMessage(mode,
+                "Extraction failed: Exception in http request: Error Domain=NSURLErrorDomain Code=-1022 " +
+                    "App Transport Security UserInfo={NSURL=http://example.com, task=347}")
+            assertTrue(message.contains("connection was blocked"))
+            assertFalse(message.contains("NSURLError"))
+            assertFalse(message.contains("example.com"))
+            assertEquals(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED,
+                summaryFailureMessage(mode, "Extraction failed: Article returned HTTP 401"))
+            assertEquals("Couldn't read the article for a summary. Check your connection and try again.",
+                summaryFailureMessage(mode, "Extraction failed: timeout"))
+        }
+    }
+
+    @Test
     fun progressAndSuccessBecomeObservableState() = runTest {
         val cloud = StorySummaryBackend {
             flow {

@@ -2,6 +2,15 @@ import XCTest
 import HarmonicKit
 @testable import HarmonicIos
 
+final class IosArticleTransportTests: XCTestCase {
+    func testReportedHttpArticleCanBeFetchedForExtraction() async throws {
+        let url = try XCTUnwrap(URL(string: "http://oldvcr.blogspot.com/2026/10/macos-extensions-pack-for-apple-network.html"))
+        let (data, response) = try await URLSession.shared.data(from: url)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("MacOS Extensions"))
+    }
+}
+
 /// Real inference is opt-in: seed litert-test-fixture.litertlm in the app's Application Support.
 final class IosLocalAiTests: XCTestCase {
     private var environment: IosLocalAiEnvironment!
