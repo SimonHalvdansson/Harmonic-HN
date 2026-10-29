@@ -17,9 +17,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
@@ -39,16 +37,14 @@ class SettingsDetailTransitionTest {
     fun nestedMotionReversesWhileCategoryChangesAndTheListKeepTheirOwnMotion() = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("SettingsTransitionTest")
         val dependencies = HarmonicUiDependencies(bootstrap.app, bootstrap.scene)
-        val lifecycleOwner = object : LifecycleOwner {
-            override val lifecycle = LifecycleRegistry(this).apply { currentState = Lifecycle.State.RESUMED }
-        }
+        val lifecycleOwner = SettingsTestOwner()
         val navigation = SettingsNavigationStore(twoPane = true)
         var listY = 0
         var detailY = 0
         val scene = ImageComposeScene(1200, 750, Density(1f)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner) {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner, LocalViewModelStoreOwner provides lifecycleOwner) {
                     SettingsNavigationShell(
                         navigation, PaneScaffoldDirective(2, 24.dp, 1, 0.dp, 360.dp, emptyList()),
                         false, 24.dp, {}, {},
@@ -109,6 +105,7 @@ class SettingsDetailTransitionTest {
             verifyMotion(0, -1) { navigation.navigateTo(SettingsSection.Comments) }
         } finally {
             scene.close()
+            lifecycleOwner.viewModelStore.clear()
             bootstrap.close()
         }
     }

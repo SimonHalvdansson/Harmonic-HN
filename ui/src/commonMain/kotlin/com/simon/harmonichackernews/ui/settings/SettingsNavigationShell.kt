@@ -27,8 +27,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberDecoratedNavEntries
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.SceneInfo
 import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
@@ -95,20 +93,16 @@ fun SettingsNavigationShell(
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val scrollToTopEnabled = LocalStatusBarScrollToTopEnabled.current
-    SplitPaneViewport(
-        directive = directive,
-        defaultRatio = paneProportion,
-        supportsTwoPane = supportsTwoPane,
-        isFoldable = isFoldable,
-        snapToCenter = snapToCenter,
-        modifier = modifier.fillMaxSize().themeBackground { pageBackground }
-            .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
-    ) { paneExpansionState, layoutDirective ->
-        val navigationState by navigation.state.collectAsStateWithLifecycle()
-        val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
-            { section, singlePane, onBack, onNavigate ->
-                val parent = navigationState.detailStack
-                    .getOrNull(navigationState.detailStack.indexOf(section) - 1)
+    val navigationState by navigation.state.collectAsStateWithLifecycle()
+    val retainedContent = rememberSettingsRetainedContent(navigationState, isTwoPane)
+    val listContent: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection) -> Unit) -> Unit =
+        { selected, showSelection, onBack, onSelect ->
+            retainedContent.List { renderList(selected, showSelection, onBack, onSelect) }
+        }
+    val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
+        { section, singlePane, onBack, onNavigate ->
+            retainedContent.Section(section) {
+                val parent = navigationState.detailStack.getOrNull(navigationState.detailStack.indexOf(section) - 1)
                 CompositionLocalProvider(
                     LocalSettingsParentSection provides parent,
                     LocalStatusBarScrollToTopEnabled provides (scrollToTopEnabled &&
@@ -118,6 +112,16 @@ fun SettingsNavigationShell(
                     renderDetail(section, singlePane, onBack, onNavigate)
                 }
             }
+        }
+    SplitPaneViewport(
+        directive = directive,
+        defaultRatio = paneProportion,
+        supportsTwoPane = supportsTwoPane,
+        isFoldable = isFoldable,
+        snapToCenter = snapToCenter,
+        modifier = modifier.fillMaxSize().themeBackground { pageBackground }
+            .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
+    ) { paneExpansionState, layoutDirective ->
         val selectedSection = navigationState.selectedSection
 
         fun navigateTo(section: SettingsSection, preserveCurrentDetail: Boolean = false) {
@@ -144,7 +148,7 @@ fun SettingsNavigationShell(
                 onBackFromSettings = onBackFromSettings,
                 onNavigateBack = ::navigateBack,
                 onNavigateTo = ::navigateTo,
-                renderList = renderList,
+                renderList = listContent,
                 renderDetail = renderDetailWithOrigin,
                 predictiveBackOverlay = predictiveBackOverlay,
                 completedPredictiveBack = completedPredictiveBack,
@@ -168,7 +172,7 @@ fun SettingsNavigationShell(
                         },
                     ),
                 ) {
-                    renderList(selectedSection, true, onBackFromSettings, ::navigateTo)
+                    listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) }
                 }
                 entry<SettingsTwoPaneDetailDestination>(
                     metadata = ListDetailSceneStrategy.detailPane(),
@@ -182,11 +186,9 @@ fun SettingsNavigationShell(
                     }
                 }
             }
-            val entries = rememberDecoratedNavEntries(
-                backStack = listOf(SettingsListDestination, SettingsTwoPaneDetailDestination),
-                entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
-                entryProvider = provider,
-            )
+            // These entries arrange the panes. The retained content above owns screen state
+            // in both layouts, so the pane wrappers need no second saveable-state holder.
+            val entries = listOf<NavKey>(SettingsListDestination, SettingsTwoPaneDetailDestination).map(provider)
             val sceneState = rememberSceneState(
                 entries = entries,
                 sceneStrategies = listOf(sceneStrategy),

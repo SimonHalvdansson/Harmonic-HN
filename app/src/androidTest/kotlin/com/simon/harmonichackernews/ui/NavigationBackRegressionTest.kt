@@ -393,6 +393,8 @@ class NavigationBackRegressionTest {
     }
 
     @Test fun secondGesturePopsBothNestedStories() {
+        val activity = compose.activity
+        val twoPane = activity.resources.configuration.smallestScreenWidthDp >= 600
         compose.runOnIdle {
             val navigation = compose.activity.navigationController.navigationState
             navigation.returnToStories()
@@ -401,6 +403,12 @@ class NavigationBackRegressionTest {
         }
         compose.waitForIdle()
         doubleBack()
+        if (twoPane) {
+            // The selected root detail shares the Stories surface. Final Back belongs to
+            // Android at this task boundary, just like final Back from tablet Settings.
+            assertTrue(activity.isFinishing || activity.isDestroyed)
+            return
+        }
         compose.runOnIdle {
             assertEquals(MainDestination.STORIES, compose.activity.navigationController.navigationState.state.value.currentDestination)
         }

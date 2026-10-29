@@ -21,9 +21,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.settings.AiSummaryMode
@@ -58,11 +56,7 @@ class AiSummaryModeTransitionTest {
         var contentWidth = 0
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("AnimationTest")
         val dependencies = HarmonicUiDependencies(bootstrap.app, bootstrap.scene)
-        val lifecycleOwner = object : LifecycleOwner {
-            override val lifecycle = LifecycleRegistry(this).apply {
-                currentState = Lifecycle.State.RESUMED
-            }
-        }
+        val lifecycleOwner = SettingsTestOwner()
         val navigation = SettingsNavigationStore(SettingsSection.AiSummary, twoPane = true)
         // Keep the real adaptive scaffold: an isolated AnimatedContent misses the
         // lookahead/visible-width mismatch responsible for the last-frame jump.
@@ -70,7 +64,7 @@ class AiSummaryModeTransitionTest {
         val scene = ImageComposeScene((1200 * density.density).roundToInt(), (750 * density.density).roundToInt(), density) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner) {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner, LocalViewModelStoreOwner provides lifecycleOwner) {
                     SettingsNavigationShell(
                         navigation, directive, false, 24.dp, {}, {},
                         renderList = { _, _, _, _ -> },
@@ -150,6 +144,7 @@ class AiSummaryModeTransitionTest {
             }
         } finally {
             scene.close()
+            lifecycleOwner.viewModelStore.clear()
             bootstrap.close()
         }
     }

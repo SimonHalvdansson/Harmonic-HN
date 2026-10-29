@@ -9,9 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
@@ -33,15 +31,13 @@ class SettingsIdleRenderingTest {
     private fun verify(realList: Boolean, realDetail: Boolean, interrupted: Boolean = false) = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("SettingsIdleTest")
         val dependencies = HarmonicUiDependencies(bootstrap.app, bootstrap.scene)
-        val lifecycleOwner = object : LifecycleOwner {
-            override val lifecycle = LifecycleRegistry(this).apply { currentState = Lifecycle.State.RESUMED }
-        }
+        val lifecycleOwner = SettingsTestOwner()
         val navigation = SettingsNavigationStore(SettingsSection.Appearance, twoPane = true)
         val directive = PaneScaffoldDirective(2, 24.dp, 1, 0.dp, 360.dp, emptyList())
         val scene = ImageComposeScene(1280, 800, Density(1f)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
-                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner) {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides dependencies, LocalLifecycleOwner provides lifecycleOwner, LocalViewModelStoreOwner provides lifecycleOwner) {
                     SettingsNavigationShell(
                         navigation, directive, false, 24.dp, {}, {},
                         renderList = { selected, selection, back, navigate -> if (realList) SettingsListScreen(selected, selection, false, false, back, navigate) else Text("List") },
@@ -68,6 +64,7 @@ class SettingsIdleRenderingTest {
             assertFalse(scene.hasInvalidations(), "Interrupted category transitions must settle")
         } finally {
             scene.close()
+            lifecycleOwner.viewModelStore.clear()
             bootstrap.close()
         }
     }

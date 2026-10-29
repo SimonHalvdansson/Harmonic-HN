@@ -30,6 +30,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.rememberLifecycleOwner
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
 import kotlinx.coroutines.flow.first
@@ -114,6 +117,16 @@ internal fun <T, K : Any> ActivityNavigationStack(
     // can begin on later frames, so a timer from the stack update can hide the source too soon.
     // Retain the source until the actual covering layer has finished entering.
     val coveringLayer = layers.firstOrNull { it.key == keys.lastOrNull() }
+    // Retention keeps compositions alive, but covered destinations must stop lifecycle work.
+    // Include pending reconciliation and predictive previews, not just running animations.
+    val transitioning = preview != null || layers.any {
+        !it.visibility.isIdle || it.key !in keys
+    } || keys.any { key -> layers.none { it.key == key } }
+    val rootLifecycle = when {
+        entries.isEmpty() -> if (transitioning) Lifecycle.State.STARTED else Lifecycle.State.RESUMED
+        entries.size == 1 && transitioning -> Lifecycle.State.STARTED
+        else -> Lifecycle.State.CREATED
+    }
     val rootCovered = hideCoveredRoot && preview == null &&
         !completingPop && coveringLayer?.visibility?.let {
             it.isIdle && it.currentState && it.targetState
@@ -138,7 +151,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
                 .then(if (entries.isEmpty()) Modifier else Modifier.clearAndSetSemantics { }),
         ) {
             Box(Modifier.fillMaxSize().then(if (rootIsPreviewParent) preview.enterModifier else Modifier)) {
-                root()
+                NavigationDestinationLifecycle(rootLifecycle, root)
             }
         }
         layers.forEachIndexed { index, layer ->
@@ -190,7 +203,14 @@ internal fun <T, K : Any> ActivityNavigationStack(
                                 LocalActivityNavigationTransition provides transition,
                                 LocalActivityNavigationForwardExit provides { layer.forwardExit = true },
                             ) {
-                                content(layer.entry)
+                                val maxLifecycle = when {
+                                    !inStack -> Lifecycle.State.CREATED
+                                    isCurrent -> if (transitioning) Lifecycle.State.STARTED else Lifecycle.State.RESUMED
+                                    layer.key == preview?.parent ||
+                                        (transitioning && layer.key == keys.getOrNull(keys.lastIndex - 1)) -> Lifecycle.State.STARTED
+                                    else -> Lifecycle.State.CREATED
+                                }
+                                NavigationDestinationLifecycle(maxLifecycle) { content(layer.entry) }
                             }
                         }
                     }
@@ -215,4 +235,11 @@ internal fun <T, K : Any> ActivityNavigationStack(
             Box(Modifier.fillMaxSize().zIndex(Float.MAX_VALUE).consumeAllPointerGestures())
         }
     }
+}
+
+/** A child owner also respects a covered parent stack and the host's background lifecycle. */
+@Composable
+private fun NavigationDestinationLifecycle(maxLifecycle: Lifecycle.State, content: @Composable () -> Unit) {
+    val owner = rememberLifecycleOwner(maxLifecycle = maxLifecycle)
+    CompositionLocalProvider(LocalLifecycleOwner provides owner, content = content)
 }

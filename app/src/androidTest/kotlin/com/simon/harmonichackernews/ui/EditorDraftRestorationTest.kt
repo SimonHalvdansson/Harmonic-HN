@@ -133,7 +133,14 @@ class EditorDraftRestorationTest {
 
     private fun swipeBack() {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        val bounds = compose.runOnIdle { compose.activity.window.decorView.let { it.width to it.height } }
+        val (width, gestureY) = compose.runOnIdle {
+            val view = compose.activity.window.decorView
+            val imeBottom = ViewCompat.getRootWindowInsets(view)
+                ?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
+            // Start on the app surface. Keyboard touch/gesture exclusions must not turn a
+            // system Back swipe into keyboard input as its height changes between fields.
+            view.width to (view.height - imeBottom) * 0.5f
+        }
         val downTime = SystemClock.uptimeMillis()
         for (step in 0..20) {
             val action = when (step) {
@@ -143,7 +150,7 @@ class EditorDraftRestorationTest {
             }
             val event = MotionEvent.obtain(
                 downTime, SystemClock.uptimeMillis(), action,
-                1f + bounds.first * 0.45f * step / 20, bounds.second * 0.5f, 0,
+                1f + width * 0.45f * step / 20, gestureY, 0,
             ).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
             try {
                 assertTrue("System back gesture must be injected", automation.injectInputEvent(event, true))
