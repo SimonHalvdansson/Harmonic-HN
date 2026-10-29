@@ -127,6 +127,7 @@ fun ManageFrontpagesSettingsRoute(
         onDefaultSelected = { repository.setPreferredStoryType(it.label) },
         onOrderChanged = repository::setVisibleFrontpageOrder,
         onReset = {
+            repository.setAdditionalFrontpages(emptySet())
             repository.setFrontpageOrder(emptyList())
             repository.setPreferredStoryType(StoryType.TOP_STORIES.label)
         },
@@ -412,7 +413,7 @@ fun ManageFrontpagesSettingsScreen(
             if (available.isNotEmpty()) {
                 item(key = "add-frontpages-heading") {
                     Text(
-                        text = "Add frontpage",
+                        text = "Additional frontpages",
                         modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
                             .semantics { heading() },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -502,7 +503,7 @@ fun ManageFrontpagesSettingsScreen(
                     surfaceColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
                     shape = resetButtonShape,
                 )
-                .semantics { contentDescription = "Reset frontpage order and default" },
+                .semantics { contentDescription = "Reset frontpages" },
             shape = resetButtonShape,
             containerColor = Color.Transparent,
             elevation = FloatingActionButtonDefaults.elevation(

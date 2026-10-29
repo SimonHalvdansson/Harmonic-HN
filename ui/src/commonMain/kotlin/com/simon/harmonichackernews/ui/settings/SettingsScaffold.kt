@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import com.simon.harmonichackernews.ui.theme.themeBackground
 import androidx.compose.ui.draw.drawBehind
 
@@ -168,9 +169,10 @@ fun SettingsListScreen(
             onBack = onBack,
         )
 
+        val listState = rememberSettingsListState()
         LazyColumn(
-            state = rememberSettingsListState(),
-            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            modifier = Modifier.fillMaxSize().statusBarScrollToTop { listState.animateScrollToItem(0) },
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(
                 start = HarmonicDimens.settings_list_segment_horizontal_margin,
@@ -192,7 +194,8 @@ fun SettingsListScreen(
                                 entry.section == SettingsSection.Appearance &&
                                 (selectedSection == SettingsSection.Theme ||
                                     selectedSection == SettingsSection.Font ||
-                                    selectedSection == SettingsSection.PaletteTint) ||
+                                    selectedSection == SettingsSection.PaletteTint ||
+                                    selectedSection == SettingsSection.StoriesHeader) ||
                                 entry.section == SettingsSection.Debug &&
                                 (selectedSection == SettingsSection.DebugLinkPreviews ||
                                     selectedSection == SettingsSection.Glass) ||
@@ -372,7 +375,8 @@ fun SettingsPage(
         }
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().then(scrollContentModifier),
+                modifier = Modifier.fillMaxSize().then(scrollContentModifier)
+                    .statusBarScrollToTop { listState.animateScrollToItem(0) },
                 state = listState,
                 contentPadding = PaddingValues(
                     start = 0.dp,

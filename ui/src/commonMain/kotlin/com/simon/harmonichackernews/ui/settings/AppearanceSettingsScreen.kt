@@ -12,6 +12,7 @@ import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_view_agenda
 import com.simon.harmonichackernews.resources.ic_design_services
 import com.simon.harmonichackernews.resources.ic_font_download
 import com.simon.harmonichackernews.resources.ic_horizontal_split
@@ -65,7 +66,6 @@ fun AppearanceSettingsScreen(
     contentVersion: Int = 0,
     onSplitRatioChanged: (Float) -> Unit = {},
     onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
-    onStoryListSelectorChanged: (StoryListSelector) -> Unit = {},
     onSurfaceEffectChanged: (SurfaceEffectMode) -> Unit = {},
 ) {
     var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
@@ -114,24 +114,11 @@ fun AppearanceSettingsScreen(
                     )
                 }
                 SettingsDivider()
-                SegmentedSetting(
-                    title = "Frontpage selector",
-                    options = listOf(
-                        StoryListSelector.DROPDOWN to "Dropdown",
-                        StoryListSelector.CHIPS to "Chips",
-                    ),
-                    selected = state.storyListSelector,
-                    onSelected = onStoryListSelectorChanged,
-                )
-                SettingsDivider()
-                SwitchSettingRow(
-                    title = "Compact header",
-                    summary = "Reduce spacing around the frontpage header",
-                    icon = Res.drawable.ic_horizontal_split,
-                    checked = state.compactHeader,
-                    onCheckedChange = {
-                        onBooleanChanged(AppearanceBooleanSetting.CompactHeader, it)
-                    },
+                SettingRow(
+                    title = "Stories header",
+                    summary = "Selector, compactness",
+                    icon = Res.drawable.ic_view_agenda,
+                    onClick = { onNavigate(SettingsSection.StoriesHeader) },
                 )
                 SettingsDivider()
                 SurfaceEffectSelector(state.surfaceEffectMode, onSurfaceEffectChanged)

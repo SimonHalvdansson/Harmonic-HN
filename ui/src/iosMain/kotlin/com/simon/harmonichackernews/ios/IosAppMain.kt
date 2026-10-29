@@ -181,16 +181,18 @@ class IosHarmonicApplication(
         // native host's theme background show through until the content fills the new size.
         opaque = false
     }) {
-        CompositionLocalProvider(
-            LocalViewModelStoreOwner provides sceneOwner,
-            LocalIosForeground provides foreground,
-            LocalIosScreenCorners provides screenCorners,
-        ) {
-            IosApp(
-                bootstrap = bootstrap,
-                scene = scene,
-                appearance = appearance,
-            )
+        IosStatusBarScrollToTopHost {
+            CompositionLocalProvider(
+                LocalViewModelStoreOwner provides sceneOwner,
+                LocalIosForeground provides foreground,
+                LocalIosScreenCorners provides screenCorners,
+            ) {
+                IosApp(
+                    bootstrap = bootstrap,
+                    scene = scene,
+                    appearance = appearance,
+                )
+            }
         }
     }
 

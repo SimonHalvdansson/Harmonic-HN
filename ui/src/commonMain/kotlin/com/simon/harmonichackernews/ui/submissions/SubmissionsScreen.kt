@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.submissions
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -338,6 +339,7 @@ private fun BoxScope.SubmissionsList(
 
     LazyColumn(
         modifier = Modifier
+            .statusBarScrollToTop { listState.animateScrollToItem(0) }
             .then(contentWidthModifier)
             .fillMaxSize()
             .align(Alignment.TopCenter)

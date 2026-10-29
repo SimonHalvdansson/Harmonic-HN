@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
@@ -414,6 +415,11 @@ fun CommentsScreen(
             key = { item -> item.comment.id },
             contentType = { if (settings.hasBackground) "comment-card" else "comment" },
             modifier = Modifier
+                .statusBarScrollToTop(
+                    enabled = (controller.isSheetExpanded() || controller.sideBySideActive) &&
+                        !controller.isCommentActionOverlayShowing() &&
+                        !controller.isLinkPreviewOverlayShowing() && !controller.searchDialogVisible,
+                ) { listState.animateScrollToItem(0) }
                 .fillMaxSize()
                 // Capture an opaque backdrop as well as the rows. Blurring transparent gaps
                 // around depth rails otherwise lets the original sharp lines show through.

@@ -73,9 +73,10 @@ fun PortableSettingsDetail(
             onNavigate(
                 target,
                 singlePane || target == SettingsSection.Theme || target == SettingsSection.PaletteTint ||
-                    target == SettingsSection.Font,
+                    target == SettingsSection.Font || target == SettingsSection.StoriesHeader,
             )
         }
+        SettingsSection.StoriesHeader -> StoriesHeaderSettingsRoute(app.settings, onBack)
         SettingsSection.Font -> FontSettingsRoute(app.settings, onBack)
         SettingsSection.Theme -> PortableThemeSettings(app, true, onBack)
         SettingsSection.PaletteTint -> PaletteTintSettingsRoute(app.settings, true, onBack)

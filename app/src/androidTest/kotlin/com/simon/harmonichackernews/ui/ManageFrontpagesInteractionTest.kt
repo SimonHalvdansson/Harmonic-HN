@@ -131,7 +131,7 @@ class ManageFrontpagesInteractionTest {
     }
 
     @Test
-    fun resetRestoresTheOrderAndTopStoriesDefaultWhileKeepingAddedFrontpages() {
+    fun resetRemovesAddedFrontpagesAndRestoresTheOrderAndTopStoriesDefault() {
         val store = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(store, store.changes)
         repository.setAdditionalFrontpages(setOf(StoryType.CLASSIC.label))
@@ -139,14 +139,14 @@ class ManageFrontpagesInteractionTest {
         repository.setFrontpageOrder(listOf(StoryType.CLASSIC.name, StoryType.NEW_STORIES.name))
         showRoute(repository)
 
-        compose.onNodeWithContentDescription("Reset frontpage order and default").performClick()
+        compose.onNodeWithContentDescription("Reset frontpages").performClick()
         compose.runOnIdle {
             val story = repository.snapshot().story
             assertTrue(story.frontpageOrder.isEmpty())
             assertEquals(StoryType.TOP_STORIES.label, story.preferredStoryType)
-            assertEquals(setOf(StoryType.CLASSIC.label), story.additionalFrontpages)
+            assertTrue(story.additionalFrontpages.isEmpty())
             assertEquals(
-                StoryTypeMenuPolicy.baseFrontpages + StoryType.CLASSIC,
+                StoryTypeMenuPolicy.baseFrontpages,
                 StoryTypeMenuPolicy.frontpages(story.additionalFrontpages, story.frontpageOrder),
             )
         }
@@ -165,7 +165,7 @@ class ManageFrontpagesInteractionTest {
         compose.onNode(hasScrollAction()).performScrollToIndex(lastIndex)
         val last = compose.onNodeWithContentDescription("Add ${StoryType.additionalFrontpages.last().label}")
         last.assertIsDisplayed()
-        val reset = compose.onNodeWithContentDescription("Reset frontpage order and default")
+        val reset = compose.onNodeWithContentDescription("Reset frontpages")
         reset.assertIsDisplayed()
         assertEquals(compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot.center.x,
             reset.fetchSemanticsNode().boundsInRoot.center.x, 1f)
@@ -177,12 +177,12 @@ class ManageFrontpagesInteractionTest {
         showScreen()
         compose.mainClock.autoAdvance = false
         for (control in listOf("Add Classic", "Remove Classic")) {
-            val before = compose.onNodeWithText("Add frontpage").fetchSemanticsNode().boundsInRoot.top
+            val before = compose.onNodeWithText("Additional frontpages").fetchSemanticsNode().boundsInRoot.top
             compose.onNodeWithContentDescription(control).performClick()
             val tops = buildList {
                 repeat(45) {
                     compose.mainClock.advanceTimeByFrame()
-                    add(compose.onNodeWithText("Add frontpage").fetchSemanticsNode().boundsInRoot.top)
+                    add(compose.onNodeWithText("Additional frontpages").fetchSemanticsNode().boundsInRoot.top)
                 }
             }
             val after = tops.last()
@@ -218,7 +218,7 @@ class ManageFrontpagesInteractionTest {
         compose.waitUntil(5_000) { target.isDisplayed() }
         target.assertIsDisplayed()
         assertTrue(target.fetchSemanticsNode().boundsInRoot.bottom <
-            compose.onNodeWithContentDescription("Reset frontpage order and default").fetchSemanticsNode().boundsInRoot.top)
+            compose.onNodeWithContentDescription("Reset frontpages").fetchSemanticsNode().boundsInRoot.top)
         compose.runOnIdle { assertEquals(before, repository.snapshot().story) }
     }
 

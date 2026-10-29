@@ -7,6 +7,18 @@ import kotlin.test.assertTrue
 
 class SettingsNavigationStoreTest {
     @Test
+    fun storiesHeaderSubpageRestoresAndReturnsToAppearanceInEitherLayout() {
+        for (twoPane in listOf(false, true)) {
+            val navigation = SettingsNavigationStore(initialSection = SettingsSection.Appearance, twoPane = twoPane)
+            navigation.navigateTo(SettingsSection.StoriesHeader, preserveCurrentDetail = true)
+            val restored = SettingsNavigationStore(twoPane = twoPane, restoredRoutes = navigation.savedRoutes())
+            assertEquals(SettingsSection.StoriesHeader, restored.state.value.selectedSection)
+            assertTrue(restored.navigateBack())
+            assertEquals(SettingsSection.Appearance, restored.state.value.selectedSection)
+        }
+    }
+
+    @Test
     fun nestedNavigationRecordsForwardAndBackwardDirection() {
         val navigation = SettingsNavigationStore(twoPane = true)
         navigation.navigateTo(SettingsSection.Theme, preserveCurrentDetail = true)

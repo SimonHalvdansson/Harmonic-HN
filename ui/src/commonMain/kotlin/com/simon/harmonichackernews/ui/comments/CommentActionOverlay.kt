@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import com.simon.harmonichackernews.ui.content.CommentAuthorBadge
@@ -536,9 +537,14 @@ private fun CommentActionCardContent(
     }
     val bodyScrollState = rememberScrollState()
 
+    val cardScrollState = rememberScrollState()
     Column(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
+            .statusBarScrollToTop(enabled = !controller.askSurfaceVisible, priority = 1) {
+                cardScrollState.animateScrollTo(0)
+                bodyScrollState.animateScrollTo(0)
+            }
+            .verticalScroll(cardScrollState)
             .padding(HarmonicDimens.compose_comment_action_card_padding),
     ) {
         CommentActionTarget(CommentActionTargetElement.User) {

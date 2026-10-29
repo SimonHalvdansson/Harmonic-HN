@@ -334,7 +334,6 @@ fun AppearanceSettingsRoute(
             )
         },
         onExtraSidePaddingChanged = repository::setExtraSidePadding,
-        onStoryListSelectorChanged = repository::setStoryListSelector,
         onSurfaceEffectChanged = repository::setSurfaceEffectMode,
         contentVersion = settings.hashCode(),
     )

@@ -157,6 +157,9 @@ internal fun rememberStoriesHeaderMenus(controller: StoriesScreenController): St
     return menus
 }
 
+internal fun frontpageHeaderTopSpacing(compact: Boolean) = if (compact) 8.dp else 28.dp
+internal fun frontpageHeaderBottomSpacing(compact: Boolean) = if (compact) 4.dp else 8.dp
+
 @Composable
 internal fun StoriesHeader(
     controller: StoriesScreenController,
@@ -176,8 +179,8 @@ internal fun StoriesHeader(
     val startInset = with(density) { controller.presentation.contentInsetStartPx.toDp() }
     val settings = controller.displaySettings ?: return
     val compact = settings.compactHeader
-    val topSpacing = if (compact) 8.dp else 28.dp
-    val bottomSpacing = if (compact) 4.dp else 8.dp
+    val topSpacing = frontpageHeaderTopSpacing(compact)
+    val bottomSpacing = frontpageHeaderBottomSpacing(compact)
 
     val sideStart = 16.dp + startInset
     val sideEnd = 16.dp
@@ -443,21 +446,58 @@ private fun MainHeader(
     modifier: Modifier = Modifier,
 ) {
     val menus = LocalStoriesHeaderMenus.current ?: rememberStoriesHeaderMenus(controller)
+    val settings = controller.displaySettings ?: return
+    FrontpageHeaderControls(
+        settings = settings,
+        title = if (controller.presentation.showingCached) "Cached stories" else
+            controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories",
+        typeLabels = controller.presentation.typeLabels,
+        selectedTypeIndex = controller.presentation.selectedTypeIndex,
+        menus = menus,
+        onTypeSelected = onTypeSelected,
+        showRefreshMenuItem = showRefreshMenuItem,
+        refreshing = controller.presentation.refreshing,
+        onSearch = controller.listener::onOpenSearch,
+        onRefresh = controller::refresh,
+        modifier = modifier,
+        moreMenu = { showRefresh, showSearch ->
+            StoriesMoreMenuControl(
+                controller = controller,
+                menus = menus,
+                showRefreshItem = showRefresh,
+                showSearchItem = showSearch,
+                showWelcomeHint = showWelcomeHint,
+                onDismissWelcomeHint = onDismissWelcomeHint,
+            )
+        },
+    )
+}
+
+/** The live frontpage and its settings preview share title sizing, selectors and control spacing. */
+@Composable
+internal fun FrontpageHeaderControls(
+    settings: com.simon.harmonichackernews.presentation.StoryDisplaySettings,
+    title: String,
+    typeLabels: List<String>,
+    selectedTypeIndex: Int,
+    menus: StoriesHeaderMenus,
+    onTypeSelected: (Int) -> Unit,
+    showRefreshMenuItem: Boolean = false,
+    refreshing: Boolean = false,
+    onSearch: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    moreMenu: @Composable (showRefresh: Boolean, showSearch: Boolean) -> Unit,
+) {
     DisposableEffect(menus) {
         onDispose { menus.typesExpanded = false }
     }
-    val settings = controller.displaySettings ?: return
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
     val useDropdown = settings.listSelector == StoryListSelector.DROPDOWN
     LaunchedEffect(useDropdown) {
         if (!useDropdown) menus.typesExpanded = false
     }
     val density = LocalDensity.current
-    val title = if (controller.presentation.showingCached) {
-        "Cached stories"
-    } else {
-        controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories"
-    }
     val searchInHeader = LocalStoriesSearchInHeader.current
     val moreInHeader = LocalStoriesMoreMenuInHeader.current
     val textMeasurer = rememberTextMeasurer()
@@ -504,7 +544,7 @@ private fun MainHeader(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AnimatedContent(
-                        targetState = Triple(title, sizing, controller.presentation.selectedTypeIndex),
+                        targetState = Triple(title, sizing, selectedTypeIndex),
                         contentKey = { it.first },
                         modifier = Modifier.weight(1f, fill = false),
                         contentAlignment = Alignment.CenterStart,
@@ -549,7 +589,11 @@ private fun MainHeader(
                             Spacer(Modifier.width(visibleSizing.arrowGap.dp))
                         }
                     }
-                    if (useDropdown) {
+                    AnimatedVisibility(
+                        visible = useDropdown,
+                        enter = expandHorizontally(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
+                        exit = shrinkHorizontally(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                    ) {
                         Icon(
                             painterResource(Res.drawable.ic_keyboard_arrow_down),
                             contentDescription = "Choose story list",
@@ -561,19 +605,19 @@ private fun MainHeader(
                 StoryTypeDropdownMenu(
                     expanded = useDropdown && menus.typesExpanded,
                     onDismiss = { menus.typesExpanded = false },
-                    types = controller.presentation.typeLabels.map(StoryType::fromLabel),
-                    selectedType = StoryType.fromLabel(controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex)),
+                    types = typeLabels.map(StoryType::fromLabel),
+                    selectedType = StoryType.fromLabel(typeLabels.getOrNull(selectedTypeIndex)),
                     fontFamily = typography.family,
                     fontSize = typography.storiesDropdownItemSize.sp,
                     onSelected = { type ->
                         menus.typesExpanded = false
-                        onTypeSelected(controller.presentation.typeLabels.indexOf(type.label))
+                        onTypeSelected(typeLabels.indexOf(type.label))
                     },
                 )
             }
             if (searchInHeader && !sizing.searchInMenu) StoriesTooltip("Search") {
                 IconButton(
-                    onClick = controller.listener::onOpenSearch,
+                    onClick = onSearch,
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_search),
@@ -588,21 +632,14 @@ private fun MainHeader(
                 exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
             ) {
                 StoriesTooltip("Refresh") {
-                    IconButton(onClick = controller::refresh, enabled = !controller.presentation.refreshing) {
+                    IconButton(onClick = onRefresh, enabled = !refreshing) {
                         Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             if (moreInHeader) {
-                StoriesMoreMenuControl(
-                    controller = controller,
-                    menus = menus,
-                    showRefreshItem = showRefreshMenuItem && !showRefreshButton,
-                    showSearchItem = searchInHeader && sizing.searchInMenu,
-                    showWelcomeHint = showWelcomeHint,
-                    onDismissWelcomeHint = onDismissWelcomeHint,
-                )
+                moreMenu(showRefreshMenuItem && !showRefreshButton, searchInHeader && sizing.searchInMenu)
             }
         }
     }

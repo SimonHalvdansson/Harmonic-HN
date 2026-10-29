@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.navigation
 
+import com.simon.harmonichackernews.ui.common.LocalStatusBarScrollToTopEnabled
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,7 +67,10 @@ fun HarmonicAppRoot(
     }
     val paneComments: @Composable (MainStoryRequest) -> Unit = { renderStory(it, false) }
     val render: @Composable (MainNavigationSurface) -> Unit = { surface ->
-        CompositionLocalProvider(LocalSplitPaneAnimationEnabled provides (surface.key == plan.current.key)) {
+        CompositionLocalProvider(
+            LocalSplitPaneAnimationEnabled provides (surface.key == plan.current.key),
+            LocalStatusBarScrollToTopEnabled provides (surface.key == plan.current.key),
+        ) {
             when (val entry = surface.entry) {
                 MainNavigationEntry.Stories -> scopes.Content(surface.key) { stories(surface.detail, paneComments) }
                 is MainNavigationEntry.Story -> renderStory(entry.request, true)

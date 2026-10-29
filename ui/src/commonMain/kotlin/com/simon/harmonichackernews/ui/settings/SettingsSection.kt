@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.resources.settings_section_glass
 import com.simon.harmonichackernews.resources.settings_section_filters_tags
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.resources.settings_section_stories
+import com.simon.harmonichackernews.resources.settings_section_stories_header
 import com.simon.harmonichackernews.resources.settings_section_frontpages
 import com.simon.harmonichackernews.resources.settings_section_notifications
 import com.simon.harmonichackernews.resources.settings_section_palette_tint
@@ -34,6 +35,7 @@ enum class SettingsSection(
     Theme("theme", Res.string.settings_section_theme),
     PaletteTint("palette_tint", Res.string.settings_section_palette_tint),
     Stories("stories", Res.string.settings_section_stories),
+    StoriesHeader("stories_header", Res.string.settings_section_stories_header),
     Frontpages("frontpages", Res.string.settings_section_frontpages),
     Comments("comments", Res.string.settings_section_comments),
     HeaderDisplay("header_display", Res.string.settings_section_header_display),
@@ -54,6 +56,7 @@ enum class SettingsSection(
     ;
 
     companion object {
-        fun fromRoute(route: String): SettingsSection? = entries.firstOrNull { it.route == route }
+        fun fromRoute(route: String): SettingsSection? =
+            if (route == "frontpage") StoriesHeader else entries.firstOrNull { it.route == route }
     }
 }

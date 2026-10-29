@@ -6,6 +6,7 @@ package com.simon.harmonichackernews.ui.stories
 
 
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
@@ -210,6 +211,9 @@ internal fun StoriesList(
                     key = { story -> story.id },
                     contentType = { story -> if (story.isComment) "comment" else "story" },
                     modifier = Modifier
+                        .statusBarScrollToTop(
+                            enabled = searchMode == controller.searching && !controller.isStoryPreviewShowing(),
+                        ) { listState.animateScrollToItem(0) }
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .graphicsLayer {

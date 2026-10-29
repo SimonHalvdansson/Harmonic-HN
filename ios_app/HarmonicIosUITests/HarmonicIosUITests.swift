@@ -443,6 +443,199 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(app.labeledButton("Debug").isHittable, "Returning to the settings list keeps its independent position")
     }
 
+    func testStoriesHeaderSettingsPreviewKeepsBoundsAndReturnsToAppearance() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        if UIDevice.current.userInterfaceIdiom == .pad { XCUIDevice.shared.orientation = .landscapeLeft }
+        openSettings()
+        app.labeledButton("Appearance").tapCenter()
+        app.tapVisibleButton("Stories header")
+        XCTAssertTrue(app.staticTexts["Stories header"].waitForExistence(timeout: 5))
+        let preview = app.otherElements["stories-header-preview"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 5))
+        let compact = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Compact header")).firstMatch
+        XCTAssertTrue(compact.waitForExistence(timeout: 5))
+        if compact.value as? String == "1" { compact.tapCenter() }
+        app.labeledButton("Dropdown").tapCenter()
+        keepScreenshot("Stories header - dropdown, standard header")
+        let frame = preview.frame
+        let content = app.otherElements["stories-header-preview-content"]
+        XCTAssertTrue(content.waitForExistence(timeout: 5))
+        func assertFixedCenteredPreview() {
+            XCTAssertEqual(preview.frame.height, frame.height, accuracy: 1)
+            XCTAssertEqual(preview.frame.minY, frame.minY, accuracy: 1)
+            XCTAssertEqual(content.frame.midY, preview.frame.midY, accuracy: 1)
+        }
+        let standardHeight = content.frame.height
+        compact.tapCenter()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in content.frame.height < standardHeight - 8 }, object: nil
+        )], timeout: 5), .completed)
+        keepScreenshot("Stories header - dropdown, compact header")
+        assertFixedCenteredPreview()
+        let compactHeight = content.frame.height
+        app.labeledButton("Chips").tapCenter()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in content.frame.height > compactHeight + 24 }, object: nil
+        )], timeout: 5), .completed)
+        keepScreenshot("Stories header - chips, compact header")
+        assertFixedCenteredPreview()
+        let chips = app.otherElements["stories-header-preview-chips"]
+        XCTAssertTrue(chips.waitForExistence(timeout: 5))
+        XCTAssertEqual(chips.frame.minX, preview.frame.minX, accuracy: 1)
+        XCTAssertEqual(chips.frame.maxX, preview.frame.maxX, accuracy: 1,
+                       "The shared chip row must extend to the preview's safe edge")
+        XCTAssertTrue(app.staticTexts["A faster way to solve equations"].exists)
+        let chipHeight = content.frame.height
+        compact.tapCenter()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in content.frame.height > chipHeight + 8 }, object: nil
+        )], timeout: 5), .completed)
+        keepScreenshot("Stories header - chips, standard header")
+        assertFixedCenteredPreview()
+        XCTAssertTrue(compact.isHittable, "Controls must remain clear of the preview")
+        let back = app.buttons.matching(NSPredicate(format: "label == %@", "Navigate up")).allElementsBoundByIndex.last!
+        back.tapCenter()
+        XCTAssertTrue(app.labeledButton("Stories header").waitForExistence(timeout: 5))
+        XCTAssertFalse(compact.isHittable, "Stories header controls belong in the subpage")
+    }
+
+    func testStatusBarTapScrollsStoriesAndCommentsToTop() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
+        XCTAssertTrue(firstCommentsButton.waitForExistence(timeout: 20))
+        let firstLabel = firstCommentsButton.label
+        let originalFirst = app.buttons.matching(NSPredicate(format: "label == %@", firstLabel)).firstMatch
+        for _ in 0..<2 {
+            app.swipeUp(velocity: .slow)
+            app.swipeUp(velocity: .slow)
+            XCTAssertFalse(originalFirst.isHittable)
+            tapStatusBar()
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in originalFirst.isHittable }, object: nil
+            )], timeout: 10), .completed)
+        }
+        openFirstComments()
+        waitForCommentsBeforeDraggingSheet()
+        app.swipeUp(velocity: .slow)
+        app.swipeUp(velocity: .slow)
+        XCTAssertFalse(articleHeader.isHittable)
+        tapStatusBar()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in self.articleHeader.isHittable }, object: nil
+        )], timeout: 10), .completed)
+        keepScreenshot("Status bar tap restored comments header")
+    }
+
+    func testStatusBarTapScrollsSettingsToTop() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        openDebugSettings()
+        let mock = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Mock AI answers")).firstMatch
+        XCTAssertTrue(mock.waitForExistence(timeout: 5))
+        app.swipeUp(velocity: .slow)
+        app.swipeUp(velocity: .slow)
+        XCTAssertFalse(mock.isHittable)
+        tapStatusBar()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in mock.isHittable }, object: nil
+        )], timeout: 10), .completed)
+    }
+
+    func testIpadStatusBarTapScrollsOnlyTheTappedPane() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openFirstComments()
+        waitForCommentsBeforeDraggingSheet()
+        let firstLabel = firstCommentsButton.label
+        let originalFirst = app.buttons.matching(NSPredicate(format: "label == %@", firstLabel)).firstMatch
+        let window = app.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        func scrollPane(x: CGFloat) {
+            for _ in 0..<2 {
+                origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.8)).press(
+                    forDuration: 0.05,
+                    thenDragTo: origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.3)),
+                    withVelocity: .slow, thenHoldForDuration: 0.2
+                )
+            }
+        }
+        let commentsX = articleHeader.frame.midX
+        scrollPane(x: originalFirst.frame.midX)
+        scrollPane(x: commentsX)
+        XCTAssertFalse(originalFirst.isHittable)
+        XCTAssertFalse(articleHeader.isHittable)
+        tapStatusBar(relativeX: commentsX / window.frame.width)
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in self.articleHeader.isHittable }, object: nil
+        )], timeout: 10), .completed)
+        XCTAssertFalse(originalFirst.isHittable, "The other pane must retain its reading position")
+        tapStatusBar(relativeX: 0.2)
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in originalFirst.isHittable }, object: nil
+        )], timeout: 10), .completed)
+    }
+
+    private func tapStatusBar(relativeX: CGFloat = 0.5) {
+        let window = app.windows.firstMatch
+        window.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: window.frame.width * relativeX, dy: 2)).tap()
+    }
+
+    func testIpadAskCommentBackButtonDoesNotDragSheet() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openDebugSettings()
+        let mock = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Mock AI answers")).firstMatch
+        XCTAssertTrue(mock.waitForExistence(timeout: 5))
+        mock.tapCenter()
+        closeSettings()
+        openFirstComments()
+        waitForCommentsBeforeDraggingSheet()
+        let comment = app.otherElements["comment-row"].firstMatch
+        XCTAssertTrue(comment.isHittable)
+        // Hold the card's upper trailing space so embedded links cannot open a preview.
+        comment.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: 16)).press(forDuration: 1)
+        let ask = app.labeledButton("Ask")
+        XCTAssertTrue(ask.waitForExistence(timeout: 10))
+        ask.tapCenter()
+        let back = app.labeledButton("Back to comment")
+        let title = app.staticTexts["Ask about this comment"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10))
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let originalFrame = title.frame
+        keepScreenshot("iPad Ask before back-button drag")
+        let start = back.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.05,
+                    thenDragTo: start.withOffset(CGVector(dx: 0, dy: app.windows.firstMatch.frame.height * 0.8)),
+                    withVelocity: .slow, thenHoldForDuration: 0.5)
+        keepScreenshot("iPad Ask after back-button drag")
+        XCTAssertEqual(title.frame.minY, originalFrame.minY, accuracy: 1,
+                       "Dragging the Ask back button must not lower the comments sheet")
+        XCTAssertTrue(back.isHittable)
+        back.tapCenter()
+        XCTAssertTrue(ask.waitForExistence(timeout: 5), "Tapping Back must still return to the comment actions")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: ask
+        )], timeout: 5), .completed)
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 5))
+        let handle = app.otherElements["comments-sheet-handle"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        let expandedHandleY = handle.frame.minY
+        let windowHeight = app.windows.firstMatch.frame.height
+        let handleStart = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        handleStart.press(forDuration: 0.05,
+                          thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96)))
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                handle.exists && handle.frame.minY > expandedHandleY + windowHeight * 0.5
+            }, object: nil
+        )], timeout: 10), .completed, "Dismissing the modal must restore normal comments sheet dragging")
+    }
+
     func testAskQuestionAndAnswerRespectCommentTextSize() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
         let question = "Explain the main idea in simpler terms"

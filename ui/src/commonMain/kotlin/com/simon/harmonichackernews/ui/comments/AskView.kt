@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -174,7 +175,11 @@ internal fun AskSurface(
             },
         ) { composerHeight ->
             Column(
-                Modifier.fillMaxSize().graphicsLayer {
+                Modifier.fillMaxSize()
+                    .statusBarScrollToTop(enabled = controller.askOpen, priority = 1) {
+                        followOutput = false
+                        scroll.animateScrollTo(0)
+                    }.graphicsLayer {
                     alpha = resetAlpha.value
                     translationY = (1f - resetAlpha.value) * 8.dp.toPx()
                 }.verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, bottom = composerHeight),

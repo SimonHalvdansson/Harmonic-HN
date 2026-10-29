@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.ui.common.LocalStatusBarScrollToTopEnabled
 import com.simon.harmonichackernews.ui.theme.themeBackground
 
 import androidx.compose.foundation.layout.Box
@@ -93,6 +94,7 @@ fun SettingsNavigationShell(
     snapToCenter: Boolean = isFoldable,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
+    val scrollToTopEnabled = LocalStatusBarScrollToTopEnabled.current
     SplitPaneViewport(
         directive = directive,
         defaultRatio = paneProportion,
@@ -107,7 +109,12 @@ fun SettingsNavigationShell(
             { section, singlePane, onBack, onNavigate ->
                 val parent = navigationState.detailStack
                     .getOrNull(navigationState.detailStack.indexOf(section) - 1)
-                CompositionLocalProvider(LocalSettingsParentSection provides parent) {
+                CompositionLocalProvider(
+                    LocalSettingsParentSection provides parent,
+                    LocalStatusBarScrollToTopEnabled provides (scrollToTopEnabled &&
+                        section == navigationState.selectedSection &&
+                        (isTwoPane || navigationState.detailStack.isNotEmpty())),
+                ) {
                     renderDetail(section, singlePane, onBack, onNavigate)
                 }
             }
@@ -248,7 +255,10 @@ private fun SinglePaneSettingsNavigation(
         modifier = modifier,
         root = {
             Box(Modifier.fillMaxSize().themeBackground { pageBackground }) {
-                renderList(selectedSection, false, onBackFromSettings) { onNavigateTo(it, false) }
+                CompositionLocalProvider(LocalStatusBarScrollToTopEnabled provides
+                    (LocalStatusBarScrollToTopEnabled.current && detailStack.isEmpty())) {
+                    renderList(selectedSection, false, onBackFromSettings) { onNavigateTo(it, false) }
+                }
             }
         },
         content = { renderDetail(it, true, onNavigateBack, onNavigateTo) },

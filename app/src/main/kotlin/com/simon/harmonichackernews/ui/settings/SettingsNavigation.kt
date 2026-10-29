@@ -87,11 +87,13 @@ fun SettingsShell(
                         onNavigate(
                             target,
                             singlePane || target == SettingsSection.Theme ||
-                                target == SettingsSection.PaletteTint || target == SettingsSection.Font,
+                                target == SettingsSection.PaletteTint || target == SettingsSection.Font ||
+                                target == SettingsSection.StoriesHeader,
                         )
                     },
                     onThemeChanged = onThemeChanged,
                 )
+                SettingsSection.StoriesHeader -> StoriesHeaderSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.Font -> FontSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.Theme -> AndroidThemeSettingsScreen(
                     showNavigation = true,

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ios
 
+import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
+import kotlinx.cinterop.useContents
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.lazy.LazyListState
@@ -162,6 +164,8 @@ class IosCommentsWebView(
         setOpaque(false)
         backgroundColor = UIColor.systemBackgroundColor
         scrollView.backgroundColor = UIColor.systemBackgroundColor
+        // The host routes status-bar taps to the visible Compose or browser pane.
+        scrollView.scrollsToTop = false
         accessibilityLabel = "Article web view"
         overrideUserInterfaceStyle = appearance
         setHidden(!visible)
@@ -537,15 +541,19 @@ internal fun IosCommentsScaffold(
     }
     // Read the actual list state in gesture callbacks, not the asynchronously published
     // controller flag. Rotation/restoration can temporarily leave that flag stale.
+    // Modal content can live inside the sheet on iPad. Its buttons and scroll boundaries
+    // must not hand a downward drag to the sheet underneath it.
     val canDragSheet = remember(controller, listState) {
         {
-            canDragCommentsSheet(
-                firstVisibleItemIndex = listState.firstVisibleItemIndex,
-                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
-                canScrollBackward = listState.canScrollBackward,
-                layoutReady = listState.layoutInfo.totalItemsCount > 0,
-                restoringScroll = controller.initialScrollRestorationPending,
-            )
+            !controller.isCommentActionOverlayShowing() &&
+                !controller.isLinkPreviewOverlayShowing() &&
+                canDragCommentsSheet(
+                    firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                    firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+                    canScrollBackward = listState.canScrollBackward,
+                    layoutReady = listState.layoutInfo.totalItemsCount > 0,
+                    restoringScroll = controller.initialScrollRestorationPending,
+                )
         }
     }
     val sheetDragEnabled by remember(canDragSheet) { derivedStateOf { canDragSheet() } }
@@ -689,6 +697,17 @@ internal fun IosCommentsScaffold(
                 }
                 Box(
                     Modifier.fillMaxSize()
+                        .statusBarScrollToTop(
+                            enabled = controller.isWebsiteVisible() &&
+                                !controller.isCommentActionOverlayShowing() &&
+                                !controller.isLinkPreviewOverlayShowing(),
+                        ) {
+                            webView.view?.scrollView?.let { scroll ->
+                                scroll.setContentOffset(scroll.adjustedContentInset.useContents {
+                                    platform.CoreGraphics.CGPointMake(-left, -top)
+                                }, animated = true)
+                            }
+                        }
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .padding(top = webViewTopInset),
                 ) {
