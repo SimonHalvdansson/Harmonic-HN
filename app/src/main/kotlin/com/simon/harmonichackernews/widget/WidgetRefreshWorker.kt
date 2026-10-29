@@ -12,6 +12,10 @@ import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
+import coil3.request.maxBitmapSize
+import coil3.size.Precision
+import coil3.size.Scale
+import coil3.size.Size
 import coil3.toBitmap
 import com.simon.harmonichackernews.awaitHarmonicAppComposition
 import com.simon.harmonichackernews.navigation.AppDestinationCodec
@@ -135,6 +139,10 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                     }
                     // Publish text immediately; optional images must never turn a successful feed into an error.
                     publish(widgetId, entries, updated = System.currentTimeMillis())
+                    val density = context.resources.displayMetrics.density
+                    val previewSize = widgetPreviewImageSize(configuration.previewImageMode, density)
+                    val faviconSize = widgetFaviconImageSize(density)
+                    val bitmapBudget = widgetBitmapBudget(context, entries.size * 2)
                     if (configuration.previewImageMode != StoryPreviewMode.OFF || configuration.tint || app.userSettings.story.showFavicons) {
                         withTimeoutOrNull(25_000) {
                             result.stories.zip(entries).chunked(4).forEach { batch ->
@@ -145,7 +153,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                                                 val image = if (configuration.previewImageMode != StoryPreviewMode.OFF || configuration.tint) {
                                                     story.url?.takeIf { story.isLink }?.let { url ->
                                                         withTimeoutOrNull(3_000) { app.previewResources.load(story.id, url, requireSummary = false).imageUrl }
-                                                    }?.let { loadImage(widgetId, story.id, it, "preview") }
+                                                    }?.let { loadImage(widgetId, story.id, it, "preview", previewSize, bitmapBudget) }
                                                 } else null
                                                 if (image != null) {
                                                     entry.put("image", image)
@@ -153,7 +161,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                                                 }
                                                 if ((configuration.tint || app.userSettings.story.showFavicons) && story.isLink) {
                                                     val favicon = FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), app.userSettings.story.faviconProvider)
-                                                    loadImage(widgetId, story.id, favicon, "favicon")?.let {
+                                                    loadImage(widgetId, story.id, favicon, "favicon", faviconSize, bitmapBudget)?.let {
                                                         entry.put("favicon", it)
                                                         if (image == null) entry.put("tint", it)
                                                     }
@@ -225,13 +233,16 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
         StoriesGlanceWidget().update(applicationContext, GlanceAppWidgetManager(applicationContext).getGlanceIdBy(widgetId))
     }
 
-    private suspend fun loadImage(widgetId: Int, storyId: Int, url: String, kind: String): String? {
+    private suspend fun loadImage(widgetId: Int, storyId: Int, url: String, kind: String, targetSize: WidgetImageSize, maxBytes: Long): String? {
+        val target = targetSize.withinBudget(maxBytes) ?: return null
         val result = SingletonImageLoader.get(applicationContext).execute(
-            ImageRequest.Builder(applicationContext).data(url).size(160, 160).allowHardware(false).build(),
+            ImageRequest.Builder(applicationContext).data(url)
+                .size(target.widthPx, target.heightPx).scale(Scale.FILL).precision(Precision.EXACT)
+                // Bound decoder allocations for extreme aspect ratios before the final crop.
+                .maxBitmapSize(Size(target.widthPx * 2, target.heightPx * 2))
+                .allowHardware(false).build(),
         ) as? SuccessResult ?: return null
-        val decoded = result.image.toBitmap()
-        val scale = minOf(1f, 160f / maxOf(decoded.width, decoded.height))
-        val bitmap = Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
+        val bitmap = result.image.toBitmap().forWidgetImage(target, maxBytes) ?: return null
         val file = File(imageDirectory(applicationContext, widgetId), "$storyId-$kind.png")
         file.parentFile?.mkdirs()
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

@@ -221,6 +221,8 @@ object WidgetDimensions {
     val faviconCornerRadius = 2.dp
     val mediumImageWidth = 120.dp
     val mediumImageHeight = 72.dp
+    val smallImageWidth = 72.dp
+    val smallImageHeight = 52.dp
     val mediumNoImageWidth = 64.dp
     val mediumNoImageHeight = 60.dp
     val headerTopPadding = 6.dp

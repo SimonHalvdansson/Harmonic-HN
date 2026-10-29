@@ -143,7 +143,7 @@ fun WidgetPreviewStoryRow(
                         if (hasImage) {
                             Spacer(Modifier.width(6.dp))
                             Image(painterResource(model.previewImageFallback), null,
-                                Modifier.width(72.dp).height(52.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Crop)
+                                Modifier.width(WidgetDimensions.smallImageWidth).height(WidgetDimensions.smallImageHeight).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Crop)
                         }
                         Column(Modifier.width(48.dp).fillMaxHeight().padding(horizontal = 6.dp),
                             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {

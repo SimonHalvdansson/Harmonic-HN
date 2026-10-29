@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.widget
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Color
+import com.simon.harmonichackernews.settings.StoryPreviewMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -28,8 +29,8 @@ class WidgetBitmapBudgetTest {
         val count = 24
         val budget = widgetBitmapBudget(480, 800, count * 2)
         val bytes = (1..count).sumOf {
-            val image = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888)
-                .withinWidgetBitmapBudget(budget)!!
+            val image = Bitmap.createBitmap(360, 216, Bitmap.Config.ARGB_8888)
+                .forWidgetImage(widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f), budget)!!
             val favicon = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
                 .roundedWidgetFavicon(RuntimeEnvironment.getApplication())
                 .withinWidgetBitmapBudget(budget)!!
@@ -43,6 +44,59 @@ class WidgetBitmapBudgetTest {
     fun smallImagesAreNotUpscaled() {
         val image = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
         assertSame(image, image.withinWidgetBitmapBudget(24_000))
+        val preview = image.forWidgetImage(widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f), 24_000)!!
+        assertTrue(preview.width <= 16 && preview.height <= 16)
+    }
+
+    @Test
+    fun previewSizesMatchLayoutAtDifferentDensities() {
+        assertEquals(WidgetImageSize(120, 72), widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 1f))
+        assertEquals(WidgetImageSize(180, 108), widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 1.5f))
+        assertEquals(WidgetImageSize(360, 216), widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f))
+        assertEquals(WidgetImageSize(72, 52), widgetPreviewImageSize(StoryPreviewMode.SMALL, 1f))
+        assertEquals(WidgetImageSize(216, 156), widgetPreviewImageSize(StoryPreviewMode.SMALL, 3f))
+        assertEquals(WidgetImageSize(36, 36), widgetFaviconImageSize(3f))
+        assertEquals(widgetTintImageSize, widgetPreviewImageSize(StoryPreviewMode.OFF, 3f))
+    }
+
+    @Test
+    fun highDensityCacheImagesRetainDisplayResolution() {
+        val file = temporaryFolder.newFile()
+        file.outputStream().use {
+            Bitmap.createBitmap(720, 432, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        for (mode in listOf(StoryPreviewMode.SMALL, StoryPreviewMode.MEDIUM)) {
+            val target = widgetPreviewImageSize(mode, 3f)
+            val image = decodeWidgetBitmap(file.absolutePath, target, 2_000_000)!!
+            assertEquals(target.widthPx, image.width)
+            assertEquals(target.heightPx, image.height)
+        }
+    }
+
+    @Test
+    fun previewsCropToDisplayAspectRatioWithoutStretching() {
+        val source = Bitmap.createBitmap(600, 216, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.RED)
+            for (x in 120 until 480) for (y in 0 until height) setPixel(x, y, Color.BLUE)
+        }
+        val image = source.forWidgetImage(widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f), 2_000_000)!!
+        assertEquals(360, image.width)
+        assertEquals(216, image.height)
+        assertEquals(Color.BLUE, image.getPixel(0, 0))
+        assertEquals(Color.BLUE, image.getPixel(359, 215))
+    }
+
+    @Test
+    fun highDensityCacheImagesStillRespectSmallBudget() {
+        val file = temporaryFolder.newFile()
+        file.outputStream().use {
+            Bitmap.createBitmap(720, 432, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        val target = widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f)
+        val image = decodeWidgetBitmap(file.absolutePath, target, 4_096)!!
+        assertTrue(image.allocationByteCount <= 4_096)
+        assertTrue(image.width < target.widthPx && image.height < target.heightPx)
+        assertNull(decodeWidgetBitmap(file.absolutePath, target, 3))
     }
 
     @Test
@@ -68,8 +122,9 @@ class WidgetBitmapBudgetTest {
                     eraseColor(Color.RED)
                 }.compress(Bitmap.CompressFormat.PNG, 100, it)
             }
-            val image = decodeWidgetBitmap(file.absolutePath, 4_096)!!
-            assertTrue(image.width <= 160 && image.height <= 160)
+            val target = widgetPreviewImageSize(StoryPreviewMode.MEDIUM, 3f)
+            val image = decodeWidgetBitmap(file.absolutePath, target, 4_096)!!
+            assertTrue(image.width <= target.widthPx && image.height <= target.heightPx)
             assertTrue(image.allocationByteCount <= 4_096)
             assertEquals(Color.RED, image.getPixel(0, 0))
         }
@@ -83,11 +138,11 @@ class WidgetBitmapBudgetTest {
                 eraseColor(Color.TRANSPARENT)
             }.compress(Bitmap.CompressFormat.PNG, 100, it)
         }
-        assertEquals(Color.TRANSPARENT, decodeWidgetBitmap(file.absolutePath, 24_000)!!.getPixel(0, 0))
+        assertEquals(Color.TRANSPARENT, decodeWidgetBitmap(file.absolutePath, widgetTintImageSize, 24_000)!!.getPixel(0, 0))
     }
 
     @Test
     fun missingOrInvalidCacheImagesAreOptional() {
-        assertNull(decodeWidgetBitmap(temporaryFolder.newFile().absolutePath, 24_000))
+        assertNull(decodeWidgetBitmap(temporaryFolder.newFile().absolutePath, widgetTintImageSize, 24_000))
     }
 }

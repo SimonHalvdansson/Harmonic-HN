@@ -103,6 +103,9 @@ class StoriesGlanceWidget : GlanceAppWidget() {
             val width = widgetWidth(context, widgetId)
             val entries = remember(state[WidgetState.content]) { decodeWidgetEntries(state[WidgetState.content]) }
             val bitmapBudget = widgetBitmapBudget(context, entries.size * 2)
+            val density = context.resources.displayMetrics.density
+            val previewSize = widgetPreviewImageSize(configuration.previewImageMode, density)
+            val faviconSize = widgetFaviconImageSize(density)
             val schedulingDiagnostics = if (settings.debug.showWidgetDebugInfo) {
                 val workInfos by remember(context, widgetId) {
                     WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WidgetRefreshWorker.workName(widgetId))
@@ -112,11 +115,11 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 }.collectAsState(initial = null)
                 diagnostics
             } else null
-            val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, bitmapBudget, app.userSettings.story.paletteTintConfigKey) {
+            val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, bitmapBudget, previewSize, faviconSize, app.userSettings.story.paletteTintConfigKey) {
                 value = withContext(Dispatchers.IO) {
                     entries.associate { entry ->
-                        val image = entry.imagePath?.let { decodeWidgetBitmap(it, bitmapBudget) }
-                        val tintImage = if (entry.tintPath == entry.imagePath) image else entry.tintPath?.let { decodeWidgetBitmap(it, bitmapBudget) }
+                        val image = entry.imagePath?.let { decodeWidgetBitmap(it, previewSize, bitmapBudget) }
+                        val tintImage = if (entry.tintPath == entry.imagePath) image else entry.tintPath?.let { decodeWidgetBitmap(it, widgetTintImageSize, bitmapBudget) }
                         val palette = tintImage?.let { bitmap ->
                             val sample = Bitmap.createScaledBitmap(bitmap, 48, 48, true)
                             val pixels = IntArray(48 * 48)
@@ -129,7 +132,7 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                             PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.pageBackground.toArgb(), config)
                         }
                         entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
-                            entry.faviconPath?.let { decodeWidgetBitmap(it, bitmapBudget) }
+                            entry.faviconPath?.let { decodeWidgetBitmap(it, faviconSize, bitmapBudget) }
                                 ?.roundedWidgetFavicon(context)?.withinWidgetBitmapBudget(bitmapBudget)?.forWidget(), tint(colors.night))
                     }
                 }
@@ -301,7 +304,7 @@ internal fun WidgetStoryRow(context: Context, entry: WidgetEntry, index: Int, co
                 } else {
                     if (hasImage) {
                         Spacer(GlanceModifier.width(6.dp))
-                        Image(ImageProvider(visual.image), null, GlanceModifier.width(72.dp).height(52.dp).cornerRadius(6.dp), contentScale = ContentScale.Crop)
+                        Image(ImageProvider(visual.image), null, GlanceModifier.width(WidgetDimensions.smallImageWidth).height(WidgetDimensions.smallImageHeight).cornerRadius(6.dp), contentScale = ContentScale.Crop)
                     }
                     if (!snapshot.isComment) {
                         Column(GlanceModifier.width(48.dp).fillMaxHeight().clickable(commentsAction).padding(horizontal = 6.dp),
