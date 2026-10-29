@@ -63,7 +63,10 @@ class CommentAppearanceRegressionTest {
             val palette = HarmonicThemeCatalog.resolve("light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 Box(Modifier.width(width.value)) {
-                    CommentsHeaderMetadata(story, settings, textStyle = TextStyle.Default)
+                    CommentsHeaderMetadata(
+                        story, settings.copy(headerMetaInfo = CommentsHeaderMetaInfo.SMALL),
+                        textStyle = TextStyle.Default,
+                    )
                 }
             }
         }
