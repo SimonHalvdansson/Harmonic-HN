@@ -225,7 +225,7 @@ val buildMacFoundationModels = if (isMacDesktopBuild) {
 
 tasks.named<ProcessResources>("desktopProcessResources") {
     from(generateDesktopMetadata)
-    from(rootProject.file("fastlane/metadata/android/en-US/images/icon.png")) {
+    from(rootProject.file("metadata/en-US/images/icon.png")) {
         rename { "harmonic-app-icon.png" }
     }
     from(project.file("icons/harmonic-macos.png")) {
@@ -329,7 +329,7 @@ compose.desktop {
             linux {
                 iconFile.set(
                     rootProject.layout.projectDirectory.file(
-                        "fastlane/metadata/android/en-US/images/icon.png",
+                        "metadata/en-US/images/icon.png",
                     ),
                 )
             }
