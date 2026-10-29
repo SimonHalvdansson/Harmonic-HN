@@ -7,6 +7,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.data.StoryPresentationSnapshot
@@ -137,7 +138,8 @@ class StoryPreviewGestureTest {
         val root = compose.onAllNodes(isRoot()).onLast()
         val resting = title.fetchSemanticsNode().boundsInRoot
         val rootBounds = root.fetchSemanticsNode().boundsInRoot
-        val step = rootBounds.height * 0.015f * direction
+        // Stay below the fixed paging distance even on a tall tablet.
+        val step = with(compose.density) { 8.dp.toPx() } * direction
         var pointerPressed = false
         compose.mainClock.autoAdvance = false
         try {

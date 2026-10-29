@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -74,7 +73,6 @@ private const val PredictiveBackTranslationXDp = 56f
 private const val PredictiveBackTranslationYDp = 18f
 private const val PagerSettledOffsetTolerance = 0.001f
 private const val DismissFallbackDelayMillis = 460L
-private const val PreviewPagerSnapPositionalThreshold = 0.10f
 
 internal enum class StoryPreviewOpeningDecision {
     Animate,
@@ -139,13 +137,7 @@ fun StoryPreviewOverlay(
     val state = controller.storyPreviewOverlay ?: return
     val density = LocalDensity.current
     val pagerState = rememberStoryPreviewPagerState(state, controller.visibleStoryPreviewId)
-    val pagerFlingBehavior = PagerDefaults.flingBehavior(
-        state = pagerState,
-        // Keep the pager's own velocity/settling strategy as the single source of truth. A short
-        // deliberate drag advances the page, while shorter releases return immediately unless
-        // the built-in fling velocity commits them.
-        snapPositionalThreshold = PreviewPagerSnapPositionalThreshold,
-    )
+    val pagerFlingBehavior = rememberStoryPreviewFlingBehavior(pagerState)
     val currentStory = state.stories.getOrNull(pagerState.currentPage)
         ?: state.stories[state.initialPage]
     val currentCardColor = rememberStoryPreviewCardColor(controller, currentStory)
@@ -608,6 +600,7 @@ fun StoryPreviewOverlay(
         VerticalPager(
             state = pagerState,
             flingBehavior = pagerFlingBehavior,
+            pageNestedScrollConnection = rememberStoryPreviewNestedScrollConnection(pagerState),
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(pagerState) {
