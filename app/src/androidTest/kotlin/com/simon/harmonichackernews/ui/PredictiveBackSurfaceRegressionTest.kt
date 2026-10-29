@@ -22,6 +22,7 @@ import com.simon.harmonichackernews.HarmonicApplication
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +57,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @RunWith(AndroidJUnit4::class)
 class PredictiveBackSurfaceRegressionTest {
@@ -568,6 +571,49 @@ class PredictiveBackSurfaceRegressionTest {
                 submissions = { request, detail, _ -> submissions(request, detail) }, editor = {}, immersive = {}, welcome = {}, foreground = {},
             )
         }
+    }
+
+    @Test fun gestureProgressAndCancellationRedrawTheRetainedSurface() {
+        val event = androidx.navigationevent.NavigationEvent(
+            touchX = 0f, touchY = 1200f, progress = 0f,
+            swipeEdge = androidx.navigationevent.NavigationEvent.EDGE_LEFT,
+        )
+        val animation = DefaultActivityPredictiveBackAnimation(event)
+        lateinit var scope: CoroutineScope
+        var bounds = Rect.Zero
+        var compositions = 0
+        compose.setContent {
+            scope = rememberCoroutineScope()
+            SideEffect { compositions++ }
+            Box(Modifier.fillMaxSize().background(Color.White).testTag("viewport")) {
+                Box(Modifier.fillMaxSize().then(animation.exitModifier)) {
+                    Box(Modifier.fillMaxSize().background(Color.Blue)
+                        .onGloballyPositioned { bounds = it.boundsInWindow() })
+                }
+            }
+        }
+        compose.waitForIdle()
+        val restingBounds = bounds
+        val restingPixels = countPixels { it.blue > 0.9f && it.red < 0.1f }
+        val restingCompositions = compositions
+        compose.runOnIdle {
+            scope.launch {
+                animation.animate(androidx.navigationevent.NavigationEvent(
+                    touchX = 550f, touchY = 1300f, progress = 0.8f,
+                    swipeEdge = androidx.navigationevent.NavigationEvent.EDGE_LEFT,
+                ))
+            }
+        }
+        compose.waitForIdle()
+        assertTrue("Gesture updates must redraw without replacing the surface",
+            countPixels { it.blue > 0.9f && it.red < 0.1f } < restingPixels * 0.9f)
+        assertEquals(restingBounds, bounds)
+        assertEquals("The host content must stay composed", restingCompositions, compositions)
+        compose.runOnIdle { scope.launch { animation.cancel() } }
+        compose.waitForIdle()
+        assertEquals("Cancelling must restore the full page", restingPixels,
+            countPixels { it.blue > 0.9f && it.red < 0.1f })
+        assertEquals(restingBounds, bounds)
     }
 
     private fun heldGesture() = DefaultActivityPredictiveBackAnimation(

@@ -9,27 +9,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.layer.setOutline
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
@@ -55,9 +46,7 @@ class DefaultActivityPredictiveBackAnimation(
 
     val exitModifier: Modifier
         get() = Modifier.composed {
-            withLayoutCorners { corners ->
-                exitModifier(corners.toShape(progressAnimatable.value))
-            }
+            withLayoutCorners { corners -> predictiveBackSurface(corners, entering = false) }
         }
 
     val enterModifier: Modifier
@@ -71,53 +60,32 @@ class DefaultActivityPredictiveBackAnimation(
                 )
             }
             .composed {
-                val shapeProgress = lerp(
-                    start = progressAnimatable.value,
-                    stop = 0f,
-                    fraction = finishProgressAnimatable.value,
-                )
-                withLayoutCorners { corners ->
-                    enterModifier(corners.toShape(shapeProgress))
-                }
+                withLayoutCorners { corners -> predictiveBackSurface(corners, entering = true) }
             }
 
+    /** Read gesture state and measured size only when drawing the retained page surface. */
     @Composable
-    private fun Modifier.enterModifier(shape: Shape): Modifier {
-        var size by remember { mutableStateOf(Size.Zero) }
-        val scaleFactor = scaleFactor()
-        val density = LocalDensity.current
-
-        return this
-            .onPlaced { size = it.size.toSize() }
-            .predictiveBackSurface(
-                scaleX = scaleFactor,
-                scaleY = scaleFactor,
-                translationX = lerp(
-                    start = -size.width * FinishTranslationFraction,
-                    stop = 0f,
-                    fraction = finishProgressAnimatable.value,
-                ),
-                translationY = density.exitOffsetY(height = size.height),
-                shape = shape,
-            )
-    }
-
-    @Composable
-    private fun Modifier.exitModifier(shape: Shape): Modifier {
-        var size by remember { mutableStateOf(Size.Zero) }
-        val scaleFactor = scaleFactor()
-        val density = LocalDensity.current
-
-        return this
-            .onPlaced { size = it.size.toSize() }
-            .predictiveBackSurface(
-                scaleX = scaleFactor,
-                scaleY = scaleFactor,
-                alpha = 1f - finishProgressAnimatable.value,
-                translationX = density.exitOffsetX(width = size.width),
-                translationY = density.exitOffsetY(height = size.height),
-                shape = shape,
-            )
+    private fun Modifier.predictiveBackSurface(corners: LayoutCorners, entering: Boolean): Modifier {
+        val surface = rememberGraphicsLayer()
+        return drawWithContent {
+            val finishProgress = finishProgressAnimatable.value
+            val progress = progressAnimatable.value
+            val scale = scaleFactor()
+            val shapeProgress = if (entering) lerp(progress, 0f, finishProgress) else progress
+            // Keep Haze's source/effect coordinates at rest while moving the complete page.
+            surface.record { this@drawWithContent.drawContent() }
+            surface.scaleX = scale
+            surface.scaleY = scale
+            surface.translationX = if (entering) {
+                lerp(-size.width * FinishTranslationFraction, 0f, finishProgress)
+            } else exitOffsetX(size.width)
+            surface.translationY = exitOffsetY(size.height)
+            surface.alpha = if (entering) 1f else 1f - finishProgress
+            surface.setOutline(corners.toShape(shapeProgress).createOutline(size, layoutDirection, this))
+            surface.clip = true
+            surface.compositingStrategy = CompositingStrategy.Offscreen
+            drawLayer(surface)
+        }
     }
 
     private fun Density.exitOffsetX(width: Float): Float {
@@ -201,34 +169,6 @@ class DefaultActivityPredictiveBackAnimation(
         const val RevealedContentScrimAlpha = 0.25f
         val GestureEdgeInset = 8.dp
         val BackGestureEasing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
-    }
-}
-
-/** Move the rendered surface without changing the coordinates used by its backdrop effects. */
-@Composable
-private fun Modifier.predictiveBackSurface(
-    scaleX: Float,
-    scaleY: Float,
-    translationX: Float,
-    translationY: Float,
-    shape: Shape,
-    alpha: Float = 1f,
-): Modifier {
-    val surface = rememberGraphicsLayer()
-    return drawWithContent {
-        // A layout graphicsLayer also transforms Haze's window-space source/effect positions.
-        // Record the complete page in its own coordinate space before moving it, as we do for
-        // forward activity navigation, so glass and blur remain part of the same stable surface.
-        surface.record { this@drawWithContent.drawContent() }
-        surface.scaleX = scaleX
-        surface.scaleY = scaleY
-        surface.translationX = translationX
-        surface.translationY = translationY
-        surface.alpha = alpha
-        surface.setOutline(shape.createOutline(size, layoutDirection, this))
-        surface.clip = true
-        surface.compositingStrategy = CompositingStrategy.Offscreen
-        drawLayer(surface)
     }
 }
 
