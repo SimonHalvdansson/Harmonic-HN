@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Matrix
@@ -101,9 +100,9 @@ class StoriesGlanceWidget : GlanceAppWidget() {
             val configuration = app.widgets.configuration(widgetId)
             val headlineFamily = remember { widgetHeadlineFontFamily(context) }
             val fontFamily = if (configuration.useHeadlineFont && headlineFamily != null) FontFamily(headlineFamily) else FontFamily.SansSerif
-            val width = state[WidgetState.width] ?: android.appwidget.AppWidgetManager.getInstance(context)
-                .getAppWidgetOptions(widgetId).getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280)
+            val width = widgetWidth(context, widgetId)
             val entries = remember(state[WidgetState.content]) { decodeWidgetEntries(state[WidgetState.content]) }
+            val bitmapBudget = widgetBitmapBudget(context, entries.size * 2)
             val schedulingDiagnostics = if (settings.debug.showWidgetDebugInfo) {
                 val workInfos by remember(context, widgetId) {
                     WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WidgetRefreshWorker.workName(widgetId))
@@ -113,11 +112,11 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 }.collectAsState(initial = null)
                 diagnostics
             } else null
-            val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, app.userSettings.story.paletteTintConfigKey) {
+            val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, bitmapBudget, app.userSettings.story.paletteTintConfigKey) {
                 value = withContext(Dispatchers.IO) {
                     entries.associate { entry ->
-                        val image = entry.imagePath?.let(BitmapFactory::decodeFile)
-                        val tintImage = if (entry.tintPath == entry.imagePath) image else entry.tintPath?.let(BitmapFactory::decodeFile)
+                        val image = entry.imagePath?.let { decodeWidgetBitmap(it, bitmapBudget) }
+                        val tintImage = if (entry.tintPath == entry.imagePath) image else entry.tintPath?.let { decodeWidgetBitmap(it, bitmapBudget) }
                         val palette = tintImage?.let { bitmap ->
                             val sample = Bitmap.createScaledBitmap(bitmap, 48, 48, true)
                             val pixels = IntArray(48 * 48)
@@ -130,7 +129,8 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                             PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.pageBackground.toArgb(), config)
                         }
                         entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
-                            entry.faviconPath?.let(BitmapFactory::decodeFile)?.roundedWidgetFavicon(context)?.forWidget(), tint(colors.night))
+                            entry.faviconPath?.let { decodeWidgetBitmap(it, bitmapBudget) }
+                                ?.roundedWidgetFavicon(context)?.withinWidgetBitmapBudget(bitmapBudget)?.forWidget(), tint(colors.night))
                     }
                 }
             }

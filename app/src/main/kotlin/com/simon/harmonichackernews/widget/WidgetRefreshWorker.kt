@@ -67,21 +67,22 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
     override suspend fun doWork(): Result {
         val widgetId = inputData.getInt(WIDGET_ID, -1)
         if (widgetId < 0) return Result.failure()
+        if (inputData.getBoolean(RESIZE_ONLY, false)) {
+            return withWidgetRender(widgetId) { refresh(widgetId) }
+        }
         return withWidgetStorage(widgetId) {
             if (AppWidgetManager.getInstance(applicationContext).getAppWidgetInfo(widgetId) == null) {
                 return@withWidgetStorage Result.success()
             }
-            if (!inputData.getBoolean(RESIZE_ONLY, false)) {
-                try {
-                    withWidgetDiagnostics(widgetId) {
-                        WidgetSchedulingDiagnostics(applicationContext, widgetId).recordStarted(id, runAttemptCount)
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    // Optional diagnostics must not prevent stories from refreshing.
-                    HarmonicLog.debug("Unable to record widget start: $error")
+            try {
+                withWidgetDiagnostics(widgetId) {
+                    WidgetSchedulingDiagnostics(applicationContext, widgetId).recordStarted(id, runAttemptCount)
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                // Optional diagnostics must not prevent stories from refreshing.
+                HarmonicLog.debug("Unable to record widget start: $error")
             }
             refresh(widgetId)
         }
@@ -94,8 +95,7 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(widgetId)
         val configuration = app.widgets.configuration(widgetId)
         if (inputData.getBoolean(RESIZE_ONLY, false)) {
-            val width = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 280)
+            val width = widgetWidth(context, widgetId)
             updateAppWidgetState(context, glanceId) {
                 it.reconcileWidgetFeed(configuration.feedUrl)
                 it[WidgetState.width] = width

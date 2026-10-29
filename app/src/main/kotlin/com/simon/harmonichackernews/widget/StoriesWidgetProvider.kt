@@ -24,7 +24,7 @@ class StoriesWidgetProvider : GlanceAppWidgetReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == Intent.ACTION_CONFIGURATION_CHANGED) refreshStoryWidgets(context)
+        if (intent.action == Intent.ACTION_CONFIGURATION_CHANGED) refreshStoryWidgets(context, reloadStories = false)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle) {

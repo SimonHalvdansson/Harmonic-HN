@@ -16,10 +16,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private val widgetStorageLocks = ConcurrentHashMap<Int, Mutex>()
+private val widgetRenderLocks = ConcurrentHashMap<Int, Mutex>()
 
 /** Cleanup waits for a cancelled refresh to finish writing its images. */
 internal suspend fun <T> withWidgetStorage(id: Int, block: suspend () -> T): T =
     widgetStorageLocks.getOrPut(id, ::Mutex).withLock { block() }
+
+/** Resize renders stay independent of network work; cleanup acquires both locks. */
+internal suspend fun <T> withWidgetRender(id: Int, block: suspend () -> T): T =
+    widgetRenderLocks.getOrPut(id, ::Mutex).withLock { block() }
 
 class WidgetCleanupWorker(context: Context, parameters: WorkerParameters) : CoroutineWorker(context, parameters) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -34,14 +39,16 @@ class WidgetCleanupWorker(context: Context, parameters: WorkerParameters) : Coro
         manager.cancelUniqueWork(WidgetRefreshWorker.resizeWorkName(id)).result.get()
         manager.cancelUniqueWork(WidgetSchedulingDiagnosticsWorker.workName(id)).result.get()
         withWidgetStorage(id) {
-            // Do not clear a replacement widget if its ID is reused before cleanup executes.
-            if (AppWidgetManager.getInstance(context).getAppWidgetInfo(id) != null) {
-                return@withWidgetStorage Result.success()
+            withWidgetRender(id) {
+                // Do not clear a replacement widget if its ID is reused before cleanup executes.
+                if (AppWidgetManager.getInstance(context).getAppWidgetInfo(id) != null) {
+                    return@withWidgetRender Result.success()
+                }
+                context.awaitHarmonicAppComposition().widgets.clear(id)
+                withWidgetDiagnostics(id) { WidgetSchedulingDiagnostics(context, id).clear() }
+                if (WidgetRefreshWorker.imageDirectory(context, id).deleteRecursively()) Result.success()
+                else Result.retry()
             }
-            context.awaitHarmonicAppComposition().widgets.clear(id)
-            withWidgetDiagnostics(id) { WidgetSchedulingDiagnostics(context, id).clear() }
-            if (WidgetRefreshWorker.imageDirectory(context, id).deleteRecursively()) Result.success()
-            else Result.retry()
         }
     }
 

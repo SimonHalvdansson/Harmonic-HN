@@ -76,11 +76,17 @@ class WidgetPayloadTest {
             WidgetEntry(story.toDestination(true), null, null, null)
         }
         // Separate allocations reproduce the real feed: identical references hide payload regressions.
+        val bitmapBudget = widgetBitmapBudget(context, entries.size * 2)
         val visuals = entries.map {
             val image = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888).apply { eraseColor(0xff428b90.toInt()) }
             val favicon = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888).apply { eraseColor(0xffac4c30.toInt()) }
-            WidgetVisual(image.forWidget(), 0xffdfeeed.toInt(), favicon.forWidget())
+            WidgetVisual(image.withinWidgetBitmapBudget(bitmapBudget)?.forWidget(), 0xffdfeeed.toInt(),
+                favicon.withinWidgetBitmapBudget(bitmapBudget)?.forWidget())
         }
+        val bitmapBytes = visuals.sumOf { visual ->
+            listOfNotNull(visual.image, visual.favicon).sumOf { it.allocationByteCount.toLong() }
+        }
+        assertTrue("Widget bitmaps use $bitmapBytes bytes", bitmapBytes <= bitmapBudget * entries.size * 2)
         for (mode in listOf(StoryPreviewMode.OFF, StoryPreviewMode.SMALL, StoryPreviewMode.MEDIUM)) {
             val widget = object : GlanceAppWidget() {
                 override suspend fun provideGlance(context: Context, id: GlanceId) {
