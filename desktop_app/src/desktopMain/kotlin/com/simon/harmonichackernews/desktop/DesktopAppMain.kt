@@ -12,10 +12,12 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -216,27 +219,26 @@ fun main() {
                                 modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
                                 color = palette.colorScheme.pageBackground,
                             ) {
-                                // Reserve the native controls/drag area on every screen. Windows
-                                // branding shares the app surface with no separate strip or divider.
+                                // Screens reserve the native controls/drag area individually so
+                                // the welcome background can extend behind the title bar.
                                 val titleBarInset = if (
                                     DesktopWindowAppearance.usesIntegratedTitleBar &&
                                     windowState.placement != WindowPlacement.Fullscreen
                                 ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
                                 Box(Modifier.fillMaxSize()) {
+                                    DesktopAppContent(
+                                        app = bootstrap.app,
+                                        scene = sceneOwner.scene,
+                                        storiesController = storiesController,
+                                        commentsController = commentsController,
+                                        editorBackRequestVersion = editorBackRequestVersion,
+                                        onStoriesControllerChanged = { storiesController = it },
+                                        commentsControllers = commentsControllers,
+                                        settingsControllers = settingsControllers,
+                                        titleBarInset = titleBarInset,
+                                    )
                                     if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
                                         DesktopWindowsTitleBar(window, windowIcon)
-                                    }
-                                    Box(Modifier.fillMaxSize().padding(top = titleBarInset).clipToBounds()) {
-                                        DesktopAppContent(
-                                            app = bootstrap.app,
-                                            scene = sceneOwner.scene,
-                                            storiesController = storiesController,
-                                            commentsController = commentsController,
-                                            editorBackRequestVersion = editorBackRequestVersion,
-                                            onStoriesControllerChanged = { storiesController = it },
-                                            commentsControllers = commentsControllers,
-                                            settingsControllers = settingsControllers,
-                                        )
                                     }
                                 }
                             }
@@ -348,6 +350,7 @@ private fun DesktopAppContent(
     onStoriesControllerChanged: (StoriesScreenController?) -> Unit,
     commentsControllers: RetainedDestinationControllers<CommentsScreenController>,
     settingsControllers: RetainedDestinationControllers<SettingsNavigationStore>,
+    titleBarInset: Dp,
 ) {
     val navigation by scene.navigation.state.collectAsState()
     val storyDestinationForeground = navigation.currentDestination == MainDestination.STORY
@@ -402,13 +405,15 @@ private fun DesktopAppContent(
     }
     val retainedStoriesContent = remember { movableContentOf { currentStoriesContent() } }
     val renderComments: @Composable (MainStoryRequest, Boolean) -> Unit = { request, showNavigation ->
-        DesktopCommentsContent(
-            app = app, scene = scene, request = request,
-            showNavigation = showNavigation,
-            webViewForegroundAllowed = webViewForegroundAllowed,
-            onClose = scene.navigation::detailRemovedFromBackStack,
-            controllers = commentsControllers,
-        )
+        DesktopInsetContent(if (showNavigation) titleBarInset else 0.dp) {
+            DesktopCommentsContent(
+                app = app, scene = scene, request = request,
+                showNavigation = showNavigation,
+                webViewForegroundAllowed = webViewForegroundAllowed,
+                onClose = scene.navigation::detailRemovedFromBackStack,
+                controllers = commentsControllers,
+            )
+        }
     }
     HarmonicAppRoot(
         plan = mainNavigationScenePlan(navigation, isTwoPane),
@@ -418,64 +423,85 @@ private fun DesktopAppContent(
                     it.isLinkPreviewOverlayShowing() && !it.searchDialogVisible
             }
             ?.let { controller ->
-                { DesktopCommentLinkPreview(app, scene, controller) }
+                { DesktopInsetContent(titleBarInset) { DesktopCommentLinkPreview(app, scene, controller) } }
             },
         stories = { detail, paneComments ->
-            val stories = retainedStoriesContent
-            if (isTwoPane) {
-                MainNavigationScene(
-                    storyRequest = detail,
-                    directive = mainDirective,
-                    paneProportion = 0.4f,
-                    onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = stories,
-                    emptyDetail = { EmptyCommentsScreen() },
-                    animateDetailVisibilityChanges = true,
-                    comments = paneComments,
-                )
-            } else {
-                stories()
+            DesktopInsetContent(titleBarInset) {
+                val stories = retainedStoriesContent
+                if (isTwoPane) {
+                    MainNavigationScene(
+                        storyRequest = detail,
+                        directive = mainDirective,
+                        paneProportion = 0.4f,
+                        onBack = scene.navigation::detailRemovedFromBackStack,
+                        stories = stories,
+                        emptyDetail = { EmptyCommentsScreen() },
+                        animateDetailVisibilityChanges = true,
+                        comments = paneComments,
+                    )
+                } else {
+                    stories()
+                }
             }
         },
         comments = renderComments,
         settings = { request ->
-            DesktopSettingsShell(
-                app = app,
-                scene = scene,
-                requestSerial = request.serial,
-                controllers = settingsControllers,
-                initialSection = SettingsSection.fromRoute(
-                    request.initialSectionRoute.orEmpty(),
-                ),
-            )
+            DesktopInsetContent(titleBarInset) {
+                DesktopSettingsShell(
+                    app = app,
+                    scene = scene,
+                    requestSerial = request.serial,
+                    controllers = settingsControllers,
+                    initialSection = SettingsSection.fromRoute(
+                        request.initialSectionRoute.orEmpty(),
+                    ),
+                )
+            }
         },
         submissions = { request, detail, paneComments ->
-            if (isTwoPane) {
-                MainNavigationScene(
-                    storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
-                    onBack = scene.navigation::detailRemovedFromBackStack,
-                    stories = { DesktopSubmissionsContent(app, scene, request, isSplitLayout = true) },
-                    emptyDetail = { EmptyCommentsScreen() },
-                    comments = paneComments,
-                )
-            } else {
-                DesktopSubmissionsContent(app, scene, request)
+            DesktopInsetContent(titleBarInset) {
+                if (isTwoPane) {
+                    MainNavigationScene(
+                        storyRequest = detail, directive = mainDirective, paneProportion = 0.4f,
+                        onBack = scene.navigation::detailRemovedFromBackStack,
+                        stories = { DesktopSubmissionsContent(app, scene, request, isSplitLayout = true) },
+                        emptyDetail = { EmptyCommentsScreen() },
+                        comments = paneComments,
+                    )
+                } else {
+                    DesktopSubmissionsContent(app, scene, request)
+                }
             }
         },
         editor = { request ->
-            DesktopEditorContent(
-                app = app, scene = scene, request = request,
-                backRequestVersion = editorBackRequestVersion,
+            DesktopInsetContent(titleBarInset) {
+                DesktopEditorContent(
+                    app = app, scene = scene, request = request,
+                    backRequestVersion = editorBackRequestVersion,
+                )
+            }
+        },
+        immersive = { DesktopInsetContent(titleBarInset) { CoulombGasScreen() } },
+        welcome = { request ->
+            PortableWelcomeScreen(
+                app, rememberDesktopAppIconPainter(), scene::closeWelcome, request.styleChooser,
+                contentWindowInsets = WindowInsets(top = titleBarInset),
             )
         },
-        immersive = { CoulombGasScreen() },
-        welcome = { request ->
-            PortableWelcomeScreen(app, rememberDesktopAppIconPainter(), scene::closeWelcome, request.styleChooser)
-        },
         foreground = {
-            DesktopAppForeground(app, scene, navigation, storiesController)
+            DesktopInsetContent(titleBarInset) {
+                DesktopAppForeground(app, scene, navigation, storiesController)
+            }
         },
     )
+}
+
+@Composable
+private fun DesktopInsetContent(
+    titleBarInset: Dp,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(Modifier.fillMaxSize().padding(top = titleBarInset).clipToBounds(), content = content)
 }
 
 private const val DesktopDestinationTransitionDurationMillis = 450L

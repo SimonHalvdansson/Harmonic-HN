@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
@@ -52,11 +51,10 @@ internal fun StoryTypeChips(
             listState.animateScrollToItem(selectedIndex)
         }
     }
-    LazyRow(
+    HeaderChipRow(
         state = listState,
-        modifier = modifier.fillMaxWidth().headerChipEndScrim(listState).selectableGroup(),
+        modifier = modifier.fillMaxWidth().selectableGroup(),
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         itemsIndexed(labels, key = { _, label -> label }) { index, label ->
             val selected = index == selectedIndex

@@ -83,6 +83,7 @@ fun WelcomeScreen(
     commentPreferences: CommentPreferences,
     onApplyPreset: (expressive: Boolean) -> Unit,
     filterButtonColors: HarmonicFilterButtonColors,
+    contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
     launcherIcon: @Composable () -> Unit,
 ) {
     val forwardExit = LocalActivityNavigationForwardExit.current
@@ -96,6 +97,7 @@ fun WelcomeScreen(
             onApplyPreset(expressive)
         },
         filterButtonColors = filterButtonColors,
+        contentWindowInsets = contentWindowInsets,
         launcherIcon = launcherIcon,
     )
 }

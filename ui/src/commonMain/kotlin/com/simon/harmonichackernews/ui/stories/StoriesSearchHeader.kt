@@ -10,7 +10,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
@@ -179,11 +177,10 @@ fun StorySearchHeader(
                 .focusRequester(focusRequester)
                 .onFocusChanged { if (it.isFocused) submission.startEditing() },
         )
-        LazyRow(
+        HeaderChipRow(
             state = chipListState,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).headerChipEndScrim(chipListState),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             contentPadding = PaddingValues(start = sideStart + 4.dp, end = sideEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { SearchOptionChip(state.sortLabel, state.sortLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.SORT, it) } }
             item { SearchOptionChip(state.dateLabel, state.dateLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.DATE, it) } }

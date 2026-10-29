@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.settings
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -422,6 +424,7 @@ fun PortableWelcomeScreen(
     appIcon: Painter,
     onDismiss: () -> Unit,
     styleChooser: Boolean = false,
+    contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
 ) {
     WelcomeScreen(
         styleChooser = styleChooser,
@@ -435,6 +438,7 @@ fun PortableWelcomeScreen(
             onDismiss()
         },
         filterButtonColors = harmonicFilterButtonColors(),
+        contentWindowInsets = contentWindowInsets,
         launcherIcon = {
             Image(
                 painter = appIcon,
