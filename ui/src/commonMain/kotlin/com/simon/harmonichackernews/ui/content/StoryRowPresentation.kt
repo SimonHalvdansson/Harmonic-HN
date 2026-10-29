@@ -97,42 +97,34 @@ internal fun rememberStoryRowPresentation(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null || model.previewImageBitmap != null)
-    var animatedPreviewMode by remember { mutableStateOf(style.previewImageMode) }
-    val mediumAccessoryFade = remember {
-        Animatable(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
-    }
     val animatePreviewMode = animate && hasPreview && !listItem
+    var animatedPreviewMode by remember(animatePreviewMode) { mutableStateOf(style.previewImageMode) }
     val renderedPreviewMode = if (animatePreviewMode) animatedPreviewMode else style.previewImageMode
     val renderedStyle = if (renderedPreviewMode == style.previewImageMode) {
         style
     } else {
         style.copy(previewImageMode = renderedPreviewMode)
     }
-    LaunchedEffect(style.previewImageMode, animatePreviewMode) {
-        val targetMode = style.previewImageMode
-        if (
-            animatePreviewMode && renderedPreviewMode == StoryPreviewMode.MEDIUM &&
-            targetMode == StoryPreviewMode.SMALL
-        ) {
-            // Start the image transition and outgoing badge fade together.
-            animatedPreviewMode = targetMode
-            mediumAccessoryFade.animateTo(0f, tween(75, easing = ContentMotionEasing))
-        } else {
-            animatedPreviewMode = targetMode
-            val targetAlpha = if (targetMode == StoryPreviewMode.MEDIUM) 1f else 0f
-            if (animatePreviewMode) {
-                mediumAccessoryFade.animateTo(
-                    targetAlpha,
-                    tween(
-                        durationMillis = 75,
-                        delayMillis = if (targetMode == StoryPreviewMode.MEDIUM) 105 else 0,
-                        easing = ContentMotionEasing,
-                    ),
-                )
-            } else {
-                mediumAccessoryFade.snapTo(targetAlpha)
-            }
+    // Feed rows switch mode immediately; only the settings/preview surface needs a coroutine.
+    val mediumAccessoryAlpha = if (animatePreviewMode) {
+        val fade = remember {
+            Animatable(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
         }
+        LaunchedEffect(style.previewImageMode) {
+            val targetMode = style.previewImageMode
+            animatedPreviewMode = targetMode
+            fade.animateTo(
+                if (targetMode == StoryPreviewMode.MEDIUM) 1f else 0f,
+                tween(
+                    durationMillis = 75,
+                    delayMillis = if (targetMode == StoryPreviewMode.MEDIUM) 105 else 0,
+                    easing = ContentMotionEasing,
+                ),
+            )
+        }
+        fade.asState()
+    } else {
+        rememberUpdatedState(if (style.previewImageMode == StoryPreviewMode.MEDIUM) 1f else 0f)
     }
     val tintFallback = model.tintFallbackArgb?.let(::Color) ?: colors.cardBackground
     val tintBaseColorArgb = model.tintFallbackArgb ?: HarmonicTheme.targetColorScheme.cardBackground.toArgb()
@@ -194,7 +186,7 @@ internal fun rememberStoryRowPresentation(
         cardProgress = cardProgress,
         outlineAlpha = outlineAlpha,
         renderedStyle = renderedStyle,
-        mediumAccessoryAlpha = mediumAccessoryFade.asState(),
+        mediumAccessoryAlpha = mediumAccessoryAlpha,
         hasPreview = hasPreview,
         background = background,
         tintBaseColorArgb = tintBaseColorArgb,
