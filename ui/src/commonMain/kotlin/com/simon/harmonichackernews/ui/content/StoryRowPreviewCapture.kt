@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -100,7 +101,7 @@ internal fun Modifier.captureStoryPreviewElement(
     onPositioned: (LayoutCoordinates) -> Unit,
     onLayerChanged: (GraphicsLayer) -> Unit,
 ): Modifier = if (enabled) {
-    onGloballyPositioned(onPositioned)
+    onPlaced(onPositioned)
         .captureStoryPreviewSourceContent(onLayerChanged)
 } else {
     this
@@ -155,23 +156,22 @@ internal fun rememberStoryRowPreviewCapture(
                     onGeometryChanged?.invoke(Rect.Zero, itemHeightPx)
                 }
             }
-            .onGloballyPositioned { coordinates ->
+            .onPlaced { itemGeometry.coordinates = it }
+            .then(if (capturePreviewSourceGeometry) Modifier.onGloballyPositioned { coordinates ->
                 itemGeometry.coordinates = coordinates
                 // Normally defer the window transforms until a preview needs this row. Once it is
                 // the pager's settled source, however, keep its published geometry aligned with
                 // the list. The last pager-driven list delta can land after the page settles; a
                 // one-shot snapshot would then make the dismiss transform end at the old position.
-                if (capturePreviewSourceGeometry) {
-                    itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
-                        ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
-                }
-            }
+                itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
+                    ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
+            } else Modifier)
     }
     val trackedLinkLongClick = onLinkLongClick?.let {
         { sourceCaptureRequested = true }
     }
-    LaunchedEffect(sourceCaptureRequested, onLinkLongClick) {
-        if (sourceCaptureRequested) {
+    if (sourceCaptureRequested) {
+        LaunchedEffect(onLinkLongClick) {
             // Let the newly attached recording modifiers draw once before publishing the source.
             withFrameNanos { }
             itemGeometry.coordinates
@@ -186,14 +186,8 @@ internal fun rememberStoryRowPreviewCapture(
             sourceCaptureRequested = false
         }
     }
-    LaunchedEffect(
-        capturePreviewSourceGeometry,
-        style.previewImageMode,
-        style.showPreviewText,
-        style.compact,
-        hasPreview,
-    ) {
-        if (capturePreviewSourceGeometry) {
+    if (capturePreviewSourceGeometry) {
+        LaunchedEffect(style.previewImageMode, style.showPreviewText, style.compact, hasPreview) {
             itemGeometry.snapshot(style, hasPreview, previewImageCornerRadiusPx)
                 ?.let { onPreviewSourceGeometryChanged?.invoke(it) }
         }

@@ -75,7 +75,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.LinkAnnotation
@@ -471,19 +471,21 @@ fun CommentRow(
     fun publishActionSourceGeometry() {
         itemGeometry.snapshot()?.let { onActionSourceGeometryChanged?.invoke(it) }
     }
-    LaunchedEffect(pendingActionSourceGesture) {
-        val gesture = pendingActionSourceGesture ?: return@LaunchedEffect
-        // Frame callbacks run before drawing. Cross a complete frame so both the card and
-        // detached indicator have recorded contents before publishing the opening geometry.
-        withFrameNanos { }
-        withFrameNanos { }
-        publishActionSourceGeometry()
-        val bounds = itemGeometry.boundsInWindowOrNull()
-        when (gesture) {
-            CommentActionSourceGesture.Click -> onToggleExpanded(bounds)
-            CommentActionSourceGesture.LongClick -> onShowActions(bounds)
+    if (pendingActionSourceGesture != null) {
+        LaunchedEffect(pendingActionSourceGesture) {
+            val gesture = pendingActionSourceGesture ?: return@LaunchedEffect
+            // Frame callbacks run before drawing. Cross a complete frame so both the card and
+            // detached indicator have recorded contents before publishing the opening geometry.
+            withFrameNanos { }
+            withFrameNanos { }
+            publishActionSourceGeometry()
+            val bounds = itemGeometry.boundsInWindowOrNull()
+            when (gesture) {
+                CommentActionSourceGesture.Click -> onToggleExpanded(bounds)
+                CommentActionSourceGesture.LongClick -> onShowActions(bounds)
+            }
+            pendingActionSourceGesture = null
         }
-        pendingActionSourceGesture = null
     }
     CommentRowLayout(
         modifier = modifier.then(decorations),
@@ -739,7 +741,7 @@ internal fun CommentBodyText(
         val segmentHasLinks = hasLinks && remember(segment) { segment.hasCommentLinks() }
         val geometry = if (segmentHasLinks) remember(segment) { CommentTextGeometry() } else null
         val linkModifier = if (geometry != null && linkGestureState != null) {
-            Modifier.onGloballyPositioned { geometry.coordinates = it }
+            Modifier.onPlaced { geometry.coordinates = it }
                 .detectAnnotatedLinkLongPress(
                     text = segment,
                     layoutResult = { geometry.layout },
@@ -998,7 +1000,8 @@ private fun CommentSurface(
         Modifier
     } else {
         Modifier
-            .onGloballyPositioned { itemGeometry.coordinates = it }
+            // Coordinates stay live as ancestors scroll; resolve window bounds on interaction.
+            .onPlaced { itemGeometry.coordinates = it }
             .then(contentCaptureModifier)
     }
     Column(modifier) {
@@ -1014,7 +1017,7 @@ private fun CommentSurface(
                 Modifier.matchParentSize()
                     .wrapContentWidth(Alignment.Start)
                     .width(indicatorWidth)
-                    .onGloballyPositioned { itemGeometry?.indicatorCoordinates = it }
+                    .onPlaced { itemGeometry?.indicatorCoordinates = it }
                     .then(indicatorCaptureModifier)
                     .drawWithCache {
                         val width = indicatorWidth.roundToPx().toFloat()

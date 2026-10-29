@@ -47,7 +47,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -118,7 +118,7 @@ internal fun ReferenceLinkRow(
                 .defaultMinSize(minHeight = 38.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(6.dp))
-                .onGloballyPositioned { geometry.coordinates = it }
+                .onPlaced { geometry.coordinates = it }
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
