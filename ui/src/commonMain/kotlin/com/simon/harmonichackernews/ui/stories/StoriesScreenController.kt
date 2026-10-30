@@ -8,6 +8,7 @@ import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -124,34 +125,39 @@ class StoriesScreenController private constructor(
     private var pagingUpperStoryId = -1
     private var sourceCoveredByStoryPreviewTransition by mutableStateOf(false)
 
-    val searching: Boolean get() = interactionState.searching
-    val searchDraft: String get() = interactionState.searchDraft
-    val frontDatePickerRequest: StoryFrontDatePickerRequest?
-        get() = interactionState.frontDatePickerRequest
-    val predictiveBackActive: Boolean get() = interactionState.predictiveBackActive
-    val predictiveBackProgress: Float get() = interactionState.predictiveBackProgress
-    val suppressSearchAutoFocus: Boolean get() = interactionState.suppressSearchAutoFocus
-    val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
-        get() = interactionState.predictiveBackSettleRequest
+    // Gesture samples publish a new interaction snapshot. Observe the field each consumer needs,
+    // so retained list/preview content is not invalidated by continuous back progress.
+    val searching: Boolean by computedStateOf { interactionState.searching }
+    val searchDraft: String by computedStateOf { interactionState.searchDraft }
+    val frontDatePickerRequest: StoryFrontDatePickerRequest? by computedStateOf {
+        interactionState.frontDatePickerRequest
+    }
+    val predictiveBackActive: Boolean by computedStateOf { interactionState.predictiveBackActive }
+    val predictiveBackProgress: Float by computedStateOf { interactionState.predictiveBackProgress }
+    val suppressSearchAutoFocus: Boolean by computedStateOf { interactionState.suppressSearchAutoFocus }
+    val predictiveBackSettleRequest: StoryPredictiveBackSettleRequest? by computedStateOf {
+        interactionState.predictiveBackSettleRequest
+    }
     val scrollByRequest: StoryScrollRequest? get() = scrollByRequestState
-    val storyPagingAlphas: Map<Int, Float> get() = interactionState.storyPagingAlphas
-    val storyPreviewOverlay: StoryPreviewOverlayState?
-        get() = interactionState.storyPreviewOverlay
-    val storyPreviewRemovalRequest: StoryPreviewRemovalRequest?
-        get() = interactionState.storyPreviewRemovalRequest
-    val storyPreviewDismissRequest: Int
-        get() = interactionState.storyPreviewDismissRequestVersion
-    val storyPreviewPredictiveBackProgress: Float
-        get() = interactionState.storyPreviewPredictiveBackProgress
-    val storyPreviewPredictiveBackEdge: Int
-        get() = interactionState.storyPreviewPredictiveBackEdge
-    val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest?
-        get() = interactionState.storyPreviewPredictiveBackSettleRequest
+    val storyPagingAlphas: Map<Int, Float> by computedStateOf { interactionState.storyPagingAlphas }
+    val storyPreviewOverlay: StoryPreviewOverlayState? by computedStateOf { interactionState.storyPreviewOverlay }
+    val storyPreviewRemovalRequest: StoryPreviewRemovalRequest? by computedStateOf {
+        interactionState.storyPreviewRemovalRequest
+    }
+    val storyPreviewDismissRequest: Int by computedStateOf { interactionState.storyPreviewDismissRequestVersion }
+    val storyPreviewPredictiveBackProgress: Float by computedStateOf { interactionState.storyPreviewPredictiveBackProgress }
+    val storyPreviewPredictiveBackEdge: Int by computedStateOf { interactionState.storyPreviewPredictiveBackEdge }
+    val storyPreviewPredictiveBackSettleRequest: StoryPredictiveBackSettleRequest? by computedStateOf {
+        interactionState.storyPreviewPredictiveBackSettleRequest
+    }
+    private val previewVoteLoadingIds by computedStateOf { interactionState.storyPreviewVoteLoadingIds }
+    private val previewFavoriteLoadingIds by computedStateOf { interactionState.storyPreviewFavoriteLoadingIds }
+    private val suppressedStoryIds by computedStateOf { interactionState.suppressedStoryIds }
     fun isStoryPreviewVoteLoading(storyId: Int): Boolean =
-        storyId in interactionState.storyPreviewVoteLoadingIds
+        storyId in previewVoteLoadingIds
     fun isStoryPreviewFavoriteLoading(storyId: Int): Boolean =
-        storyId in interactionState.storyPreviewFavoriteLoadingIds
-    val visibleStoryPreviewId: Int get() = interactionState.visibleStoryPreviewId
+        storyId in previewFavoriteLoadingIds
+    val visibleStoryPreviewId: Int by computedStateOf { interactionState.visibleStoryPreviewId }
 
     private fun syncInteractionState() {
         interactionState = interactionStore.state
@@ -647,7 +653,7 @@ class StoriesScreenController private constructor(
     }
 
     fun isStorySuppressed(storyId: Int): Boolean =
-        storyId in interactionState.suppressedStoryIds
+        storyId in suppressedStoryIds
 
     /** Keeps the live source row visible until the transition overlay has covered it. */
     fun shouldKeepStoryPreviewSourceVisible(storyId: Int): Boolean =

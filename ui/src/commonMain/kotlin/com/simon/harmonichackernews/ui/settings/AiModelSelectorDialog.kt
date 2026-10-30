@@ -262,7 +262,7 @@ fun AiModelSelectorDialog(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(AiModelFilter.entries, key = { it.name }) { option ->
+                items(AiModelFilter.entries, key = { it.name }, contentType = { "model-filter" }) { option ->
                     FilterChip(
                         selected = filter == option,
                         onClick = { filter = option },
@@ -323,7 +323,7 @@ fun AiModelSelectorDialog(
                                 bottom = 12.dp,
                             ),
                         ) {
-                            items(state.models, key = { it.openRouterId }) { model ->
+                            items(state.models, key = { it.openRouterId }, contentType = { "model" }) { model ->
                                 AiModelRow(
                                     model = model,
                                     provider = provider,

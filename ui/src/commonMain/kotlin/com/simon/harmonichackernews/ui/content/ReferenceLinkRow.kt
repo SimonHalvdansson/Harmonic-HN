@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onVisibilityChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,11 +85,12 @@ internal fun ReferenceLinkRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val resolvedExpandedUrl = expandedUrl?.takeIf { hasReferenceLinkTitle(label, it) }
-    val faviconSize by animateDpAsState(
+    var visible by remember { mutableStateOf(false) }
+    val faviconSize = if (visible) animateDpAsState(
         targetValue = if (resolvedExpandedUrl != null) 21.dp else 17.dp,
         animationSpec = contentTween(),
         label = "collected link favicon size",
-    )
+    ).value else if (resolvedExpandedUrl != null) 21.dp else 17.dp
     val geometry = remember { ReferenceLinkGeometry() }
     var captureRequested by remember { mutableStateOf(false) }
     var pendingLongClick by remember { mutableStateOf(false) }
@@ -119,6 +121,7 @@ internal fun ReferenceLinkRow(
                 .clip(RoundedCornerShape(6.dp))
                 .border(1.dp, colors.outlineVariant, RoundedCornerShape(6.dp))
                 .onPlaced { geometry.coordinates = it }
+                .onVisibilityChanged(minFractionVisible = 0.001f) { visible = it }
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
@@ -157,77 +160,94 @@ internal fun ReferenceLinkRow(
                         .clip(RoundedCornerShape(faviconSize * (3f / 17f))),
                 )
             }
-            SharedTransitionLayout(Modifier.weight(1f)) {
-                AnimatedContent(
-                    targetState = label to resolvedExpandedUrl,
-                    contentAlignment = Alignment.TopStart,
-                    transitionSpec = {
-                        (fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 5 })
-                            .togetherWith(fadeOut(tween(120)))
-                            .using(SizeTransform(clip = false) { _, _ -> contentTween() })
-                    },
-                    label = "collected link layout",
-                ) { (title, url) ->
-                    val visibilityScope = this
-                    val titleSize = typography.referenceLabelSize + if (url != null) 0.5f else 0f
-                    val titleLineHeight = titleSize + if (url != null) 0f else 3f
-                    Column(verticalArrangement = Arrangement.spacedBy(if (url != null) (-1).dp else 0.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (marker.isNotBlank()) Text(
-                                marker,
-                                modifier = Modifier.padding(end = 6.dp).alignByBaseline()
-                                    .sharedElement(
-                                        sharedContentState = rememberSharedContentState("marker"),
-                                        animatedVisibilityScope = visibilityScope,
-                                        boundsTransform = BoundsTransform { _, _ -> contentTween() },
-                                    ),
-                                color = colors.onSurfaceVariant,
-                                fontFamily = typography.family,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = titleSize.sp,
-                                lineHeight = titleLineHeight.sp,
-                            )
-                            Text(
-                                title,
-                                modifier = Modifier.weight(1f).alignByBaseline()
-                                    .wrapContentWidth(Alignment.Start)
-                                    .sharedBounds(
-                                        sharedContentState = rememberSharedContentState(
-                                            (if (url == null) "url" else "title") to title,
-                                        ),
-                                        animatedVisibilityScope = visibilityScope,
-                                        enter = fadeIn(contentTween()),
-                                        exit = fadeOut(contentTween()),
-                                        boundsTransform = BoundsTransform { _, _ -> contentTween() },
-                                    ),
-                                color = if (url != null) lerp(colors.onSurfaceVariant, colors.onSurface, 0.55f) else colors.onSurface,
-                                fontFamily = typography.family,
-                                fontSize = titleSize.sp,
-                                lineHeight = titleLineHeight.sp,
-                                fontWeight = if (url != null) FontWeight.Medium else FontWeight.Normal,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+            Box(Modifier.weight(1f)) {
+                if (visible) {
+                    SharedTransitionLayout {
+                        AnimatedContent(
+                            targetState = label to resolvedExpandedUrl,
+                            contentAlignment = Alignment.TopStart,
+                            transitionSpec = {
+                                (fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 5 })
+                                    .togetherWith(fadeOut(tween(120)))
+                                    .using(SizeTransform(clip = false) { _, _ -> contentTween() })
+                            },
+                            label = "collected link layout",
+                        ) { (title, url) ->
+                            ReferenceLinkText(
+                                marker, title, url, typography,
+                                markerModifier = Modifier.sharedElement(
+                                    rememberSharedContentState("marker"), this,
+                                    boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                                ),
+                                titleModifier = Modifier.sharedBounds(
+                                    rememberSharedContentState((if (url == null) "url" else "title") to title), this,
+                                    enter = fadeIn(contentTween()), exit = fadeOut(contentTween()),
+                                    boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                                ),
+                                urlModifier = Modifier.sharedBounds(
+                                    rememberSharedContentState("url" to url), this,
+                                    enter = fadeIn(contentTween()), exit = fadeOut(contentTween()),
+                                    boundsTransform = BoundsTransform { _, _ -> contentTween() },
+                                ),
                             )
                         }
-                        if (url != null) Text(
-                            url,
-                            modifier = Modifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState("url" to url),
-                                animatedVisibilityScope = visibilityScope,
-                                enter = fadeIn(contentTween()),
-                                exit = fadeOut(contentTween()),
-                                boundsTransform = BoundsTransform { _, _ -> contentTween() },
-                            ),
-                            color = colors.onSurfaceVariant,
-                            fontFamily = typography.family,
-                            fontSize = (typography.referenceMarkerSize - 2f).sp,
-                            lineHeight = (typography.referenceMarkerSize - 0.5f).sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
+                } else {
+                    // Prefetched rows have the same resting layout without lookahead or transitions.
+                    ReferenceLinkText(marker, label, resolvedExpandedUrl, typography)
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun ReferenceLinkText(
+    marker: String,
+    title: String,
+    url: String?,
+    typography: ContentTypography,
+    markerModifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
+    urlModifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val titleSize = typography.referenceLabelSize + if (url != null) 0.5f else 0f
+    val titleLineHeight = titleSize + if (url != null) 0f else 3f
+    Column(verticalArrangement = Arrangement.spacedBy(if (url != null) (-1).dp else 0.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (marker.isNotBlank()) Text(
+                marker,
+                modifier = Modifier.padding(end = 6.dp).alignByBaseline().then(markerModifier),
+                color = colors.onSurfaceVariant,
+                fontFamily = typography.family,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = titleSize.sp,
+                lineHeight = titleLineHeight.sp,
+            )
+            Text(
+                title,
+                modifier = Modifier.weight(1f).alignByBaseline()
+                    .wrapContentWidth(Alignment.Start).then(titleModifier),
+                color = if (url != null) lerp(colors.onSurfaceVariant, colors.onSurface, 0.55f) else colors.onSurface,
+                fontFamily = typography.family,
+                fontSize = titleSize.sp,
+                lineHeight = titleLineHeight.sp,
+                fontWeight = if (url != null) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (url != null) Text(
+            url,
+            modifier = urlModifier,
+            color = colors.onSurfaceVariant,
+            fontFamily = typography.family,
+            fontSize = (typography.referenceMarkerSize - 2f).sp,
+            lineHeight = (typography.referenceMarkerSize - 0.5f).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

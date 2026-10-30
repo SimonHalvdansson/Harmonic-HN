@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import com.simon.harmonichackernews.ui.common.SharedTransitionDrawCache
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,7 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -80,15 +81,15 @@ internal enum class StoryPreviewSharedElement {
 }
 
 internal data class StoryPreviewSharedTransitionState(
-    val progress: Float,
+    val progress: () -> Float,
     val active: Boolean,
     val hideTargetContent: Boolean,
     val drawOverlayShadows: Boolean,
     val source: StoryPreviewSourceGeometry?,
     val sourceSnapshot: (StoryPreviewSourceElement) -> ImageBitmap?,
-    val targetContainer: Rect?,
-    val targetScale: Float,
-    val targetCommentsButton: Rect?,
+    val targetContainer: () -> Rect?,
+    val targetScale: () -> Float,
+    val targetCommentsButton: () -> Rect?,
     val rootOffset: Offset,
     val targetBounds: (StoryPreviewSharedElement) -> Rect?,
     val targetSnapshot: (StoryPreviewSharedElement) -> ImageBitmap?,
@@ -207,29 +208,50 @@ internal fun StoryPreviewTransitionOverlay(
     transition: StoryPreviewSharedTransitionState,
     color: Color,
 ) {
-    if (!transition.active) return
+    if (!transition.active || transition.source == null) return
+    val drawCache = remember { SharedTransitionDrawCache() }
+    Box(Modifier.fillMaxSize()) {
+        StoryPreviewMovingSurface(transition, color)
+        Canvas(Modifier.fillMaxSize()) {
+            val source = checkNotNull(transition.source).localTo(transition.rootOffset)
+            val sourceContainer = source.container
+            val targetContainer = transition.targetContainer()?.localTo(transition.rootOffset) ?: sourceContainer
+            val progress = transition.progress().coerceIn(0f, 1f)
+            val container = lerpRect(sourceContainer, targetContainer, progress)
+            val targetRadius = 28.dp.toPx() * transition.targetScale()
+            drawTransitionContent(
+                transition, drawCache, source, sourceContainer, targetContainer, container,
+                lerp(8.dp.toPx(), targetRadius, progress), targetRadius, progress,
+            )
+        }
+    }
+}
+
+// Haze records immutable styles when they are built. Isolate their updates from captured text.
+@Composable
+private fun StoryPreviewMovingSurface(transition: StoryPreviewSharedTransitionState, color: Color) {
     val source = transition.source ?: return
     val rootOffset = transition.rootOffset
     val localSource = source.localTo(rootOffset)
     val sourceContainer = localSource.container
-    val targetContainer = transition.targetContainer?.localTo(rootOffset) ?: sourceContainer
-    val progress = transition.progress.coerceIn(0f, 1f)
+    val targetContainer = transition.targetContainer()?.localTo(rootOffset) ?: sourceContainer
+    val progress = transition.progress().coerceIn(0f, 1f)
     val container = lerpRect(sourceContainer, targetContainer, progress)
     val density = LocalDensity.current
     val sourceRadiusPx = with(density) { 8.dp.toPx() }
-    val targetRadiusPx = with(density) { 28.dp.toPx() } * transition.targetScale
+    val targetRadiusPx = with(density) { 28.dp.toPx() } * transition.targetScale()
     val containerRadiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress)
     val containerRadius = with(density) { containerRadiusPx.toDp() }
     // The moving container also owns its shadow during the live-content handoff.
     val elevation = if (transition.drawOverlayShadows || !transition.hideTargetContent) {
-        lerp(source.containerElevationDp, 8f * transition.targetScale, progress).dp
+        lerp(source.containerElevationDp, 8f * transition.targetScale(), progress).dp
     } else {
         0.dp
     }
     val width = with(density) { container.width.coerceAtLeast(1f).toDp() }
     val height = with(density) { container.height.coerceAtLeast(1f).toDp() }
     val shape = RoundedCornerShape(containerRadius)
-    val targetCommentsButton = transition.targetCommentsButton?.localTo(rootOffset)
+    val targetCommentsButton = transition.targetCommentsButton()?.localTo(rootOffset)
     val commentsButton = targetCommentsButton?.let { bounds ->
         moveRectBetweenContainers(bounds, targetContainer, container)
     }
@@ -237,61 +259,48 @@ internal fun StoryPreviewTransitionOverlay(
     val commentsButtonShape = RoundedCornerShape(percent = 50)
     val commentsButtonColor = MaterialTheme.colorScheme.cardBackground
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .absoluteOffset {
+                IntOffset(container.left.roundToInt(), container.top.roundToInt())
+            }
+            .requiredSize(width, height)
+            .outerShadow(elevation, shape)
+            .sharedHazeDialogBackground(color, shape, revealProgress = progress),
+    )
+    if (
+        transition.drawOverlayShadows &&
+        commentsButton != null
+    ) {
         Box(
             Modifier
                 .absoluteOffset {
-                    IntOffset(container.left.roundToInt(), container.top.roundToInt())
+                    IntOffset(
+                        commentsButton.left.roundToInt(),
+                        commentsButton.top.roundToInt(),
+                    )
                 }
-                .requiredSize(width, height)
-                .outerShadow(elevation, shape)
-                .sharedHazeDialogBackground(color, shape, revealProgress = progress),
+                .requiredSize(
+                    with(density) { commentsButton.width.coerceAtLeast(1f).toDp() },
+                    with(density) { commentsButton.height.coerceAtLeast(1f).toDp() },
+                )
+                // Fade a fixed resting shadow instead of animating sub-dp elevation. An empty
+                // shadow caster shows its dark interior through the partially faded bitmap;
+                // covering it with the real button color keeps the pill chroma stable.
+                .graphicsLayer(alpha = commentsShadowProgress)
+                .shadow(
+                    elevation = transition.targetScale().dp,
+                    shape = commentsButtonShape,
+                    clip = false,
+                )
+                .background(commentsButtonColor, commentsButtonShape),
         )
-        if (
-            transition.drawOverlayShadows &&
-            commentsButton != null
-        ) {
-            Box(
-                Modifier
-                    .absoluteOffset {
-                        IntOffset(
-                            commentsButton.left.roundToInt(),
-                            commentsButton.top.roundToInt(),
-                        )
-                    }
-                    .requiredSize(
-                        with(density) { commentsButton.width.coerceAtLeast(1f).toDp() },
-                        with(density) { commentsButton.height.coerceAtLeast(1f).toDp() },
-                    )
-                    // Fade a fixed resting shadow instead of animating sub-dp elevation. An empty
-                    // shadow caster shows its dark interior through the partially faded bitmap;
-                    // covering it with the real button color keeps the pill chroma stable.
-                    .graphicsLayer(alpha = commentsShadowProgress)
-                    .shadow(
-                        elevation = transition.targetScale.dp,
-                        shape = commentsButtonShape,
-                        clip = false,
-                    )
-                    .background(commentsButtonColor, commentsButtonShape),
-            )
-        }
-        Canvas(Modifier.fillMaxSize()) {
-            drawTransitionContent(
-                transition = transition,
-                source = localSource,
-                sourceContainer = sourceContainer,
-                targetContainer = targetContainer,
-                container = container,
-                containerRadiusPx = containerRadiusPx,
-                targetImageRadiusPx = targetRadiusPx,
-                progress = progress,
-            )
-        }
     }
 }
 
 private fun DrawScope.drawTransitionContent(
     transition: StoryPreviewSharedTransitionState,
+    drawCache: SharedTransitionDrawCache,
     source: StoryPreviewSourceGeometry,
     sourceContainer: Rect,
     targetContainer: Rect,
@@ -300,7 +309,7 @@ private fun DrawScope.drawTransitionContent(
     targetImageRadiusPx: Float,
     progress: Float,
 ) {
-    val containerClip = roundedRectPath(container, containerRadiusPx)
+    val containerClip = roundedRectPath(container, containerRadiusPx, path = drawCache.container)
 
     fun drawElement(
         element: StoryPreviewSharedElement,
@@ -323,6 +332,7 @@ private fun DrawScope.drawTransitionContent(
                 destination,
                 lerp(sourceImageRadius, targetImageRadiusPx, progress),
                 lerp(sourceImageRadius, 0f, progress),
+                path = drawCache.image,
             )
         } else {
             null
@@ -340,7 +350,7 @@ private fun DrawScope.drawTransitionContent(
             // leaves its crop visible through a transparent destination until the final frame.
             val blendImages = image && sourceSnapshot != null && targetSnapshot != null &&
                 sourceBounds != null && targetBounds != null
-            if (blendImages) drawContext.canvas.saveLayer(destination, Paint())
+            if (blendImages) drawContext.canvas.saveLayer(destination, drawCache.paint)
             if (sourceBounds != null && sourceSnapshot != null) {
                 drawSnapshot(
                     snapshot = sourceSnapshot,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.MutableWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +32,7 @@ class AskLayoutTest {
     fun contentDrawsBehindSystemBarWhileComposerAndLastMessageAvoidBarAndKeyboard() = SwingUtilities.invokeAndWait {
         val safeInsets = MutableWindowInsets(WindowInsets(top = 12, bottom = 24))
         val scroll = ScrollState(0)
+        var contentCommits = 0
         val scene = ImageComposeScene(400, 500, Density(1f)) {
             Box(Modifier.fillMaxSize().background(Color.White)) {
                 AskLayout(
@@ -38,11 +41,13 @@ class AskLayoutTest {
                         Box(modifier.fillMaxWidth().height(56.dp).background(Color.Red))
                     },
                     safeInsets = safeInsets,
-                ) { bottomPadding ->
+                ) { bottomSpacer ->
+                    SideEffect { contentCommits++ }
                     Column(Modifier.fillMaxSize().background(Color.Blue)
-                        .verticalScroll(scroll).padding(bottom = bottomPadding)) {
+                        .verticalScroll(scroll)) {
                         Box(Modifier.fillMaxWidth().height(800.dp))
                         Box(Modifier.fillMaxWidth().height(20.dp).background(Color.Green))
+                        Spacer(bottomSpacer.fillMaxWidth())
                     }
                 }
             }
@@ -54,8 +59,11 @@ class AskLayoutTest {
         try {
             // Model the safe bottom changing from navigation-bar to keyboard height and back.
             for (bottomInset in listOf(24, 180, 24)) {
+                val before = contentCommits
                 safeInsets.insets = WindowInsets(top = 12, bottom = bottomInset)
                 repeat(5) { frame() }
+                if (before > 0) assertEquals(before, contentCommits,
+                    "Composer and keyboard measurements must not recompose the transcript")
                 runBlocking { scroll.scrollTo(scroll.maxValue) }
                 repeat(3) { frame() }
                 val pixels = frame()

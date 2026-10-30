@@ -348,12 +348,12 @@ private fun BoxScope.SubmissionsList(
         overscrollEffect = overscrollEffect?.withoutVisualEffect(),
         contentPadding = PaddingValues(bottom = navigationBottom),
     ) {
-        item(key = "header") {
+        item(key = "header", contentType = "header") {
             Spacer(Modifier.height(with(density) { headerHeightPx.toDp() }))
         }
 
         if (loadedSuccessfully && !loading && !loadingFailed && submissions.isEmpty()) {
-            item(key = "empty") {
+            item(key = "empty", contentType = "empty") {
                 EmptySubmissions(
                     text = emptyText,
                     modifier = Modifier
@@ -454,7 +454,7 @@ private fun BoxScope.SubmissionsList(
 
         // Keep errors after the rows so a failed request cannot shift their saved indices.
         if (loadingFailed && !loading) {
-            item(key = "error") {
+            item(key = "error", contentType = "error") {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -474,7 +474,7 @@ private fun BoxScope.SubmissionsList(
             }
         }
 
-        item(key = "load-more") {
+        item(key = "load-more", contentType = "load-more") {
             AnimatedVisibility(
                 visible = canLoadMore && !loadingFailed,
                 modifier = Modifier.animateItem(),

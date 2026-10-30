@@ -182,7 +182,7 @@ fun AiSummaryBaseUrlDialog(
                     modifier = Modifier.padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    items(presets, key = { it.id }) { provider ->
+                    items(presets, key = { it.id }, contentType = { "provider-preset" }) { provider ->
                         val selected = normalizeBaseUrl(provider.baseUrl) == normalizeBaseUrl(url)
                         FilterChip(
                             selected = selected,

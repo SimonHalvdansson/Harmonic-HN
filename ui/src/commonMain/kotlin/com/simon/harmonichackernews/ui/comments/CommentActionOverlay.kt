@@ -59,12 +59,14 @@ import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.computedStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
@@ -176,10 +178,14 @@ fun CommentActionOverlay(
     var closingStarted by remember(comment.id) { mutableStateOf(false) }
     var useLiveContent by remember(comment.id) { mutableStateOf(false) }
     val dismissRequest = controller.commentActionDismissRequest
-    val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
-        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
-        dismissRequestVersion = dismissRequest,
-    )
+    val updateRestingTargetGeometry by remember(controller) {
+        computedStateOf {
+            shouldUpdateRestingTargetGeometry(
+                predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+                dismissRequestVersion = controller.commentActionDismissRequest,
+            )
+        }
+    }
     val dismissCaptureVersion = if (dismissRequest != 0 && !openingCompleted) 0 else dismissRequest
     // The same graphics layers are re-recorded at new sizes after rotation. A theme/dismiss
     // key alone reuses their old bitmaps and stretches them into the new bounds.
@@ -283,29 +289,25 @@ fun CommentActionOverlay(
         }
     }
 
-    val progress = transformProgress.value
-    val predictiveVisualProgress = predictiveBackVisualProgress(
-        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
-        transformProgress = progress,
-    )
-    val backDirection = if (controller.commentActionPredictiveBackEdge == 1) -1f else 1f
-    val backScale = 1f - 0.1f * predictiveVisualProgress
-    val backPivotFractionX = if (backDirection > 0f) 0f else 1f
-    val backTranslationX =
-        with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection
-    val backTranslationY = with(density) { 18.dp.toPx() } * predictiveVisualProgress
-    val scrimAlpha = 0.32f * progress * (1f - 0.55f * predictiveVisualProgress)
-    SideEffect { onScrimAlphaChanged(scrimAlpha) }
+    val scrimAlpha = {
+        val progress = transformProgress.value
+        val predictive = predictiveBackVisualProgress(controller.commentActionPredictiveBackProgress, progress)
+        0.32f * progress * (1f - 0.55f * predictive)
+    }
+    val currentOnScrimAlphaChanged by rememberUpdatedState(onScrimAlphaChanged)
+    LaunchedEffect(controller, transformProgress) {
+        snapshotFlow { scrimAlpha() }.collect { currentOnScrimAlphaChanged(it) }
+    }
     val shape = RoundedCornerShape(HarmonicDimens.compose_comment_action_corner_radius)
     val sharedTransition = CommentActionSharedTransitionState(
-        progress = progress,
+        progress = { transformProgress.value },
         active = overlayActive,
         hideTargetContent = hideTargetContent,
         drawOverlayShadows = drawOverlayShadows,
         source = transitionSource,
         sourceSnapshot = sourceCapture.image,
         targetContainer = targetContainer,
-        predictiveBackProgress = controller.commentActionPredictiveBackProgress,
+        predictiveBackProgress = { controller.commentActionPredictiveBackProgress },
         predictiveBackEdge = controller.commentActionPredictiveBackEdge,
         rootBounds = rootBounds,
         targetBounds = { element ->
@@ -361,9 +363,7 @@ fun CommentActionOverlay(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(
-                    Color.Black.copy(alpha = scrimAlpha),
-                )
+                .drawBehind { drawRect(Color.Black.copy(alpha = scrimAlpha())) }
                 // This scrim owns the touch sequence. An additional gesture consumer would
                 // cancel clickable on even a tiny move between the finger going down and up.
                 .clickable(
@@ -391,32 +391,18 @@ fun CommentActionOverlay(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            val fallbackPresentation = if (transitionSource == null) {
-                Modifier.graphicsLayer {
-                    val fallbackScale = 0.96f + 0.04f * progress
-                    scaleX = fallbackScale * backScale
-                    scaleY = fallbackScale * backScale
-                    alpha = progress
-                    translationX = backTranslationX
-                    translationY = backTranslationY
-                    transformOrigin = TransformOrigin(
-                        backPivotFractionX,
-                        0.5f,
-                    )
-                }
-            } else if (predictiveVisualProgress > 0f) {
-                Modifier.graphicsLayer {
-                    scaleX = backScale
-                    scaleY = backScale
-                    translationX = backTranslationX
-                    translationY = backTranslationY
-                    transformOrigin = TransformOrigin(
-                        backPivotFractionX,
-                        0.5f,
-                    )
-                }
-            } else {
-                Modifier
+            val fallbackPresentation = Modifier.graphicsLayer {
+                val progress = transformProgress.value
+                val predictive = predictiveBackVisualProgress(controller.commentActionPredictiveBackProgress, progress)
+                val direction = if (controller.commentActionPredictiveBackEdge == 1) -1f else 1f
+                val scale = 1f - 0.1f * predictive
+                val fallbackScale = if (transitionSource == null) 0.96f + 0.04f * progress else 1f
+                scaleX = fallbackScale * scale
+                scaleY = scaleX
+                if (transitionSource == null) alpha = progress
+                translationX = 56.dp.toPx() * predictive * direction
+                translationY = 18.dp.toPx() * predictive
+                transformOrigin = TransformOrigin(if (direction > 0f) 0f else 1f, 0.5f)
             }
             Box(
                 modifier = Modifier

@@ -39,6 +39,7 @@ internal fun AskPreviewText(
     ) { if (it) 1f else 0f }
     val lineHeightPx = with(LocalDensity.current) { lineHeight.toPx() }
     val bounds = remember { AskPreviewTextBounds() }
+    val layerPaint = remember { Paint() }
     Layout(
         modifier = modifier.clipToBounds(),
         content = {
@@ -54,7 +55,7 @@ internal fun AskPreviewText(
                             val alpha = 1f - textAlpha
                             if (alpha > 0f) {
                                 drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height),
-                                    Paint().apply { this.alpha = alpha })
+                                    layerPaint.apply { this.alpha = alpha })
                                 this@drawWithContent.drawContent()
                                 drawContext.canvas.restore()
                             }
@@ -67,7 +68,7 @@ internal fun AskPreviewText(
                         clipRect(bottom = bounds.stableHeight) { this@drawWithContent.drawContent() }
                         if (textAlpha > 0f) clipRect(top = bounds.stableHeight) {
                             drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height),
-                                Paint().apply { alpha = textAlpha })
+                                layerPaint.apply { alpha = textAlpha })
                             this@drawWithContent.drawContent()
                             drawContext.canvas.restore()
                         }

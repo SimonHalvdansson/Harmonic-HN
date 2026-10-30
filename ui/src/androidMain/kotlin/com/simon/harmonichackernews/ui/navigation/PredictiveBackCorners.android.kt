@@ -3,18 +3,14 @@ package com.simon.harmonichackernews.ui.navigation
 import android.content.Context
 import android.os.Build
 import android.view.RoundedCorner
-import android.view.View
 import android.view.WindowManager
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.node.requireLayoutCoordinates
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -24,31 +20,35 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
-@Composable
-internal actual fun Modifier.withLayoutCorners(
-    block: @Composable Modifier.(LayoutCorners) -> Modifier,
-): Modifier {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    val screenInfo = remember(context, density) {
-        context.getScreenInfo(density)
+internal actual class LayoutCornerResolver actual constructor() {
+    private var cachedContext: Context? = null
+    private var cachedDensity: Density? = null
+    private var cachedConfiguration: android.content.res.Configuration? = null
+    private var cachedWindowSize: androidx.compose.ui.unit.IntSize? = null
+    private var screenInfo: ScreenInfo? = null
+    private val rootLocation = IntArray(2)
+
+    actual fun resolve(node: CompositionLocalConsumerModifierNode): LayoutCorners {
+        val context = node.currentValueOf(LocalContext)
+        val density = node.currentValueOf(LocalDensity)
+        val configuration = node.currentValueOf(LocalConfiguration)
+        val windowSize = node.currentValueOf(LocalWindowInfo).containerSize
+        if (context !== cachedContext || density != cachedDensity ||
+            configuration != cachedConfiguration || windowSize != cachedWindowSize
+        ) {
+            cachedContext = context
+            cachedDensity = density
+            cachedConfiguration = android.content.res.Configuration(configuration)
+            cachedWindowSize = windowSize
+            screenInfo = context.getScreenInfo(density)
+        }
+        val info = screenInfo ?: return LayoutCorners()
+        val rootView = node.currentValueOf(LocalView)
+        rootView.getLocationOnScreen(rootLocation)
+        val bounds = node.requireLayoutCoordinates().boundsInRoot()
+            .translate(rootLocation[0].toFloat(), rootLocation[1].toFloat())
+        return getLayoutCorners(info, bounds, node.currentValueOf(LocalLayoutDirection))
     }
-
-    screenInfo ?: return block(LayoutCorners())
-
-    val rootView = LocalView.current
-    val layoutDirection = LocalLayoutDirection.current
-    var positionOnScreen by remember {
-        mutableStateOf<Rect?>(null)
-    }
-    val corners = getLayoutCorners(screenInfo, positionOnScreen, layoutDirection)
-
-    return onGloballyPositioned { coordinates ->
-        positionOnScreen = getBoundsOnScreen(
-            rootView = rootView,
-            boundsInRoot = coordinates.boundsInRoot(),
-        )
-    }.block(corners)
 }
 
 private fun Context.getScreenInfo(density: Density): ScreenInfo? {
@@ -130,19 +130,6 @@ private fun getLayoutCorners(
 
 private fun layoutCorner(radius: Dp?, isFixed: Boolean): LayoutCorner =
     radius?.let { LayoutCorner(radius = it, isFixed = isFixed) } ?: LayoutCorner()
-
-private fun getBoundsOnScreen(rootView: View, boundsInRoot: Rect): Rect {
-    val rootViewLeftTopOnScreen = IntArray(2)
-    rootView.getLocationOnScreen(rootViewLeftTopOnScreen)
-    val (rootViewLeftOnScreen, rootViewTopOnScreen) = rootViewLeftTopOnScreen
-
-    return Rect(
-        left = rootViewLeftOnScreen + boundsInRoot.left,
-        top = rootViewTopOnScreen + boundsInRoot.top,
-        right = rootViewLeftOnScreen + boundsInRoot.right,
-        bottom = rootViewTopOnScreen + boundsInRoot.bottom,
-    )
-}
 
 private data class ScreenInfo(
     val cornerRadii: CornerRadii,

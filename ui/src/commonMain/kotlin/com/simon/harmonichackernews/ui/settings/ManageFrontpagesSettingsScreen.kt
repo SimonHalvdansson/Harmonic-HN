@@ -243,7 +243,7 @@ fun ManageFrontpagesSettingsScreen(
             extraBottomPadding = resetButtonHeight + 16.dp,
             contentVersion = reorder.items.hashCode() + defaultLabel.hashCode(),
         ) {
-            item(key = "frontpage-help") {
+            item(key = "frontpage-help", contentType = "frontpage-help") {
                 Text(
                     text = "Drag to reorder",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -253,7 +253,7 @@ fun ManageFrontpagesSettingsScreen(
                     lineHeight = 20.sp,
                 )
             }
-            itemsIndexed(reorder.items, key = { _, type -> type.name }) { index, type ->
+            itemsIndexed(reorder.items, key = { _, type -> type.name }, contentType = { _, _ -> "reorder-frontpage" }) { index, type ->
                 val lifted = reorder.draggedType == type || drop?.type == type
                 val elevation by animateDpAsState(
                     if (lifted) 6.dp else 0.dp,
@@ -411,7 +411,7 @@ fun ManageFrontpagesSettingsScreen(
                 }
             }
             if (available.isNotEmpty()) {
-                item(key = "add-frontpages-heading") {
+                item(key = "add-frontpages-heading", contentType = "heading") {
                     Text(
                         text = "Additional frontpages",
                         modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
@@ -422,7 +422,7 @@ fun ManageFrontpagesSettingsScreen(
                         fontSize = 14.sp,
                     )
                 }
-                items(available, key = { "add-${it.name}" }) { type ->
+                items(available, key = { "add-${it.name}" }, contentType = { "add-frontpage" }) { type ->
                     var sourceBounds by remember { mutableStateOf<Rect?>(null) }
                     var sourceLayer by remember { mutableStateOf<GraphicsLayer?>(null) }
                     val background = focusedBackground(type, itemBackgroundColor())

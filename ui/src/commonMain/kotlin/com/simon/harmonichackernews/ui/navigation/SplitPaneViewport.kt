@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -108,13 +109,16 @@ internal fun SplitPaneViewport(
     LaunchedEffect(savedRatio, orientation) { rawRatio = savedRatio }
     val browser = LocalBrowserPaneState.current
     val session = remember(browser?.owner, orientation) { BrowserSplitSession() }
-    val logicalExpansion = browser?.logicalExpansion ?: 1f
-    val visualExpansion = browser?.sheetExpansion ?: 1f
+    // Only the settled endpoints affect ownership and controls; motion stays in the pane layers.
+    val logicalExpansion by remember(browser) {
+        computedStateOf { splitPaneExpansionPhase(browser?.logicalExpansion ?: 1f) }
+    }
+    val visualExpansion by remember(browser) {
+        computedStateOf { splitPaneExpansionPhase(browser?.sheetExpansion ?: 1f) }
+    }
     val opening = browser?.opening == true
     val integrated = browser?.integrated == true
-    LaunchedEffect(session, savedRatio, integrated, opening, visualExpansion) {
-        session.update(savedRatio, integrated, opening, visualExpansion)
-    }
+    SideEffect { session.update(savedRatio, integrated, opening, visualExpansion) }
     val temporary = session.openingRatio != null
     val sheetTransition = integrated && (opening ||
         logicalExpansion > 0.001f && logicalExpansion < 0.999f ||
@@ -187,6 +191,7 @@ internal fun SplitPaneViewport(
             }
         }
     }
+    val handleHasWidth by remember(animatedRatio) { computedStateOf { animatedRatio.value > 0f } }
     val twoPane = directive.maxHorizontalPartitions > 1
     var width by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -252,7 +257,7 @@ internal fun SplitPaneViewport(
             AnimatedVisibility(
                 // Keep the grip attached to the visible divider while the sheet moves.
                 // Only the actual full-width layout removes it; input is gated separately.
-                visible = twoPane && settings.appearance.allowSplitAdjustment && animatedRatio.value > 0f,
+                visible = twoPane && settings.appearance.allowSplitAdjustment && handleHasWidth,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
                 modifier = Modifier
@@ -367,4 +372,11 @@ internal fun SplitPaneListContent(content: @Composable () -> Unit) {
             placeable.placeRelative(constraints.maxWidth - placeable.width, 0)
         }
     }) { content() }
+}
+
+
+private fun splitPaneExpansionPhase(expansion: Float): Float = when {
+    expansion <= 0.001f -> 0f
+    expansion >= 0.999f -> 1f
+    else -> 0.5f
 }

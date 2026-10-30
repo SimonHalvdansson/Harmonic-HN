@@ -5,19 +5,22 @@ import androidx.navigationevent.NavigationEvent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.requireGraphicsContext
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.layer.setOutline
-import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,47 +48,31 @@ class DefaultActivityPredictiveBackAnimation(
     private var touchY by mutableFloatStateOf(initialEvent.touchY)
 
     val exitModifier: Modifier
-        get() = Modifier.composed {
-            withLayoutCorners { corners -> predictiveBackSurface(corners, entering = false) }
-        }
+        get() = Modifier then PredictiveBackSurfaceElement(this, entering = false)
 
     val enterModifier: Modifier
-        get() = Modifier
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    color = Color.Black.copy(
-                        alpha = (1f - finishProgressAnimatable.value) * RevealedContentScrimAlpha,
-                    ),
-                )
-            }
-            .composed {
-                withLayoutCorners { corners -> predictiveBackSurface(corners, entering = true) }
-            }
+        get() = Modifier then PredictiveBackSurfaceElement(this, entering = true)
 
-    /** Read gesture state and measured size only when drawing the retained page surface. */
-    @Composable
-    private fun Modifier.predictiveBackSurface(corners: LayoutCorners, entering: Boolean): Modifier {
-        val surface = rememberGraphicsLayer()
-        return drawWithContent {
-            val finishProgress = finishProgressAnimatable.value
-            val progress = progressAnimatable.value
-            val scale = scaleFactor()
-            val shapeProgress = if (entering) lerp(progress, 0f, finishProgress) else progress
-            // Keep Haze's source/effect coordinates at rest while moving the complete page.
-            surface.record { this@drawWithContent.drawContent() }
-            surface.scaleX = scale
-            surface.scaleY = scale
-            surface.translationX = if (entering) {
-                lerp(-size.width * FinishTranslationFraction, 0f, finishProgress)
-            } else exitOffsetX(size.width)
-            surface.translationY = exitOffsetY(size.height)
-            surface.alpha = if (entering) 1f else 1f - finishProgress
-            surface.setOutline(corners.toShape(shapeProgress).createOutline(size, layoutDirection, this))
-            surface.clip = true
-            surface.compositingStrategy = CompositingStrategy.Offscreen
-            drawLayer(surface)
-        }
+    /** Sample motion and physical corners only when drawing the retained page surface. */
+    internal fun ContentDrawScope.drawSurface(surface: GraphicsLayer, corners: LayoutCorners, entering: Boolean) {
+        val finishProgress = finishProgressAnimatable.value
+        val progress = progressAnimatable.value
+        val scale = scaleFactor()
+        val shapeProgress = if (entering) lerp(progress, 0f, finishProgress) else progress
+        // Keep Haze's source/effect coordinates at rest while moving the complete page.
+        surface.record { this@drawSurface.drawContent() }
+        surface.scaleX = scale
+        surface.scaleY = scale
+        surface.translationX = if (entering) {
+            lerp(-size.width * FinishTranslationFraction, 0f, finishProgress)
+        } else exitOffsetX(size.width)
+        surface.translationY = exitOffsetY(size.height)
+        surface.alpha = if (entering) 1f else 1f - finishProgress
+        surface.setOutline(corners.toShape(shapeProgress).createOutline(size, layoutDirection, this))
+        surface.clip = true
+        surface.compositingStrategy = CompositingStrategy.Offscreen
+        drawLayer(surface)
+        if (entering) drawRect(Color.Black.copy(alpha = (1f - finishProgress) * RevealedContentScrimAlpha))
     }
 
     private fun Density.exitOffsetX(width: Float): Float {
@@ -194,7 +181,44 @@ private fun LayoutCorners.toShape(progress: Float): RoundedCornerShape = Rounded
 private fun LayoutCorner.progressRadius(progress: Float): Dp =
     if (isFixed) radius else radius * progress
 
-@Composable
-internal expect fun Modifier.withLayoutCorners(
-    block: @Composable Modifier.(LayoutCorners) -> Modifier,
-): Modifier
+/** Platform corner metadata is cached; current node bounds are queried on demand. */
+internal expect class LayoutCornerResolver() {
+    fun resolve(node: CompositionLocalConsumerModifierNode): LayoutCorners
+}
+
+private data class PredictiveBackSurfaceElement(
+    val animation: DefaultActivityPredictiveBackAnimation,
+    val entering: Boolean,
+) : ModifierNodeElement<PredictiveBackSurfaceNode>() {
+    override fun create() = PredictiveBackSurfaceNode(animation, entering)
+    override fun update(node: PredictiveBackSurfaceNode) {
+        node.animation = animation
+        node.entering = entering
+    }
+    override fun InspectorInfo.inspectableProperties() {
+        name = "predictiveBackSurface"
+        properties["entering"] = entering
+    }
+}
+
+private class PredictiveBackSurfaceNode(
+    var animation: DefaultActivityPredictiveBackAnimation,
+    var entering: Boolean,
+) : Modifier.Node(), DrawModifierNode, CompositionLocalConsumerModifierNode {
+    private val corners = LayoutCornerResolver()
+    private var surface: GraphicsLayer? = null
+
+    override fun onAttach() {
+        surface = requireGraphicsContext().createGraphicsLayer()
+    }
+
+    override fun onDetach() {
+        surface?.let { requireGraphicsContext().releaseGraphicsLayer(it) }
+        surface = null
+    }
+
+    override fun ContentDrawScope.draw() {
+        val layer = surface ?: return
+        with(animation) { drawSurface(layer, corners.resolve(this@PredictiveBackSurfaceNode), entering) }
+    }
+}

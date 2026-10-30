@@ -151,7 +151,7 @@ fun LinkPreviewsDebugScreen(
             showNavigation = true,
             onBack = onBack,
         ) {
-            items(DebugLinkPreviewSamples, key = { it.type }) { sample ->
+            items(DebugLinkPreviewSamples, key = { it.type.name }, contentType = { "link-preview-sample" }) { sample ->
                 DebugLinkPreviewSampleRow(
                     sample = sample,
                     state = previewStates[sample.type] ?: DebugPreviewLoadState.Loading,

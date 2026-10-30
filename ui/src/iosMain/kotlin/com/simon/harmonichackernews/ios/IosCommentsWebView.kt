@@ -669,8 +669,8 @@ internal fun IosCommentsScaffold(
                             sideBySideActive = true,
                             onSideBySide = controller::toggleSideBySide,
                             showInvert = showInvert,
-                            progress = 1f - portal.sheetExpansion,
-                            contentAlpha = 1f,
+                            progress = { 1f - portal.sheetExpansion },
+                            contentAlpha = { 1f },
                             onAction = controller.listener::onSheetAction,
                             onBrowserBack = onBrowserBack,
                         )

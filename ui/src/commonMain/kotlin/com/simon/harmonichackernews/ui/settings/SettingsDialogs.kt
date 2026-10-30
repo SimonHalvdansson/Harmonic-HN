@@ -264,7 +264,7 @@ fun SingleChoiceDialog(
                     .selectableGroup(),
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
-                items(options, key = { it.first }) { option ->
+                items(options, key = { it.first }, contentType = { "radio-option" }) { option ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -317,7 +317,7 @@ fun MultiChoiceDialog(
                     .heightIn(max = 480.dp),
             ) {
                 if (!description.isNullOrBlank()) {
-                    item(key = "description") {
+                    item(key = "description", contentType = "description") {
                         Text(
                             text = description,
                             modifier = Modifier.padding(
@@ -333,7 +333,7 @@ fun MultiChoiceDialog(
                         )
                     }
                 }
-                items(options, key = { it }) { option ->
+                items(options, key = { it }, contentType = { "checkbox-option" }) { option ->
                     val checked = option in workingSelection
                     Row(
                         modifier = Modifier

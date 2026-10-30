@@ -290,7 +290,7 @@ private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, palet
         }
         LazyColumn(Modifier.fillMaxWidth().weight(1f).nestedScroll(PreviewScrollBoundary)
             .semantics { contentDescription = "Widget preview" }, contentPadding = PaddingValues(bottom = WidgetDimensions.listBottomPadding)) {
-            items(WidgetPreviewStories, key = { it.index }) { model ->
+            items(WidgetPreviewStories, key = { it.index }, contentType = { "widget-story" }) { model ->
                 Crossfade(fontFamily, label = "Widget story font") { family ->
                     WidgetPreviewStoryRow(model, configuration, family, paletteTintConfigKey)
                 }

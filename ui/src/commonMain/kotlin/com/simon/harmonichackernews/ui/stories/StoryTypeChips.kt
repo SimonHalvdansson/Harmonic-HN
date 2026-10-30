@@ -56,7 +56,7 @@ internal fun StoryTypeChips(
         modifier = modifier.fillMaxWidth().selectableGroup(),
         contentPadding = contentPadding,
     ) {
-        itemsIndexed(labels, key = { _, label -> label }) { index, label ->
+        itemsIndexed(labels, key = { _, label -> label }, contentType = { _, _ -> "story-type-chip" }) { index, label ->
             val selected = index == selectedIndex
             FilterChip(
                 selected = selected,

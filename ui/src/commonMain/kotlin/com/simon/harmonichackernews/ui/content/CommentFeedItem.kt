@@ -201,7 +201,7 @@ private fun CommentFeedBody(
         preferredFont = preferredFont,
         commentTextSize = textSize,
     )
-    var truncated by remember(formatted) { mutableStateOf(false) }
+    val truncated = remember(formatted) { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -212,21 +212,23 @@ private fun CommentFeedBody(
             maxLines = 16,
             overflow = TextOverflow.Ellipsis,
             style = legacyTextStyle,
-            onTextLayout = { truncated = it.hasVisualOverflow },
+            onTextLayout = { truncated.value = it.hasVisualOverflow },
+            modifier = Modifier.drawWithCache {
+                val fade = Brush.verticalGradient(
+                    listOf(Color.Transparent, background),
+                    startY = (size.height - 16.dp.toPx()).coerceAtLeast(0f),
+                    endY = size.height,
+                )
+                onDrawWithContent {
+                    drawContent()
+                    if (truncated.value) {
+                        val height = 16.dp.toPx().coerceAtMost(size.height)
+                        drawRect(fade, topLeft = Offset(0f, size.height - height),
+                            size = androidx.compose.ui.geometry.Size(size.width, height))
+                    }
+                }
+            },
         )
-        if (truncated) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(16.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, background),
-                        ),
-                    ),
-            )
-        }
     }
 }
 

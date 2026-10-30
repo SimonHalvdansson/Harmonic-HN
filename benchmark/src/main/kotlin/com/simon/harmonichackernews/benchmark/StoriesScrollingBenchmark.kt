@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.benchmark
 
 import android.content.Intent
 import android.os.SystemClock
+import androidx.benchmark.macro.BaselineProfileMode
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -26,7 +27,7 @@ class StoriesScrollingBenchmark {
         rule.measureRepeated(
             packageName = BenchmarkPackageName,
             metrics = listOf(FrameTimingMetric()),
-            compilationMode = CompilationMode.Full(),
+            compilationMode = CompilationMode.Partial(BaselineProfileMode.Require),
             iterations = InstrumentationRegistry.getArguments().getString("stories.iterations")?.toInt() ?: 8,
             setupBlock = {
                 pressHome()

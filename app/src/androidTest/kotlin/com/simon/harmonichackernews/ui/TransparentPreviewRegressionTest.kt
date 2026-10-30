@@ -44,11 +44,11 @@ class TransparentPreviewRegressionTest {
                 Box(Modifier.size(220.dp)) {
                     StoryPreviewTransitionOverlay(
                         StoryPreviewSharedTransitionState(
-                            progress = progress.floatValue, active = true, hideTargetContent = true,
+                            progress = { progress.floatValue }, active = true, hideTargetContent = true,
                             drawOverlayShadows = false,
                             source = StoryPreviewSourceGeometry(container = bounds, image = bounds),
                             sourceSnapshot = { if (it == StoryPreviewSourceElement.Image) source else null },
-                            targetContainer = bounds, targetScale = 1f, targetCommentsButton = null,
+                            targetContainer = { bounds }, targetScale = { 1f }, targetCommentsButton = { null },
                             rootOffset = Offset.Zero,
                             targetBounds = { if (it == StoryPreviewSharedElement.Image) bounds else null },
                             targetSnapshot = { if (it == StoryPreviewSharedElement.Image) target else null },

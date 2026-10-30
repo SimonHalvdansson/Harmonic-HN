@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -72,10 +73,11 @@ fun StoryAiSummary(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     onAsk: ((PostAskState) -> Unit)? = null,
     askVisible: Boolean = false,
+    containerColorProvider: () -> Color = { containerColor },
 ) {
     val summary = story.aiSummaryText.orEmpty()
     val sourceLayer = rememberGraphicsLayer()
-    val currentContainerColor by rememberUpdatedState(containerColor)
+    val currentContainerColor by rememberUpdatedState(containerColorProvider)
     var sourceCoordinates by remember(story.id) { mutableStateOf<LayoutCoordinates?>(null) }
     var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
@@ -105,7 +107,7 @@ fun StoryAiSummary(
                     else drawContent()
                 }
                 .clip(RoundedCornerShape(14.dp))
-                .background(containerColor)
+                .drawBehind { drawRect(currentContainerColor()) }
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                 .drawWithContent {
                     sourceLayer.record { this@drawWithContent.drawContent() }
@@ -148,7 +150,7 @@ fun StoryAiSummary(
                             subject = AskSource.Post(story, summary, story.aiSummarySourceText),
                             source = sourceLayer,
                             bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
-                            color = { currentContainerColor },
+                            color = { currentContainerColor() },
                         ))
                     }) {
                         Text("Ask", fontFamily = typography.family, fontWeight = FontWeight.Bold)

@@ -183,7 +183,7 @@ fun SettingsListScreen(
             ),
         ) {
             visibleGroups.forEach { (group, visibleEntries) ->
-                item(key = group.name) {
+                item(key = group.name, contentType = "settings-navigation-group") {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -391,14 +391,14 @@ fun SettingsPage(
                 @Suppress("UNUSED_EXPRESSION")
                 contentVersion
                 headerContent?.let { header ->
-                    item(key = "settings-header") { header() }
+                    item(key = "settings-header", contentType = "settings-header") { header() }
                 }
                 pinnedContent?.let { preview ->
                     // Always keep the same sticky item composed and measured. A tall preview
                     // follows its natural scroll position instead of sticking. Replacing an item
                     // with a stickyHeader (or briefly pinning it to remeasure after an edit)
                     // flashes the preview over the settings and resets animation state.
-                    stickyHeader(key = "settings-preview") {
+                    stickyHeader(key = "settings-preview", contentType = "settings-preview") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()

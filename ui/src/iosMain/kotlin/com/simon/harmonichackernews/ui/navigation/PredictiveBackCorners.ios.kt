@@ -1,9 +1,7 @@
 package com.simon.harmonichackernews.ui.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 
-@Composable
-internal actual fun Modifier.withLayoutCorners(
-    block: @Composable Modifier.(LayoutCorners) -> Modifier,
-): Modifier = block(LayoutCorners())
+internal actual class LayoutCornerResolver actual constructor() {
+    actual fun resolve(node: CompositionLocalConsumerModifierNode): LayoutCorners = LayoutCorners()
+}

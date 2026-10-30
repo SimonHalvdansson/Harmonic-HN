@@ -274,7 +274,7 @@ private fun BookmarkFavoriteResults(
     results: List<BookmarkFavoriteResult>,
 ) {
     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
-                itemsIndexed(results, key = { _, result -> result.id }) { index, result ->
+                itemsIndexed(results, key = { _, result -> result.id }, contentType = { _, _ -> "bookmark-result" }) { index, result ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

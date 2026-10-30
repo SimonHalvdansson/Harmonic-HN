@@ -65,6 +65,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.computedStateOf
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import com.simon.harmonichackernews.ui.common.layoutHeight
+import com.simon.harmonichackernews.ui.common.layoutVerticalPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,7 +138,7 @@ fun CommentsHeader(
     sheetActionsInHeader: Boolean = true,
     headerPreviewImageDisplayed: Boolean = false,
     onBrowserBack: (() -> Unit)? = null,
-    headerTintProgress: Float? = null,
+    headerTintProgress: (() -> Float?)? = null,
     faviconPreview: Painter? = null,
     previewCommentActions: Boolean = false,
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
@@ -141,7 +148,7 @@ fun CommentsHeader(
 ) {
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
-    val headerSheetProgress = if (controller.sideBySideActive) 1f else controller.sheetSlideOffset
+    val headerSheetProgress = { if (controller.sideBySideActive) 1f else controller.sheetSlideOffset }
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
     val story = remember(controller.story, contentVersion) { controller.story }
@@ -178,30 +185,30 @@ fun CommentsHeader(
     } else {
         normalBackground
     }
-    val headerBackground by androidx.compose.animation.animateColorAsState(
+    val headerBackground = androidx.compose.animation.animateColorAsState(
         targetValue = targetBackground,
         label = "comments header tint",
     )
-    val visibleHeaderBackground = lerpCommentsColor(
-        normalBackground,
-        headerBackground,
-        headerTintProgress ?: headerSheetProgress,
-    )
-    val summaryContainerColor = if (settings.tintHeader) {
-        lerpCommentsColor(colors.surfaceContainerHigh, visibleHeaderBackground, 0.52f)
-    } else {
-        colors.surfaceContainerHigh
+    val visibleHeaderBackground = {
+        lerpCommentsColor(normalBackground, headerBackground.value,
+            headerTintProgress?.invoke() ?: headerSheetProgress())
     }
-    LaunchedEffect(visibleHeaderBackground, headerBackground) {
-        controller.updateStatusBarHeaderColor(visibleHeaderBackground, headerBackground)
-        controller.listener.onHeaderColorChanged(visibleHeaderBackground.toArgb())
+    val summaryContainerColor = {
+        if (settings.tintHeader) lerpCommentsColor(colors.surfaceContainerHigh, visibleHeaderBackground(), 0.52f)
+        else colors.surfaceContainerHigh
     }
-    val topSpacer = if (includeStatusBarSpacer) {
-        with(density) {
-            (WindowInsets.statusBars.getTop(this) * headerSheetProgress).roundToInt().toDp()
+    val currentHeaderColor by rememberUpdatedState(visibleHeaderBackground)
+    LaunchedEffect(controller, headerBackground) {
+        snapshotFlow { currentHeaderColor() to headerBackground.value }.collect { (visible, background) ->
+            controller.updateStatusBarHeaderColor(visible, background)
+            controller.listener.onHeaderColorChanged(visible.toArgb())
         }
-    } else {
-        0.dp
+    }
+    val statusBars = WindowInsets.statusBars
+    val topSpacer = {
+        if (includeStatusBarSpacer) with(density) {
+            (statusBars.getTop(this) * headerSheetProgress()).roundToInt().toDp()
+        } else 0.dp
     }
     val sideMarginStart = with(density) { controller.contentInsetLeftPx.toDp() }
     val sideMarginEnd = with(density) { controller.contentInsetRightPx.toDp() }
@@ -212,10 +219,12 @@ fun CommentsHeader(
     } else {
         Modifier.padding(start = sideMarginStart, end = sideMarginEnd)
     }
-    val sheetHandleInset = if (controller.integratedWebView && controller.showSheetControls) {
-        (CommentsSheetHandleTopPadding + CommentsSheetHandleHeight + CommentsSheetHandleBottomPadding) *
-            if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
-    } else 0.dp
+    val sheetHandleInset = {
+        if (controller.integratedWebView && controller.showSheetControls) {
+            (CommentsSheetHandleTopPadding + CommentsSheetHandleHeight + CommentsSheetHandleBottomPadding) *
+                if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
+        } else 0.dp
+    }
     val bottomRadius by animateDpAsState(
         if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.ROUNDED) 24.dp else 0.dp,
         tween(240), label = "header bottom corners",
@@ -224,9 +233,8 @@ fun CommentsHeader(
         if (settings.tintHeader && settings.headerEdge != CommentsHeaderEdge.FADE) 12.dp else 0.dp,
         tween(240), label = "header bottom breathing room",
     )
-    val headerShape = RoundedCornerShape(bottomStart = bottomRadius, bottomEnd = bottomRadius)
-    val shimmerTopPadding by animateDpAsState(
-        24.dp + if (settings.showUpButton) 45.dp - sheetHandleInset else 0.dp,
+    val shimmerClearanceProgress by animateFloatAsState(
+        if (settings.showUpButton) 1f else 0f,
         contentTween(), label = "header shimmer clearance",
     )
     val shadowElevation by animateDpAsState(
@@ -257,14 +265,14 @@ fun CommentsHeader(
                 // during the corner animation can briefly redraw the old outline.
                 .graphicsLayer {
                     this.shadowElevation = shadowElevation.toPx()
-                    shape = headerShape
+                    shape = RoundedCornerShape(bottomStart = bottomRadius, bottomEnd = bottomRadius)
                     clip = true
                 }
-                .background(visibleHeaderBackground)
+                .drawBehind { drawRect(visibleHeaderBackground()) }
                 .windowInsetsPadding(contentWindowInsets)
-                .padding(bottom = bottomPadding),
+                .layoutVerticalPadding(bottom = { bottomPadding }),
         ) {
-            Spacer(Modifier.height(topSpacer))
+            Spacer(Modifier.layoutHeight(topSpacer))
             if (controller.integratedWebView && controller.showSheetControls) {
                 CommentsSheetControls(
                     sideBySideAvailable = controller.sideBySideAvailable,
@@ -273,15 +281,15 @@ fun CommentsHeader(
                     readerModeAvailable = controller.readerModeAvailable,
                     readerModeEnabled = controller.readerModeEnabled,
                     showInvert = settings.showInvert,
-                    progress = 1f - headerSheetProgress,
+                    progress = { 1f - headerSheetProgress() },
                     showActions = sheetActionsInHeader,
-                    contentAlpha = if (controller.sideBySideActive) {
+                    contentAlpha = { if (controller.sideBySideActive) {
                         0f
                     } else if (controller.predictiveBackActive) {
                         1f - controller.predictiveBackProgress * 0.7f
                     } else {
                         1f
-                    },
+                    } },
                     onAction = controller.listener::onSheetAction,
                     onBrowserBack = onBrowserBack,
                     modifier = horizontalContentPadding
@@ -301,9 +309,9 @@ fun CommentsHeader(
                 // Without the growing button row, removing the top inset can shorten the
                 // lazy header during a drag. Retain that space below the handle so the list
                 // stays at its top and does not cancel the sheet gesture.
-                Spacer(Modifier.height(with(density) {
-                    WindowInsets.statusBars.getTop(this).toDp()
-                } - topSpacer))
+                Spacer(Modifier.layoutHeight {
+                    with(density) { statusBars.getTop(this).toDp() } - topSpacer()
+                })
             }
 
             Column(
@@ -313,13 +321,11 @@ fun CommentsHeader(
             ) {
                 AnimatedContent(
                     targetState = showHeaderShimmer,
-                    modifier = Modifier.graphicsLayer(
+                    modifier = Modifier.graphicsLayer {
                         alpha = if (controller.predictiveBackActive && !controller.sideBySideActive) {
                             controller.predictiveBackProgress * 0.7f
-                        } else {
-                            1f
-                        },
-                    ),
+                        } else 1f
+                    },
                     transitionSpec = {
                         (fadeIn(tween(240, delayMillis = 80)) togetherWith fadeOut(tween(120))).using(
                             SizeTransform(clip = false) { _, _ ->
@@ -345,7 +351,9 @@ fun CommentsHeader(
                                     }
                                 },
                         ) {
-                            Column(Modifier.padding(top = shimmerTopPadding)) {
+                            Column(Modifier.layoutVerticalPadding(top = {
+                                24.dp + (45.dp - sheetHandleInset()) * shimmerClearanceProgress
+                            })) {
                                 CommentsHeaderShimmer()
                             }
                         }
@@ -380,12 +388,15 @@ fun CommentsHeader(
                                             stackedMetrics = visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE &&
                                                 !visual.imageVisible,
                                         )
-                                        val backClearance by animateDpAsState(
+                                        val backClearanceProgress by animateFloatAsState(
                                             if (settings.showUpButton && !(visual.imageVisible && !sideImage)) {
-                                                45.dp - sheetHandleInset
-                                            } else 0.dp,
+                                                1f
+                                            } else 0f,
                                             contentTween(), label = "header back clearance",
                                         )
+                                        val clearance = {
+                                            (45.dp - sheetHandleInset()) * backClearanceProgress
+                                        }
                                         val title: @Composable (Modifier) -> Unit = { modifier ->
                                             StoryTitleText(
                                                 text = storyTitle.text,
@@ -425,14 +436,16 @@ fun CommentsHeader(
                                                 boundsTransform = boundsTransform,
                                                 resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                                             )) {
-                                                headerPreviewImage(
-                                                    Modifier.sharedElement(
-                                                        rememberSharedContentState("image"), visibility,
-                                                        boundsTransform = boundsTransform,
-                                                    ).fillMaxSize()
-                                                        .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
-                                                    visibleHeaderBackground,
-                                                ) { loadedTint = it }
+                                                HeaderColorContent(visibleHeaderBackground) { background ->
+                                                    headerPreviewImage(
+                                                        Modifier.sharedElement(
+                                                            rememberSharedContentState("image"), visibility,
+                                                            boundsTransform = boundsTransform,
+                                                        ).fillMaxSize()
+                                                            .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
+                                                        background,
+                                                    ) { loadedTint = it }
+                                                }
                                                 HeaderImageMetrics(
                                                     controller, visualSettings, imageHazeState, textStyle,
                                                     Modifier.align(Alignment.BottomEnd)
@@ -449,11 +462,12 @@ fun CommentsHeader(
                                                 enter = fadeIn(tween(140, delayMillis = 160)),
                                                 exit = fadeOut(tween(80)),
                                             )) {
-                                                HeaderStackedMetrics(
-                                                    controller, visualSettings, textStyle, visibleHeaderBackground,
-                                                    visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE &&
-                                                        !visual.imageVisible,
-                                                )
+                                                HeaderColorContent(visibleHeaderBackground) { background ->
+                                                    HeaderStackedMetrics(
+                                                        controller, visualSettings, textStyle, background,
+                                                        visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE && !visual.imageVisible,
+                                                    )
+                                                }
                                             }
                                         }
                                         BoxWithConstraints(
@@ -465,7 +479,7 @@ fun CommentsHeader(
                                             val thumbnailWidth = if (maxWidth < 360.dp) 112.dp else 128.dp
                                             if (sideImage) {
                                                 Row(
-                                                    Modifier.fillMaxWidth().padding(top = 12.dp + backClearance),
+                                                    Modifier.fillMaxWidth().layoutVerticalPadding(top = { 12.dp + clearance() }),
                                                     verticalAlignment = Alignment.CenterVertically,
                                                 ) {
                                                     Column(Modifier.weight(1f)) {
@@ -486,9 +500,9 @@ fun CommentsHeader(
                                                         Spacer(Modifier.height(10.dp))
                                                     }
                                                     Row(
-                                                        Modifier.fillMaxWidth().padding(
-                                                            top = (if (visual.imageVisible) 0.dp else 16.dp) + backClearance,
-                                                        ),
+                                                        Modifier.fillMaxWidth().layoutVerticalPadding(top = {
+                                                            (if (visual.imageVisible) 0.dp else 16.dp) + clearance()
+                                                        }),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
                                                         Column(Modifier.weight(1f)) {
@@ -513,7 +527,7 @@ fun CommentsHeader(
                                             link = link,
                                             sourceBounds = bounds,
                                             headerReference = true,
-                                            sourceContainerColor = visibleHeaderBackground,
+                                            sourceContainerColor = visibleHeaderBackground(),
                                             sourceContentLayer = sourceContentLayer,
                                         )
                                     },
@@ -526,7 +540,9 @@ fun CommentsHeader(
                                         )
                                     },
                                 )
-                                LinkPreviewContent(story, contentVersion, settings, visibleHeaderBackground)
+                                HeaderColorContent(visibleHeaderBackground) { background ->
+                                    LinkPreviewContent(story, contentVersion, settings, background)
+                                }
                             }
                             PollOptions(
                                 pollOptions,
@@ -543,7 +559,7 @@ fun CommentsHeader(
                                     onOpenLink = previewPlatform.openLink,
                                     diagnostics = controller.summaryDiagnostics,
                                     streaming = controller.storySummaryLoading,
-                                    containerColor = summaryContainerColor,
+                                    containerColorProvider = summaryContainerColor,
                                     onAsk = controller::openPostAsk,
                                     askVisible = controller.postAsk?.coveringSource == true,
                                 )
@@ -587,19 +603,21 @@ fun CommentsHeader(
                             ) { metaInfo ->
                                 Column {
                                     val actionSettings = settings.copy(headerMetaInfo = metaInfo)
-                                    CommentsHeaderMetadata(
-                                        story = story,
-                                        settings = actionSettings,
-                                        storyPosterTag = storyPosterTag,
-                                        textStyle = textStyle,
-                                        onAuthorClick = { controller.listener.onHeaderAction(CommentsHeaderAction.USER) },
-                                        onVoteClick = { controller.listener.onHeaderAction(CommentsHeaderAction.VOTE) },
-                                        onReplyClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REPLY) },
-                                        upvoted = controller.isUpvoted(story.id, story.isComment),
-                                        voteLoading = controller.storyVoteLoading,
-                                        commented = controller.storyCommented,
-                                        headerColor = visibleHeaderBackground,
-                                    )
+                                    HeaderColorContent(visibleHeaderBackground) { background ->
+                                        CommentsHeaderMetadata(
+                                            story = story,
+                                            settings = actionSettings,
+                                            storyPosterTag = storyPosterTag,
+                                            textStyle = textStyle,
+                                            onAuthorClick = { controller.listener.onHeaderAction(CommentsHeaderAction.USER) },
+                                            onVoteClick = { controller.listener.onHeaderAction(CommentsHeaderAction.VOTE) },
+                                            onReplyClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REPLY) },
+                                            upvoted = controller.isUpvoted(story.id, story.isComment),
+                                            voteLoading = controller.storyVoteLoading,
+                                            commented = controller.storyCommented,
+                                            headerColor = background,
+                                        )
+                                    }
                                 }
                             }
                             CommentsHeaderActions(
@@ -615,16 +633,17 @@ fun CommentsHeader(
                 }
             }
         }
-        val fadeBrush = remember(visibleHeaderBackground) {
-            Brush.verticalGradient(
-                0f to visibleHeaderBackground,
-                0.25f to visibleHeaderBackground.copy(alpha = visibleHeaderBackground.alpha * 0.84f),
-                0.55f to visibleHeaderBackground.copy(alpha = visibleHeaderBackground.alpha * 0.42f),
-                1f to visibleHeaderBackground.copy(alpha = 0f),
-            )
-        }
-        Box(Modifier.fillMaxWidth().height(edgeHeight)) {
-            Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.background(fadeBrush))
+        Box(Modifier.fillMaxWidth().layoutHeight { edgeHeight }) {
+            Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.drawWithCache {
+                val color = visibleHeaderBackground()
+                val fadeBrush = Brush.verticalGradient(
+                    0f to color,
+                    0.25f to color.copy(alpha = color.alpha * 0.84f),
+                    0.55f to color.copy(alpha = color.alpha * 0.42f),
+                    1f to color.copy(alpha = 0f),
+                )
+                onDrawBehind { drawRect(fadeBrush) }
+            })
         }
         Column(Modifier.windowInsetsPadding(contentWindowInsets).commentsReadingWidth()
             .then(horizontalContentPadding)) {
@@ -730,15 +749,18 @@ fun CommentsSheetControls(
     sideBySideActive: Boolean = false,
     onSideBySide: () -> Unit = {},
     showInvert: Boolean,
-    progress: Float,
-    contentAlpha: Float,
+    progress: () -> Float,
+    contentAlpha: () -> Float,
     onAction: (CommentsSheetAction) -> Unit,
     onBrowserBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
     showActions: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    val collapsedProgress = if (showActions) progress.coerceIn(0f, 1f) else 0f
+    val collapsedProgress = { if (showActions) progress().coerceIn(0f, 1f) else 0f }
+    val actionsVisible by remember(collapsedProgress, contentAlpha) {
+        computedStateOf { collapsedProgress() >= 0.001f && contentAlpha() > 0f }
+    }
     val navigationBarClearance = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
@@ -752,14 +774,15 @@ fun CommentsSheetControls(
                 .clip(RoundedCornerShape(3.dp))
                 .background(colors.onSurfaceVariant.copy(alpha = 0.6f)),
         )
-        val actionAlpha = collapsedProgress * collapsedProgress * collapsedProgress
-        val actionsVisible = collapsedProgress >= 0.001f && contentAlpha > 0f
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(CommentsSheetButtonSize * collapsedProgress)
+                .layoutHeight { CommentsSheetButtonSize * collapsedProgress() }
                 .then(if (!actionsVisible) Modifier.clearAndSetSemantics { } else Modifier)
-                .graphicsLayer(alpha = actionAlpha * contentAlpha)
+                .graphicsLayer {
+                    val p = collapsedProgress()
+                    alpha = p * p * p * contentAlpha()
+                }
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -811,7 +834,7 @@ fun CommentsSheetControls(
         }
         // The peek height includes the system navigation inset. Keep header content below that
         // inset while collapsed, then remove the clearance as the comments sheet expands.
-        Spacer(Modifier.height(navigationBarClearance * progress.coerceIn(0f, 1f)))
+        Spacer(Modifier.layoutHeight { navigationBarClearance * progress().coerceIn(0f, 1f) })
     }
 }
 
@@ -965,3 +988,10 @@ fun lerpCommentsColor(start: Color, end: Color, fraction: Float): Color = Color(
     blue = start.blue + (end.blue - start.blue) * fraction,
     alpha = start.alpha + (end.alpha - start.alpha) * fraction,
 )
+
+
+/** An animated color invalidates only the component whose appearance depends on it. */
+@Composable
+private fun HeaderColorContent(color: () -> Color, content: @Composable (Color) -> Unit) {
+    content(color())
+}

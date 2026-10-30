@@ -131,7 +131,7 @@ fun CommentSearchScreen(
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
-            items(visibleComments, key = PortableCommentItem::id) { comment ->
+            items(visibleComments, key = PortableCommentItem::id, contentType = { "comment" }) { comment ->
                 Box(
                     Modifier
                         .fillMaxWidth()

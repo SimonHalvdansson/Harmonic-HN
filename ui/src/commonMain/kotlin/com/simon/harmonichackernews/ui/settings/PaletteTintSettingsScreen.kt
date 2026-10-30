@@ -228,7 +228,7 @@ fun PaletteTintSettingsScreen(
                 }
             },
         ) {
-            items(PalettePreviewSamples, key = { it.index }) { model ->
+            items(PalettePreviewSamples, key = { it.index }, contentType = { "palette-preview" }) { model ->
                 PaletteStoryPreview(model, previewStyle.copy(paletteTintConfigKey = configKey))
             }
             item {

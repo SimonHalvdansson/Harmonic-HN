@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -69,12 +70,15 @@ class StoryPreviewDismissInputTest {
         var cardBounds = Rect.Zero
         var updateBounds = Rect.Zero
         var scrim = 0f
+        var previewContentCommits = 0
         val scene = ImageComposeScene(400, 800, Density(1f)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
                     Box(Modifier.fillMaxSize()) {
                         StoryPreviewOverlay(controller, tablet = false, onScrimAlphaChanged = { scrim = it }) { story, page, color, modifier ->
+                            checkNotNull(LocalStoryPreviewSharedTransition.current)
+                            SideEffect { previewContentCommits++ }
                             StoryPreviewCard(
                                 controller, story, page, color, settings, StoryPreviewSummaryState(),
                                 hasAccount = false, bookmarksEnabled = true, faviconUrl = null,
@@ -102,6 +106,19 @@ class StoryPreviewDismissInputTest {
             repeat(45) { frame() }
             assertTrue(cardBounds.width > 0f)
             assertTrue(updateBounds.width > 0f)
+            assertEquals(0.32f, scrim, 0.001f)
+            controller.startStoryPreviewPredictiveBack(0.1f, edge = 0, touchY = 200f)
+            repeat(4) { frame() }
+            val commitsBeforeGesture = previewContentCommits
+            for (progress in listOf(0.2f, 0.4f, 0.6f, 0.8f)) {
+                controller.updateStoryPreviewPredictiveBack(progress, edge = 0, touchY = 200f)
+                repeat(2) { frame() }
+            }
+            assertEquals(commitsBeforeGesture, previewContentCommits,
+                "Gesture frames must not invalidate retained preview content through its CompositionLocal")
+            assertTrue(scrim < 0.2f, "The scrim must still follow gesture progress")
+            controller.cancelStoryPreviewPredictiveBack()
+            repeat(25) { frame() }
             assertEquals(0.32f, scrim, 0.001f)
             tap(if (tapUpdate) updateBounds.center else cardBounds.topLeft + Offset(1f, 1f))
             assertTrue(controller.storyPreviewDismissRequest != 0, "The outside tap must request dismissal")

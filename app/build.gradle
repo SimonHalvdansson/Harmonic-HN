@@ -84,9 +84,9 @@ android {
 
             signingConfig = signingConfigs.debug
             debuggable = false
-            // Opt in for startup comparisons that also measure release DEX layout optimization.
+            // Match shipped release optimization; opt out explicitly for compiler-isolation experiments.
             minifyEnabled = providers.gradleProperty("harmonic.benchmark.minify")
-                    .map { it.toBoolean() }.getOrElse(false)
+                    .map { it.toBoolean() }.getOrElse(true)
             shrinkResources = minifyEnabled
             proguardFiles "benchmark-rules.pro"
             matchingFallbacks.add("release")

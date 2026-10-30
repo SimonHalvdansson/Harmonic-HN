@@ -103,6 +103,7 @@ fun TransformOverlay(
     onScrimAlphaChanged: (Float) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
+    val clipPaths = remember { SharedTransitionDrawCache() }
     val density = LocalDensity.current
     val sharedHazeState = if (sharedHazeSourceZIndex != null) {
         currentSharedHazeState()
@@ -468,7 +469,7 @@ fun TransformOverlay(
                     if (bounds == null || bounds.width <= 0f || bounds.height <= 0f) {
                         return@drawWithContent
                     }
-                    clipPath(roundedRectPath(bounds, visualRadiusPx)) {
+                    clipPath(roundedRectPath(bounds, visualRadiusPx, path = clipPaths.container)) {
                         this@drawWithContent.drawContent()
                     }
                 },
@@ -564,7 +565,7 @@ fun TransformOverlay(
             val snapshotAlpha = ((0.62f - progress) / 0.62f).coerceIn(0f, 1f)
             if (snapshotAlpha > 0f && visualContainer != null) {
                 androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                    clipPath(roundedRectPath(visualContainer, visualRadiusPx)) {
+                    clipPath(roundedRectPath(visualContainer, visualRadiusPx, path = clipPaths.image)) {
                         if (preserveContentAspectRatio) {
                             val snapshotScale = max(
                                 visualContainer.width / snapshot.width,

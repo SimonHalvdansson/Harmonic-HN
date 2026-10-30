@@ -85,7 +85,7 @@ fun FontSelectionDialog(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp).selectableGroup(),
                 contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
             ) {
-                items(options, key = { it.second }) { (label, value) ->
+                items(options, key = { it.second.storedValue }, contentType = { "font-option" }) { (label, value) ->
                     val fontFamily = fontFamilyForSetting(value.storedValue)
                     Row(
                         modifier = Modifier
@@ -370,7 +370,7 @@ fun StringListEditorDialog(
 
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 224.dp)) {
                     if (items.isEmpty()) {
-                        item(key = "empty-list-message") {
+                        item(key = "empty-list-message", contentType = "empty-list-message") {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -386,7 +386,7 @@ fun StringListEditorDialog(
                             }
                         }
                     } else {
-                        items(items, key = { it.lowercase() }) { item ->
+                        items(items, key = { it.lowercase() }, contentType = { "editable-string" }) { item ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

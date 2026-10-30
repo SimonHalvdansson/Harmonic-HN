@@ -1,46 +1,55 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.constrainHeight
 
 @Composable
 internal fun AskLayout(
     header: @Composable () -> Unit,
     composer: @Composable (Modifier) -> Unit,
     safeInsets: WindowInsets = WindowInsets.safeDrawing,
-    content: @Composable (composerHeight: Dp) -> Unit,
+    content: @Composable (bottomSpacer: Modifier) -> Unit,
 ) {
-    val density = LocalDensity.current
-    var composerHeight by remember { mutableStateOf(80.dp) }
-    Column(Modifier.fillMaxSize().windowInsetsPadding(
-        safeInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-    )) {
-        header()
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            // The viewport reaches the bottom edge; only the floating controls avoid the
-            // navigation bar/IME. Include that inset in the list's trailing content padding.
-            content(composerHeight)
-            composer(Modifier.align(Alignment.BottomCenter)
-                .onSizeChanged { composerHeight = with(density) { it.height.toDp() } }
-                .windowInsetsPadding(safeInsets.only(WindowInsetsSides.Bottom)))
+    val composerHeight = remember { mutableIntStateOf(0) }
+    // Only the trailing spacer reads this measurement. No composition depends on it.
+    val bottomSpacer = Modifier.layout { measurable, constraints ->
+        val height = constraints.constrainHeight(composerHeight.intValue)
+        val spacer = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+        layout(spacer.width, height) { spacer.placeRelative(0, 0) }
+    }
+    Layout(
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(
+            safeInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        ),
+        content = {
+            Box { header() }
+            Box { content(bottomSpacer) }
+            Box { composer(Modifier.windowInsetsPadding(safeInsets.only(WindowInsetsSides.Bottom))) }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minHeight = 0)
+        val headerPlaceable = measurables[0].measure(loose)
+        val bodyHeight = (constraints.maxHeight - headerPlaceable.height).coerceAtLeast(0)
+        // Resolve the floating composer before measuring the content's end padding, in this frame.
+        val composerPlaceable = measurables[2].measure(loose.copy(maxHeight = bodyHeight))
+        composerHeight.intValue = composerPlaceable.height
+        val body = measurables[1].measure(constraints.copy(minHeight = bodyHeight, maxHeight = bodyHeight))
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            headerPlaceable.placeRelative(0, 0)
+            body.placeRelative(0, headerPlaceable.height)
+            composerPlaceable.placeRelative(0, constraints.maxHeight - composerPlaceable.height)
         }
     }
 }

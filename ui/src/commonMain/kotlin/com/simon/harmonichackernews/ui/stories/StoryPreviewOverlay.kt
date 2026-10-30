@@ -25,13 +25,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.computedStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
@@ -186,10 +188,14 @@ fun StoryPreviewOverlay(
         mutableStateOf<GraphicsLayer?>(null)
     }
     val dismissRequest = controller.storyPreviewDismissRequest
-    val updateRestingTargetGeometry = shouldUpdateRestingTargetGeometry(
-        predictiveBackProgress = controller.storyPreviewPredictiveBackProgress,
-        dismissRequestVersion = dismissRequest,
-    )
+    val updateRestingTargetGeometry by remember(controller) {
+        computedStateOf {
+            shouldUpdateRestingTargetGeometry(
+                predictiveBackProgress = controller.storyPreviewPredictiveBackProgress,
+                dismissRequestVersion = controller.storyPreviewDismissRequest,
+            )
+        }
+    }
     val predictiveSettleRequest = controller.storyPreviewPredictiveBackSettleRequest
     // An interrupted opening has not exposed interactive dialog content, so its existing snapshots
     // are already current. Reusing them makes the transform reverse immediately. A fully opened
@@ -364,11 +370,11 @@ fun StoryPreviewOverlay(
         withFrameNanos { }
         controller.completeStoryPreviewDismiss()
     }
-    LaunchedEffect(controller.storyPreviewPredictiveBackProgress, predictiveSettleRequest) {
-        if (predictiveSettleRequest == null) {
-            predictiveProgressAnimation.snapTo(
-                controller.storyPreviewPredictiveBackProgress.coerceIn(0f, 1f),
-            )
+    LaunchedEffect(controller, predictiveProgressAnimation) {
+        snapshotFlow {
+            controller.storyPreviewPredictiveBackProgress to controller.storyPreviewPredictiveBackSettleRequest
+        }.collect { (progress, settle) ->
+            if (settle == null) predictiveProgressAnimation.snapTo(progress.coerceIn(0f, 1f))
         }
     }
     LaunchedEffect(predictiveSettleRequest?.serial) {
@@ -469,34 +475,36 @@ fun StoryPreviewOverlay(
         }
     }
 
-    val progress = transformProgress.value
-    val predictiveProgress = predictiveProgressAnimation.value
-    val predictiveEased = 1f - (1f - predictiveProgress) * (1f - predictiveProgress)
-    val backDirection = if (controller.storyPreviewPredictiveBackEdge == 1) -1f else 1f
-    val backScale = 1f - 0.1f * predictiveEased
-    val backPivotFractionX = if (backDirection > 0f) 0f else 1f
-    val backTranslationX = with(density) { PredictiveBackTranslationXDp.dp.toPx() } *
-        predictiveEased * backDirection
-    val backTranslationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } *
-        predictiveEased
-    val scrimAlpha = 0.32f * progress * (1f - 0.55f * predictiveEased)
-    val visibleScrimAlpha = scrimAlpha * dismissOpacity.value
-    SideEffect { onScrimAlphaChanged(visibleScrimAlpha) }
+    val transitionSettled by remember(transformProgress) {
+        computedStateOf { transformProgress.value >= 0.999f }
+    }
+    val scrimAlpha = {
+        val predictive = predictiveProgressAnimation.value
+        val eased = 1f - (1f - predictive) * (1f - predictive)
+        0.32f * transformProgress.value * (1f - 0.55f * eased)
+    }
+    val currentOnScrimAlphaChanged by rememberUpdatedState(onScrimAlphaChanged)
+    LaunchedEffect(state.sessionId, transformProgress, predictiveProgressAnimation, dismissOpacity) {
+        snapshotFlow { scrimAlpha() * dismissOpacity.value }.collect { currentOnScrimAlphaChanged(it) }
+    }
     fun transformTargetBounds(bounds: Rect?): Rect? {
         val container = targetBounds ?: return bounds
+        val predictive = predictiveProgressAnimation.value
+        val eased = 1f - (1f - predictive) * (1f - predictive)
+        val direction = if (controller.storyPreviewPredictiveBackEdge == 1) -1f else 1f
         return bounds?.let {
             storyPreviewPredictiveBackBounds(
                 bounds = it,
                 container = container,
-                scale = backScale,
-                translationX = backTranslationX,
-                translationY = backTranslationY,
-                pivotFractionX = backPivotFractionX,
+                scale = 1f - 0.1f * eased,
+                translationX = with(density) { PredictiveBackTranslationXDp.dp.toPx() } * eased * direction,
+                translationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } * eased,
+                pivotFractionX = if (direction > 0f) 0f else 1f,
             )
         }
     }
     val sharedTransition = StoryPreviewSharedTransitionState(
-        progress = progress,
+        progress = { transformProgress.value },
         active = overlayActive,
         hideTargetContent = hideTargetContent,
         drawOverlayShadows = drawOverlayShadows,
@@ -514,9 +522,12 @@ fun StoryPreviewOverlay(
         // The live card is already transformed by predictive back when a committed gesture starts
         // the shared-element dismissal. Use that same geometry for the overlay's progress-one
         // frame so handing drawing from the live card to the overlay cannot jump back to rest.
-        targetContainer = transformTargetBounds(targetBounds),
-        targetScale = backScale,
-        targetCommentsButton = transformTargetBounds(targetCommentsButtonBounds),
+        targetContainer = { transformTargetBounds(targetBounds) },
+        targetScale = {
+            val p = predictiveProgressAnimation.value
+            1f - 0.1f * (1f - (1f - p) * (1f - p))
+        },
+        targetCommentsButton = { transformTargetBounds(targetCommentsButtonBounds) },
         rootOffset = rootOffset,
         targetBounds = { element ->
             transformTargetBounds(when (element) {
@@ -590,7 +601,7 @@ fun StoryPreviewOverlay(
             .fillMaxSize()
             .onGloballyPositioned { rootOffset = it.boundsInWindow().topLeft }
             .graphicsLayer { alpha = dismissOpacity.value }
-            .background(Color.Black.copy(alpha = scrimAlpha))
+            .drawBehind { drawRect(Color.Black.copy(alpha = scrimAlpha())) }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -624,7 +635,7 @@ fun StoryPreviewOverlay(
                     if (pageOnScrollWheel) {
                         Modifier.storyPreviewScrollWheelPaging { scrollDeltaY ->
                             if (
-                                progress < 0.999f ||
+                                transformProgress.value < 0.999f ||
                                 dismissRequest != 0 || removalRequest != null
                             ) {
                                 return@storyPreviewScrollWheelPaging
@@ -643,7 +654,7 @@ fun StoryPreviewOverlay(
                     },
                 ),
             beyondViewportPageCount = 2,
-            userScrollEnabled = progress >= 0.999f && dismissRequest == 0 && removalRequest == null,
+            userScrollEnabled = transitionSettled && dismissRequest == 0 && removalRequest == null,
             key = { page -> state.stories[page].id },
         ) { page ->
             Box(
@@ -664,7 +675,7 @@ fun StoryPreviewOverlay(
                 Box(Modifier.matchParentSize().scrollable(
                     state = rememberScrollableState { 0f },
                     orientation = Orientation.Vertical,
-                    enabled = progress >= 0.999f && dismissRequest == 0 && removalRequest == null,
+                    enabled = transitionSettled && dismissRequest == 0 && removalRequest == null,
                 ))
                 Box(
                     modifier = Modifier.fillMaxSize()
@@ -700,16 +711,16 @@ fun StoryPreviewOverlay(
                             },
                         )
                         .then(
-                            if (currentPage && predictiveEased > 0f) {
+                            if (currentPage) {
                                 Modifier.graphicsLayer {
-                                    scaleX = backScale
-                                    scaleY = backScale
-                                    translationX = backTranslationX
-                                    translationY = backTranslationY
-                                    transformOrigin = TransformOrigin(
-                                        backPivotFractionX,
-                                        0.5f,
-                                    )
+                                    val predictive = predictiveProgressAnimation.value
+                                    val eased = 1f - (1f - predictive) * (1f - predictive)
+                                    val direction = if (controller.storyPreviewPredictiveBackEdge == 1) -1f else 1f
+                                    scaleX = 1f - 0.1f * eased
+                                    scaleY = scaleX
+                                    translationX = with(density) { PredictiveBackTranslationXDp.dp.toPx() } * eased * direction
+                                    translationY = with(density) { PredictiveBackTranslationYDp.dp.toPx() } * eased
+                                    transformOrigin = TransformOrigin(if (direction > 0f) 0f else 1f, 0.5f)
                                 }
                             } else {
                                 Modifier

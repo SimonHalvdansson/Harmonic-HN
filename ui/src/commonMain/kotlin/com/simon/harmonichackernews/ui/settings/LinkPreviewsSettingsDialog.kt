@@ -64,7 +64,7 @@ fun LinkPreviewsSettingsDialog(
             ) {
                 LinkPreviewGroup.entries.forEachIndexed { groupIndex, group ->
                     val types = LinkPreviewType.entries.filter { it.group == group }
-                    item(key = "header-${group.name}") {
+                    item(key = "header-${group.name}", contentType = "heading") {
                         Text(
                             text = group.label.uppercase(),
                             modifier = Modifier.padding(
@@ -83,6 +83,7 @@ fun LinkPreviewsSettingsDialog(
                     items(
                         count = types.size,
                         key = { index -> types[index].name },
+                        contentType = { "link-preview-toggle" },
                     ) { index ->
                         val type = types[index]
                         LinkPreviewToggleRow(

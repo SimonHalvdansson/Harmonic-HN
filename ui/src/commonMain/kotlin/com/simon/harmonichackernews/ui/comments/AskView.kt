@@ -15,10 +15,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -53,7 +55,6 @@ import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -82,10 +83,12 @@ internal fun AskSurface(
             builtInModelSelected = { dependencies.localModels?.selectedModel?.downloadable == false },
         )
     }
-    val state by discussion.state.collectAsState()
+    val state = discussion.state.collectAsState().value
     var draft by remember(subject) { mutableStateOf("") }
     var expanded by remember(subject) { mutableStateOf(false) }
-    val scroll = rememberScrollState()
+    val scroll = rememberLazyListState()
+    val turnKeyStore = remember(subject) { AskTurnKeys() }
+    val turnKeys = remember(turnKeyStore, state.turns.size) { turnKeyStore.forCount(state.turns.size) }
     val keyboard = LocalSoftwareKeyboardController.current
     val typography = rememberContentTypography(settings.font, commentTextSize = settings.preferredTextSize)
     val questions = remember(subject) { AskConversation.suggestedQuestions(subject) }
@@ -98,19 +101,23 @@ internal fun AskSurface(
     var resetting by remember(subject) { mutableStateOf(false) }
     val followThreshold = with(LocalDensity.current) { 96.dp.toPx() }
     var followOutput by remember { mutableStateOf(true) }
-    // Follow layout growth, not each network chunk: repeated smooth-scroll animations made
-    // the existing summary glyph fades look as though the entire answer was moving.
-    LaunchedEffect(scroll) {
-        snapshotFlow { scroll.isScrollInProgress to scroll.value }.collect {
-            if (scroll.isScrollInProgress) followOutput = scroll.maxValue - scroll.value < followThreshold
-        }
+    // Follow only while the user stays near the end. Watching layout also covers wrapping,
+    // keyboard changes and streaming growth without restarting a scroll animation for each token.
+    LaunchedEffect(scroll, discussion, followThreshold) {
+        snapshotFlow { Triple(scroll.layoutInfo, scroll.isScrollInProgress, followOutput) }
+            .collect { (layout, scrolling, follow) ->
+                if (scrolling) {
+                    followOutput = layout.isNearTranscriptEnd(followThreshold)
+                } else if (follow && discussion.state.value.turns.isNotEmpty() &&
+                    layout.totalItemsCount > 0 && !layout.isNearTranscriptEnd(0f)
+                ) {
+                    // Layout info can be published during measurement. Queue the next measure
+                    // instead of forcing a nested layout through scrollToItem.
+                    scroll.requestScrollToItem(layout.totalItemsCount - 1)
+                }
+            }
     }
-    LaunchedEffect(scroll) {
-        snapshotFlow { scroll.maxValue }.distinctUntilChanged().collect { end ->
-            if (discussion.state.value.turns.isNotEmpty() && followOutput && !scroll.isScrollInProgress) scroll.scrollTo(end)
-        }
-    }
-    LaunchedEffect(state.turns.size) { followOutput = true }
+    SideEffect(state.turns.size) { followOutput = true }
     LaunchedEffect(controller.askOpen) {
         if (!controller.askOpen) keyboard?.hide()
     }
@@ -130,7 +137,7 @@ internal fun AskSurface(
                 revealedTurns.clear()
                 draft = ""
                 followOutput = true
-                scroll.scrollTo(0)
+                scroll.scrollToItem(0)
                 withFrameNanos { }
                 resetAlpha.animateTo(1f, tween(220, easing = AskEasing))
             } finally {
@@ -173,146 +180,152 @@ internal fun AskSurface(
                     modifier = modifier,
                 )
             },
-        ) { composerHeight ->
-            Column(
+        ) { bottomSpacer ->
+            LazyColumn(
                 Modifier.fillMaxSize()
                     .statusBarScrollToTop(enabled = controller.askOpen, priority = 1) {
                         followOutput = false
-                        scroll.animateScrollTo(0)
+                        scroll.animateScrollToItem(0)
                     }.graphicsLayer {
                     alpha = resetAlpha.value
                     translationY = (1f - resetAlpha.value) * 8.dp.toPx()
-                }.verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, bottom = composerHeight),
+                },
+                state = scroll,
+                contentPadding = PaddingValues(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                val linkColor = MaterialTheme.colorScheme.primary
-                val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
-                    htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
-                        LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
-                }
-                val caretRotation by animateFloatAsState(
-                    if (expanded) 180f else 0f,
-                    tween(260, easing = AskEasing), label = "Comment caret",
-                )
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
-                        .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
-                        .padding(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (settings.userAvatarsEnabled && !comment?.by.isNullOrBlank()) {
-                            UserAvatar(author = comment.by!!, options = settings.userAvatarOptions,
-                                modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(8.dp))
+                item(key = "subject", contentType = "ask-subject") {
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        val linkColor = MaterialTheme.colorScheme.primary
+                        val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
+                            htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
+                                LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
+                        }
+                        val caretRotation by animateFloatAsState(
+                            if (expanded) 180f else 0f,
+                            tween(260, easing = AskEasing), label = "Comment caret",
+                        )
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
+                                .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
+                                .padding(12.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (settings.userAvatarsEnabled && !comment?.by.isNullOrBlank()) {
+                                    UserAvatar(author = comment.by!!, options = settings.userAvatarOptions,
+                                        modifier = Modifier.size(22.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                if (post != null) {
+                                    Icon(painterResource(Res.drawable.ic_auto_awesome), null, Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text(if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.primary, fontFamily = typography.family,
+                                    fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Icon(painterResource(Res.drawable.ic_keyboard_arrow_down), null,
+                                    Modifier.size(20.dp).graphicsLayer { rotationZ = caretRotation },
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            if (post != null) {
+                                Text(subject.story.title.orEmpty(), fontFamily = typography.family,
+                                    fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Spacer(Modifier.height(6.dp))
+                                AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
+                                    SummaryMarkdownText(
+                                        markdown = post.summary,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                        linkColor = linkColor, fontFamily = typography.family,
+                                        fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
+                                        baseUrl = baseUrl, maxLines = maxLines,
+                                        overflow = TextOverflow.Ellipsis,
+                                        enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                                    )
+                                }
+                            } else {
+                                AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
+                                    Text(body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                        fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
+                                        maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
                         }
                         if (post != null) {
-                            Icon(painterResource(Res.drawable.ic_auto_awesome), null, Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(8.dp))
+                            val contextNotice = when {
+                                state.articleIncluded == false && !post.articleText.isNullOrBlank() ->
+                                    "Answers use the AI summary; this model could not fit the article text."
+                                post.articleText.isNullOrBlank() ->
+                                    "Answers use the AI summary; article text is unavailable."
+                                state.articleShortened ->
+                                    "Answers use a shortened article and the AI summary."
+                                else -> "Answers use the article text and AI summary."
+                            }
+                            Text(contextNotice,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontSize = 13.sp, lineHeight = 18.sp)
                         }
-                        Text(if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.primary, fontFamily = typography.family,
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Icon(painterResource(Res.drawable.ic_keyboard_arrow_down), null,
-                            Modifier.size(20.dp).graphicsLayer { rotationZ = caretRotation },
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    if (post != null) {
-                        Text(subject.story.title.orEmpty(), fontFamily = typography.family,
-                            fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.height(6.dp))
-                        AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
-                            SummaryMarkdownText(
-                                markdown = post.summary,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                linkColor = linkColor, fontFamily = typography.family,
-                                fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
-                                baseUrl = baseUrl, maxLines = maxLines,
-                                overflow = TextOverflow.Ellipsis,
-                                enableBoldFormatting = settings.enableSummaryBoldFormatting,
-                            )
+                        if (state.omittedTurns > 0) {
+                            Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontSize = 13.sp, lineHeight = 18.sp)
                         }
-                    } else {
-                        AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
-                            Text(body, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                fontFamily = typography.family, fontSize = 13.sp, lineHeight = 18.sp,
-                                maxLines = maxLines, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-                if (post != null) {
-                    val contextNotice = when {
-                        state.articleIncluded == false && !post.articleText.isNullOrBlank() ->
-                            "Answers use the AI summary; this model could not fit the article text."
-                        post.articleText.isNullOrBlank() ->
-                            "Answers use the AI summary; article text is unavailable."
-                        state.articleShortened ->
-                            "Answers use a shortened article and the AI summary."
-                        else -> "Answers use the article text and AI summary."
-                    }
-                    Text(contextNotice,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        fontSize = 13.sp, lineHeight = 18.sp)
-                }
-                if (state.omittedTurns > 0) {
-                    Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        fontSize = 13.sp, lineHeight = 18.sp)
-                }
-                AnimatedVisibility(
-                    visible = state.turns.isEmpty(),
-                    exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
-                ) {
-                    var fixedQuestionsRevealed by remember { mutableStateOf(false) }
-                    val show = progress >= 0.65f && controller.askOpen
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("What would you like to understand?",
-                            modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleMedium)
-                        questions.forEachIndexed { index, question ->
-                            DiscussionQuestionButton(
-                                question = question,
-                                show = show,
-                                index = index,
-                                enabled = !resetting,
-                                fontFamily = typography.family,
-                                onClick = { discussion.ask(question) },
-                                onRevealed = { if (index == questions.lastIndex) fixedQuestionsRevealed = true },
-                            )
-                        }
-                        // The completion callback uses the animation clock, including system motion
-                        // scaling, so even an immediate model response waits for the fixed questions.
                         AnimatedVisibility(
-                            visible = fixedQuestionsRevealed &&
-                                (state.loadingSuggestions || state.suggestedQuestions.isNotEmpty()),
-                            enter = fadeIn(tween(220)) + expandVertically(tween(300, easing = AskEasing)),
-                            exit = fadeOut(tween(150)) + shrinkVertically(tween(220)),
+                            visible = state.turns.isEmpty(),
+                            exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
                         ) {
-                            Column(Modifier.animateContentSize(tween(300, easing = AskEasing)),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (state.suggestedQuestions.isEmpty()) {
-                                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.Center) {
-                                        HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
-                                    }
-                                } else {
-                                    state.suggestedQuestions.forEachIndexed { index, question ->
-                                        key(question) {
-                                            DiscussionQuestionButton(
-                                                question = question,
-                                                show = show,
-                                                index = index,
-                                                enabled = !resetting,
-                                                fontFamily = typography.family,
-                                                generated = true,
-                                                onClick = { discussion.ask(question) },
-                                            )
+                            var fixedQuestionsRevealed by remember { mutableStateOf(false) }
+                            val show = progress >= 0.65f && controller.askOpen
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("What would you like to understand?",
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleMedium)
+                                questions.forEachIndexed { index, question ->
+                                    DiscussionQuestionButton(
+                                        question = question,
+                                        show = show,
+                                        index = index,
+                                        enabled = !resetting,
+                                        fontFamily = typography.family,
+                                        onClick = { discussion.ask(question) },
+                                        onRevealed = { if (index == questions.lastIndex) fixedQuestionsRevealed = true },
+                                    )
+                                }
+                                // The completion callback uses the animation clock, including system motion
+                                // scaling, so even an immediate model response waits for the fixed questions.
+                                AnimatedVisibility(
+                                    visible = fixedQuestionsRevealed &&
+                                        (state.loadingSuggestions || state.suggestedQuestions.isNotEmpty()),
+                                    enter = fadeIn(tween(220)) + expandVertically(tween(300, easing = AskEasing)),
+                                    exit = fadeOut(tween(150)) + shrinkVertically(tween(220)),
+                                ) {
+                                    Column(Modifier.animateContentSize(tween(300, easing = AskEasing)),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        if (state.suggestedQuestions.isEmpty()) {
+                                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                horizontalArrangement = Arrangement.Center) {
+                                                HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
+                                            }
+                                        } else {
+                                            state.suggestedQuestions.forEachIndexed { index, question ->
+                                                key(question) {
+                                                    DiscussionQuestionButton(
+                                                        question = question,
+                                                        show = show,
+                                                        index = index,
+                                                        enabled = !resetting,
+                                                        fontFamily = typography.family,
+                                                        generated = true,
+                                                        onClick = { discussion.ask(question) },
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -320,10 +333,14 @@ internal fun AskSurface(
                         }
                     }
                 }
-                state.turns.forEachIndexed { index, turn ->
-                    key(index) {
+                itemsIndexed(
+                    state.turns,
+                    key = { index, _ -> turnKeys[index] },
+                    contentType = { _, _ -> "ask-turn" },
+                ) { index, turn ->
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         var entered by remember { mutableStateOf(index in revealedTurns) }
-                        LaunchedEffect(Unit) {
+                        if (!entered) SideEffect {
                             revealedTurns.add(index)
                             entered = true
                         }
@@ -347,80 +364,87 @@ internal fun AskSurface(
                         // An empty answer must not reserve a text line or an extra item gap.
                         // Once text arrives, retain the renderer through streaming and completion.
                         if (turn.answer.isNotBlank()) {
-                        SelectionContainer {
-                            SummaryMarkdownText(
-                                markdown = turn.answer,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                linkColor = MaterialTheme.colorScheme.primary,
-                                fontFamily = typography.family,
-                                fontSize = typography.commentTextSize.sp,
-                                lineHeight = (typography.commentTextSize + 2f).sp,
-                                enableBoldFormatting = settings.enableSummaryBoldFormatting,
-                                onOpenLink = onOpenLink,
-                                baseUrl = baseUrl,
-                                animateStreamingText = state.running && index == state.turns.lastIndex,
-                                animationContentKey = sourceKey to index,
-                            )
-                        }
+                            SelectionContainer {
+                                SummaryMarkdownText(
+                                    markdown = turn.answer,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    linkColor = MaterialTheme.colorScheme.primary,
+                                    fontFamily = typography.family,
+                                    fontSize = typography.commentTextSize.sp,
+                                    lineHeight = (typography.commentTextSize + 2f).sp,
+                                    enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                                    onOpenLink = onOpenLink,
+                                    baseUrl = baseUrl,
+                                    animateStreamingText = state.running && index == state.turns.lastIndex,
+                                    animationContentKey = sourceKey to index,
+                                )
+                            }
                         }
                         if (turn.truncated) {
                             TruncatedResponseNotice()
                         }
                     }
                 }
-                if (state.running && state.turns.lastOrNull()?.answer.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
-                        Text("Thinking…", Modifier.padding(start = 10.dp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                            fontSize = 13.sp)
-                    }
-                }
-                state.error?.let { error ->
-                    val presentation = discussionErrorPresentation(error, state.contextLimitReached, state.inputTooLarge)
-                    AskErrorCard(
-                        presentation = presentation,
-                        enabled = !resetting,
-                        onAction = {
-                            when (presentation.action) {
-                                DiscussionErrorAction.OpenSettings -> {
-                                    keyboard?.hide()
-                                    dependencies.navigation.openSettings(SettingsSection.AiSummary.route)
-                                }
-                                DiscussionErrorAction.Reset -> reset()
-                                DiscussionErrorAction.Retry -> discussion.retry()
+                item(key = "status", contentType = "ask-status") {
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        if (state.running && state.turns.lastOrNull()?.answer.isNullOrBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                HarmonicLoadingIndicator(modifier = Modifier.size(18.dp))
+                                Text("Thinking…", Modifier.padding(start = 10.dp),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                    fontSize = 13.sp)
                             }
-                        },
-                    )
-                }
-                AnimatedVisibility(
-                    visible = state.turns.isNotEmpty() && !state.running && remainingQuestions.isNotEmpty(),
-                    enter = fadeIn(tween(180)) + expandVertically(tween(240, easing = AskEasing)),
-                    exit = fadeOut(tween(120)) + shrinkVertically(tween(180)),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("More questions", Modifier.padding(top = 4.dp, bottom = 6.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleMedium)
-                        remainingQuestions.forEachIndexed { index, question ->
-                            key(question) {
-                                DiscussionQuestionButton(
-                                    question = question,
-                                    show = progress >= 0.65f && controller.askOpen,
-                                    index = index,
-                                    enabled = !resetting && !state.running,
-                                    fontFamily = typography.family,
-                                    generated = question !in questions,
-                                    onClick = {
-                                        keyboard?.hide()
-                                        discussion.ask(question)
-                                    },
-                                )
+                        }
+                        state.error?.let { error ->
+                            val presentation = discussionErrorPresentation(error, state.contextLimitReached, state.inputTooLarge)
+                            AskErrorCard(
+                                presentation = presentation,
+                                enabled = !resetting,
+                                onAction = {
+                                    when (presentation.action) {
+                                        DiscussionErrorAction.OpenSettings -> {
+                                            keyboard?.hide()
+                                            dependencies.navigation.openSettings(SettingsSection.AiSummary.route)
+                                        }
+                                        DiscussionErrorAction.Reset -> reset()
+                                        DiscussionErrorAction.Retry -> discussion.retry()
+                                    }
+                                },
+                            )
+                        }
+                        AnimatedVisibility(
+                            visible = state.turns.isNotEmpty() && !state.running && remainingQuestions.isNotEmpty(),
+                            enter = fadeIn(tween(180)) + expandVertically(tween(240, easing = AskEasing)),
+                            exit = fadeOut(tween(120)) + shrinkVertically(tween(180)),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("More questions", Modifier.padding(top = 4.dp, bottom = 6.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleMedium)
+                                remainingQuestions.forEachIndexed { index, question ->
+                                    key(question) {
+                                        DiscussionQuestionButton(
+                                            question = question,
+                                            show = progress >= 0.65f && controller.askOpen,
+                                            index = index,
+                                            enabled = !resetting && !state.running,
+                                            fontFamily = typography.family,
+                                            generated = question !in questions,
+                                            onClick = {
+                                                keyboard?.hide()
+                                                discussion.ask(question)
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                item(key = "end", contentType = "ask-end") {
+                    Spacer(Modifier.height(4.dp))
+                    Spacer(bottomSpacer.fillMaxWidth())
+                }
             }
         }
     }
@@ -481,4 +505,26 @@ internal fun remainingDiscussionQuestions(suggestions: List<String>, asked: List
     val askedQuestions = asked.map { it.trim().lowercase() }.toSet()
     return suggestions.distinctBy { it.trim().lowercase() }
         .filter { it.isNotBlank() && it.trim().lowercase() !in askedQuestions }
+}
+
+
+/** Append-only turns retain their identities through token updates; removed turns never reuse IDs. */
+private class AskTurnKeys {
+    private var next = 0L
+    private var keys = emptyList<Long>()
+
+    fun forCount(count: Int): List<Long> {
+        keys = when {
+            count < keys.size -> keys.take(count)
+            count > keys.size -> keys + List(count - keys.size) { next++ }
+            else -> keys
+        }
+        return keys
+    }
+}
+
+internal fun LazyListLayoutInfo.isNearTranscriptEnd(thresholdPx: Float): Boolean {
+    val last = visibleItemsInfo.lastOrNull() ?: return totalItemsCount == 0
+    return last.index == totalItemsCount - 1 &&
+        last.offset + last.size - viewportEndOffset <= thresholdPx
 }

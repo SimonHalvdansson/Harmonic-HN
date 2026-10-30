@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Paint
 
 /** Maps an element's center with its container while preserving the element's intrinsic size. */
 internal fun moveRectBetweenContainers(rect: Rect, from: Rect, to: Rect): Rect {
@@ -29,7 +30,9 @@ internal fun roundedRectPath(
     rect: Rect,
     topRadius: Float,
     bottomRadius: Float = topRadius,
-): Path = Path().apply {
+    path: Path = Path(),
+): Path = path.apply {
+    rewind()
     addRoundRect(
         RoundRect(
             rect = rect,
@@ -39,4 +42,12 @@ internal fun roundedRectPath(
             bottomLeft = CornerRadius(bottomRadius),
         ),
     )
+}
+
+
+/** Each overlay owns these objects for its lifetime; geometry is rebuilt without native allocations. */
+internal class SharedTransitionDrawCache {
+    val container = Path()
+    val image = Path()
+    val paint = Paint()
 }

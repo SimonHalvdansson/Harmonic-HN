@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import com.simon.harmonichackernews.ui.common.SharedTransitionDrawCache
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -20,7 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -67,14 +68,14 @@ internal enum class CommentActionTargetElement {
 }
 
 internal data class CommentActionSharedTransitionState(
-    val progress: Float,
+    val progress: () -> Float,
     val active: Boolean,
     val hideTargetContent: Boolean,
     val drawOverlayShadows: Boolean,
     val source: CommentActionSourceGeometry?,
     val sourceSnapshot: ImageBitmap?,
     val targetContainer: Rect?,
-    val predictiveBackProgress: Float,
+    val predictiveBackProgress: () -> Float,
     val predictiveBackEdge: Int,
     val rootBounds: Rect,
     val targetBounds: (CommentActionTargetElement) -> Rect?,
@@ -167,7 +168,54 @@ internal fun CommentActionTransitionOverlay(
     transition: CommentActionSharedTransitionState,
     targetColor: Color,
 ) {
-    if (!transition.active) return
+    if (!transition.active || transition.source == null) return
+    val drawCache = remember { SharedTransitionDrawCache() }
+    Box(Modifier.fillMaxSize()) {
+        CommentActionMovingSurface(transition, targetColor)
+        Canvas(Modifier.fillMaxSize()) {
+            val source = checkNotNull(transition.source)
+            val rootBounds = transition.rootBounds
+            if (rootBounds.width <= 0f || rootBounds.height <= 0f) return@Canvas
+            val rootOffset = rootBounds.topLeft
+            val localSource = source.container.translate(-rootOffset.x, -rootOffset.y)
+            val viewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
+            val visibleSource = localSource.intersectionOrNull(viewport) ?: return@Canvas
+            val targetContainer = transition.targetContainer
+                ?.translate(-rootOffset.x, -rootOffset.y)
+                ?: visibleSource
+            val progress = transition.progress().coerceIn(0f, 1f)
+            val density = this
+            val predictiveVisualProgress = predictiveBackVisualProgress(
+                predictiveBackProgress = transition.predictiveBackProgress(),
+                transformProgress = progress,
+            )
+            val backDirection = if (transition.predictiveBackEdge == 1) -1f else 1f
+            val backScale = 1f - 0.1f * predictiveVisualProgress
+            val backPivotFractionX = if (backDirection > 0f) 0f else 1f
+            val backTranslation = Offset(
+                x = with(density) { 56.dp.toPx() } * predictiveVisualProgress * backDirection,
+                y = with(density) { 18.dp.toPx() } * predictiveVisualProgress,
+            )
+            val baseContainer = lerpRect(visibleSource, targetContainer, progress)
+            val container = baseContainer.transformedForPredictiveBack(
+                scale = backScale,
+                pivotFractionX = backPivotFractionX,
+                translation = backTranslation,
+            )
+            val sourceRadiusPx = with(density) { source.containerCornerRadiusDp.dp.toPx() }
+            val targetRadiusPx = with(density) { 28.dp.toPx() }
+            val radiusPx = lerp(sourceRadiusPx, targetRadiusPx, progress) * backScale
+            drawCommentActionContent(
+                transition, drawCache, localSource, visibleSource, targetContainer, baseContainer,
+                container, backScale, backPivotFractionX, backTranslation, radiusPx, progress,
+            )
+        }
+    }
+}
+
+// Material styles update in this small surface; retained user/body content does not recompose.
+@Composable
+private fun CommentActionMovingSurface(transition: CommentActionSharedTransitionState, targetColor: Color) {
     val source = transition.source ?: return
     val rootBounds = transition.rootBounds
     if (rootBounds.width <= 0f || rootBounds.height <= 0f) return
@@ -178,10 +226,10 @@ internal fun CommentActionTransitionOverlay(
     val targetContainer = transition.targetContainer
         ?.translate(-rootOffset.x, -rootOffset.y)
         ?: visibleSource
-    val progress = transition.progress.coerceIn(0f, 1f)
+    val progress = transition.progress().coerceIn(0f, 1f)
     val density = LocalDensity.current
     val predictiveVisualProgress = predictiveBackVisualProgress(
-        predictiveBackProgress = transition.predictiveBackProgress,
+        predictiveBackProgress = transition.predictiveBackProgress(),
         transformProgress = progress,
     )
     val backDirection = if (transition.predictiveBackEdge == 1) -1f else 1f
@@ -223,44 +271,29 @@ internal fun CommentActionTransitionOverlay(
         Modifier
     }
 
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .absoluteOffset {
-                    IntOffset(container.left.roundToInt(), container.top.roundToInt())
-                }
-                .requiredSize(
-                    with(density) { container.width.coerceAtLeast(1f).toDp() },
-                    with(density) { container.height.coerceAtLeast(1f).toDp() },
-                )
-                .shadow(elevation, shape, clip = false)
-                .sharedHazeDialogBackground(
-                    lerp(source.containerColor, targetColor, progress),
-                    shape,
-                    revealProgress = progress,
-                )
-                .then(sourceBorder),
-        )
-        Canvas(Modifier.fillMaxSize()) {
-            drawCommentActionContent(
-                transition = transition,
-                sourceContainer = localSource,
-                visibleSource = visibleSource,
-                targetContainer = targetContainer,
-                baseContainer = baseContainer,
-                visualContainer = container,
-                predictiveBackScale = backScale,
-                predictiveBackPivotFractionX = backPivotFractionX,
-                predictiveBackTranslation = backTranslation,
-                radiusPx = radiusPx,
-                progress = progress,
+    Box(
+        Modifier
+            .absoluteOffset {
+                IntOffset(container.left.roundToInt(), container.top.roundToInt())
+            }
+            .requiredSize(
+                with(density) { container.width.coerceAtLeast(1f).toDp() },
+                with(density) { container.height.coerceAtLeast(1f).toDp() },
             )
-        }
-    }
+            .shadow(elevation, shape, clip = false)
+            .sharedHazeDialogBackground(
+                lerp(source.containerColor, targetColor, progress),
+                shape,
+                revealProgress = progress,
+            )
+            .then(sourceBorder),
+    )
+
 }
 
 private fun DrawScope.drawCommentActionContent(
     transition: CommentActionSharedTransitionState,
+    drawCache: SharedTransitionDrawCache,
     sourceContainer: Rect,
     visibleSource: Rect,
     targetContainer: Rect,
@@ -272,7 +305,7 @@ private fun DrawScope.drawCommentActionContent(
     radiusPx: Float,
     progress: Float,
 ) {
-    val clip = roundedRectPath(visualContainer, radiusPx)
+    val clip = roundedRectPath(visualContainer, radiusPx, path = drawCache.container)
     // The original comment should travel with its container, not inherit the dialog's changing
     // height. Scaling this bitmap made the source text progressively taller until it occupied the
     // whole dialog. Preserve its intrinsic size, like the fixed-size source accessories in the
@@ -309,7 +342,7 @@ private fun DrawScope.drawCommentActionContent(
                 val scaleX = destination.width / indicatorBounds.width
                 val scaleY = destination.height / indicatorBounds.height
                 // This tiny, retained vector layer needs no additional GPU bitmap readback.
-                drawContext.canvas.saveLayer(destination, Paint().apply { this.alpha = alpha })
+                drawContext.canvas.saveLayer(destination, drawCache.paint.apply { this.alpha = alpha })
                 withTransform({
                     translate(destination.left, destination.top)
                     scale(scaleX, scaleY, Offset.Zero)

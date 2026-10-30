@@ -205,8 +205,8 @@ internal fun CommentsScaffold(
                                 sideBySideActive = true,
                                 onSideBySide = controller::toggleSideBySide,
                                 showInvert = controller.displaySettings?.showInvert == true,
-                                progress = 1f - expansion,
-                                contentAlpha = 1f,
+                                progress = { 1f - expansion },
+                                contentAlpha = { 1f },
                                 onAction = controller.listener::onSheetAction,
                                 onBrowserBack = null,
                             )
@@ -335,9 +335,9 @@ private fun AndroidCommentsHeader(
             tintPresentation.previewImageAvailable,
         // The left pane stays fully tinted; the incoming sheet uses the normal reveal fade.
         // Keep this independent of header geometry so the retained scroll position stays put.
-        headerTintProgress = if (controller.sideBySideActive && portal?.liveInLeft == false) {
-            portal.sheetExpansion
-        } else null,
+        headerTintProgress = {
+            if (controller.sideBySideActive && portal?.liveInLeft == false) portal.sheetExpansion else null
+        },
     ) { imageModifier, visibleBackground, onTintLoaded ->
         val previewUrl = previewImageUrl
         HeaderPreviewImage(
