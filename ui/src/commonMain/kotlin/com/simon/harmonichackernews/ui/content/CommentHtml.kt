@@ -184,6 +184,9 @@ internal fun AnnotatedString.quoteSpacedSegments(): List<AnnotatedString> {
     return buildList {
         var copiedThrough = 0
         blankLines.sorted().forEach { index ->
+            // With three newlines, the separators beside two quotes overlap. Keep the extra
+            // authored newline in the next segment rather than slicing backwards over it.
+            if (index < copiedThrough) return@forEach
             add(this@quoteSpacedSegments.subSequence(copiedThrough, index))
             copiedThrough = index + 2
         }

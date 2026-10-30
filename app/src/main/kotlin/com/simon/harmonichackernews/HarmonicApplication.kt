@@ -80,6 +80,8 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
     /** Every entry point awaits the same graph without acquiring a blocking initialization lock. */
     internal suspend fun awaitStartup(): HarmonicAppComposition = startup.await()
 
+    internal fun retryStartup() = startup.retry()
+
     internal suspend fun awaitWidgetPreferences() {
         awaitStartup()
         withContext(Dispatchers.IO) {

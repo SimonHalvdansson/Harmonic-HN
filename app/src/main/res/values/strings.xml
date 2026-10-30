@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Harmonic</string>
+    <string name="startup_failure_title">Harmonic couldn’t open your saved data</string>
+    <string name="startup_failure_message">If your device is low on storage, free up some space and try again. Your saved data has been kept.</string>
+    <string name="startup_retry">Try again</string>
+    <string name="startup_retrying">Trying again…</string>
+    <string name="startup_app_settings">App settings</string>
     <string name="download_file">Download file</string>
     <string name="local_ai_runtime_feature_title">Local AI runtimes</string>
     <string name="widget_app_icon_content_description">Harmonic app icon</string>

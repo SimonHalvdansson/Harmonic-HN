@@ -17,15 +17,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.HarmonicApplication
+import com.simon.harmonichackernews.runAfterStartup
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.getPageBackgroundColor
 import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.launch
 
 class WidgetConfigActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -54,8 +52,11 @@ class WidgetConfigActivity : ComponentActivity() {
             return
         }
 
-        lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            (application as HarmonicApplication).awaitWidgetPreferences()
+        val app = application as HarmonicApplication
+        runAfterStartup(
+            prepare = { app.awaitWidgetPreferences() },
+            retryStartup = app::retryStartup,
+        ) {
             preferencesReady = true
             setupTheme(this@WidgetConfigActivity)
             showWallpaper()

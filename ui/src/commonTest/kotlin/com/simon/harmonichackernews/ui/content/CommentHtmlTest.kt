@@ -14,6 +14,35 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun overlappingQuoteSeparatorsPreserveTextAndFormattingWhenTogglingHighlighting() {
+        for (breaks in 2..6) {
+            for (highlight in listOf(true, false)) {
+                val html = "&gt; <b>First</b>" + "<br>".repeat(breaks) +
+                    "&gt; <a href='https://example.com'>Second</a>"
+                val source = if (highlight) prepareCommentHtml(html) else
+                    prepareCommentHtml(html, false).withHighlightedQuotedLines(removeMarkers = false)
+                val segments = source.quoteSpacedSegments()
+                assertEquals(source.text, segments.joinToString("\n\n") { it.text })
+                assertEquals("First", segments.first().spanStyles.single().let {
+                    segments.first().text.substring(it.start, it.end)
+                })
+                val last = segments.last()
+                assertEquals("Second", last.getStringAnnotations(0, last.length)
+                    .single { it.item == "https://example.com" }.let { last.text.substring(it.start, it.end) })
+                assertTrue(segments.first().getStringAnnotations(COMMENT_QUOTE_TAG, 0, segments.first().length).isNotEmpty())
+                assertTrue(last.getStringAnnotations(COMMENT_QUOTE_TAG, 0, last.length).isNotEmpty())
+            }
+        }
+    }
+
+    @Test
+    fun paragraphAndLineBreakBetweenQuotesDoNotCreateABackwardsTextRange() {
+        val source = prepareCommentHtml("&gt; First<p><br>&gt; Second")
+        assertEquals("First\n\n\nSecond", source.text)
+        assertEquals(listOf("First", "\nSecond"), source.quoteSpacedSegments().map { it.text })
+    }
+
+    @Test
     fun quoteSpacingSegmentsPreserveOrdinaryParagraphGapsAndLinks() {
         val source = prepareCommentHtml("Intro<p>&gt; <b>Quoted</b> <a href='https://example.com'>link</a><p>Reply<p>Ordinary paragraph")
         val segments = source.quoteSpacedSegments()

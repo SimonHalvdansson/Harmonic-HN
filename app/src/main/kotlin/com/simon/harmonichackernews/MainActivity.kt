@@ -18,7 +18,6 @@ import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationControlle
 import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationHost.install
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +29,7 @@ open class MainActivity : BaseActivity() {
         private set
     private lateinit var launchIntentRouter: MainLaunchIntentRouter
     private var pendingSavedState: Bundle? = null
+    private var startupFailureVisible = false
     private val mutableWindowEnterComplete = MutableStateFlow(false)
     internal val windowEnterComplete = mutableWindowEnterComplete.asStateFlow()
 
@@ -40,19 +40,25 @@ open class MainActivity : BaseActivity() {
         val content = findViewById<View>(android.R.id.content)
         content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
-                if (!::navigationController.isInitialized) return false
+                if (!::navigationController.isInitialized && !startupFailureVisible) return false
                 content.viewTreeObserver.removeOnPreDrawListener(this)
                 return true
             }
         })
         fullyDrawnReporter.addOnReportDrawnListener {
             window.decorView.post {
-                (application as HarmonicApplication).startDeferredServices()
+                if (::navigationController.isInitialized) {
+                    (application as HarmonicApplication).startDeferredServices()
+                }
             }
         }
         pendingSavedState = savedInstanceState
-        lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            (application as HarmonicApplication).awaitStartup()
+        val app = application as HarmonicApplication
+        runAfterStartup(
+            prepare = { app.awaitStartup() },
+            retryStartup = app::retryStartup,
+            onFailure = { startupFailureVisible = true },
+        ) {
             AndroidActivityTheme.setupTheme(this@MainActivity)
             prepareScene()
             navigationController = install(this@MainActivity, pendingSavedState)
