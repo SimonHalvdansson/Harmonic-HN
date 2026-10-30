@@ -6,6 +6,34 @@ import kotlin.test.assertEquals
 
 class SummaryMarkdownLinksTest {
     @Test
+    fun unfinishedTagsAndRepeatedAngleBracketsKeepTheirText() {
+        for (input in listOf("<a " + " ".repeat(60 * 1024) + "x", "<".repeat(32 * 1024) + ">")) {
+            assertEquals(input, summaryMarkdownAnnotatedString(input).text)
+        }
+    }
+
+    @Test
+    fun unfinishedCommentsAndLinkLabelsKeepTheirText() {
+        for (input in listOf("<!--".repeat(8 * 1024), "[".repeat(32 * 1024), "[".repeat(16 * 1024) + "](unfinished")) {
+            assertEquals(input, summaryMarkdownAnnotatedString(input).text)
+        }
+        assertEquals("Beforeafter", summaryMarkdownAnnotatedString("Before<!-- hidden -->after").text)
+    }
+
+    @Test
+    fun oversizedMarkdownKeepsTheCompleteUnformattedSource() {
+        val input = "**" + "x".repeat(64 * 1024) + "**"
+        assertEquals(input, summaryMarkdownAnnotatedString(input).text)
+        assertEquals(null, summaryMarkdownListItems(input))
+    }
+
+    @Test
+    fun tagsWithAttributesAndBrokenPrefixesPreserveAutolinks() {
+        val input = "<span class='note'>A</span><br/>B <unfinished <b>C</b> <person@example.com>"
+        assertEquals("AB <unfinished C person@example.com", summaryMarkdownAnnotatedString(input).text)
+    }
+
+    @Test
     fun autoLinkRemainsVisible() {
         val rendered = summaryMarkdownAnnotatedString("Read <https://example.com/guide> for details.")
         assertEquals("Read https://example.com/guide for details.", rendered.text)

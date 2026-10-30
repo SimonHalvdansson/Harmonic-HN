@@ -272,6 +272,7 @@ internal data class SummaryMarkdownListItem(
 )
 
 internal fun summaryMarkdownListItems(markdown: String): List<SummaryMarkdownListItem>? {
+    if (markdown.length > MAX_FORMATTED_MARKDOWN_CHARS) return null
     val lines = markdown.stripMarkdownHtmlComments().trim().lines().filter(String::isNotBlank)
     if (lines.isEmpty()) return null
     return lines.mapIndexed { index, sourceLine ->
@@ -323,7 +324,10 @@ internal fun summaryMarkdownAnnotatedString(
     enableBoldFormatting: Boolean = true,
     baseUrl: String? = null,
     onOpenLink: ((String) -> Unit)? = null,
-): AnnotatedString = buildAnnotatedString {
+): AnnotatedString = if (markdown.length > MAX_FORMATTED_MARKDOWN_CHARS) {
+    // Preserve all text while bounding optional formatting of unexpectedly large provider output.
+    AnnotatedString(markdown)
+} else buildAnnotatedString {
     val lines = compactSummaryMarkdownListSpacing(
         markdown.stripMarkdownHtmlComments().trim().lines(),
     )
@@ -480,14 +484,66 @@ private fun String.markdownAlertLabel(): String? {
         .replaceFirstChar(Char::uppercase)
 }
 
-internal fun String.stripMarkdownHtmlComments(): String =
-    if (contains("<!--")) replace(MARKDOWN_HTML_COMMENT, "") else this
+internal fun String.stripMarkdownHtmlComments(): String {
+    val first = indexOf("<!--")
+    if (first < 0) return this
+    val source = this
+    return buildString(length) {
+        var copiedThrough = 0
+        var start = first
+        while (start >= 0) {
+            val end = source.indexOf("-->", start + 4)
+            if (end < 0) break // No later opener can close either; retain the unfinished text.
+            append(source, copiedThrough, start)
+            copiedThrough = end + 3
+            start = source.indexOf("<!--", copiedThrough)
+        }
+        append(source, copiedThrough, source.length)
+    }
+}
 
-private fun String.stripMarkdownHtmlTags(): String =
-    if (contains('<')) replace(MARKDOWN_HTML_TAG, "") else this
+/** Each candidate ends at the next angle bracket; failed or unfinished tags are never rescanned. */
+private fun String.stripMarkdownHtmlTags(): String {
+    val first = indexOf('<')
+    if (first < 0) return this
+    val source = this
+    return buildString(length) {
+        var copiedThrough = 0
+        var index = first
+        while (index < source.length) {
+            if (source[index] != '<') {
+                index++
+                continue
+            }
+            var position = index + 1
+            if (position < source.length && source[position] == '/') position++
+            if (position == source.length || !source[position].isAsciiLetter()) {
+                index++
+                continue
+            }
+            position++
+            while (position < source.length &&
+                (source[position].isAsciiLetter() || source[position] in '0'..'9' || source[position] == '-')
+            ) position++
+            if (position < source.length && source[position].isWhitespace()) {
+                while (position < source.length && source[position] != '<' && source[position] != '>') position++
+            } else if (position < source.length && source[position] == '/') {
+                position++
+            }
+            if (position < source.length && source[position] == '>') {
+                append(source, copiedThrough, index)
+                copiedThrough = position + 1
+                index = copiedThrough
+            } else {
+                index = position
+            }
+        }
+        append(source, copiedThrough, source.length)
+    }
+}
 
-private val MARKDOWN_HTML_COMMENT = Regex("<!--[\\s\\S]*?-->")
-private val MARKDOWN_HTML_TAG = Regex("</?[A-Za-z][A-Za-z0-9-]*(?:\\s[^<>]*?)?\\s*/?>")
+private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
+
 private val MARKDOWN_AUTOLINK = Regex("[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\\s]*")
 private val MARKDOWN_EMAIL_AUTOLINK = Regex("[^<>\\s@]+@[^<>\\s@]+\\.[^<>\\s@]+")
 
@@ -521,11 +577,14 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
     enableBoldFormatting: Boolean,
 ) {
     var index = 0
+    var nextLinkLabelEnd = -2
+    var nextLinkDestinationEnd = -1
     while (index < source.length) {
         when {
             source[index] == '<' -> {
-                val end = source.indexOf('>', index + 1)
-                val label = if (end >= 0) source.substring(index + 1, end) else ""
+                var end = index + 1
+                while (end < source.length && source[end] != '<' && source[end] != '>' && !source[end].isWhitespace()) end++
+                val label = if (end < source.length && source[end] == '>') source.substring(index + 1, end) else ""
                 val url = when {
                     MARKDOWN_AUTOLINK.matches(label) -> label
                     MARKDOWN_EMAIL_AUTOLINK.matches(label) -> "mailto:$label"
@@ -585,8 +644,14 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
             }
 
             source[index] == '[' -> {
-                val labelEnd = source.indexOf("](", index + 1)
-                val urlEnd = if (labelEnd >= 0) source.markdownLinkEnd(labelEnd + 2) else -1
+                // Unfinished streamed links often contain many '[' characters. Share the failed
+                // suffix lookup until the cursor passes that label, rather than scanning per '['.
+                if (nextLinkLabelEnd != -1 && nextLinkLabelEnd < index) {
+                    nextLinkLabelEnd = source.indexOf("](", index + 1)
+                    nextLinkDestinationEnd = if (nextLinkLabelEnd >= 0) source.markdownLinkEnd(nextLinkLabelEnd + 2) else -1
+                }
+                val labelEnd = nextLinkLabelEnd
+                val urlEnd = nextLinkDestinationEnd
                 if (labelEnd < 0 || urlEnd < 0) {
                     append('[')
                     index++
@@ -631,5 +696,6 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
 }
 
 private val INCOMPLETE_BULLET_MARKERS = setOf("-", "*", "+", "•")
+private const val MAX_FORMATTED_MARKDOWN_CHARS = 64 * 1024
 private const val STREAMING_TEXT_FADE_MILLIS = 180
 private const val MARKDOWN_ESCAPABLE_CHARACTERS = "\\`*{}[]()#+-.!_>"

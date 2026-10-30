@@ -16,15 +16,15 @@ object CollectedReferenceLinks {
         "io", "mil", "net", "news", "online", "org", "site", "store", "tech", "tv",
         "wiki", "xyz",
     )
-    private val possibleBareDomainPattern = Regex(
-        "[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(?::\\d+)?(?:/\\S*)?",
-        RegexOption.IGNORE_CASE,
-    )
+    private const val MAX_REFERENCE_HTML_CHARS = 64 * 1024
     private val whitespacePattern = Regex("\\s+")
     private val anchorsWithHref = Selector.evaluatorOf("a[href]")
 
     fun parse(inputHtml: String?): Result {
-        if (inputHtml.isNullOrEmpty()) return Result.empty(inputHtml)
+        if (inputHtml.isNullOrEmpty() || inputHtml.length > MAX_REFERENCE_HTML_CHARS) {
+            // Keep oversized content intact; collecting references is an optional presentation.
+            return Result.empty(inputHtml)
+        }
         // Most HN comments have no links. Avoid building a DOM for those rows while still sending
         // anchors, explicit URLs, and possible bare domains through the legacy-compatible parser.
         if (!mayContainLink(inputHtml)) return Result.empty(inputHtml)
@@ -53,8 +53,34 @@ object CollectedReferenceLinks {
         inputHtml.indexOf("<a", ignoreCase = true) >= 0 ||
             inputHtml.indexOf("http://", ignoreCase = true) >= 0 ||
             inputHtml.indexOf("https://", ignoreCase = true) >= 0 ||
-            // A domain needs a dot. Avoid regex backtracking through long, unbroken code tokens.
-            ('.' in inputHtml && possibleBareDomainPattern.containsMatchIn(inputHtml))
+            containsPossibleBareDomain(inputHtml)
+
+    /** A permissive prefilter: scan each host character once, including unsuccessful candidates. */
+    private fun containsPossibleBareDomain(value: String): Boolean {
+        var hostStarted = false
+        var lettersAfterDot = -1
+        for (char in value) {
+            when {
+                char.isAsciiLetter() -> {
+                    hostStarted = true
+                    if (lettersAfterDot >= 0 && ++lettersAfterDot >= 2) return true
+                }
+                char in '0'..'9' -> {
+                    hostStarted = true
+                    lettersAfterDot = -1
+                }
+                char == '.' && hostStarted -> lettersAfterDot = 0
+                char == '-' && hostStarted -> lettersAfterDot = -1
+                else -> {
+                    hostStarted = false
+                    lettersAfterDot = -1
+                }
+            }
+        }
+        return false
+    }
+
+    private fun Char.isAsciiLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
 
     private fun collectStandaloneLinkNodes(
         nodes: List<Node>,
@@ -449,16 +475,32 @@ object CollectedReferenceLinks {
             url.length > "https://".length
 
     private fun looksLikeDomain(value: String?): Boolean {
-        if (value == null || ('/' in value && value.startsWith('/'))) return false
-        val lower = value.lowercase()
-        if (!possibleBareDomainPattern.matches(lower)) return false
-
-        val host = lower.substringBefore('/').substringBefore(':')
-        val labels = host.split('.')
-        if (labels.size < 2) return false
+        if (value.isNullOrEmpty()) return false
+        val hostEnd = value.indexOfFirst { it == '/' || it == ':' }.let {
+            if (it < 0) value.length else it
+        }
+        if (hostEnd !in 4..253 || !(value[0].isAsciiLetter() || value[0] in '0'..'9')) return false
+        var lastDot = -1
+        for (index in 0 until hostEnd) {
+            val char = value[index]
+            if (char == '.') lastDot = index
+            else if (!char.isAsciiLetter() && char !in '0'..'9' && char != '-') return false
+        }
+        if (lastDot < 1 || hostEnd - lastDot < 3) return false
+        val tld = value.substring(lastDot + 1, hostEnd).lowercase()
+        if (!tld.all { it.isAsciiLetter() }) return false
+        var position = hostEnd
+        if (position < value.length && value[position] == ':') {
+            val portStart = ++position
+            while (position < value.length && value[position] in '0'..'9') position++
+            if (position == portStart) return false
+        }
+        if (position < value.length) {
+            if (value[position] != '/') return false
+            for (index in position until value.length) if (value[index].isWhitespace()) return false
+        }
         // Bare domains are only a convenience. Keep this conservative so dotted identifiers such
         // as browser.ml.enable are not promoted into collected links.
-        val tld = labels.last()
         return tld.length == 2 || tld in commonBareDomainTlds
     }
 

@@ -7,6 +7,34 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun longFailedDomainCandidatesKeepTheirText() {
+        for (html in listOf("a".repeat(32 * 1024) + ".", "a.".repeat(16 * 1024) + "1")) {
+            val result = CollectedReferenceLinks.parse(html)
+            assertFalse(result.hasLinks())
+            assertEquals(html, result.bodyHtml)
+        }
+    }
+
+    @Test
+    fun oversizedReferencesFallBackToTheOriginalHtmlWithoutDroppingContent() {
+        val html = "a".repeat(64 * 1024) + "<p><a href='https://example.com'>Source</a></p>"
+        val result = CollectedReferenceLinks.parse(html)
+        assertFalse(result.hasLinks())
+        assertEquals(html, result.bodyHtml)
+    }
+
+    @Test
+    fun bareDomainsKeepPortsPathsAndCaseWithoutAcceptingInvalidHosts() {
+        for (domain in listOf("Example.COM:8080/path", "example.co/", "example.org/a?b=c#d")) {
+            assertEquals("https://$domain", CollectedReferenceLinks.parse("<p>$domain</p>").links.single().url)
+        }
+        for (domain in listOf("example.com:port/path", "example.com?query", "a".repeat(254) + ".com")) {
+            val result = CollectedReferenceLinks.parse("<p>$domain</p>")
+            assertFalse(result.hasLinks())
+        }
+    }
+
+    @Test
     fun unsupportedAnchorBeforeAWebLinkRunIsPreserved() {
         for (href in listOf("mailto:reader@example.com", "tel:12345", "#section")) {
             val html = "<a href='$href'>Contact or jump</a> " +

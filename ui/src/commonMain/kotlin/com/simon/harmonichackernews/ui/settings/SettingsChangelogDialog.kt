@@ -36,6 +36,9 @@ import com.simon.harmonichackernews.format.parseChangelogMarkdown
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val CHANGELOG_RESOURCE = "files/changelog.md"
 private const val FALLBACK_CHANGELOG = "Changelog unavailable."
@@ -179,7 +182,15 @@ object ChangelogDialogController {
 
 private suspend fun readChangelogMarkdown(): String {
     cachedChangelogMarkdown?.let { return it }
-    return runCatching {
-        Res.readBytes(CHANGELOG_RESOURCE).decodeToString().removePrefix("\uFEFF")
-    }.getOrDefault(FALLBACK_CHANGELOG).also { cachedChangelogMarkdown = it }
+    val markdown = try {
+        withContext(Dispatchers.IO) {
+            Res.readBytes(CHANGELOG_RESOURCE).decodeToString().removePrefix("\uFEFF")
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        return FALLBACK_CHANGELOG
+    }
+    cachedChangelogMarkdown = markdown
+    return markdown
 }

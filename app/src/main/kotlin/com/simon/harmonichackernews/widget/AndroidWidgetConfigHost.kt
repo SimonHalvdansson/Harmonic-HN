@@ -6,12 +6,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.PlatformTextStyle
 import com.simon.harmonichackernews.ui.widget.LocalWidgetTextStyle
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.view.WindowCompat
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
@@ -31,7 +33,6 @@ object AndroidWidgetConfigHost {
         activity: ComponentActivity,
         initialConfiguration: WidgetConfiguration,
         listener: Listener,
-        onSettingsCoverStatusBar: (Boolean) -> Unit,
     ) {
         val composeView = ComposeView(activity).apply {
             id = R.id.widget_config_compose
@@ -50,6 +51,13 @@ object AndroidWidgetConfigHost {
                 CompositionLocalProvider(LocalWidgetTextStyle provides TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))) {
                     ProvideHarmonicUiDependencies(dependencies) {
                         HarmonicTheme(selection = selection) {
+                            val dark = HarmonicTheme.isDark
+                            SideEffect {
+                                WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply {
+                                    isAppearanceLightStatusBars = !dark
+                                    isAppearanceLightNavigationBars = !dark
+                                }
+                            }
                             val story = app.userSettings.story
                             WidgetConfigScreen(
                                 initialConfiguration = initialConfiguration,
@@ -58,7 +66,6 @@ object AndroidWidgetConfigHost {
                                 paletteTintConfigKey = story.paletteTintConfigKey,
                                 headlineFontFamily = headlineFamily,
                                 headlineFontLabel = headlineFamilyName?.let(::widgetFontDisplayName).orEmpty(),
-                                onSettingsCoverStatusBar = onSettingsCoverStatusBar,
                             )
                         }
                     }

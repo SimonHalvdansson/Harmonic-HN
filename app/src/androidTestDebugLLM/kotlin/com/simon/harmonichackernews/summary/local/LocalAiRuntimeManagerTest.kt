@@ -15,11 +15,13 @@ import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListene
 import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import java.lang.reflect.Proxy
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
@@ -247,14 +249,18 @@ class LocalAiRuntimeManagerTest {
     private fun withManager(block: (LocalAiRuntimeManager, PlayTransport) -> Unit) {
         val play = PlayTransport()
         val preferencesName = "runtime_delivery_test_" + UUID.randomUUID()
-        val manager = LocalAiRuntimeManager({ play.manager }, {}, preferencesName)
+        val manager = LocalAiRuntimeManager({ play.manager }, preferencesName)
         onMain { manager.bindActivityLifecycle(context) }
         try {
+            runBlocking { manager.preload(context) }
             block(manager, play)
         } finally {
-            onMain {
-                manager.close()
-                context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE).edit().clear().commit()
+            onMain { manager.close() }
+            runBlocking {
+                AndroidKeyValueStore.named(context, preferencesName).apply {
+                    clear()
+                    awaitPersisted()
+                }
             }
         }
     }

@@ -155,6 +155,9 @@ private class AndroidLocalModelTransferScheduler(
     private fun workName(modelId: String): String = "$WORK_NAME_PREFIX$modelId"
 }
 
-internal interface AndroidLocalRuntimeDelivery : LocalModelRuntimeDelivery
+internal interface AndroidLocalRuntimeDelivery : LocalModelRuntimeDelivery {
+    /** Await platform delivery storage and package inspection before publishing the app graph. */
+    suspend fun preload() = Unit
+}
 
 private const val WORK_NAME_PREFIX = "local_ai_model_download_"

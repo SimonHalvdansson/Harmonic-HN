@@ -5,11 +5,8 @@ import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.IntentSender
-import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
-import com.google.android.play.core.splitcompat.SplitCompat
 import com.google.android.play.core.splitinstall.SplitInstallException
 import com.google.android.play.core.splitinstall.SplitInstallManager
 import com.google.android.play.core.splitinstall.SplitInstallManagerFactory
@@ -23,6 +20,7 @@ import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 import com.simon.harmonichackernews.MainActivity
+import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import java.lang.ref.WeakReference
 import java.util.EnumMap
 import java.util.HashSet
@@ -34,11 +32,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** Installs Play-delivered local-AI runtimes before their model download starts.  */
 internal class LocalAiRuntimeManager(
     private val installManagerFactory: (Context) -> SplitInstallManager = SplitInstallManagerFactory::create,
-    private val installSplitCompat: (Context) -> Unit = { SplitCompat.install(it) },
     private val preferencesName: String = "local_ai_runtime_delivery",
 ) : Application.ActivityLifecycleCallbacks {
     private val MODULE_RUNTIME = "local_ai_runtime"
@@ -56,7 +56,10 @@ internal class LocalAiRuntimeManager(
     private val CONFIRMATION_REQUESTED: MutableSet<Int> = HashSet()
 
     private var appContext: Context? = null
-    private var installManager: SplitInstallManager? = null
+    @Volatile private var installManager: SplitInstallManager? = null
+    private lateinit var deliveryPreferences: AndroidKeyValueStore
+    private val initializationMutex = Mutex()
+    @Volatile private var runtimeModuleInstalled = false
     private var confirmationActivity: WeakReference<Activity> = WeakReference(null)
     private var confirmationOwner: WeakReference<Activity> = WeakReference(null)
     private var application: Application? = null
@@ -64,7 +67,7 @@ internal class LocalAiRuntimeManager(
     private val canceledSessions = mutableSetOf<Int>()
     private val requestGenerations = mutableMapOf<LocalModelRuntime, Int>()
     private val deferredInstallStates = mutableMapOf<Int, SplitInstallSessionState>()
-    private var initialized = false
+    @Volatile private var initialized = false
     private var modelDownloadStarter: (suspend (String) -> String?)? = null
     private val handoffScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handoffJobs = mutableMapOf<LocalModelRuntime, Job>()
@@ -74,8 +77,7 @@ internal class LocalAiRuntimeManager(
             handleInstallState(installState)
         }
 
-    // Bind when the application graph is created, before MainActivity resumes. Runtime
-    // initialization itself can remain lazy and continue using applicationContext.
+    // Register before MainActivity resumes; disk and package inspection are awaited separately.
     fun bindActivityLifecycle(context: Context) {
         if (application != null) return
         application = context.applicationContext as? Application
@@ -123,7 +125,7 @@ internal class LocalAiRuntimeManager(
     fun isLocalAiIncluded(): Boolean = true
 
     fun addStatusListener(context: Context, listener: StatusListener) {
-        initialize(context)
+        requirePreloaded()
         LISTENERS.add(listener)
         listener.onRuntimeStatusChanged()
     }
@@ -133,7 +135,7 @@ internal class LocalAiRuntimeManager(
     }
 
     fun getStatus(context: Context, runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
-        initialize(context)
+        requirePreloaded()
         if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return status(
                 runtime,
@@ -178,13 +180,13 @@ internal class LocalAiRuntimeManager(
         if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return true
         }
-        val moduleName = getModuleName(runtime) ?: return false
-        initialize(context)
-        return requireNotNull(installManager).installedModules.contains(moduleName)
+        if (getModuleName(runtime) == null) return false
+        requirePreloaded()
+        return runtimeModuleInstalled
     }
 
     fun requestRuntimeAndModelDownload(context: Context, model: LocalModelDefinition): String? {
-        initialize(context)
+        requirePreloaded()
         if (!model.downloadable) {
             return "${model.displayName} is built into supported devices."
         }
@@ -283,7 +285,7 @@ internal class LocalAiRuntimeManager(
         context: Context,
         runtime: LocalModelRuntime
     ) {
-        initialize(context)
+        requirePreloaded()
         val current = getStatus(context, runtime)
         synchronized(LOCK) { requestGenerations[runtime] = (requestGenerations[runtime] ?: 0) + 1 }
         deferredInstallStates.clear()
@@ -330,24 +332,32 @@ internal class LocalAiRuntimeManager(
             throw IllegalArgumentException("Gemini Nano does not use a feature runtime")
     }
 
-    private fun initialize(context: Context) {
-        synchronized(LOCK) {
-            if (initialized) {
-                return
-            }
+    /** Complete all cold storage/package work before publishing the application graph. */
+    suspend fun preload(context: Context) = withContext(Dispatchers.IO) {
+        initializationMutex.withLock {
+            if (initialized) return@withLock
             val applicationContext = context.applicationContext
+            val preferences = AndroidKeyValueStore.named(applicationContext, preferencesName)
+            preferences.awaitLoaded()
+            val manager = installManagerFactory(applicationContext)
+            val installed = manager.installedModules.contains(MODULE_RUNTIME)
             appContext = applicationContext
-            installManager = installManagerFactory(applicationContext).also {
-                it.registerListener(INSTALL_LISTENER)
-            }
+            deliveryPreferences = preferences
+            runtimeModuleInstalled = installed
+            installManager = manager
+            manager.registerListener(INSTALL_LISTENER)
             initialized = true
-        }
 
-        requireNotNull(installManager).sessionStates.addOnSuccessListener { states ->
-            states.forEach(::handleInstallState)
+            manager.sessionStates.addOnSuccessListener { states ->
+                states.forEach(::handleInstallState)
+                resumeInstalledPendingDownloads()
+            }
             resumeInstalledPendingDownloads()
         }
-        resumeInstalledPendingDownloads()
+    }
+
+    private fun requirePreloaded() {
+        check(initialized) { "Await runtime delivery preload before accessing it" }
     }
 
     private fun resumeInstalledPendingDownloads() {
@@ -366,6 +376,13 @@ internal class LocalAiRuntimeManager(
     }
 
     private fun handleInstallState(installState: SplitInstallSessionState) {
+        if (installState.status() == SplitInstallSessionStatus.INSTALLED &&
+            MODULE_RUNTIME in installState.moduleNames()
+        ) {
+            // Play finishes SplitCompat emulation before delivering INSTALLED, including
+            // an install that races cancellation. Availability is cached without Main IPC.
+            runtimeModuleInstalled = true
+        }
         // A delayed listener/query response for a canceled session must not attach to a
         // newer request for the same shared module or reopen its confirmation dialog.
         if (synchronized(LOCK) { installState.sessionId() in canceledSessions }) return
@@ -512,7 +529,8 @@ internal class LocalAiRuntimeManager(
     }
 
     private fun onRuntimeInstalled(runtime: LocalModelRuntime) {
-        installSplitCompat(requireNotNull(appContext))
+        // Startup enables existing splits on IO; Play enables newly delivered splits itself.
+        runtimeModuleInstalled = true
         val otherRuntime = if (runtime == LocalModelRuntime.LLAMA_CPP) {
             LocalModelRuntime.LITERT_LM
         } else {
@@ -678,13 +696,8 @@ internal class LocalAiRuntimeManager(
         return null
     }
 
-    private val deliveryPreferences: SharedPreferences
-        get() = requireNotNull(appContext).getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-
     private fun setPendingModel(runtime: LocalModelRuntime, modelId: String) {
-        deliveryPreferences.edit {
-            putString(KEY_PENDING_MODEL_PREFIX + runtime.name, modelId)
-        }
+        deliveryPreferences.putString(KEY_PENDING_MODEL_PREFIX + runtime.name, modelId)
     }
 
     private fun getPendingModel(runtime: LocalModelRuntime): String {
@@ -694,17 +707,13 @@ internal class LocalAiRuntimeManager(
     }
 
     private fun clearPendingModel(runtime: LocalModelRuntime) {
-        deliveryPreferences.edit {
-            remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
-        }
+        deliveryPreferences.remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
     }
 
     private fun isRuntimeInstalledWithoutInitialization(
         runtime: LocalModelRuntime
     ): Boolean {
-        val moduleName = getModuleName(runtime) ?: return false
-        val manager = installManager ?: return false
-        return manager.installedModules.contains(moduleName)
+        return getModuleName(runtime) != null && runtimeModuleInstalled
     }
 
     private fun findActivity(context: Context): Activity? {
@@ -774,6 +783,8 @@ internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRu
         private var listener: LocalAiRuntimeManager.StatusListener? = null
 
         override val included: Boolean get() = manager.isLocalAiIncluded()
+
+        override suspend fun preload() = manager.preload(context)
 
         override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
             manager.getStatus(context, runtime)

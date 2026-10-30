@@ -1,37 +1,22 @@
 package com.simon.harmonichackernews.widget
 
-import android.app.WallpaperColors
-import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
-import androidx.core.graphics.ColorUtils
-import androidx.core.view.WindowCompat
 import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.runAfterStartup
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.utils.AndroidActivityTheme.setupTheme
-import com.simon.harmonichackernews.utils.AndroidActivityTheme.getPageBackgroundColor
 import com.simon.harmonichackernews.widget.AndroidWidgetConfigHost.install
 
 class WidgetConfigActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private val widgets by lazy { harmonicAppComposition.widgets }
-    private val wallpaperManager by lazy { WallpaperManager.getInstance(this) }
-    private var wallpaperColorsListener: WallpaperManager.OnColorsChangedListener? = null
-    private var wallpaperUsesDarkIcons = false
-    private var settingsCoverStatusBar = false
     private var preferencesReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,8 +43,7 @@ class WidgetConfigActivity : ComponentActivity() {
             retryStartup = app::retryStartup,
         ) {
             preferencesReady = true
-            setupTheme(this@WidgetConfigActivity)
-            showWallpaper()
+            setupWidgetTheme()
             setupComposeUi()
         }
     }
@@ -67,70 +51,14 @@ class WidgetConfigActivity : ComponentActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (!preferencesReady) return
-        setupTheme(this)
+        setupWidgetTheme()
         harmonicAppComposition.appearance.refreshSelection()
-        showWallpaper()
     }
 
-    override fun onStart() {
-        super.onStart()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            val listener = WallpaperManager.OnColorsChangedListener { colors, which ->
-                if (which and WallpaperManager.FLAG_SYSTEM != 0) {
-                    updateWallpaperStatusBarIcons(colors)
-                }
-            }
-            wallpaperColorsListener = listener
-            wallpaperManager.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper()))
-        }
-        refreshWallpaperStatusBarIcons()
-    }
-
-    override fun onStop() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            wallpaperColorsListener?.let(wallpaperManager::removeOnColorsChangedListener)
-            wallpaperColorsListener = null
-        }
-        super.onStop()
-    }
-
-    private fun showWallpaper() {
-        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    private fun setupWidgetTheme() {
+        setupTheme(this)
+        // Compose draws the app-owned preview backdrop beneath the status bar.
         window.statusBarColor = Color.TRANSPARENT
-        refreshWallpaperStatusBarIcons()
-    }
-
-    private fun refreshWallpaperStatusBarIcons() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            updateWallpaperStatusBarIcons(wallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM))
-        } else {
-            // Android 8.0 does not expose wallpaper colors. Use the usual light launcher icons.
-            wallpaperUsesDarkIcons = false
-            updateStatusBarIcons()
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O_MR1)
-    private fun updateWallpaperStatusBarIcons(colors: WallpaperColors?) {
-        wallpaperUsesDarkIcons = when {
-            colors == null -> false
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-                colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
-            else -> ColorUtils.calculateLuminance(colors.primaryColor.toArgb()) > 0.5
-        }
-        updateStatusBarIcons()
-    }
-
-    private fun updateStatusBarIcons() {
-        val useDarkIcons = if (settingsCoverStatusBar) {
-            val background = getPageBackgroundColor(this)
-            ColorUtils.calculateContrast(Color.BLACK, background) >=
-                ColorUtils.calculateContrast(Color.WHITE, background)
-        } else {
-            wallpaperUsesDarkIcons
-        }
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = useDarkIcons
     }
 
     private fun setupComposeUi() {
@@ -138,10 +66,6 @@ class WidgetConfigActivity : ComponentActivity() {
             this,
             widgets.configuration(appWidgetId, WidgetConfiguration.fromStoryPreferences(harmonicAppComposition.userSettings.story)),
             AndroidWidgetConfigHost.Listener(::confirmConfiguration),
-            onSettingsCoverStatusBar = { covered ->
-                settingsCoverStatusBar = covered
-                updateStatusBarIcons()
-            },
         )
     }
 

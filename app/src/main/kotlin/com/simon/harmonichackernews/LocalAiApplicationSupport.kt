@@ -2,7 +2,7 @@ package com.simon.harmonichackernews
 
 import android.content.Context
 
-/** Distribution-specific initialization for optional local-AI delivery.  */
+/** Completes distribution-specific setup before the application graph exposes optional AI code. */
 interface LocalAiApplicationSupport {
-    fun install(context: Context?)
+    suspend fun install(context: Context)
 }

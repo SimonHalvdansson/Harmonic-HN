@@ -3,7 +3,9 @@ package com.simon.harmonichackernews.ui.widget
 import com.simon.harmonichackernews.ui.theme.onFloatingContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -19,12 +21,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.pageBackground
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.network.WidgetConfiguration
 import com.simon.harmonichackernews.resources.*
@@ -54,6 +56,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import kotlin.math.min
 
 @Composable
 fun WidgetConfigScreen(
@@ -63,7 +66,6 @@ fun WidgetConfigScreen(
     paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     headlineFontFamily: FontFamily? = null,
     headlineFontLabel: String = "Device headline",
-    onSettingsCoverStatusBar: (Boolean) -> Unit = {},
 ) {
     val feeds = frontpages.ifEmpty { listOf(StoryType.TOP_STORIES) }
     var feed by rememberSaveable { mutableStateOf(initialConfiguration.storyType.takeIf { it in feeds } ?: feeds.first()) }
@@ -77,14 +79,8 @@ fun WidgetConfigScreen(
     val fontFamily = if (useHeadlineFont) headlineFontFamily ?: FontFamily.SansSerif else FontFamily.SansSerif
     val hazeState = rememberHazeState()
     val buttonShape = RoundedCornerShape(16.dp)
-    val statusBarHeight = WindowInsets.statusBars.getTop(LocalDensity.current)
-    var settingsCoverStatusBar by remember { mutableStateOf(false) }
-    val currentOnSettingsCoverStatusBar by rememberUpdatedState(onSettingsCoverStatusBar)
-    LaunchedEffect(settingsCoverStatusBar) {
-        currentOnSettingsCoverStatusBar(settingsCoverStatusBar)
-    }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)) {
         val pinPreview = maxHeight >= 560.dp
         val preview: @Composable () -> Unit = {
             // The launcher cannot render Haze. Keep all sample-widget content under the same
@@ -103,20 +99,22 @@ fun WidgetConfigScreen(
                 Modifier.fillMaxWidth().weight(1f)
                     .then(if (pinPreview) Modifier else Modifier.verticalScroll(pageScroll)),
             ) {
-                // Scroll the top inset with the page so content can pass behind the status bar.
-                Spacer(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing))
-                Box(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 600.dp).fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-                    preview()
+                Box(Modifier.fillMaxWidth()) {
+                    WidgetPreviewBackdrop(Modifier.matchParentSize())
+                    Column(Modifier.align(Alignment.Center).widthIn(max = 600.dp).fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+                        Text(
+                            text = "Home screen preview",
+                            modifier = Modifier.padding(start = 24.dp, top = 16.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        preview()
+                    }
                 }
                 Column(
                     Modifier.fillMaxWidth()
                         .then(if (pinPreview) Modifier.weight(1f) else Modifier)
-                        .onGloballyPositioned { coordinates ->
-                            // Switch contrast when the panel reaches the middle of the status icons.
-                            settingsCoverStatusBar = statusBarHeight > 0 &&
-                                coordinates.positionInWindow().y <= statusBarHeight / 2f
-                        }
                         .background(MaterialTheme.colorScheme.pageBackground)
                         .then(if (pinPreview) Modifier.verticalScroll(settingsScroll) else Modifier)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
@@ -203,6 +201,32 @@ fun WidgetConfigScreen(
     }
 }
 
+/** A still, welcome-inspired setting for the preview, independent of launcher wallpaper or IPC. */
+@Composable
+private fun WidgetPreviewBackdrop(modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val dark = HarmonicTheme.isDark
+    val base = lerp(colors.surfaceContainerHighest, colors.primaryContainer, .2f)
+    val warm = lerp(colors.primary, Color(0xFFFFAD85), .85f)
+    val blush = lerp(colors.tertiary, Color(0xFFFFB9A5), .8f)
+    Canvas(modifier) {
+        drawRect(base)
+        val extentX = min(size.width * .9f, 400.dp.toPx())
+        val extentY = min(size.height * .8f, 260.dp.toPx())
+        drawRect(Brush.radialGradient(
+            listOf(warm.copy(alpha = if (dark) .12f else .28f), Color.Transparent),
+            center = Offset.Zero, radius = extentX,
+        ))
+        drawRect(Brush.radialGradient(
+            listOf(blush.copy(alpha = if (dark) .1f else .22f), Color.Transparent),
+            center = Offset(size.width, size.height), radius = extentX,
+        ))
+        val dotColor = lerp(base, warm, .45f)
+        drawWelcomeCornerDots(Offset.Zero, extentX, extentY, false, dotColor, dotColor, -1.0, dark)
+        drawWelcomeCornerDots(Offset(size.width, size.height), extentX, extentY, true, dotColor, dotColor, -1.0, dark)
+    }
+}
+
 /** Shared with the Glance renderer, which can only use platform fonts. */
 object WidgetTypography {
     const val INDEX_SIZE = 12f
@@ -273,9 +297,13 @@ private val WidgetPreviewStories = listOf(
 @Composable
 private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, paletteTintConfigKey: String, fontFamily: FontFamily) {
     val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(24.dp)
     Column(
-        Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
-            .fillMaxWidth().height(240.dp).clip(RoundedCornerShape(24.dp)).background(colors.pageBackground),
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
+            .fillMaxWidth().height(240.dp)
+            .shadow(12.dp, shape, clip = false)
+            .border(1.dp, colors.outlineVariant.copy(alpha = .65f), shape)
+            .clip(shape).background(colors.pageBackground),
     ) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = WidgetDimensions.headerTopPadding, bottom = WidgetDimensions.headerBottomPadding), verticalAlignment = Alignment.CenterVertically) {
             Crossfade(configuration.storyType to fontFamily, modifier = Modifier.weight(1f), label = "Widget feed") { (feed, family) ->

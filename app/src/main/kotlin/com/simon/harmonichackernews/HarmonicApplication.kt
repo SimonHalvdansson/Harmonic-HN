@@ -64,6 +64,8 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         // does not open storage or initialize the runtime; the remaining graph is prepared on IO.
         val runtimeDelivery = createAndroidLocalRuntimeDelivery(this)
         startup = AndroidAppStartup(preloadScope) {
+            localAiSupport.install(this@HarmonicApplication)
+            runtimeDelivery.preload()
             coroutineScope {
                 listOf(
                     AndroidKeyValueStore.defaults(this@HarmonicApplication),
@@ -88,11 +90,6 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
             AndroidKeyValueStore.named(this@HarmonicApplication, AppBootstrapPolicy.WIDGET_CONFIGURATION_STORE).awaitLoaded()
             AndroidKeyValueStore.named(this@HarmonicApplication, AppBootstrapPolicy.WIDGET_RUNTIME_STORE).awaitLoaded()
         }
-    }
-
-    override fun attachBaseContext(base: Context?) {
-        super.attachBaseContext(base)
-        localAiSupport.install(this)
     }
 
     @OptIn(ExperimentalCoilApi::class)
