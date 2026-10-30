@@ -39,3 +39,7 @@
 -keep class com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine {
     public <init>();
 }
+
+# ML Kit deserializes this structured suggestion result in Play builds.
+-keep class com.simon.harmonichackernews.network.NanoQuestionSuggestions { *; }
+-keep class com.simon.harmonichackernews.network.NanoQuestionSuggestions_GeneratedProvider { *; }

@@ -28,7 +28,12 @@ class AskConversation(
     private val builtInModelSelected: () -> Boolean = { false },
     private val contextDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    data class Turn(val question: String, val answer: String = "", val complete: Boolean = false)
+    data class Turn(
+        val question: String,
+        val answer: String = "",
+        val complete: Boolean = false,
+        val truncated: Boolean = false,
+    )
     data class State(
         val turns: List<Turn> = emptyList(),
         val running: Boolean = false,
@@ -77,11 +82,11 @@ class AskConversation(
                     } else {
                         val input = sourceContext().toString()
                         if (input.length > MAX_INPUT) return@withTimeoutOrNull emptyList()
-                        val response = checkNotNull(localEngine).summarize(SummaryRequest(
-                            text = input, prompt = if (source is AskSource.Post) AskQuestionSuggestions.POST_PROMPT else AskQuestionSuggestions.PROMPT,
-                            streamResponses = false, useGeminiNanoSummarizationLora = false, preserveInput = true,
-                        ))
-                        AskQuestionSuggestions.parse(response.text, suggestedQuestions(source))
+                        val questions = checkNotNull(localEngine).suggestQuestions(
+                            text = input,
+                            prompt = if (source is AskSource.Post) AskQuestionSuggestions.POST_PROMPT else AskQuestionSuggestions.PROMPT,
+                        )
+                        AskQuestionSuggestions.validate(questions, suggestedQuestions(source))
                     }
                 }.orEmpty()
                 if (suggestionGeneration == requestGeneration) {
@@ -163,10 +168,13 @@ class AskConversation(
                                 useGeminiNanoSummarizationLora = false,
                                 preserveInput = true,
                                 reserveDiscussionSpace = includeArticle && reserveDiscussionSpace,
+                                enableThinking = true,
                             )).collect { event ->
                                 when (event) {
                                     is StorySummaryEvent.Progress -> answer(event.text, generation = requestGeneration)
-                                    is StorySummaryEvent.Success -> answer(event.text, true, requestGeneration)
+                                    is StorySummaryEvent.Success -> answer(
+                                        event.text, !event.truncated, requestGeneration, truncated = event.truncated,
+                                    )
                                     is StorySummaryEvent.Failure -> error(event.message)
                                     else -> Unit
                                 }
@@ -184,7 +192,9 @@ class AskConversation(
                                 }
                             }
                         }
-                        check(state.value.turns.last().complete) { "The model returned no answer. Please retry." }
+                        check(state.value.turns.last().let { it.complete || it.truncated }) {
+                            "The model returned no answer. Please retry."
+                        }
                         break
                     } catch (error: Exception) {
                         if (error is CancellationException) throw error
@@ -257,18 +267,18 @@ class AskConversation(
             current.copy(
                 running = false, error = null,
                 turns = current.turns.mapIndexed { index, turn ->
-                    if (index == current.turns.lastIndex && turn.answer.isNotBlank()) turn.copy(complete = true)
+                    if (index == current.turns.lastIndex && turn.answer.isNotBlank() && !turn.truncated) turn.copy(complete = true)
                     else turn
                 },
             )
         }
     }
 
-    private fun answer(text: String, complete: Boolean = false, generation: Int) {
+    private fun answer(text: String, complete: Boolean = false, generation: Int, truncated: Boolean = false) {
         if (generation != this.generation) return
-        if (complete && text.isBlank()) error("The model returned an empty answer. Please retry.")
+        if ((complete || truncated) && text.isBlank()) error("The model returned an empty answer. Please retry.")
         mutableState.value = state.value.copy(turns = state.value.turns.dropLast(1) +
-            state.value.turns.last().copy(answer = text, complete = complete))
+            state.value.turns.last().copy(answer = text, complete = complete, truncated = truncated))
     }
 
     private suspend fun sourceContext(): JsonObject = contextMutex.withLock {

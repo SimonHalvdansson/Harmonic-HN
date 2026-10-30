@@ -71,10 +71,10 @@ jobs:
           --no-daemon
           --max-workers=2
           --parallel
-      - name: Test Play local AI runtime delivery
+      - name: Test Play local AI runtime delivery and Nano prompts
         run: >-
           ./gradlew -Pharmonic.testBuildType=debugLLM
-          :app:testDebugLLMUnitTest --tests '*LocalAiRuntimeStatusTest'
+          :app:testDebugLLMUnitTest --tests '*LocalAiRuntimeStatusTest' --tests '*NanoPromptIntegrationTest'
           --no-daemon --max-workers=2
       - name: Verify JNI UTF-8 conversion
         run: python3 local_ai_runtime/src/test/cpp/jni_utf8/run.py

@@ -19,6 +19,46 @@ import kotlin.test.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostAskTest {
     @Test
+    fun truncatedAnswersStayVisibleButAreNotIncludedAsCompleteHistory() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        val requests = mutableListOf<SummaryRequest>()
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                requests += request
+                return SummaryResult(if (requests.size == 1) "cut off mid-sentence" else "Complete answer",
+                    truncated = requests.size == 1)
+            }
+        }
+        val source = AskSource.Post(
+            StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()), "Summary",
+        )
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine,
+            source, contextDispatcher = dispatcher)
+        conversation.ask("First question")
+        advanceUntilIdle()
+        val partial = conversation.state.value.turns.single()
+        assertEquals("cut off mid-sentence", partial.answer)
+        assertTrue(partial.truncated)
+        assertFalse(partial.complete)
+        assertFalse(conversation.state.value.running)
+        assertNull(conversation.state.value.error)
+        conversation.stop()
+        assertFalse(conversation.state.value.turns.single().complete)
+
+        conversation.ask("Next question")
+        advanceUntilIdle()
+        val history = Json.parseToJsonElement(requests.last().text).jsonObject.getValue("conversation").jsonArray
+        assertEquals(1, history.size)
+        assertEquals("Next question", history.single().jsonObject.getValue("content").jsonPrimitive.content)
+        assertTrue(conversation.state.value.turns.last().complete)
+        assertFalse(conversation.state.value.turns.last().truncated)
+        assertTrue(requests.all { it.enableThinking })
+    }
+
+    @Test
     fun cloudSummaryRetainsTheExactSubmittedTextForExtractedAndProvidedSources() = runTest {
         for (provided in listOf(null, "  Browser extraction with additional context  ")) {
             val repo = Repository()

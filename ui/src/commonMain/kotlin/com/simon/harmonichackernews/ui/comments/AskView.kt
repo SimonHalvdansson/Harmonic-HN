@@ -363,6 +363,9 @@ internal fun AskSurface(
                             )
                         }
                         }
+                        if (turn.truncated) {
+                            TruncatedResponseNotice()
+                        }
                     }
                 }
                 if (state.running && state.turns.lastOrNull()?.answer.isNullOrBlank()) {

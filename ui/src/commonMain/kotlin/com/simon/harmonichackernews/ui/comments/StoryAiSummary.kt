@@ -208,6 +208,9 @@ fun StoryAiSummary(
                         animationContentKey = story.id,
                     )
                 }
+                if (story.aiSummaryTruncated && !streaming) {
+                    TruncatedResponseNotice(Modifier.padding(top = 8.dp))
+                }
             }
         }
     }
@@ -217,6 +220,28 @@ fun StoryAiSummary(
             diagnostics = diagnostics,
             streaming = streaming,
             onDismiss = { showInfoDialog = false },
+        )
+    }
+}
+
+@Composable
+internal fun TruncatedResponseNotice(modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painterResource(Res.drawable.ic_info), contentDescription = null,
+            modifier = Modifier.padding(end = 6.dp).size(16.dp),
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+        Text(
+            "Response cut short: length limit reached.",
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
         )
     }
 }

@@ -19,6 +19,7 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.summary.local.createAndroidLocalRuntimeDelivery
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -120,11 +121,13 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
             }
             preloadScope.launch {
                 val engine = appComposition.localSummaryEngine ?: return@launch
-                val availability = engine.availability()
+                val useLora = appComposition.aiSummarySettings.awaitSnapshot().geminiNanoSummaryMode ==
+                    GeminiNanoSummaryMode.THREE_BULLETS
+                val availability = engine.availability(useLora)
                 withContext(Dispatchers.Main.immediate) {
                     appComposition.aiSummarySettings.preferLocalModeByDefault(
                         localAvailable = availability.available &&
-                            !availability.downloadableFallbackRequired && engine.isReady(),
+                            !availability.downloadableFallbackRequired && engine.isReady(useLora),
                     )
                 }
             }

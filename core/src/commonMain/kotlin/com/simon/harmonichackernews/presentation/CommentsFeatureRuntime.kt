@@ -885,6 +885,7 @@ class CommentsFeatureRuntime(
             // Keep the existing action's loading indicator visible without replacing the summary
             // surface with a browser-status sentence while the hidden WebView is working.
             currentStory.aiSummaryText = null
+            currentStory.aiSummaryTruncated = false
             currentStory.summaryGeneratedSuccessfully = false
             changed()
             mutableEffects.tryEmit(CommentsFeatureEffect.RequestSummaryPageTextRetry)
@@ -892,11 +893,12 @@ class CommentsFeatureRuntime(
         }
         currentStory.aiSummaryText = state.text
         currentStory.aiSummarySourceText = state.sourceInput
+        currentStory.aiSummaryTruncated = state.truncated
         when (state.status) {
             StorySummaryStatus.Idle,
             StorySummaryStatus.Running,
             -> Unit
-            StorySummaryStatus.Success -> currentStory.summaryGeneratedSuccessfully = true
+            StorySummaryStatus.Success -> currentStory.summaryGeneratedSuccessfully = !state.truncated
             is StorySummaryStatus.Failure -> currentStory.summaryGeneratedSuccessfully = false
         }
         changed()

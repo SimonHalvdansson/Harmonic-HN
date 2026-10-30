@@ -30,6 +30,7 @@ import com.simon.harmonichackernews.presentation.StoriesFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsFeatureStore
 import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.settings.ReadingPreferences
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -218,7 +219,11 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         loadContentFilters = contentFilters::load,
         accounts = host.platform.accounts,
         summarySettings = aiSummarySettings,
-        localSummaryAvailable = { localSummaryEngine?.isReady() == true },
+        localSummaryAvailable = {
+            localSummaryEngine?.isReady(
+                aiSummarySettings.snapshot().geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS,
+            ) == true
+        },
         summaryRuntime = createStorySummaryRuntime(featureScope),
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         loadCachedStoryHeader = { storyCache.loadStoryHeader(it) },

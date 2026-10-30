@@ -35,8 +35,9 @@ fun AndroidAiSummarySettingsScreen(
         appComposition.createLocalSummarySettingsRuntime(scope)
     }
     val availabilityState by settingsRuntime.state.collectAsStateWithLifecycle()
+    val aiSettings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
 
-    LaunchedEffect(settingsRuntime, localModelState, localRefresh) {
+    LaunchedEffect(settingsRuntime, localModelState, localRefresh, aiSettings.geminiNanoSummaryMode) {
         settingsRuntime.resolve()
     }
     DisposableEffect(settingsRuntime) {

@@ -5,6 +5,7 @@ compose-multiplatform = "1.13.0-beta01"
 compose-multiplatform-material3 = "1.13.0-beta01"
 # 2.5.0-Beta1 breaks Native enum lowering and linking of core test declarations.
 kotlin = "2.4.20-RC2"
+ksp = "2.3.12"
 material3 = "1.5.0-beta01"
 material3-adaptive = "1.4.0-alpha01"
 navigation3 = "1.2.0"
@@ -33,6 +34,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 baseline-profile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 
 [libraries]
@@ -105,6 +107,7 @@ haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
 mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta4"
+mlkit-genai-schema-compiler = "com.google.mlkit:genai-schema-compiler:1.0.0-alpha1"
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.17.1"
 litertlm-jvm = "com.google.ai.edge.litertlm:litertlm-jvm:0.17.1"
 play-feature-delivery = "com.google.android.play:feature-delivery:2.1.0"

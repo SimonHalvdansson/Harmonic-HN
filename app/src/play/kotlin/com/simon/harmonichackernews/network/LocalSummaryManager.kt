@@ -12,9 +12,15 @@ import com.google.mlkit.genai.summarization.SummarizationRequest
 import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
 import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.GenerativeModel
+import com.google.mlkit.genai.prompt.Candidate
 import com.google.mlkit.genai.prompt.TextPart
 import com.google.mlkit.genai.prompt.SystemInstruction
 import com.google.mlkit.genai.prompt.generateContentRequest
+import com.google.mlkit.genai.prompt.generateTypedContentRequest
+import com.google.mlkit.genai.prompt.TypedCandidate
+import com.google.mlkit.genai.schema.annotations.Generable
+import com.google.mlkit.genai.schema.annotations.Guide
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.LocalModelTransferState
@@ -41,49 +47,66 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
 /** Application-owned readiness checks for Gemini Nano and downloadable local models. */
-private class PlayLocalSummaryStatus {
+internal data class NanoFeatureSnapshot(val status: Int, val baseModelName: String? = null)
+
+internal class PlayLocalSummaryStatus(
+    private val queryFeature: suspend (useSummarizationLora: Boolean) -> NanoFeatureSnapshot,
+) {
     private val tag = "PlayLocalSummaryStatus"
 
     @Volatile
-    private var cachedLocalFeatureStatus: Int = Int.MIN_VALUE
+    private var promptFeatureStatus: Int = Int.MIN_VALUE
     @Volatile
-    private var cachedAvailability: LocalSummaryAvailability? = null
+    private var summarizationFeatureStatus: Int = Int.MIN_VALUE
 
     fun canAttemptLocalSummarization(): Boolean = true
 
-    suspend fun checkLocalSummaryAvailability(context: Context?): LocalSummaryAvailability {
-        cachedAvailability?.let { return it }
-        if (context == null) {
-            return LocalSummaryAvailability(false, false, "Local AI context is unavailable")
-        }
+    suspend fun checkLocalSummaryAvailability(useSummarizationLora: Boolean): LocalSummaryAvailability {
         return withContext(Dispatchers.IO) {
-            var summarizer: Summarizer? = null
-            try {
-                summarizer = Summarization.getClient(createOptions(context.applicationContext))
-                val status = summarizer.checkFeatureStatus().get()
-                cachedLocalFeatureStatus = status
-                resolvedAvailability(status, readBaseModelName(summarizer, status))
-            } catch (error: InterruptedException) {
-                Thread.currentThread().interrupt()
-                LocalSummaryAvailability(
-                    false,
-                    false,
-                    "Gemini Nano availability check was interrupted",
+            val requested = query(useSummarizationLora)
+            val alternate = query(!useSummarizationLora)
+            when {
+                isLocalFeatureUsable(requested.status) -> resolvedAvailability(requested.status, requested.baseModelName)
+                isLocalFeatureUsable(alternate.status) -> LocalSummaryAvailability(
+                    available = true,
+                    downloadableFallbackRequired = false,
+                    statusMessage = if (useSummarizationLora) {
+                        "The 3-bullet summarizer is unavailable; choose System prompt in AI features settings"
+                    } else {
+                        "Custom prompts are unavailable; choose the 3-bullet summarizer in AI features settings"
+                    },
+                    baseModelName = alternate.baseModelName,
                 )
-            } catch (error: Throwable) {
-                Log.w(tag, "Gemini Nano availability check failed", unwrap(error))
-                cachedLocalFeatureStatus = FeatureStatus.UNAVAILABLE
-                downloadableModelAvailability()
-            } finally {
-                summarizer?.close()
+                else -> downloadableModelAvailability()
             }
-        }.also { cachedAvailability = it }
+        }
     }
 
-    fun isLocalSummaryReady(models: LocalModelService): Boolean {
+    private suspend fun query(useSummarizationLora: Boolean): NanoFeatureSnapshot =
+        try {
+            queryFeature(useSummarizationLora)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            NanoFeatureSnapshot(FeatureStatus.UNAVAILABLE)
+        } catch (error: Exception) {
+            Log.w(tag, "Gemini Nano availability check failed", unwrap(error))
+            NanoFeatureSnapshot(FeatureStatus.UNAVAILABLE)
+        }.also { recordFeatureStatus(useSummarizationLora, it.status) }
+
+    fun recordFeatureStatus(useSummarizationLora: Boolean, featureStatus: Int) {
+        if (useSummarizationLora) summarizationFeatureStatus = featureStatus
+        else promptFeatureStatus = featureStatus
+    }
+
+    fun isNanoFeatureUsable(useSummarizationLora: Boolean): Boolean =
+        isLocalFeatureUsable(if (useSummarizationLora) summarizationFeatureStatus else promptFeatureStatus)
+
+    fun isLocalSummaryReady(models: LocalModelService, useSummarizationLora: Boolean): Boolean {
         val selected = models.selectedModel
         if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
-            return isLocalFeatureUsable(cachedLocalFeatureStatus)
+            return isNanoFeatureUsable(useSummarizationLora)
         }
         val cachedModels = models.cachedState.value
         return models.isSupported(selected) &&
@@ -107,18 +130,6 @@ private class PlayLocalSummaryStatus {
             downloadableModelAvailability()
         }
 
-    private fun readBaseModelName(summarizer: Summarizer, featureStatus: Int): String? {
-        if (!isLocalFeatureUsable(featureStatus)) return null
-        return try {
-            summarizer.getBaseModelName().get().trim().takeIf(String::isNotEmpty)
-        } catch (error: InterruptedException) {
-            throw error
-        } catch (error: Throwable) {
-            Log.w(tag, "Gemini Nano model name lookup failed", unwrap(error))
-            null
-        }
-    }
-
     private fun downloadableModelAvailability(): LocalSummaryAvailability =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             LocalSummaryAvailability(true, true, "Gemini Nano isn't available on this device")
@@ -129,14 +140,6 @@ private class PlayLocalSummaryStatus {
                 "Gemini Nano is unavailable; downloadable models require Android 12 or newer",
             )
         }
-
-    internal fun createOptions(context: Context): SummarizerOptions =
-        SummarizerOptions.builder(context)
-            .setInputType(SummarizerOptions.InputType.ARTICLE)
-            .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
-            .setLanguage(SummarizerOptions.Language.ENGLISH)
-            .setLongInputAutoTruncationEnabled(true)
-            .build()
 
     internal fun isLocalFeatureUsable(status: Int): Boolean = when (status) {
         FeatureStatus.AVAILABLE, FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> true
@@ -154,24 +157,81 @@ private class PlayLocalSummaryStatus {
         if (error is ExecutionException) error.cause ?: error else error
 }
 
+private fun nanoSummarizerOptions(context: Context): SummarizerOptions =
+    SummarizerOptions.builder(context)
+        .setInputType(SummarizerOptions.InputType.ARTICLE)
+        .setOutputType(SummarizerOptions.OutputType.THREE_BULLETS)
+        .setLanguage(SummarizerOptions.Language.ENGLISH)
+        .setLongInputAutoTruncationEnabled(true)
+        .build()
+
+private suspend fun queryNanoFeature(context: Context, useSummarizationLora: Boolean): NanoFeatureSnapshot {
+    suspend fun snapshot(status: Int, readName: suspend () -> String): NanoFeatureSnapshot {
+        val name = if (status == FeatureStatus.UNAVAILABLE) null else try {
+            readName().trim().takeIf(String::isNotEmpty)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: InterruptedException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w("PlayLocalSummaryStatus", "Gemini Nano model name lookup failed", error)
+            null
+        }
+        return NanoFeatureSnapshot(status, name)
+    }
+    return if (useSummarizationLora) {
+        val summarizer = Summarization.getClient(nanoSummarizerOptions(context))
+        try {
+            snapshot(summarizer.checkFeatureStatus().get()) { summarizer.getBaseModelName().get() }
+        } finally {
+            summarizer.close()
+        }
+    } else {
+        val model = Generation.getClient()
+        try {
+            snapshot(model.checkStatus()) { model.getBaseModelName() }
+        } finally {
+            model.close()
+        }
+    }
+}
+
+@Generable
+data class NanoQuestionSuggestions(
+    @Guide(description = "Two distinct, specific questions, each under 180 characters and ending with a question mark",
+        minItems = 2, maxItems = 2)
+    val questions: List<String>,
+)
+
+internal fun nanoSummaryResult(text: String, finishReason: Int?): SummaryResult {
+    check(finishReason != Candidate.FinishReason.OTHER) { "Gemini Nano could not finish the response. Please retry." }
+    return SummaryResult(text, truncated = finishReason == Candidate.FinishReason.MAX_TOKENS)
+}
+
 /** Direct implementation of the shared streaming backend; no callback compatibility layer. */
 internal class AndroidLocalSummaryBackend(
     context: Context,
     private val models: LocalModelService,
 ) : StorySummaryBackend, LocalSummaryEngine {
     private val appContext = context.applicationContext
-    private val status = PlayLocalSummaryStatus()
+    private val status = PlayLocalSummaryStatus { queryNanoFeature(appContext, it) }
     private val inference = LocalModelInference(appContext, models)
 
     override fun canAttempt(): Boolean = status.canAttemptLocalSummarization()
 
     override suspend fun availability(): LocalSummaryAvailability =
-        status.checkLocalSummaryAvailability(appContext)
+        availability(useGeminiNanoSummarizationLora = false)
+
+    override suspend fun availability(useGeminiNanoSummarizationLora: Boolean): LocalSummaryAvailability =
+        status.checkLocalSummaryAvailability(useGeminiNanoSummarizationLora)
 
     override suspend fun isAvailable(): Boolean =
         availability().available
 
-    override fun isReady(): Boolean = status.isLocalSummaryReady(models)
+    override fun isReady(): Boolean = isReady(useGeminiNanoSummarizationLora = false)
+
+    override fun isReady(useGeminiNanoSummarizationLora: Boolean): Boolean =
+        status.isLocalSummaryReady(models, useGeminiNanoSummarizationLora)
 
     override suspend fun summarize(request: SummaryRequest): SummaryResult {
         var result: SummaryResult? = null
@@ -181,7 +241,7 @@ internal class AndroidLocalSummaryBackend(
                 is StorySummaryEvent.DebugInfo -> debugInfo = event.value
                 is StorySummaryEvent.SourceInput -> Unit
                 is StorySummaryEvent.Progress -> Unit
-                is StorySummaryEvent.Success -> result = SummaryResult(event.text, debugInfo)
+                is StorySummaryEvent.Success -> result = SummaryResult(event.text, debugInfo, event.truncated)
                 is StorySummaryEvent.Failure -> error(event.message)
             }
         }
@@ -196,6 +256,49 @@ internal class AndroidLocalSummaryBackend(
 
     override fun summarize(input: StorySummaryInput): Flow<StorySummaryEvent> =
         summarizeInput(input, SummaryRequest(text = input.articleText.orEmpty()))
+
+    override suspend fun suggestQuestions(text: String, prompt: String): List<String> {
+        if (models.selectedModel.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
+            val structured = withContext(Dispatchers.IO) {
+                val model = Generation.getClient()
+                try {
+                    preparePromptModel(model)
+                    if (model.isStructuredOutputFeatureAvailable()) generateStructuredSuggestions(model, text, prompt)
+                    else null
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w("AndroidLocalSummary", "Structured suggestions unavailable; using text fallback", error)
+                    null
+                } finally {
+                    model.close()
+                }
+            }
+            if (structured != null) return structured.questions
+        }
+        return super<LocalSummaryEngine>.suggestQuestions(text, prompt)
+    }
+
+    private suspend fun generateStructuredSuggestions(
+        model: GenerativeModel,
+        text: String,
+        prompt: String,
+    ): NanoQuestionSuggestions? {
+        val systemPromptAvailable = model.isSystemPromptAvailable()
+        fun request(input: String, outputTokens: Int = 1024) = generateTypedContentRequest(
+            generateContentRequest(TextPart(if (systemPromptAvailable) input else "$prompt\n\n## Input\n$input")) {
+                if (systemPromptAvailable) systemInstruction = SystemInstruction(prompt)
+                temperature = 0.2f
+                enableThinking = false
+                maxOutputTokens = outputTokens
+            }, NanoQuestionSuggestions::class,
+        )
+        val budget = NanoPromptBudget.fit(text, model.getTokenLimit(), preserveInput = true) {
+            model.countTokens(request(it)).totalTokens
+        }
+        val candidate = model.generateContent(request(budget.text, budget.outputTokens)).candidates.firstOrNull()
+        return candidate?.response.takeIf { candidate?.finishReason == TypedCandidate.TypedFinishReason.STOP }
+    }
 
     private fun summarizeInput(
         input: StorySummaryInput,
@@ -219,7 +322,7 @@ internal class AndroidLocalSummaryBackend(
                                 trySend(StorySummaryEvent.Progress(progress))
                             }
                         },
-                    )
+                    ).let(::SummaryResult)
                 } else {
                     summarizeWithGeminiNanoPrompt(
                         content = content,
@@ -229,6 +332,7 @@ internal class AndroidLocalSummaryBackend(
                             ?.takeIf(String::isNotBlank)
                             ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
                         streamResponses = request.streamResponses,
+                        thinkingRequested = request.enableThinking,
                         onProgress = { trySend(StorySummaryEvent.Progress(it)) },
                     )
                 }
@@ -252,9 +356,9 @@ internal class AndroidLocalSummaryBackend(
                             ),
                         )
                     },
-                )
+                ).let(::SummaryResult)
             }
-            send(StorySummaryEvent.Success(result))
+            send(StorySummaryEvent.Success(result.text, truncated = result.truncated))
         } catch (error: CancellationException) {
             throw error
         } catch (error: InterruptedException) {
@@ -298,18 +402,22 @@ internal class AndroidLocalSummaryBackend(
         onProgress: (String) -> Unit,
     ): String =
         withContext(Dispatchers.IO) {
-            val summarizer = Summarization.getClient(status.createOptions(appContext))
+            val summarizer = Summarization.getClient(nanoSummarizerOptions(appContext))
             try {
-                val status = summarizer.checkFeatureStatus().get()
-                if (!this@AndroidLocalSummaryBackend.status.isLocalFeatureUsable(status)) {
+                var featureStatus = summarizer.checkFeatureStatus().get()
+                status.recordFeatureStatus(true, featureStatus)
+                if (!status.isLocalFeatureUsable(featureStatus)) {
                     error(
                         "Gemini Nano is unavailable. Select another local model in AI " +
                             "summarization settings.",
                     )
                 }
-                if (status == FeatureStatus.DOWNLOADABLE || status == FeatureStatus.DOWNLOADING) {
+                if (featureStatus == FeatureStatus.DOWNLOADABLE || featureStatus == FeatureStatus.DOWNLOADING) {
                     awaitDownload(summarizer)
+                    featureStatus = summarizer.checkFeatureStatus().get()
+                    status.recordFeatureStatus(true, featureStatus)
                 }
+                check(featureStatus == FeatureStatus.AVAILABLE) { "Gemini Nano is not ready. Please try again." }
                 val request = SummarizationRequest.builder(content).build()
                 val streamedSummary = StringBuilder()
                 summarizer.runInference(request) { additionalText ->
@@ -329,25 +437,14 @@ internal class AndroidLocalSummaryBackend(
         reserveDiscussionSpace: Boolean,
         systemPrompt: String,
         streamResponses: Boolean,
+        thinkingRequested: Boolean,
         onProgress: (String) -> Unit,
-    ): String = withContext(Dispatchers.IO) {
+    ): SummaryResult = withContext(Dispatchers.IO) {
         val generativeModel = Generation.getClient()
         try {
-            when (val featureStatus = generativeModel.checkStatus()) {
-                FeatureStatus.UNAVAILABLE -> error(
-                    "Gemini Nano's custom prompt feature is unavailable on this device. " +
-                        "Choose the 3-bullet summarizer in AI features settings.",
-                )
-                FeatureStatus.DOWNLOADABLE,
-                FeatureStatus.DOWNLOADING,
-                -> generativeModel.download().collect { downloadStatus ->
-                    if (downloadStatus is DownloadStatus.DownloadFailed) throw downloadStatus.e
-                }
-                FeatureStatus.AVAILABLE -> Unit
-                else -> error("Gemini Nano prompt feature returned status $featureStatus")
-            }
+            preparePromptModel(generativeModel)
             val nativeSystemPrompt = generativeModel.isSystemPromptAvailable()
-            val thinkingAvailable = generativeModel.isThinkingModeAvailable()
+            val thinkingAvailable = thinkingRequested && generativeModel.isThinkingModeAvailable()
             fun request(text: String, outputTokens: Int = 1024) = generateContentRequest(
                 TextPart(if (nativeSystemPrompt) text else "$systemPrompt\n\n## Input\n$text"),
             ) {
@@ -360,9 +457,11 @@ internal class AndroidLocalSummaryBackend(
                 generativeModel.countTokens(request(it)).totalTokens
             }
             val promptRequest = request(budget.text, budget.outputTokens)
-            if (streamResponses) {
+            var finishReason: Int? = null
+            val text = if (streamResponses) {
                 val summary = StringBuilder()
                 generativeModel.generateContentStream(promptRequest).collect { response ->
+                    response.candidates.firstOrNull()?.finishReason?.let { finishReason = it }
                     response.candidates.firstOrNull()?.text
                         ?.takeIf(String::isNotEmpty)
                         ?.let { chunk ->
@@ -373,16 +472,37 @@ internal class AndroidLocalSummaryBackend(
                 summary.toString().trim().takeIf(String::isNotEmpty)
                     ?: error("Gemini Nano returned an empty summary")
             } else {
-                generativeModel.generateContent(promptRequest)
-                    .candidates
-                    .firstOrNull()
+                val candidate = generativeModel.generateContent(promptRequest).candidates.firstOrNull()
+                finishReason = candidate?.finishReason
+                candidate
                     ?.text
                     ?.trim()
                     ?.takeIf(String::isNotEmpty)
                     ?: error("Gemini Nano returned an empty summary")
             }
+            nanoSummaryResult(text, finishReason)
         } finally {
             generativeModel.close()
+        }
+    }
+
+    private suspend fun preparePromptModel(model: GenerativeModel) {
+        var featureStatus = model.checkStatus()
+        status.recordFeatureStatus(false, featureStatus)
+        when (featureStatus) {
+            FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> {
+                model.download().collect { download ->
+                    if (download is DownloadStatus.DownloadFailed) throw download.e
+                }
+                featureStatus = model.checkStatus()
+                status.recordFeatureStatus(false, featureStatus)
+            }
+            FeatureStatus.AVAILABLE, FeatureStatus.UNAVAILABLE -> Unit
+            else -> error("Gemini Nano prompt feature returned status $featureStatus")
+        }
+        check(featureStatus == FeatureStatus.AVAILABLE) {
+            "Gemini Nano's custom prompt feature is unavailable on this device. " +
+                "Choose the 3-bullet summarizer in AI features settings."
         }
     }
 

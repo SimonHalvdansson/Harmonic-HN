@@ -58,6 +58,7 @@ data class StoryPresentationSnapshot(
     override val nitterInfo: NitterInfo? = null,
     override val linkPreviewInfo: LinkPreviewInfo? = null,
     val linkPreviewLoading: Boolean = false,
+    val aiSummaryTruncated: Boolean = false,
 ) : LinkPreviewState
 
 @Serializable
@@ -182,6 +183,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     aiSummaryText = aiSummaryText,
     aiSummarySourceText = aiSummarySourceText,
+    aiSummaryTruncated = aiSummaryTruncated,
     summaryGeneratedSuccessfully = summaryGeneratedSuccessfully,
     pollOptions = pollOptions?.map {
         PollOptionSnapshot(it.loaded, it.loadFailed, it.text, it.points, it.id)

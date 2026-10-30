@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.platform
 import com.simon.harmonichackernews.data.History
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.LocalSummaryAvailability
+import com.simon.harmonichackernews.summary.AskQuestionSuggestions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -113,11 +114,13 @@ data class SummaryRequest(
     val preserveInput: Boolean = false,
     // Token-aware engines reserve half the usable input budget for later discussion turns.
     val reserveDiscussionSpace: Boolean = false,
+    val enableThinking: Boolean = false,
 )
 
 data class SummaryResult(
     val text: String,
     val debugInfo: String? = null,
+    val truncated: Boolean = false,
 )
 
 interface LocalSummaryEngine {
@@ -128,13 +131,24 @@ interface LocalSummaryEngine {
     )
     suspend fun isAvailable(): Boolean
     fun isReady(): Boolean = canAttempt()
+    suspend fun availability(useGeminiNanoSummarizationLora: Boolean): LocalSummaryAvailability = availability()
+    fun isReady(useGeminiNanoSummarizationLora: Boolean): Boolean = isReady()
     suspend fun summarize(request: SummaryRequest): SummaryResult
+
+    /** Hosts may use typed output; all other engines retain the validated text fallback. */
+    suspend fun suggestQuestions(text: String, prompt: String): List<String> {
+        val response = summarize(SummaryRequest(
+            text = text, prompt = "$prompt ${AskQuestionSuggestions.TEXT_FORMAT}",
+            streamResponses = false, preserveInput = true,
+        ))
+        return if (response.truncated) emptyList() else AskQuestionSuggestions.parse(response.text, emptyList())
+    }
 
     fun summarizeEvents(request: SummaryRequest): Flow<StorySummaryEvent> = flow {
         val result = summarize(request)
         result.debugInfo?.takeIf(String::isNotBlank)?.let {
             emit(StorySummaryEvent.DebugInfo(it))
         }
-        emit(StorySummaryEvent.Success(result.text))
+        emit(StorySummaryEvent.Success(result.text, truncated = result.truncated))
     }
 }

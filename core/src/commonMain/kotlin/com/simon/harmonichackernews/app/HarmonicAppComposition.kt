@@ -291,7 +291,9 @@ class HarmonicAppComposition(
         )
 
     fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
-        LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels)
+        LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels) {
+            aiSummarySettings.snapshot().geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS
+        }
 
     /** Feature-sized platform views derived from the one application-scoped platform graph. */
     fun storiesPlatformDependencies(): StoriesPlatformDependencies = StoriesPlatformDependencies(

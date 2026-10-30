@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AppSettings
+import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.settings.CommentsHeaderButton
 import com.simon.harmonichackernews.ui.comments.icon
 import com.simon.harmonichackernews.settings.CommentsHeaderImage
@@ -142,7 +143,9 @@ fun HeaderDisplaySettingsRoute(
         canProvideSummary = settings.debug.mockAiAnswers || AiSummaryAvailabilityPolicy.canProvideSummary(
             explicitlyEnabled = aiSettings.explicitlyEnabled,
             mode = aiSettings.mode.storedValue,
-            localAvailable = dependencies.localSummaryEngine?.isReady() == true,
+            localAvailable = dependencies.localSummaryEngine?.isReady(
+                aiSettings.geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS,
+            ) == true,
             cloudApiKeyAvailable = aiSettings.apiKey.isNotBlank(),
         ),
     ).let { display ->

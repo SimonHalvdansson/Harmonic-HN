@@ -59,6 +59,7 @@ data class StoryListItemSnapshot(
     val videoTitle: String? get() = presentation.videoTitle
     val aiSummaryText: String? get() = presentation.aiSummaryText
     val aiSummarySourceText: String? get() = presentation.aiSummarySourceText
+    val aiSummaryTruncated: Boolean get() = presentation.aiSummaryTruncated
     val summaryGeneratedSuccessfully: Boolean
         get() = presentation.summaryGeneratedSuccessfully
     val previewImageUrl: String? get() = presentation.previewImage.url

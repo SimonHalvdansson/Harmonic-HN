@@ -26,6 +26,7 @@ class LocalSummarySettingsRuntime(
     private val scope: CoroutineScope,
     private val summary: LocalSummaryEngine?,
     private val models: LocalModelService?,
+    private val useGeminiNanoSummarizationLora: () -> Boolean = { false },
 ) {
     private val mutableState = MutableStateFlow(LocalSummarySettingsState())
     private var job: Job? = null
@@ -40,7 +41,8 @@ class LocalSummarySettingsRuntime(
         }
         job = scope.launch {
             try {
-                val availability = summary.availability()
+                val useLora = useGeminiNanoSummarizationLora()
+                val availability = summary.availability(useLora)
                 val nanoAvailable = availability.available && !availability.downloadableFallbackRequired
                 if (!nanoAvailable && models?.selectedModel?.downloadable == false) {
                     models.selectFirstReadyOrClear()
@@ -52,7 +54,7 @@ class LocalSummarySettingsRuntime(
                     nanoAvailable = nanoAvailable,
                     nanoBaseModelName = availability.baseModelName,
                     statusMessage = availability.statusMessage,
-                    configurationReady = summary.isReady(),
+                    configurationReady = summary.isReady(useLora),
                     revision = mutableState.value.revision + 1,
                 )
             } catch (error: CancellationException) {

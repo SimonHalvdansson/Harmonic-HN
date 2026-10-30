@@ -42,7 +42,7 @@ sealed interface StorySummaryEvent {
         val modelLoadMillis: Long? = null,
     ) : StorySummaryEvent
     data class Progress(val text: String) : StorySummaryEvent
-    data class Success(val text: String) : StorySummaryEvent
+    data class Success(val text: String, val truncated: Boolean = false) : StorySummaryEvent
     data class Failure(val message: String) : StorySummaryEvent
 }
 
@@ -137,6 +137,7 @@ data class StorySummaryState(
     val diagnostics: StorySummaryDiagnostics? = null,
     val status: StorySummaryStatus = StorySummaryStatus.Idle,
     val generation: Long = 0,
+    val truncated: Boolean = false,
 ) {
     val complete: Boolean
         get() = status is StorySummaryStatus.Success || status is StorySummaryStatus.Failure
@@ -242,6 +243,7 @@ class StorySummaryRuntime(
                                     modelReadyAtMillis = modelReadyAtMillis,
                                 ),
                                 status = StorySummaryStatus.Success,
+                                truncated = event.truncated,
                             )
                         }
                         is StorySummaryEvent.Failure -> {

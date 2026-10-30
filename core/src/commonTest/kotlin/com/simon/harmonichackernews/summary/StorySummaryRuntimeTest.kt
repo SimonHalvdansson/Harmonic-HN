@@ -19,6 +19,28 @@ import com.simon.harmonichackernews.platform.SummaryResult
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySummaryRuntimeTest {
     @Test
+    fun truncatedResultsSurviveTheEngineAdapterAndResetOnTheNextRequest() = runTest {
+        var truncate = true
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest) = SummaryResult("Useful partial text", truncated = truncate)
+        }
+        val backend = PlatformLocalStorySummaryBackend(engine)
+        val runtime = StorySummaryRuntime(this, backend, backend)
+        runtime.start(StorySummaryMode.LOCAL, StorySummaryInput("https://example.com", "Article"))
+        advanceUntilIdle()
+        assertEquals("Useful partial text", runtime.state.value.text)
+        assertTrue(runtime.state.value.truncated)
+        assertTrue(runtime.state.value.complete)
+
+        truncate = false
+        runtime.start(StorySummaryMode.LOCAL, StorySummaryInput("https://example.com", "Article"))
+        assertFalse(runtime.state.value.truncated)
+        advanceUntilIdle()
+        assertFalse(runtime.state.value.truncated)
+    }
+
+    @Test
     fun nativeFailuresDoNotExposeNestedPrefixesOrNetworkDiagnostics() {
         assertEquals(
             "Failed to generate local summary: unavailable",
@@ -167,6 +189,7 @@ class StorySummaryRuntimeTest {
         assertEquals("custom", request.prompt)
         assertFalse(request.streamResponses)
         assertFalse(request.useGeminiNanoSummarizationLora)
+        assertFalse(request.enableThinking)
         assertEquals(listOf<StorySummaryEvent>(StorySummaryEvent.SourceInput("article"), StorySummaryEvent.Success("done")), events)
     }
 

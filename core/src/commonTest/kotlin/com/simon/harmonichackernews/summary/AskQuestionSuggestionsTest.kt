@@ -42,6 +42,8 @@ class AskQuestionSuggestionsTest {
         val engine = Engine { request ->
             assertTrue(request.preserveInput)
             assertFalse(request.useGeminiNanoSummarizationLora)
+            assertFalse(request.enableThinking)
+            assertTrue(request.prompt.orEmpty().endsWith(AskQuestionSuggestions.TEXT_FORMAT))
             assertTrue(request.text.contains("selected_comment"))
             assertTrue(request.text.contains("temperature inversion"))
             SummaryResult(response)
@@ -61,7 +63,7 @@ class AskQuestionSuggestionsTest {
     fun sendingAQuestionCancelsSuggestionsBeforeAnswering() = runTest {
         var cancelled = false
         val engine = Engine { request ->
-            if (request.prompt == AskQuestionSuggestions.PROMPT) {
+            if (request.prompt?.startsWith(AskQuestionSuggestions.PROMPT) == true) {
                 try { awaitCancellation() } finally { cancelled = true }
             } else {
                 assertTrue(cancelled)
@@ -78,6 +80,34 @@ class AskQuestionSuggestionsTest {
         assertTrue(discussion.state.value.suggestedQuestions.isEmpty())
         assertEquals("An inversion can bend light.", discussion.state.value.turns.single().answer)
         assertNull(discussion.state.value.error)
+    }
+
+    @Test
+    fun truncatedSuggestionTextIsDiscardedWithoutBlockingChat() = runTest {
+        val discussion = discussion(Engine { SummaryResult(response, truncated = true) })
+        discussion.generateSuggestedQuestions()
+        advanceUntilIdle()
+        assertTrue(discussion.state.value.suggestedQuestions.isEmpty())
+        assertFalse(discussion.state.value.loadingSuggestions)
+        assertNull(discussion.state.value.error)
+    }
+
+    @Test
+    fun typedSuggestionsStillPassTheSameContentValidation() = runTest {
+        for (typed in listOf(questions, listOf(questions[0], questions[0]), listOf("Explain this comment?", "bad"))) {
+            val engine = object : LocalSummaryEngine {
+                override suspend fun isAvailable() = true
+                override suspend fun summarize(request: SummaryRequest): SummaryResult = error("Use typed suggestions")
+                override suspend fun suggestQuestions(text: String, prompt: String): List<String> {
+                    assertFalse("JSON array" in prompt)
+                    return typed
+                }
+            }
+            val discussion = discussion(engine)
+            discussion.generateSuggestedQuestions()
+            advanceUntilIdle()
+            assertEquals(if (typed == questions) questions else emptyList(), discussion.state.value.suggestedQuestions)
+        }
     }
 
     @Test

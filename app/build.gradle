@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.baseline.profile)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -183,12 +184,15 @@ dependencies {
     implementation(libs.coil.svg)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.mlkit.genai.prompt)
+    kspDebugLLM(libs.mlkit.genai.schema.compiler)
     debugLLMImplementation(libs.play.feature.delivery)
     debugLLMFastImplementation(libs.mlkit.genai.summarization)
     debugLLMFastImplementation(libs.mlkit.genai.prompt)
+    kspDebugLLMFast(libs.mlkit.genai.schema.compiler)
     debugLLMFastImplementation(libs.play.feature.delivery)
     playReleaseImplementation(libs.mlkit.genai.summarization)
     playReleaseImplementation(libs.mlkit.genai.prompt)
+    kspPlayRelease(libs.mlkit.genai.schema.compiler)
     playReleaseImplementation(libs.play.feature.delivery)
     implementation(libs.androidx.work)
     implementation(libs.androidx.glance.appwidget)
