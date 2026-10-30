@@ -80,7 +80,7 @@ final class IosLocalAiTests: XCTestCase {
         environment.summary.summarize(request: SummaryRequest(
             text: article, prompt: nil, model: nil,
             streamResponses: true, useGeminiNanoSummarizationLora: false, preserveInput: false,
-            reserveDiscussionSpace: false
+            reserveDiscussionSpace: false, enableThinking: false
         )) { result, error in
             output = result
             failure = error

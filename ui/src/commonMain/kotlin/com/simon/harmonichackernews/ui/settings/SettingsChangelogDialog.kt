@@ -38,6 +38,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 
 private const val CHANGELOG_RESOURCE = "files/changelog.md"
