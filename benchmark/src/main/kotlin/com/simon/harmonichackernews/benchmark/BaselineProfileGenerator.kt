@@ -41,6 +41,18 @@ class BaselineProfileGenerator {
     }
 
     @Test
+    fun settings() = rule.collect(
+        packageName = BenchmarkPackageName,
+        filterPredicate = ::isProductionProfileRule,
+    ) {
+        keepReadingProfileDeviceAwake()
+        pressHome()
+        startReadingProfileStories()
+        prepareReadingProfileSettings()
+        openReadingProfileSettings()
+    }
+
+    @Test
     fun comments() = rule.collect(
         packageName = BenchmarkPackageName,
         filterPredicate = ::isProductionProfileRule,

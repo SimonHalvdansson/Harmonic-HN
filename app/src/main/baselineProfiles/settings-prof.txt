@@ -1,0 +1,8 @@
+# Settings is opened after startup. Keep these entry points compiled before the first visit,
+# without adding Settings to the startup DEX layout or compiling every settings detail screen.
+HPLcom/simon/harmonichackernews/ui/settings/SettingsNavigationKt**;->**(**)**
+HPLcom/simon/harmonichackernews/ui/settings/SettingsNavigationShellKt**;->**(**)**
+HPLcom/simon/harmonichackernews/ui/settings/SettingsNavigationStore**;->**(**)**
+HPLcom/simon/harmonichackernews/ui/settings/SettingsNavigationViewModel**;->**(**)**
+HPLcom/simon/harmonichackernews/ui/settings/SettingsRetainedContent**;->**(**)**
+HPLcom/simon/harmonichackernews/ui/settings/SettingsScaffoldKt**;->**(**)**

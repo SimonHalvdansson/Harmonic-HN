@@ -50,6 +50,25 @@ class ReadingProfileBenchmark {
         measureBlock = { scrollStoryList() },
     )
 
+    @Test fun settingsFirstOpen() = measureSettingsFirstOpen(compilation)
+
+    @Test fun settingsFirstOpenWithoutCompilation() = measureSettingsFirstOpen(CompilationMode.None())
+
+    private fun measureSettingsFirstOpen(compilationMode: CompilationMode) = rule.measureRepeated(
+        packageName = BenchmarkPackageName,
+        metrics = listOf(FrameTimingMetric()),
+        compilationMode = compilationMode,
+        iterations = iterations,
+        setupBlock = {
+            keepReadingProfileDeviceAwake()
+            // A fresh process is essential: reopening Settings hides first-use loading and JIT.
+            killProcess()
+            startReadingProfileStories()
+            prepareReadingProfileSettings()
+        },
+        measureBlock = { openReadingProfileSettings() },
+    )
+
     @OptIn(ExperimentalMetricApi::class)
     @Test fun commentsOpen() = rule.measureRepeated(
         packageName = BenchmarkPackageName,

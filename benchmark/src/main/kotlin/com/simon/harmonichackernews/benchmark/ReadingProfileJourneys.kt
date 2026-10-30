@@ -38,6 +38,22 @@ internal fun MacrobenchmarkScope.startReadingProfileStories() {
     device.waitForIdle()
 }
 
+internal fun MacrobenchmarkScope.prepareReadingProfileSettings() {
+    checkNotNull(device.wait(Until.findObject(By.desc("More options")), 5_000)).click()
+    check(device.wait(Until.hasObject(By.text("Settings")), 5_000)) {
+        "The Stories menu did not show Settings"
+    }
+    device.waitForIdle()
+}
+
+internal fun MacrobenchmarkScope.openReadingProfileSettings() {
+    checkNotNull(device.findObject(By.text("Settings"))).click()
+    check(device.wait(Until.hasObject(By.text("Appearance")), 5_000)) {
+        "The Settings list did not render"
+    }
+    device.waitForIdle()
+}
+
 internal fun MacrobenchmarkScope.prepareReadingProfileComments() {
     prepareDeterministicCommentsFixture(
         CommentsBenchmarkFixture.LARGE,
