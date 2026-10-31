@@ -87,6 +87,8 @@ import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.PortableWelcomeScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
+import com.simon.harmonichackernews.ui.settings.SettingsSearchCapabilities
+import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.SettingsScrollPage
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
@@ -885,6 +887,11 @@ private fun IosSettingsShell(
                     onBackFromSettings = scene.navigation::closeSettings,
                     onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
                     animateDetailChanges = true,
+                    searchCapabilities = SettingsSearchCapabilities(
+                        webLinks = WebLinksSettingsCapabilities(adBlocking = false, closeWebViewOnBack = false),
+                        systemSettings = false, volumeNavigation = false, transparentStatusBar = false,
+                        twoPane = supportsTwoPane,
+                    ),
                     renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
                         SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
                             SettingsListScreen(

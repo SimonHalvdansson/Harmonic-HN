@@ -65,6 +65,7 @@ fun PortableSettingsDetail(
     splitRatioTitle: String? = null,
 ) {
     when (section) {
+        SettingsSection.Search -> Unit // Shared search content belongs to SettingsNavigationShell.
         SettingsSection.Appearance -> PortableAppearanceSettings(
             app,
             scene,

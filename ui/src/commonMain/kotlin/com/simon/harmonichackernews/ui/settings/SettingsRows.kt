@@ -134,6 +134,7 @@ fun SettingsMainToggle(
             .defaultMinSize(minHeight = 72.dp)
             .clip(RoundedCornerShape(36.dp))
             .background(backgroundColor)
+            .settingsSearchTarget(title)
             .toggleable(
                 value = checked,
                 enabled = enabled,
@@ -217,6 +218,7 @@ fun SettingRow(
                 minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
             .themeBackground { backgroundColor ?: cardBackground }
+            .settingsSearchTarget(title)
             .alpha(if (enabled) 1f else 0.38f)
             .then(
                 if (onClick != null) {
@@ -358,6 +360,7 @@ fun <T> SegmentedSetting(
         modifier = Modifier
             .fillMaxWidth()
             .themeBackground { containerColor ?: cardBackground }
+            .settingsSearchTarget(title)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
@@ -540,6 +543,7 @@ fun SliderSetting(
         modifier = Modifier
             .fillMaxWidth()
             .themeBackground { cardBackground }
+            .settingsSearchTarget(title)
             .alpha(if (enabled) 1f else 0.38f)
             .padding(
                 horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,

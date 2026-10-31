@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_search_title">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_back">Back</string>
+    <string name="settings_search_hint">Find a setting</string>
+    <string name="settings_search_hint_detail">Search by name or try words like font, dark mode, or hidden comments.</string>
+    <string name="settings_search_empty">No settings found</string>
+    <string name="settings_search_empty_detail">Try a different word or a shorter search.</string>
+    <string name="settings_search_recent">Recently viewed</string>
+    <string name="settings_search_one_result">1 result</string>
+    <string name="settings_search_results">%1$d results</string>
+    <string name="settings_search_choose_result">Choose a search result to view its settings</string>
     <string name="download_file">Download file</string>
     <string name="settings_section_stories_header">Stories header</string>
     <string name="settings_section_frontpages">Manage frontpages</string>

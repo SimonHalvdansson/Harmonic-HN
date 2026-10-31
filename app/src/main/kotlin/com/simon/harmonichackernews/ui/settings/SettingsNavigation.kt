@@ -81,6 +81,7 @@ fun SettingsShell(
         },
         renderDetail = { section, singlePane, onBack, onNavigate ->
             when (section) {
+                SettingsSection.Search -> Unit // Shared search content belongs to SettingsNavigationShell.
                 SettingsSection.Appearance -> AndroidAppearanceSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,

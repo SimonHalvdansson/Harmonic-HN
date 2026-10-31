@@ -47,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,6 +183,9 @@ fun SettingsListScreen(
                     navigationBarPadding,
             ),
         ) {
+            item(key = "settings-search", contentType = "settings-search") {
+                SettingsSearchButton { onSectionSelected(SettingsSection.Search) }
+            }
             visibleGroups.forEach { (group, visibleEntries) ->
                 item(key = group.name, contentType = "settings-navigation-group") {
                     Column(
@@ -315,7 +319,7 @@ private fun SettingsNavigationIcon(icon: DrawableResource, group: SettingsListGr
 /** Consume the actual pane margins without writing inset state during lookahead placement. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Modifier.consumeSettingsPaneBounds(): Modifier {
+internal fun Modifier.consumeSettingsPaneBounds(): Modifier {
     val consumed = remember { MutableWindowInsets() }
     return onGloballyPositioned { coordinates ->
         // recalculateWindowInsets shares mutable state between lookahead and actual placement.
@@ -352,8 +356,10 @@ fun SettingsPage(
     horizontalInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
     previewCanPin: Boolean = true,
     scrollContentModifier: Modifier = Modifier,
+    focusSetting: String? = LocalSettingsFocusSetting.current,
     content: LazyListScope.() -> Unit,
 ) {
+    val searchFocus = rememberSettingsSearchFocus(focusSetting, listState)
     val navigationBarPadding =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
@@ -374,49 +380,52 @@ fun SettingsPage(
             SettingsTopAppBar(title = title, onBack = onBack.takeIf { showNavigation })
         }
         Box(Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().then(scrollContentModifier)
-                    .statusBarScrollToTop { listState.animateScrollToItem(0) },
-                state = listState,
-                contentPadding = PaddingValues(
-                    start = 0.dp,
-                    top = 0.dp,
-                    end = 0.dp,
-                    bottom = 24.dp + navigationBarPadding + extraBottomPadding,
-                ),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-                // Preference-backed rows are declared in the lazy content lambda. Capturing the
-                // version here makes LazyColumn rebuild those declarations after a preference edit.
-                @Suppress("UNUSED_EXPRESSION")
-                contentVersion
-                headerContent?.let { header ->
-                    item(key = "settings-header", contentType = "settings-header") { header() }
-                }
-                pinnedContent?.let { preview ->
-                    // Always keep the same sticky item composed and measured. A tall preview
-                    // follows its natural scroll position instead of sticking. Replacing an item
-                    // with a stickyHeader (or briefly pinning it to remeasure after an edit)
-                    // flashes the preview over the settings and resets animation state.
-                    stickyHeader(key = "settings-preview", contentType = "settings-preview") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .graphicsLayer {
-                                    val header = listState.layoutInfo.visibleItemsInfo
-                                        .firstOrNull { it.key == "settings-preview" }
-                                    translationY = if (header == null) 0f else {
-                                        (settingsPreviewOffset(listState, header, navigationBarPx, previewCanPin) -
-                                            header.offset).toFloat()
+            CompositionLocalProvider(LocalSettingsSearchFocus provides searchFocus) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().then(scrollContentModifier)
+                        .onGloballyPositioned { searchFocus?.viewport = it }
+                        .statusBarScrollToTop { listState.animateScrollToItem(0) },
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = 0.dp,
+                        top = 0.dp,
+                        end = 0.dp,
+                        bottom = 24.dp + navigationBarPadding + extraBottomPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    // Preference-backed rows are declared in the lazy content lambda. Capturing the
+                    // version here makes LazyColumn rebuild those declarations after a preference edit.
+                    @Suppress("UNUSED_EXPRESSION")
+                    contentVersion
+                    headerContent?.let { header ->
+                        item(key = "settings-header", contentType = "settings-header") { header() }
+                    }
+                    pinnedContent?.let { preview ->
+                        // Always keep the same sticky item composed and measured. A tall preview
+                        // follows its natural scroll position instead of sticking. Replacing an item
+                        // with a stickyHeader (or briefly pinning it to remeasure after an edit)
+                        // flashes the preview over the settings and resets animation state.
+                        stickyHeader(key = "settings-preview", contentType = "settings-preview") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer {
+                                        val header = listState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { it.key == "settings-preview" }
+                                        translationY = if (header == null) 0f else {
+                                            (settingsPreviewOffset(listState, header, navigationBarPx, previewCanPin) -
+                                                header.offset).toFloat()
+                                        }
                                     }
-                                }
-                                .themeBackground { pinnedContentBackground ?: pageBackground },
-                        ) {
-                            preview()
+                                    .themeBackground { pinnedContentBackground ?: pageBackground },
+                            ) {
+                                preview()
+                            }
                         }
                     }
+                    content()
                 }
-                content()
             }
             topOverlay?.invoke()
             floatingContent?.let { controls ->

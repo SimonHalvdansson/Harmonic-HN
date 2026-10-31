@@ -98,6 +98,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsListScreen
 import com.simon.harmonichackernews.ui.settings.PortableWelcomeScreen
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationShell
+import com.simon.harmonichackernews.ui.settings.SettingsSearchCapabilities
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
@@ -763,6 +764,11 @@ private fun DesktopSettingsShell(
             },
             onBackFromSettings = scene.navigation::closeSettings,
             onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
+            searchCapabilities = SettingsSearchCapabilities(
+                webLinks = desktopWebLinksSettingsCapabilities(),
+                notifications = false, systemSettings = false, volumeNavigation = false,
+                transparentStatusBar = false, twoPane = true,
+            ),
             renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
                 SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
                     SettingsListScreen(

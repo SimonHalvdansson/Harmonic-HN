@@ -12,7 +12,7 @@ internal fun rememberSettingsRetainedContent(
     state: SettingsNavigationState,
     twoPane: Boolean,
 ): SettingsRetainedContent {
-    val sections = state.detailStack.ifEmpty {
+    val sections = (state.searchOriginRoutes.mapNotNull(SettingsSection::fromRoute) + state.detailStack).distinct().ifEmpty {
         listOfNotNull(SettingsSection.Appearance.takeIf { twoPane })
     }
     val scopes = rememberNavigationEntryScopes(

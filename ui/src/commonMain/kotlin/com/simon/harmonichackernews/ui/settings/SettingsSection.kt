@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import com.simon.harmonichackernews.resources.settings_section_user_avatars
 import com.simon.harmonichackernews.resources.settings_section_quote_highlighting
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.settings_search_title
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.resources.settings_section_ai_summary
 import com.simon.harmonichackernews.resources.settings_section_appearance
@@ -32,6 +33,7 @@ enum class SettingsSection(
     val route: String,
     val titleResource: StringResource,
 ) {
+    Search("search", Res.string.settings_search_title),
     Appearance("appearance", Res.string.settings_section_appearance),
     Font("font", Res.string.settings_section_font),
     Theme("theme", Res.string.settings_section_theme),

@@ -92,10 +92,13 @@ fun SettingsNavigationShell(
     supportsTwoPane: Boolean = directive.maxHorizontalPartitions > 1,
     paneProportion: Float = if (isFoldable) 0.5f else 0.4f,
     snapToCenter: Boolean = isFoldable,
+    searchCapabilities: SettingsSearchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane),
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val scrollToTopEnabled = LocalStatusBarScrollToTopEnabled.current
     val navigationState by navigation.state.collectAsStateWithLifecycle()
+    val searchEntries = rememberSettingsSearchEntries(searchCapabilities)
+    val searchTarget = searchEntries.firstOrNull { it.id == navigationState.searchResultId }
     val retainedContent = rememberSettingsRetainedContent(navigationState, isTwoPane)
     val listContent: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection) -> Unit) -> Unit =
         { selected, showSelection, onBack, onSelect ->
@@ -107,12 +110,18 @@ fun SettingsNavigationShell(
                 val parent = navigationState.detailStack.getOrNull(navigationState.detailStack.indexOf(section) - 1)
                 CompositionLocalProvider(
                     LocalSettingsParentSection provides parent,
-                    LocalSettingsFocusHideComments provides navigation.focusHideComments,
+                    LocalSettingsFocusHideComments provides (navigation.focusHideComments && searchTarget == null),
+                    LocalSettingsFocusSetting provides searchTarget?.takeIf { it.screenRoute == section.route }?.settingTitle,
                     LocalStatusBarScrollToTopEnabled provides (scrollToTopEnabled &&
                         section == navigationState.selectedSection &&
                         (isTwoPane || navigationState.detailStack.isNotEmpty())),
                 ) {
-                    renderDetail(section, singlePane, onBack, onNavigate)
+                    if (section == SettingsSection.Search) {
+                        SettingsSearchScreen(navigation, searchEntries, navigation::closeSearch)
+                    } else {
+                        // Results retain an Up affordance even in a wide window with no system Back key.
+                        renderDetail(section, singlePane || parent == SettingsSection.Search, onBack, onNavigate)
+                    }
                 }
             }
         }
@@ -140,7 +149,7 @@ fun SettingsNavigationShell(
         // is not a real navigation destination and must not be persisted. Persisting it immediately
         // pushes Appearance again and makes Up from every detail land there instead of on the list.
         LaunchedEffect(navigationState.detailStack) {
-            navigationState.detailStack.lastOrNull()?.let(onSectionChanged)
+            navigationState.detailStack.lastOrNull()?.takeUnless { it == SettingsSection.Search }?.let(onSectionChanged)
         }
         LaunchedEffect(isTwoPane) { navigation.updateLayout(isTwoPane) }
 
@@ -158,6 +167,14 @@ fun SettingsNavigationShell(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
+            val searching = SettingsSection.Search in navigationState.detailStack
+            val twoPaneDetail: @Composable (SettingsSection) -> Unit = { section ->
+                if (section == SettingsSection.Search) {
+                    SettingsSearchDetailPlaceholder()
+                } else {
+                    renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
+                }
+            }
             val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
                 directive = layoutDirective,
                 paneExpansionState = paneExpansionState,
@@ -175,16 +192,20 @@ fun SettingsNavigationShell(
                         },
                     ),
                 ) {
-                    listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) }
+                    if (searching) {
+                        renderDetailWithOrigin(SettingsSection.Search, false, ::navigateBack, ::navigateTo)
+                    } else {
+                        listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) }
+                    }
                 }
                 entry<SettingsTwoPaneDetailDestination>(
                     metadata = ListDetailSceneStrategy.detailPane(),
                 ) {
                     if (!animateDetailChanges) {
-                        renderDetailWithOrigin(selectedSection, false, ::navigateBack, ::navigateTo)
+                        twoPaneDetail(selectedSection)
                     } else {
                         SettingsDetailTransition(navigationState) { section ->
-                            renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
+                            twoPaneDetail(section)
                         }
                     }
                 }

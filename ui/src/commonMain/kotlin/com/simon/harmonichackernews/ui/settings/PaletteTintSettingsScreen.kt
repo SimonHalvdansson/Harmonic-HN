@@ -366,7 +366,7 @@ private fun PaletteAdjustment(
     valueRange: ClosedFloatingPointRange<Float>,
     onValueChange: (Float) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().settingsSearchTarget(label).padding(top = 8.dp, bottom = 4.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = label,
