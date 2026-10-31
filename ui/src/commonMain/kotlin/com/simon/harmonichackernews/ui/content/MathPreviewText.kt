@@ -13,6 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.TextUnit
+import com.hrm.latex.renderer.measure.LatexDimensions
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
@@ -23,6 +24,16 @@ internal data class PreviewMathSegment(
     val latex: String? = null,
     val display: Boolean = false,
 )
+
+// Leave ample room for ordinary formulas while keeping inline content within Compose's packed
+// constraints and bounding the size of the formula's canvas, independently of font scale.
+private const val MAX_PREVIEW_MATH_DIMENSION_PX = 4096f
+
+private fun LatexDimensions.isSafeForPreview(): Boolean =
+    widthPx.isFinite() && widthPx > 0f && widthPx <= MAX_PREVIEW_MATH_DIMENSION_PX &&
+        heightPx.isFinite() && heightPx > 0f && heightPx <= MAX_PREVIEW_MATH_DIMENSION_PX &&
+        contentWidthPx in 0f..MAX_PREVIEW_MATH_DIMENSION_PX &&
+        contentHeightPx in 0f..MAX_PREVIEW_MATH_DIMENSION_PX
 
 /** Preserve prose and malformed input; only complete, unescaped math delimiters become formulas. */
 internal fun previewMathSegments(text: String): List<PreviewMathSegment> {
@@ -99,7 +110,13 @@ internal fun MathPreviewText(
             segments.mapIndexedNotNull { index, segment ->
                 segment.latex?.let { latex ->
                     val mathStyle = if (segment.display) "\\displaystyle " else "\\textstyle "
-                    measurer.inlineContent(mathStyle + latex, config)?.let { index.toString() to it }
+                    val source = mathStyle + latex
+                    val dimensions = measurer.measure(source, config)
+                    // Missing inline content displays appendInlineContent's original-source
+                    // alternative. Checking before composing also protects the later layout pass.
+                    if (dimensions?.isSafeForPreview() == true) {
+                        measurer.inlineContent(source, config)?.let { index.toString() to it }
+                    } else null
                 }
             }.toMap()
         }

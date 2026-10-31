@@ -140,7 +140,7 @@ class CommentThreadStore {
         val header = allComments.firstOrNull() ?: Comment()
         val nextComments = ArrayList<Comment>(parsedComments.size + 1)
         nextComments.add(header)
-        parsedComments.forEach { parsed ->
+        forEachValidComment(header.id, parsedComments) { parsed ->
             val existing = commentsById[parsed.id]
             if (existing == null) {
                 nextComments.add(parsed)
@@ -278,8 +278,28 @@ class CommentThreadStore {
         val header = allComments.firstOrNull() ?: Comment()
         val nextComments = ArrayList<Comment>(loadedComments.size + 1)
         nextComments.add(header)
-        nextComments.addAll(loadedComments)
+        forEachValidComment(header.id, loadedComments, nextComments::add)
         prepareAndReplace(story, nextComments, sorting, collapseTopLevel)
+    }
+
+    /** Keep the first valid ID, excluding the header. Discard ambiguous subtrees with their root. */
+    private inline fun forEachValidComment(
+        headerId: Int,
+        comments: List<Comment>,
+        accept: (Comment) -> Unit,
+    ) {
+        val seen = HashSet<Int>(comments.size + 1)
+        seen.add(headerId)
+        var skippedDepth: Int? = null
+        for (comment in comments) {
+            if (skippedDepth?.let { comment.depth > it } == true) continue
+            skippedDepth = null
+            if (comment.id <= 0 || !seen.add(comment.id)) {
+                skippedDepth = comment.depth
+                continue
+            }
+            accept(comment)
+        }
     }
 
     fun setSorting(sortType: String) {

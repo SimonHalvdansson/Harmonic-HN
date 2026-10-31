@@ -17,6 +17,67 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentThreadStoreTest {
     @Test
+    fun invalidAndDuplicateCommentSubtreesNeverReachPresentation() {
+        for (parsed in listOf(false, true)) {
+            val story = story()
+            val header = comment(99, -1, -1, "Story header").apply { expanded = true }
+            val store = CommentThreadStore().also { it.reset(story, header) }
+            val incoming = listOf(
+                comment(1, 99, 0, "first parent").apply { expanded = true },
+                comment(2, 1, 1, "first child"),
+                comment(1, 99, 0, "duplicate parent"),
+                comment(3, 1, 1, "ambiguous child"),
+                comment(0, 99, 0, "missing ID"),
+                comment(4, 0, 1, "invalid parent's child"),
+                comment(-1, 99, 0, "negative ID"),
+                comment(99, 99, 0, "header collision"),
+                comment(5, 99, 1, "header collision's child"),
+                comment(6, 99, 0, "last parent").apply { expanded = true },
+                comment(7, 6, 1, "last child"),
+            )
+            if (parsed) store.replaceParsedComments(story, incoming, "Default", false)
+            else store.appendLoadedComments(story, incoming, "Default", false)
+
+            assertEquals(listOf(99, 1, 2, 6, 7), store.state.value.allComments.map { it.id })
+            assertEquals(listOf(1, 2, 6, 7), store.state.value.visibleComments.map { it.comment.id })
+            assertEquals("Story header", header.text)
+            assertEquals("first parent", store.findComment(1)?.text)
+            store.toggleExpanded(1)
+            assertEquals(listOf(1, 6, 7), store.state.value.visibleComments.map { it.comment.id })
+        }
+    }
+
+    @Test
+    fun preparedRefreshKeepsFirstOccurrenceWithoutOverwritingHeaderOrRetainedExpansion() {
+        val story = story()
+        val header = comment(99, -1, -1, "Story header").apply { expanded = true }
+        val store = CommentThreadStore().also { it.reset(story, header) }
+        store.replaceParsedComments(story, comments().onEach { it.expanded = true }, "Default", false)
+        store.toggleExpanded(1)
+        fun incoming() = listOf(
+            comment(1, 99, 0, "updated first occurrence"),
+            comment(2, 1, 1, "updated child"),
+            comment(1, 99, 0, "duplicate must not overwrite first occurrence"),
+            comment(3, 1, 1, "ambiguous child"),
+            comment(99, 99, 0, "must not overwrite header"),
+            comment(0, 99, 0, "missing ID"),
+        )
+        val prepared = CommentThreadStore.prepareUpdate(
+            store.capturePreparationInput(), story.toSnapshot(), incoming(), false, true,
+        )
+        store.commitPreparedInitialComments(story, prepared)
+        assertEquals(listOf(99, 1, 2), store.state.value.allComments.map { it.id })
+        assertEquals("updated first occurrence", store.findComment(1)?.text)
+        assertFalse(store.findComment(1)!!.expanded)
+        assertEquals("Story header", store.findComment(99)?.text)
+
+        val initial = store.prepareInitialParsedComments(story, incoming(), "Default", false)
+        store.commitPreparedInitialComments(story, initial)
+        assertEquals(listOf(99, 1, 2), store.state.value.allComments.map { it.id })
+        assertEquals("Story header", store.findComment(99)?.text)
+    }
+
+    @Test
     fun flaggedFilteringIsOptInAndPreservesRepliesAndNonPlaceholderText() {
         val store = CommentThreadStore().also {
             it.reset(story())
