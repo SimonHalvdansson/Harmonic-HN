@@ -9,7 +9,10 @@ import io.ktor.http.URLBuilder
 
 internal object UsgsLinkPreview {
     internal fun usgsEventId(url: String?): String? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return usgsEventId(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun usgsEventId(parsed: NetworkUrl): String? {
         if (parsed.host.lowercase() != "earthquake.usgs.gov") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         val index = segments.indexOf("eventpage")

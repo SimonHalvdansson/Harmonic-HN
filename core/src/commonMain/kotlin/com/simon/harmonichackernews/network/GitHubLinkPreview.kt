@@ -31,7 +31,10 @@ internal object GitHubLinkPreview {
     }
 
     internal fun githubTarget(url: String?): GitHubPreviewTarget? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return githubTarget(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun githubTarget(parsed: NetworkUrl): GitHubPreviewTarget? {
         if (parsed.scheme !in setOf("http", "https")) return null
         if (parsed.host.lowercase().removePrefix("www.") != "github.com") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)

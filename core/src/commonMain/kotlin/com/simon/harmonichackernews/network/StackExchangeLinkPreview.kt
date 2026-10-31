@@ -17,7 +17,10 @@ internal object StackExchangeLinkPreview {
     fun isStackExchangeUrl(url: String?): Boolean = stackExchangeRequest(url) != null
 
     fun stackExchangeRequest(url: String?): StackExchangeRequest? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return stackExchangeRequest(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun stackExchangeRequest(parsed: NetworkUrl): StackExchangeRequest? {
         val siteParam = stackExchangeSiteParam(parsed.host) ?: return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         for (index in 0..<segments.lastIndex) {

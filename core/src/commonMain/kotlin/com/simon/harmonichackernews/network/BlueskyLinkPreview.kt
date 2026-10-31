@@ -8,7 +8,10 @@ import io.ktor.http.URLBuilder
 
 internal object BlueskyLinkPreview {
     internal fun isBlueskyPost(url: String?): Boolean {
-        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        return isBlueskyPost(url?.toNetworkUrlOrNull() ?: return false)
+    }
+
+    internal fun isBlueskyPost(parsed: NetworkUrl): Boolean {
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return parsed.host.lowercase() == "bsky.app" && segments.size >= 4 &&
             segments[0] == "profile" && segments[2] == "post"

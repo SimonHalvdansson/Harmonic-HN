@@ -12,6 +12,48 @@ import kotlin.test.assertNull
 
 class ProviderUrlNormalizationTest {
     @Test
+    fun sharedParsingPreservesProviderSpecificSchemeAndHostRules() {
+        val examples = mapOf(
+            "https://WWW.GITHUB.COM/owner/repo" to LinkPreviewType.GITHUB_REPOSITORY,
+            "ftp://gitlab.com/owner/repo" to LinkPreviewType.GITLAB_PROJECT,
+            "ftp://www.npmjs.com/package/react" to LinkPreviewType.NPM_PACKAGE,
+            "ftp://github.com/owner/repo" to null,
+            "ftp://arxiv.org/abs/2501.06425" to null,
+            "ftp://en.wikipedia.org/wiki/Hacker_News" to null,
+            "https://www.arxiv.org/abs/2501.06425" to null,
+            "https://www.en.wikipedia.org/wiki/Hacker_News" to null,
+        )
+        examples.forEach { (url, expected) ->
+            assertEquals(expected, RichLinkPreviewUrls.type(url), url)
+        }
+    }
+
+    @Test
+    fun sharedParsingPreservesEncodedPathsAndRejectsMalformedEscapes() {
+        assertEquals(
+            LinkPreviewType.HUGGING_FACE_DATASET,
+            RichLinkPreviewUrls.type("https://huggingface.co/%64atasets/owner/data"),
+        )
+        assertEquals(
+            LinkPreviewType.NPM_PACKAGE,
+            RichLinkPreviewUrls.type("https://www.npmjs.com/package/%40types/react"),
+        )
+        assertEquals(
+            "C%2B%2B/History",
+            LinkPreviewUrls.wikipediaTitle("https://en.wikipedia.org/wiki/C%252B%252B/History"),
+        )
+        // arXiv intentionally matches the encoded path; the other providers above use decoded segments.
+        assertNull(RichLinkPreviewUrls.type("https://arxiv.org/abs/%32%35%30%31.06425"))
+        for (url in listOf(
+            "https://github.com/owner/repo%2",
+            "https://huggingface.co/owner/model?bad=%GG",
+            "https://social.example/@user/123#bad%",
+        )) {
+            assertNull(RichLinkPreviewUrls.type(url), url)
+        }
+    }
+
+    @Test
     fun githubClassifierAndLoaderUseTheSameRepositoryIdentity() = runTest {
         val client = HttpClient(MockEngine { request ->
             assertEquals("api.github.com", request.url.host)

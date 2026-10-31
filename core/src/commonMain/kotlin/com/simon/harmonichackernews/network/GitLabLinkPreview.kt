@@ -9,7 +9,10 @@ internal object GitLabLinkPreview {
     fun isGitLabUrl(url: String?): Boolean = gitLabProjectPath(url) != null
 
     fun gitLabProjectPath(url: String?): String? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return gitLabProjectPath(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun gitLabProjectPath(parsed: NetworkUrl): String? {
         if (parsed.host.lowercase().removePrefix("www.") != "gitlab.com") return null
         return parsed.pathSegments
             .filter(String::isNotEmpty)

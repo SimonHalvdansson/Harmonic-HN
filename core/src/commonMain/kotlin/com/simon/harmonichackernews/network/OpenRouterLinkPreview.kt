@@ -11,7 +11,10 @@ internal object OpenRouterLinkPreview {
     fun isOpenRouterUrl(url: String?): Boolean = openRouterModel(url) != null
 
     fun openRouterModel(url: String?): OpenRouterModel? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return openRouterModel(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun openRouterModel(parsed: NetworkUrl): OpenRouterModel? {
         if (parsed.host.lowercase().removePrefix("www.") != "openrouter.ai") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         if (segments.size != 2 || segments.first().lowercase() in openRouterReservedPaths) {
