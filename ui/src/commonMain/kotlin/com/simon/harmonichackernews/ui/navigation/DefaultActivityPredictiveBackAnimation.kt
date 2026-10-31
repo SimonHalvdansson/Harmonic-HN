@@ -150,6 +150,10 @@ class DefaultActivityPredictiveBackAnimation(
         progressAnimatable.animateTo(0f)
     }
 
+    internal suspend fun finishImmediately() {
+        finishProgressAnimatable.snapTo(1f)
+    }
+
     private companion object {
         const val GestureTargetScale = 0.85f
         const val FinishTranslationFraction = 0.2f
