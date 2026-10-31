@@ -7,7 +7,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,9 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
@@ -64,6 +66,7 @@ fun SettingsAlertDialog(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
+    val dialogMaxWidth = settingsDialogMaxWidth()
     PredictiveBackDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
@@ -87,6 +90,7 @@ fun SettingsAlertDialog(
             scrollableContent = scrollableContent,
             foreground = foreground,
             containerColor = containerColor,
+            dialogMaxWidth = dialogMaxWidth,
         )
     }
 }
@@ -107,19 +111,12 @@ private fun SettingsAlertDialogLayout(
     scrollableContent: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
+    dialogMaxWidth: Dp,
 ) {
     val contentWindowInsets = synchronizedSettingsDialogInsets()
-    BoxWithConstraints(
+    Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        val shortEdge = minOf(maxWidth, maxHeight)
-        val longEdge = maxOf(maxWidth, maxHeight)
-        val usesTabletDialogWidth = shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f
-        val dialogMaxWidth = if (usesTabletDialogWidth) {
-            HarmonicDimens.compose_settings_dialog_tablet_max_width
-        } else {
-            HarmonicDimens.compose_settings_dialog_max_width
-        }
         if (dismissOnClickOutside) {
             Box(
                 modifier = Modifier
@@ -225,6 +222,21 @@ private fun SettingsAlertDialogLayout(
             }
         }
         foreground?.invoke(this)
+    }
+}
+
+/** Read in the caller's window: the iOS dialog's available height changes with the keyboard. */
+@Composable
+internal fun settingsDialogMaxWidth(): Dp {
+    val size = LocalWindowInfo.current.containerSize
+    return with(LocalDensity.current) {
+        val shortEdge = minOf(size.width, size.height).toDp()
+        val longEdge = maxOf(size.width, size.height).toDp()
+        if (shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f) {
+            HarmonicDimens.compose_settings_dialog_tablet_max_width
+        } else {
+            HarmonicDimens.compose_settings_dialog_max_width
+        }
     }
 }
 

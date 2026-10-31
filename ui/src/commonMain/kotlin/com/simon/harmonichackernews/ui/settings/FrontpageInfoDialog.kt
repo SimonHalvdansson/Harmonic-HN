@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.simon.harmonichackernews.StoryType
-import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_info
 import com.simon.harmonichackernews.ui.common.PlatformDialogBackgroundDimAmount
@@ -100,6 +99,7 @@ internal fun FrontpageInfoDialog(
     val backProgress = remember(source) { Animatable(0f) }
     var backEdge by remember(source) { mutableIntStateOf(0) }
     val requestDismiss = { dismissRequest += 1 }
+    val dialogMaxWidth = settingsDialogMaxWidth()
     PlatformDialogDimHost {
         Dialog(
             onDismissRequest = requestDismiss,
@@ -121,9 +121,7 @@ internal fun FrontpageInfoDialog(
                 onCancelled = { backProgress.animateTo(0f, tween(180)) },
                 onCommitted = { requestDismiss() },
             )
-            BoxWithConstraints(Modifier.semantics { paneTitle = type.label }) {
-                val shortEdge = minOf(maxWidth, maxHeight)
-                val longEdge = maxOf(maxWidth, maxHeight)
+            Box(Modifier.semantics { paneTitle = type.label }) {
                 TransformOverlay(
                     contentKey = source,
                     sourceBounds = source.bounds,
@@ -131,11 +129,7 @@ internal fun FrontpageInfoDialog(
                     dismissRequestVersion = dismissRequest,
                     predictiveBackProgress = backProgress.value,
                     predictiveBackEdge = backEdge,
-                    maxWidth = if (shortEdge >= 600.dp && longEdge >= shortEdge * 1.3f) {
-                        HarmonicDimens.compose_settings_dialog_tablet_max_width
-                    } else {
-                        HarmonicDimens.compose_settings_dialog_max_width
-                    },
+                    maxWidth = dialogMaxWidth,
                     horizontalPadding = 24.dp,
                     verticalPadding = 24.dp,
                     targetCornerRadius = 28.dp,

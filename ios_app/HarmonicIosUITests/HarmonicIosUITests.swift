@@ -1504,6 +1504,77 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("iPad comments after completing pull")
     }
 
+    func testIpadTextDialogsKeepWidthWhenKeyboardChanges() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openSettings()
+        app.tapVisibleButton("AI features")
+        for label in ["System prompt", "Base URL", "API Key"] {
+            app.tapVisibleButton(label)
+            let field = app.textViews.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5), label)
+            field.tapCenter()
+            let keyboard = app.keyboards.firstMatch
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in keyboard.exists && keyboard.frame.height > 1 }, object: nil
+            )], timeout: 5), .completed, label)
+            let focusedWidth = field.frame.width
+            keepScreenshot("iPad \(label) with keyboard")
+            let hideKeyboard = app.keyboards.buttons.matching(
+                NSPredicate(format: "label CONTAINS[c] %@", "Hide keyboard")
+            ).firstMatch
+            XCTAssertTrue(hideKeyboard.exists, app.keyboards.debugDescription)
+            hideKeyboard.tapCenter()
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in !keyboard.exists || keyboard.frame.height < 1 }, object: nil
+            )], timeout: 5), .completed)
+            keepScreenshot("iPad \(label) without keyboard")
+            XCTAssertEqual(field.frame.width, focusedWidth, accuracy: 1,
+                           "\(label) must keep its width when focus changes")
+            field.tapCenter()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+            XCTAssertEqual(field.frame.width, focusedWidth, accuracy: 1)
+            app.labeledButton("Cancel").tapCenter()
+            if label == "System prompt" { XCUIDevice.shared.orientation = .portrait }
+        }
+    }
+
+    func testIpadCancelledSheetPullKeepsHeaderActionsInPlace() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        openLinkPostFromDebugSettings()
+        waitForCommentsBeforeDraggingSheet()
+        let split = app.labeledButton("Read side by side")
+        if !split.exists {
+            app.buttons.matching(NSPredicate(format: "label == %@", "More options"))
+                .allElementsBoundByIndex.last?.tapCenter()
+        }
+        XCTAssertTrue(split.waitForExistence(timeout: 5))
+        split.tapCenter()
+        XCTAssertTrue(app.labeledButton("Exit side by side").waitForExistence(timeout: 10))
+        let handle = app.otherElements["comments-sheet-handle"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        let user = app.labeledButton("User")
+        XCTAssertTrue(user.waitForExistence(timeout: 5))
+        let initialFrame = user.frame
+        keepScreenshot("iPad header before cancelled sheet pull")
+        for _ in 0..<3 {
+            let start = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.1,
+                        thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)),
+                        withVelocity: .slow, thenHoldForDuration: 0.5)
+            // Every cancelled pull must return to the same actions and positions.
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in user.isHittable }, object: nil
+            )], timeout: 5), .completed)
+            XCTAssertEqual(user.frame.minX, initialFrame.minX, accuracy: 1)
+            XCTAssertEqual(user.frame.width, initialFrame.width, accuracy: 1)
+        }
+        keepScreenshot("iPad header after cancelled sheet pulls")
+    }
+
     func testReportedHttpArticleLoadsInBrowser() throws {
         openDebugSettings()
         let field = app.textViews["HN ID"]
