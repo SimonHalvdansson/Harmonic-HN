@@ -6,7 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -15,7 +19,8 @@ import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal sealed interface ReleaseMarkdownBlock {
     data class Text(val markdown: String) : ReleaseMarkdownBlock
@@ -25,6 +30,9 @@ internal sealed interface ReleaseMarkdownBlock {
 private const val RELEASE_PREVIEW_LINE_BUDGET = 20
 private const val RELEASE_PREVIEW_IMAGE_LINE_COST = 8
 private const val RELEASE_PREVIEW_CHARACTERS_PER_LINE = 56
+// The 20-line preview needs only a small prefix, including room for image URLs and markup.
+// Bound optional image matching before running its regexes, even on a single malformed line.
+private const val RELEASE_PREVIEW_SOURCE_CHARACTERS = 8 * 1024
 
 /** Keep images in document order, including GitHub's linked HTML video thumbnails. */
 internal fun releaseMarkdownBlocks(markdown: String, pageUrl: String): List<ReleaseMarkdownBlock> {
@@ -117,10 +125,11 @@ internal fun releaseMarkdownPreviewBlocks(
     lineBudget: Int = RELEASE_PREVIEW_LINE_BUDGET,
 ): List<ReleaseMarkdownBlock> {
     require(lineBudget > 0)
-    val source = releaseMarkdownBlocks(markdown, pageUrl)
+    val visibleSource = markdown.stripMarkdownHtmlComments()
+    val source = releaseMarkdownBlocks(visibleSource.take(RELEASE_PREVIEW_SOURCE_CHARACTERS), pageUrl)
     val preview = mutableListOf<ReleaseMarkdownBlock>()
     var remainingLines = lineBudget
-    var truncated = false
+    var truncated = visibleSource.length > RELEASE_PREVIEW_SOURCE_CHARACTERS
 
     blockLoop@ for (block in source) {
         if (remainingLines <= 0) {
@@ -185,7 +194,10 @@ private val RELEASE_IMAGE = Regex(
 
 @Composable
 internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier: Modifier = Modifier) {
-    val blocks = remember(markdown, pageUrl) { releaseMarkdownPreviewBlocks(markdown, pageUrl) }
+    var blocks by remember(markdown, pageUrl) { mutableStateOf(emptyList<ReleaseMarkdownBlock>()) }
+    LaunchedEffect(markdown, pageUrl) {
+        blocks = withContext(Dispatchers.Default) { releaseMarkdownPreviewBlocks(markdown, pageUrl) }
+    }
     val platform = LocalCommentsPreviewPlatform.current
     Column(modifier) {
         blocks.forEach { block ->

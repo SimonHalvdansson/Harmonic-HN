@@ -124,4 +124,48 @@ class ReleaseMarkdownTest {
             releaseMarkdownPreviewBlocks("A short release note.", pageUrl),
         )
     }
+
+    @Test
+    fun boundsUnfinishedImageMarkupBeforeParsingThePreview() {
+        assertEquals(
+            listOf(ReleaseMarkdownBlock.Text("Introduction\n\n...")),
+            releaseMarkdownPreviewBlocks("Introduction\n\n" + "![".repeat(32_000), pageUrl),
+        )
+    }
+
+    @Test
+    fun doesNotExtractAnImageWhoseClosingMarkupIsBeyondTheSourceBudget() {
+        val markdown = "Introduction\n\n![" + "caption ".repeat(10_000) + "](https://example.org/image.png)"
+
+        assertEquals(
+            listOf(ReleaseMarkdownBlock.Text("Introduction\n\n...")),
+            releaseMarkdownPreviewBlocks(markdown, pageUrl),
+        )
+    }
+
+    @Test
+    fun sourceLimitPreservesEarlyImagesAndSignalsOmittedContent() {
+        assertEquals(
+            listOf(
+                ReleaseMarkdownBlock.Text("Introduction"),
+                ReleaseMarkdownBlock.Image("https://example.org/image.png", "Preview", null),
+                ReleaseMarkdownBlock.Text("..."),
+            ),
+            releaseMarkdownPreviewBlocks(
+                "Introduction\n\n![Preview](https://example.org/image.png)\n\n" + "![".repeat(32_000),
+                pageUrl,
+            ),
+        )
+    }
+
+    @Test
+    fun hiddenCommentsDoNotConsumeTheVisibleSourceBudget() {
+        assertEquals(
+            listOf(ReleaseMarkdownBlock.Text("Introduction\n\nAfter the comment.")),
+            releaseMarkdownPreviewBlocks(
+                "Introduction\n\n<!--" + "![".repeat(32_000) + "-->After the comment.",
+                pageUrl,
+            ),
+        )
+    }
 }
