@@ -119,27 +119,50 @@ jobs:
             task: packageReleaseDmg
             artifact_name: macos-dmg-arm64
             artifact_path: desktop_app/build/compose/binaries/**/*.dmg
+            release_platform: macos
           - os: windows-2025
             task: packageReleaseMsi
             artifact_name: windows-msi-x64
             artifact_path: desktop_app/build/compose/binaries/**/*.msi
+            release_platform: windows
+          - os: windows-11-arm
+            task: createReleaseDistributable
+            artifact_name: windows-exe-arm64
+            artifact_path: desktop_app/build/compose/binaries/main-release/exe/*.exe
+            release_platform: windows-arm64
           - os: ubuntu-24.04
             task: packageReleaseDeb
             artifact_name: linux-deb-x64
             artifact_path: desktop_app/build/compose/binaries/**/*.deb
+            release_platform: linux
+          - os: ubuntu-24.04-arm
+            task: packageReleaseDeb
+            artifact_name: linux-deb-arm64
+            artifact_path: desktop_app/build/compose/binaries/**/*.deb
+            release_platform: linux-arm64
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          distribution: temurin
+          distribution: ${{ matrix.os == 'windows-11-arm' && 'microsoft' || 'temurin' }}
           java-version: '21'
+          architecture: ${{ runner.arch == 'ARM64' && 'aarch64' || 'x64' }}
+      - name: Select Windows ARM64 packaging JDK
+        if: matrix.os == 'windows-11-arm'
+        shell: bash
+        run: echo "ORG_GRADLE_PROJECT_harmonicDesktopJavaHome=$JAVA_HOME" >> "$GITHUB_ENV"
       - uses: gradle/actions/setup-gradle@v6
       # The shared KMP modules still configure an Android library target.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+      - name: Install Linux ARM64 desktop dependencies
+        if: matrix.os == 'ubuntu-24.04-arm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y fakeroot xvfb xauth libgl1 libgl1-mesa-dri libegl1 libfontconfig1 libfreetype6 libasound2t64 libx11-6 libxext6 libxi6 libxrender1 libxtst6
       - uses: ./.github/actions/cache-desktop-native
       - name: Add WiX Toolset to PATH
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch != 'ARM64'
         shell: pwsh
         run: |
           $wix = Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset v3.*\bin" -Directory |
@@ -149,15 +172,46 @@ jobs:
           }
           $wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build desktop package
-        run: ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run --auto-servernum ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
+          else
+            ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
+          fi
       # Packaging already stages the native library; avoid a separate Gradle startup.
       - name: Verify desktop native library
         shell: bash
         run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
+      - name: Verify desktop AppCDS archive
+        run: python .github/scripts/verify-desktop-appcds.py desktop_app/build/compose/binaries/main-release/app
+      - name: Verify processed desktop runtime
+        run: >-
+          java -Xverify:all "-Djava.awt.headless=true"
+          -cp "desktop_app/build/compose/tmp/main-release/proguard/*"
+          .github/scripts/VerifyDesktopRelease.java
+      - name: Build Windows ARM64 installer
+        if: matrix.os == 'windows-11-arm'
+        run: python .github/scripts/package_windows_arm64.py
+      - name: Verify Windows ARM64 installation and uninstallation
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: .github/scripts/verify_windows_arm64_install.ps1
+      - name: Upload Windows ARM64 verification logs
+        if: failure() && matrix.os == 'windows-11-arm'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-verification-logs
+          path: ${{ runner.temp }}/harmonic-arm64-verification/*.log
+          if-no-files-found: ignore
+      - name: Prepare desktop release filename
+        run: >-
+          python .github/scripts/prepare_desktop_release.py
+          "${{ matrix.artifact_path }}" "${{ matrix.release_platform }}"
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_path }}
+          path: desktop-release/*
           if-no-files-found: error
 
   release:

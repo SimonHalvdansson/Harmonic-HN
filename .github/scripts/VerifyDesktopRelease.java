@@ -4,6 +4,9 @@ import com.sun.jna.NativeLibrary;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.simon.harmonichackernews.network.HarmonicHttpClientKt;
+import com.google.ai.edge.litertlm.Backend;
+import com.google.ai.edge.litertlm.Engine;
+import com.google.ai.edge.litertlm.EngineConfig;
 import com.sun.net.httpserver.HttpServer;
 import io.ktor.client.engine.okhttp.OkHttp;
 import java.io.File;
@@ -28,6 +31,7 @@ public class VerifyDesktopRelease {
     public static void main(String[] args) throws Exception {
         verifyApplicationBytecode();
         verifyNetworking();
+        verifyLiteRtRuntime();
         Properties metadata = new Properties();
         try (InputStream input = resource("harmonic-desktop.properties")) {
             metadata.load(input);
@@ -36,6 +40,9 @@ public class VerifyDesktopRelease {
         require(Integer.parseInt(metadata.getProperty("versionCode", "0")) > 0,
                 "Missing release version code");
         try (InputStream ignored = resource("harmonic-app-icon.png")) {}
+        // LaTeX 1.6 moved matching math fonts into a separate optional resource artifact.
+        try (InputStream ignored = resource(
+                "composeResources/com.hrm.latex.fonts.katex.resources/font/katex_main_regular.ttf")) {}
 
         verifyService("coil3.util.FetcherServiceLoaderTarget");
         verifyService("coil3.util.DecoderServiceLoaderTarget");
@@ -70,6 +77,37 @@ public class VerifyDesktopRelease {
             Class.forName("org.eclipse.swt.internal.win32.OS");
         }
         System.out.println("Release bytecode, networking, enums, metadata, service providers, JNA structures, and native bindings passed");
+    }
+
+    private static void verifyLiteRtRuntime() throws Exception {
+        String os = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT);
+        String arch = System.getProperty("os.arch").toLowerCase(java.util.Locale.ROOT);
+        if (os.startsWith("windows") && (arch.equals("aarch64") || arch.equals("arm64"))) {
+            // Upstream ships Windows x64 only. The app hides these models on ARM64;
+            // the separately bundled GGUF/llama runtime is verified on every host below.
+            System.out.println("LiteRT-LM is unavailable on Windows ARM64; verifying the native GGUF runtime instead");
+            return;
+        }
+        Path cache = Files.createTempDirectory("harmonic-release-litert");
+        try {
+            Engine engine = new Engine(new EngineConfig(
+                    cache.resolve("missing.litertlm").toString(), new Backend.CPU()));
+            boolean rejected = false;
+            try {
+                engine.initialize();
+            } catch (Exception expected) {
+                rejected = true;
+            }
+            require(rejected && !engine.isInitialized(),
+                    "LiteRT must report a missing model through its working JNI bridge");
+            System.out.println("Verified packaged LiteRT-LM JNI initialization and model errors");
+        } finally {
+            try (var files = Files.walk(cache)) {
+                for (Path path : files.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                    Files.delete(path);
+                }
+            }
+        }
     }
 
     private static void verifyNetworking() throws Exception {

@@ -120,22 +120,34 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 internal val desktopAppIconImage: BufferedImage? by lazy(::loadDesktopAppIcon)
 
 fun main() {
+    val trainingRun = System.getProperty("compose.aot.training-run") == "true"
     System.setProperty("apple.awt.application.name", "Harmonic")
     val desktopAppIcon = desktopAppIconImage
     installTaskbarIcon(desktopAppIcon)
     val bootstrap = try {
         val metadata = DesktopRuntimeMetadata.load()
-        DesktopHarmonicAppBootstrap.production(
+        if (trainingRun) {
+            // Packaging must not read the user's credentials or modify their settings and caches.
+            DesktopHarmonicAppBootstrap.inMemory("Harmonic-AppCDS-Training")
+        } else DesktopHarmonicAppBootstrap.production(
             userAgent = "Harmonic-HN-Desktop/${metadata.versionName}",
             metadata = metadata,
         )
     } catch (error: Exception) {
+        if (trainingRun) throw error
         showDesktopStartupFailure(desktopAppIcon, error)
         return
     }
     val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     try {
         application {
+            if (trainingRun) {
+                LaunchedEffect(Unit) {
+                    // Exercise real Compose layouts and fonts, then let the JVM write its archive.
+                    delay(5_000L)
+                    exitApplication()
+                }
+            }
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
             val navigation by sceneOwner.scene.navigation.state.collectAsState()
             var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
@@ -199,6 +211,7 @@ fun main() {
                         )
                     }
                     LaunchedEffect(bootstrap.app.launchState) {
+                        if (trainingRun) return@LaunchedEffect
                         when (
                             bootstrap.app.launchState.consumeLaunchDialog(
                                 currentVersion = bootstrap.app.metadata.versionCode,
