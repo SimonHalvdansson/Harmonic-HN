@@ -6,7 +6,6 @@ import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.WriteProperties
 import org.gradle.language.jvm.tasks.ProcessResources
-import java.util.Properties
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.zip.ZipEntry
@@ -19,50 +18,6 @@ val desktopOsName = System.getProperty("os.name").orEmpty().lowercase()
 val isMacDesktopBuild = desktopOsName.contains("mac")
 val isWindowsArm64DesktopBuild = desktopOsName.startsWith("windows") &&
     System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
-val macDesktopCompilerArguments = if (isMacDesktopBuild) {
-    listOf(
-        "-DCMAKE_C_COMPILER=/usr/bin/clang",
-        "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
-    )
-} else {
-    emptyList()
-}
-
-val cmakeExecutable = providers.provider {
-    providers.gradleProperty("harmonic.cmakeExecutable").orNull
-        ?: providers.environmentVariable("CMAKE_EXECUTABLE").orNull
-        ?: run {
-            val executableName = if (System.getProperty("os.name").startsWith("Windows")) {
-                "cmake.exe"
-            } else {
-                "cmake"
-            }
-            System.getenv("PATH").orEmpty()
-                .split(File.pathSeparatorChar)
-                .asSequence()
-                .map { File(it, executableName) }
-                .firstOrNull(File::isFile)
-                ?.absolutePath
-                ?: run {
-                    val properties = Properties()
-                    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use {
-                        properties.load(it)
-                    }
-                    val sdk = properties.getProperty("sdk.dir")
-                        ?: System.getenv("ANDROID_SDK_ROOT")
-                        ?: System.getenv("ANDROID_HOME")
-                    sdk?.let(::File)?.resolve("cmake")
-                        ?.listFiles()
-                        ?.filter(File::isDirectory)
-                        ?.maxByOrNull(File::getName)
-                        ?.resolve("bin/$executableName")
-                        ?.takeIf(File::isFile)
-                        ?.absolutePath
-                }
-                ?: "cmake"
-        }
-}
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
@@ -107,78 +62,6 @@ val generateDesktopMetadata = tasks.register<WriteProperties>("generateDesktopMe
         .asFile
     property("versionName", desktopVersionName)
     property("versionCode", desktopVersionCode)
-}
-
-val desktopLocalAiSource = rootProject.layout.projectDirectory.dir("local_ai_runtime/src/main/cpp")
-val desktopLocalAiBuild = layout.buildDirectory.dir("desktopLocalAi/cmake")
-val desktopLocalAiOutput = layout.buildDirectory.dir("desktopLocalAi/output")
-val desktopLocalAiResources = layout.buildDirectory.dir("generated/desktopLocalAiResources")
-val desktopLocalAiLibrary = desktopLocalAiOutput.map {
-    it.file(System.mapLibraryName("harmonic-local-ai"))
-}
-// CI sets this only after an exact native-source/toolchain cache hit.
-val prebuiltDesktopLocalAi = providers.gradleProperty("harmonicDesktopLocalAiPrebuilt")
-    .map { File(it, System.mapLibraryName("harmonic-local-ai")) }
-val desktopLocalAiSources = fileTree(desktopLocalAiSource) {
-    include("**/*.c", "**/*.cc", "**/*.cpp", "**/*.h", "**/*.hpp", "**/CMakeLists.txt")
-}
-
-val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
-    description = "Configures CMake for the desktop local AI library."
-    inputs.files(desktopLocalAiSources)
-    outputs.file(desktopLocalAiBuild.map { it.file("CMakeCache.txt") })
-    val source = desktopLocalAiSource.asFile.absolutePath
-    val build = desktopLocalAiBuild.get().asFile.absolutePath
-    val output = desktopLocalAiOutput.get().asFile.absolutePath
-    commandLine(
-        buildList {
-            add(cmakeExecutable.get())
-            addAll(listOf("-S", source, "-B", build))
-            addAll(macDesktopCompilerArguments)
-            if (isWindowsArm64DesktopBuild) {
-                // ggml's ARM intrinsics require Clang; static CRT keeps the DLL self-contained.
-                addAll(listOf("-A", "ARM64", "-T", "ClangCL",
-                    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"))
-            }
-            addAll(
-                listOf(
-                    "-DCMAKE_BUILD_TYPE=Release",
-                    "-DHARMONIC_BUILD_DESKTOP=ON",
-                    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$output",
-                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$output",
-                    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$output",
-                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=$output",
-                ),
-            )
-        },
-    )
-}
-
-val buildDesktopLocalAi = tasks.register<Exec>("buildDesktopLocalAi") {
-    description = "Builds the desktop local AI shared library."
-    dependsOn(configureDesktopLocalAi)
-    inputs.files(desktopLocalAiSources)
-    outputs.file(desktopLocalAiLibrary)
-    commandLine(
-        cmakeExecutable.get(),
-        "--build", desktopLocalAiBuild.get().asFile.absolutePath,
-        "--config", "Release",
-        "--target", "harmonic-local-ai",
-        "--parallel", "2",
-    )
-}
-
-val stageDesktopLocalAi = tasks.register<Sync>("stageDesktopLocalAi") {
-    description = "Stages the desktop local AI library as a packaged resource."
-    if (prebuiltDesktopLocalAi.isPresent) {
-        val library = prebuiltDesktopLocalAi.get()
-        check(library.isFile) { "Missing cached native library: $library" }
-        from(library)
-    } else {
-        dependsOn(buildDesktopLocalAi)
-        from(desktopLocalAiLibrary)
-    }
-    into(desktopLocalAiResources.map { it.dir("native") })
 }
 
 val macWebViewSource = layout.projectDirectory.file("native/macos/HarmonicWebView.m")
@@ -244,14 +127,13 @@ tasks.named<ProcessResources>("desktopProcessResources") {
 }
 
 // Keep native resources off the unit-test classpath. Compose packaging and run include this
-// separate JAR, while desktopTest can build the application JAR without invoking a C++ compiler.
+// separate JAR, while desktopTest can build the application JAR without building native host integrations.
 val desktopNativeJar = tasks.register<Jar>("desktopNativeJar") {
     archiveFileName.set("harmonic-desktop-native.jar")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
-    dependsOn(stageDesktopLocalAi, stageMacWebView)
+    dependsOn(stageMacWebView)
     buildMacFoundationModels?.let { dependsOn(it) }
     if (isMacDesktopBuild) from(macFoundationModelsOutput) { into("native") }
-    from(desktopLocalAiResources)
     from(macWebViewResources)
 }
 

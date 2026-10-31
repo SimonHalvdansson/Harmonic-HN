@@ -10,7 +10,7 @@ class LocalModelFilePolicyTest {
     fun completedAndPartialFilesShareTheCanonicalModelDirectory() {
         val root = Path("models")
         val model = checkNotNull(
-            LocalModelCatalog.models.firstOrNull { it.id == LocalModelCatalog.MODEL_BONSAI_17B },
+            LocalModelCatalog.models.firstOrNull { it.id == LocalModelCatalog.MODEL_LFM3_17B },
         )
 
         assertEquals(model.fileName, LocalModelFilePolicy.completedPath(root, model).name)
@@ -31,7 +31,7 @@ class LocalModelFilePolicyTest {
         )
         // Retired downloads can still leave inference caches behind.
         val qwen = gemma.copy(
-            id = LocalModelCatalog.MODEL_QWEN_08B,
+            id = "qwen-3.5-0.8b",
             fileName = "Qwen3.5-0.8B-Q4_K_M.gguf",
         )
 

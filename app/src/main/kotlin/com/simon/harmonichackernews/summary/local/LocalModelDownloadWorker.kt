@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.network.FileResumableDownloadDestination
 import com.simon.harmonichackernews.network.KtorTransferClient
 import com.simon.harmonichackernews.network.ResumableDownloadService
 import com.simon.harmonichackernews.network.TransferProgress
+import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelFilePolicy
 import com.simon.harmonichackernews.ui.settings.SettingsIntents.createAiSummary
 import kotlin.math.min
@@ -40,6 +41,10 @@ class LocalModelDownloadWorker(
             expectedBytes <= 0L
         ) {
             return failure("Invalid model download request")
+        }
+
+        if (!LocalModelCatalog.isCurrentDownload(modelId, modelUrl, fileName, expectedBytes)) {
+            return failure("This model download is obsolete. Choose a model in Settings.")
         }
 
         ensureNotificationChannel()

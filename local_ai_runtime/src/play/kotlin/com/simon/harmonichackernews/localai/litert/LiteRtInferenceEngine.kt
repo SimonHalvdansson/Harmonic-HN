@@ -8,15 +8,16 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ThinkingConfig
 import com.simon.harmonichackernews.summary.local.LocalInferenceEngine
 import com.simon.harmonichackernews.summary.local.LocalModelInference
 import com.simon.harmonichackernews.summary.LocalModelDefinition
+import com.simon.harmonichackernews.summary.LocalModelCatalog
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeout
 
-/** LiteRT-LM implementation loaded after the local-AI runtime feature is installed. */
-/** LiteRT-LM implementation included only in Play-capable distributions. */
+/** LiteRT-LM implementation delivered by the local-AI feature in Play-capable distributions. */
 class LiteRtInferenceEngine : LocalInferenceEngine {
   override suspend fun summarize(
     context: Context,
@@ -36,7 +37,9 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
         context = context,
         modelPath = modelPath,
         maxTokens = contextTokens,
-        preferGpu = !isEmulator(),
+        // Nemotron has Android GPU failures; Qwen's GPU initialization can exhaust phone memory.
+        preferGpu = !isEmulator() && model.id != LocalModelCatalog.MODEL_NEMOTRON_4B &&
+          model.id != LocalModelCatalog.MODEL_QWEN_2B,
       )
       currentCoroutineContext().ensureActive()
       loadCallback.onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
@@ -45,6 +48,7 @@ class LiteRtInferenceEngine : LocalInferenceEngine {
           ConversationConfig(
             systemInstruction = Contents.of(systemInstruction),
             samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 0.3),
+            thinkingConfig = ThinkingConfig(enableThinking = false),
           )
         )
       val responseText = StringBuilder()

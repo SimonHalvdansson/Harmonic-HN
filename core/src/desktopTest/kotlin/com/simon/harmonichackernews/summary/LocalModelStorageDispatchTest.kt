@@ -27,7 +27,7 @@ class LocalModelStorageDispatchTest {
                 diskThreads += Thread.currentThread()
                 downloaded = false
             }
-            override fun installedPath(model: LocalModelDefinition) = "model.gguf"
+            override fun installedPath(model: LocalModelDefinition) = "model.litertlm"
             override fun storedBytes(): Long = 0
             override fun clearStoredModels(): Boolean {
                 diskThreads += Thread.currentThread()

@@ -28,10 +28,9 @@ jobs:
           java-version: 21
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-      - name: Install native build tools
-        run: sdkmanager "ndk;29.0.13113456" "cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v6
-      - uses: ./.github/actions/cache-android-native
+      - name: Install NDK for stripping packaged native libraries
+        run: sdkmanager "ndk;29.0.13113456"
       - name: Build with Gradle
         run: >-
           ./gradlew
@@ -44,9 +43,6 @@ jobs:
           --no-daemon
           --max-workers=2
           --parallel
-      - name: Native compiler cache statistics
-        if: always()
-        run: ccache --show-stats
       - name: Sign release APKs
         env:
           ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
@@ -96,7 +92,7 @@ jobs:
             --key-pass="file:$KEY_PASSWORD_FILE" \
             --overwrite
           unzip -p "$RELEASE_LLM_APKS" universal.apk > "$RELEASE_LLM_APK"
-          unzip -t "$RELEASE_LLM_APK" 'lib/*/liblocal-llama.so'
+          unzip -t "$RELEASE_LLM_APK" 'lib/*/liblitertlm_jni.so'
           "$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs "$RELEASE_LLM_APK"
       - uses: actions/upload-artifact@v7
         with:
@@ -160,7 +156,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y fakeroot xvfb xauth libgl1 libgl1-mesa-dri libegl1 libfontconfig1 libfreetype6 libasound2t64 libx11-6 libxext6 libxi6 libxrender1 libxtst6
-      - uses: ./.github/actions/cache-desktop-native
       - name: Add WiX Toolset to PATH
         if: runner.os == 'Windows' && runner.arch != 'ARM64'
         shell: pwsh
@@ -182,10 +177,6 @@ jobs:
           else
             ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
           fi
-      # Packaging already stages the native library; avoid a separate Gradle startup.
-      - name: Verify desktop native library
-        shell: bash
-        run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - name: Verify desktop AppCDS archive
         if: matrix.os != 'windows-11-arm'
         run: python .github/scripts/verify-desktop-appcds.py desktop_app/build/compose/binaries/main-release/app

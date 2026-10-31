@@ -33,8 +33,32 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [35])
 class LocalAiRuntimeStatusTest {
     @Test
+    fun retiredLiteRtModelRequestIsDiscardedBeforeResumingDownloads() {
+        withManager(installed = true, pendingModel = "lfm-2.5-1.2b") { _, manager, play, preferences ->
+            val started = mutableListOf<String>()
+            manager.setModelDownloadStarter { started += it; null }
+            play.emitInstalled()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(started.isEmpty())
+            assertEquals("", preferences.getString("pending_model_LITERT_LM", ""))
+        }
+    }
+
+    @Test
+    fun retiredRuntimeRequestDoesNotStartAReplacementDownload() {
+        withManager(installed = true, retiredPendingModel = "lfm-2.5-1.2b") { _, manager, play, preferences ->
+            val started = mutableListOf<String>()
+            manager.setModelDownloadStarter { started += it; null }
+            play.emitInstalled()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(started.isEmpty())
+            assertEquals("", preferences.getString("pending_model_LLAMA_CPP", ""))
+        }
+    }
+
+    @Test
     fun everyRuntimeCanBeQueriedBeforeStartingAnAndroidModelDownload() = withManager { context, manager, play, _ ->
-        // LocalModelService checks every runtime for an active installation before downloading.
+        // Shared callers may query system runtimes belonging to other platforms too.
         for (runtime in LocalModelRuntime.entries) {
             val status = manager.getStatus(context, runtime)
             assertEquals(runtime, status.runtime)
@@ -49,7 +73,7 @@ class LocalAiRuntimeStatusTest {
         }
 
         val model = LocalModelCatalog.models.first {
-            it.downloadable && it.runtime == LocalModelRuntime.LLAMA_CPP
+            it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
         }
         assertNull(manager.requestRuntimeAndModelDownload(context, model))
         assertEquals(listOf("local_ai_runtime"), play.requests.single().moduleNames)
@@ -58,8 +82,8 @@ class LocalAiRuntimeStatusTest {
     }
 
     @Test
-    fun legacyPendingDownloadResumesOnceAfterPreloadAndStarterRegistration() {
-        val model = LocalModelCatalog.models.first { it.downloadable && it.runtime == LocalModelRuntime.LLAMA_CPP }
+    fun pendingDownloadResumesOnceAfterPreloadAndStarterRegistration() {
+        val model = LocalModelCatalog.models.first { it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM }
         withManager(installed = true, pendingModel = model.id) { context, manager, play, preferences ->
             val started = mutableListOf<String>()
             val result = CompletableDeferred<String?>()
@@ -79,7 +103,7 @@ class LocalAiRuntimeStatusTest {
             play.emitInstalled()
             shadowOf(Looper.getMainLooper()).idle()
             assertEquals(listOf(model.id), started)
-            assertEquals("", preferences.getString("pending_model_LLAMA_CPP", ""))
+            assertEquals("", preferences.getString("pending_model_LITERT_LM", ""))
             assertTrue(manager.isRuntimeInstalled(context, LocalModelRuntime.LITERT_LM))
             assertEquals(LocalRuntimeInstallState.INSTALLED, manager.getStatus(context, model.runtime).state)
             assertEquals(1, play.packageQueries)
@@ -87,8 +111,8 @@ class LocalAiRuntimeStatusTest {
     }
 
     @Test
-    fun installedCallbackEnablesBothRuntimesWithoutMorePackageInspection() = withManager { context, manager, play, _ ->
-        val model = LocalModelCatalog.models.first { it.downloadable && it.runtime == LocalModelRuntime.LLAMA_CPP }
+    fun installedCallbackEnablesRuntimeWithoutMorePackageInspection() = withManager { context, manager, play, _ ->
+        val model = LocalModelCatalog.models.first { it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM }
         val started = mutableListOf<String>()
         manager.setModelDownloadStarter { started += it; null }
         manager.requestRuntimeAndModelDownload(context, model)
@@ -96,7 +120,6 @@ class LocalAiRuntimeStatusTest {
         play.emitInstalled()
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(listOf(model.id), started)
-        assertTrue(manager.isRuntimeInstalled(context, LocalModelRuntime.LLAMA_CPP))
         assertTrue(manager.isRuntimeInstalled(context, LocalModelRuntime.LITERT_LM))
         assertEquals(1, play.packageQueries)
     }
@@ -104,6 +127,7 @@ class LocalAiRuntimeStatusTest {
     private fun withManager(
         installed: Boolean = false,
         pendingModel: String? = null,
+        retiredPendingModel: String? = null,
         block: (Context, LocalAiRuntimeManager, PlayTransport, AndroidKeyValueStore) -> Unit,
     ) {
         val context = RuntimeEnvironment.getApplication()
@@ -114,9 +138,13 @@ class LocalAiRuntimeStatusTest {
             play.manager
         }, preferencesName)
         val preferences = runBlocking(Dispatchers.IO) {
+            if (retiredPendingModel != null) {
+                context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+                    .edit().putString("pending_model_LLAMA_CPP", retiredPendingModel).commit()
+            }
             if (pendingModel != null) {
                 context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-                    .edit().putString("pending_model_LLAMA_CPP", pendingModel).commit()
+                    .edit().putString("pending_model_LITERT_LM", pendingModel).commit()
             }
             manager.preload(context)
             AndroidKeyValueStore.named(context, preferencesName)

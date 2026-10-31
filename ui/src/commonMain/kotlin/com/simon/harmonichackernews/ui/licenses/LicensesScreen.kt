@@ -54,14 +54,12 @@ import com.simon.harmonichackernews.resources.library_logo_compose_multiplatform
 import com.simon.harmonichackernews.resources.library_logo_compose_latex
 import com.simon.harmonichackernews.resources.library_logo_katex
 import com.simon.harmonichackernews.resources.library_logo_coroutines
-import com.simon.harmonichackernews.resources.library_logo_ggml
 import com.simon.harmonichackernews.resources.library_logo_haze
 import com.simon.harmonichackernews.resources.library_logo_kmpalette
 import com.simon.harmonichackernews.resources.library_logo_kotlin
 import com.simon.harmonichackernews.resources.library_logo_ksoup
 import com.simon.harmonichackernews.resources.library_logo_ktor
 import com.simon.harmonichackernews.resources.library_logo_litert_lm
-import com.simon.harmonichackernews.resources.library_logo_llama_cpp
 import com.simon.harmonichackernews.resources.library_logo_material_components
 import com.simon.harmonichackernews.resources.library_logo_materialistic
 import com.simon.harmonichackernews.resources.library_logo_mlkit
@@ -85,7 +83,6 @@ private val InsetLicenseIcons = setOf(
     "kotlinx.io",
     "kotlinx.collections.immutable",
     "ML Kit GenAI APIs",
-    "llama.cpp",
     "KaTeX math fonts",
 )
 
@@ -309,7 +306,5 @@ internal fun licenseIconResource(name: String): DrawableResource? = when (name) 
     "Materialistic" -> Res.drawable.library_logo_materialistic
     "ML Kit GenAI APIs" -> Res.drawable.library_logo_mlkit
     "LiteRT-LM" -> Res.drawable.library_logo_litert_lm
-    "llama.cpp" -> Res.drawable.library_logo_llama_cpp
-    "ggml" -> Res.drawable.library_logo_ggml
     else -> null
 }

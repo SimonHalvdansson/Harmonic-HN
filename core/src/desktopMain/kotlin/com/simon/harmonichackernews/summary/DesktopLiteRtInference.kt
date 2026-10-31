@@ -6,6 +6,7 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ThinkingConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -56,6 +57,7 @@ internal class DesktopLiteRtInference(private val cacheDirectory: String) {
                 engine.createConversation(ConversationConfig(
                     systemInstruction = Contents.of(systemInstruction),
                     samplerConfig = SamplerConfig(topK = 64, topP = 0.95, temperature = 0.3),
+                    thinkingConfig = ThinkingConfig(enableThinking = false),
                 )).use { conversation ->
                     val response = StringBuilder()
                     try {

@@ -1,7 +1,5 @@
 import com.sun.jna.Library;
-import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
-import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.simon.harmonichackernews.network.HarmonicHttpClientKt;
 import com.google.ai.edge.litertlm.Backend;
@@ -11,7 +9,6 @@ import com.sun.net.httpserver.HttpServer;
 import io.ktor.client.engine.okhttp.OkHttp;
 import java.io.File;
 import java.io.InputStream;
-import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -66,12 +63,10 @@ public class VerifyDesktopRelease {
                 .getConstructor().newInstance();
         require(credential.size() > 0, "Invalid native credential layout");
 
-        verifyNativeLibrary("harmonic-local-ai",
-                "com.simon.harmonichackernews.summary.HarmonicLlamaApi", true);
         String os = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT);
         if (os.contains("mac")) {
             verifyNativeLibrary("harmonic-mac-webview",
-                    "com.simon.harmonichackernews.desktop.MacWebViewApi", false);
+                    "com.simon.harmonichackernews.desktop.MacWebViewApi");
         } else if (os.contains("win")) {
             // Initialize SWT's JNI layer without opening a browser or a window.
             Class.forName("org.eclipse.swt.internal.win32.OS");
@@ -84,8 +79,8 @@ public class VerifyDesktopRelease {
         String arch = System.getProperty("os.arch").toLowerCase(java.util.Locale.ROOT);
         if (os.startsWith("windows") && (arch.equals("aarch64") || arch.equals("arm64"))) {
             // Upstream ships Windows x64 only. The app hides these models on ARM64;
-            // the separately bundled GGUF/llama runtime is verified on every host below.
-            System.out.println("LiteRT-LM is unavailable on Windows ARM64; verifying the native GGUF runtime instead");
+            // no downloadable local-model runtime is available on this host.
+            System.out.println("LiteRT-LM is unavailable on Windows ARM64; skipping local AI verification");
             return;
         }
         Path cache = Files.createTempDirectory("harmonic-release-litert");
@@ -181,7 +176,7 @@ public class VerifyDesktopRelease {
         require(count > 0, "No release providers for " + serviceName);
     }
 
-    private static void verifyNativeLibrary(String name, String interfaceName, boolean testSession)
+    private static void verifyNativeLibrary(String name, String interfaceName)
             throws Exception {
         Path directory = Files.createTempDirectory("harmonic-release-native-");
         Path path = directory.resolve(System.mapLibraryName(name));
@@ -192,23 +187,6 @@ public class VerifyDesktopRelease {
             Class<? extends Library> api = Class.forName(interfaceName).asSubclass(Library.class);
             for (var method : api.getDeclaredMethods()) {
                 library.getFunction(method.getName());
-            }
-            if (testSession) {
-                Library binding = Native.load(path.toString(), api);
-                // Native.load uses interface-specific options, so its proxy can own a
-                // second library handle. Close it before deleting the DLL on Windows.
-                Library.Handler handler = (Library.Handler) Proxy.getInvocationHandler(binding);
-                try (NativeLibrary bindingLibrary = handler.getNativeLibrary()) {
-                    api.getMethod("harmonic_llama_backend_initialize", Pointer.class, Pointer.class)
-                            .invoke(binding, null, null);
-                    Pointer engine = (Pointer) api.getMethod("harmonic_llama_create").invoke(binding);
-                    require(engine != null, "Native inference session allocation failed");
-                    try {
-                        api.getMethod("harmonic_llama_close", Pointer.class).invoke(binding, engine);
-                    } finally {
-                        api.getMethod("harmonic_llama_destroy", Pointer.class).invoke(binding, engine);
-                    }
-                }
             }
         } finally {
             Files.deleteIfExists(path);

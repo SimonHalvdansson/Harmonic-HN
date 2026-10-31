@@ -16,6 +16,7 @@ import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListene
 import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
@@ -42,8 +43,6 @@ internal class LocalAiRuntimeManager(
     private val preferencesName: String = "local_ai_runtime_delivery",
 ) : Application.ActivityLifecycleCallbacks {
     private val MODULE_RUNTIME = "local_ai_runtime"
-    private val ENGINE_LLAMA =
-        "com.simon.harmonichackernews.localai.llama.LlamaInferenceEngine"
     private val ENGINE_LITERT =
         "com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine"
     private val KEY_PENDING_MODEL_PREFIX = "pending_model_"
@@ -202,15 +201,6 @@ internal class LocalAiRuntimeManager(
             }
             return "Wait for the current ${getRuntimeLabel(model.runtime)} installation to finish."
         }
-        val otherRuntime = if (model.runtime == LocalModelRuntime.LLAMA_CPP) {
-            LocalModelRuntime.LITERT_LM
-        } else {
-            LocalModelRuntime.LLAMA_CPP
-        }
-        if (getStatus(context, otherRuntime).isActive) {
-            return "Wait for the current local AI runtime installation to finish."
-        }
-
         val generation = synchronized(LOCK) {
             ((requestGenerations[model.runtime] ?: 0) + 1).also {
                 requestGenerations[model.runtime] = it
@@ -317,19 +307,16 @@ internal class LocalAiRuntimeManager(
     }
 
     fun getRuntimeLabel(runtime: LocalModelRuntime): String = when (runtime) {
-        LocalModelRuntime.LLAMA_CPP,
-        LocalModelRuntime.LITERT_LM,
-        -> "local AI runtime"
+        LocalModelRuntime.LITERT_LM -> "local AI runtime"
         LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
     }
 
     fun getEngineClassName(runtime: LocalModelRuntime): String = when (runtime) {
-        LocalModelRuntime.LLAMA_CPP -> ENGINE_LLAMA
         LocalModelRuntime.LITERT_LM -> ENGINE_LITERT
         LocalModelRuntime.APPLE_FOUNDATION_MODELS,
         LocalModelRuntime.GEMINI_NANO ->
-            throw IllegalArgumentException("Gemini Nano does not use a feature runtime")
+            throw IllegalArgumentException("System models do not use a feature runtime")
     }
 
     /** Complete all cold storage/package work before publishing the application graph. */
@@ -339,6 +326,16 @@ internal class LocalAiRuntimeManager(
             val applicationContext = context.applicationContext
             val preferences = AndroidKeyValueStore.named(applicationContext, preferencesName)
             preferences.awaitLoaded()
+            // A queued GGUF request must not become an implicit multi-GB LiteRT download.
+            preferences.remove("pending_model_LLAMA_CPP")
+            val pendingKey = KEY_PENDING_MODEL_PREFIX + LocalModelRuntime.LITERT_LM.name
+            val pendingModel = preferences.getString(pendingKey, "").orEmpty()
+            if (pendingModel.isNotEmpty() && LocalModelCatalog.models.none {
+                    it.id == pendingModel && it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
+                }
+            ) {
+                preferences.remove(pendingKey)
+            }
             val manager = installManagerFactory(applicationContext)
             val installed = manager.installedModules.contains(MODULE_RUNTIME)
             appContext = applicationContext
@@ -361,16 +358,10 @@ internal class LocalAiRuntimeManager(
     }
 
     private fun resumeInstalledPendingDownloads() {
-        for (runtime in arrayOf(
-            LocalModelRuntime.LLAMA_CPP,
-            LocalModelRuntime.LITERT_LM,
-        )) {
-            if (isRuntimeInstalledWithoutInitialization(runtime)
-                && getPendingModel(runtime).isNotEmpty()
-            ) {
-                ContextCompat.getMainExecutor(requireNotNull(appContext)).execute {
-                    onRuntimeInstalled(runtime)
-                }
+        val runtime = LocalModelRuntime.LITERT_LM
+        if (runtimeModuleInstalled && getPendingModel(runtime).isNotEmpty()) {
+            ContextCompat.getMainExecutor(requireNotNull(appContext)).execute {
+                onRuntimeInstalled(runtime)
             }
         }
     }
@@ -531,20 +522,11 @@ internal class LocalAiRuntimeManager(
     private fun onRuntimeInstalled(runtime: LocalModelRuntime) {
         // Startup enables existing splits on IO; Play enables newly delivered splits itself.
         runtimeModuleInstalled = true
-        val otherRuntime = if (runtime == LocalModelRuntime.LLAMA_CPP) {
-            LocalModelRuntime.LITERT_LM
-        } else {
-            LocalModelRuntime.LLAMA_CPP
-        }
-        for (installedRuntime in listOf(runtime, otherRuntime)) {
-            // Repeated Play callbacks or startup reconciliation cannot resolve a model
-            // handoff failure. Only a successful model request clears that failure.
-            if (getTrackedStatus(installedRuntime).state != LocalRuntimeInstallState.INSTALLED) {
-                setStatus(status(installedRuntime, LocalRuntimeInstallState.INSTALLED, 0L, 0L, "", "", 0))
-            }
+        // Repeated callbacks must preserve a model handoff failure until a successful retry.
+        if (getTrackedStatus(runtime).state != LocalRuntimeInstallState.INSTALLED) {
+            setStatus(status(runtime, LocalRuntimeInstallState.INSTALLED, 0L, 0L, "", "", 0))
         }
         startPendingModelDownload(runtime)
-        startPendingModelDownload(otherRuntime)
     }
 
     private fun startPendingModelDownload(runtime: LocalModelRuntime) {
@@ -664,9 +646,7 @@ internal class LocalAiRuntimeManager(
 
     // Shared callers can query every runtime, including ones owned by another platform.
     private fun getModuleName(runtime: LocalModelRuntime): String? = when (runtime) {
-        LocalModelRuntime.LLAMA_CPP,
-        LocalModelRuntime.LITERT_LM,
-        -> MODULE_RUNTIME
+        LocalModelRuntime.LITERT_LM -> MODULE_RUNTIME
         LocalModelRuntime.APPLE_FOUNDATION_MODELS,
         LocalModelRuntime.GEMINI_NANO -> null
     }
@@ -677,23 +657,10 @@ internal class LocalAiRuntimeManager(
         if (!modules.contains(MODULE_RUNTIME)) {
             return null
         }
-        synchronized(LOCK) {
-            val llama = STATUSES[LocalModelRuntime.LLAMA_CPP]
-            if (llama != null && llama.isActive) {
-                return LocalModelRuntime.LLAMA_CPP
-            }
-            val litert = STATUSES[LocalModelRuntime.LITERT_LM]
-            if (litert != null && litert.isActive) {
-                return LocalModelRuntime.LITERT_LM
-            }
+        val runtime = LocalModelRuntime.LITERT_LM
+        return runtime.takeIf {
+            getTrackedStatus(it).isActive || getPendingModel(it).isNotEmpty()
         }
-        if (getPendingModel(LocalModelRuntime.LLAMA_CPP).isNotEmpty()) {
-            return LocalModelRuntime.LLAMA_CPP
-        }
-        if (getPendingModel(LocalModelRuntime.LITERT_LM).isNotEmpty()) {
-            return LocalModelRuntime.LITERT_LM
-        }
-        return null
     }
 
     private fun setPendingModel(runtime: LocalModelRuntime, modelId: String) {
@@ -708,12 +675,6 @@ internal class LocalAiRuntimeManager(
 
     private fun clearPendingModel(runtime: LocalModelRuntime) {
         deliveryPreferences.remove(KEY_PENDING_MODEL_PREFIX + runtime.name)
-    }
-
-    private fun isRuntimeInstalledWithoutInitialization(
-        runtime: LocalModelRuntime
-    ): Boolean {
-        return getModuleName(runtime) != null && runtimeModuleInstalled
     }
 
     private fun findActivity(context: Context): Activity? {

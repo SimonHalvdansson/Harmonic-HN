@@ -73,12 +73,5 @@ object LocalAiLicenseCatalog {
             "Apache License 2.0",
             "https://github.com/google-ai-edge/LiteRT-LM",
         ),
-        LicenseEntry(
-            "llama.cpp",
-            "ggml-org",
-            "MIT License",
-            "https://github.com/ggml-org/llama.cpp",
-        ),
-        LicenseEntry("ggml", "ggml-org", "MIT License", "https://github.com/ggml-org/ggml"),
     )
 }

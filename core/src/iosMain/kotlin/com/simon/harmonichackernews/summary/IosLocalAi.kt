@@ -69,7 +69,6 @@ class IosLocalAiEnvironment private constructor(
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
             val client = createHarmonicHttpClient(Darwin.create(), userAgent)
             return try {
-                // GGUF models and their llama.cpp runtime are deliberately absent on iOS.
                 val catalog = listOf(appleModel) + LocalModelCatalog.models.filter {
                     it.runtime == LocalModelRuntime.LITERT_LM
                 }

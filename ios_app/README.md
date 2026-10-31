@@ -13,12 +13,11 @@ Compose comments sheet remains available above the article. Compose Navigation E
 interactive system left-edge back gesture through the KMP navigation hierarchy. Application logic
 and the rest of the UI remain in the KMP modules.
 
-Local summaries support Apple Intelligence and downloadable Gemma LiteRT-LM models. The local
-Swift package in `LiteRTLM/` pins Google's official iOS XCFramework and checksum, avoiding the
+Local summaries support Apple Intelligence and downloadable Gemma, LFM3, Ministral, Nemotron, and Qwen
+LiteRT-LM models. The local Swift package in `LiteRTLM/` pins Google's official iOS XCFramework and checksum, avoiding the
 multi-platform repository's large binary history. Inference runs on a serial CPU worker on both
-devices and arm64 simulators, with streamed progress and cancellation. iOS does not include
-llama.cpp or GGUF models. Downloads run while the app is active; interrupted downloads preserve
-their partial file and resume when requested again.
+devices and arm64 simulators, with streamed progress and cancellation. Downloads run while the app
+is active; interrupted downloads preserve their partial file and resume when requested again.
 
 The `HarmonicIosTests` target checks catalog/selection and the Kotlin-to-native summary bridge.
 Its real Gemma tests check consecutive summaries and cancellation when `litert-test-fixture.litertlm`

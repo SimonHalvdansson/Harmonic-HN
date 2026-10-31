@@ -4,17 +4,15 @@ enum class LocalModelRuntime {
     GEMINI_NANO,
     APPLE_FOUNDATION_MODELS,
     LITERT_LM,
-    LLAMA_CPP,
 }
 
 enum class LocalModelBrand(val artworkKey: String) {
     SYSTEM("ic_auto_awesome"),
     GOOGLE("model_logo_google"),
-    PRISM("model_logo_prism"),
-    QWEN("model_logo_qwen"),
     NVIDIA("model_logo_nvidia"),
     MISTRAL("model_logo_mistral"),
     LIQUID("model_logo_liquid"),
+    QWEN("model_logo_qwen"),
 }
 
 data class LocalModelDefinition(
@@ -36,13 +34,17 @@ object LocalModelCatalog {
     const val MODEL_GEMINI_NANO = "gemini-nano"
     const val MODEL_E2B = "gemma-4-e2b"
     const val MODEL_E4B = "gemma-4-e4b"
-    const val MODEL_BONSAI_17B = "bonsai-1.7b"
-    const val MODEL_BONSAI_4B = "bonsai-4b"
-    const val MODEL_BONSAI_8B = "bonsai-8b"
-    const val MODEL_QWEN_08B = "qwen-3.5-0.8b"
     const val MODEL_NEMOTRON_4B = "nemotron-3-nano-4b"
     const val MODEL_MINISTRAL_3B = "ministral-3-3b"
-    const val MODEL_LFM_12B = "lfm-2.5-1.2b"
+    const val MODEL_LFM3_17B = "lfm-3-1.7b"
+    const val MODEL_QWEN_2B = "qwen-3.5-2b"
+
+    /** Prevent persisted background work from downloading a retired or replaced artifact. */
+    fun isCurrentDownload(id: String, url: String, fileName: String, sizeBytes: Long): Boolean =
+        models.any {
+            it.downloadable && it.id == id && it.url == url &&
+                it.fileName == fileName && it.sizeBytes == sizeBytes
+        }
 
     val models: List<LocalModelDefinition> = listOf(
         LocalModelDefinition(
@@ -87,87 +89,59 @@ object LocalModelCatalog {
             4096,
         ),
         LocalModelDefinition(
-            MODEL_BONSAI_17B,
-            "Bonsai 1.7B",
-            "1.7B",
-            "Q1_0",
-            LocalModelBrand.PRISM,
-            "Bonsai-1.7B-Q1_0.gguf",
-            "https://huggingface.co/prism-ml/Bonsai-1.7B-gguf/resolve/" +
-                "210a9e99f79cb184909d49595906526eb2b3dd9a/Bonsai-1.7B-Q1_0.gguf?download=true",
-            248_302_272L,
-            true,
-            LocalModelRuntime.LLAMA_CPP,
-            4096,
-        ),
-        LocalModelDefinition(
-            MODEL_BONSAI_4B,
-            "Bonsai 4B",
-            "4B",
-            "Q1_0",
-            LocalModelBrand.PRISM,
-            "Bonsai-4B-Q1_0.gguf",
-            "https://huggingface.co/prism-ml/Bonsai-4B-gguf/resolve/" +
-                "78f2c2bacd0904ffaba24b4873ed975e5818354a/Bonsai-4B-Q1_0.gguf?download=true",
-            572_270_624L,
-            true,
-            LocalModelRuntime.LLAMA_CPP,
-            4096,
-        ),
-        LocalModelDefinition(
-            MODEL_BONSAI_8B,
-            "Bonsai 8B",
-            "8B",
-            "Q1_0",
-            LocalModelBrand.PRISM,
-            "Bonsai-8B-Q1_0.gguf",
-            "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/" +
-                "48516770dd04643643e9f9019a2a349cf26c5dbd/Bonsai-8B-Q1_0.gguf?download=true",
-            1_158_654_496L,
-            true,
-            LocalModelRuntime.LLAMA_CPP,
-            4096,
-        ),
-        LocalModelDefinition(
             MODEL_NEMOTRON_4B,
             "Nemotron 3 Nano 4B",
             "4B",
-            "Q4_K_M",
+            "INT8; float conv/scan",
             LocalModelBrand.NVIDIA,
-            "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
-            "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/" +
-                "18d83da545bdfde657afff71123d7ffc8965edfa/NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf?download=true",
-            2_837_072_864L,
+            "Nemotron-3-Nano-4B_int8.litertlm",
+            "https://huggingface.co/litert-community/Nemotron-3-Nano-4B/resolve/" +
+                "91d59fd2dc7451fbc1f124cd3e7ddfd8ce28fc18/Nemotron-3-Nano-4B_int8.litertlm?download=true",
+            4_126_697_184L,
             true,
-            LocalModelRuntime.LLAMA_CPP,
+            LocalModelRuntime.LITERT_LM,
             4096,
         ),
         LocalModelDefinition(
             MODEL_MINISTRAL_3B,
             "Ministral 3 3B",
             "3.4B",
-            "Q4_K_M",
+            "INT4 block-32; INT8 embedding",
             LocalModelBrand.MISTRAL,
-            "Ministral-3-3B-Instruct-2512-Q4_K_M.gguf",
-            "https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF/resolve/" +
-                "eb599d408350ea2bb60452cb86be7c7b2fc28227/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf?download=true",
-            2_147_023_008L,
+            "Ministral-3-3B-Instruct-2512_q4_block32_ekv4096.litertlm",
+            "https://huggingface.co/litert-community/Ministral-3-3B-Instruct-2512/resolve/" +
+                "c26821f18bff3fc81921f1d2ae502df3a16c4a4f/Ministral-3-3B-Instruct-2512_q4_block32_ekv4096.litertlm?download=true",
+            2_342_895_616L,
             true,
-            LocalModelRuntime.LLAMA_CPP,
+            LocalModelRuntime.LITERT_LM,
             4096,
         ),
         LocalModelDefinition(
-            MODEL_LFM_12B,
-            "LFM2.5 1.2B",
-            "1.2B",
-            "Q4_K_M",
+            MODEL_LFM3_17B,
+            "LFM3 1.7B",
+            "1.7B",
+            "INT4 MLP gate/up; INT8 other weights",
             LocalModelBrand.LIQUID,
-            "LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
-            "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/" +
-                "047e06635fbe71469926b35ea414537245218200/LFM2.5-1.2B-Instruct-Q4_K_M.gguf?download=true",
-            730_895_168L,
+            "LFM3-1.7B_mixed_int4_ekv4096.litertlm",
+            "https://huggingface.co/litert-community/LFM3-1.7B-LiteRT/resolve/" +
+                "9bbda264c623f30c905b9c247761ee7463f2b00d/LFM3-1.7B_mixed_int4_ekv4096.litertlm?download=true",
+            1_441_629_120L,
             true,
-            LocalModelRuntime.LLAMA_CPP,
+            LocalModelRuntime.LITERT_LM,
+            4096,
+        ),
+        LocalModelDefinition(
+            MODEL_QWEN_2B,
+            "Qwen 3.5 2B",
+            "2B",
+            "INT8; float conv/delta/gates",
+            LocalModelBrand.QWEN,
+            "Qwen3.5-2B_int8.litertlm",
+            "https://huggingface.co/litert-community/Qwen3.5-2B/resolve/" +
+                "a2877bbd21faf6179e5ffb5a7d66e7111fde01be/Qwen3.5-2B_int8.litertlm?download=true",
+            2_119_744_416L,
+            true,
+            LocalModelRuntime.LITERT_LM,
             4096,
         ),
     )

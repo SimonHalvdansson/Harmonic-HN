@@ -22,8 +22,6 @@ def platforms_for_paths(paths):
             selected.add("android")
         elif parts[0] == "local_ai_runtime":
             selected.add("android")
-            if path.startswith("local_ai_runtime/src/main/cpp/"):
-                selected.add("desktop")
         elif parts[0] == "desktop_app":
             selected.add("desktop")
         elif parts[0] == "ios_app":

@@ -37,7 +37,7 @@ class LocalAiRuntimeManagerTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext.applicationContext
     private val model = LocalModelCatalog.models.first {
-        it.downloadable && it.runtime == LocalModelRuntime.LLAMA_CPP
+        it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
     }
 
     @Test

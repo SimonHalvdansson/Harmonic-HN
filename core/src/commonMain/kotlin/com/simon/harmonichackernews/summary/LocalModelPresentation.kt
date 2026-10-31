@@ -129,7 +129,6 @@ object LocalModelPresentationPolicy {
         formatDecimalBytes(model.sizeBytes),
         when (model.runtime) {
             LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
-            LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
             LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
             LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         },
@@ -186,6 +185,5 @@ object LocalModelPresentationPolicy {
         LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
-        LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
     }
 }

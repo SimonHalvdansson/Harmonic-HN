@@ -5,28 +5,15 @@ plugins {
     alias(libs.plugins.android.dynamic.feature)
 }
 
-def nativeCompilerCache = providers.environmentVariable("HARMONIC_NATIVE_COMPILER_CACHE")
-
 android {
     namespace = "com.simon.harmonichackernews.localai.runtime"
     compileSdk {
         version = release(37) { minorApiLevel = 1 }
     }
-    ndkVersion = "29.0.13113456"
     testBuildType = providers.gradleProperty("harmonic.testBuildType").getOrElse("debug")
 
     defaultConfig {
         minSdk = 26
-
-        externalNativeBuild {
-            cmake {
-                arguments "-DCMAKE_BUILD_TYPE=Release"
-                if (nativeCompilerCache.isPresent()) {
-                    arguments "-DCMAKE_C_COMPILER_LAUNCHER=${nativeCompilerCache.get()}",
-                            "-DCMAKE_CXX_COMPILER_LAUNCHER=${nativeCompilerCache.get()}"
-                }
-            }
-        }
     }
 
     compileOptions {
@@ -80,13 +67,6 @@ android {
         }
         playRelease {
             kotlin.srcDirs += "src/play/kotlin"
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
         }
     }
 }

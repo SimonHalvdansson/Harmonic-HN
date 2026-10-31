@@ -10,37 +10,21 @@ import com.simon.harmonichackernews.platform.LocalSummaryEngine
 import com.simon.harmonichackernews.platform.SummaryRequest
 import com.simon.harmonichackernews.platform.SummaryResult
 import com.simon.harmonichackernews.settings.KeyValueStore
-import com.sun.jna.Library
-import com.sun.jna.Native
-import com.sun.jna.Pointer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
-import java.lang.management.ManagementFactory
-import java.nio.charset.StandardCharsets
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path as KotlinPath
 
@@ -125,7 +109,7 @@ private class DesktopSwitchableLocalModelStorage(
     }
 }
 
-/** Owns the desktop model downloader, llama.cpp bridge, and their process lifetime. */
+/** Owns the desktop model downloader, LiteRT-LM runtime, and their process lifetime. */
 class DesktopLocalAiEnvironment private constructor(
     val models: LocalModelService,
     val summary: LocalSummaryEngine,
@@ -161,9 +145,8 @@ class DesktopLocalAiEnvironment private constructor(
                         KtorTransferClient(KtorHttpClient(transferClient)),
                     ),
                 )
-                val nativeLibrary = DesktopLlamaNativeLibrary(cacheRoot.resolve("local-ai-runtime"))
                 val apple = DesktopAppleIntelligence(cacheRoot)
-                val runtimeDelivery = DesktopLocalRuntimeDelivery(nativeLibrary)
+                val runtimeDelivery = DesktopLocalRuntimeDelivery()
                 val models = LocalModelService(
                     preferences = preferences,
                     storage = DesktopSwitchableLocalModelStorage(
@@ -173,7 +156,7 @@ class DesktopLocalAiEnvironment private constructor(
                     transfers = transfers,
                     runtimeDelivery = runtimeDelivery,
                     capabilities = LocalModelDeviceCapabilities(
-                        supportsDownloadableModels = DesktopNativePlatform.supported,
+                        supportsDownloadableModels = true,
                         supportsLiteRtModels = DesktopLiteRtInference.supported,
                         liteRtUnsupportedReason = LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE,
                     ),
@@ -187,8 +170,6 @@ class DesktopLocalAiEnvironment private constructor(
                     models = models,
                     summary = DesktopLocalSummaryEngine(
                         models = models,
-                        nativeLibrary = nativeLibrary,
-                        totalMemoryBytes = ::desktopTotalMemoryBytes,
                         apple = apple,
                         liteRt = DesktopLiteRtInference(cacheRoot.toString()),
                     ),
@@ -321,30 +302,13 @@ private class DesktopLocalModelTransferScheduler(
     }
 }
 
-private class DesktopLocalRuntimeDelivery(
-    private val nativeLibrary: DesktopLlamaNativeLibrary,
-) : LocalModelRuntimeDelivery {
+private class DesktopLocalRuntimeDelivery : LocalModelRuntimeDelivery {
     private var observer: () -> Unit = {}
     private var downloadStarter: suspend (String) -> String? = { "Model downloads are not ready." }
 
     override val included: Boolean = true
 
     override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus = when (runtime) {
-        LocalModelRuntime.LLAMA_CPP -> nativeLibrary.availability().fold(
-            onSuccess = {
-                LocalRuntimeInstallStatus(
-                    state = LocalRuntimeInstallState.INSTALLED,
-                    runtime = runtime,
-                )
-            },
-            onFailure = { error ->
-                LocalRuntimeInstallStatus(
-                    state = LocalRuntimeInstallState.FAILED,
-                    runtime = runtime,
-                    error = error.message.orEmpty(),
-                )
-            },
-        )
         LocalModelRuntime.LITERT_LM -> LocalRuntimeInstallStatus(
             state = if (DesktopLiteRtInference.supported) LocalRuntimeInstallState.INSTALLED
                 else LocalRuntimeInstallState.NOT_INSTALLED,
@@ -360,7 +324,6 @@ private class DesktopLocalRuntimeDelivery(
 
     override fun isInstalled(runtime: LocalModelRuntime): Boolean =
         when (runtime) {
-            LocalModelRuntime.LLAMA_CPP -> nativeLibrary.availability().isSuccess
             LocalModelRuntime.LITERT_LM -> DesktopLiteRtInference.supported
             LocalModelRuntime.APPLE_FOUNDATION_MODELS, LocalModelRuntime.GEMINI_NANO -> false
         }
@@ -389,27 +352,22 @@ private class DesktopLocalRuntimeDelivery(
         LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Apple Intelligence"
         LocalModelRuntime.GEMINI_NANO -> "Gemini Nano"
         LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
-        LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
     }
 }
 
 private class DesktopLocalSummaryEngine(
     private val models: LocalModelService,
-    nativeLibrary: DesktopLlamaNativeLibrary,
-    totalMemoryBytes: () -> Long,
     private val apple: DesktopAppleIntelligence,
     private val liteRt: DesktopLiteRtInference,
 ) : LocalSummaryEngine {
-    private val inference = DesktopLlamaInference(nativeLibrary::requireApi, totalMemoryBytes)
-
-    override fun canAttempt(): Boolean = DesktopNativePlatform.supported
+    override fun canAttempt(): Boolean = DesktopLiteRtInference.supported || DesktopAppleIntelligence.isMac
 
     override suspend fun availability(): LocalSummaryAvailability = withContext(Dispatchers.IO) {
-        if (!DesktopNativePlatform.supported) {
+        if (!canAttempt()) {
             return@withContext LocalSummaryAvailability(
                 available = false,
                 downloadableFallbackRequired = false,
-                statusMessage = "Local AI requires a 64-bit Windows, macOS, or Linux build",
+                statusMessage = "Local AI is unavailable on this desktop platform",
             )
         }
         models.preload()
@@ -478,11 +436,7 @@ private class DesktopLocalSummaryEngine(
                     modelLoadMillis = loadMillis,
                 ))
             }
-            val summary = if (selected.runtime == LocalModelRuntime.LITERT_LM) {
-                liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
-            } else {
-                inference.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
-            }
+            val summary = liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
             send(StorySummaryEvent.Success(summary))
         } catch (error: CancellationException) {
             throw error
@@ -492,202 +446,3 @@ private class DesktopLocalSummaryEngine(
         }
     }
 }
-
-internal class DesktopLlamaInference(
-    private val requireApi: () -> HarmonicLlamaApi,
-    private val totalMemoryBytes: () -> Long,
-) {
-    private val inferenceMutex = Mutex()
-
-    suspend fun summarize(
-        model: LocalModelDefinition,
-        modelPath: String,
-        systemInstruction: String,
-        text: String,
-        onProgress: (String) -> Unit,
-        onLoaded: (Long) -> Unit,
-        preserveInput: Boolean = false,
-    ): String = inferenceMutex.withLock {
-        withContext(Dispatchers.IO) {
-            coroutineScope {
-                ensureActive()
-                val api = requireApi()
-                val engine = checkNotNull(api.harmonic_llama_create()) {
-                    "Could not create the llama.cpp inference engine"
-                }
-                // A sibling can signal native cancellation while this coroutine is blocked in
-                // model loading, prompt processing or token decoding. Join it before freeing the handle.
-                val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
-                    try { awaitCancellation() } finally { api.harmonic_llama_cancel(engine) }
-                }
-                try {
-                    val prepared = LocalSummaryPreparation.prepare(
-                        text = text,
-                        modelContextTokens = model.contextTokens,
-                        totalMemoryBytes = totalMemoryBytes(),
-                        preserveInput = preserveInput,
-                    )
-                    val loadStartedAt = System.nanoTime()
-                    val loaded = api.harmonic_llama_load(engine, modelPath, prepared.contextTokens)
-                    ensureActive()
-                    check(loaded != 0) {
-                        nativeError(api, engine, "Could not load the local model")
-                    }
-                    onLoaded((System.nanoTime() - loadStartedAt) / 1_000_000L)
-
-                    val generation = LocalSummaryGenerationPolicy.configuration(model.id)
-                    val started = api.harmonic_llama_start(
-                        engine,
-                        systemInstruction,
-                        prepared.text,
-                        generation.responsePrefix,
-                        generation.maxOutputTokens,
-                    )
-                    ensureActive()
-                    check(started != 0) { nativeError(api, engine, "Could not process the summary input") }
-
-                    val response = StringBuilder(generation.responsePrefix)
-                    val pieceBuffer = ByteArray(OUTPUT_PIECE_BUFFER_BYTES)
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val length = api.harmonic_llama_next_utf8(
-                            engine,
-                            pieceBuffer,
-                            pieceBuffer.size,
-                        )
-                        ensureActive()
-                        if (length == 0) break
-                        check(length > 0) { nativeError(api, engine, "Local model inference failed") }
-                        response.append(pieceBuffer.decodeToString(0, length))
-                        LocalSummaryGenerationPolicy.visibleOutput(response.toString())
-                            ?.takeIf(String::isNotEmpty)
-                            ?.let(onProgress)
-                    }
-                    nativeError(api, engine, "").takeIf(String::isNotBlank)?.let(::error)
-                    LocalSummaryGenerationPolicy.visibleOutput(response.toString())
-                        ?.trim()
-                        ?.takeIf(String::isNotEmpty)
-                        ?: error("The local model returned an empty summary")
-                } finally {
-                    withContext(NonCancellable) {
-                        cancellation.cancelAndJoin()
-                        api.harmonic_llama_close(engine)
-                        api.harmonic_llama_destroy(engine)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun nativeError(
-        api: HarmonicLlamaApi,
-        engine: Pointer,
-        fallback: String,
-    ): String = api.harmonic_llama_last_error(engine)
-        ?.getString(0, StandardCharsets.UTF_8.name())
-        ?.takeIf(String::isNotBlank)
-        ?: fallback
-
-    private companion object {
-        const val OUTPUT_PIECE_BUFFER_BYTES = 64 * 1024
-    }
-}
-
-internal interface HarmonicLlamaApi : Library {
-    fun harmonic_llama_backend_initialize(callback: Pointer?, userData: Pointer?)
-    fun harmonic_llama_create(): Pointer?
-    fun harmonic_llama_destroy(engine: Pointer)
-    fun harmonic_llama_load(engine: Pointer, modelPath: String, contextTokens: Int): Int
-    fun harmonic_llama_start(
-        engine: Pointer,
-        systemPrompt: String,
-        userPrompt: String,
-        responsePrefix: String,
-        outputTokens: Int,
-    ): Int
-    fun harmonic_llama_next_utf8(engine: Pointer, buffer: ByteArray, capacity: Int): Int
-    fun harmonic_llama_last_error(engine: Pointer): Pointer?
-    fun harmonic_llama_close(engine: Pointer)
-    fun harmonic_llama_cancel(engine: Pointer)
-}
-
-private class DesktopLlamaNativeLibrary(
-    private val extractionRoot: Path,
-) {
-    @Volatile
-    private var loaded: Result<HarmonicLlamaApi>? = null
-
-    fun availability(): Result<Unit> = load().map { }
-
-    fun requireApi(): HarmonicLlamaApi = load().getOrThrow()
-
-    private fun load(): Result<HarmonicLlamaApi> {
-        loaded?.let { return it }
-        return synchronized(this) {
-            loaded ?: runCatching {
-                check(DesktopNativePlatform.supported) {
-                    "Local AI requires a 64-bit Windows, macOS, or Linux build"
-                }
-                val libraryName = System.mapLibraryName(LIBRARY_BASE_NAME)
-                val resourceName = "native/$libraryName"
-                val classLoader = Thread.currentThread().contextClassLoader
-                    ?: DesktopLlamaNativeLibrary::class.java.classLoader
-                val bytes = classLoader.getResourceAsStream(resourceName)?.use { it.readBytes() }
-                    ?: error("Desktop local AI runtime is missing from this app build")
-                val digest = MessageDigest.getInstance("SHA-256")
-                    .digest(bytes)
-                    .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-                val directory = extractionRoot.resolve(digest.take(16))
-                val libraryPath = directory.resolve(libraryName)
-                Files.createDirectories(directory)
-                if (!Files.isRegularFile(libraryPath) || Files.size(libraryPath) != bytes.size.toLong()) {
-                    val temporary = Files.createTempFile(directory, libraryName, ".tmp")
-                    try {
-                        Files.write(temporary, bytes)
-                        try {
-                            Files.move(
-                                temporary,
-                                libraryPath,
-                                StandardCopyOption.ATOMIC_MOVE,
-                                StandardCopyOption.REPLACE_EXISTING,
-                            )
-                        } catch (_: AtomicMoveNotSupportedException) {
-                            Files.move(
-                                temporary,
-                                libraryPath,
-                                StandardCopyOption.REPLACE_EXISTING,
-                            )
-                        }
-                    } finally {
-                        Files.deleteIfExists(temporary)
-                    }
-                }
-                Native.load(
-                    libraryPath.toAbsolutePath().toString(),
-                    HarmonicLlamaApi::class.java,
-                    mapOf(Library.OPTION_STRING_ENCODING to StandardCharsets.UTF_8.name()),
-                ).also { it.harmonic_llama_backend_initialize(null, null) }
-            }.also { loaded = it }
-        }
-    }
-
-    private companion object {
-        const val LIBRARY_BASE_NAME = "harmonic-local-ai"
-    }
-}
-
-private object DesktopNativePlatform {
-    private val osName = System.getProperty("os.name").orEmpty().lowercase()
-    private val architecture = System.getProperty("os.arch").orEmpty().lowercase()
-    private val supportedOs = osName.contains("win") || osName.contains("mac") ||
-        osName.contains("linux")
-    private val supportedArchitecture = architecture == "amd64" || architecture == "x86_64" ||
-        architecture == "aarch64" || architecture == "arm64"
-    val supported: Boolean = supportedOs && supportedArchitecture
-}
-
-private fun desktopTotalMemoryBytes(): Long = runCatching {
-    (ManagementFactory.getOperatingSystemMXBean() as? com.sun.management.OperatingSystemMXBean)
-        ?.totalMemorySize
-        ?: 0L
-}.getOrDefault(0L)

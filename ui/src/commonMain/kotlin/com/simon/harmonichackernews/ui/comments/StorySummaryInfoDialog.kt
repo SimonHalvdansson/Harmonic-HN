@@ -509,11 +509,6 @@ private fun modelIdentity(
                 fallbackName = "On-device model",
                 icon = Res.drawable.ic_smartphone,
             )
-            LocalModelRuntime.LLAMA_CPP -> ModelIdentity(
-                badge = "LLAMA.CPP",
-                fallbackName = "On-device model",
-                icon = Res.drawable.ic_smartphone,
-            )
             null -> ModelIdentity(
                 badge = "ON DEVICE",
                 fallbackName = "On-device model",

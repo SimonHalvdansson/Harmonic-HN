@@ -152,13 +152,6 @@ class LocalModelService(
             return if (requestedRuntime.pendingModelId == model.id) null
             else "Wait for the current local AI runtime installation to finish."
         }
-        val anotherRuntimeActive = LocalModelRuntime.entries.any { runtime ->
-            runtime != model.runtime && runtimeStatus(runtime).active
-        }
-        if (anotherRuntimeActive) {
-            return "Wait for the current local AI runtime installation to finish."
-        }
-
         return if (isRuntimeInstalled(model.runtime)) requestModelDownload(model.id)
         else runtimeDelivery.request(model)
     }

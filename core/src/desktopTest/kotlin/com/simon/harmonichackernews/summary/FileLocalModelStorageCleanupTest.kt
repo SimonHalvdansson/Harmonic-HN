@@ -9,6 +9,59 @@ import kotlinx.io.files.Path
 
 class FileLocalModelStorageCleanupTest {
     @Test
+    fun retiredDownloadsRemainCountedAndCanBeExplicitlyCleared() {
+        val temporary = Files.createTempDirectory("harmonic-retired-models-")
+        try {
+            val root = Files.createDirectory(temporary.resolve("models"))
+            val cache = Files.createDirectory(temporary.resolve("cache"))
+            val retired = Files.createDirectory(root.resolve("bonsai-1.7b"))
+            val oldFile = Files.write(retired.resolve("Bonsai-1.7B-Q1_0.gguf"), ByteArray(20))
+            val oldCache = Files.write(
+                cache.resolve("Qwen3.5-0.8B-hybrid-exact-c2048.litertlm.xnnpack_cache_test"), ByteArray(10),
+            )
+            val retiredLfm = Files.createDirectory(root.resolve("lfm-2.5-1.2b"))
+            val oldLfm = Files.write(retiredLfm.resolve("LFM2.5-1.2B-Instruct_int4_gpu.litertlm"), ByteArray(15))
+            val oldLfmCache = Files.write(
+                cache.resolve("LFM2.5-1.2B-Instruct_int4_gpu.litertlm.xnnpack_cache_test"), ByteArray(5),
+            )
+            val unrelated = Files.write(root.resolve("keep.txt"), ByteArray(5))
+            val storage = FileLocalModelStorage(Path(root.toString()), { Long.MAX_VALUE }, Path(cache.toString()))
+
+            assertEquals(50L, storage.storedBytes())
+            assertTrue(Files.exists(oldFile))
+            assertTrue(Files.exists(oldLfm))
+            assertTrue(storage.clearStoredModels())
+            assertFalse(Files.exists(oldFile))
+            assertFalse(Files.exists(oldCache))
+            assertFalse(Files.exists(oldLfm))
+            assertFalse(Files.exists(oldLfmCache))
+            assertTrue(Files.exists(unrelated))
+        } finally {
+            temporary.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun replacementDownloadRemovesOldGgufButPreservesItsNewPartial() {
+        val temporary = Files.createTempDirectory("harmonic-replaced-model-")
+        try {
+            val model = LocalModelCatalog.models.first { it.id == LocalModelCatalog.MODEL_MINISTRAL_3B }
+            val directory = Files.createDirectory(temporary.resolve(model.id))
+            val obsolete = Files.write(directory.resolve("Ministral-3-3B-Instruct-2512-Q4_K_M.gguf"), ByteArray(20))
+            val partial = Files.write(directory.resolve(model.fileName + LocalModelFilePolicy.PARTIAL_FILE_SUFFIX), ByteArray(10))
+            val storage = FileLocalModelStorage(Path(temporary.toString()), { Long.MAX_VALUE })
+
+            assertEquals(null, storage.snapshot(model).finalFileBytes)
+            assertTrue(storage.prepareDownload(model) is LocalModelStoragePreparation.Ready)
+            assertFalse(Files.exists(obsolete))
+            assertTrue(Files.exists(partial))
+            assertEquals(10L, storage.snapshot(model).partialFileBytes)
+        } finally {
+            temporary.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun cacheScansPreserveUnrelatedFilesAndMatchingDirectories() {
         val temporary = Files.createTempDirectory("harmonic-model-cache-scan-")
         try {

@@ -51,7 +51,7 @@ private extension XCUIElement {
 }
 
 final class IosLiteRtSettingsUITests: XCTestCase {
-    func testLocalPickerOffersGemmaWithoutGgufModels() {
+    func testLocalPickerOffersLiteRtModelsWithoutRetiredBonsaiModels() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

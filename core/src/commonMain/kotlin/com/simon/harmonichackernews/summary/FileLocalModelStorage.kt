@@ -26,7 +26,7 @@ object LocalModelFilePolicy {
         add("${model.fileName}.xnnpack_cache_")
         when (model.id) {
             LocalModelCatalog.MODEL_E2B -> add("gemma-4-E2B-it.litertlm.xnnpack_cache_")
-            LocalModelCatalog.MODEL_QWEN_08B ->
+            "qwen-3.5-0.8b" ->
                 add("Qwen3.5-0.8B-hybrid-exact-c2048.litertlm.xnnpack_cache_")
         }
     }
@@ -129,20 +129,16 @@ class FileLocalModelStorage(
         }
     }
 
-    private fun modelDirectories(): List<Path> = models
-        .asSequence()
-        .filter(LocalModelDefinition::downloadable)
-        .map { LocalModelFilePolicy.modelDirectory(root, it.id) }
-        .distinct()
-        .toList()
+    private fun modelDirectories(): List<Path> = (
+        models.filter(LocalModelDefinition::downloadable).map { it.id } + RETIRED_MODEL_IDS
+    ).distinct().map { LocalModelFilePolicy.modelDirectory(root, it) }
 
     private fun inferenceCacheFiles(): List<Path> {
         val cacheRoot = inferenceCacheRoot ?: return emptyList()
         if (fileSystem.metadataOrNull(cacheRoot)?.isDirectory != true) return emptyList()
         val prefixes = models
             .filter(LocalModelDefinition::downloadable)
-            .flatMap(LocalModelFilePolicy::inferenceCachePrefixes)
-            .distinct()
+            .flatMap(LocalModelFilePolicy::inferenceCachePrefixes) + RETIRED_CACHE_PREFIXES
         return fileSystem.list(cacheRoot).filter { path ->
             prefixes.any(path.name::startsWith) &&
                 fileSystem.metadataOrNull(path)?.isRegularFile == true
@@ -162,5 +158,16 @@ class FileLocalModelStorage(
         val metadata = fileSystem.metadataOrNull(path) ?: return
         if (metadata.isDirectory) fileSystem.list(path).forEach(::deleteTree)
         fileSystem.delete(path, mustExist = false)
+    }
+
+    private companion object {
+        // Keep only ownership metadata for retired downloads; never delete them on startup.
+        val RETIRED_MODEL_IDS = listOf(
+            "bonsai-1.7b", "bonsai-4b", "bonsai-8b", "qwen-3.5-0.8b", "lfm-2.5-1.2b",
+        )
+        val RETIRED_CACHE_PREFIXES = listOf(
+            "Qwen3.5-0.8B-hybrid-exact-c2048.litertlm.xnnpack_cache_",
+            "LFM2.5-1.2B-Instruct_int4_gpu.litertlm.xnnpack_cache_",
+        )
     }
 }

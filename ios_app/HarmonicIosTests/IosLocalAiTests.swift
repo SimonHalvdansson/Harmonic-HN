@@ -93,10 +93,9 @@ final class IosLocalAiTests: XCTestCase {
 
     func testCatalogAndDownloadableFallbackWithoutAppleIntelligence() throws {
         createEnvironment(bridge: StubLiteRtBridge())
-        XCTAssertEqual(environment.models.catalog.count, 3)
-        XCTAssertFalse(environment.models.catalog.contains { $0.runtime == .llamaCpp })
+        XCTAssertEqual(environment.models.catalog.count, 7)
+        XCTAssertTrue(environment.models.catalog.filter { $0.downloadable }.allSatisfy { $0.runtime == .litertLm })
         XCTAssertTrue(environment.models.isRuntimeInstalled(runtime: .litertLm))
-        XCTAssertFalse(environment.models.isRuntimeInstalled(runtime: .llamaCpp))
         XCTAssertFalse(environment.summary.isReady())
         let resolved = expectation(description: "Availability resolved")
         environment.summary.availability { result, error in

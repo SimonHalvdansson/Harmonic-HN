@@ -450,7 +450,7 @@ class LocalModelServiceTest {
 
         override fun remove(model: LocalModelDefinition, includeFinalFile: Boolean) = Unit
 
-        override fun installedPath(model: LocalModelDefinition) = "model.gguf"
+        override fun installedPath(model: LocalModelDefinition) = "model.litertlm"
 
         override fun storedBytes() = bytes
 
@@ -478,11 +478,11 @@ class LocalModelServiceTest {
         val DownloadableModel = BuiltInModel.copy(
             id = "downloadable",
             displayName = "Downloadable",
-            fileName = "model.gguf",
-            url = "https://example.com/model.gguf",
+            fileName = "model.litertlm",
+            url = "https://example.com/model.litertlm",
             sizeBytes = 1_000,
             downloadable = true,
-            runtime = LocalModelRuntime.LLAMA_CPP,
+            runtime = LocalModelRuntime.LITERT_LM,
             contextTokens = 2_048,
         )
     }

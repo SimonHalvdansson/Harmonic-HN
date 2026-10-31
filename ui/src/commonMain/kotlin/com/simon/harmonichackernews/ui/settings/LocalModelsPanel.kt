@@ -61,10 +61,9 @@ import com.simon.harmonichackernews.resources.ic_delete
 import com.simon.harmonichackernews.resources.ic_file_download
 import com.simon.harmonichackernews.resources.model_logo_google
 import com.simon.harmonichackernews.resources.model_logo_liquid
+import com.simon.harmonichackernews.resources.model_logo_qwen
 import com.simon.harmonichackernews.resources.model_logo_mistral
 import com.simon.harmonichackernews.resources.model_logo_nvidia
-import com.simon.harmonichackernews.resources.model_logo_prism
-import com.simon.harmonichackernews.resources.model_logo_qwen
 import com.simon.harmonichackernews.summary.LocalModelBrand
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelManagerState
@@ -122,11 +121,10 @@ fun LocalModelsRoute(
                 when (definition.brand) {
                     LocalModelBrand.SYSTEM -> Res.drawable.ic_auto_awesome
                     LocalModelBrand.GOOGLE -> Res.drawable.model_logo_google
-                    LocalModelBrand.PRISM -> Res.drawable.model_logo_prism
-                    LocalModelBrand.QWEN -> Res.drawable.model_logo_qwen
                     LocalModelBrand.NVIDIA -> Res.drawable.model_logo_nvidia
                     LocalModelBrand.MISTRAL -> Res.drawable.model_logo_mistral
                     LocalModelBrand.LIQUID -> Res.drawable.model_logo_liquid
+                    LocalModelBrand.QWEN -> Res.drawable.model_logo_qwen
                 },
             )
         },
@@ -467,11 +465,6 @@ private fun LocalModelCard(
                             background = MaterialTheme.colorScheme.primaryContainer,
                             foreground = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
-                        LocalModelTag(
-                            text = row.model.runtime.displayLabel(),
-                            background = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            foreground = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 } else {
                     Row(
@@ -605,7 +598,6 @@ private fun LocalModelRuntime.displayLabel(): String = when (this) {
     LocalModelRuntime.APPLE_FOUNDATION_MODELS -> "Foundation Models"
     LocalModelRuntime.GEMINI_NANO -> "AI Core"
     LocalModelRuntime.LITERT_LM -> "LiteRT-LM"
-    LocalModelRuntime.LLAMA_CPP -> "llama.cpp"
 }
 
 private const val LocalModelProgressAnimationDurationMillis = 500

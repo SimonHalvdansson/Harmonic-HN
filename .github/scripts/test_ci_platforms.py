@@ -34,10 +34,10 @@ class PlatformSelectionTest(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(platforms_for_paths([path]), PLATFORMS)
 
-    def test_llama_sources_affect_android_and_desktop(self):
+    def test_android_runtime_changes_skip_other_hosts(self):
         self.assertEqual(platforms_for_paths([
-            "local_ai_runtime/src/main/cpp/CMakeLists.txt",
-        ]), {"android", "desktop"})
+            "local_ai_runtime/src/play/kotlin/LiteRtInferenceEngine.kt",
+        ]), {"android"})
 
     def test_docs_and_empty_diffs_skip_packaging(self):
         self.assertEqual(platforms_for_paths(["README.md", "docs/design/image.png"]), set())
