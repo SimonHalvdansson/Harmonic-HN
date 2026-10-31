@@ -486,7 +486,7 @@ private fun HackerNewsStoryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val domain = DomainNamePolicy.fromUrl(summary.storyUrl)
+    val domain = summary.storyUrl.takeIf(String::isNotBlank)?.let(DomainNamePolicy::fromUrl)
     val title = remember(summary.title, summary.storyUrl) {
         val story = Story().apply {
             this.title = summary.title
@@ -543,7 +543,7 @@ private fun HackerNewsStoryCard(
         val byline = listOfNotNull(
             summary.author.takeIf(String::isNotBlank)?.let { "by $it" },
             summary.publishedTime.takeIf(String::isNotBlank),
-        ).joinToString("  ·  ")
+        ).joinToString(" · ")
         if (byline.isNotBlank()) {
             Text(
                 byline,
