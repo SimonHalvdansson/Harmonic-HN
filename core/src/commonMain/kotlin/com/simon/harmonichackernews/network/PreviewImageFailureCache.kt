@@ -20,6 +20,8 @@ class PreviewImageFailureCache(
     // Offline downloads say nothing about whether an image URL is broken. Suppress retries
     // within this session only, until connectivity returns; never persist these failures.
     private val offlineFailures = linkedSetOf<String>()
+    // Only the URL-derived key is cached; timestamps and connectivity must stay live.
+    private val storageKeys = linkedMapOf<String, String>()
     private val mutableChanges = MutableStateFlow(0L)
     val changes = mutableChanges.asStateFlow()
 
@@ -69,7 +71,15 @@ class PreviewImageFailureCache(
         mutableChanges.value++
     }
 
-    private fun key(imageUrl: String) = PREFIX + StableHash.sha256Hex(imageUrl)
+    private fun key(imageUrl: String): String {
+        storageKeys[imageUrl]?.let { return it }
+        val key = PREFIX + StableHash.sha256Hex(imageUrl)
+        if (maxEntries > 0) {
+            if (storageKeys.size >= maxEntries) storageKeys.remove(storageKeys.keys.first())
+            storageKeys[imageUrl] = key
+        }
+        return key
+    }
 
     private companion object {
         const val PREFIX = "preview_image_failure."

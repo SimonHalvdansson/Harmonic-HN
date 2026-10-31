@@ -61,34 +61,22 @@ object StoryRowModelFactory {
     ): StoryRowModel {
         val fullDomain = resolvedDomain
             ?: item.url?.let(DomainNamePolicy::fromUrl).orEmpty()
-        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
-        val titlePresentation = storyTitlePresentation(
+        return createModel(
             title = item.title,
             pdfTitle = item.pdfTitle,
             videoTitle = item.videoTitle,
-        )
-        return StoryRowModel(
-            index = position?.let { "${it + 1}." }.orEmpty(),
-            title = if (item.title == null) {
-                if (item.loadingFailed) failedTitle else loadingTitle
-            } else {
-                titlePresentation.text
-            },
-            titleBadge = titlePresentation.badge,
-            previewText = resources.previewText
-                ?: item.presentation.linkSummaryDescription
-                ?: item.presentation.aiSummaryText.orEmpty(),
+            loadingFailed = item.loadingFailed,
+            linkSummaryDescription = item.presentation.linkSummaryDescription,
+            aiSummaryText = item.presentation.aiSummaryText,
             points = item.score,
-            domain = fullDomain,
-            domainWithoutTopLevel = shortDomain,
-            age = ItemTimeFormatter.format(item.createdAtEpochSeconds, nowMillis),
+            createdAtEpochSeconds = item.createdAtEpochSeconds,
             commentCount = item.descendantCount,
-            faviconUrl = resources.faviconUrl,
-            previewImageUrl = resources.previewImageUrl,
-            previewImageLoadFailed = resources.previewImageLoadFailed,
-            faviconTintArgb = resources.faviconTintArgb,
-            previewImageTintArgb = resources.previewImageTintArgb,
-            tintFallbackArgb = resources.tintFallbackArgb,
+            fullDomain = fullDomain,
+            position = position,
+            resources = resources,
+            loadingTitle = loadingTitle,
+            failedTitle = failedTitle,
+            nowMillis = nowMillis,
         )
     }
 
@@ -103,28 +91,64 @@ object StoryRowModelFactory {
     ): StoryRowModel {
         val fullDomain = resolvedDomain
             ?: runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
-        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
-        val titlePresentation = storyTitlePresentation(
+        return createModel(
             title = story.title,
             pdfTitle = story.pdfTitle,
             videoTitle = story.videoTitle,
+            loadingFailed = story.loadingFailed,
+            linkSummaryDescription = story.linkSummaryDescription,
+            aiSummaryText = story.aiSummaryText,
+            points = story.score,
+            createdAtEpochSeconds = story.createdAtEpochSeconds,
+            commentCount = story.descendants,
+            fullDomain = fullDomain,
+            position = position,
+            resources = resources,
+            loadingTitle = loadingTitle,
+            failedTitle = failedTitle,
+            nowMillis = nowMillis,
+        )
+    }
+
+    private fun createModel(
+        title: String?,
+        pdfTitle: String?,
+        videoTitle: String?,
+        loadingFailed: Boolean,
+        linkSummaryDescription: String?,
+        aiSummaryText: String?,
+        points: Int,
+        createdAtEpochSeconds: Int,
+        commentCount: Int,
+        fullDomain: String,
+        position: Int?,
+        resources: StoryRowResourcePresentation,
+        loadingTitle: String,
+        failedTitle: String,
+        nowMillis: Long,
+    ): StoryRowModel {
+        val shortDomain = DomainNamePolicy.formatForDisplay(fullDomain, false) ?: fullDomain
+        val titlePresentation = storyTitlePresentation(
+            title = title,
+            pdfTitle = pdfTitle,
+            videoTitle = videoTitle,
         )
         return StoryRowModel(
             index = position?.let { "${it + 1}." }.orEmpty(),
-            title = if (story.title == null) {
-                if (story.loadingFailed) failedTitle else loadingTitle
+            title = if (title == null) {
+                if (loadingFailed) failedTitle else loadingTitle
             } else {
                 titlePresentation.text
             },
             titleBadge = titlePresentation.badge,
             previewText = resources.previewText
-                ?: story.linkSummaryDescription
-                ?: story.aiSummaryText.orEmpty(),
-            points = story.score,
+                ?: linkSummaryDescription
+                ?: aiSummaryText.orEmpty(),
+            points = points,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,
-            age = story.formatTime(nowMillis),
-            commentCount = story.descendants,
+            age = ItemTimeFormatter.format(createdAtEpochSeconds, nowMillis),
+            commentCount = commentCount,
             faviconUrl = resources.faviconUrl,
             previewImageUrl = resources.previewImageUrl,
             previewImageLoadFailed = resources.previewImageLoadFailed,

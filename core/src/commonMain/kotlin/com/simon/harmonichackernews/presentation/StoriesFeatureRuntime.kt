@@ -1419,7 +1419,8 @@ class StoriesFeatureRuntime(
             var visible = 0
             // Fill a screen plus a small buffer, continuing past cached rows hidden by filters.
             while (cursor < candidates.size && visible < INITIAL_CACHE_ROWS) {
-                val batch = candidates.drop(cursor).take(INITIAL_CACHE_ROWS - visible)
+                val batchEnd = cursor + min(INITIAL_CACHE_ROWS - visible, candidates.size - cursor)
+                val batch = candidates.subList(cursor, batchEnd).toList()
                 cursor += batch.size
                 val prepared = readFeedCache(batch.filterNot(existing::contains), rebuild = false) { header ->
                     Story("Loading...", header.storyId, false, false).takeIf(header::applyTo)
@@ -1479,8 +1480,10 @@ class StoriesFeatureRuntime(
                 max(viewportEnd, activeStore.state.value.visibleStoryCount.coerceAtMost(activeStories.size) - 1)
             } else viewportEnd
             // Recompute between batches so a scroll takes priority over earlier off-screen work.
-            val approaching = activeStories.drop(cache.firstVisible)
-                .take((end - cache.firstVisible + 1).coerceAtLeast(0))
+            val stories = activeStories
+            val firstIndex = cache.firstVisible.coerceAtMost(stories.size)
+            // Materialize only this window; never retain a live subList across a cache read.
+            val approaching = stories.subList(firstIndex, (end + 1).coerceIn(firstIndex, stories.size))
                 .filter { it.id in cache.ids && !it.loaded && it.id !in cache.protected }
             val summaries = approaching.filter { it.id !in cache.prepared }.take(INITIAL_CACHE_ROWS)
             val rebuilding = summaries.isEmpty()

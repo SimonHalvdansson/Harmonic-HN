@@ -9,7 +9,10 @@ import io.ktor.http.encodeURLPathPart
 
 internal object CrossrefLinkPreview {
     internal fun crossrefDoi(url: String?): String? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return crossrefDoi(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun crossrefDoi(parsed: NetworkUrl): String? {
         val host = parsed.host.lowercase().removePrefix("www.")
         if (host !in setOf("doi.org", "dx.doi.org")) return null
         return parsed.pathSegments.filter(String::isNotEmpty).joinToString("/").takeIf(String::isNotEmpty)

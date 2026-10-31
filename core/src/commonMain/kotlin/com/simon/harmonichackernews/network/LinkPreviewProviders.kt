@@ -7,7 +7,7 @@ import io.ktor.client.HttpClient
 /** Recognition and loading live together so every network-backed preview has one owner. */
 private data class LinkPreviewProvider(
     val types: Set<LinkPreviewType>,
-    val classify: (String) -> LinkPreviewType?,
+    val classify: (NetworkUrl) -> LinkPreviewType?,
     val load: suspend (HttpClient, LinkPreviewType, String, GitHubPreviewLoader) -> LinkPreviewData,
 )
 
@@ -61,29 +61,29 @@ internal object LinkPreviewProviders {
         ),
         singleTypeProvider(
             LinkPreviewType.GITLAB_PROJECT,
-            matches = GitLabLinkPreview::isGitLabUrl,
+            matches = { GitLabLinkPreview.gitLabProjectPath(it) != null },
             load = { client, url -> LinkPreviewData.GitLab(client.loadGitLabInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.OPENROUTER_MODEL,
-            matches = OpenRouterLinkPreview::isOpenRouterUrl,
+            matches = { OpenRouterLinkPreview.openRouterModel(it) != null },
             load = { client, url -> LinkPreviewData.OpenRouter(client.loadOpenRouterInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.STACK_EXCHANGE,
-            matches = StackExchangeLinkPreview::isStackExchangeUrl,
+            matches = { StackExchangeLinkPreview.stackExchangeRequest(it) != null },
             load = { client, url ->
                 LinkPreviewData.StackExchange(client.loadStackExchangeInfo(url))
             },
         ),
         singleTypeProvider(
             LinkPreviewType.ARXIV,
-            matches = ArxivLinkPreview::isArxivUrl,
+            matches = { ArxivLinkPreview.arxivId(it) != null },
             load = { client, url -> LinkPreviewData.Arxiv(client.loadArxivInfo(url)) },
         ),
         singleTypeProvider(
             LinkPreviewType.WIKIPEDIA,
-            matches = WikipediaLinkPreview::isWikipediaUrl,
+            matches = { WikipediaLinkPreview.wikipediaTitle(it) != null },
             load = { client, url -> LinkPreviewData.Wikipedia(client.loadWikipediaInfo(url)) },
         ),
         richProvider(
@@ -149,8 +149,9 @@ internal object LinkPreviewProviders {
 
     fun type(url: String?): LinkPreviewType? {
         val candidate = url?.takeIf(String::isNotBlank) ?: return null
+        val parsed = candidate.toNetworkUrlOrNull() ?: return null
         providers.forEach { provider ->
-            val type = provider.classify(candidate) ?: return@forEach
+            val type = provider.classify(parsed) ?: return@forEach
             check(type in provider.types) { "Preview classifier returned undeclared type $type" }
             return type
         }
@@ -176,7 +177,7 @@ internal object LinkPreviewProviders {
 
 private fun singleTypeProvider(
     type: LinkPreviewType,
-    matches: (String) -> Boolean,
+    matches: (NetworkUrl) -> Boolean,
     load: suspend (HttpClient, String) -> LinkPreviewData,
 ) = LinkPreviewProvider(
     types = setOf(type),
@@ -186,7 +187,7 @@ private fun singleTypeProvider(
 
 private fun richProvider(
     type: LinkPreviewType,
-    matches: (String) -> Boolean,
+    matches: (NetworkUrl) -> Boolean,
     load: suspend (HttpClient, String) -> LinkPreviewInfo,
 ) = singleTypeProvider(type, matches) { client, url ->
     LinkPreviewData.Rich(load(client, url))

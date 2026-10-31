@@ -14,7 +14,10 @@ internal object ArxivLinkPreview {
     fun isArxivUrl(url: String?): Boolean = arxivId(url) != null
 
     fun arxivId(url: String?): String? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return arxivId(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun arxivId(parsed: NetworkUrl): String? {
         if (parsed.scheme != "http" && parsed.scheme != "https") return null
         if (!parsed.host.equals("arxiv.org", ignoreCase = true)) return null
         return arxivPathRegex.matchEntire(parsed.encodedPath)?.groupValues?.get(1)

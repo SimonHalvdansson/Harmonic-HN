@@ -8,7 +8,10 @@ import io.ktor.http.encodeURLPathPart
 
 internal object StatusPageLinkPreview {
     internal fun statusPageIncident(url: String?): Pair<String, String>? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return statusPageIncident(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun statusPageIncident(parsed: NetworkUrl): Pair<String, String>? {
         val host = parsed.host.lowercase()
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         if (!host.endsWith(".statuspage.io") || segments.size < 2 || segments[0] != "incidents") {

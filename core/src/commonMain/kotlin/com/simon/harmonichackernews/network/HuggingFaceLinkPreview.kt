@@ -22,7 +22,10 @@ internal object HuggingFaceLinkPreview {
     fun isHuggingFaceUrl(url: String?): Boolean = huggingFaceModel(url) != null
 
     fun huggingFaceModel(url: String?): HuggingFaceModel? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return huggingFaceModel(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun huggingFaceModel(parsed: NetworkUrl): HuggingFaceModel? {
         if (parsed.host.lowercase().removePrefix("www.") != "huggingface.co") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         if (segments.size < 2 || segments.first().lowercase() in huggingFaceReservedPaths) return null
@@ -35,7 +38,10 @@ internal object HuggingFaceLinkPreview {
     )
 
     internal fun huggingFaceTarget(url: String?): HuggingFacePreviewTarget? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return huggingFaceTarget(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun huggingFaceTarget(parsed: NetworkUrl): HuggingFacePreviewTarget? {
         if (parsed.host.lowercase().removePrefix("www.") != "huggingface.co") return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return when {
@@ -58,7 +64,7 @@ internal object HuggingFaceLinkPreview {
                 segments[1],
                 segments[2],
             )
-            HuggingFaceLinkPreview.huggingFaceModel(url) != null -> HuggingFacePreviewTarget(
+            huggingFaceModel(parsed) != null -> HuggingFacePreviewTarget(
                 LinkPreviewType.HUGGING_FACE_MODEL,
                 segments[0],
                 segments[1],

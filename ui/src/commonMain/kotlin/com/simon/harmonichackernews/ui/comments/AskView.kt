@@ -476,9 +476,10 @@ private fun DiscussionQuestionButton(
         }
     }
     val offset = with(LocalDensity.current) { 12.dp.toPx() }
+    val entranceEnabled by remember(entrance) { computedStateOf { entrance.value > 0.9f } }
     OutlinedButton(
         onClick = onClick,
-        enabled = entrance.value > 0.9f && enabled,
+        enabled = entranceEnabled && enabled,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).graphicsLayer {
             alpha = entrance.value
             translationY = offset * (1f - entrance.value)

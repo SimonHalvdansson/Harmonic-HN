@@ -9,7 +9,10 @@ import io.ktor.http.encodeURLPathPart
 
 internal object MastodonLinkPreview {
     internal fun mastodonStatus(url: String?): Pair<String, String>? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return mastodonStatus(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun mastodonStatus(parsed: NetworkUrl): Pair<String, String>? {
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         if (segments.size < 2 || !segments[0].startsWith("@") || segments[1].any { !it.isDigit() }) {
             return null

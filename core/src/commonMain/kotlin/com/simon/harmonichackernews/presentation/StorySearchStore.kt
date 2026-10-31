@@ -16,11 +16,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 
 data class StorySearchOptions(
@@ -303,29 +307,43 @@ class StorySearchStore(
         // Capture this query's hits: admitting new records may evict some of them from the cache.
         val cachedForQuery = readMetadata.toMap()
         val missing = ids.filter { it !in cachedForQuery }
-        val loaded = missing.map { id ->
+        val loaded = arrayOfNulls<ReadStoryLoad>(missing.size)
+        val nextIndexMutex = Mutex()
+        var nextIndex = 0
+        // A semaphore alone leaves one suspended coroutine per history item. Use a fixed
+        // worker pool and retain the semaphore to share the request limit across generations.
+        List(minOf(MAX_CONCURRENT_HISTORY_REQUESTS, missing.size)) {
             async {
-                readStoryRequests.withPermit {
-                    try {
-                        val story = hackerNewsRepository.getStory(id)?.also { it.isRead = true }
-                        if (story != null && requestGeneration == generation) {
-                            rememberReadStory(id, CachedReadStory(
-                                story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle, nowMillis(),
-                            ))
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val index = nextIndexMutex.withLock {
+                        if (nextIndex < missing.size) nextIndex++ else null
+                    } ?: break
+                    val id = missing[index]
+                    loaded[index] = readStoryRequests.withPermit {
+                        try {
+                            val story = hackerNewsRepository.getStory(id)?.also { it.isRead = true }
+                            if (story != null && requestGeneration == generation) {
+                                rememberReadStory(id, CachedReadStory(
+                                    story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle, nowMillis(),
+                                ))
+                            }
+                            ReadStoryLoad(
+                                story = story,
+                                failed = false,
+                            )
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            ReadStoryLoad(story = null, failed = true)
                         }
-                        ReadStoryLoad(
-                            story = story,
-                            failed = false,
-                        )
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Exception) {
-                        ReadStoryLoad(story = null, failed = true)
                     }
                 }
             }
         }.awaitAll()
-        val byId = missing.zip(loaded).toMap()
+        val byId = buildMap {
+            missing.forEachIndexed { index, id -> put(id, checkNotNull(loaded[index])) }
+        }
         val outcomes = ids.map { id ->
             byId[id] ?: cachedForQuery[id]?.let {
                 ReadStoryLoad(Story().applySnapshot(it.story).apply {

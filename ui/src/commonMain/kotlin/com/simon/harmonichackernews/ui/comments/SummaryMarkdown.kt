@@ -145,8 +145,11 @@ private fun SummaryMarkdownList(
                     return@forEachIndexed
                 }
                 val allowedLines = remainingLines
+                val prepared = rememberSummaryMarkdownText(
+                    item.content, linkColor, enableBoldFormatting, baseUrl, onOpenLink,
+                )
                 val lineCount = if (maxLines == Int.MAX_VALUE) 0 else textMeasurer.measure(
-                    text = summaryMarkdownAnnotatedString(item.content, linkColor, enableBoldFormatting, baseUrl, onOpenLink),
+                    text = prepared,
                     style = bodyStyle,
                     constraints = Constraints(maxWidth = textWidth),
                 ).lineCount
@@ -154,6 +157,10 @@ private fun SummaryMarkdownList(
                 if (lineCount > allowedLines) truncated = true
                 val content = if (remainingLines <= 0 && lineCount <= allowedLines && index < items.lastIndex &&
                     overflow == TextOverflow.Ellipsis) item.content + "…" else item.content
+                // Parse the ellipsis with the source to preserve unfinished Markdown semantics.
+                val rendered = if (content == item.content) prepared else rememberSummaryMarkdownText(
+                    content, linkColor, enableBoldFormatting, baseUrl, onOpenLink,
+                )
                 Row(Modifier.fillMaxWidth()) {
                     Text(
                         text = item.marker,
@@ -163,19 +170,15 @@ private fun SummaryMarkdownList(
                         fontSize = fontSize,
                         lineHeight = lineHeight,
                     )
-                    SummaryMarkdownSingleText(
-                        markdown = content,
+                    SummaryMarkdownRenderedText(
+                        rendered = rendered,
                         maxLines = allowedLines,
                         overflow = overflow,
                         color = color,
-                        linkColor = linkColor,
                         fontFamily = fontFamily,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
-                        onOpenLink = onOpenLink,
-                        baseUrl = baseUrl,
                         modifier = Modifier.weight(1f),
-                        enableBoldFormatting = enableBoldFormatting,
                         animateStreamingText = animateStreamingText,
                         animationContentKey = animationContentKey to index,
                     )
@@ -204,9 +207,47 @@ private fun SummaryMarkdownSingleText(
     animationContentKey: Any? = null,
     onOverflowChanged: ((Boolean) -> Unit)? = null,
 ) {
-    val rendered = remember(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink) {
-        summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink)
-    }
+    val rendered = rememberSummaryMarkdownText(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink)
+    SummaryMarkdownRenderedText(
+        rendered = rendered,
+        color = color,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        modifier = modifier,
+        maxLines = maxLines,
+        overflow = overflow,
+        animateStreamingText = animateStreamingText,
+        animationContentKey = animationContentKey,
+        onOverflowChanged = onOverflowChanged,
+    )
+}
+
+@Composable
+private fun rememberSummaryMarkdownText(
+    markdown: String,
+    linkColor: Color,
+    enableBoldFormatting: Boolean,
+    baseUrl: String?,
+    onOpenLink: (String) -> Unit,
+): AnnotatedString = remember(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink) {
+    summaryMarkdownAnnotatedString(markdown, linkColor, enableBoldFormatting, baseUrl, onOpenLink)
+}
+
+@Composable
+private fun SummaryMarkdownRenderedText(
+    rendered: AnnotatedString,
+    color: Color,
+    fontFamily: FontFamily,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    animateStreamingText: Boolean = false,
+    animationContentKey: Any? = null,
+    onOverflowChanged: ((Boolean) -> Unit)? = null,
+) {
     val history = remember(animationContentKey) { StreamingTextHistory() }
     val fadeRange = remember(animationContentKey, rendered.text, animateStreamingText) {
         streamingTextFadeRange(

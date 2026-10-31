@@ -320,6 +320,110 @@ class SavedItemsRepositoryTest {
     }
 
     @Test
+    fun timestampSortedViewsPreserveSavedValuesWithoutRereadingPersistence() {
+        for (source in SavedItemSource.entries) {
+            var stringReads = 0
+            val store = object : KeyValueStore by TestKeyValueStore() {
+                override fun getString(key: String, default: String?): String? {
+                    stringReads++
+                    error("Saved items should be served from the cache")
+                }
+            }
+            val repository = SavedItemsRepository(store)
+            val saved = listOf(
+                TimestampedItem(3, -1), TimestampedItem(2, 30),
+                TimestampedItem(3, 30), TimestampedItem(1, 30), TimestampedItem(4, -5),
+            )
+            repository.saveItems(source, saved)
+
+            val canonical = if (source == SavedItemSource.BOOKMARKS) {
+                listOf(TimestampedItem(3, 30), TimestampedItem(2, 30),
+                    TimestampedItem(1, 30), TimestampedItem(4, -5))
+            } else saved
+            val sorted = if (source == SavedItemSource.BOOKMARKS) canonical else listOf(
+                TimestampedItem(2, 30), TimestampedItem(3, 30), TimestampedItem(1, 30),
+                TimestampedItem(3, -1), TimestampedItem(4, -5),
+            )
+            assertEquals(sorted, repository.loadItems(source, sortedByCreated = true))
+            assertEquals(canonical, repository.loadItems(source))
+            assertEquals(sorted, repository.loadItems(source, sortedByCreated = true))
+            assertEquals(0, stringReads)
+        }
+    }
+
+    @Test
+    fun coldBookmarkSortingKeepsLegacyDuplicateTieOrderUntilWritten() {
+        for (readCanonicalFirst in listOf(false, true)) {
+            val repository = SavedItemsRepository(
+                TestKeyValueStore(mapOf(SavedItemKeys.BOOKMARKS to "3q10-2q30-3q30-1q30")),
+            )
+            val canonical = listOf(TimestampedItem(3, 30), TimestampedItem(2, 30), TimestampedItem(1, 30))
+            if (readCanonicalFirst) assertEquals(canonical, repository.loadItems(SavedItemSource.BOOKMARKS))
+            assertEquals(
+                listOf(TimestampedItem(2, 30), TimestampedItem(3, 30), TimestampedItem(1, 30)),
+                repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true),
+            )
+            assertEquals(canonical, repository.loadItems(SavedItemSource.BOOKMARKS))
+
+            repository.saveItems(SavedItemSource.BOOKMARKS, canonical)
+            assertEquals(canonical, repository.loadItems(SavedItemSource.BOOKMARKS, sortedByCreated = true))
+        }
+    }
+
+    @Test
+    fun timestampSortedViewsRefreshAfterMembershipAndSnapshotChanges() {
+        val repository = SavedItemsRepository(TestKeyValueStore())
+        val initial = listOf(TimestampedItem(3, 30), TimestampedItem(1, 10))
+        repository.saveItems(SavedItemSource.FAVORITES, initial)
+        val previous = repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true)
+
+        repository.setMembership(SavedItemSource.FAVORITES, 2, true, 20)
+        assertEquals(
+            listOf(TimestampedItem(3, 30), TimestampedItem(2, 20), TimestampedItem(1, 10)),
+            repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true),
+        )
+        repository.setMembership(SavedItemSource.FAVORITES, 3, false, 40)
+        assertEquals(
+            listOf(TimestampedItem(2, 20), TimestampedItem(1, 10)),
+            repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true),
+        )
+        repository.saveSnapshot(SavedItemSource.FAVORITES, SavedItemSnapshot(listOf(9, 7), emptySet()), 50)
+        assertEquals(
+            listOf(TimestampedItem(9, 50), TimestampedItem(7, 49)),
+            repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true),
+        )
+        assertEquals(initial, previous)
+    }
+
+    @Test
+    fun timestampSortedViewsStayWithTheirAccountAndSource() {
+        var account = "alice"
+        val repository = SavedItemsRepository(TestKeyValueStore()).also { it.bindAccountScope { account } }
+        val aliceFavorites = listOf(TimestampedItem(1, 10), TimestampedItem(2, 20))
+        val aliceVotes = listOf(TimestampedItem(3, 30))
+        repository.saveItems(SavedItemSource.FAVORITES, aliceFavorites)
+        repository.saveItems(SavedItemSource.UPVOTED, aliceVotes)
+
+        account = "bob"
+        val bobFavorites = listOf(TimestampedItem(4, 40))
+        repository.saveItems(SavedItemSource.FAVORITES, bobFavorites)
+        assertEquals(bobFavorites, repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true))
+
+        account = "alice"
+        assertEquals(aliceFavorites.reversed(), repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true))
+        assertEquals(aliceVotes, repository.loadItems(SavedItemSource.UPVOTED, sortedByCreated = true))
+        repository.setMembership(SavedItemSource.FAVORITES, 5, true, 50)
+
+        account = "bob"
+        assertEquals(bobFavorites, repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true))
+        account = "alice"
+        assertEquals(
+            listOf(TimestampedItem(5, 50), TimestampedItem(2, 20), TimestampedItem(1, 10)),
+            repository.loadItems(SavedItemSource.FAVORITES, sortedByCreated = true),
+        )
+    }
+
+    @Test
     fun snapshotsNormalizeDuplicatesAndRestrictCommentIdsToSavedItems() {
         val snapshot = SavedItemSnapshots.normalize(
             itemIds = listOf(2, 5, 2, 3),

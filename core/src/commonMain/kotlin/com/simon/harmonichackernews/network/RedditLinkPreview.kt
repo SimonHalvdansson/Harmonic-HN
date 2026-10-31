@@ -8,7 +8,10 @@ import io.ktor.http.URLBuilder
 
 internal object RedditLinkPreview {
     internal fun isRedditPost(url: String?): Boolean {
-        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        return isRedditPost(url?.toNetworkUrlOrNull() ?: return false)
+    }
+
+    internal fun isRedditPost(parsed: NetworkUrl): Boolean {
         val host = parsed.host.lowercase().removePrefix("www.").removePrefix("old.")
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return host == "reddit.com" && "comments" in segments

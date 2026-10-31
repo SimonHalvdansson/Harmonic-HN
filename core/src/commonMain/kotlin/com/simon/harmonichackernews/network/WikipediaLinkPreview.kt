@@ -11,7 +11,10 @@ internal object WikipediaLinkPreview {
     fun isWikipediaUrl(url: String?): Boolean = wikipediaTitle(url) != null
 
     fun wikipediaTitle(url: String?): String? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return wikipediaTitle(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    fun wikipediaTitle(parsed: NetworkUrl): String? {
         if (parsed.scheme !in setOf("http", "https") || parsed.host.lowercase() != "en.wikipedia.org") {
             return null
         }

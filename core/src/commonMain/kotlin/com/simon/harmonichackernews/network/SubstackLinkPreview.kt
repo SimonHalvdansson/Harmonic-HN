@@ -19,7 +19,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal object SubstackLinkPreview {
     internal fun isSubstackArticle(url: String?): Boolean {
-        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        return isSubstackArticle(url?.toNetworkUrlOrNull() ?: return false)
+    }
+
+    internal fun isSubstackArticle(parsed: NetworkUrl): Boolean {
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return parsed.host.lowercase().endsWith(".substack.com") &&
             segments.size >= 2 && segments[0] == "p"

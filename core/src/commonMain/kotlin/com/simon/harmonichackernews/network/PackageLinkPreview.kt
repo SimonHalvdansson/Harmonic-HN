@@ -15,7 +15,10 @@ internal data class PackagePreviewTarget(
 
 internal object PackageLinkPreview {
     internal fun packageTarget(url: String?): PackagePreviewTarget? {
-        val parsed = url?.toNetworkUrlOrNull() ?: return null
+        return packageTarget(url?.toNetworkUrlOrNull() ?: return null)
+    }
+
+    internal fun packageTarget(parsed: NetworkUrl): PackagePreviewTarget? {
         val host = parsed.host.lowercase().removePrefix("www.")
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return when {

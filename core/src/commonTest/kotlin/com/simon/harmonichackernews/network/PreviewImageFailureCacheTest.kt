@@ -65,4 +65,47 @@ class PreviewImageFailureCacheTest {
         now = 999L
         assertFalse(cache.isFailed("image"))
     }
+
+    @Test
+    fun repeatedLookupsObserveCooldownExpiryAndChangesFromOtherOwners() {
+        var now = 1_000L
+        val store = TestKeyValueStore()
+        val cache = PreviewImageFailureCache(store, cooldownMillis = 100, nowMillis = { now })
+        val other = PreviewImageFailureCache(store, cooldownMillis = 100, nowMillis = { now })
+        assertFalse(cache.isFailed("image"))
+        other.record("image", success = false)
+        assertTrue(cache.isFailed("image"))
+
+        now = 1_099L
+        assertTrue(cache.isFailed("image"))
+        now = 1_100L
+        assertFalse(cache.isFailed("image"))
+        other.record("image", success = false)
+        assertTrue(cache.isFailed("image"))
+        other.record("image", success = true)
+        assertFalse(cache.isFailed("image"))
+
+        cache.record("image", success = false)
+        store.clear()
+        cache.onStoreCleared()
+        assertFalse(cache.isFailed("image"))
+    }
+
+    @Test
+    fun keyCacheTurnoverPreservesPersistedFailures() {
+        var now = 1_000L
+        val store = TestKeyValueStore()
+        val cache = PreviewImageFailureCache(store, maxEntries = 2, nowMillis = { now })
+        val url = "https://example.com/image.png"
+        val persistedKey = "preview_image_failure." + StableHash.sha256Hex(url)
+        store.putLong(persistedKey, now)
+
+        assertTrue(cache.isFailed(url))
+        repeat(10) { assertFalse(cache.isFailed("other-$it")) }
+        assertTrue(cache.isFailed(url))
+        now--
+        assertFalse(cache.isFailed(url))
+        cache.record(url, success = true)
+        assertFalse(store.contains(persistedKey))
+    }
 }

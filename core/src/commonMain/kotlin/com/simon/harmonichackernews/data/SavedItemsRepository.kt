@@ -82,7 +82,7 @@ class SavedItemsRepository(
 ) {
     private val mutationMutex = Mutex()
     private val mutableChanges = MutableSharedFlow<SavedItemsChange>(extraBufferCapacity = 32)
-    private val itemCache = mutableMapOf<ItemCacheKey, List<TimestampedItem>>()
+    private val itemCache = mutableMapOf<ItemCacheKey, Lazy<List<TimestampedItem>>>()
     private val itemIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
     private val descendingItemIdsCache = mutableMapOf<SourceAccount, List<Int>>()
     private val commentIdsCache = mutableMapOf<SourceAccount, Set<Int>>()
@@ -164,11 +164,11 @@ class SavedItemsRepository(
         account: String?,
     ): List<TimestampedItem> {
         val key = ItemCacheKey(source, sortedByCreated, account)
-        return itemCache[key] ?: SavedItemCodec.decode(
+        return itemCache[key]?.value ?: SavedItemCodec.decode(
             store.getString(itemKey(source, account)),
             sortedByCreated,
         ).let { normalizeItems(source, it) }.also { items ->
-            itemCache[key] = items
+            itemCache[key] = lazyOf(items)
             itemIdsCache.getOrPut(SourceAccount(source, account)) {
                 items.mapTo(mutableSetOf(), TimestampedItem::id)
             }
@@ -190,7 +190,7 @@ class SavedItemsRepository(
     /** Keep merging atomic while moving unbounded parsing, sorting and serialization off the UI. */
     suspend fun importBookmarksAtomic(content: String, overwrite: Boolean): BookmarkImportResult? =
         mutationMutex.withLock {
-            val current = itemCache[ItemCacheKey(SavedItemSource.BOOKMARKS, false, null)]
+            val current = itemCache[ItemCacheKey(SavedItemSource.BOOKMARKS, false, null)]?.value
             val persisted = if (current == null && !overwrite) store.getString(SavedItemKeys.BOOKMARKS) else null
             val prepared = withContext(Dispatchers.Default) {
                 val result = BookmarkImportPolicy.apply(
@@ -206,8 +206,8 @@ class SavedItemsRepository(
             } ?: return@withLock null
             val source = SavedItemSource.BOOKMARKS
             store.putString(itemKey(source, null), prepared.encoded)
-            itemCache[ItemCacheKey(source, false, null)] = prepared.result.items
-            itemCache[ItemCacheKey(source, true, null)] = prepared.sorted
+            itemCache[ItemCacheKey(source, false, null)] = lazyOf(prepared.result.items)
+            itemCache[ItemCacheKey(source, true, null)] = lazyOf(prepared.sorted)
             itemIdsCache[SourceAccount(source, null)] = prepared.ids
             descendingItemIdsCache[SourceAccount(source, null)] = prepared.descendingIds.toList()
             advanceSourceEpoch(source, isComment = false)
@@ -557,9 +557,12 @@ class SavedItemsRepository(
         account: String? = scopeFor(source),
     ) {
         val cachedItems = items.toList()
-        itemCache[ItemCacheKey(source, sortedByCreated = false, account)] = cachedItems
-        itemCache[ItemCacheKey(source, sortedByCreated = true, account)] =
+        itemCache[ItemCacheKey(source, sortedByCreated = false, account)] = lazyOf(cachedItems)
+        // Votes and favorites normally need only membership/ID order. Defer this view while
+        // retaining the exact saved values and stable tie order without decoding persistence again.
+        itemCache[ItemCacheKey(source, sortedByCreated = true, account)] = lazy {
             cachedItems.sortedByDescending(TimestampedItem::created)
+        }
         itemIdsCache[SourceAccount(source, account)] = cachedItems.mapTo(mutableSetOf(), TimestampedItem::id)
         descendingItemIdsCache.remove(SourceAccount(source, account))
     }

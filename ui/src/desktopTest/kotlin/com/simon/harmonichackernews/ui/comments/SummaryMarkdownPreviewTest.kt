@@ -10,7 +10,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
@@ -20,6 +25,65 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SummaryMarkdownPreviewTest {
+    @Test
+    fun collapsedListRetainsEllipsisAndRefreshesLinkCallbacksAndFormatting() = SwingUtilities.invokeAndWait {
+        val firstOpened = mutableListOf<String>()
+        val nextOpened = mutableListOf<String>()
+        val openLink = mutableStateOf<(String) -> Unit>({ firstOpened += it })
+        val baseUrl = mutableStateOf("https://example.com/first/")
+        val linkColor = mutableStateOf(Color.Blue)
+        val bold = mutableStateOf(true)
+        val expanded = mutableStateOf(false)
+        val scene = ImageComposeScene(400, 100, Density(1f)) {
+            SummaryMarkdownText(
+                "- [Details](guide) **bold**\n- Hidden item", Color.Black, linkColor.value,
+                FontFamily.SansSerif, 16.sp, 22.sp, openLink.value, baseUrl = baseUrl.value,
+                maxLines = if (expanded.value) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis, enableBoldFormatting = bold.value,
+            )
+        }
+        var time = 0L
+        fun frames() = repeat(3) { scene.render(time.also { time += 16_000_000 }).close() }
+        fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+        fun text() = scene.semanticsOwners.flatMap { nodes(it.unmergedRootSemanticsNode) }
+            .flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }
+            .single { it.text.startsWith("Details") }
+        fun link() = text().getLinkAnnotations(0, text().length).single().item as LinkAnnotation.Url
+        try {
+            frames()
+            assertEquals("Details bold…", text().text)
+            assertTrue(text().spanStyles.any { it.item.fontWeight == FontWeight.Bold })
+            link().let { it.linkInteractionListener!!.onClick(it) }
+            assertEquals(listOf("https://example.com/first/guide"), firstOpened)
+
+            openLink.value = { nextOpened += it }
+            frames()
+            link().let { it.linkInteractionListener!!.onClick(it) }
+            assertEquals(listOf("https://example.com/first/guide"), nextOpened)
+            assertEquals(listOf("https://example.com/first/guide"), firstOpened)
+
+            baseUrl.value = "https://example.com/next/"
+            linkColor.value = Color.Red
+            bold.value = false
+            frames()
+            assertEquals("Details bold…", text().text)
+            assertTrue(text().spanStyles.none { it.item.fontWeight == FontWeight.Bold })
+            assertEquals(Color.Red, link().styles!!.style!!.color)
+            link().let { it.linkInteractionListener!!.onClick(it) }
+            assertEquals(listOf("https://example.com/first/guide", "https://example.com/next/guide"), nextOpened)
+            assertEquals(listOf("https://example.com/first/guide"), firstOpened)
+
+            expanded.value = true
+            frames()
+            assertEquals("Details bold", text().text)
+            expanded.value = false
+            frames()
+            assertEquals("Details bold…", text().text)
+        } finally {
+            scene.close()
+        }
+    }
+
     @Test
     fun streamingFadePreservesExistingTextLayoutAndFinalLinkColors() = SwingUtilities.invokeAndWait {
         val markdown = mutableStateOf("Existing ")
