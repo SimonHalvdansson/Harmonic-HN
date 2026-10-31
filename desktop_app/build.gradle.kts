@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.dsl.AotMode
 import org.jetbrains.compose.desktop.application.tasks.AbstractProguardTask
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
@@ -16,6 +17,8 @@ val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
 val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
 val desktopOsName = System.getProperty("os.name").orEmpty().lowercase()
 val isMacDesktopBuild = desktopOsName.contains("mac")
+val isWindowsArm64DesktopBuild = desktopOsName.startsWith("windows") &&
+    System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
 val macDesktopCompilerArguments = if (isMacDesktopBuild) {
     listOf(
         "-DCMAKE_C_COMPILER=/usr/bin/clang",
@@ -83,13 +86,12 @@ kotlin {
             implementation(libs.compose.multiplatform.material3)
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)
-            implementation("androidx.navigationevent:navigationevent-compose:1.1.1")
+            implementation(libs.androidx.navigationevent.compose.desktop)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
-            implementation(compose.desktop.currentOs)
             implementation(libs.jna.platform)
-            implementation("org.jetbrains.runtime:jbr-api:1.9.0")
-            implementation(libs.swt.win32)
+            implementation(libs.jbr.api)
+            implementation(if (isWindowsArm64DesktopBuild) libs.swt.win32.arm64 else libs.swt.win32.x64)
         }
         getByName("desktopTest").dependencies {
             implementation(kotlin("test"))
@@ -133,6 +135,11 @@ val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
             add(cmakeExecutable.get())
             addAll(listOf("-S", source, "-B", build))
             addAll(macDesktopCompilerArguments)
+            if (isWindowsArm64DesktopBuild) {
+                // ggml's ARM intrinsics require Clang; static CRT keeps the DLL self-contained.
+                addAll(listOf("-A", "ARM64", "-T", "ClangCL",
+                    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"))
+            }
             addAll(
                 listOf(
                     "-DCMAKE_BUILD_TYPE=Release",
@@ -283,6 +290,17 @@ compose.desktop {
         mainClass = "com.simon.harmonichackernews.desktop.DesktopAppMainKt"
         mainJar.set(tasks.named<Jar>("desktopJar").flatMap { it.archiveFile })
         fromFiles(desktopProjectJars, configurations.named("desktopRuntimeClasspath"))
+        providers.gradleProperty("harmonicDesktopJavaHome").orNull?.let { javaHome = it }
+        buildTypes.release.aot {
+            mode = if (providers.gradleProperty("harmonicDesktopAppCds")
+                    // Windows ARM64 JDK 21 archives retain build-directory JAR paths.
+                    // Keep installed apps independent of the build machine.
+                    .map(String::toBoolean).getOrElse(!isWindowsArm64DesktopBuild)) {
+                AotMode.AppCdsPrebuild
+            } else {
+                AotMode.None
+            }
+        }
         if (isMacDesktopBuild) {
             // These must be present before AWT initializes. They give development runs Harmonic's
             // menu-bar/display name where the JBR supports it, but only a packaged .app has a true

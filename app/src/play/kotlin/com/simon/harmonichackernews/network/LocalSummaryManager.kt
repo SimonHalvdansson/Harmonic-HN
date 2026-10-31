@@ -13,6 +13,7 @@ import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.summarization.SummarizerOptions
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerativeModel
+import com.google.mlkit.genai.prompt.Feature
 import com.google.mlkit.genai.prompt.Candidate
 import com.google.mlkit.genai.prompt.TextPart
 import com.google.mlkit.genai.prompt.SystemInstruction
@@ -263,8 +264,10 @@ internal class AndroidLocalSummaryBackend(
                 val model = Generation.getClient()
                 try {
                     preparePromptModel(model)
-                    if (model.isStructuredOutputFeatureAvailable()) generateStructuredSuggestions(model, text, prompt)
-                    else null
+                    val features = model.getAvailableFeatures()
+                    if (Feature.STRUCTURED_OUTPUT in features) {
+                        generateStructuredSuggestions(model, text, prompt, Feature.SYSTEM_PROMPT in features)
+                    } else null
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
@@ -283,8 +286,8 @@ internal class AndroidLocalSummaryBackend(
         model: GenerativeModel,
         text: String,
         prompt: String,
+        systemPromptAvailable: Boolean,
     ): NanoQuestionSuggestions? {
-        val systemPromptAvailable = model.isSystemPromptAvailable()
         fun request(input: String, outputTokens: Int = 1024) = generateTypedContentRequest(
             generateContentRequest(TextPart(if (systemPromptAvailable) input else "$prompt\n\n## Input\n$input")) {
                 if (systemPromptAvailable) systemInstruction = SystemInstruction(prompt)
@@ -443,8 +446,9 @@ internal class AndroidLocalSummaryBackend(
         val generativeModel = Generation.getClient()
         try {
             preparePromptModel(generativeModel)
-            val nativeSystemPrompt = generativeModel.isSystemPromptAvailable()
-            val thinkingAvailable = thinkingRequested && generativeModel.isThinkingModeAvailable()
+            val features = generativeModel.getAvailableFeatures()
+            val nativeSystemPrompt = Feature.SYSTEM_PROMPT in features
+            val thinkingAvailable = thinkingRequested && Feature.THINKING_MODE in features
             fun request(text: String, outputTokens: Int = 1024) = generateContentRequest(
                 TextPart(if (nativeSystemPrompt) text else "$systemPrompt\n\n## Input\n$text"),
             ) {

@@ -36,6 +36,9 @@ kotlin {
             isStatic = true
             export(project.dependencies.project(":core"))
             export(project.dependencies.project(":resources"))
+            // Keep public navigation types at the same versions in the Swift export graph.
+            export(libs.androidx.navigationevent)
+            export(libs.androidx.navigationevent.compose)
             transitiveExport = true
             harmonicXcFramework.add(this)
         }
@@ -67,6 +70,7 @@ kotlin {
             implementation(libs.haze.glass)
             implementation(libs.ksoup)
             implementation(libs.latex.renderer)
+            implementation(libs.latex.fonts.katex)
             implementation(libs.androidx.material3.adaptive)
             implementation(libs.androidx.material3.adaptive.layout)
             implementation(libs.androidx.material3.adaptive.navigation3)
@@ -78,10 +82,6 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
-        }
-        getByName("desktopTest").dependencies {
-            // ImageComposeScene tests need Skiko's native library for the current host.
-            runtimeOnly(compose.desktop.currentOs)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)

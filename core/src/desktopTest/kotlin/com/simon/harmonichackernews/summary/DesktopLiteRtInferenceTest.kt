@@ -1,12 +1,35 @@
 package com.simon.harmonichackernews.summary
 
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
 import java.nio.file.Files
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 
 class DesktopLiteRtInferenceTest {
+    @Test
+    fun bundledNativeRuntimeReportsMissingModelsWithoutALinkageError() {
+        assumeTrue(DesktopLiteRtInference.supported)
+        val cache = Files.createTempDirectory("harmonic-litert-native-test")
+        try {
+            val engine = Engine(EngineConfig(
+                modelPath = cache.resolve("missing.litertlm").toString(),
+                backend = Backend.CPU(),
+                cacheDir = cache.toString(),
+            ))
+            // An Exception comes from a working JNI bridge; missing native symbols throw Error.
+            assertFailsWith<Exception> { engine.initialize() }
+            assertFalse(engine.isInitialized())
+        } finally {
+            Files.walk(cache).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
     /** Opt-in real-model smoke test: avoids downloading gigabytes in routine unit-test runs. */
     @Test
     fun installedJvmRuntimeStreamsANonEmptySummary() = runBlocking {

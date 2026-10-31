@@ -40,11 +40,11 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
     private let lock = NSLock()
     private var conversation: OpaquePointer?
     private var cancelled = false
-    private let finished = DispatchSemaphore(value: 0)
     private var callback: IosLiteRtSummaryCallback?
-    // Native callbacks write these; the worker reads after finished signals.
+    // Native callbacks write these; the worker reads after wait_until_done returns.
     private var summary = ""
     private var streamError: String?
+    private var nativeCancelled = false
 
     init(callback: IosLiteRtSummaryCallback) { self.callback = callback }
 
@@ -53,59 +53,49 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
         guard FileManager.default.fileExists(atPath: modelPath) else {
             throw LiteRtSummaryError("The downloaded local model file is missing.")
         }
-        guard let settings = litert_lm_engine_settings_create(modelPath, "cpu", nil, nil) else {
-            throw LiteRtSummaryError("Could not configure LiteRT-LM.")
+        let settings = try createHandle("configure LiteRT-LM") {
+            litert_lm_engine_settings_create(modelPath, "cpu", nil, nil, $0)
         }
         defer { litert_lm_engine_settings_delete(settings) }
-        litert_lm_engine_settings_set_max_num_tokens(settings, contextTokens)
-        litert_lm_engine_settings_set_cache_dir(settings, cacheDirectory)
+        try checkStatus(litert_lm_engine_settings_set_max_num_tokens(settings, contextTokens))
+        try checkStatus(litert_lm_engine_settings_set_cache_dir(settings, cacheDirectory))
         let started = ContinuousClock.now
-        guard let engine = litert_lm_engine_create(settings) else {
-            throw LiteRtSummaryError("Could not load the local model with LiteRT-LM.")
+        let engine = try createHandle("load the local model") {
+            litert_lm_engine_create(settings, $0)
         }
         defer { litert_lm_engine_delete(engine) }
         try checkCancellation()
         let elapsed = started.duration(to: .now).components
         callback?.loaded(milliseconds: elapsed.seconds * 1_000 + elapsed.attoseconds / 1_000_000_000_000_000)
 
-        guard let session = litert_lm_session_config_create() else {
-            throw LiteRtSummaryError("Could not configure the local summary session.")
-        }
+        let session = try createHandle("configure the local summary session") { litert_lm_session_config_create($0) }
         defer { litert_lm_session_config_delete(session) }
-        guard let config = litert_lm_conversation_config_create() else {
-            throw LiteRtSummaryError("Could not configure the local summary conversation.")
-        }
+        let config = try createHandle("configure the local summary conversation") { litert_lm_conversation_config_create($0) }
         defer { litert_lm_conversation_config_delete(config) }
-        guard let sampler = litert_lm_sampler_params_create(kLiteRtLmSamplerTypeTopP) else {
-            throw LiteRtSummaryError("Could not configure the local summary sampler.")
+        let sampler = try createHandle("configure the local summary sampler") {
+            litert_lm_sampler_params_create(kLiteRtLmSamplerTypeTopP, $0)
         }
         defer { litert_lm_sampler_params_delete(sampler) }
-        guard let thinking = litert_lm_thinking_config_create() else {
-            throw LiteRtSummaryError("Could not configure the local summary output.")
-        }
+        let thinking = try createHandle("configure the local summary output") { litert_lm_thinking_config_create($0) }
         defer { litert_lm_thinking_config_delete(thinking) }
-        litert_lm_sampler_params_set_top_k(sampler, 64)
-        litert_lm_sampler_params_set_top_p(sampler, 0.95)
-        litert_lm_sampler_params_set_temperature(sampler, 0.3)
-        litert_lm_session_config_set_sampler_params(session, sampler)
-        litert_lm_session_config_set_max_output_tokens(session, 512)
-        litert_lm_conversation_config_set_session_config(config, session)
+        try checkStatus(litert_lm_sampler_params_set_top_k(sampler, 64))
+        try checkStatus(litert_lm_sampler_params_set_top_p(sampler, 0.95))
+        try checkStatus(litert_lm_sampler_params_set_temperature(sampler, 0.3))
+        try checkStatus(litert_lm_session_config_set_sampler_params(session, sampler))
+        try checkStatus(litert_lm_session_config_set_max_output_tokens(session, 512))
+        try checkStatus(litert_lm_conversation_config_set_session_config(config, session))
         // This setter takes Contents JSON (an array), while send_message takes a Message object.
         let systemContent = try JSONSerialization.data(withJSONObject: [["type": "text", "text": instruction]])
-        litert_lm_conversation_config_set_system_message(config, String(decoding: systemContent, as: UTF8.self))
-        litert_lm_thinking_config_set_enable_thinking(thinking, false)
-        litert_lm_conversation_config_set_thinking_config(config, thinking)
-        guard let handle = litert_lm_conversation_create(engine, config) else {
-            throw LiteRtSummaryError("Could not create the local summary conversation.")
+        try checkStatus(litert_lm_conversation_config_set_system_message(config, String(decoding: systemContent, as: UTF8.self)))
+        try checkStatus(litert_lm_thinking_config_set_enable_thinking(thinking, false))
+        try checkStatus(litert_lm_conversation_config_set_thinking_config(config, thinking))
+        let handle = try createHandle("create the local summary conversation") {
+            litert_lm_conversation_create(engine, config, $0)
         }
-        lock.lock()
         conversation = handle
-        lock.unlock()
         defer {
-            // cancel() must not access a deleted native handle.
-            lock.lock()
+            // wait_until_done has joined every callback that could access this handle.
             conversation = nil
-            lock.unlock()
             litert_lm_conversation_delete(handle)
         }
         try checkCancellation()
@@ -117,13 +107,12 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
             },
             Unmanaged.passUnretained(self).toOpaque()
         )
-        guard status == 0 else {
-            throw LiteRtSummaryError("LiteRT-LM could not start the summary (\(status)).")
-        }
-        // Keep handles alive until the terminal callback, even when Kotlin cancels its waiter.
-        finished.wait()
+        try checkStatus(status)
+        // Join native work, including its callbacks, before releasing any handle on cancellation.
+        let completionStatus = litert_lm_conversation_wait_until_done(handle)
         try checkCancellation()
         if let streamError { throw LiteRtSummaryError(streamError) }
+        try checkStatus(completionStatus)
         return summary
     }
 
@@ -135,13 +124,26 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
     }
 
     private func receive(_ chunk: OpaquePointer?) {
-        if let error = litert_lm_stream_chunk_get_error(chunk) {
-            streamError = String(cString: error)
-            finished.signal()
-            return
-        }
-        if let json = litert_lm_stream_chunk_get_text(chunk) {
-            do {
+        var isFinal = true
+        do {
+            try checkStatus(litert_lm_stream_chunk_is_final(chunk, &isFinal))
+            lock.lock()
+            let shouldCancel = cancelled
+            lock.unlock()
+            if shouldCancel || streamError != nil {
+                cancelNativeStream(isFinal: isFinal)
+                return
+            }
+            var error: UnsafePointer<CChar>?
+            try checkStatus(litert_lm_stream_chunk_get_error(chunk, &error))
+            if let error {
+                streamError = String(cString: error)
+                cancelNativeStream(isFinal: isFinal)
+                return
+            }
+            var json: UnsafePointer<CChar>?
+            try checkStatus(litert_lm_stream_chunk_get_text(chunk, &json))
+            if let json {
                 let data = Data(String(cString: json).utf8)
                 let message = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 for content in message?["content"] as? [[String: Any]] ?? [] {
@@ -150,12 +152,36 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
                     }
                 }
                 callback?.progress(summary: summary.trimmingCharacters(in: .whitespacesAndNewlines))
-            } catch {
-                streamError = "Could not read LiteRT-LM's response: \(error.localizedDescription)"
-                cancel()
             }
+        } catch {
+            streamError = "Could not read LiteRT-LM's response: \(error.localizedDescription)"
+            cancelNativeStream(isFinal: isFinal)
         }
-        if litert_lm_stream_chunk_is_final(chunk) { finished.signal() }
+    }
+
+    private func cancelNativeStream(isFinal: Bool) {
+        // The C API permits cancellation from a non-final callback. Keep other threads
+        // away from the native handle while the worker is joining its pending work.
+        guard !isFinal, !nativeCancelled, let conversation else { return }
+        nativeCancelled = true
+        _ = litert_lm_conversation_cancel_process(conversation)
+    }
+
+    private func createHandle(
+        _ operation: String,
+        _ create: (UnsafeMutablePointer<OpaquePointer?>) -> LiteRtLmStatusCode
+    ) throws -> OpaquePointer {
+        var handle: OpaquePointer?
+        try checkStatus(create(&handle))
+        guard let handle else { throw LiteRtSummaryError("Could not \(operation).") }
+        return handle
+    }
+
+    private func checkStatus(_ status: LiteRtLmStatusCode) throws {
+        guard status == kLiteRtLmStatusOk else {
+            let detail = litert_lm_get_last_error_message().map { String(cString: $0) }
+            throw LiteRtSummaryError(detail ?? "LiteRT-LM failed (\(status.rawValue)).")
+        }
     }
 
     private func checkCancellation() throws {
@@ -170,7 +196,6 @@ private final class LiteRtSummaryRequest: IosLiteRtSummaryTask {
     func cancel() {
         lock.lock()
         cancelled = true
-        if let conversation { litert_lm_conversation_cancel_process(conversation) }
         lock.unlock()
     }
 }
