@@ -16,6 +16,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.SelectionState
+import androidx.compose.foundation.text.selection.rememberSelectionState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
@@ -74,6 +76,7 @@ fun StoryAiSummary(
     onAsk: ((PostAskState) -> Unit)? = null,
     askVisible: Boolean = false,
     containerColorProvider: () -> Color = { containerColor },
+    selectionState: SelectionState = rememberSelectionState(),
 ) {
     val summary = story.aiSummaryText.orEmpty()
     val sourceLayer = rememberGraphicsLayer()
@@ -194,7 +197,7 @@ fun StoryAiSummary(
                     )
                 }
             } else if (summary.isNotBlank()) {
-                SelectionContainer {
+                SelectionContainer(state = selectionState) {
                     SummaryMarkdownText(
                         markdown = summary,
                         baseUrl = story.url ?: "https://news.ycombinator.com/item?id=${story.id}",

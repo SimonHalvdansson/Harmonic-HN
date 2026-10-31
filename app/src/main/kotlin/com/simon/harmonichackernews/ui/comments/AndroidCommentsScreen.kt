@@ -180,7 +180,10 @@ internal fun CommentsScaffold(
             // Only cast a shadow as the sheet lowers to expose the article underneath.
             sheetShadowElevation = 16.dp * (1f - controller.sheetSlideOffset.coerceIn(0f, 1f)),
             sheetDragHandle = null,
-            sheetSwipeEnabled = controller.integratedWebView && !controller.predictiveBackActive,
+            // Give active summary selection ownership of drags, including movement outside the
+            // text. Disable both the sheet's drag detector and its nested-scroll connection.
+            sheetSwipeEnabled = controller.integratedWebView && !controller.predictiveBackActive &&
+                controller.summarySelectionState.selectedTexts.isEmpty(),
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             sheetContent = {

@@ -562,6 +562,7 @@ fun CommentsHeader(
                                     containerColorProvider = summaryContainerColor,
                                     onAsk = controller::openPostAsk,
                                     askVisible = controller.postAsk?.coveringSource == true,
+                                    selectionState = controller.summarySelectionState,
                                 )
                             }
                             if (story.isComment) {

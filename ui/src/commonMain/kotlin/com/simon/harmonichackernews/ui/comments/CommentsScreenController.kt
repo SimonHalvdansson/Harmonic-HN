@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -95,6 +96,8 @@ class CommentsScreenController private constructor(
     private var headerRefreshObserved = false
 
     val story: StoryListItemSnapshot get() = screenState.story
+    /** Hosts observe selection so text-selection drags cannot also move the comments sheet. */
+    val summarySelectionState = SelectionState()
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
     val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
