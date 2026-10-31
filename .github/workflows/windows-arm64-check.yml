@@ -123,6 +123,17 @@
             "path": "${{ matrix.artifact_path }}",
             "if-no-files-found": "error"
           }
+        },
+        {
+          "name": "Preserve built ARM64 image for installer diagnostics",
+          "if": "failure()",
+          "uses": "actions/upload-artifact@v7",
+          "with": {
+            "name": "windows-arm64-built-image-diagnostics",
+            "path": "desktop_app/build/compose/binaries/main-release/app/Harmonic\ndesktop_app/build/compose/binaries/main-release/exe/*.exe\ndesktop_app/build/desktopLocalAi/output/*",
+            "if-no-files-found": "ignore",
+            "retention-days": 3
+          }
         }
       ],
       "timeout-minutes": 45

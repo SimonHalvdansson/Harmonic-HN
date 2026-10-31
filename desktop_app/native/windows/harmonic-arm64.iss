@@ -15,6 +15,7 @@ AppId={{7F608F45-0D48-48A7-9560-710A9DF65E30}
 AppName=Harmonic (ARM64)
 AppVersion={#AppVersion}
 AppPublisher=Simon Halvdansson
+UninstallDisplayName=Harmonic (ARM64)
 DefaultDirName={autopf}\Harmonic ARM64
 DefaultGroupName=Harmonic ARM64
 PrivilegesRequired=lowest

@@ -11,6 +11,10 @@ New-Item -ItemType Directory -Force $diagnostics | Out-Null
 if (Test-Path $installDirectory) { throw "Verification directory already exists: $installDirectory" }
 $oldJavaOptions = $env:JAVA_TOOL_OPTIONS
 $app = $null
+$originalImage = Join-Path (Get-Location) 'desktop_app/build/compose/binaries/main-release/app/Harmonic'
+$hiddenImage = "$originalImage-verification"
+$imageHidden = $false
+$userFile = Join-Path $installDirectory 'user-file-to-preserve.txt'
 try {
     $setup = Start-Process $installers[0].FullName -Wait -PassThru -ArgumentList @(
         '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-',
@@ -27,6 +31,24 @@ try {
     if ($registration.Count -ne 1) { throw 'Missing installed application registration' }
     $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Harmonic ARM64\Harmonic (ARM64).lnk'
     if (-not (Test-Path $shortcut)) { throw 'Missing Start menu shortcut' }
+
+    # Reinstallation must replace obsolete payload without deleting other files.
+    Set-Content $userFile 'preserve this file'
+    $obsolete = Join-Path $installDirectory 'app/obsolete-upgrade-fixture.jar'
+    Set-Content $obsolete 'obsolete payload'
+    $upgrade = Start-Process $installers[0].FullName -Wait -PassThru -ArgumentList @(
+        '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-',
+        "/DIR=`"$installDirectory`"", "/LOG=`"$(Join-Path $diagnostics 'upgrade.log')`""
+    )
+    if ($upgrade.ExitCode -ne 0 -or (Test-Path $obsolete) -or
+        (Get-Content $userFile) -ne 'preserve this file') { throw 'Installer upgrade failed' }
+    Write-Host 'ARM64 installation registration, shortcut and upgrade passed'
+
+    # Hide the source image so an absolute reference to its original runtime/JARs
+    # cannot make installation checks pass accidentally on the build machine.
+    if (Test-Path $hiddenImage) { throw "Image verification path already exists: $hiddenImage" }
+    Move-Item $originalImage $hiddenImage
+    $imageHidden = $true
 
     # This also catches timestamp/path changes made by the installer that invalidate CDS.
     python .github/scripts/verify-desktop-appcds.py $installDirectory
@@ -57,6 +79,7 @@ try {
         Stop-Process -Id $app.Id -Force
         $app.WaitForExit()
     }
+    if ($imageHidden) { Move-Item $hiddenImage $originalImage }
     $uninstaller = Join-Path $installDirectory 'unins000.exe'
     if (Test-Path $uninstaller) {
         $uninstall = Start-Process $uninstaller -Wait -PassThru -ArgumentList @(
@@ -65,6 +88,9 @@ try {
         )
         if ($uninstall.ExitCode -ne 0 -or (Test-Path (Join-Path $installDirectory 'Harmonic.exe'))) {
             throw "Uninstallation failed: $($uninstall.ExitCode)"
+        }
+        if ((Test-Path $userFile) -and (Get-Content $userFile) -ne 'preserve this file') {
+            throw 'Uninstallation changed a user-owned file'
         }
         Write-Host 'ARM64 installer uninstallation passed'
     }
