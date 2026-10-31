@@ -32,8 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -167,7 +167,7 @@ private fun UserLoadingPlaceholder() {
                     .padding(top = if (index == 0) 0.dp else 5.dp)
                     .width(width)
                     .height(16.dp)
-                    .alpha(shimmerAlpha)
+                    .graphicsLayer { alpha = shimmerAlpha }
                     .background(MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(8.dp)),
             )
         }

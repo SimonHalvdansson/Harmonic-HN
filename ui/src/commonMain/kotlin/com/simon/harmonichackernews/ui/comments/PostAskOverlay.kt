@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.summary.AskSource
+import kotlinx.coroutines.flow.first
 
 /** The conversation context is fixed; source pixels, bounds and color follow the live summary. */
 data class PostAskState(
@@ -32,14 +33,16 @@ internal fun PostAskOverlay(
     val state = controller.postAsk ?: return
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
-    val progress by rememberAskProgress(entered && controller.askOpen, controller.askBackProgress)
+    val progress = rememberAskProgress(entered && controller.askOpen, controller.askBackProgress)
+    val visible by remember(progress, controller) { computedStateOf { progress.value > 0f || controller.askOpen } }
     var rootBounds by remember { mutableStateOf<Rect?>(null) }
     SideEffect {
-        controller.askSurfaceVisible = progress > 0f || controller.askOpen
+        controller.askSurfaceVisible = visible
         state.coveringSource = rootBounds != null
     }
-    LaunchedEffect(progress, controller.askOpen) {
-        if (!controller.askOpen && progress == 0f) controller.completePostAskDismiss()
+    LaunchedEffect(controller, progress) {
+        snapshotFlow { !controller.askOpen && progress.value == 0f }.first { it }
+        controller.completePostAskDismiss()
     }
     Box(Modifier.fillMaxSize().onGloballyPositioned { rootBounds = it.boundsInWindow() }) {
         val root = rootBounds ?: return@Box
@@ -47,7 +50,7 @@ internal fun PostAskOverlay(
             controller = controller,
             subject = state.subject,
             origin = state.bounds()?.translate(-root.left, -root.top) ?: Rect.Zero,
-            progress = progress,
+            progress = { progress.value },
             source = state.source,
             settings = settings,
             color = state.color(),

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -14,7 +15,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.IntOffset
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
@@ -24,7 +26,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -66,90 +67,114 @@ internal fun rememberAskProgress(open: Boolean, backProgress: Float): State<Floa
     label = "Ask container",
 )
 
-/** Material container transform with width-fit content, rather than a stationary reveal. */
+/** Material container transform; the conversation never observes individual animation frames. */
 @Composable
 internal fun AskContainer(
     origin: Rect,
-    progress: Float,
+    progress: () -> Float,
     color: Color,
     source: GraphicsLayer,
     sourceCornerRadius: Dp = 28.dp,
     summarySource: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    // Summary sources are hidden while this layer owns their pixels. Keep drawing the
-    // exact resting card at zero until the source and overlay swap in one composition.
-    if (progress <= 0f && !summarySource) return
+    val visible by remember(progress, summarySource) {
+        computedStateOf { summarySource || progress() > 0f }
+    }
+    if (!visible) return
     val screenCorners = rememberScreenCorners()
     val windowSize = LocalWindowInfo.current.containerSize
     var viewport by remember { mutableStateOf<Rect?>(null) }
     BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInWindow() }) {
-        // Block the underlying dialog from a sibling behind the content. Consuming on
-        // an ancestor cancels the scrollable's touch-slop detection on plain message text.
         Box(Modifier.fillMaxSize().consumeAllPointerGestures())
         val density = LocalDensity.current
         val width = with(density) { maxWidth.toPx() }
         val height = with(density) { maxHeight.toPx() }
-        val p = progress.coerceIn(0f, 1f)
-        val bounds = Rect(
-            origin.left * (1f - p), origin.top * (1f - p),
-            origin.right + (width - origin.right) * p,
-            origin.bottom + (height - origin.bottom) * p,
-        )
-        val corners = screenCorners.forViewport(viewport, windowSize)
-            .interpolateFrom(sourceCornerRadius.value, p)
-        fun px(radius: Float) = with(density) { radius.dp.toPx() }
-        val mask = object : Shape {
-            override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
-                Outline.Generic(Path().apply { addRoundRect(RoundRect(
-                    rect = bounds,
-                    topLeft = CornerRadius(px(corners.topLeft)), topRight = CornerRadius(px(corners.topRight)),
-                    bottomRight = CornerRadius(px(corners.bottomRight)), bottomLeft = CornerRadius(px(corners.bottomLeft)),
-                )) })
-        }
-        // One material surface owns the entire morph, including the final shadow and corners.
-        // The recorded source contains only foreground content, never a second background.
-        val ltr = LocalLayoutDirection.current == LayoutDirection.Ltr
-        val shape = RoundedCornerShape(
-            topStart = (if (ltr) corners.topLeft else corners.topRight).dp,
-            topEnd = (if (ltr) corners.topRight else corners.topLeft).dp,
-            bottomEnd = (if (ltr) corners.bottomRight else corners.bottomLeft).dp,
-            bottomStart = (if (ltr) corners.bottomLeft else corners.bottomRight).dp,
-        )
-        val surface = if (summarySource) {
-            // The summary starts as a flat, opaque card. Match its border and fill at
-            // the handoff rather than briefly substituting the comment dialog's glass/shadow.
-            Modifier.background(color, shape).border(1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = MaterialTheme.colorScheme.outlineVariant.alpha * (1f - p)), shape)
-        } else {
-            Modifier.shadow((8f * (1f - p)).dp, shape, clip = false)
-                .sharedHazeDialogBackground(color, shape, revealProgress = 1f - p)
-        }
-        Box(Modifier.absoluteOffset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
-            .requiredSize(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() })
-            .then(surface))
-        Box(Modifier.fillMaxSize().clip(mask)) {
-            val sourceAlpha = (1f - p / 0.15f).coerceIn(0f, 1f)
-            if (sourceAlpha > 0f && !source.isReleased && source.size.width > 0) {
-                Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = sourceAlpha }) {
+        val restingCorners = screenCorners.forViewport(viewport, windowSize)
+        val bounds = { askContainerBounds(origin, width, height, progress()) }
+        AskMaterialSurface(origin, width, height, restingCorners, sourceCornerRadius,
+            progress, color, summarySource)
+        Box(Modifier.fillMaxSize().graphicsLayer {
+            val rect = bounds()
+            val corners = restingCorners.interpolateFrom(sourceCornerRadius.value, progress())
+            fun px(radius: Float) = with(density) { radius.dp.toPx() }
+            shape = object : Shape {
+                override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
+                    Outline.Generic(Path().apply { addRoundRect(RoundRect(
+                        rect = rect,
+                        topLeft = CornerRadius(px(corners.topLeft)), topRight = CornerRadius(px(corners.topRight)),
+                        bottomRight = CornerRadius(px(corners.bottomRight)), bottomLeft = CornerRadius(px(corners.bottomLeft)),
+                    )) })
+            }
+            clip = true
+        }) {
+            Canvas(Modifier.fillMaxSize().graphicsLayer {
+                alpha = (1f - progress() / 0.15f).coerceIn(0f, 1f)
+            }) {
+                if (!source.isReleased && source.size.width > 0 && progress() < 0.15f) {
+                    val rect = bounds()
                     withTransform({
-                        translate(bounds.left, bounds.top)
-                        val contentScale = bounds.width / source.size.width
+                        translate(rect.left, rect.top)
+                        val contentScale = rect.width / source.size.width
                         scale(contentScale, contentScale, Offset.Zero)
                     }) { drawLayer(source) }
                 }
             }
             Box(Modifier.fillMaxSize().graphicsLayer {
-                val scale = bounds.width / width.coerceAtLeast(1f)
+                val rect = bounds()
+                val scale = rect.width / width.coerceAtLeast(1f)
                 scaleX = scale
                 scaleY = scale
                 transformOrigin = TransformOrigin(0f, 0f)
-                translationX = bounds.left
-                translationY = bounds.top
-                // Fade text and controls throughout the shrink, including predictive back,
-                // while the independently drawn surface keeps its opacity.
-                alpha = ((p - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                translationX = rect.left
+                translationY = rect.top
+                alpha = ((progress() - 0.15f) / 0.85f).coerceIn(0f, 1f)
             }) { content() }
         }
     }
+}
+
+internal fun askContainerBounds(origin: Rect, width: Float, height: Float, progress: Float): Rect {
+    val p = progress.coerceIn(0f, 1f)
+    return Rect(origin.left * (1f - p), origin.top * (1f - p),
+        origin.right + (width - origin.right) * p, origin.bottom + (height - origin.bottom) * p)
+}
+
+/** Haze records immutable styles. Isolate their frame updates from the retained conversation. */
+@Composable
+private fun AskMaterialSurface(
+    origin: Rect,
+    width: Float,
+    height: Float,
+    restingCorners: com.simon.harmonichackernews.ui.common.ScreenCorners,
+    sourceCornerRadius: Dp,
+    progress: () -> Float,
+    color: Color,
+    summarySource: Boolean,
+) {
+    val p = progress().coerceIn(0f, 1f)
+    val corners = restingCorners.interpolateFrom(sourceCornerRadius.value, p)
+    val ltr = LocalLayoutDirection.current == LayoutDirection.Ltr
+    val shape = RoundedCornerShape(
+        topStart = (if (ltr) corners.topLeft else corners.topRight).dp,
+        topEnd = (if (ltr) corners.topRight else corners.topLeft).dp,
+        bottomEnd = (if (ltr) corners.bottomRight else corners.bottomLeft).dp,
+        bottomStart = (if (ltr) corners.bottomLeft else corners.bottomRight).dp,
+    )
+    val surface = if (summarySource) {
+        Modifier.background(color, shape).border(1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = MaterialTheme.colorScheme.outlineVariant.alpha * (1f - p)), shape)
+    } else {
+        Modifier.shadow((8f * (1f - p)).dp, shape, clip = false)
+            .sharedHazeDialogBackground(color, shape, revealProgress = 1f - p)
+    }
+    Box(Modifier.absoluteOffset {
+        val bounds = askContainerBounds(origin, width, height, progress())
+        IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt())
+    }.layout { measurable, _ ->
+        val bounds = askContainerBounds(origin, width, height, progress())
+        val child = measurable.measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(0),
+            bounds.height.roundToInt().coerceAtLeast(0)))
+        layout(child.width, child.height) { child.place(0, 0) }
+    }.then(surface))
 }

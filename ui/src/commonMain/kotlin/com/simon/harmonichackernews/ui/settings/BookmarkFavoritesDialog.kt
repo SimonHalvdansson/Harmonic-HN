@@ -43,9 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -218,18 +217,14 @@ private fun BookmarkTransferAnimation() {
         val startY = with(density) { ((96.dp - storySize) / 2).toPx() }
         val controlX = (startX + endX) / 2f
         val controlY = startY - with(density) { 34.dp.toPx() }
-        val remaining = 1f - progress
-        val x = remaining * remaining * startX +
-            2f * remaining * progress * controlX + progress * progress * endX
-        val y = remaining * remaining * startY +
-            2f * remaining * progress * controlY + progress * progress * startY
-        val storyAlpha = when {
-            progress < 0.16f -> progress / 0.16f
-            progress > 0.82f -> (1f - progress) / 0.18f
-            else -> 1f
-        }.coerceIn(0f, 1f)
-        val storyScale = 0.86f + 0.14f * sin(PI * progress).toFloat()
-        val arrival = (1f - abs(progress - 0.88f) / 0.12f).coerceAtLeast(0f)
+        fun position(): IntOffset {
+            val p = progress
+            val remaining = 1f - p
+            return IntOffset(
+                (remaining * remaining * startX + 2f * remaining * p * controlX + p * p * endX).roundToInt(),
+                (remaining * remaining * startY + 2f * remaining * p * controlY + p * p * startY).roundToInt(),
+            )
+        }
 
         TransferTarget(
             icon = Res.drawable.ic_bookmark,
@@ -237,17 +232,29 @@ private fun BookmarkTransferAnimation() {
         )
         TransferTarget(
             icon = Res.drawable.ic_star_filled,
-            modifier = Modifier.align(Alignment.CenterEnd).scale(1f + 0.08f * arrival),
+            modifier = Modifier.align(Alignment.CenterEnd).graphicsLayer {
+                val arrival = (1f - abs(progress - 0.88f) / 0.12f).coerceAtLeast(0f)
+                scaleX = 1f + 0.08f * arrival
+                scaleY = scaleX
+            },
         )
         Icon(
             painter = painterResource(Res.drawable.ic_newspaper),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+                .offset { position() }
                 .size(storySize)
-                .scale(storyScale)
-                .alpha(storyAlpha),
+                .graphicsLayer {
+                    val p = progress
+                    scaleX = 0.86f + 0.14f * sin(PI * p).toFloat()
+                    scaleY = scaleX
+                    alpha = when {
+                        p < 0.16f -> p / 0.16f
+                        p > 0.82f -> (1f - p) / 0.18f
+                        else -> 1f
+                    }.coerceIn(0f, 1f)
+                },
         )
     }
 }

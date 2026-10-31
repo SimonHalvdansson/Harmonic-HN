@@ -53,6 +53,7 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
+import com.simon.harmonichackernews.ui.common.shimmerBackground
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,7 +64,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -706,17 +706,7 @@ private fun StoryPreviewShimmer(modifier: Modifier = Modifier) {
     )
     val base = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)
     val highlight = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
-    Box(
-        modifier.background(
-            Brush.horizontalGradient(
-                colorStops = arrayOf(
-                    0f to base,
-                    progress.coerceIn(0f, 1f) to highlight,
-                    1f to base,
-                ),
-            ),
-        ),
-    )
+    Box(modifier.shimmerBackground(base, highlight) { progress })
 }
 
 @Composable

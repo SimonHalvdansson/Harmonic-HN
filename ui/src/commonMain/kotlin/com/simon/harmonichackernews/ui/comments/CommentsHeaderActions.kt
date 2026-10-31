@@ -66,6 +66,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
@@ -230,7 +231,7 @@ fun CommentsHeaderActions(
             }
             AnimatedVisibility(
                 visible = index >= 0,
-                modifier = Modifier.offset(x = x),
+                modifier = Modifier.offset { IntOffset(x.roundToPx(), 0) },
                 enter = fadeIn(tween(180, delayMillis = 120)) +
                     scaleIn(tween(180, delayMillis = 120), initialScale = 0.85f),
                 exit = fadeOut(tween(80)),
@@ -246,7 +247,7 @@ fun CommentsHeaderActions(
             }
         } }
         val moreX by animateDpAsState(position(inline.size), tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "More position")
-        Box(Modifier.offset(x = moreX).width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
+        Box(Modifier.offset { IntOffset(moreX.roundToPx(), 0) }.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
             CommentsTooltip("More options") {
                 IconButton(onClick = {
                     sortExpanded = false

@@ -123,12 +123,15 @@ fun CommentActionOverlay(
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
-    val discussionProgress by rememberAskProgress(controller.askOpen, controller.askBackProgress)
+    val discussionProgress = rememberAskProgress(controller.askOpen, controller.askBackProgress)
+    val discussionVisible by remember(discussionProgress, controller) {
+        computedStateOf { discussionProgress.value > 0f || controller.askOpen }
+    }
     val discussionSource = rememberGraphicsLayer()
     var discussionCreated by remember(comment.id) { mutableStateOf(false) }
     SideEffect {
         if (controller.askOpen) discussionCreated = true
-        controller.askSurfaceVisible = discussionProgress > 0f || controller.askOpen
+        controller.askSurfaceVisible = discussionVisible
     }
     DisposableEffect(controller, comment.id) {
         onDispose {
@@ -421,13 +424,13 @@ fun CommentActionOverlay(
                     }
                     .then(fallbackPresentation)
                     .drawWithContent {
-                        if (discussionProgress > 0f) {
+                        if (discussionProgress.value > 0f) {
                             clipRect(0f, 0f, 0f, 0f) { this@drawWithContent.drawContent() }
                         } else {
                             drawContent()
                         }
                     }
-                    .then(if (discussionProgress > 0f) Modifier.clearAndSetSemantics { } else Modifier)
+                    .then(if (discussionVisible) Modifier.clearAndSetSemantics { } else Modifier)
                     .modalCardTapBoundary(
                         cornerRadius = HarmonicDimens.compose_comment_action_corner_radius,
                         onOutsideTap = controller::requestDismissCommentActions,
@@ -473,7 +476,7 @@ fun CommentActionOverlay(
                     )
                 },
                 origin = targetContainer?.translate(-rootBounds.left, -rootBounds.top) ?: Rect.Zero,
-                progress = discussionProgress,
+                progress = { discussionProgress.value },
                 source = discussionSource,
                 settings = settings,
                 color = cardColor,

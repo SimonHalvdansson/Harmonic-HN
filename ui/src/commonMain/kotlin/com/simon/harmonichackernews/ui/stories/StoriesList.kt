@@ -38,7 +38,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
+import com.simon.harmonichackernews.data.ItemTimeFormatter
+import com.simon.harmonichackernews.ui.common.MeasuredHeaderState
+import com.simon.harmonichackernews.ui.common.measuredHeaderContent
+import com.simon.harmonichackernews.ui.common.MeasuredHeaderLayout
+import com.simon.harmonichackernews.ui.common.MeasuredHeaderPadding
 import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -74,6 +78,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import kotlin.time.Clock
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
@@ -158,12 +163,18 @@ internal fun StoriesList(
     }
     val pullIndicatorRestingInset = (pullIndicatorTopInset - 32.dp).coerceAtLeast(0.dp)
     val startInset = with(density) { controller.presentation.contentInsetStartPx.toDp() }
-    // Keep one lazy list throughout header changes. Do not draw its initial zero-padding
-    // measurement while the header size is being delivered to the next composition.
-    var headerHeightPx by remember(searchMode) { mutableIntStateOf(0) }
-    val headerHeight = with(density) { headerHeightPx.toDp() }
-    val headerCollapsePx by remember(listState, headerHeightPx, stories) {
+    val headerHeight = remember(searchMode) { MeasuredHeaderState() }
+    val contentPadding = remember(startInset, bottomPadding, controller.presentation.showRefreshPrompt, headerHeight, density) {
+        MeasuredHeaderPadding(
+            PaddingValues(start = startInset,
+                bottom = bottomPadding + if (controller.presentation.showRefreshPrompt) 88.dp else 8.dp),
+            headerHeight.height,
+            density,
+        )
+    }
+    val headerCollapsePx by remember(listState, headerHeight, stories) {
         derivedStateOf {
+            val headerHeightPx = headerHeight.height.intValue
             calculateStoriesHeaderCollapsePx(
                 headerHeightPx = headerHeightPx,
                 firstVisibleItemIndex = listState.firstVisibleItemIndex,
@@ -201,7 +212,34 @@ internal fun StoriesList(
     val content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {
         // SplitPaneListContent resolves insets before the pane slides off-screen. Recalculating
         // them here would squeeze the list by the amount translated beyond the window edge.
-        Box(Modifier.fillMaxSize().then(if (paneInsetsHandled) Modifier else Modifier.recalculateWindowInsets())) {
+        MeasuredHeaderLayout(
+            headerHeight = headerHeight,
+            modifier = Modifier.fillMaxSize().then(if (paneInsetsHandled) Modifier else Modifier.recalculateWindowInsets()),
+            header = {
+                StoriesHeader(
+                    controller = controller,
+                    onTypeSelected = onTypeSelected,
+                    searchMode = searchMode,
+                    tapToUpdateExitProgress = tapToUpdateExitProgress,
+                    suppressLastUpdated = controller.tapToUpdateRefreshStarted,
+                    filterColors = filterColors,
+                    showRefreshMenuItem = showRefreshMenuItem,
+                    showFailureStatus = !centerFailure,
+                    showWelcomeHint = showWelcomeHint,
+                    onDismissWelcomeHint = onDismissWelcomeHint,
+                    modifier = Modifier
+                        .zIndex(1f)
+                        .graphicsLayer { translationY = -headerCollapsePx.toFloat() },
+                )
+            },
+            foreground = if (centerFailure) {
+                {
+                    Box(Modifier.fillMaxSize().zIndex(2f)) {
+                        HeaderStatus(controller = controller, searchMode = searchMode, centerFailure = true)
+                    }
+                }
+            } else null,
+        ) {
             LookaheadScope {
                 LazyContentList(
                     contentGeneration = if (searchMode) 0 else controller.mainListGeneration,
@@ -215,17 +253,14 @@ internal fun StoriesList(
                             enabled = searchMode == controller.searching && !controller.isStoryPreviewShowing(),
                         ) { listState.animateScrollToItem(0) }
                         .fillMaxSize()
+                        .measuredHeaderContent(headerHeight)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .graphicsLayer {
                             val progress = tapToUpdateExitProgress()
-                            alpha = if (headerHeight > 0.dp) 1f - progress else 0f
+                            alpha = 1f - progress
                             translationY = -tapToUpdateExitOffsetPx * progress
                         },
-                    contentPadding = PaddingValues(
-                        start = startInset,
-                        top = headerHeight,
-                        bottom = bottomPadding + if (controller.presentation.showRefreshPrompt) 88.dp else 8.dp,
-                    ),
+                    contentPadding = contentPadding,
                     footerKey = "${if (searchMode) "search" else "main"}-load-more",
                     footer = if (controller.presentation.showLoadMore) {
                         {
@@ -289,6 +324,9 @@ internal fun StoriesList(
                                 onReplies = {
                                     dismissSearchKeyboard()
                                     controller.listener.onCommentRepliesClick(story)
+                                },
+                                timeText = remember(story.createdAtEpochSeconds, modelTimeRefresh) {
+                                    ItemTimeFormatter.formatNow(story.createdAtEpochSeconds)
                                 },
                                 modifier = itemHeightModifier,
                             )
@@ -499,36 +537,6 @@ internal fun StoriesList(
                     }
                 }
             }
-
-            StoriesHeader(
-                controller = controller,
-                onTypeSelected = onTypeSelected,
-                searchMode = searchMode,
-                tapToUpdateExitProgress = tapToUpdateExitProgress,
-                suppressLastUpdated = controller.tapToUpdateRefreshStarted,
-                filterColors = filterColors,
-                showRefreshMenuItem = showRefreshMenuItem,
-                showFailureStatus = !centerFailure,
-                showWelcomeHint = showWelcomeHint,
-                onDismissWelcomeHint = onDismissWelcomeHint,
-                modifier = Modifier
-                    .zIndex(1f)
-                    .graphicsLayer { translationY = -headerCollapsePx.toFloat() }
-                    .onSizeChanged { headerHeightPx = it.height },
-            )
-            if (centerFailure) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zIndex(2f),
-                ) {
-                    HeaderStatus(
-                        controller = controller,
-                        searchMode = searchMode,
-                        centerFailure = true,
-                    )
-                }
-            }
         }
     }
 
@@ -549,10 +557,10 @@ internal fun StoriesList(
                         .align(Alignment.TopCenter)
                         // Begin at the physical top edge, then approach the inset-aware refresh
                         // position without leaving the spinner as low as the full safe inset.
-                        .offset(
-                            y = pullIndicatorRestingInset *
-                                pullToRefreshState.distanceFraction.coerceIn(0f, 1f),
-                        ),
+                        .offset {
+                            IntOffset(0, (pullIndicatorRestingInset.toPx() *
+                                pullToRefreshState.distanceFraction.coerceIn(0f, 1f)).toInt())
+                        },
                     isRefreshing = controller.pullToRefreshInProgress &&
                         controller.presentation.refreshing && !searchMode,
                     state = pullToRefreshState,
@@ -593,12 +601,13 @@ private fun SavedCommentStoryRow(
     settings: StoryDisplaySettings,
     onStory: () -> Unit,
     onReplies: () -> Unit,
+    timeText: String,
     modifier: Modifier = Modifier,
 ) {
     val links = LocalHarmonicUiDependencies.current.links
     CommentFeedItem(
         rootStoryTitle = story.presentation.rootStory?.title,
-        timeText = relativeTimeOnResume(story.createdAtEpochSeconds),
+        timeText = timeText,
         html = story.text.orEmpty(),
         canOpenStory = story.rootStoryId > 0 || story.parentId > 0,
         displaySettings = settings,

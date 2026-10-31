@@ -5,51 +5,40 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.HarmonicDimens
 
 /** Apply before verticalScroll, to the content viewport only, never its translucent background. */
 internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
+        .drawWithCache {
             val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
                 .coerceAtMost(size.height / 2f)
-            if (fadeLength <= 0f || state.viewportSize <= 0 || state.maxValue <= 0) {
-                return@drawWithContent
-            }
-            val topStrength = (state.value / fadeLength).coerceIn(0f, 1f)
-            val bottomStrength = ((state.maxValue - state.value) / fadeLength).coerceIn(0f, 1f)
-            if (topStrength > 0f) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = topStrength), Color.Transparent),
-                        startY = 0f,
-                        endY = fadeLength,
-                    ),
-                    size = androidx.compose.ui.geometry.Size(size.width, fadeLength),
-                    blendMode = BlendMode.DstOut,
-                )
-            }
-            if (bottomStrength > 0f) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = bottomStrength)),
-                        startY = size.height - fadeLength,
-                        endY = size.height,
-                    ),
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - fadeLength),
-                    size = androidx.compose.ui.geometry.Size(size.width, fadeLength),
-                    blendMode = BlendMode.DstOut,
-                )
+            val topBrush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), endY = fadeLength.coerceAtLeast(1f))
+            val bottomBrush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black),
+                startY = size.height - fadeLength, endY = size.height)
+            onDrawWithContent {
+                drawContent()
+                if (fadeLength > 0f && state.viewportSize > 0 && state.maxValue > 0) {
+                    val topStrength = (state.value / fadeLength).coerceIn(0f, 1f)
+                    val bottomStrength = ((state.maxValue - state.value) / fadeLength).coerceIn(0f, 1f)
+                    if (topStrength > 0f) drawRect(topBrush, size = Size(size.width, fadeLength),
+                        alpha = topStrength, blendMode = BlendMode.DstOut)
+                    if (bottomStrength > 0f) drawRect(bottomBrush,
+                        topLeft = Offset(0f, size.height - fadeLength), size = Size(size.width, fadeLength),
+                        alpha = bottomStrength, blendMode = BlendMode.DstOut)
+                }
             }
         }
 
@@ -65,50 +54,42 @@ internal fun ScrollableTextDecorations(
     containerColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val maxValue = state.maxValue
-    val viewportSize = state.viewportSize
-    if (maxValue <= 0 || viewportSize <= 0) return
-
     val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    val density = LocalDensity.current
-    Canvas(modifier = modifier) {
-        val fadeLengthPx = with(density) {
-            HarmonicDimens.compose_comment_action_text_fade_length.toPx()
-        }.coerceAtMost(size.height / 2f)
-        // Keep the clipped edge opaque even just a few pixels into a scroll. Shorten
-        // the gradient near the boundary instead of making its endpoint translucent.
-        val topFadeLength = state.value.toFloat().coerceAtMost(fadeLengthPx)
-        val bottomFadeLength = (maxValue - state.value).toFloat().coerceAtMost(fadeLengthPx)
-        val opaqueContainer = containerColor.copy(alpha = 1f)
-        val transparentContainer = containerColor.copy(alpha = 0f)
-        if (topFadeLength > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    0f to opaqueContainer,
-                    (1f / topFadeLength).coerceIn(0.12f, 1f) to opaqueContainer,
-                    1f to transparentContainer,
-                    startY = 0f,
-                    endY = topFadeLength,
-                ),
-                size = androidx.compose.ui.geometry.Size(size.width, topFadeLength),
-            )
+    Box(modifier.drawWithCache {
+        val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
+            .coerceAtMost(size.height / 2f)
+        val opaque = containerColor.copy(alpha = 1f)
+        val transparent = containerColor.copy(alpha = 0f)
+        val falling = Brush.verticalGradient(listOf(opaque, transparent), endY = 1f)
+        val rising = Brush.verticalGradient(listOf(transparent, opaque), endY = 1f)
+        val strip = Size(size.width, 1f)
+        onDrawBehind {
+            val maxValue = state.maxValue
+            if (maxValue > 0 && state.viewportSize > 0 && fadeLength > 0f) {
+                val top = state.value.toFloat().coerceAtMost(fadeLength)
+                val bottom = (maxValue - state.value).toFloat().coerceAtMost(fadeLength)
+                // Retain the original opaque lip (at least one pixel or 12% of the fade).
+                fun lip(length: Float) = length * (1f / length).coerceIn(0.12f, 1f)
+                if (top > 0f) {
+                    val solid = lip(top)
+                    drawRect(opaque, size = Size(size.width, solid))
+                    if (top > solid) withTransform({
+                        translate(top = solid)
+                        scale(1f, top - solid, Offset.Zero)
+                    }) { drawRect(falling, size = strip) }
+                }
+                if (bottom > 0f) {
+                    val solid = lip(bottom)
+                    if (bottom > solid) withTransform({
+                        translate(top = size.height - bottom)
+                        scale(1f, bottom - solid, Offset.Zero)
+                    }) { drawRect(rising, size = strip) }
+                    drawRect(opaque, topLeft = Offset(0f, size.height - solid), size = Size(size.width, solid))
+                }
+                drawScrollThumb(state, thumbColor)
+            }
         }
-        if (bottomFadeLength > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    0f to transparentContainer,
-                    (1f - (1f / bottomFadeLength).coerceIn(0.12f, 1f)) to opaqueContainer,
-                    1f to opaqueContainer,
-                    startY = size.height - bottomFadeLength,
-                    endY = size.height,
-                ),
-                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - bottomFadeLength),
-                size = androidx.compose.ui.geometry.Size(size.width, bottomFadeLength),
-            )
-        }
-
-        drawScrollThumb(state, thumbColor)
-    }
+    })
 }
 
 private fun DrawScope.drawScrollThumb(state: ScrollState, thumbColor: Color) {

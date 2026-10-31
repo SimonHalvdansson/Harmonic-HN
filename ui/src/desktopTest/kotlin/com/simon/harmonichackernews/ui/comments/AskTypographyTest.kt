@@ -59,7 +59,7 @@ class AskTypographyTest {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
-                    AskSurface(binding.controller, subject, Rect.Zero, 1f, rememberGraphicsLayer(),
+                    AskSurface(binding.controller, subject, Rect.Zero, { 1f }, rememberGraphicsLayer(),
                         settings.copy(preferredTextSize = size.floatValue), Color.White, {})
                 }
             }

@@ -66,7 +66,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
+import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
+import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
@@ -337,6 +338,7 @@ private fun BoxScope.SubmissionsList(
         }
     }
 
+    val resumedAt = rememberTimeOnResume()
     LazyColumn(
         modifier = Modifier
             .statusBarScrollToTop { listState.animateScrollToItem(0) }
@@ -376,7 +378,9 @@ private fun BoxScope.SubmissionsList(
                 if (story.isComment) {
                     CommentFeedItem(
                         rootStoryTitle = story.rootStoryTitle,
-                        timeText = relativeTimeOnResume(story.createdAtEpochSeconds),
+                        timeText = remember(story.createdAtEpochSeconds, resumedAt) {
+                            ItemTimeFormatter.formatNow(story.createdAtEpochSeconds)
+                        },
                         html = story.text.orEmpty(),
                         canOpenStory = story.rootStoryId > 0 || story.parentId > 0,
                         displaySettings = displaySettings,

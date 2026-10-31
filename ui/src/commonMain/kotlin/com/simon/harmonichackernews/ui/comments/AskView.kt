@@ -62,7 +62,7 @@ internal fun AskSurface(
     controller: CommentsScreenController,
     subject: AskSource,
     origin: Rect,
-    progress: Float,
+    progress: () -> Float,
     source: GraphicsLayer,
     settings: CommentDisplaySettings,
     color: Color,
@@ -84,6 +84,8 @@ internal fun AskSurface(
         )
     }
     val state = discussion.state.collectAsState().value
+    val fullyOpened by remember(progress) { computedStateOf { progress() == 1f } }
+    val suggestionsVisible by remember(progress) { computedStateOf { progress() >= 0.65f } }
     var draft by remember(subject) { mutableStateOf("") }
     var expanded by remember(subject) { mutableStateOf(false) }
     val scroll = rememberLazyListState()
@@ -176,7 +178,7 @@ internal fun AskSurface(
                     onStop = discussion::stop,
                     surfaceColor = color,
                     // Include the settling animation after cancellation, not just gesture progress.
-                    showCursor = controller.askOpen && controller.askBackProgress == 0f && progress == 1f,
+                    showCursor = controller.askOpen && controller.askBackProgress == 0f && fullyOpened,
                     modifier = modifier,
                 )
             },
@@ -280,7 +282,7 @@ internal fun AskSurface(
                             exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
                         ) {
                             var fixedQuestionsRevealed by remember { mutableStateOf(false) }
-                            val show = progress >= 0.65f && controller.askOpen
+                            val show = suggestionsVisible && controller.askOpen
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("What would you like to understand?",
                                     modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
@@ -425,7 +427,7 @@ internal fun AskSurface(
                                     key(question) {
                                         DiscussionQuestionButton(
                                             question = question,
-                                            show = progress >= 0.65f && controller.askOpen,
+                                            show = suggestionsVisible && controller.askOpen,
                                             index = index,
                                             enabled = !resetting && !state.running,
                                             fontFamily = typography.family,
