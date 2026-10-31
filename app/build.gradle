@@ -25,11 +25,6 @@ android {
         versionName = providers.gradleProperty("harmonic.versionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "boolean", "DEBUG_SETTINGS_ENABLED", "false"
-
-        ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-        }
-
     }
 
     compileOptions {
@@ -101,6 +96,15 @@ android {
             initWith(release)
             matchingFallbacks.add("release")
         }
+    }
+
+    // Bundletool requires the base and native feature modules to target the same ABIs.
+    // LiteRT only ships 64-bit libraries; keep 32-bit support in the FOSS variants.
+    // Set filters per build type because defaultConfig filters merge into every variant.
+    buildTypes.configureEach { buildType ->
+        buildType.ndk.abiFilters = buildType.name in ["debugLLM", "debugLLMFast", "playRelease"]
+                ? ["arm64-v8a", "x86_64"]
+                : ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
     }
 
     sourceSets {
