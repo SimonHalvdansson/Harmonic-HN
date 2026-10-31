@@ -54,7 +54,10 @@
           "run": "echo \"ORG_GRADLE_PROJECT_harmonicDesktopJavaHome=$JAVA_HOME\" >> \"$GITHUB_ENV\""
         },
         {
-          "uses": "gradle/actions/setup-gradle@v6"
+          "uses": "gradle/actions/setup-gradle@v6",
+          "with": {
+            "cache-read-only": false
+          }
         },
         {
           "name": "Set up Android SDK",

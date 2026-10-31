@@ -135,7 +135,11 @@ val configureDesktopLocalAi = tasks.register<Exec>("configureDesktopLocalAi") {
             add(cmakeExecutable.get())
             addAll(listOf("-S", source, "-B", build))
             addAll(macDesktopCompilerArguments)
-            if (isWindowsArm64DesktopBuild) addAll(listOf("-A", "ARM64"))
+            if (isWindowsArm64DesktopBuild) {
+                // ggml's ARM intrinsics require Clang; static CRT keeps the DLL self-contained.
+                addAll(listOf("-A", "ARM64", "-T", "ClangCL",
+                    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"))
+            }
             addAll(
                 listOf(
                     "-DCMAKE_BUILD_TYPE=Release",

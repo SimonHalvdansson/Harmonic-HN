@@ -225,6 +225,9 @@ jobs:
             throw "WiX Toolset 3.x is required to build the MSI"
           }
           $wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Test Windows ARM64 installer scripts
+        if: matrix.os == 'windows-11-arm'
+        run: python -B -m unittest discover -s .github/scripts -p 'test_package_windows_arm64.py'
       - name: Build desktop package
         shell: bash
         run: |

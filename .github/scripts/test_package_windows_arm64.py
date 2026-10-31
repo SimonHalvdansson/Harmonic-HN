@@ -1,5 +1,6 @@
 from pathlib import Path
 import struct
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -17,6 +18,20 @@ def executable(path, machine=0xAA64):
 
 
 class WindowsArm64PackageTest(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32', 'Inno Setup runs on Windows')
+    def test_real_inno_compiler_accepts_the_installer_template(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / 'native image'
+            for name in ['Harmonic.exe', 'runtime/bin/java.exe', 'runtime/bin/server/jvm.dll']:
+                executable(image / name)
+            (image / 'app').mkdir()
+            (image / 'app/app.jsa').touch()
+            metadata = root / 'metadata.properties'
+            metadata.write_text('versionName=3.2.1\n')
+            installer = package(image, metadata, root / 'installer')
+            self.assertGreater(installer.stat().st_size, 0)
+
     def test_x64_emulation_cannot_silently_pass_as_a_native_build(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'Harmonic.exe'
