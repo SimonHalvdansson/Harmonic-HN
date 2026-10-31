@@ -426,6 +426,40 @@ class PostHeaderPreviewTest {
         } finally { scene.close() }
     }
 
+    @Test fun paneWidthChangesDoNotReplayActionPlacementOrVisibilityAnimations() = SwingUtilities.invokeAndWait {
+        val width = mutableStateOf(520.dp)
+        val settings = CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ).copy(headerButtons = CommentsHeaderButtons(CommentsHeaderButton.entries.associateWith { true }))
+        val scene = ImageComposeScene(900, 900, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) {
+                Box(Modifier.width(width.value)) { HeaderDisplayPreview(settings, true, {}) }
+            }
+        }
+        try {
+            var time = 0L
+            fun frame() { scene.render(time.also { time += 16_666_667L }).close() }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            fun actions() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.mapNotNull {
+                val label = it.config.getOrNull(SemanticsProperties.ContentDescription)?.singleOrNull()
+                if (label in listOf("User", "Share", "More options")) label to it.boundsInRoot else null
+            }.toMap()
+            repeat(40) { frame() }
+            // Mirror the retained comments header moving to the sheet and back after a small pull.
+            for (paneWidth in listOf(280.dp, 520.dp, 280.dp, 520.dp)) {
+                width.value = paneWidth
+                val frames = List(30) { frame(); actions() }
+                val settled = frames.last()
+                assertEquals(3, settled.size)
+                frames.forEachIndexed { index, bounds ->
+                    assertEquals(settled, bounds, "Header must use its new pane positions at frame $index")
+                }
+            }
+        } finally { scene.close() }
+    }
+
     @Test fun actionButtonsKeepTheirIdentityAndMoveThroughDetailChanges() = SwingUtilities.invokeAndWait {
         val settings = mutableStateOf(CommentDisplaySettings.from(
             AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,

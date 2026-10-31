@@ -221,7 +221,9 @@ fun CommentsHeaderActions(
                 })
             }
         }
-        actions.forEach { action -> key(action.action) {
+        // Pane transfers remeasure this retained header at a different width. Start placement
+        // and visibility at that pane's layout instead of replaying the other pane's motion.
+        actions.forEach { action -> key(maxWidth, action.action) {
             val index = inline.indexOf(action.action)
             // Retained buttons keep moving while additions gently fade into their new slots.
             val lastPosition = remember { mutableStateOf(position(index.coerceAtLeast(0))) }
@@ -246,7 +248,9 @@ fun CommentsHeaderActions(
                 }
             }
         } }
-        val moreX by animateDpAsState(position(inline.size), tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "More position")
+        val moreX by key(maxWidth) {
+            animateDpAsState(position(inline.size), tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "More position")
+        }
         Box(Modifier.offset { IntOffset(moreX.roundToPx(), 0) }.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
             CommentsTooltip("More options") {
                 IconButton(onClick = {
