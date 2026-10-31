@@ -49,6 +49,8 @@ class WindowsArm64PackageTest(unittest.TestCase):
             (image / 'app').mkdir()
             (image / 'app/Harmonic.cfg').write_text('[JavaOptions]\n')
             verify_image(image)
+            (image / 'runtime/bin/java.exe').unlink()
+            verify_image(image)
             executable(image / 'runtime/bin/server/jvm.dll', 0x8664)
             with self.assertRaisesRegex(ValueError, 'ARM64'):
                 verify_image(image)

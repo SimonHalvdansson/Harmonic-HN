@@ -23,8 +23,11 @@ def require_arm64_pe(path):
 
 def verify_image(image):
     require_arm64_pe(image / "Harmonic.exe")
-    require_arm64_pe(image / "runtime/bin/java.exe")
     require_arm64_pe(image / "runtime/bin/server/jvm.dll")
+    # jlink omits command-line launchers unless AppCDS needs them during training.
+    java = image / "runtime/bin/java.exe"
+    if java.is_file():
+        require_arm64_pe(java)
     config = image / "app/Harmonic.cfg"
     if not config.is_file():
         raise ValueError("The release image is missing its launcher configuration")
