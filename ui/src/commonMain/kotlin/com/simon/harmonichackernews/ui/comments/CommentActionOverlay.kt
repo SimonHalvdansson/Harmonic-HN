@@ -522,7 +522,12 @@ private fun CommentActionCardContent(
     }
     val linkColor = MaterialTheme.colorScheme.primary
     val body = remember(comment.expandedAnchorText, linkColor, linkListener) {
-        htmlAnnotatedString(comment.expandedAnchorText.orEmpty(), linkColor, linkListener)
+        htmlAnnotatedString(
+            comment.expandedAnchorText.orEmpty(),
+            linkColor,
+            linkListener,
+            highlightQuotes = false,
+        )
     }
     val bodyScrollState = rememberScrollState()
 
