@@ -26,6 +26,8 @@ import com.simon.harmonichackernews.resources.settings_section_web_links
 import com.simon.harmonichackernews.resources.settings_section_reader_mode
 import org.jetbrains.compose.resources.StringResource
 
+const val HideCommentsSettingsRoute = "comments/hide_comments"
+
 enum class SettingsSection(
     val route: String,
     val titleResource: StringResource,
@@ -57,6 +59,10 @@ enum class SettingsSection(
 
     companion object {
         fun fromRoute(route: String): SettingsSection? =
-            if (route == "frontpage") StoriesHeader else entries.firstOrNull { it.route == route }
+            when (route) {
+                "frontpage" -> StoriesHeader
+                HideCommentsSettingsRoute -> Comments
+                else -> entries.firstOrNull { it.route == route }
+            }
     }
 }

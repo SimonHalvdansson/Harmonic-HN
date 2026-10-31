@@ -466,7 +466,7 @@ internal fun LazyListScope.settingsCategory(
         SettingsCategoryHeading(title, HarmonicDimens.compose_settings_category_padding_top)
     }
     rows.forEachIndexed { index, row ->
-        item(key = "settings-category-$title-$index", contentType = "settings-category-row") {
+        item(key = row.key ?: "settings-category-$title-$index", contentType = "settings-category-row") {
             val radius = HarmonicDimens.settings_list_segment_corner_radius
             Column(
                 Modifier.fillMaxWidth()
@@ -479,17 +479,18 @@ internal fun LazyListScope.settingsCategory(
                     )),
             ) {
                 if (index > 0) SettingsDivider()
-                row()
+                row.content()
             }
         }
     }
 }
 
 internal class SettingsCategoryScope {
-    internal val rows = mutableListOf<@Composable () -> Unit>()
+    internal data class Row(val key: String?, val content: @Composable () -> Unit)
+    internal val rows = mutableListOf<Row>()
 
-    fun row(content: @Composable () -> Unit) {
-        rows.add(content)
+    fun row(key: String? = null, content: @Composable () -> Unit) {
+        rows.add(Row(key, content))
     }
 }
 

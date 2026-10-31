@@ -37,6 +37,7 @@ import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTr
 
 /** The retained destination keeps its own navigation origin, including in two-pane layouts. */
 internal val LocalSettingsParentSection = staticCompositionLocalOf<SettingsSection?> { null }
+internal val LocalSettingsFocusHideComments = staticCompositionLocalOf { false }
 
 private data object SettingsListDestination : NavKey
 
@@ -53,8 +54,9 @@ data class SettingsPredictiveBackOverlay(
 fun rememberSettingsNavigationStore(
     initialSection: SettingsSection?,
     twoPane: Boolean,
+    focusHideComments: Boolean = false,
 ): SettingsNavigationStore = viewModel<SettingsNavigationViewModel> {
-    SettingsNavigationViewModel(createSavedStateHandle(), initialSection, twoPane)
+    SettingsNavigationViewModel(createSavedStateHandle(), initialSection, twoPane, focusHideComments)
 }.navigation
 
 /**
@@ -105,6 +107,7 @@ fun SettingsNavigationShell(
                 val parent = navigationState.detailStack.getOrNull(navigationState.detailStack.indexOf(section) - 1)
                 CompositionLocalProvider(
                     LocalSettingsParentSection provides parent,
+                    LocalSettingsFocusHideComments provides navigation.focusHideComments,
                     LocalStatusBarScrollToTopEnabled provides (scrollToTopEnabled &&
                         section == navigationState.selectedSection &&
                         (isTwoPane || navigationState.detailStack.isNotEmpty())),

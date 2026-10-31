@@ -203,6 +203,7 @@ fun SettingRow(
     iconTint: Color? = null,
     iconModifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
+    backgroundColor: Color? = null,
 ) {
     val colors = HarmonicTheme.colors
     val resolvedIconPainter = when {
@@ -215,7 +216,7 @@ fun SettingRow(
             .defaultMinSize(
                 minHeight = HarmonicDimens.compose_settings_row_min_height,
             )
-            .themeBackground { cardBackground }
+            .themeBackground { backgroundColor ?: cardBackground }
             .alpha(if (enabled) 1f else 0.38f)
             .then(
                 if (onClick != null) {

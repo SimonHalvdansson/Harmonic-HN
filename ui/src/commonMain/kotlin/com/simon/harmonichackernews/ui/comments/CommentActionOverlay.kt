@@ -96,6 +96,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.CommentMenuAction
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
@@ -644,6 +646,26 @@ private fun CommentActionCardContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.fillMaxWidth()) {
+                val placeholder = comment.text?.trim()
+                if (placeholder in setOf("[flagged]", "[dead]", "[delayed]", "[deleted]", "[removed]")) {
+                    val navigation = LocalHarmonicUiDependencies.current.navigation
+                    Button(
+                        // Keep the dialog and its source alive beneath Settings so Back restores it.
+                        onClick = { navigation.openSettings(HideCommentsSettingsRoute) },
+                        modifier = Modifier.align(Alignment.End).padding(bottom = 10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        elevation = null,
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_settings), contentDescription = null,
+                            modifier = Modifier.size(20.dp))
+                        Text("Toggle visibility of $placeholder",
+                            modifier = Modifier.padding(start = 8.dp), fontFamily = ProductSansFontFamily)
+                    }
+                }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Row(
                     modifier = Modifier

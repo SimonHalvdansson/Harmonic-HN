@@ -513,6 +513,8 @@ private fun MainNavigation(
                 ),
             ) {
                 SettingsShell(
+                    focusHideComments = request.initialSectionRoute ==
+                        com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
                     initialSection = controller
                         .getInitialSettingsSectionRoute(request)
                         ?.let(SettingsSection::fromRoute),

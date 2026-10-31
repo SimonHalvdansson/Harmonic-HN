@@ -461,6 +461,8 @@ private fun DesktopAppContent(
         settings = { request ->
             DesktopInsetContent(titleBarInset) {
                 DesktopSettingsShell(
+                    focusHideComments = request.initialSectionRoute ==
+                        com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
                     app = app,
                     scene = scene,
                     requestSerial = request.serial,
@@ -728,6 +730,7 @@ private fun DesktopSettingsShell(
     initialSection: SettingsSection?,
     requestSerial: Int,
     controllers: RetainedDestinationControllers<SettingsNavigationStore>,
+    focusHideComments: Boolean = false,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
@@ -736,6 +739,7 @@ private fun DesktopSettingsShell(
     val navigation = rememberSettingsNavigationStore(
         initialSection = initialSection,
         twoPane = isTwoPane,
+        focusHideComments = focusHideComments,
     )
     RegisterDestinationController(controllers, requestSerial, navigation)
 

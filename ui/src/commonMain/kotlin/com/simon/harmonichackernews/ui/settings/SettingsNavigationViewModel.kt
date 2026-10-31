@@ -15,6 +15,7 @@ internal class SettingsNavigationViewModel(
     savedStateHandle: SavedStateHandle,
     initialSection: SettingsSection?,
     twoPane: Boolean,
+    focusHideComments: Boolean = false,
 ) : ViewModel() {
     private val restoredRoutes = savedStateHandle.get<SavedState>("routes")?.let {
         decodeFromSavedState<SettingsNavigationRestoration>(it).routes
@@ -23,9 +24,11 @@ internal class SettingsNavigationViewModel(
         initialSection = initialSection.takeIf { restoredRoutes == null },
         twoPane = twoPane,
         restoredRoutes = restoredRoutes,
+        focusHideComments = savedStateHandle.get<Boolean>("focusHideComments") ?: focusHideComments,
     )
 
     init {
+        savedStateHandle["focusHideComments"] = navigation.focusHideComments
         savedStateHandle.setSavedStateProvider("routes") {
             encodeToSavedState(SettingsNavigationRestoration(navigation.savedRoutes()))
         }

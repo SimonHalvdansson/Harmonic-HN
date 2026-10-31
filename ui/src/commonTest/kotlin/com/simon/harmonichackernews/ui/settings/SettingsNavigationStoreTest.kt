@@ -7,6 +7,32 @@ import kotlin.test.assertTrue
 
 class SettingsNavigationStoreTest {
     @Test
+    fun hideCommentsShortcutReturnsToItsSourceAfterNestedNavigationAndRestoration() {
+        assertEquals(SettingsSection.Comments, SettingsSection.fromRoute(HideCommentsSettingsRoute))
+        for (twoPane in listOf(false, true)) {
+            val navigation = SettingsNavigationStore(
+                initialSection = SettingsSection.Comments,
+                twoPane = twoPane,
+                focusHideComments = true,
+            )
+            navigation.navigateTo(SettingsSection.ThreadDepth, preserveCurrentDetail = true)
+            val restored = SettingsNavigationStore(
+                restoredRoutes = navigation.savedRoutes(),
+                twoPane = twoPane,
+                focusHideComments = true,
+            )
+            var closes = 0
+            handleSettingsBack(restored) { closes++ }
+            assertEquals(SettingsSection.Comments, restored.state.value.selectedSection)
+            assertEquals(0, closes)
+            restored.updateLayout(!twoPane)
+            handleSettingsBack(restored) { closes++ }
+            assertEquals(1, closes)
+            assertEquals(listOf(SettingsSection.Comments), restored.state.value.detailStack)
+        }
+    }
+
+    @Test
     fun storiesHeaderSubpageRestoresAndReturnsToAppearanceInEitherLayout() {
         for (twoPane in listOf(false, true)) {
             val navigation = SettingsNavigationStore(initialSection = SettingsSection.Appearance, twoPane = twoPane)

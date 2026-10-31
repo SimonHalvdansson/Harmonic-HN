@@ -30,6 +30,7 @@ fun SettingsShell(
     onSectionChanged: (SettingsSection) -> Unit,
     onThemeChanged: () -> Unit,
     modifier: Modifier = Modifier,
+    focusHideComments: Boolean = false,
 ) {
     val context = LocalContext.current
     val dependencies = LocalHarmonicUiDependencies.current
@@ -52,7 +53,7 @@ fun SettingsShell(
         )
     }
     val isTwoPane = directive.maxHorizontalPartitions > 1
-    val navigation = rememberSettingsNavigationStore(initialSection, isTwoPane)
+    val navigation = rememberSettingsNavigationStore(initialSection, isTwoPane, focusHideComments)
     val predictiveBack = rememberSettingsPredictiveBack(
         navigation, isTwoPane, backHandlerEnabled, onBackFromSettings,
     )

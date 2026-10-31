@@ -106,6 +106,19 @@ class NavigationSavedStateTest {
     }
 
     @Test
+    fun hideCommentsShortcutKeepsItsReturnPathAfterProcessRestoration() {
+        val handle = SavedStateHandle()
+        val original = SettingsNavigationViewModel(handle, SettingsSection.Comments, false, focusHideComments = true)
+        original.navigation.navigateTo(SettingsSection.ThreadDepth, preserveCurrentDetail = true)
+        // The restored app route names the current section; the entry's saved state owns its origin.
+        val restored = SettingsNavigationViewModel(restoredHandle(handle), SettingsSection.ThreadDepth, false)
+        assertTrue(restored.navigation.focusHideComments)
+        assertTrue(restored.navigation.navigateBack())
+        assertEquals(SettingsSection.Comments, restored.navigation.state.value.selectedSection)
+        assertFalse(restored.navigation.navigateBack())
+    }
+
+    @Test
     fun commentsReadingPositionAndCollapsedThreadsRestoreInANewScene() {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("comments-state-test")
         val first = bootstrap.app.createScene()

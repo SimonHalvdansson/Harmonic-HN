@@ -15,12 +15,13 @@ data class SettingsNavigationState(
     val detailStack: List<SettingsSection>,
     val twoPane: Boolean,
     val detailNavigation: SettingsDetailNavigation = SettingsDetailNavigation.Replace,
+    val returnToSource: Boolean = false,
 ) {
     val selectedSection: SettingsSection
         get() = detailStack.lastOrNull() ?: SettingsSection.Appearance
 
     val canNavigateBackWithinSettings: Boolean
-        get() = detailStack.size > if (twoPane) 1 else 0
+        get() = detailStack.size > if (twoPane || returnToSource) 1 else 0
 
     val routes: List<String>
         get() {
@@ -36,6 +37,7 @@ class SettingsNavigationStore(
     initialSection: SettingsSection? = null,
     twoPane: Boolean = false,
     restoredRoutes: List<String>? = null,
+    val focusHideComments: Boolean = false,
 ) {
     // Keep reading positions for the whole Settings visit, including recreation of the
     // outer navigation surface when its retained transition changes pane layout.
@@ -50,6 +52,7 @@ class SettingsNavigationStore(
                     listOfNotNull(initialSection ?: SettingsSection.Appearance.takeIf { twoPane })
                 },
             twoPane = twoPane,
+            returnToSource = focusHideComments,
         ).normalized(),
     )
     val state: StateFlow<SettingsNavigationState> = mutableState.asStateFlow()

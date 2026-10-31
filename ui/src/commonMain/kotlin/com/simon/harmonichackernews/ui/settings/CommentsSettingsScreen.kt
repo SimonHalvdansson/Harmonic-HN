@@ -10,6 +10,24 @@ import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,12 +131,44 @@ fun CommentsSettingsScreen(
     onUserAvatarsEnabledChanged: (Boolean) -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
+    focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
 ) {
+    val listState = rememberSettingsListState()
+    val highlight = remember { Animatable(0f) }
+    var focused by rememberSaveable { mutableStateOf(false) }
+    var screenCenterInList by remember { mutableIntStateOf(0) }
+    LaunchedEffect(focusHideComments, listState) {
+        if (!focusHideComments || focused) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.totalItemsCount > 0 && screenCenterInList > 0 }.first { it }
+        // Find the stable row key without depending on the number or height of preceding settings.
+        var previousLastIndex = -1
+        while (listState.layoutInfo.visibleItemsInfo.none { it.key == HideCommentsSettingsRoute }) {
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull() ?: break
+            if (last.index == previousLastIndex) break
+            previousLastIndex = last.index
+            val next = (last.index + 1).coerceAtMost(listState.layoutInfo.totalItemsCount - 1)
+            if (next <= listState.firstVisibleItemIndex) break
+            listState.scrollToItem(next)
+        }
+        val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == HideCommentsSettingsRoute }
+            ?: return@LaunchedEffect
+        listState.animateScrollBy((row.offset + row.size / 2 - screenCenterInList).toFloat())
+        focused = true
+        delay(450) // Let the activity surface settle before drawing attention to the setting.
+        repeat(2) {
+            highlight.animateTo(1f, tween(250))
+            highlight.animateTo(0f, tween(550))
+        }
+    }
     SettingsPage(
         title = stringResource(Res.string.settings_section_comments),
         showNavigation = showNavigation,
         onBack = onBack,
         contentVersion = contentVersion,
+        listState = listState,
+        scrollContentModifier = Modifier.onGloballyPositioned {
+            screenCenterInList = (it.findRootCoordinates().size.height / 2 - it.positionInRoot().y).toInt()
+        },
         pinnedContent = {
             Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.pageBackground)) {
                 CommentRow(
@@ -218,13 +268,17 @@ fun CommentsSettingsScreen(
             row {
                 BooleanRow("Auto-collapse top level comments", Res.drawable.ic_minimize, state.collapseTopLevel, CommentsBooleanSetting.CollapseTopLevel, onBooleanChanged)
             }
-            row {
-                DialogRow(
+            row(key = HideCommentsSettingsRoute) {
+                SettingRow(
                     title = "Hide comments",
                     summary = "Flagged, dead and delayed comments",
                     icon = Res.drawable.ic_visibility_off,
-                    dialog = CommentsSettingsDialog.HiddenComments,
-                    onDialogRequested = onDialogRequested,
+                    onClick = { onDialogRequested(CommentsSettingsDialog.HiddenComments) },
+                    backgroundColor = lerp(
+                        HarmonicTheme.colors.cardBackground,
+                        HarmonicTheme.colors.primaryContainer,
+                        highlight.value * 0.65f,
+                    ),
                 )
             }
             row {

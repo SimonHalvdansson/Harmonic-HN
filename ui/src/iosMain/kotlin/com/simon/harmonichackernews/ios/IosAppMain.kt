@@ -560,6 +560,8 @@ private fun IosAppContent(
         },
         settings = { request ->
             IosSettingsShell(
+                focusHideComments = request.initialSectionRoute ==
+                    com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
                 app = app,
                 scene = scene,
                 requestSerial = request.serial,
@@ -836,6 +838,7 @@ private fun IosSettingsShell(
     initialSection: SettingsSection?,
     requestSerial: Int,
     controllers: RetainedDestinationControllers<SettingsNavigationStore>,
+    focusHideComments: Boolean = false,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val settingsAccountState by app.platform.accounts.accountState.collectAsState()
@@ -853,6 +856,7 @@ private fun IosSettingsShell(
     val navigation = rememberSettingsNavigationStore(
         initialSection = initialSection,
         twoPane = isTwoPane,
+        focusHideComments = focusHideComments,
     )
     RegisterDestinationController(controllers, requestSerial, navigation)
 
