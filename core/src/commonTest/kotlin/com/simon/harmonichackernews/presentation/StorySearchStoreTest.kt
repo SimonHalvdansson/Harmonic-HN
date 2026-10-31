@@ -12,9 +12,12 @@ import com.simon.harmonichackernews.network.AlgoliaSubmissionsPage
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import com.simon.harmonichackernews.network.HttpStatusException
 import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.Continuation
@@ -268,6 +271,145 @@ class StorySearchStoreTest {
         runCurrent()
         assertEquals((1..30).toList(), store.state.value.stories.map(Story::id))
         assertTrue(peak <= 8)
+    }
+
+    @Test
+    fun largeHistoryUsesABoundedNumberOfCoroutines() = runTest {
+        val response = CompletableDeferred<Unit>()
+        val ids = (1..10_000).toList()
+        var requests = 0
+        val store = store(backgroundScope, readIds = ids, getStory = { id ->
+            requests++
+            response.await()
+            story(id)
+        })
+        store.toggleOnlyRead()
+        store.search("")
+        runCurrent()
+
+        fun descendants(job: Job): Int = job.children.sumOf { 1 + descendants(it) }
+        val pendingCoroutines = descendants(checkNotNull(backgroundScope.coroutineContext[Job]))
+        assertTrue(pendingCoroutines <= 10,
+            "Expected a bounded worker pool, found $pendingCoroutines coroutines for ${ids.size} items")
+        assertEquals(8, requests)
+
+        response.complete(Unit)
+        runCurrent()
+        assertEquals(ids.size, requests)
+        assertEquals(ids, store.state.value.stories.map(Story::id))
+        assertFalse(store.state.value.loading)
+    }
+
+    @Test
+    fun historyCompletionOrderDoesNotChangeRelevanceTies() = runTest {
+        val ids = (1..24).reversed().toList()
+        val responses = ids.associateWith { CompletableDeferred<Unit>() }
+        val requested = mutableListOf<Int>()
+        val store = store(backgroundScope, readIds = ids, getStory = { id ->
+            requested += id
+            responses.getValue(id).await()
+            story(id)
+        })
+        store.toggleOnlyRead()
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(ids.take(8), requested)
+
+        // A free worker starts the next item while the first seven requests remain pending.
+        responses.getValue(ids[7]).complete(Unit)
+        runCurrent()
+        assertEquals(ids.take(9), requested)
+        responses.values.forEach { it.complete(Unit) }
+        runCurrent()
+
+        assertEquals(ids, store.state.value.stories.map(Story::id))
+        assertNull(store.state.value.failure)
+    }
+
+    @Test
+    fun overlappingHistoryGenerationsShareTheRequestLimit() = runTest {
+        val oldResponses = mutableListOf<Continuation<Story>>()
+        val freshResponse = CompletableDeferred<Unit>()
+        val ids = (1..24).toList()
+        var fresh = false
+        var active = 0
+        var peak = 0
+        var freshRequests = 0
+        val store = store(backgroundScope, readIds = ids, getStory = { id ->
+            active++
+            peak = maxOf(peak, active)
+            try {
+                if (!fresh) suspendCoroutine<Story> { oldResponses += it }
+                else {
+                    freshRequests++
+                    freshResponse.await()
+                    story(id).apply { title = "Fresh" }
+                }
+            } finally {
+                active--
+            }
+        })
+        store.toggleOnlyRead()
+        store.search("Old")
+        runCurrent()
+        assertEquals(8, oldResponses.size)
+
+        fresh = true
+        store.search("Fresh", forceRefresh = true)
+        runCurrent()
+        assertEquals(0, freshRequests)
+        assertEquals(8, active)
+
+        oldResponses.forEachIndexed { index, response ->
+            response.resume(story(index + 1).apply { title = "Old" })
+            runCurrent()
+        }
+        assertEquals(8, oldResponses.size)
+        assertEquals(8, freshRequests)
+        assertEquals(8, active)
+        freshResponse.complete(Unit)
+        runCurrent()
+
+        assertEquals(0, active)
+        assertTrue(peak <= 8)
+        assertEquals(ids, store.state.value.stories.map(Story::id))
+        assertTrue(store.state.value.stories.all { it.title == "Fresh" })
+        store.search("Fresh")
+        runCurrent()
+        assertEquals(ids.size, freshRequests)
+    }
+
+    @Test
+    fun repositoryCancellationCancelsOtherHistoryWorkersWithoutReportingAFailure() = runTest {
+        val cancelResponse = CompletableDeferred<Unit>()
+        var requests = 0
+        var cancelledSiblings = 0
+        val store = store(backgroundScope, readIds = (1..24).toList(), getStory = { id ->
+            requests++
+            if (id == 1) {
+                cancelResponse.await()
+                throw CancellationException("Repository request cancelled")
+            } else {
+                try {
+                    awaitCancellation()
+                } finally {
+                    cancelledSiblings++
+                }
+            }
+        })
+        store.toggleOnlyRead()
+        store.search("")
+        runCurrent()
+        assertEquals(8, requests)
+
+        cancelResponse.complete(Unit)
+        runCurrent()
+
+        assertEquals(7, cancelledSiblings)
+        assertEquals(8, requests)
+        assertNull(store.state.value.failure)
+        assertTrue(store.state.value.stories.isEmpty())
+        store.cancel()
     }
 
     @Test

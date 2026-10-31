@@ -48,10 +48,8 @@ import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.AppDestinationCodec
 import com.simon.harmonichackernews.network.WidgetConfiguration
-import com.simon.harmonichackernews.palette.HarmonicPaletteExtractor
 import com.simon.harmonichackernews.presentation.WidgetStoryFormatter
 import com.simon.harmonichackernews.settings.DisplayStyle
-import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.ThemeSelection
 import androidx.compose.material3.ColorScheme
@@ -115,27 +113,25 @@ class StoriesGlanceWidget : GlanceAppWidget() {
                 }.collectAsState(initial = null)
                 diagnostics
             } else null
-            val visuals by produceState(emptyMap<Int, WidgetVisual>(), entries, state[WidgetState.revision], colors, bitmapBudget, previewSize, faviconSize, app.userSettings.story.paletteTintConfigKey) {
+            val showPreview = configuration.previewImageMode != StoryPreviewMode.OFF
+            val tint = configuration.tint && configuration.displayStyle != DisplayStyle.FLAT
+            val showFavicons = settings.story.showFavicons
+            val images by produceState(
+                emptyMap<Int, WidgetImages>(), context, entries, state[WidgetState.revision],
+                bitmapBudget, previewSize, faviconSize, showPreview, tint, showFavicons,
+            ) {
                 value = withContext(Dispatchers.IO) {
                     entries.associate { entry ->
-                        val image = entry.imagePath?.let { decodeWidgetBitmap(it, previewSize, bitmapBudget) }
-                        val tintImage = if (entry.tintPath == entry.imagePath) image else entry.tintPath?.let { decodeWidgetBitmap(it, widgetTintImageSize, bitmapBudget) }
-                        val palette = tintImage?.let { bitmap ->
-                            val sample = Bitmap.createScaledBitmap(bitmap, 48, 48, true)
-                            val pixels = IntArray(48 * 48)
-                            sample.getPixels(pixels, 0, 48, 0, 0, 48, 48)
-                            HarmonicPaletteExtractor(pixels.size).extract(pixels).toPreviewTintPalette()
-                        }
-                        fun tint(theme: ColorScheme) = palette?.let {
-                            val config = app.userSettings.story.paletteTintConfigKey
-                            val rawTint = PreviewTintPolicy.calculateCardTint(theme.cardBackground.toArgb(), it, config)
-                            PreviewTintPolicy.ensureCardTintContrast(rawTint, theme.pageBackground.toArgb(), config)
-                        }
-                        entry.destination.storyId to WidgetVisual(image?.forWidget(), tint(colors.day),
-                            entry.faviconPath?.let { decodeWidgetBitmap(it, faviconSize, bitmapBudget) }
-                                ?.roundedWidgetFavicon(context)?.withinWidgetBitmapBudget(bitmapBudget)?.forWidget(), tint(colors.night))
+                        entry.destination.storyId to prepareWidgetImages(
+                            context, entry, previewSize, faviconSize, bitmapBudget,
+                            showPreview, tint, showFavicons,
+                        )
                     }
                 }
+            }
+            val tintConfig = settings.story.paletteTintConfigKey
+            val visuals = remember(images, colors, tintConfig) {
+                images.mapValues { (_, image) -> image.visual(colors, tintConfig) }
             }
             Column(
                 GlanceModifier.fillMaxSize().background(colors.background).appWidgetBackground()
