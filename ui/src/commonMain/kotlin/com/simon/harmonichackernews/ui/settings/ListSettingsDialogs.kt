@@ -3,7 +3,6 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -43,11 +42,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +67,7 @@ import com.simon.harmonichackernews.ui.content.FontMetrics
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun FontSelectionDialog(
@@ -310,16 +313,12 @@ fun StringListEditorDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = true),
-        modifier = Modifier.animateContentSize(
-            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-        ),
+        // Insets already animate the available space with the keyboard. Animating the surface's
+        // size as well chases those constraints and clips/repositions it again after they settle.
+        scrollableContent = true,
         title = { SettingsDialogTitle(title) },
         text = {
-            // As in Set tag, register the dialog's animated insets before opening the keyboard.
-            LaunchedEffect(Unit) {
-                androidx.compose.runtime.withFrameNanos { }
-                focusRequester.requestFocus()
-            }
+            RequestSettingsDialogFocus(focusRequester)
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = subtitle,
@@ -368,7 +367,12 @@ fun StringListEditorDialog(
                     }
                 }
 
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 224.dp)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .fillMaxWidth()
+                        .heightIn(max = 224.dp),
+                ) {
                     if (items.isEmpty()) {
                         item(key = "empty-list-message", contentType = "empty-list-message") {
                             Box(
@@ -451,6 +455,19 @@ fun StringListEditorDialog(
         confirmButton = {},
         showButtons = false,
     )
+}
+
+/** Open the IME only after this dialog owns focus and its insets/layout have had a frame. */
+@Composable
+internal fun RequestSettingsDialogFocus(focusRequester: FocusRequester) {
+    val windowInfo = LocalWindowInfo.current
+    LaunchedEffect(focusRequester, windowInfo) {
+        do {
+            snapshotFlow { windowInfo.isWindowFocused }.first { it }
+            withFrameNanos { }
+        } while (!windowInfo.isWindowFocused)
+        focusRequester.requestFocus()
+    }
 }
 
 // Imported and older stored lists can contain values that collide with the lazy row's key.
