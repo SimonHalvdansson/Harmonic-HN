@@ -7,6 +7,7 @@ $installers = @(Get-ChildItem $InstallerDirectory -Filter '*-windows-arm64.exe')
 if ($installers.Count -ne 1) { throw 'Expected one Windows ARM64 installer' }
 $diagnostics = Join-Path $env:RUNNER_TEMP 'harmonic-arm64-verification'
 $installDirectory = Join-Path $diagnostics 'installed app'
+$installedLauncher = Join-Path $installDirectory 'Harmonic.exe'
 New-Item -ItemType Directory -Force $diagnostics | Out-Null
 if (Test-Path $installDirectory) { throw "Verification directory already exists: $installDirectory" }
 $oldJavaOptions = $env:JAVA_TOOL_OPTIONS
@@ -59,14 +60,20 @@ try {
     # Training mode runs the real window with an in-memory graph and exits by itself.
     # It must never read/write the runner's production app settings or credentials.
     $env:JAVA_TOOL_OPTIONS = '-Dcompose.aot.training-run=true'
-    $app = Start-Process (Join-Path $installDirectory 'Harmonic.exe') -PassThru `
+    $app = Start-Process $installedLauncher -PassThru `
         -RedirectStandardOutput (Join-Path $diagnostics 'app.stdout.log') `
         -RedirectStandardError (Join-Path $diagnostics 'app.stderr.log')
     $windowObserved = $false
     $deadline = [DateTime]::UtcNow.AddSeconds(60)
     while (-not $app.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         $app.Refresh()
-        if ($app.MainWindowHandle -ne [IntPtr]::Zero) { $windowObserved = $true }
+        # jpackage's launcher waits for a child Harmonic.exe running the JVM.
+        # Match the installed path so the parent or an unrelated app cannot pass.
+        foreach ($process in (Get-Process -Name Harmonic -ErrorAction SilentlyContinue)) {
+            if ($process.Path -eq $installedLauncher -and
+                $process.MainWindowHandle -ne [IntPtr]::Zero -and
+                $process.MainWindowTitle -eq 'Harmonic') { $windowObserved = $true }
+        }
         Start-Sleep -Milliseconds 100
     }
     if (-not $app.HasExited) { throw 'Installed app did not finish its training launch' }
@@ -78,6 +85,9 @@ try {
 } finally {
     $env:JAVA_TOOL_OPTIONS = $oldJavaOptions
     if ($app -and -not $app.HasExited) {
+        Get-Process -Name Harmonic -ErrorAction SilentlyContinue |
+            Where-Object { $_.Path -eq $installedLauncher -and $_.Id -ne $app.Id } |
+            Stop-Process -Force
         Stop-Process -Id $app.Id -Force
         $app.WaitForExit()
     }

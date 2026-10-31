@@ -140,7 +140,8 @@
             "name": "harmonic-${{ matrix.artifact_name }}",
             "path": "${{ matrix.artifact_path }}",
             "if-no-files-found": "error"
-          }
+          },
+          "if": "always()"
         }
       ],
       "timeout-minutes": 35
