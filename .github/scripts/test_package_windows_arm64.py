@@ -26,7 +26,7 @@ class WindowsArm64PackageTest(unittest.TestCase):
             for name in ['Harmonic.exe', 'runtime/bin/java.exe', 'runtime/bin/server/jvm.dll']:
                 executable(image / name)
             (image / 'app').mkdir()
-            (image / 'app/app.jsa').touch()
+            (image / 'app/Harmonic.cfg').write_text('[JavaOptions]\n')
             metadata = root / 'metadata.properties'
             metadata.write_text('versionName=3.2.1\n')
             installer = package(image, metadata, root / 'installer')
@@ -47,10 +47,20 @@ class WindowsArm64PackageTest(unittest.TestCase):
             for name in ['Harmonic.exe', 'runtime/bin/java.exe', 'runtime/bin/server/jvm.dll']:
                 executable(image / name)
             (image / 'app').mkdir()
-            (image / 'app/app.jsa').touch()
+            (image / 'app/Harmonic.cfg').write_text('[JavaOptions]\n')
             verify_image(image)
             executable(image / 'runtime/bin/server/jvm.dll', 0x8664)
             with self.assertRaisesRegex(ValueError, 'ARM64'):
+                verify_image(image)
+
+    def test_non_relocatable_archive_cannot_be_shipped_in_the_installer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory)
+            for name in ['Harmonic.exe', 'runtime/bin/java.exe', 'runtime/bin/server/jvm.dll']:
+                executable(image / name)
+            (image / 'app').mkdir()
+            (image / 'app/Harmonic.cfg').write_text('java-options=-XX:SharedArchiveFile=$APPDIR/app.jsa\n')
+            with self.assertRaisesRegex(ValueError, 'do not relocate'):
                 verify_image(image)
 
     def test_compiler_receives_literal_paths_with_spaces_and_the_embedded_version(self):
@@ -60,7 +70,7 @@ class WindowsArm64PackageTest(unittest.TestCase):
             for name in ['Harmonic.exe', 'runtime/bin/java.exe', 'runtime/bin/server/jvm.dll']:
                 executable(image / name)
             (image / 'app').mkdir()
-            (image / 'app/app.jsa').touch()
+            (image / 'app/Harmonic.cfg').write_text('[JavaOptions]\n')
             metadata = root / 'metadata.properties'
             metadata.write_text('versionName=3.2.1\n')
             destination = root / 'output'

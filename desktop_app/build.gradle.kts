@@ -293,7 +293,9 @@ compose.desktop {
         providers.gradleProperty("harmonicDesktopJavaHome").orNull?.let { javaHome = it }
         buildTypes.release.aot {
             mode = if (providers.gradleProperty("harmonicDesktopAppCds")
-                    .map(String::toBoolean).getOrElse(true)) {
+                    // Windows ARM64 JDK 21 archives retain build-directory JAR paths.
+                    // Keep installed apps independent of the build machine.
+                    .map(String::toBoolean).getOrElse(!isWindowsArm64DesktopBuild)) {
                 AotMode.AppCdsPrebuild
             } else {
                 AotMode.None

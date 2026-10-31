@@ -1,5 +1,5 @@
 ; jpackage 21 builds ARM64 application images, but its MSI authoring assumes x64.
-; Inno Setup installs the complete native image, including Java and the AppCDS archive.
+; Inno Setup installs the complete native image, including the bundled Java runtime.
 #ifndef AppImage
   #error AppImage must name the packaged Harmonic directory
 #endif

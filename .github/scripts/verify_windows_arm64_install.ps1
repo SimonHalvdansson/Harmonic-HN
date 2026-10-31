@@ -15,6 +15,7 @@ $originalImage = Join-Path (Get-Location) 'desktop_app/build/compose/binaries/ma
 $hiddenImage = "$originalImage-verification"
 $imageHidden = $false
 $userFile = Join-Path $installDirectory 'user-file-to-preserve.txt'
+$userFileCreated = $false
 try {
     $setup = Start-Process $installers[0].FullName -Wait -PassThru -ArgumentList @(
         '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-',
@@ -34,6 +35,7 @@ try {
 
     # Reinstallation must replace obsolete payload without deleting other files.
     Set-Content $userFile 'preserve this file'
+    $userFileCreated = $true
     $obsolete = Join-Path $installDirectory 'app/obsolete-upgrade-fixture.jar'
     Set-Content $obsolete 'obsolete payload'
     $upgrade = Start-Process $installers[0].FullName -Wait -PassThru -ArgumentList @(
@@ -46,17 +48,17 @@ try {
 
     # Hide the source image so an absolute reference to its original runtime/JARs
     # cannot make installation checks pass accidentally on the build machine.
-    if (Test-Path $hiddenImage) { throw "Image verification path already exists: $hiddenImage" }
-    Move-Item $originalImage $hiddenImage
-    $imageHidden = $true
+    if (Test-Path $originalImage) {
+        if (Test-Path $hiddenImage) { throw "Image verification path already exists: $hiddenImage" }
+        Move-Item $originalImage $hiddenImage
+        $imageHidden = $true
+    }
 
-    # This also catches timestamp/path changes made by the installer that invalidate CDS.
-    python .github/scripts/verify-desktop-appcds.py $installDirectory
-    if ($LASTEXITCODE -ne 0) { throw 'Installed AppCDS archive cannot be loaded' }
+    Write-Host 'Prebuilt AppCDS is disabled on Windows ARM64 because JDK 21 archives do not relocate'
 
     # Training mode runs the real window with an in-memory graph and exits by itself.
     # It must never read/write the runner's production app settings or credentials.
-    $env:JAVA_TOOL_OPTIONS = '-Dcompose.aot.training-run=true -Xshare:on'
+    $env:JAVA_TOOL_OPTIONS = '-Dcompose.aot.training-run=true'
     $app = Start-Process (Join-Path $installDirectory 'Harmonic.exe') -PassThru `
         -RedirectStandardOutput (Join-Path $diagnostics 'app.stdout.log') `
         -RedirectStandardError (Join-Path $diagnostics 'app.stderr.log')
@@ -89,7 +91,7 @@ try {
         if ($uninstall.ExitCode -ne 0 -or (Test-Path (Join-Path $installDirectory 'Harmonic.exe'))) {
             throw "Uninstallation failed: $($uninstall.ExitCode)"
         }
-        if ((Test-Path $userFile) -and (Get-Content $userFile) -ne 'preserve this file') {
+        if ($userFileCreated -and (Get-Content $userFile) -ne 'preserve this file') {
             throw 'Uninstallation changed a user-owned file'
         }
         Write-Host 'ARM64 installer uninstallation passed'

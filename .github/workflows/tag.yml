@@ -187,6 +187,7 @@ jobs:
         shell: bash
         run: python .github/scripts/verify-desktop-native.py desktop_app/build/generated/desktopLocalAiResources/native
       - name: Verify desktop AppCDS archive
+        if: matrix.os != 'windows-11-arm'
         run: python .github/scripts/verify-desktop-appcds.py desktop_app/build/compose/binaries/main-release/app
       - name: Verify processed desktop runtime
         run: >-

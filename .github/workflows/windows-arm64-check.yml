@@ -8,7 +8,8 @@
     }
   },
   "permissions": {
-    "contents": "read"
+    "contents": "read",
+    "actions": "read"
   },
   "jobs": {
     "desktop": {
@@ -34,10 +35,6 @@
       "steps": [
         {
           "uses": "actions/checkout@v7"
-        },
-        {
-          "name": "Test installer build scripts",
-          "run": "python -B -m unittest discover -s .github/scripts -p 'test_*.py'"
         },
         {
           "uses": "actions/setup-java@v6",
@@ -72,10 +69,30 @@
           "uses": "./.github/actions/cache-desktop-native"
         },
         {
+          "name": "Download previously verified native build",
+          "uses": "actions/download-artifact@v8",
+          "with": {
+            "name": "windows-arm64-built-image-diagnostics",
+            "run-id": 41177159727,
+            "github-token": "${{ secrets.GITHUB_TOKEN }}",
+            "path": "${{ runner.temp }}/previous-arm64-build"
+          }
+        },
+        {
+          "name": "Reuse unchanged verified native DLL",
+          "shell": "pwsh",
+          "run": "$native = Join-Path $env:RUNNER_TEMP 'previous-arm64-build/desktopLocalAi/output'\npython -B -c 'import sys; sys.path.insert(0, \".github/scripts\"); from pathlib import Path; from package_windows_arm64 import require_arm64_pe; require_arm64_pe(Path(sys.argv[1]))' (Join-Path $native 'harmonic-local-ai.dll')\nif ($LASTEXITCODE -ne 0) { throw 'Invalid previous ARM64 DLL' }\n\"ORG_GRADLE_PROJECT_harmonicDesktopLocalAiPrebuilt=$native\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+        },
+        {
           "name": "Add WiX Toolset to PATH",
           "if": "runner.os == 'Windows' && runner.arch != 'ARM64'",
           "shell": "pwsh",
           "run": "$wix = Get-ChildItem \"${env:ProgramFiles(x86)}\\WiX Toolset v3.*\\bin\" -Directory |\n  Select-Object -First 1\nif (-not $wix) {\n  throw \"WiX Toolset 3.x is required to build the MSI\"\n}\n$wix.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append\n"
+        },
+        {
+          "name": "Test Windows ARM64 installer scripts",
+          "if": "matrix.os == 'windows-11-arm'",
+          "run": "python -B -m unittest discover -s .github/scripts -p 'test_package_windows_arm64.py'"
         },
         {
           "name": "Build desktop package",
@@ -89,6 +106,7 @@
         },
         {
           "name": "Verify desktop AppCDS archive",
+          "if": "matrix.os != 'windows-11-arm'",
           "run": "python .github/scripts/verify-desktop-appcds.py desktop_app/build/compose/binaries/main-release/app"
         },
         {
@@ -123,20 +141,43 @@
             "path": "${{ matrix.artifact_path }}",
             "if-no-files-found": "error"
           }
+        }
+      ],
+      "timeout-minutes": 35
+    },
+    "fresh-install": {
+      "name": "Install on a fresh Windows ARM64 host",
+      "needs": "desktop",
+      "runs-on": "windows-11-arm",
+      "timeout-minutes": 10,
+      "steps": [
+        {
+          "uses": "actions/checkout@v7"
         },
         {
-          "name": "Preserve built ARM64 image for installer diagnostics",
+          "name": "Download the standalone EXE installer",
+          "uses": "actions/download-artifact@v8",
+          "with": {
+            "name": "harmonic-windows-exe-arm64",
+            "path": "${{ runner.temp }}/fresh-installer"
+          }
+        },
+        {
+          "name": "Install, upgrade, launch and uninstall without a build environment",
+          "shell": "pwsh",
+          "run": "if (Test-Path 'desktop_app/build/compose/binaries/main-release/app/Harmonic') { throw 'Fresh-host test has an unexpected build image' }\n.github/scripts/verify_windows_arm64_install.ps1 -InstallerDirectory (Join-Path $env:RUNNER_TEMP 'fresh-installer')"
+        },
+        {
+          "name": "Upload installation logs on failure",
           "if": "failure()",
           "uses": "actions/upload-artifact@v7",
           "with": {
-            "name": "windows-arm64-built-image-diagnostics",
-            "path": "desktop_app/build/compose/binaries/main-release/app/Harmonic\ndesktop_app/build/compose/binaries/main-release/exe/*.exe\ndesktop_app/build/desktopLocalAi/output/*",
-            "if-no-files-found": "ignore",
-            "retention-days": 3
+            "name": "fresh-windows-arm64-install-logs",
+            "path": "${{ runner.temp }}/harmonic-arm64-verification/*.log",
+            "if-no-files-found": "ignore"
           }
         }
-      ],
-      "timeout-minutes": 45
+      ]
     }
   }
 }

@@ -25,8 +25,12 @@ def verify_image(image):
     require_arm64_pe(image / "Harmonic.exe")
     require_arm64_pe(image / "runtime/bin/java.exe")
     require_arm64_pe(image / "runtime/bin/server/jvm.dll")
-    if not (image / "app/app.jsa").is_file():
-        raise ValueError("The release image is missing its AppCDS archive")
+    config = image / "app/Harmonic.cfg"
+    if not config.is_file():
+        raise ValueError("The release image is missing its launcher configuration")
+    if "-XX:SharedArchiveFile=" in config.read_text(encoding="utf-8"):
+        raise ValueError("Windows ARM64 AppCDS archives do not relocate on JDK 21; "
+                         "build with -PharmonicDesktopAppCds=false")
 
 
 def find_compiler():
