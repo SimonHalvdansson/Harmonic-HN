@@ -31,7 +31,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.resources.Res
@@ -44,7 +43,6 @@ import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.common.platformDialogPredictiveBackSupported
 import com.simon.harmonichackernews.ui.common.platformDialogProperties
 import com.simon.harmonichackernews.ui.stories.menuIcon
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -82,6 +80,7 @@ internal data class FrontpageInfoSource(
 internal fun FrontpageInfoDialog(
     source: FrontpageInfoSource,
     onSourceReadyToCover: () -> Unit,
+    onSourceReadyToReveal: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val type = source.type
@@ -139,6 +138,7 @@ internal fun FrontpageInfoDialog(
                     sourceBorderColor = source.borderColor,
                     sourceBorderWidth = 1.dp,
                     onSourceReadyToCover = onSourceReadyToCover,
+                    onSourceReadyToReveal = onSourceReadyToReveal,
                     onDismissRequest = requestDismiss,
                     onDismissAnimationFinished = onDismiss,
                 ) {
@@ -161,13 +161,7 @@ internal fun FrontpageInfoDialog(
                             )
                             SettingsDialogTitle(type.label)
                         }
-                        Text(
-                            text = description,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 16.sp,
-                            lineHeight = 24.sp,
-                        )
+                        SettingsDialogBodyText(description)
                         SettingsDialogTextButton(
                             onClick = requestDismiss,
                             modifier = Modifier.align(Alignment.End),

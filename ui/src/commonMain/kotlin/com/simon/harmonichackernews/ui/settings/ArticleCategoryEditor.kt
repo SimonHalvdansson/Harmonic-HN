@@ -146,25 +146,27 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
             title = { SettingsDialogTitle("Category examples") },
             scrollableContent = true,
             text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-                CategoryDialogText("Choose stories you’ve opened from your history. Their titles and preview text are used to calculate an average embedding for this category. Add examples that cover the topics you want it to match, and remove examples that don’t fit. The scores show cosine similarity to the category center on the same 0–100 scale as your cutoff.\n\nChanges stay on this device. Renaming a category only changes its label.")
+                SettingsDialogBodyText("Choose stories you’ve opened from your history. Their titles and preview text are used to calculate an average embedding for this category. Add examples that cover the topics you want it to match, and remove examples that don’t fit. The scores show cosine similarity to the category center on the same 0–100 scale as your cutoff.\n\nChanges stay on this device. Renaming a category only changes its label.")
             } },
             confirmButton = { SettingsDialogTextButton(onClick = { info = false }) { Text("Got it") } },
         )
         if (rename) CategoryNameDialog("Category name", name, category.name,
             onSave = { app.articleCategorySettings.rename(category.id, it) }, onDismiss = { rename = false })
         if (history) ArticleCategoryHistoryPicker(category.id, name, examples.orEmpty().map { it.id }.toSet(), onDismiss = { history = false })
-        if (reset || delete) SettingsAlertDialog(
-            onDismissRequest = { reset = false; delete = false },
-            title = { SettingsDialogTitle(if (delete) "Delete $name?" else if (builtIn) "Restore default examples?" else "Clear examples?") },
-            text = { CategoryDialogText(if (delete) "This removes the category and its examples. Your browsing history stays unchanged."
+        if (reset || delete) MessageActionDialog(
+            onDismiss = { reset = false; delete = false },
+            title = if (delete) "Delete $name?" else if (builtIn) "Restore default examples?" else "Clear examples?",
+            message = if (delete) "This removes the category and its examples. Your browsing history stays unchanged."
                 else if (builtIn) "This restores the default examples and removes your changes to this category's example set."
-                else "This removes this category's examples. You can add stories from history again.") },
-            confirmButton = { SettingsDialogTextButton(onClick = {
+                else "This removes this category's examples. You can add stories from history again.",
+            positiveLabel = if (delete) "Delete" else if (builtIn) "Restore" else "Clear",
+            negativeLabel = "Cancel",
+            onPositive = {
                 if (delete) { training.delete(category.id); onDismiss() }
                 else training.resetExamples(category.id)
                 reset = false; delete = false
-            }) { Text(if (delete) "Delete" else if (builtIn) "Restore" else "Clear") } },
-            dismissButton = { SettingsDialogTextButton(onClick = { reset = false; delete = false }) { Text("Cancel") } },
+            },
+            onNegative = { reset = false; delete = false },
         )
     }
 }

@@ -389,6 +389,7 @@ fun MultiChoiceDialog(
     )
 }
 
+/** Use for simple message/confirmation dialogs so body typography stays consistent. */
 @Composable
 fun MessageActionDialog(
     title: String? = null,
@@ -409,13 +410,7 @@ fun MessageActionDialog(
             }
         },
         text = {
-            Text(
-                text = message.toString(),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-            )
+            SettingsDialogBodyText(message.toString())
         },
         confirmButton = {
             positiveLabel?.let { label ->
@@ -438,6 +433,19 @@ fun MessageActionDialog(
                 }
             }
         },
+    )
+}
+
+/** Shared body for dialogs with custom content or container animations. */
+@Composable
+fun SettingsDialogBodyText(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontFamily = ProductSansFontFamily,
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
     )
 }
 

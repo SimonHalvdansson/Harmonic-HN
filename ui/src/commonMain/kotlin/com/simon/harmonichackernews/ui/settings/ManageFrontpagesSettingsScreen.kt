@@ -521,6 +521,7 @@ fun ManageFrontpagesSettingsScreen(
         FrontpageInfoDialog(
             source = source,
             onSourceReadyToCover = { infoSourceCovered = true },
+            onSourceReadyToReveal = { infoSourceCovered = false },
             onDismiss = {
                 infoSourceCovered = false
                 infoFrontpage = null

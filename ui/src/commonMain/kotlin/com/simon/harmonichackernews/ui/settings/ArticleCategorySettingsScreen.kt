@@ -199,11 +199,13 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
         creating = false
         editing = id
     }, onDismiss = { creating = false })
-    if (confirmRemoval) SettingsAlertDialog(
-        onDismissRequest = { confirmRemoval = false },
-        title = { SettingsDialogTitle("Remove embedding model?") },
-        text = { CategoryDialogText("This frees 165 MB and turns categorization off. Your categories and examples stay on this device.") },
-        confirmButton = { SettingsDialogTextButton(onClick = {
+    if (confirmRemoval) MessageActionDialog(
+        onDismiss = { confirmRemoval = false },
+        title = "Remove embedding model?",
+        message = "This frees 165 MB and turns categorization off. Your categories and examples stay on this device.",
+        positiveLabel = "Remove",
+        negativeLabel = "Cancel",
+        onPositive = {
             confirmRemoval = false
             removing = true
             scope.launch {
@@ -212,8 +214,8 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                 catch (_: Exception) { message = "Couldn't remove model. Try again." }
                 finally { removing = false }
             }
-        }) { Text("Remove") } },
-        dismissButton = { SettingsDialogTextButton(onClick = { confirmRemoval = false }) { Text("Cancel") } },
+        },
+        onNegative = { confirmRemoval = false },
     )
 }
 
@@ -242,12 +244,6 @@ internal fun CategorySettingsInfo(text: String, error: Boolean = false) {
 }
 
 internal fun categoryTrainingCount(count: Int): String = "$count ${if (count == 1) "example" else "examples"}"
-
-@Composable
-internal fun CategoryDialogText(text: String) {
-    Text(text, fontFamily = com.simon.harmonichackernews.ui.theme.ProductSansFontFamily,
-        fontSize = 16.sp, lineHeight = 24.sp)
-}
 
 @Composable
 internal fun CategoryNameDialog(title: String, initial: String, default: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {

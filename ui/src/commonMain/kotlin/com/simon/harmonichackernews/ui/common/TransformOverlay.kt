@@ -92,12 +92,13 @@ fun TransformOverlay(
     scaleContentWithContainer: Boolean = false,
     preserveContentAspectRatio: Boolean = false,
     keepContentOpaqueWithSource: Boolean = false,
-    consumeAllGestures: Boolean = true,
+    consumeAllGestures: Boolean = false,
     verticalSwipeDismissEnabled: Boolean = false,
     sourceContentLayer: GraphicsLayer? = null,
     sharedHazeSourceZIndex: Float? = null,
     glassBackground: Boolean = false,
     onSourceReadyToCover: (() -> Unit)? = null,
+    onSourceReadyToReveal: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onDismissAnimationFinished: () -> Unit,
     onScrimAlphaChanged: (Float) -> Unit = {},
@@ -177,6 +178,14 @@ fun TransformOverlay(
             )
             if (!dismissalFinished) {
                 dismissalFinished = true
+                // A dialog has a separate window. Restore the live source and let both
+                // windows draw the final source-sized frame before removing the overlay.
+                // Otherwise WindowManager can briefly expose the still-hidden source row.
+                if (onSourceReadyToReveal != null) {
+                    onSourceReadyToReveal()
+                    withFrameNanos { }
+                    withFrameNanos { }
+                }
                 onDismissAnimationFinished()
             }
         } else {
@@ -488,10 +497,12 @@ fun TransformOverlay(
                         .onGloballyPositioned { coordinates ->
                             // Window bounds include ancestor scale and clipping. Applying those
                             // bounds inside the same transformed screen moves the card twice.
-                            targetBounds = rootCoordinates?.localBoundingBoxOf(
-                                coordinates,
-                                clipBounds = false,
-                            )
+                            if (targetBounds == null || shouldUpdateRestingTargetGeometry(predictiveBackProgress, dismissRequestVersion)) {
+                                targetBounds = rootCoordinates?.localBoundingBoxOf(
+                                    coordinates,
+                                    clipBounds = false,
+                                )
+                            }
                         }
                         .graphicsLayer {
                             val target = localTarget
