@@ -1,10 +1,7 @@
 {
-  "schema_version": 1,
-  "collected_at": "2026-10-31",
-  "purpose": "Expanded manually selected HN corpus shard: 245 training articles, 56 labeled holdouts, and 20 unclassified holdouts.",
-  "description_policy": "Exact HN title, article URL and posting time verified against the official Firebase API on 2026-10-31. Descriptions are actual publisher Open Graph/meta descriptions fetched on that date, never invented summaries. Missing, blocked, generic and redirected metadata is represented by an empty description and description_source=title_only. Descriptions are capped at 600 characters; source metadata tag is retained.",
-  "label_policy": "Manually reviewed primary editorial topics. Business covers established companies and corporate conduct; Startups covers founders, early-stage operations and venture funding; Economy covers macroeconomics, labor, housing, trade and public finance. Climate includes environmental change and clean energy. Cars covers automotive technology, ownership and road safety; Tesla covers the automotive company, products and operations. Related legitimate secondary topics are not exhaustively labeled, so evaluation is a development check rather than exhaustive multi-label ground truth.",
-  "sampling_notes": "35 training and 8 evaluation examples per category, selected from 2021-2026 HN posts across varied years and publishers. No identical HN ID or exact article URL repeats. Some linked articles predate their HN posting. Cars is weighted toward EVs and autonomy, reflecting HN coverage; World news is weighted toward technology-adjacent policy, major conflicts and disasters. Related companies and ongoing events can occur across splits. Twenty unlabeled holdouts cover crafts, literature, food, music, language, chess and sailing.",
+  "schema_version": 2,
+  "collected_at": "2026-11-01",
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
   "categories": [
     {
       "id": "business",
@@ -43,7 +40,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Adobe Figma"
     },
     {
@@ -57,7 +54,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Microsoft Activision"
     },
     {
@@ -71,7 +68,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Broadcom VMware"
     },
     {
@@ -85,7 +82,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Google antitrust"
     },
     {
@@ -99,7 +96,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Apple revenue"
     },
     {
@@ -113,7 +110,7 @@
       ],
       "split": "train",
       "description": "Apple's overall sales for the holiday quarter were about 5% lower than last year's, the first year-over-year sales decline since 2019.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Apple revenue"
     },
@@ -128,7 +125,7 @@
       ],
       "split": "train",
       "description": "Amazon will lay off 9,000 more employees, CEO Andy Jassy said in a memo to staff Monday.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Amazon layoffs"
     },
@@ -143,7 +140,7 @@
       ],
       "split": "train",
       "description": "Major chipmaker Intel told Oregon officials Tuesday it was permanently cutting 1,300 employees in Hillsboro.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Intel layoffs"
     },
@@ -158,7 +155,7 @@
       ],
       "split": "train",
       "description": "CEO Jensen Huang claims his AI chip business is diversified, but his own company’s filings suggest just a few whales account for every second dollar in revenue during the past quarter.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Nvidia revenue"
     },
@@ -173,7 +170,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Spotify profitable"
     },
     {
@@ -187,7 +184,7 @@
       ],
       "split": "train",
       "description": "Showmax sits at the top of the market with a vast library of local content, partnerships with Comcast and HBO, and exclusive access to the biggest football leagues in the world.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Netflix subscription"
     },
@@ -202,7 +199,7 @@
       ],
       "split": "train",
       "description": "In April the streaming giant reported its first subscriber loss in more than a decade.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Netflix subscription"
     },
@@ -217,7 +214,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Reddit IPO"
     },
     {
@@ -231,7 +228,7 @@
       ],
       "split": "train",
       "description": "Office-sharing company WeWork filed for Chapter 11 bankruptcy protection in federal court Monday.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "WeWork bankruptcy"
     },
@@ -246,7 +243,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Unity pricing"
     },
     {
@@ -259,8 +256,8 @@
         "business"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Disney now has more than 221 million total subscriptions across all of its subscription streaming offerings globally.",
+      "description_source": "metadata",
       "query": "Disney streaming"
     },
     {
@@ -274,7 +271,7 @@
       ],
       "split": "train",
       "description": "The Justice Department said in May that Boeing violated its 2021 settlement by failing to implement a certain compliance program.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Boeing"
     },
@@ -288,8 +285,8 @@
         "business"
       ],
       "split": "train",
-      "description": "Some 96 percent of union members voted in favor of the strike, rejecting a proposal that would have boosted pay and benefits even as it fell short of other demands.",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unavailable",
       "description_meta_tag": "og:description",
       "query": "Boeing"
     },
@@ -304,7 +301,7 @@
       ],
       "split": "train",
       "description": "Costco's model and the future of retail",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Costco"
     },
@@ -319,7 +316,7 @@
       ],
       "split": "train",
       "description": "The third-largest US retailer is planning on rolling out targeted ad capabilities on and off its website.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Costco"
     },
@@ -334,9 +331,10 @@
       ],
       "split": "train",
       "description": "The company's founder has given away the business, placing ownership in a trust and vowing to spend an estimated $100 million a year to fight climate change",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Patagonia ownership"
+      "query": "Patagonia ownership",
+      "description_final_url": "https://www.outsideonline.com/business-journal/brands/yvon-chouinard-patagonia-new-ownership/?scope=anon"
     },
     {
       "hn_id": 40245509,
@@ -349,7 +347,7 @@
       ],
       "split": "train",
       "description": "The company's stock surged almost 12% in after-hours trading on Thursday",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Apple revenue"
     },
@@ -364,7 +362,7 @@
       ],
       "split": "train",
       "description": "The European Commission targets Google’s core business.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Google antitrust"
     },
@@ -379,7 +377,7 @@
       ],
       "split": "train",
       "description": "Job losses follow Broadcom's $69 billion acquisition of VMware.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Broadcom VMware"
     },
@@ -394,7 +392,7 @@
       ],
       "split": "train",
       "description": "Netflix just raised prices last year.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Netflix subscription"
     },
@@ -409,7 +407,7 @@
       ],
       "split": "train",
       "description": "Trade groups for Netflix, Disney, and others oppose an FTC proposal that would make it easier for people to cancel streaming and other subscriptions.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Netflix subscription"
     },
@@ -424,7 +422,7 @@
       ],
       "split": "train",
       "description": "Disney-owned animation studio Pixar is poised to undergo layoffs this year, TechCrunch has learned and the company confirmed. While sources at the company",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Disney streaming"
     },
@@ -438,10 +436,11 @@
         "business"
       ],
       "split": "train",
-      "description": "What Boeing did to all the guys who remember how to build a plane",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unusable_after_review",
       "description_meta_tag": "og:description",
-      "query": "Boeing"
+      "query": "Boeing",
+      "description_final_url": "https://prospect.org/2024/03/28/2024-03-28-suicide-mission-boeing/"
     },
     {
       "hn_id": 37902399,
@@ -454,7 +453,7 @@
       ],
       "split": "train",
       "description": "Can consumers at Costco really have their free sample and eat it too?",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "twitter:description",
       "query": "Costco"
     },
@@ -468,10 +467,11 @@
         "business"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "After deep consultation with our community, customers, and partners, we’ve made the decision to cancel the Runtime Fee, effective immediately.",
+      "description_source": "metadata",
       "query": "Unity pricing",
-      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only.",
+      "description_final_url": "https://unity.com/blog/unity-is-canceling-the-runtime-fee"
     },
     {
       "hn_id": 45076715,
@@ -484,7 +484,7 @@
       ],
       "split": "train",
       "description": "Nvidia saw a 56% jump in year-over-year revenue in the second quarter.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Nvidia revenue"
     },
@@ -499,7 +499,7 @@
       ],
       "split": "train",
       "description": "OpenAI has told investors that it hit roughly $50 billion in annualized revenue at the end of September, CNBC confirmed.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Nvidia revenue"
     },
@@ -514,7 +514,7 @@
       ],
       "split": "train",
       "description": "Netflix last raised prices in January 2025.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Netflix subscription"
     },
@@ -529,7 +529,7 @@
       ],
       "split": "train",
       "description": "The ruling comes nearly a year after a U.S. judge ruled that Google holds an illegal monopoly in its core market of internet search.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Google antitrust"
     },
@@ -544,9 +544,10 @@
       ],
       "split": "train",
       "description": "Amazon chief executive Andy Jassy’s explanation for why the company is cutting 14,000 employees? Not money. Not even AI, but “culture.”",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Amazon layoffs"
+      "query": "Amazon layoffs",
+      "description_final_url": "https://edition.cnn.com/2025/10/30/tech/amazon-layoffs-andy-jassy-ai-culture"
     },
     {
       "hn_id": 40149095,
@@ -559,8 +560,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "IBM Hashicorp"
+      "description_source": "unavailable",
+      "query": "IBM Hashicorp",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32075674,
@@ -573,8 +578,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "Twitter acquisition"
+      "description_source": "unavailable",
+      "query": "Twitter acquisition",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 38948281,
@@ -587,9 +596,13 @@
       ],
       "split": "evaluation",
       "description": "\"It's definitely disruptive and will affect our plans,\" Slack's chief of staff to the CTO wrote in a leaked memo.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Salesforce Slack"
+      "query": "Salesforce Slack",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37044005,
@@ -602,9 +615,14 @@
       ],
       "split": "evaluation",
       "description": "Zoom, the company that powered the remote work revolution during the pandemic, is telling its employees to come back to the office.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Zoom return office"
+      "query": "Zoom return office",
+      "description_final_url": "https://edition.cnn.com/2023/08/07/business/zoom-return-to-office/index.html",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 39014642,
@@ -617,8 +635,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "Apple Epic"
+      "description_source": "unavailable",
+      "query": "Apple Epic",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 35723469,
@@ -631,9 +653,14 @@
       ],
       "split": "evaluation",
       "description": "Samsung Electronics flagged a gradual recovery for chips in the second half of the year after its semiconductor business reported a record loss on Thursday, driven by weak demand for tech devices.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Samsung profit"
+      "query": "Samsung profit",
+      "description_final_url": "https://edition.cnn.com/2023/04/26/tech/south-korea-samsung-q1-profits-plunge-intl-hnk/index.html",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30189983,
@@ -645,10 +672,14 @@
         "business"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Metroid Dread sold 2.74 million units.",
+      "description_source": "metadata",
       "query": "Nintendo sales",
-      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only.",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40707037,
@@ -661,9 +692,13 @@
       ],
       "split": "evaluation",
       "description": "The DOJ accuses Adobe of trapping users in subscriptions.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Adobe subscription"
+      "query": "Adobe subscription",
+      "acceptable_category_ids": [
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32597811,
@@ -676,9 +711,10 @@
       ],
       "split": "train",
       "description": "Lessons from Facebook, Dropbox, and SPC on the singular importance of speed.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup lessons"
+      "query": "startup lessons",
+      "description_final_url": "https://blog.southparkcommons.com/p/move-fast-or-die"
     },
     {
       "hn_id": 33717074,
@@ -691,7 +727,7 @@
       ],
       "split": "train",
       "description": "Why VC funding is a drug, when building in stealth is a mistake, what to do when you lose conviction, how to approach selling your company, and more",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup lessons"
     },
@@ -706,7 +742,7 @@
       ],
       "split": "train",
       "description": "Depending on SAAS, PAAS, and IAAS is great, but it can hurt when you should have turned left at Albuquerque if you haven’t insulated yourself from some of those choices.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup lessons"
     },
@@ -721,7 +757,7 @@
       ],
       "split": "train",
       "description": "1. Don't marry your idea 2. Ditch free plans 3. Subscriptions headache is real 4. Swap vitamins for painkillers 5. Emotions sell 6.First impressions matter 7. Food + Sleep + Workout = Psychiatrist",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup lessons"
     },
@@ -736,9 +772,10 @@
       ],
       "split": "train",
       "description": "Over my career so far, I’ve worked in a number of payments companies, including several startups. At the last startup, I was involved in building out a payments platform from scratch (from first line of code). This post is a collection of thoughts and lessons learned. Hopefully, at least some of this is useful to others.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup lessons"
+      "query": "startup lessons",
+      "description_final_url": "https://www.pgrs.net/2024/01/26/lessons-learned-from-payments-startups/"
     },
     {
       "hn_id": 42771676,
@@ -751,7 +788,7 @@
       ],
       "split": "train",
       "description": "A while back I wrote : I've had many, many failures in my life. (Hm, maybe I should write a blog post about that.) This is that post. I'm ...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup lessons"
     },
@@ -766,7 +803,7 @@
       ],
       "split": "train",
       "description": "I joined Scale AI late last summer. It’s been a crazy experience — Scale is growing incredibly fast right now, hitting a valuation of over $7 billion last year and recently signing a $250 mil…",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup lessons"
     },
@@ -781,9 +818,10 @@
       ],
       "split": "train",
       "description": "Were running our News API startup for over a year. We share our biggest takeaways.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "bootstrapped startup"
+      "query": "bootstrapped startup",
+      "description_final_url": "https://www.newscatcherapi.com/blog-posts/we-ve-been-running-a-bootstrapped-startup-for-1-year-our-top-15-takeaways"
     },
     {
       "hn_id": 26426838,
@@ -796,7 +834,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "bootstrapped startup"
     },
     {
@@ -810,9 +848,10 @@
       ],
       "split": "train",
       "description": "YC Graveyard lists inactive YCombinator startups.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Y Combinator startup"
+      "query": "Y Combinator startup",
+      "description_final_url": "https://iamwillwang.com/ycgraveyard"
     },
     {
       "hn_id": 31342443,
@@ -824,8 +863,8 @@
         "startups"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Last year I published a popular blog post On $300B of Y Combinator Startup Success that analyzed YC’s Top Companies list that year, which…",
+      "description_source": "metadata",
       "query": "Y Combinator startup"
     },
     {
@@ -839,7 +878,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Y Combinator startup"
     },
     {
@@ -853,7 +892,7 @@
       ],
       "split": "train",
       "description": "An analysis of all nearly 5,000 companies YC has backed to date reveals a surprising truth: YC startups don’t have to be unique. Far from it.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Y Combinator startup"
     },
@@ -868,7 +907,7 @@
       ],
       "split": "train",
       "description": "In the past five years, over 20,000 businesses have started with Stripe Atlas and have generated over $3 billion in revenue. We surveyed 1,000 founders—here’s what we found.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Stripe startup"
     },
@@ -883,9 +922,10 @@
       ],
       "split": "train",
       "description": "Tell your company's story more effectively, including specific details that matter to investors.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Stripe startup"
+      "query": "Stripe startup",
+      "description_final_url": "https://stripe.com/en-be/guides/atlas/pitching"
     },
     {
       "hn_id": 39120647,
@@ -898,7 +938,7 @@
       ],
       "split": "train",
       "description": "Add investors, Safes and priced rounds, simulate how much dilution you will get, and know how much money you will make at exit.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "description",
       "query": "startup equity"
     },
@@ -912,8 +952,8 @@
         "startups"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "US venture capitalists are sitting on a record amount of ‘dry powder’ as they avoid risky bets on fledgling companies",
+      "description_source": "metadata",
       "query": "startup funding"
     },
     {
@@ -927,7 +967,7 @@
       ],
       "split": "train",
       "description": "The year was marked by mass job cuts, plummeting investments, and lower valuations.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup shutdown"
     },
@@ -942,7 +982,7 @@
       ],
       "split": "train",
       "description": "The 2022 Founder Salary Report is here! Get a sense of what your peers are doing, and what the trends are for companies like yours. Get access to the full report ->",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "founder startup"
     },
@@ -957,7 +997,7 @@
       ],
       "split": "train",
       "description": "Discover the top advice SaaS startup founders would give their younger selves. Learn valuable insights and actionable tips for success in this blog post.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "founder startup"
     },
@@ -972,8 +1012,9 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
-      "query": "founder startup"
+      "description_source": "unavailable",
+      "query": "founder startup",
+      "description_final_url": "https://www.brownadvisory.com/us/insights/qsbs-tax-exemption-valuable-benefit-startup-entrepreneurs"
     },
     {
       "hn_id": 41224089,
@@ -986,7 +1027,7 @@
       ],
       "split": "train",
       "description": "Brief overview of the unicorn landscape from a number of sources. Data reveals clear patterns in unicorn founder characteristics, challenging some common assumptions.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "founder startup"
     },
@@ -1001,7 +1042,7 @@
       ],
       "split": "train",
       "description": "From digital media startup The Messenger to \"Uber for freight\" company Convoy, the skeletons of startups-past haunt founders and investors alike.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup shutdown"
     },
@@ -1015,8 +1056,8 @@
         "startups"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Today, I’m announcing Zencape Health’s shutdown. After four years, two major pivots, countless experiments, tens of thousands in annual…",
+      "description_source": "metadata",
       "query": "startup shutdown"
     },
     {
@@ -1030,7 +1071,7 @@
       ],
       "split": "train",
       "description": "Industry could see more freight brokerage closures amid a changing financial climate.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup shutdown"
     },
@@ -1044,10 +1085,11 @@
         "startups"
       ],
       "split": "train",
-      "description": "This is a detailed view of our acquisition process. For more information about our acquisitions approach visit our acquisitions handbook. Acquisition process The process is comprised of five key stages: Pipeline Building Exploratory Early Diligence Confirmatory Due Diligence Integration Pipeline Building Sourcing: The corporate development team closely collaborates with GitLab’s product leadership to identify key areas for potential M&A. We source acquisition opportunities (“Sourced Pipeline”) from: Ecosystem screen with the help of third party databases such as Crunchbase Inbound introduction",
-      "description_source": "publisher_meta",
+      "description": "This is a detailed view of our acquisition process. For more information about our acquisitions approach visit our acquisitions handbook. Acquisition process The process is comprised of five key stages: Pipeline Building Exploratory Early Diligence Confirmatory Due Diligence Integration Pipeline Building Sourcing: The corporate development team closely collaborates with GitLab’s product leadership to identify key areas for potential M&A. We source acquisition opportunities (“Sourced Pipeline”) from: Ecosystem screen with the help of third party databases such as Crunchbase Inbound…",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup acquisition"
+      "query": "startup acquisition",
+      "description_final_url": "https://handbook.gitlab.com/handbook/acquisitions/acquisition-process/"
     },
     {
       "hn_id": 34346446,
@@ -1060,7 +1102,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "startup customers"
     },
     {
@@ -1073,8 +1115,8 @@
         "startups"
       ],
       "split": "train",
-      "description": "Adobe's $20B Figma acquisition at 50x ARR raises questions about startup valuations and market resets.",
-      "description_source": "publisher_meta",
+      "description": "Adobe's $20B Figma acquisition at 50x ARR challenges SaaS valuations amid the market downturn. Analysis of what this means for startup multiples & M&A trends.",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup acquisition"
     },
@@ -1089,7 +1131,7 @@
       ],
       "split": "train",
       "description": "Why you should tell investors who don't want you to pay yourself to roll up their term sheet tight and archive it into the cabinet that sees no sunlight.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "venture capital"
     },
@@ -1104,9 +1146,10 @@
       ],
       "split": "train",
       "description": "The embarrassing investor meltdown surrounding Silicon Valley Bank should drive us to consider new models.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "venture capital"
+      "query": "venture capital",
+      "description_final_url": "https://www.citationneeded.news/the-venture-capitalists-dilemma/"
     },
     {
       "hn_id": 45051034,
@@ -1118,8 +1161,8 @@
         "startups"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Above is a graph that displays the amount of Form Ds filed, where the entity (read: company/firm) name contains the phrases \"fund I\", \"fund II\", \"fund III\", and \"fund IV\". The x-axis is not the prettiest, but it is broken down by quarter. You can see that the line for \"fund I\" sees by far the greatest peak around quarter 3 of 2022, with a steep drop off immediately after. The other lines have a similar, but less pronounced trend.",
+      "description_source": "body",
       "query": "venture capital"
     },
     {
@@ -1133,7 +1176,7 @@
       ],
       "split": "train",
       "description": "All of the software that makes an early stage startup tick.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "startup sales"
     },
@@ -1148,9 +1191,10 @@
       ],
       "split": "train",
       "description": "The most important traps to avoid when hiring startup engineers.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup hiring"
+      "query": "startup hiring",
+      "description_final_url": "https://blog.southparkcommons.com/p/startup-engineering-hiring-anti-patterns"
     },
     {
       "hn_id": 29162184,
@@ -1162,10 +1206,11 @@
         "startups"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Arrows drives consistent execution across your pipeline with agents that run your playbook, build a gameplan for every deal, and give reps a workspace to execute.",
+      "description_source": "metadata",
       "query": "startup customers",
-      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only.",
+      "description_final_url": "https://arrows.to/?ref=hn"
     },
     {
       "hn_id": 44188178,
@@ -1178,7 +1223,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "startup equity"
     },
     {
@@ -1192,8 +1237,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "startup equity"
+      "description_source": "unavailable",
+      "query": "startup equity",
+      "acceptable_category_ids": [
+        "startups",
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30818035,
@@ -1206,9 +1256,13 @@
       ],
       "split": "evaluation",
       "description": "why it’s one of the most effective ways to improve the world • why it’s hard • “local context plus high standards” • how to get started • where to live • what to work on",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup market"
+      "query": "startup market",
+      "acceptable_category_ids": [
+        "startups"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 34998921,
@@ -1221,9 +1275,14 @@
       ],
       "split": "evaluation",
       "description": "Since starting PostHog in 2020, we’ve learned a bunch about what does and doesn’t work when it comes to marketing to engineers. There are plenty of…",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup market"
+      "query": "startup market",
+      "description_final_url": "https://posthog.com/founders/dev-marketing-for-startups",
+      "acceptable_category_ids": [
+        "startups"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41721368,
@@ -1236,8 +1295,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "startup market"
+      "description_source": "unavailable",
+      "query": "startup market",
+      "acceptable_category_ids": [
+        "startups"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43509733,
@@ -1250,8 +1313,14 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "startup sales"
+      "description_source": "unavailable",
+      "query": "startup sales",
+      "acceptable_category_ids": [
+        "startups",
+        "business",
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33015431,
@@ -1264,8 +1333,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "startup cofounder"
+      "description_source": "unavailable",
+      "query": "startup cofounder",
+      "acceptable_category_ids": [
+        "startups",
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30013281,
@@ -1277,10 +1351,16 @@
         "startups"
       ],
       "split": "evaluation",
-      "description": "Explore how the 52% stock market correction influences startup fundraising, particularly in Series A and D rounds.",
-      "description_source": "publisher_meta",
+      "description": "Analyze how the 52% public market correction impacts startup funding rounds, with data showing divergent effects on Series A vs. Series D valuations in 2022.",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup market"
+      "query": "startup market",
+      "acceptable_category_ids": [
+        "startups",
+        "finance",
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32297194,
@@ -1293,9 +1373,15 @@
       ],
       "split": "evaluation",
       "description": "Investors' bets on micromobility upstarts, most of which rely wholly or partly on electric scooters, hasn’t gone particularly well.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "startup market"
+      "query": "startup market",
+      "acceptable_category_ids": [
+        "startups",
+        "business",
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 36315608,
@@ -1308,7 +1394,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "inflation interest rates"
     },
     {
@@ -1322,7 +1408,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "inflation interest rates"
     },
     {
@@ -1336,7 +1422,7 @@
       ],
       "split": "train",
       "description": "Fed raises rates by a quarter percentage point from near zero as central bank struggles with inflation, the war in Ukraine and Covid",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Federal Reserve"
     },
@@ -1351,9 +1437,10 @@
       ],
       "split": "train",
       "description": "The Central Bank of Argentina raised its key interest rate Monday by six percentage points to 97% in an effort to tackle soaring inflation that has reached 30-year highs.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Argentina inflation"
+      "query": "Argentina inflation",
+      "description_final_url": "https://edition.cnn.com/2023/05/15/business/argentina-interest-rates-inflation/index.html"
     },
     {
       "hn_id": 31857656,
@@ -1365,8 +1452,8 @@
         "economy"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Rising interest rates are ending an era in which the rich got much, much richer.",
+      "description_source": "metadata",
       "query": "inflation interest rates"
     },
     {
@@ -1380,7 +1467,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "labor market"
     },
     {
@@ -1394,7 +1481,7 @@
       ],
       "split": "train",
       "description": "WASHINGTON, DC -- The following statement was released by Secretary of the Treasury Janet L. Yellen, Federal Reserve Board Chair Jerome H. Powell, and FDIC Chairman Martin J. Gruenberg:Today we are taking decisive actions to protect the U.S. economy by strengthening public confidence in our banking …",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Federal Reserve"
     },
@@ -1409,7 +1496,7 @@
       ],
       "split": "train",
       "description": "Nearly half the money — $143 billion — went to holding companies for the two major banks that failed over the past week, Silicon Valley Bank and Signature Bank, triggering widespread alarm in financial markets.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Federal Reserve"
     },
@@ -1424,7 +1511,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "ECB interest"
     },
     {
@@ -1438,7 +1525,7 @@
       ],
       "split": "train",
       "description": "The former head of California’s Employment Development Department said people seeking tech jobs are grappling with the toughest market in years, especially for new graduates and entry-level...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "unemployment"
     },
@@ -1453,7 +1540,7 @@
       ],
       "split": "train",
       "description": "A recent U.S. college degree long meant lower unemployment than the average worker. That edge flipped in 2019, and the gap is now the widest on record.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "unemployment"
     },
@@ -1468,9 +1555,10 @@
       ],
       "split": "train",
       "description": "The US job market is stalling out.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "unemployment"
+      "query": "unemployment",
+      "description_final_url": "https://edition.cnn.com/2025/09/05/economy/us-jobs-report-august-final"
     },
     {
       "hn_id": 29434150,
@@ -1483,7 +1571,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "economy productivity"
     },
     {
@@ -1497,7 +1585,7 @@
       ],
       "split": "train",
       "description": "Job market swings over the past few years have dampened the motivation of many workers and led to a decline in the fuel of the U.S. economy — productivity.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "economy productivity"
     },
@@ -1512,7 +1600,7 @@
       ],
       "split": "train",
       "description": "A reflection on affordability, finance, and the deep contradictions we struggle to face.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "housing prices"
     },
@@ -1527,7 +1615,7 @@
       ],
       "split": "train",
       "description": "Henry George was right about land values. And today we have a homebuilder cartel rooted in control of land and financing.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "housing prices"
     },
@@ -1542,9 +1630,10 @@
       ],
       "split": "train",
       "description": "It is extremely difficult to build housing in Rhode Island. It’s also expensive to buy homes, with prices having increased by 34% since the summer of 2020. Why?",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "housing prices"
+      "query": "housing prices",
+      "description_final_url": "https://archive.strongtowns.org/journal/2023/7/5/the-invisible-reason-for-high-housing-prices-restrictive-land-use-regulations"
     },
     {
       "hn_id": 37708109,
@@ -1556,8 +1645,8 @@
         "economy"
       ],
       "split": "train",
-      "description": "Home prices have jumped so much that Americans must pay a third of their income on housing, according to one study.",
-      "description_source": "publisher_meta",
+      "description": "That's the main takeaway from a new report from real estate data provider ATTOM. Researchers examined the median home prices last year for roughly 575 U.S. counties and found that home prices in 99% of those areas are beyond the reach of the average income earner, who makes $71,214 a year, according to ATTOM.",
+      "description_source": "body",
       "description_meta_tag": "og:description",
       "query": "housing prices"
     },
@@ -1571,8 +1660,8 @@
         "economy"
       ],
       "split": "train",
-      "description": "China’s long-brewing crisis.",
-      "description_source": "publisher_meta",
+      "description": "In the early 2010s, the economist Justin Lin Yifu, a former World Bank chief official with ties to the Chinese government, predicted that China’s economy would have at least two more decades of growth above 8%. He reckoned that since the country’s per capita income at that time was about the same level as Japan’s in the 1950s and South Korea’s and Taiwan’s in the 1970s, there was no reason China could not replicate the erstwhile successes of these other East Asian states. Lin’s optimism was echoed by the Western commentariat. The Economist projected that China would become the world’s biggest…",
+      "description_source": "body",
       "description_meta_tag": "og:description",
       "query": "China economy"
     },
@@ -1587,7 +1676,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "China economy"
     },
     {
@@ -1601,7 +1690,7 @@
       ],
       "split": "train",
       "description": "China has announced it will stop publishing youth unemployment numbers after the latest round of negative economic data from the world's second-largest economy. Beijing says it needs to adjust how the statistic is calculated. Figures from June show youth unemployment in China stood at over 20%.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "China economy"
     },
@@ -1616,7 +1705,7 @@
       ],
       "split": "train",
       "description": "China's property industry is collapsing in slow motion, with indebted major developers, and the IMF has cut growth forecasts, citing the sector as a big reason.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "China economy"
     },
@@ -1631,7 +1720,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "China economy"
     },
     {
@@ -1645,7 +1734,7 @@
       ],
       "split": "train",
       "description": "Wall Street suffers its worst day since 2020 but the White House tells investors to \"trust in President Trump\".",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "tariffs"
     },
@@ -1659,8 +1748,8 @@
         "economy"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "• The 2025 US tariffs are an own goal: American importers and consumers bear nearly the entire cost. Foreign exporters absorb only about 4% of the tariff burden—the remaining 96% is passed through to US buyers.",
+      "description_source": "body",
       "query": "tariffs"
     },
     {
@@ -1674,7 +1763,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Japan yen"
     },
     {
@@ -1688,7 +1777,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Japan yen"
     },
     {
@@ -1702,9 +1791,10 @@
       ],
       "split": "train",
       "description": "What caused all the supply chain bottlenecks? Modern finance with its obsession with \"Return on Equity.\"",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "supply chain"
+      "query": "supply chain",
+      "description_final_url": "https://x.com/typesfast/status/1453753924960219145"
     },
     {
       "hn_id": 43312034,
@@ -1717,7 +1807,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "global trade"
     },
     {
@@ -1731,7 +1821,7 @@
       ],
       "split": "train",
       "description": "Chinese Yuan Edges Out Euro as Second-Most Used Currency in Global Trade Finance - The yuan’s share climbed to 5.8% in value last month, overtaking the euro on 5.43% for the first time in at least six years",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "description",
       "query": "global trade"
     },
@@ -1746,7 +1836,7 @@
       ],
       "split": "train",
       "description": "The top decile of young male earners have been much less likely to marry young women who are in the bottom decile of female earners.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "income inequality"
     },
@@ -1761,7 +1851,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "income inequality"
     },
     {
@@ -1775,7 +1865,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "commercial real estate"
     },
     {
@@ -1789,7 +1879,7 @@
       ],
       "split": "train",
       "description": "The research firm’s top property economist likens the decline in office demand to what malls have experienced over the last six years—and sees a similar outcome.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "commercial real estate"
     },
@@ -1804,7 +1894,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "labor market"
     },
     {
@@ -1818,9 +1908,13 @@
       ],
       "split": "evaluation",
       "description": "Today I will offer a progress report on the Federal Open Market Committee's (FOMC) efforts to restore price stability to the U.S. economy for the benefit of th",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "labor market"
+      "query": "labor market",
+      "acceptable_category_ids": [
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 46990359,
@@ -1833,8 +1927,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "labor market"
+      "description_source": "unavailable",
+      "query": "labor market",
+      "acceptable_category_ids": [
+        "economy",
+        "health"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33044427,
@@ -1847,8 +1946,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "economic growth"
+      "description_source": "unavailable",
+      "query": "economic growth",
+      "acceptable_category_ids": [
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 31708519,
@@ -1861,8 +1964,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "economic growth"
+      "description_source": "unavailable",
+      "query": "economic growth",
+      "acceptable_category_ids": [
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30101512,
@@ -1874,10 +1981,14 @@
         "economy"
       ],
       "split": "evaluation",
-      "description": "Chronic high inflation affects the way Argentines spend, save and think.",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unavailable",
       "description_meta_tag": "og:description",
-      "query": "Argentina inflation"
+      "query": "Argentina inflation",
+      "acceptable_category_ids": [
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41670775,
@@ -1890,8 +2001,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "electricity prices"
+      "description_source": "unavailable",
+      "query": "electricity prices",
+      "acceptable_category_ids": [
+        "economy",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 28437934,
@@ -1904,9 +2020,15 @@
       ],
       "split": "evaluation",
       "description": "Most of the U.S. national debt is owned by Social Security, the Federal Reserve, and foreign investors. Learn how it impacts the economy and you.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "national debt"
+      "query": "national debt",
+      "description_final_url": "https://www.thebalancemoney.com:443/who-owns-the-u-s-national-debt-3306124",
+      "acceptable_category_ids": [
+        "economy",
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47973841,
@@ -1919,9 +2041,14 @@
       ],
       "split": "evaluation",
       "description": "“We’ve heard plenty of alarm bells in the past few years about our fiscal path,” said Maya MacGuineas of the CRFB, “but this one rings especially loudly.”",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "national debt"
+      "query": "national debt",
+      "acceptable_category_ids": [
+        "economy",
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30450267,
@@ -1934,7 +2061,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Russia Ukraine invasion"
     },
     {
@@ -1948,7 +2075,7 @@
       ],
       "split": "train",
       "description": "Those breaking the law passed by Russia's parliament could face 15 years in prison.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Russia Ukraine invasion"
     },
@@ -1962,10 +2089,11 @@
         "world"
       ],
       "split": "train",
-      "description": "How Russia’s invasion of Ukraine is redrawing air routes",
-      "description_source": "publisher_meta",
+      "description": "Airlines are bracing for potentially lengthy blockages of key east-west flight corridors after the European Union and Moscow issued tit-for-tat airspace bans. The United States and Canada have also taken similar action in response to Russia's invasion of Ukraine.",
+      "description_source": "body",
       "description_meta_tag": "og:description",
-      "query": "Russia Ukraine invasion"
+      "query": "Russia Ukraine invasion",
+      "description_final_url": "https://www.reuters.com/graphics/UKRAINE-CRISIS/AIRLINES/klpykbmropg/"
     },
     {
       "hn_id": 28474123,
@@ -1978,7 +2106,7 @@
       ],
       "split": "train",
       "description": "The raid comes a day after four members of the group that ran the venue were arrested.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Hong Kong"
     },
@@ -1993,7 +2121,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Hong Kong"
     },
     {
@@ -2007,7 +2135,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Hong Kong"
     },
     {
@@ -2021,7 +2149,7 @@
       ],
       "split": "train",
       "description": "Only one in 10 feel leaving the EU has helped their finances, while just 9% say it has benefited the NHS, despite £350m a week pledge",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Brexit"
     },
@@ -2036,9 +2164,10 @@
       ],
       "split": "train",
       "description": "In an emergency address to the nation Tuesday, President Yoon Suk Yeol declared martial law in South Korea. Yoon said at around 10:20 p.m. that the declaration",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "South Korea martial law"
+      "query": "South Korea martial law",
+      "description_final_url": "https://www.koreaherald.com/article/10012286"
     },
     {
       "hn_id": 42418871,
@@ -2050,8 +2179,8 @@
         "world"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Impeached President said he will “never give up” and called for officials to maintain stability in government functions during what he described as a “temporary” pause of his presidency.",
+      "description_source": "metadata",
       "query": "South Korea martial law"
     },
     {
@@ -2065,7 +2194,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Sweden NATO"
     },
     {
@@ -2078,8 +2207,8 @@
         "world"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "It's a blow to Putin who, in launching the Russian invasion of Ukraine, vowed to block the alliance's eastward expansion.",
+      "description_source": "metadata",
       "query": "Finland NATO"
     },
     {
@@ -2093,7 +2222,7 @@
       ],
       "split": "train",
       "description": "Network data from NetBlocks confirm a near-total disruption disruption to internet service in parts of Kurdistan province in west Iran from the evening of Monday 19 September 2022. The regional ...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Iran protest"
     },
@@ -2107,8 +2236,8 @@
         "world"
       ],
       "split": "train",
-      "description": "The price paid by this generation of Iranian student activists is rising by the day. And as the repression deepens, their demands are becoming more radical.",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unavailable",
       "description_meta_tag": "og:description",
       "query": "Iran protest"
     },
@@ -2122,8 +2251,8 @@
         "world"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "The Taliban swept into Afghanistan’s capital after the embattled president joined the exodus of his fellow citizens and foreigners.",
+      "description_source": "metadata",
       "query": "Afghanistan Taliban"
     },
     {
@@ -2137,7 +2266,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Afghanistan Taliban"
     },
     {
@@ -2151,7 +2280,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Japan earthquake"
     },
     {
@@ -2165,7 +2294,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Turkey earthquake"
     },
     {
@@ -2179,7 +2308,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Turkey earthquake"
     },
     {
@@ -2193,7 +2322,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Sudan war"
     },
     {
@@ -2207,9 +2336,10 @@
       ],
       "split": "train",
       "description": "Abraham began burying the bodies in the morning and didn’t stop until nightfall. Among those killed in one November massacre were priests, women, entire families and Sunday school children, a CNN investigation has found.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Ethiopia Tigray"
+      "query": "Ethiopia Tigray",
+      "description_final_url": "https://edition.cnn.com/2021/02/26/africa/ethiopia-tigray-dengelat-massacre-intl/index.html"
     },
     {
       "hn_id": 32163704,
@@ -2222,7 +2352,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "EU Digital Markets Act"
     },
     {
@@ -2236,7 +2366,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "UN treaty"
     },
     {
@@ -2250,7 +2380,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "UN treaty"
     },
     {
@@ -2264,7 +2394,7 @@
       ],
       "split": "train",
       "description": "Mark Carney wins Canada's election, seizing on strong public sentiment against President Trump. But it's still not clear if his Liberal Party has won an outright majority in Parliament.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Canada election"
     },
@@ -2279,7 +2409,7 @@
       ],
       "split": "train",
       "description": "Thinktank publishes first non-governmental legal examination of China’s actions in Xinjiang",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "UN treaty"
     },
@@ -2294,7 +2424,7 @@
       ],
       "split": "train",
       "description": "The new rules reinforce the right to repair, aim to reduce waste and bolster the repair sector by making it easier and more cost-effective to repair goods.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "EU right repair"
     },
@@ -2309,7 +2439,7 @@
       ],
       "split": "train",
       "description": "Khing Hnin Wai, an aerobics instructor, unknowingly captured what appeared to be Myanmar coup in her routine workout video. Watch:",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Myanmar coup"
     },
@@ -2324,7 +2454,7 @@
       ],
       "split": "train",
       "description": "Network data from the NetBlocks Internet Observatory indicate the onset of widespread internet disruptions in Myanmar on Sunday 31 January 2021 (UTC) amid reports of a military uprising and the ...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Myanmar coup"
     },
@@ -2339,7 +2469,7 @@
       ],
       "split": "train",
       "description": "The incumbent president has pulled off a surprise win, but he will face a hostile Congress and a polarised country.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Brazil election"
     },
@@ -2354,7 +2484,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Venezuela election"
     },
     {
@@ -2368,7 +2498,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Israel Gaza ceasefire"
     },
     {
@@ -2382,7 +2512,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Israel Gaza ceasefire"
     },
     {
@@ -2396,7 +2526,7 @@
       ],
       "split": "train",
       "description": "French unions stepped up their fight against President Emmanuel Macron's pension reform plans on Tuesday as most trains came to a halt, fuel deliveries were disrupted and schools shut in a sixth day of nationwide strikes.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "France pension protests"
     },
@@ -2411,7 +2541,7 @@
       ],
       "split": "train",
       "description": "Mexico’s President Claudia Sheinbaum has issued a landmark decree to establish a Universal Health Service, initiating a process to ensure all 120 million citizens can access any public medical institution. The first phase begins April 13 with the rollout of a new Universal Health Credential, starting with citizens aged 85 and older. This unified digital […]",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Mexico president"
     },
@@ -2425,10 +2555,11 @@
         "world"
       ],
       "split": "train",
-      "description": "UPDATE: According to @kentikinc data, internet traffic to/from Cuba continues to be erratic since two brief total blackouts beginning at 20:05 UTC (4:05pm local). #SoSCuba #KeepitOn",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unusable_after_review",
       "description_meta_tag": "og:description",
-      "query": "Cuba protest"
+      "query": "Cuba protest",
+      "description_final_url": "https://x.com/DougMadory/status/1414356912410353665"
     },
     {
       "hn_id": 38979468,
@@ -2441,9 +2572,13 @@
       ],
       "split": "evaluation",
       "description": "The opposition Kuomintang party concedes after a partial count shows the DPP candidate in the lead.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Taiwan election"
+      "query": "Taiwan election",
+      "acceptable_category_ids": [
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 46946248,
@@ -2456,9 +2591,13 @@
       ],
       "split": "evaluation",
       "description": "Lai's supporters say this amounts to a death sentence, but authorities say it demonstrates the rule of law.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Hong Kong"
+      "query": "Hong Kong",
+      "acceptable_category_ids": [
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 46611345,
@@ -2471,9 +2610,13 @@
       ],
       "split": "evaluation",
       "description": "If Yoon is sentenced to death, it will be the first execution South Korea has carried out in almost 30 years.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "South Korea martial law"
+      "query": "South Korea martial law",
+      "acceptable_category_ids": [
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47847928,
@@ -2485,10 +2628,14 @@
         "world"
       ],
       "split": "evaluation",
-      "description": "Analysis · Sudan · 20.04.2026",
-      "description_source": "publisher_meta",
+      "description": "Three years of war. 12 million displaced. 25 million going hungry. A documented genocide in El Fasher. And an international system watching on, because its most influential members are profiting on both sides of the battlefield. A stocktake of the largest humanitarian catastrophe of our time, barely a headline in Europe.",
+      "description_source": "body",
       "description_meta_tag": "og:description",
-      "query": "Sudan war"
+      "query": "Sudan war",
+      "acceptable_category_ids": [
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41199474,
@@ -2501,9 +2648,13 @@
       ],
       "split": "evaluation",
       "description": "The earthquake occurred off Miyazaki Prefecture at 4:42 p.m. local time (3:42 a.m. ET) at a depth of about 18 miles, the Japan Meteorological Agency said.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Japan earthquake"
+      "query": "Japan earthquake",
+      "acceptable_category_ids": [
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 39634224,
@@ -2516,9 +2667,14 @@
       ],
       "split": "evaluation",
       "description": "🇪🇺 Happy DMA day, everybody! 🇪🇺 March 7th 2024 is the deadline for large messaging providers (so called ‘gatekeepers’) to comply with the EU’s Digital Markets Act regulation, which requires them to offer interoperability to third party messaging services. This lets users use their preferred messaging service, rather than being obligated",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "EU Digital Markets Act"
+      "query": "EU Digital Markets Act",
+      "acceptable_category_ids": [
+        "world",
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32663195,
@@ -2531,9 +2687,15 @@
       ],
       "split": "evaluation",
       "description": "Striking new satellite images that reveal the extent of Pakistan’s record flooding show how an overflowing Indus River has turned part of Sindh Province into a 100 kilometer-wide inland lake.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Pakistan floods"
+      "query": "Pakistan floods",
+      "description_final_url": "https://edition.cnn.com/2022/08/31/asia/pakistan-floods-forms-inland-lake-satellite-intl-hnk/index.html",
+      "acceptable_category_ids": [
+        "world",
+        "climate"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 31167203,
@@ -2546,8 +2708,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "Mexico president"
+      "description_source": "unavailable",
+      "query": "Mexico president",
+      "acceptable_category_ids": [
+        "world",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37361863,
@@ -2559,8 +2726,8 @@
         "climate"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "A farmer plows his irrigated cotton field in Gujarat, India. Image credit: Meha Jain, University of Michigan. Study: Warming temperatures exacerbate groundwater depletion rates in India A new University of Michigan-led study finds that farmers in India have adapted to warming temperatures b",
+      "description_source": "metadata",
       "query": "climate warming"
     },
     {
@@ -2574,7 +2741,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "climate warming"
     },
     {
@@ -2588,7 +2755,7 @@
       ],
       "split": "train",
       "description": "Oil company drove some of the leading science of the era only to publicly dismiss global heating",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "climate warming"
     },
@@ -2602,8 +2769,8 @@
         "climate"
       ],
       "split": "train",
-      "description": "The Montreal Protocol was designed to heal the ozone layer. It may have also fended off several degrees of warming—and a collapse of forests and croplands.",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unavailable",
       "description_meta_tag": "og:description",
       "query": "climate warming"
     },
@@ -2617,8 +2784,8 @@
         "climate"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Communities around the world emitted more carbon dioxide than any other year on record in 2022. They did so as air travel rebounded from the pandemic and cities turned to coal to provide a cheap source of power.",
+      "description_source": "metadata",
       "query": "coal emissions"
     },
     {
@@ -2632,7 +2799,7 @@
       ],
       "split": "train",
       "description": "Scientists said the findings reaffirm the urgent need to slash planet-warming greenhouse gas emissions",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "climate warming"
     },
@@ -2647,9 +2814,10 @@
       ],
       "split": "train",
       "description": "A major milestone has just been passed: Britain has become the first major country to halve its carbon emissions. The rapid pace of UK environmental progress means that our output is now below 320 million tonnes – less than half the 652 million tonnes of our 1970 peak. This is in spite of Britain now having",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "carbon emissions"
+      "query": "carbon emissions",
+      "description_final_url": "https://spectator.com/article/uk-becomes-first-g20-country-to-halve-its-carbon-emissions/"
     },
     {
       "hn_id": 40859993,
@@ -2662,7 +2830,7 @@
       ],
       "split": "train",
       "description": "The increase marks a setback in Google's goal to achieve net-zero emissions by 2030.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "carbon emissions"
     },
@@ -2677,7 +2845,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "carbon emissions"
     },
     {
@@ -2691,7 +2859,7 @@
       ],
       "split": "train",
       "description": "‘Polluter elite’ are plundering the planet to point of destruction, says Oxfam after comprehensive study of climate inequality",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "carbon emissions"
     },
@@ -2706,7 +2874,7 @@
       ],
       "split": "train",
       "description": "All domestic air routes are stopped where the same journey could be made by train in under 2.5 hours.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "carbon emissions"
     },
@@ -2717,11 +2885,12 @@
       "url": "https://www.theguardian.com/australia-news/2021/apr/25/insanely-cheap-energy-how-solar-power-continues-to-shock-the-world",
       "posted_at": "2021-04-24T21:31:30Z",
       "category_ids": [
-        "climate"
+        "climate",
+        "energy"
       ],
       "split": "train",
       "description": "Australian smarts and Chinese industrial might made solar power the cheapest power humanity has seen – and no one saw it coming",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "solar energy"
     },
@@ -2736,7 +2905,7 @@
       ],
       "split": "train",
       "description": "Jack’s Solar Garden in Longmont, Colorado is a nationally recognized site for agrivoltaic research. The farm's 3,276 solar panels generate enough electricity to power approximately 300 homes.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "solar energy"
     },
@@ -2751,7 +2920,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "solar energy"
     },
     {
@@ -2761,13 +2930,15 @@
       "url": "https://archy.deberker.com/the-uk-is-wasting-a-lot-of-wind-power/",
       "posted_at": "2023-01-12T19:08:36Z",
       "category_ids": [
-        "climate"
+        "climate",
+        "energy"
       ],
       "split": "train",
       "description": "The UK discarded 6% of its windpower last year, at a cost of almost £1bn. What’s going on, and how can we fix it?",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "description",
-      "query": "wind power"
+      "query": "wind power",
+      "description_final_url": "https://archy.deberker.com/blog/the-uk-is-wasting-a-lot-of-wind-power"
     },
     {
       "hn_id": 28367440,
@@ -2776,11 +2947,12 @@
       "url": "https://arstechnica.com/science/2021/08/in-the-us-wind-power-is-getting-bigger-and-better-report-says/",
       "posted_at": "2021-08-31T12:56:47Z",
       "category_ids": [
-        "climate"
+        "climate",
+        "energy"
       ],
       "split": "train",
       "description": "Longer blades, taller towers among the reasons wind power is growing in the US.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "wind power"
     },
@@ -2795,7 +2967,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "heat pumps"
     },
     {
@@ -2809,7 +2981,7 @@
       ],
       "split": "train",
       "description": "In the US, heat pump purchases exceeded those of gas furnaces in 2022 – part of a bigger trend that saw global heat pump sales grow by 11%.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "heat pumps"
     },
@@ -2824,7 +2996,7 @@
       ],
       "split": "train",
       "description": "An air source heat pump prototype has been developed that can operate in temperatures as low as -23F (-30C).",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "heat pumps"
     },
@@ -2839,9 +3011,10 @@
       ],
       "split": "train",
       "description": "Beyond carbon emissions and safety, the debate must also confront how the choices we make now constrain the kind of world we can build in the future.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "nuclear power climate"
+      "query": "nuclear power climate",
+      "description_final_url": "https://www.bostonreview.net/articles/is-nuclear-power-our-best-bet-against-climate-change/"
     },
     {
       "hn_id": 29094422,
@@ -2854,7 +3027,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "nuclear power climate"
     },
     {
@@ -2868,7 +3041,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "ocean temperature"
     },
     {
@@ -2882,7 +3055,7 @@
       ],
       "split": "train",
       "description": "Almost every single coral in a coral reef nursery in the Florida Keys has died as NOAA raises its coral bleaching warning system to the highest level possible for the area.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "ocean temperature"
     },
@@ -2897,7 +3070,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "climate tipping"
     },
     {
@@ -2911,9 +3084,10 @@
       ],
       "split": "train",
       "description": "The Amazon rainforest may be nearing a critical tipping point that could see the biologically rich and diverse ecosystem transformed into a grassy savannah.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "climate tipping"
+      "query": "climate tipping",
+      "description_final_url": "https://edition.cnn.com/2022/03/07/americas/amazon-tipping-point-climate-scn/index.html"
     },
     {
       "hn_id": 40048842,
@@ -2926,9 +3100,10 @@
       ],
       "split": "train",
       "description": "In a major clean energy benchmark, wind, solar, and hydro exceeded 100% of demand on California's main grid for 69 of the past 75 days.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "renewables record"
+      "query": "renewables record",
+      "description_final_url": "https://electrek.co/2024/05/21/renewables-met-100-percent-california-energy-demand-30-days/"
     },
     {
       "hn_id": 40982276,
@@ -2941,7 +3116,7 @@
       ],
       "split": "train",
       "description": "While Australia debates the merits of going nuclear and frustration grows over the slower-than-needed switch to solar and wind power, China's renewables rollout is breaking all the records.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "renewables record"
     },
@@ -2956,7 +3131,7 @@
       ],
       "split": "train",
       "description": "Greece was powered entirely by renewables for the first time last week, according to the country’s independent power transmission operator.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "renewables record"
     },
@@ -2971,7 +3146,7 @@
       ],
       "split": "train",
       "description": "A short and spicy post. There remains, even in 2023, a substantial fraction of the “future of energy” hivemind who are still convinced that the solution to all our problems is to build …",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "battery storage grid"
     },
@@ -2986,7 +3161,7 @@
       ],
       "split": "train",
       "description": "Clean electricity generation paired with the first grid-level sodium battery energy storage system can bring costs down to just $0.028 per kWh. The 10 MWh storage capacity is executed with sodium-ion cells that can be charged in just 12 minutes.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "battery storage grid"
     },
@@ -3001,7 +3176,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "methane emissions"
     },
     {
@@ -3015,7 +3190,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "methane emissions"
     },
     {
@@ -3029,7 +3204,7 @@
       ],
       "split": "train",
       "description": "A bit of seaweed in cattle feed could reduce methane emissions from beef cattle as much as 82 percent, according to new findings from researchers at the University of California, Davis. The results, published today in the journal PLOS ONE, could pave the way for the sustainable production of livestock throughout the world.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "methane emissions"
     },
@@ -3044,7 +3219,7 @@
       ],
       "split": "train",
       "description": "The Greenland and Antarctic ice sheets are now losing more than three times as much ice a year as they were 30 years ago, according to a new comprehensive international study.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Antarctic ice"
     },
@@ -3058,9 +3233,10 @@
         "climate"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
-      "query": "Antarctic ice"
+      "description": "Natural variability is probably the cause, although global warming could have a role.",
+      "description_source": "metadata",
+      "query": "Antarctic ice",
+      "description_final_url": "https://www.nature.com/articles/d41586-022-00550-4?error=cookies_not_supported&code=97b08357-c058-48e0-97ee-8f1a2dd16705"
     },
     {
       "hn_id": 37540768,
@@ -3073,9 +3249,13 @@
       ],
       "split": "evaluation",
       "description": "Missing winter sea ice signals changes that could be a \"disaster for the world\", scientists say.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Antarctic ice"
+      "query": "Antarctic ice",
+      "acceptable_category_ids": [
+        "climate"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43058997,
@@ -3088,9 +3268,14 @@
       ],
       "split": "evaluation",
       "description": "For most countries around the world, sourcing energy entirely from wind, solar, geothermal, and hydropower by 2050 would reduce their energy needs and costs, improve air quality, and help slow climate change, according to a study in Environmental Science & Technology.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "carbon capture"
+      "query": "carbon capture",
+      "acceptable_category_ids": [
+        "climate",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30040065,
@@ -3103,9 +3288,15 @@
       ],
       "split": "evaluation",
       "description": "A new Global Witness report found that it has the same carbon footprint per year as 1.2 million gas-powered cars.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "carbon capture"
+      "query": "carbon capture",
+      "description_final_url": "https://www.vice.com/en/article/shell-quest-carbon-capture-plant-alberta/",
+      "acceptable_category_ids": [
+        "climate",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 36339253,
@@ -3118,9 +3309,14 @@
       ],
       "split": "evaluation",
       "description": "Cement is an industry where capturing carbon emissions may be necessary. A combination with process heat electrification could be better than CCS alone.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "carbon capture"
+      "query": "carbon capture",
+      "acceptable_category_ids": [
+        "climate",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37501756,
@@ -3133,9 +3329,13 @@
       ],
       "split": "evaluation",
       "description": "Deforestation in the Brazilian Amazon — Earth’s largest rainforest — is on a continued downward trajectory, according to data released today by Brazil’s national space research institute, INPE. INPE’s deforestation alert system, known as DETER, indicates that forest clearing in Brazil’s section of the Amazon totaled 563 square kilometers in August 2023. This is a […]",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "deforestation"
+      "query": "deforestation",
+      "acceptable_category_ids": [
+        "climate"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 31286173,
@@ -3147,9 +3347,14 @@
         "climate"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
-      "query": "deforestation"
+      "description": "Model suggests that switching to microbial ‘meat’ can cut carbon emissions.",
+      "description_source": "metadata",
+      "query": "deforestation",
+      "description_final_url": "https://www.nature.com/articles/d41586-022-01238-5?error=cookies_not_supported&code=016f20a5-0159-472e-9383-38b5753b4a7c",
+      "acceptable_category_ids": [
+        "climate"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 31826918,
@@ -3162,8 +3367,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "hydrogen energy"
+      "description_source": "unavailable",
+      "query": "hydrogen energy",
+      "acceptable_category_ids": [
+        "climate",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41416445,
@@ -3176,9 +3386,14 @@
       ],
       "split": "evaluation",
       "description": "America’s most populous state aims to use 100% clean energy by 2045, thanks to storage boom",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "electricity grid"
+      "query": "electricity grid",
+      "acceptable_category_ids": [
+        "climate",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 34991053,
@@ -3191,7 +3406,7 @@
       ],
       "split": "train",
       "description": "The move is part of the agency's goal to have a fleet of 66,000 electric vehicles deployed by 2028.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "electric vehicle"
     },
@@ -3205,9 +3420,10 @@
         "cars"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
-      "query": "electric vehicle"
+      "description": "It wasn’t long ago rising demand and component shortages sparked concern that “greenflation” would drive up prices for the batteries used in electric vehicles. That’s subsiding as prices cool for battery metals, which could help make EVs more competitive with traditional cars more quickly.",
+      "description_source": "body",
+      "query": "electric vehicle",
+      "description_final_url": "https://www.goldmansachs.com/insights/articles/electric-vehicle-battery-prices-falling.html"
     },
     {
       "hn_id": 33181112,
@@ -3219,8 +3435,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "Self-built electric vehicle sets new best time",
-      "description_source": "publisher_meta",
+      "description": "In 1.461 seconds from 0 to 100: This is the new best time for the fastest accelerating electric vehicle and a new world record. On Friday September 23, 2022, the record was broken by 20 students from the University of Stuttgart with their self-built electric racing car, on a racetrack at the Bosch site in Renningen in the district of Böblingen in Baden-Württemberg.",
+      "description_source": "body",
       "description_meta_tag": "og:description",
       "query": "electric vehicle"
     },
@@ -3234,8 +3450,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Analysis shows the last new petrol or diesel car sold in Norway will come as early as April, 2022 – three years ahead of the government's target.",
+      "description_source": "metadata",
       "query": "electric vehicle"
     },
     {
@@ -3248,8 +3464,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Most electric vehicles lose driving range in cold weather, but there are things you can do",
+      "description_source": "metadata",
       "query": "electric vehicle"
     },
     {
@@ -3263,9 +3479,10 @@
       ],
       "split": "train",
       "description": "Say you drop $5 on a gallon of gas—only about $1 dollar's worth actually gets you moving in a traditional ICE vehicle. The rest is wasted.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "electric vehicle"
+      "query": "electric vehicle",
+      "description_final_url": "https://www.motortrend.com/news/evs-more-efficient-than-internal-combustion-engines"
     },
     {
       "hn_id": 29543194,
@@ -3278,7 +3495,7 @@
       ],
       "split": "train",
       "description": "Feature requires subscription even though it doesn’t use connected services.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Toyota"
     },
@@ -3293,7 +3510,7 @@
       ],
       "split": "train",
       "description": "The world's biggest carmaker will cut output in September, while VW warns it may have to make further cuts.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Toyota"
     },
@@ -3308,7 +3525,7 @@
       ],
       "split": "train",
       "description": "Toyota is preparing to introduce the electric version of its best-selling car of all time, the Corolla. When is Toyota...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Toyota"
     },
@@ -3323,9 +3540,10 @@
       ],
       "split": "train",
       "description": "Toyota Motor Corporation (“Toyota”) and Waymo reached a preliminary agreement to explore a collaboration focused on accelerating the development and deployment of autonomous driving technologies.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Toyota"
+      "query": "Toyota",
+      "description_final_url": "https://waymo.com/blog/2025/04/waymo-and-toyota-outline-strategic-partnership/"
     },
     {
       "hn_id": 33774248,
@@ -3337,8 +3555,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "They look like stormtroopers, although the military analogy is misplaced. Endless ranks, tiers and rows of Toyotas, each and every one a gleaming, pristine white. But these, although tucked away in a secret underground bunker, are armed only with implacable reliability and fearsome durability.",
+      "description_source": "body",
       "query": "Toyota"
     },
     {
@@ -3352,7 +3570,7 @@
       ],
       "split": "train",
       "description": "Brand's design chief commits to \"never\" repeating the \"mistake\" of relegating essential controls to touchscreens",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Volkswagen"
     },
@@ -3367,7 +3585,7 @@
       ],
       "split": "train",
       "description": "VW officially broke the ground on its new battery factory in Germany where production will start in 2025. The responsibility for VW’s global battery business falls to a new company that will invest €20 billion in the area.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Volkswagen"
     },
@@ -3382,9 +3600,10 @@
       ],
       "split": "train",
       "description": "Volkswagen's new all-electric SUV the ID.4 is quiet and quick - and loaded with technology.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Volkswagen"
+      "query": "Volkswagen",
+      "description_final_url": "https://abc7.com/post/volkswagen-id4-electric-suv-vehicles-volkswagon/10539182/?userab=kfsn_content_recs-582*variant_b_trending_kfsn-2513%2Ckabc_content_recs-577*variant_c_trending-2482%2Cwls_content_recs-584*variant_b_trending_wls-2517%2Cwtvd_content_recs-585*variant_b_trending_wtvd-2519%2Cktrk_content_recs-587*variant_b_trending_ktrk-2523%2Cwpvi_content_recs-586*variant_b_trending_wpvi-2521%2Cabcn_article_nfy_v2-691*control-3727%2Cotv_web_content_rec-539*variant_c_trending-2268%2Cotv_web_topic-580*variant_b_topic_redesign-2509%2Cfollow_abcnews_otv_on_google-654*variant_b_share_drop_down-3495%2Cotv_search_page_design_unification-546*variant_b_search_redesign-2300%2Cotv_web_live-581*variant_b_live_redesign-2511%2Cfollow_otv_on_google-683*variant_b_share_drop_down-3661%2Cabcn_popular_reads_exp_followup-648*variant_c_autotagswpopularity-3458%2Cotv_mobile_web_content_recs-639*variant_b_mobile_content_recs_enabled-3431%2Ckgo_content_recs-583*variant_b_trending_kgo-2515%2Cabcn_verts_midterms-671*variant_b_verts_midterms_enabled-3588%2Cotvlink_abcnnav-576*variant_a_control-2478"
     },
     {
       "hn_id": 31568672,
@@ -3397,7 +3616,7 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "title_only",
+      "description_source": "unavailable",
       "query": "Ford electric"
     },
     {
@@ -3411,7 +3630,7 @@
       ],
       "split": "train",
       "description": "The Ford F-100 Eluminator concept truck features the retro-styling of a 1978 F-100 pickup with electric motors and batteries from the Mustang Mach-E GT.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Ford electric"
     },
@@ -3426,7 +3645,7 @@
       ],
       "split": "train",
       "description": "Who said Ford’s electric crossover SUV wasn’t a real Mustang? The Mach-E outsold the gas-powered Ford Mustang for the first...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Ford electric"
     },
@@ -3441,7 +3660,7 @@
       ],
       "split": "train",
       "description": "The move comes as a response to the Trump administration’s waning support for electrification and a weakening consumer market.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Ford electric"
     },
@@ -3456,7 +3675,7 @@
       ],
       "split": "train",
       "description": "We tour Ford’s top-secret Electric Vehicle Development Center in California.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Ford electric"
     },
@@ -3471,9 +3690,10 @@
       ],
       "split": "train",
       "description": "The massive worldwide focus on electric vehicle technology has already introduced noteworthy changes to automobile design, notably due to the flat floor design",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Hyundai electric"
+      "query": "Hyundai electric",
+      "description_final_url": "https://www.autoblog.com/news/uni-wheel-hyundai-kia-electric-vehicle-design"
     },
     {
       "hn_id": 46234920,
@@ -3486,7 +3706,7 @@
       ],
       "split": "train",
       "description": "RJ opened the first ever Autonomy and AI Day explaining why Rivian believes it is positioned to lead in this next phase of the industry. The company is leaning hard into compute, custom hardware, large scale AI systems, and a shared data foundation that touches every part of the ownership experience. Let's break it all",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3501,7 +3721,7 @@
       ],
       "split": "train",
       "description": "On Monday, Rivian released an incremental software update 2023.42, which bricked the infotainment system in R1Ses and R1Ts. The company...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3516,7 +3736,7 @@
       ],
       "split": "train",
       "description": "Each new Rivian Adventure Network station will be available to all compatible EVs, and existing chargers will receive \"gradual retrofits\" to allow other makes.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3531,7 +3751,7 @@
       ],
       "split": "train",
       "description": "A team driving an Rivian R1T won the Rebelle Rally, making it the first EV to place first in the longest off-road competition in the U.S.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3546,7 +3766,7 @@
       ],
       "split": "train",
       "description": "Amazon's 10,000 Rivian-made all-electric van are delivering packages throughout the United States, the e-commerce company revealed Tuesday evening during",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3561,7 +3781,7 @@
       ],
       "split": "train",
       "description": "Using fewer, more efficient electrical control units, Rivian says its vehicles are easier to maintain and more feature rich.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Rivian"
     },
@@ -3576,7 +3796,7 @@
       ],
       "split": "train",
       "description": "Waymo robotaxis will use freeways in Los Angeles, Phoenix, and San Francisco - an expansion that could reduce ride times by 50%.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Waymo robotaxi"
     },
@@ -3591,7 +3811,7 @@
       ],
       "split": "train",
       "description": "Swiss Re, a top reinsurer globally, has analyzed a lot of data, and it has determined that Waymo’s robotaxis are safer than human drivers, and even safer than human drivers of new cars with the latest advanced driver assistance systems (ADAS). Swiss Re has more than 500,000 liability claims and ... [continued]",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Waymo robotaxi"
     },
@@ -3606,7 +3826,7 @@
       ],
       "split": "train",
       "description": "Uber users in Austin now have a choice between a Waymo robotaxi and a human driver. The two companies officially launched Tuesday the \"Waymo on Uber\"",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "Waymo robotaxi"
     },
@@ -3621,7 +3841,7 @@
       ],
       "split": "train",
       "description": "For decades, federal safety regulators ignored credible scientific research and failed to take simple steps to stop gruesome roadway crashes involving heavy trucks. Meanwhile, the bodies piled up.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "car crash safety"
     },
@@ -3635,8 +3855,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "title_only",
+      "description": "Any time you have a benchmark that gets taken seriously, some people will start gaming the benchmark. Some famous examples in computing are the CPU benchmark specfp and video game benchmarks. With specfp, Sun managed to increase its score on 179.art (a sub-benchmark of specfp) by 12x with a compiler tweak that essentially re-wrote the benchmark kernel, which increased the Sun UltraSPARC’s overall specfp score by 20%. At times, GPU vendors have added specialized benchmark-detecting code to their drivers that lowers image quality during benchmarking to produce higher benchmark scores. Of…",
+      "description_source": "body",
       "query": "car crash safety"
     },
     {
@@ -3650,7 +3870,7 @@
       ],
       "split": "train",
       "description": "“Maine residents have won the right to control their destiny when it comes to car repairs.\"",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "car right repair"
     },
@@ -3664,8 +3884,8 @@
         "cars"
       ],
       "split": "train",
-      "description": "In a dispute over a repair law they don’t like, Subaru and Kia crippled their own wireless car features. Maine could be next.",
-      "description_source": "publisher_meta",
+      "description": "",
+      "description_source": "unavailable",
       "description_meta_tag": "og:description",
       "query": "car right repair"
     },
@@ -3680,9 +3900,10 @@
       ],
       "split": "train",
       "description": "In-car touchscreens are problem enough for average, well-rested drivers. For millions of Americans like me, they're outright dangerous.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "car touchscreens"
+      "query": "car touchscreens",
+      "description_final_url": "https://www.thedrive.com/tech/39304/why-im-done-pretending-touchscreen-infotainment-isnt-a-stupid-hazardous-fad"
     },
     {
       "hn_id": 35253753,
@@ -3695,7 +3916,7 @@
       ],
       "split": "train",
       "description": "Hyundai knows you like to keep your eyes on the road, and it's giving you the controls to do just that.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
       "query": "car touchscreens"
     },
@@ -3710,8 +3931,12 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "BMW subscription"
+      "description_source": "unavailable",
+      "query": "BMW subscription",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47387268,
@@ -3724,9 +3949,13 @@
       ],
       "split": "evaluation",
       "description": "Honda's decision to kill its three EVs for the U.S. market will reverberate far beyond North America.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Honda"
+      "query": "Honda",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 26352039,
@@ -3739,9 +3968,13 @@
       ],
       "split": "evaluation",
       "description": "In a move few saw coming, Honda is the new leader in advanced driver-assistance tech.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Honda"
+      "query": "Honda",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30268000,
@@ -3754,9 +3987,14 @@
       ],
       "split": "evaluation",
       "description": "Over the past couple of weeks some people who listen to KUOW in their Mazdas say their car radio is permanently stuck on 94.9. It’s only affecting KUOW, Mazdas from 2016, and we have no idea why.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Mazda"
+      "query": "Mazda",
+      "description_final_url": "https://www.kuow.org/podcast/newsroom/2022-02-08/we-didn-t-mean-to-ruin-your-mazda-s-stereo",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 39850340,
@@ -3769,9 +4007,14 @@
       ],
       "split": "evaluation",
       "description": "Japan’s Mazda was once the world’s only automaker to use Wankel rotary engine tech in its cars. In late 2023 it released its first model in more than a decade to run on a rotary engine. Why the focus on this older technology in the emerging age of the electric vehicle?",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "Mazda"
+      "query": "Mazda",
+      "description_final_url": "https://www.nippon.com/en/articles/-/14992",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32580727,
@@ -3784,8 +4027,13 @@
       ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "car emissions"
+      "description_source": "unavailable",
+      "query": "car emissions",
+      "acceptable_category_ids": [
+        "cars",
+        "climate"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 31884946,
@@ -3798,9 +4046,13 @@
       ],
       "split": "evaluation",
       "description": "A fully charged Mercedes-Benz Vision EQXX could drive from New York to Indianapolis without stopping — and still have some energy left over.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "electric car range"
+      "query": "electric car range",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 42207110,
@@ -3813,9 +4065,13 @@
       ],
       "split": "evaluation",
       "description": "P3 hat Daten von mehr als 7.000 Elektroautos analysiert und Erkenntnisse zur realen Batteriealterung in der Praxis veröffentlicht.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "car battery"
+      "query": "car battery",
+      "acceptable_category_ids": [
+        "cars"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 45529255,
@@ -3826,9 +4082,11 @@
       "category_ids": [],
       "split": "evaluation",
       "description": "Scented stamps designed to celebrate artisan croissants hit letterboxes across France on Wednesday, honouring the world-famous delicacy.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "croissant"
+      "query": "croissant",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49870541,
@@ -3838,10 +4096,12 @@
       "posted_at": "2026-09-27T20:33:55Z",
       "category_ids": [],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
+      "description": "The personal blog of Tim White, Software Engineer from Somerset, UK.",
+      "description_source": "metadata",
       "query": "woodworking",
-      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only.",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 27098467,
@@ -3849,12 +4109,18 @@
       "title": "Science fiction stories shorter than novels",
       "url": "https://bitmason.blogspot.com/2020/10/80-authors-80-science-fiction-stories.html",
       "posted_at": "2021-05-09T18:37:53Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "This is an update to 50 authors, 50 science fiction stories shorter than novels . It's mostly an addition of 30 more authors (many from outs...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "science fiction novels"
+      "query": "science fiction novels",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 35762284,
@@ -3865,8 +4131,10 @@
       "category_ids": [],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "chess championship"
+      "description_source": "unavailable",
+      "query": "chess championship",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29681161,
@@ -3877,9 +4145,11 @@
       "category_ids": [],
       "split": "evaluation",
       "description": "The match between Magnus Carlsen and Ian Nepomniachtchi began as the most accurate in history. Then Nepomniachtchi unravelled.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "chess championship"
+      "query": "chess championship",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37285413,
@@ -3887,12 +4157,19 @@
       "title": "Classical music is for everyone",
       "url": "https://www.firstthings.com/web-exclusives/2023/08/classical-music-is-for-everyone",
       "posted_at": "2023-08-27T18:37:10Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "In the summer of 1968, a friend and I went to see the blockbuster movie of the year—2001: A Space Odyssey. We settled into our seats and the theater...",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "classical music"
+      "query": "classical music",
+      "description_final_url": "https://firstthings.com/classical-music-is-for-everyone/",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 35634963,
@@ -3900,12 +4177,18 @@
       "title": "Rhythm (taal) in Indian Classical Music (2011)",
       "url": "https://raag-hindustani.com/Rhythm.html",
       "posted_at": "2023-04-20T00:28:32Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "What is taal and how does it work? What are some common taals in Indian classical music? Learn how improvisation takes place within the framework of rhythm.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "description",
-      "query": "classical music"
+      "query": "classical music",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 27721748,
@@ -3913,12 +4196,18 @@
       "title": "What did ancient languages sound like?",
       "url": "https://antigonejournal.com/2021/07/what-did-ancient-languages-sound-like/",
       "posted_at": "2021-07-03T14:14:40Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "NICHOLAS SWIFT Can we really hear the ancients speak?",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "ancient language"
+      "query": "ancient language",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49749771,
@@ -3926,11 +4215,17 @@
       "title": "Pre-Greek: The lost language hidden within Ancient Greek",
       "url": "https://linguisticdiscovery.com/posts/pre-greek/",
       "posted_at": "2026-09-18T03:04:38Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "ancient language"
+      "description_source": "unavailable",
+      "query": "ancient language",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29102268,
@@ -3938,11 +4233,17 @@
       "title": "Baking bread using 4,500 year old yeast from Ancient Egyptian pottery (2019)",
       "url": "https://twitter.com/SeamusBlackley/status/1158264819503419392",
       "posted_at": "2021-11-04T00:19:30Z",
-      "category_ids": [],
+      "category_ids": [
+        "history"
+      ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "bread baking"
+      "description_source": "unavailable",
+      "query": "bread baking",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32213496,
@@ -3950,12 +4251,18 @@
       "title": "Baking bread with the Romans part III – the panis quadratus strikes back (2018)",
       "url": "https://tavolamediterranea.com/2018/06/14/baking-bread-romans-part-iii-panis-strikes-back/",
       "posted_at": "2022-07-24T13:50:11Z",
-      "category_ids": [],
+      "category_ids": [
+        "history"
+      ],
       "split": "evaluation",
       "description": "Join Roman bread archaeologist, Farrell Monaco, as she delves deeper into the specifics, the ingredients, the techniques and the tools that made Panis Quadratus the most iconic bread made in the Ancient Roman Mediterranean. Archaeology is delicious!",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "bread baking"
+      "query": "bread baking",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 44143199,
@@ -3965,9 +4272,11 @@
       "posted_at": "2025-05-31T10:06:16Z",
       "category_ids": [],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
-      "query": "knitting"
+      "description": "Let’s say that, like me, you are a person who stares at a computer and writes code for a living. As a straight male who grew up in a time where knitting was very strongly female coded, it for the most part never occurred to me that knitting was a thing I could do and might enjoy. Regardless of your demographic categories and background, it’s possible that you have also not really considered knitting.",
+      "description_source": "body",
+      "query": "knitting",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 44108139,
@@ -3978,9 +4287,11 @@
       "category_ids": [],
       "split": "evaluation",
       "description": "A couple years ago, my wife began knitting. And when she takes an interest in something, she goes all in. She’s a perfectionist about learning a new craft, so in a short amount of time, she’s gotten pretty damn good. I can’t even pretend to know anything",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "knitting"
+      "query": "knitting",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33307845,
@@ -3988,12 +4299,18 @@
       "title": "Five origami books by Shuzo Fujimoto are now public domain",
       "url": "https://origami.kosmulski.org/blog/2022-10-23-fujimoto-books-public-domain",
       "posted_at": "2022-10-23T15:50:51Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
-      "description": "Shuzo Fujimoto’s five self-published books: Solid Origami, Invitation to Creative Playing with Origami, and Twist Origami 1-3 Yesterday, during an online event dedicated to Shuzo Fujimoto, I was happy to announce that his children, Hitoshi Fujimoto and Shumi Okada, being his heirs, have agreed to release his five self-published books to the Public Domain. This means that you can now copy, distribute, and use the contents of these books without any restrictions (certain limitations may still apply in some jurisdictions). We made the books available in PDF format for anyone to download for free ",
-      "description_source": "publisher_meta",
+      "description": "Shuzo Fujimoto’s five self-published books: Solid Origami, Invitation to Creative Playing with Origami, and Twist Origami 1-3 Yesterday, during an online event dedicated to Shuzo Fujimoto, I was happy to announce that his children, Hitoshi Fujimoto and Shumi Okada, being his heirs, have agreed to release his five self-published books to the Public Domain. This means that you can now copy, distribute, and use the contents of these books without any restrictions (certain limitations may still apply in some jurisdictions). We made the books available in PDF format for anyone to download for free…",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "origami"
+      "query": "origami",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29604560,
@@ -4001,12 +4318,18 @@
       "title": "An Origami Samurai Made from a Single Sheet of Rice Paper",
       "url": "https://www.openculture.com/2021/12/an-origami-samurai-made-from-a-single-sheet-of-rice-paper.html",
       "posted_at": "2021-12-18T14:06:25Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "Origami artist Juho Könkkölä spent 50 hours folding an origami samurai from a single square sheet of paper, with no cutting or ripping used in the process. He describes his process on Reddit: Folded from a single square sheet of 95cm x 95cm Wenzhou rice paper without any cutting.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "origami"
+      "query": "origami",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29055815,
@@ -4014,12 +4337,18 @@
       "title": "Paper Grain in Origami",
       "url": "https://origami.kosmulski.org/blog/2021-10-31-paper-grain-in-origami",
       "posted_at": "2021-10-31T09:52:29Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
-      "description": "Paper is made from plant fibers. When hand-made paper is laid using a sieve, a single sheet is produced at a time. Manual movements of the sieve cause the fibers to become arranged in a roughly uniform manner in all directions. In contrast, machine-made paper is produced as a long, continuous band which moves on a kind of assembly line between different productions stages. This causes the fibers to prefer an arrangement parallel to the movement, resulting in paper grain, also called machine direction: the paper’s properties differ between the machine direction (MD) and the perpendicular direct",
-      "description_source": "publisher_meta",
+      "description": "Paper is made from plant fibers. When hand-made paper is laid using a sieve, a single sheet is produced at a time. Manual movements of the sieve cause the fibers to become arranged in a roughly uniform manner in all directions. In contrast, machine-made paper is produced as a long, continuous band which moves on a kind of assembly line between different productions stages. This causes the fibers to prefer an arrangement parallel to the movement, resulting in paper grain, also called machine direction: the paper’s properties differ between the machine direction (MD) and the perpendicular…",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "origami"
+      "query": "origami",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40988395,
@@ -4027,12 +4356,18 @@
       "title": "The unexpected poetry of PhD acknowledgements",
       "url": "https://science.anu.edu.au/news-events/news/unexpected-poetry-phd-acknowledgements",
       "posted_at": "2024-07-17T17:44:38Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "After reading hundreds and hundreds of PhD theses, we accidentally discovered how to write the perfect PhD acknowledgement: it's a kind of poetry.",
-      "description_source": "publisher_meta",
+      "description_source": "metadata",
       "description_meta_tag": "og:description",
-      "query": "poetry"
+      "query": "poetry",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 26642398,
@@ -4040,11 +4375,17 @@
       "title": "On getting poetry",
       "url": "https://newcriterion.com/issues/2021/4/on-getting-poetry",
       "posted_at": "2021-03-31T01:01:18Z",
-      "category_ids": [],
+      "category_ids": [
+        "culture"
+      ],
       "split": "evaluation",
       "description": "",
-      "description_source": "title_only",
-      "query": "poetry"
+      "description_source": "unavailable",
+      "query": "poetry",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 30084217,
@@ -4054,9 +4395,11 @@
       "posted_at": "2022-01-26T11:25:44Z",
       "category_ids": [],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
-      "query": "sailing"
+      "description": "User Profile Profile Owner / Skipper: Anthony Swanston Nationality: British Make / Model: Benford 37 One Line \"Mission Statement\": Adventure before dementia... Previous Diary Entries 2024 May 2024 Long time no write... Tue 21 May 06:54 Jan 2024 Moving around Krabi Wed 31 Jan 03:45 Ko Phayam and back to Krabi Thu 11 Jan 03:48 2023 Dec 2023 The Moken village Sat 30 Dec 06:10 A few Christmas snaps Mon 25 Dec 06:15 Getting to Ko Phayam Wed 20 Dec 01:42 Off to Ko Phyam for Christmas Fri 15 Dec 01:49 Sep 2023 Satun Tue 12 Sep 06:37 Aug 2023 Visa run to Satun Fri 25 Aug 07:03 Quick run to Penang Fri…",
+      "description_source": "body",
+      "query": "sailing",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43558077,
@@ -4066,9 +4409,11 @@
       "posted_at": "2025-04-02T15:52:22Z",
       "category_ids": [],
       "split": "evaluation",
-      "description": "",
-      "description_source": "title_only",
-      "query": "sailing"
+      "description": "As a consulting exploration geologist, my work life tends to consist of periods of intense work punctuated by periods of intense unemployment. True to form, I completed my last work assignment on July 8th and I found myself with a month and a half of enforced leisure before my next gig. Since the coming job was located on the Big Island of Hawaii, an old fantasy of mine started to materialize as an actual plan. In early July, while looking at my West Wight Potter 19 \"Chubby\" sitting jauntily at her berth at the Berkeley Marina, tugging at her dock lines and proudly showing off her new bottom…",
+      "description_source": "body",
+      "query": "sailing",
+      "acceptable_category_ids": [],
+      "evaluation_set": "curated"
     }
   ]
 }

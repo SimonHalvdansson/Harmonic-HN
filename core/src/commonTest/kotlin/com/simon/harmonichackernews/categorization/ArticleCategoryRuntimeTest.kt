@@ -24,7 +24,7 @@ import kotlin.test.fail
 class ArticleCategoryRuntimeTest {
     @Test
     fun cancelledHistoryPreviewReleasesTheModelWithoutWritingExamples() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         training.removeExample("ai", 2)
         val fixture = fixture(training)
         fixture.engine.vector = ArticleCategoryTrainingTest.unit(0)
@@ -47,7 +47,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun historyPreviewDoesNotTrainAndReusesInferenceWhenTheStoryIsAdded() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         training.removeExample("ai", 2)
         val fixture = fixture(training)
         fixture.engine.vector = ArticleCategoryTrainingTest.unit(0)
@@ -70,7 +70,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun emptyCategoryPreviewNeedsNoModelAndMemoryPressureStopsOtherPreviews() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         val category = training.create("Empty")
         val fixture = fixture(training, memoryAvailable = { false })
         fixture.models.preload()
@@ -93,15 +93,15 @@ class ArticleCategoryRuntimeTest {
         runCurrent()
         assertEquals(ArticleCategoryStatus.READY, fixture.runtime.state.value.status)
         assertEquals(1, fixture.engine.loads)
-        fixture.runtime.scores("A model", "Description")
-        fixture.runtime.scores("A model", "Description")
+        fixture.runtime.scores("A model", "An explanation of the model architecture and its training process.")
+        fixture.runtime.scores("A model", "An explanation of the model architecture and its training process.")
         assertEquals(1, fixture.engine.embeddings)
         fixture.settings.rename("ai", "Models")
         fixture.settings.setCutoff(0.8f)
         runCurrent()
-        fixture.runtime.scores("A model", "Description")
+        fixture.runtime.scores("A model", "An explanation of the model architecture and its training process.")
         assertEquals(1, fixture.engine.embeddings)
-        fixture.runtime.scores("A model", "Updated description")
+        fixture.runtime.scores("A model", "An updated explanation covering the model evaluation and limitations.")
         assertEquals(2, fixture.engine.embeddings)
         fixture.settings.setEnabled(false)
         runCurrent()
@@ -131,7 +131,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun trainsFromHistoryWhileOffAndReleasesTheTemporaryModel() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         val category = training.create("Robotics")
         val fixture = fixture(training)
         fixture.engine.vector = ArticleCategoryTrainingTest.unit(2)
@@ -148,7 +148,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun cancellingTrainingCommitsNoPartialBatchAndReleasesTheModel() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         val category = training.create("Robotics")
         val fixture = fixture(training)
         fixture.engine.beforeEmbed = { awaitCancellation() }
@@ -163,7 +163,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun rejectsStoriesOutsideHistoryBeforeLoadingTheModel() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         val fixture = fixture(training)
         fixture.models.preload()
         kotlin.test.assertFailsWith<IllegalArgumentException> {
@@ -227,7 +227,7 @@ class ArticleCategoryRuntimeTest {
     @Test
     fun pressureOrBackgroundDuringInferenceDoesNotCommitTrainingExamples() = runTest {
         for (background in listOf(false, true)) {
-            val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply {
+            val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply {
                 setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() }
             }
             val category = training.create("Robotics")
@@ -251,10 +251,10 @@ class ArticleCategoryRuntimeTest {
         fixture.settings.setEnabled(true)
         fixture.runtime.start()
         runCurrent()
-        val scores = fixture.runtime.scoresForStory(42, "A model", "https://example.com", "Preview description")
+        val scores = fixture.runtime.scoresForStory(42, "A model", "https://example.com", "An explanation of the model architecture and its training process.")
         assertSame(scores, fixture.runtime.cachedScores(42, "A model", "https://example.com"))
         assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", null))
-        assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", "Preview description"))
+        assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", "An explanation of the model architecture and its training process."))
         assertEquals(1, fixture.engine.embeddings)
         assertNull(fixture.runtime.cachedScores(43, "A model", "https://example.com"))
         assertNull(fixture.runtime.cachedScores(42, "Different title", "https://example.com"))
@@ -279,13 +279,31 @@ class ArticleCategoryRuntimeTest {
         val initial = fixture.runtime.scoresForStory(42, "Story", "url", null)
         val release = CompletableDeferred<Unit>()
         fixture.engine.beforeEmbed = { release.await() }
-        val refresh = launch { fixture.runtime.scoresForStory(42, "Story", "url", "New metadata") }
+        val refresh = launch { fixture.runtime.scoresForStory(42, "Story", "url", "New metadata explaining the article topic and its important details.") }
         runCurrent()
         assertSame(initial, fixture.runtime.cachedScores(42, "Story", "url"))
         fixture.engine.vector = floatArrayOf(0f, 1f)
         release.complete(Unit)
         refresh.join()
         assertEquals(0f, fixture.runtime.cachedScores(42, "Story", "url")!!.single().similarity)
+        assertEquals(2, fixture.engine.embeddings)
+    }
+
+    @Test
+    fun eachInputUsesReferencesFromTheSameViewWithOneInference() = runTest {
+        val fixture = fixture(prototypes = { titleOnly ->
+            mapOf((if (titleOnly) "software" else "science") to floatArrayOf(1f, 0f))
+        })
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start()
+        runCurrent()
+        assertEquals("software", fixture.runtime.scores("Story", null).single().categoryId)
+        assertEquals(1, fixture.engine.embeddings)
+        val preview = "A useful preview describing the scientific subject of this article."
+        assertEquals("science", fixture.runtime.scores("Story", preview).single().categoryId)
+        assertEquals(2, fixture.engine.embeddings)
+        fixture.runtime.scores("Story", preview)
         assertEquals(2, fixture.engine.embeddings)
     }
 
@@ -329,7 +347,7 @@ class ArticleCategoryRuntimeTest {
 
     @Test
     fun editedExamplesInvalidateScoresAndRescoreWithoutRepeatingEmbeddingInference() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply {
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply {
             setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() }
         }
         training.removeExample("ai", 1)
@@ -366,7 +384,8 @@ class ArticleCategoryRuntimeTest {
         assertNull(fixture.runtime.cachedScores(ArticleCategoryRuntime.MAX_CACHED_STORIES, "Story", null))
     }
 
-    private fun TestScope.fixture(training: ArticleCategoryTraining? = null, memoryAvailable: () -> Boolean = { true }): Fixture {
+    private fun TestScope.fixture(training: ArticleCategoryTraining? = null, memoryAvailable: () -> Boolean = { true },
+        prototypes: (Boolean) -> Map<String, FloatArray> = { mapOf("ai" to floatArrayOf(1f, 0f)) }): Fixture {
         val settings = ArticleCategorySettings(InMemoryKeyValueStore(), emptyFlow())
         val engine = FakeEngine()
         val storage = object : LocalModelStorage {
@@ -401,10 +420,9 @@ class ArticleCategoryRuntimeTest {
             models = listOf(LocalModelCatalog.models.first(), LocalModelCatalog.embeddingModel),
             storageDispatcher = StandardTestDispatcher(testScheduler), scope = backgroundScope,
         )
-        return Fixture(settings, models, engine, ArticleCategoryRuntime(settings, models, engine, backgroundScope, prototypes = {
-            mapOf("ai" to floatArrayOf(1f, 0f))
-        }, training = training, isHistoryStory = { it == 99 }, memoryAvailable = memoryAvailable,
-            scoringDispatcher = StandardTestDispatcher(testScheduler)))
+        return Fixture(settings, models, engine, ArticleCategoryRuntime(settings, models, engine, backgroundScope, prototypes = prototypes,
+            training = training, isHistoryStory = { it == 99 }, memoryAvailable = memoryAvailable,
+            scoringDispatcher = StandardTestDispatcher(testScheduler), embeddingOrigin = { FloatArray(2) }))
     }
 
     private class FakeEngine : ArticleEmbeddingEngine {

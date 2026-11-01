@@ -33,17 +33,48 @@ class ArticleCategoriesTest {
     @Test
     fun shippedPrototypesCoverExactlyTheFixedCategoriesAndAreUnitVectors() {
         assertEquals(ArticleCategories.defaults.map { it.id }.toSet(), ArticleCategoryPrototypes.vectors.keys)
-        ArticleCategoryPrototypes.vectors.values.forEach { vector ->
+        assertEquals(ArticleCategories.defaults.map { it.id }.toSet(), ArticleCategoryPrototypes.titleVectors.keys)
+        (ArticleCategoryPrototypes.vectors.values + ArticleCategoryPrototypes.titleVectors.values).forEach { vector ->
             assertEquals(ArticleCategories.DIMENSIONS, vector.size)
             assertTrue(abs(vector.sumOf { it.toDouble() * it } - 1.0) < 0.00001)
         }
+        assertEquals(ArticleCategories.DIMENSIONS, ArticleCategoryPrototypes.origin.size)
+        assertTrue(ArticleCategoryPrototypes.origin.all(Float::isFinite))
+        assertTrue(ArticleCategoryPrototypes.origin.sumOf { it.toDouble() * it } in 0.0..1.0)
+        assertEquals(ArticleCategories.DIMENSIONS, ArticleCategoryPrototypes.titleOrigin.size)
+        assertEquals(listOf("History", "Culture", "Energy", "Health"), ArticleCategories.defaults.takeLast(4).map { it.name })
     }
 
     @Test
     fun metadataInputIsBoundedStableAndHandlesMissingDescription() {
         assertEquals("title: Hello world | text: Hello world", ArticleCategories.input(" Hello\nworld ", null))
-        assertEquals("title: Title | text: Page description", ArticleCategories.input("Title", " Page\t description "))
+        val description = "A useful page description with enough detail about its actual subject."
+        assertEquals("title: Title | text: $description", ArticleCategories.input("Title", " $description "))
+        assertEquals("title: Title | text: Title", ArticleCategories.input("Title", "Log in or sign up to personalize your feed and join conversations."))
+        assertEquals("title: $description | text: $description", ArticleCategories.input(description, description))
         assertTrue(ArticleCategories.input("T".repeat(1000), "D".repeat(5000)).length < 1220)
+    }
+
+    @Test
+    fun removesSharedBackgroundAndRetainsOppositeTopicDirections() {
+        val first = floatArrayOf(99f, 1f)
+        val second = floatArrayOf(99f, -1f)
+        assertTrue(ArticleCategories.scores(first, mapOf("other" to second)).single().similarity > 0.99f)
+        val origin = floatArrayOf(0.99995f, 0f)
+        val projected = ArticleCategories.project(first, origin)
+        val other = ArticleCategories.project(second, origin)
+        assertTrue(ArticleCategories.scores(projected, mapOf("other" to other)).single().similarity < -0.99f)
+        assertFailsWith<IllegalArgumentException> { ArticleCategories.project(first, floatArrayOf(0f)) }
+    }
+
+    @Test
+    fun weakNeighborsDoNotBecomeLabelsAndStrongOverlappingTopicsRemainAvailable() {
+        val settings = ArticleCategoryPreferences(enabled = true)
+        val scores = listOf(ArticleCategoryScore("ai", 0.6f), ArticleCategoryScore("software", 0.35f), ArticleCategoryScore("hardware", 0.3f))
+        assertEquals(listOf("AI"), ArticleCategories.labels(scores, settings))
+        assertTrue(ArticleCategories.labels(scores, settings.copy(selected = setOf("hardware"))).isEmpty())
+        assertEquals(listOf("Energy", "Climate"), ArticleCategories.labels(listOf(
+            ArticleCategoryScore("energy", 0.6f), ArticleCategoryScore("climate", 0.5f)), settings))
     }
 
     @Test
@@ -62,20 +93,22 @@ class ArticleCategoriesTest {
         assertEquals("AI", repository.snapshot().name(ArticleCategories.defaults.first()))
         repository.setCutoff(Float.NaN)
         assertEquals(ArticleCategories.DEFAULT_CUTOFF, repository.snapshot().cutoff)
-        repository.setCutoff(0.3f)
-        assertEquals(0.75f, repository.snapshot().cutoff)
+        repository.setCutoff(-1f)
+        assertEquals(ArticleCategories.MIN_CUTOFF, repository.snapshot().cutoff)
         repository.setCutoff(1f)
-        assertEquals(0.90f, repository.snapshot().cutoff)
+        assertEquals(0.45f, repository.snapshot().cutoff)
         repository.setCutoff(ArticleCategories.DEFAULT_CUTOFF)
-        assertEquals(0.78f, repository.snapshot().cutoff)
+        assertEquals(ArticleCategories.DEFAULT_CUTOFF, repository.snapshot().cutoff)
         assertFailsWith<IllegalArgumentException> { repository.setSelected("custom", true) }
         assertFailsWith<IllegalArgumentException> { repository.rename("custom", "User category") }
     }
     @Test
     fun unshippedDefaultsNeedNoMigrationAndExplicitChoicesSurvive() {
         val fresh = ArticleCategorySettings(InMemoryKeyValueStore(), emptyFlow())
-        assertEquals(0.78f, fresh.snapshot().cutoff)
-        val store = InMemoryKeyValueStore().apply { putFloat(ArticleCategorySettings.CUTOFF, 0.84f) }
-        assertEquals(0.84f, ArticleCategorySettings(store, emptyFlow()).snapshot().cutoff)
+        assertEquals(0.24f, fresh.snapshot().cutoff)
+        val store = InMemoryKeyValueStore().apply { putFloat(ArticleCategorySettings.CUTOFF, 0.34f) }
+        assertEquals(0.34f, ArticleCategorySettings(store, emptyFlow()).snapshot().cutoff)
+        store.putFloat(ArticleCategorySettings.CUTOFF, 0.84f)
+        assertEquals(ArticleCategories.MAX_CUTOFF, ArticleCategorySettings(store, emptyFlow()).snapshot().cutoff)
     }
 }

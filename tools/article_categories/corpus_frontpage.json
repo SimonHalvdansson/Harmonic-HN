@@ -1,0 +1,619 @@
+{
+  "schema_version": 2,
+  "collected_at": "2026-11-01",
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
+  "categories": [],
+  "examples": [
+    {
+      "hn_id": 47927903,
+      "hn_url": "https://news.ycombinator.com/item?id=47927903",
+      "title": "Talkie: a 13B vintage language model from 1930",
+      "url": "https://talkie-lm.com/introducing-talkie",
+      "posted_at": "2026-04-27T21:55:48Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "Have you ever daydreamed about talking to someone from the past? What would you ask someone with no knowledge of the modern world? What would they ask you? While we don’t have time machines yet, we can simulate this experience by training, in Owain Evans’s phrase, ‘vintage’ language models: LMs trained only on historical text.",
+      "description_source": "body",
+      "query": "language model",
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "acceptable_category_ids": [
+        "ai"
+      ]
+    },
+    {
+      "rank": 1,
+      "hn_id": 50324388,
+      "title": "Norway makes shithouses great again",
+      "url": "https://www.visitnorway.com/plan-your-trip/travel-tips-a-z/norwegian-scenic-routes/worlds-best-toilets/",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [],
+      "split": "evaluation",
+      "acceptable_category_ids": [],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T10:47:58Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50324388"
+    },
+    {
+      "rank": 2,
+      "hn_id": 50319510,
+      "title": "HackerTube: YouTube built from videos recommended by HN",
+      "url": "https://karpathy.bearblog.dev/hacker-tube/",
+      "description": "Instead of YouTube, watch HackerTube!",
+      "description_source": "metadata",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T19:56:53Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50319510"
+    },
+    {
+      "rank": 3,
+      "hn_id": 50325454,
+      "title": "Proving and Improving the Platonic Representation Hypothesis with JEPAs",
+      "url": "https://arxiv.org/abs/2610.39302",
+      "description": "Whether models trained on different modalities converge to the same representation of the world is central to AI. The Platonic Representation Hypothesis (PRH) conjectures that they do as they scale, but without a proof it offers neither a guarantee nor a recipe. We turn the hypothesis into a theorem. First, we prove a \\emph{Platonic Representation Theorem}: Joint-Embedding Predictive Architectures (JEPAs) trained separately on any number of modalities learn the same representation up to one rotation whenever their positive pairs are two observations of one scene--\\emph{good views}--and their…",
+      "description_source": "metadata",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "ai",
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T13:24:49Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50325454"
+    },
+    {
+      "rank": 4,
+      "hn_id": 50325694,
+      "title": "Novellas with Groff",
+      "url": "https://movq.de/blog/postings/2026-10-31/0/POSTING-en.html",
+      "description": "The first story is roughly 50 A5 pages long (~15k words), the second one is about 120 pages (~40k words). (Both barely fit the definition of a \"novella\", apparently, with the first one being a bit too short and the second one a tiny bit too long.)",
+      "description_source": "body",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software",
+        "culture"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T13:51:41Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50325694"
+    },
+    {
+      "rank": 5,
+      "hn_id": 50320963,
+      "title": "An Italian farmer found some unknown seeds in his attic and planted them",
+      "url": "https://www.smithsonianmag.com/science-nature/italian-farmer-found-unknown-seeds-attic-with-nothing-lose-planted-them-result-biblical-180989644/",
+      "description": "When a seven-eared stem emerged from the ground, it seemed like a miracle. What Claudio Grossi had unearthed was an ancient grain that proved to be an answer to some modern problems",
+      "description_source": "metadata",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T22:41:06Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50320963"
+    },
+    {
+      "rank": 6,
+      "hn_id": 50314508,
+      "title": "Show HN: I rebuilt my old canvas 3D library as a small WebGL 2 library – phoria2",
+      "url": "https://kevs3d.co.uk/phoria2/",
+      "description": "phoria2 is a small, fast JavaScript library for 3D on the web - charts, labelled scenes, dashboards and product viewers, on a WebGL 2 renderer with an API you can learn in an afternoon. Designed for ease-of-use by agents and humans from the ground up!",
+      "description_source": "body",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T09:49:42Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50314508"
+    },
+    {
+      "rank": 7,
+      "hn_id": 50326099,
+      "title": "Lenovo's 'encrypted' fingerprint USB is just an unencrypted SD card in a case",
+      "url": "https://www.reddit.com/r/technology/comments/1xl2pr3/lenovos_encrypted_fingerprint_usb_drive_is_just/",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "security",
+        "privacy",
+        "hardware"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T14:34:43Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50326099"
+    },
+    {
+      "rank": 8,
+      "hn_id": 50280131,
+      "title": "Radiation Map of the World",
+      "url": "https://radiaverse.com/",
+      "description": "A global radiation map measured by its community: tracks, areas, and live statistics from RadiaCode detectors around the world.",
+      "description_source": "metadata",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-28T20:06:27Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50280131"
+    },
+    {
+      "rank": 9,
+      "hn_id": 50314617,
+      "title": "One-minute frequency disturbances from synchronization in power systems",
+      "url": "https://www.nature.com/articles/s41560-026-02144-0",
+      "description": "Power grids on five continents show frequency oscillations with a period of exactly 1 min. The authors trace this to clock-synchronized software in devices such as uninterruptible power supplies that creates coherent, repeating demand peaks.",
+      "description_source": "metadata",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "energy",
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "description_final_url": "https://www.nature.com/articles/s41560-026-02144-0?error=cookies_not_supported&code=c1b00b67-5aa9-4ae8-95c8-59f7775bde89",
+      "posted_at": "2026-10-31T10:14:08Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50314617"
+    },
+    {
+      "rank": 10,
+      "hn_id": 50322173,
+      "title": "Brazilian Court Sanctions Lawyers for Prompt Injection in Court Filing",
+      "url": "https://jetstream.security/insights/brazilian-court-sanctions-prompt-injection-filing/",
+      "description": "Two lawyers hid a white-on-white instruction inside a court filing telling the AI to go easy on their case. The court's AI caught it. The fine was $16,000.",
+      "description_source": "metadata",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "ai",
+        "world",
+        "security"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T02:19:53Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50322173"
+    },
+    {
+      "rank": 11,
+      "hn_id": 50320995,
+      "title": "Memdoor: A team of 5 Qwen3.8-27B models beats Fable 5 on LiveCodeBench Hard",
+      "url": "https://github.com/guregodevo/memdoor/tree/main/examples/workflows/team-solve",
+      "description": "A lightweight coding and automation agent in one CLI binary. Run locally or over SSH, optimize token use, and automate CI and cron with durable workflows. - guregodevo/memdoor",
+      "description_source": "metadata",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "ai",
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T22:46:12Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50320995"
+    },
+    {
+      "rank": 12,
+      "hn_id": 50319143,
+      "title": "TCP Use-After-Free: CVE-2026-98432 / CVSS 9.8",
+      "url": "https://atlasum.net/blog/cve-2026-98432-linux-ipv4-tcp-uaf",
+      "description": "CVE-2026-98432 is a CVSS 9.8 remote use-after-free in Linux's IPv4 TCP handshake, fixed upstream Oct 15. Ubuntu and RHEL haven't shipped a fixed kernel yet.",
+      "description_source": "metadata",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "security",
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T19:16:30Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50319143"
+    },
+    {
+      "rank": 13,
+      "hn_id": 50324371,
+      "title": "Domain hacks with unusual Unicode characters (2018)",
+      "url": "https://xn--69f31l4t57c0mag4b613h.xn--7uh4898msjaso/🆆🆃🅵/",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T10:44:20Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50324371"
+    },
+    {
+      "rank": 14,
+      "hn_id": 50325662,
+      "title": "AI agent swarms in Minecraft fail to build civilization, drown in bureaucracy",
+      "url": "https://www.tomshardware.com/tech-industry/artificial-intelligence/ai-agent-swarms-unleashed-in-minecraft-to-build-a-thriving-civilization-50-agent-teams-fail-after-falling-into-paralyzing-bureaucracy",
+      "description": "It is hoped game testing can provide insight into recent AI agent headlines, good and bad.",
+      "description_source": "metadata",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T13:47:24Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50325662"
+    },
+    {
+      "rank": 15,
+      "hn_id": 50316117,
+      "title": "The Ocean 'Was the Color of Chocolate.' Mexico Declares War on Seaweed.",
+      "url": "https://www.nytimes.com/2026/10/28/world/americas/mexico-seaweed-navy.html",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "climate",
+        "science",
+        "world"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T13:41:18Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50316117"
+    },
+    {
+      "rank": 16,
+      "hn_id": 50290533,
+      "title": "Show HN: Point your camera at a landscape to learn about its geology",
+      "url": "https://outcrop.rocks/",
+      "description": "A geology app that shows the geologic map wherever you are, and draws it onto the land in front of you in augmented reality. Works offline.",
+      "description_source": "metadata",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "science",
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-29T15:22:41Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50290533"
+    },
+    {
+      "rank": 17,
+      "hn_id": 50322022,
+      "title": "Leaking Secrets from Air-Gap Computers by Spelling Radio Signals from RAM (2024)",
+      "url": "https://arxiv.org/abs/2409.02292",
+      "description": "Air-gapped systems are physically separated from external networks, including the Internet. This isolation is achieved by keeping the air-gap computers disconnected from wired or wireless networks, preventing direct or remote communication with other devices or networks. Air-gap measures may be used in sensitive environments where security and isolation are critical to prevent private and confidential information leakage. In this paper, we present an attack allowing adversaries to leak information from air-gapped computers. We show that malware on a compromised computer can generate radio…",
+      "description_source": "metadata",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "security",
+        "privacy",
+        "hardware"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T01:46:29Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50322022"
+    },
+    {
+      "rank": 18,
+      "hn_id": 50303984,
+      "title": "Running a bootstrapped SaaS for 20 years with my brother",
+      "url": "https://blog.zamzar.com/2026/10/30/20-years-766-million-files-two-chameleons/",
+      "description": "Join us to explore the ups and downs over twenty years spent running a small bootstrapped UK SaaS business.",
+      "description_source": "metadata",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "startups",
+        "business",
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-30T13:58:42Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50303984"
+    },
+    {
+      "rank": 19,
+      "hn_id": 50310038,
+      "title": "Understanding Email Encryption",
+      "url": "https://www.fastmail.com/blog/email-encryption/",
+      "description": "A comprehensive overview of how email is encrypted, the benefits, and the trade-offs.",
+      "description_source": "metadata",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "security",
+        "privacy"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-30T20:55:56Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50310038"
+    },
+    {
+      "rank": 20,
+      "hn_id": 50323088,
+      "title": "The AI cost of JavaScript frameworks",
+      "url": "https://nolanlawson.com/2026/10/28/the-ai-cost-of-javascript-frameworks/",
+      "description": "One of my pet peeves with the web development community is that so many of the decisions we make are vibes-based. Frameworks are “blazing fast,” tools will…",
+      "description_source": "metadata",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software",
+        "ai"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T06:06:19Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50323088"
+    },
+    {
+      "rank": 21,
+      "hn_id": 50325411,
+      "title": "The \"Moon Trees\"",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/moon_tree.html",
+      "description": "Apollo 14 launched in the late afternoon of January 31, 1971 on what was to be our third trip to the lunar surface. Five days later Alan Shepard and Edgar Mitchell walked on the Moon while Stuart Roosa, a former U.S. Forest Service smoke jumper, orbited above in the command module. Packed in small containers in Roosa's personal kit were hundreds of tree seeds, part of a joint NASA/USFS project. Upon return to Earth, the seeds were germinated by the Forest Service. Known as the \"Moon Trees\", the resulting seedlings were planted throughout the United States (often as part of the nation's…",
+      "description_source": "body",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "space",
+        "history",
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-11-01T13:20:23Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50325411"
+    },
+    {
+      "rank": 22,
+      "hn_id": 50321048,
+      "title": "Altoids Project",
+      "url": "https://uvdn7.github.io/altoids-project/",
+      "description": "My 12-year-old son and I spent about two months on, what we call, the Altoids project. Here is the final product (video):",
+      "description_source": "metadata",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T22:54:55Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50321048"
+    },
+    {
+      "rank": 23,
+      "hn_id": 50290480,
+      "title": "No AI, 52 min. Build all Linux Files utils in C by Hand [video]",
+      "url": "https://www.youtube.com/watch?v=gQRmSlcTq9c",
+      "description": "recreating file management commands in UNIX (Linux)touch, cat, mkdir, mv, rm, find",
+      "description_source": "metadata",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-29T15:20:04Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50290480"
+    },
+    {
+      "rank": 24,
+      "hn_id": 50311045,
+      "title": "Zinc creep in cable spelter sockets brought down the Arecibo telescope in 2020",
+      "url": "https://maketecheasier.com/arecibo-zinc-creep-collapse/",
+      "description": "A 2024 National Academies report blames the 2020 Arecibo telescope collapse on zinc creep in cable spelter sockets, a failure never documented before.",
+      "description_source": "metadata",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "space",
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-30T22:41:03Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50311045"
+    },
+    {
+      "rank": 25,
+      "hn_id": 50289711,
+      "title": "A brief history of just-in-time: forty years of JIT work, from 1960–2000",
+      "url": "https://dl.acm.org/doi/10.1145/857076.857077",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software",
+        "history"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-29T14:30:25Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50289711"
+    },
+    {
+      "rank": 26,
+      "hn_id": 50319110,
+      "title": "Electrification Could Cut Global Energy Use in Half",
+      "url": "https://fullycharged.show/podcasts/podcast-361-why-electrification-could-cut-global-energy-use-in-half/",
+      "description": "Robert speaks to Professor Jan Rosenow, Oxford University, to reveal why electricity currently only tells 20% of the global energy story.",
+      "description_source": "metadata",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T19:13:34Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50319110"
+    },
+    {
+      "rank": 27,
+      "hn_id": 50304718,
+      "title": "A 1580 Map Shows Why Data Visualization Is Never Neutral",
+      "url": "https://thereader.mitpress.mit.edu/a-1580-map-shows-why-data-visualization-is-never-neutral/",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "history",
+        "culture"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-30T14:46:16Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50304718"
+    },
+    {
+      "rank": 28,
+      "hn_id": 50318720,
+      "title": "It's the memory latency, stupid",
+      "url": "https://pivotlake.io/blog/its-the-memory-latency-stupid/",
+      "description": "When your database CPU is at 100%, what is it actually doing? Memory stalls, CPU caches, and how radix partitioning makes GROUP BY faster.",
+      "description_source": "metadata",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software",
+        "hardware"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T18:38:16Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50318720"
+    },
+    {
+      "rank": 29,
+      "hn_id": 50316100,
+      "title": "Jepsen: ParticleDB 1.1.4",
+      "url": "https://jepsen.io/analyses/particledb-1.1.4",
+      "description": "Modern applications often spread state across a variety of systems: databases, caches, queues, data warehouses, search indices, and so on. Coordinating these systems is challenging: caches are often stale, the analytics platform might lag days behind the primary database, the search index might lose data, and transactional updates across disparate systems remains an open research problem.",
+      "description_source": "body",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-31T13:39:52Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50316100"
+    },
+    {
+      "rank": 30,
+      "hn_id": 50309279,
+      "title": "Pilot-wave hydrodynamics (Quantum phenomena in macroscopic hydrodynamic systems)",
+      "url": "http://thales.mit.edu/bush/index.php/4801-2/",
+      "description": "",
+      "description_source": "unavailable",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "posted_at": "2026-10-30T19:52:56Z",
+      "hn_url": "https://news.ycombinator.com/item?id=50309279"
+    }
+  ]
+}

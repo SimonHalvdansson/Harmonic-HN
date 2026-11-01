@@ -1,0 +1,806 @@
+{
+  "schema_version": 2,
+  "collected_at": "2026-11-01",
+  "categories": [],
+  "examples": [
+    {
+      "hn_id": 50326821,
+      "hn_url": "https://news.ycombinator.com/item?id=50326821",
+      "title": "Show HN: HackerBooks – HackerTube, but for books recommended on HN",
+      "url": "https://hackerbooks.org",
+      "posted_at": "2026-11-01T15:58:28Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "A bookshelf of the books Hacker News readers recommend most, 2006–2026.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 1,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software",
+        "culture"
+      ]
+    },
+    {
+      "hn_id": 50319749,
+      "hn_url": "https://news.ycombinator.com/item?id=50319749",
+      "title": "Bidirectional Charging During Grid Outages",
+      "url": "https://www.jefftk.com/p/bidirectional-charging-during-grid-outages",
+      "posted_at": "2026-10-31T20:21:55Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "David asked a great question on my solar battery system post: why buy a small battery just for emergencies when electric cars have a large battery you can also use for other things? [1] This would be great, and seems like the obvious way for it to work: when the grid goes down the panels can charge the car when it's sunny, and the car can power the house when it's not. Unfortunately as far as I ca",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 5,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "energy",
+        "cars"
+      ]
+    },
+    {
+      "hn_id": 50326118,
+      "hn_url": "https://news.ycombinator.com/item?id=50326118",
+      "title": "Police chief unplugs Flock cameras after company ignores contract cancellation",
+      "url": "https://www.tomshardware.com/tech-industry/big-tech/police-chief-physically-unplugs-flock-cameras-after-the-company-ignores-contract-cancellation-city-takes-matters-into-its-own-hands-amid-privacy-controversies",
+      "posted_at": "2026-11-01T14:36:13Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "It's probably a good idea to put a 'Flock Sock' on them, just to be safe.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 7,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "privacy",
+        "world"
+      ]
+    },
+    {
+      "hn_id": 50308754,
+      "hn_url": "https://news.ycombinator.com/item?id=50308754",
+      "title": "Copper – A minimal low-level programming language with OOP and generics",
+      "url": "https://tibleiz.net/copper/",
+      "posted_at": "2026-10-30T19:09:33Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Minimalism is the most important feature, the language is intended to be simple so that someone with limited brain power such as me could fully understand it. The syntax is simple, almost everything is explicit and most constructs are common.",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 11,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50326530,
+      "hn_url": "https://news.ycombinator.com/item?id=50326530",
+      "title": "Enlightenment 0.28.0 Release",
+      "url": "https://www.enlightenment.org/news/2026-10-31-enlightenment-0.28.0",
+      "posted_at": "2026-11-01T15:26:06Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "This is the latest release of Enlightenment.",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 18,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50325253,
+      "hn_url": "https://news.ycombinator.com/item?id=50325253",
+      "title": "Show HN: OmniDiff – Opensource, super fast, content aware Git difftool, in Rust",
+      "url": "https://github.com/ivankovic/omnidiff",
+      "posted_at": "2026-11-01T13:02:30Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Fast, robust, accurate diffing . Contribute to ivankovic/omnidiff development by creating an account on GitHub.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 20,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50314699,
+      "hn_url": "https://news.ycombinator.com/item?id=50314699",
+      "title": "Do the math: How we took over ChatGPT accounts",
+      "url": "https://www.parameter.ai/labs/we-found-a-gap-at-openai",
+      "posted_at": "2026-10-31T10:30:11Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "By bypassing ChatGPT's sandbox and content security policy, our research team was able to take over anyone's account simply by sending them a link.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 34,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "security",
+        "privacy",
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50319563,
+      "hn_url": "https://news.ycombinator.com/item?id=50319563",
+      "title": "Surviving \"The Graduate\"",
+      "url": "https://www.newyorker.com/culture/the-weekend-essay/dustin-hoffman-on-surviving-the-graduate",
+      "posted_at": "2026-10-31T20:02:06Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "It was the film that made me famous. On set, all I could think about was how I was failing.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 37,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "culture"
+      ]
+    },
+    {
+      "hn_id": 50261253,
+      "hn_url": "https://news.ycombinator.com/item?id=50261253",
+      "title": "Simple circuits can create complex behaviors",
+      "url": "https://aatishb.com/myriad/lets-build-a-brain/",
+      "posted_at": "2026-10-27T16:01:06Z",
+      "category_ids": [
+        "hardware",
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "How simple circuits can create complex behaviors",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 38,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "hardware",
+        "science",
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50324533,
+      "hn_url": "https://news.ycombinator.com/item?id=50324533",
+      "title": "noyb win: French electronics retailer Fnac Darty fined €7M",
+      "url": "https://noyb.eu/en/noyb-win-french-electronics-retailer-fnac-darty-fined-eu7-million",
+      "posted_at": "2026-11-01T11:17:15Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "The fine is based on a noyb complaint from 2023. Back then, we highlighted that Fnac Darty illegally tracked users of its mobile apps without consent",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 40,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "privacy",
+        "world",
+        "business"
+      ]
+    },
+    {
+      "hn_id": 50326246,
+      "hn_url": "https://news.ycombinator.com/item?id=50326246",
+      "title": "Shrinking NixOS RAM footprint and resource requirements to the bare minimum",
+      "url": "https://lowendspirit.com/discussion/11543/shrinking-nixos-ram-footprint-and-resource-requirements-to-the-bare-minimum",
+      "posted_at": "2026-11-01T14:52:05Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "A few people were surprised by how low you can go with NixOS, so i thought I would do a write up as I did not realise this was anything special, I kept notes when doing it but not for the intention of writing a blog article so i might miss small tweaks I did here and there.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 41,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50319061,
+      "hn_url": "https://news.ycombinator.com/item?id=50319061",
+      "title": "The Duty of a Scholar",
+      "url": "https://www.daemonology.net/blog/2026-10-31-The-Duty-of-a-Scholar.html",
+      "posted_at": "2026-10-31T19:07:36Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "There was a joke at the time that although the National Security Agency had opened up in recent years and started taking their defensive role more seriously, the one aspect of cryptography which they would never discuss publicly was side channel attacks — and this itself constituted a side channel, revealing the importance they attributed to the field. Being active in computer security, and recognizing that the NSA knew a few things about the topic, my immediate priority was to determine whether the information leakage I had identified was sufficient to construct a practical cryptographic…",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 42,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "security",
+        "privacy",
+        "science"
+      ]
+    },
+    {
+      "hn_id": 50320588,
+      "hn_url": "https://news.ycombinator.com/item?id=50320588",
+      "title": "ChatGPT and Codex usage limits merging",
+      "url": "https://help.openai.com/en/articles/20001625-understanding-chatgpt-and-codex-usage-limits",
+      "posted_at": "2026-10-31T21:49:07Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "Your usage for ChatGPT and Codex will be measured in tokens, the units of information a model processes and generates. How much of your allowance you use will depend on the model you choose and the task you ask it to do. More advanced models and complex tasks generally use more of your allowance. Instant chat will not draw from your usage.",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 43,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50284789,
+      "hn_url": "https://news.ycombinator.com/item?id=50284789",
+      "title": "Edgar Allan Poe, Quintessential American Writer",
+      "url": "https://slate.com/culture/2026/10/edgar-allan-poe-poems-stories-most-influential-american-writer-death-horror-detective.html",
+      "posted_at": "2026-10-29T05:10:00Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "Not Mark Twain, not Herman Melville, not F. Scott Fitzgerald.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 44,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "culture"
+      ]
+    },
+    {
+      "hn_id": 50319358,
+      "hn_url": "https://news.ycombinator.com/item?id=50319358",
+      "title": "Anthropic blocks users for anything touching training larger models",
+      "url": "https://twitter.com/jiahaoshao1/status/2116475922190922088",
+      "posted_at": "2026-10-31T19:39:19Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "Shame on @DarioAmodei / Anthropic. I never distilled Claude—rollouts came from a strong open-source model; Claude just helped submit jobs and run analysis. Still got tagged for \"training a competitor,\" and now anything touching RFT, SFT, or training larger models gets me blocked, Opus 5.5 downgrade…",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 45,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "description_final_url": "https://x.com/jiahaoshao1/status/2116475922190922088",
+      "acceptable_category_ids": [
+        "ai",
+        "business"
+      ]
+    },
+    {
+      "hn_id": 50271052,
+      "hn_url": "https://news.ycombinator.com/item?id=50271052",
+      "title": "Reading and writing are less symmetric than you (probably) think",
+      "url": "https://fgiesen.wordpress.com/2015/10/25/reading-and-writing-are-less-symmetric-than-you-probably-think/",
+      "posted_at": "2026-10-28T09:38:07Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "I am talking about the I/O operations as used in computing here. A typical example of how this kind of thing is exposed are the POSIX syscalls read(2) and write(2), which have the following C funct…",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 46,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50321522,
+      "hn_url": "https://news.ycombinator.com/item?id=50321522",
+      "title": "Show HN: BBRouter – Ben Eater's 8-bit computer, simulated on 3D breadboards",
+      "url": "https://bbrouter.com/bbrouter/ben-eater-sap-1",
+      "posted_at": "2026-11-01T00:10:30Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "A project by @bbrouter on BBRouter, the 3D breadboard editor and simulator: open it to look around and run it.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 47,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "hardware",
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50290652,
+      "hn_url": "https://news.ycombinator.com/item?id=50290652",
+      "title": "AI, Lean, and the Future of Formal Verification, with Lean Creator Leo de Moura",
+      "url": "https://thedataexchange.media/leo-de-moura-lean-aws/",
+      "posted_at": "2026-10-29T15:29:48Z",
+      "category_ids": [
+        "ai",
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Leo de Moura on Formal Proofs, AI Agents, and the End of “Trust Me” Code. Subscribe: Apple • Spotify • … More",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 48,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "ai",
+        "software",
+        "science"
+      ]
+    },
+    {
+      "hn_id": 50325107,
+      "hn_url": "https://news.ycombinator.com/item?id=50325107",
+      "title": "The question we should all be asking about AI",
+      "url": "https://www.cnn.com/2026/10/30/business/ai-stocks-bonds-debt",
+      "posted_at": "2026-11-01T12:44:36Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "The stock market is turning its back on Big Tech.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 49,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "description_final_url": "https://edition.cnn.com/2026/10/30/business/ai-stocks-bonds-debt",
+      "acceptable_category_ids": [
+        "finance",
+        "economy",
+        "business",
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50315782,
+      "hn_url": "https://news.ycombinator.com/item?id=50315782",
+      "title": "Show HN: A language model that lives in a boot sector",
+      "url": "https://github.com/kerlenton/bootgpt",
+      "posted_at": "2026-10-31T12:58:29Z",
+      "category_ids": [
+        "ai",
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "A language model that lives in a boot sector. Contribute to kerlenton/bootgpt development by creating an account on GitHub.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 50,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "ai",
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50302686,
+      "hn_url": "https://news.ycombinator.com/item?id=50302686",
+      "title": "Decode kernel panic from QR Code photo",
+      "url": "https://gist.github.com/skorotkiewicz/c59e591c26661cb52b06afc42d8ac546",
+      "posted_at": "2026-10-30T11:50:24Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "decode kernel panic from QR Code photo. GitHub Gist: instantly share code, notes, and snippets.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 51,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50300683,
+      "hn_url": "https://news.ycombinator.com/item?id=50300683",
+      "title": "Backdoor in Claude Code for VS Code extension on the Cursor Marketplace",
+      "url": "https://phorion.io/blog/offical-claude-code-vsx-compromise/",
+      "posted_at": "2026-10-30T07:09:12Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "Phorion has detected a backdoor in the official Claude Code for VS Code extension bundle on the Cursor Marketplace that drops a persistent SSH backdoor across macOS, Linux, and Windows. This write-up …",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 52,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "security",
+        "software",
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50314654,
+      "hn_url": "https://news.ycombinator.com/item?id=50314654",
+      "title": "Serbia just elected the world's brainiest parliament",
+      "url": "https://www.science.org/content/article/serbia-just-elected-world-s-brainiest-parliament",
+      "posted_at": "2026-10-31T10:21:30Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 53,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "world"
+      ]
+    },
+    {
+      "hn_id": 50320599,
+      "hn_url": "https://news.ycombinator.com/item?id=50320599",
+      "title": "AI text watermarking and quality loss",
+      "url": "https://blog.keyvan.net/p/ai-text-watermarking-and-quality",
+      "posted_at": "2026-10-31T21:50:13Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "After the EU AI Act’s transparency guidelines went into effect, and following the announcement that most major AI labs will soon be watermarking their text output to comply, there has been some debate about how much of an impact this is going to have, if any, on the quality of the text produced by AI models.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 54,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50326123,
+      "hn_url": "https://news.ycombinator.com/item?id=50326123",
+      "title": "Brian May, Queen guitarist and Astrophysicist",
+      "url": "https://english.elpais.com/science-tech/2026-10-30/brian-may-queen-guitarist-and-astrophysicist-to-be-a-complete-human-being-you-need-art-and-science.html",
+      "posted_at": "2026-11-01T14:36:42Z",
+      "category_ids": [
+        "culture",
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "The scientist and Starmus founder resumed his research on interplanetary dust 30 years after putting it on hold for a life in music",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 55,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "culture",
+        "science",
+        "space"
+      ]
+    },
+    {
+      "hn_id": 50323925,
+      "hn_url": "https://news.ycombinator.com/item?id=50323925",
+      "title": "IEEE Wipes Out 1,417 Papers over Sold Authorship",
+      "url": "https://www.nature.com/articles/d41586-026-03455-8",
+      "posted_at": "2026-11-01T09:30:25Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "Announcement by IEEE follows publication of a study showing the retracted papers are linked to paper mills.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 56,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "description_final_url": "https://www.nature.com/articles/d41586-026-03455-8?error=cookies_not_supported&code=bc4602dd-9cf8-4c12-bd5d-85026697a933",
+      "acceptable_category_ids": [
+        "science"
+      ]
+    },
+    {
+      "hn_id": 50301723,
+      "hn_url": "https://news.ycombinator.com/item?id=50301723",
+      "title": "Sculpture re-creates odd optical effects of famed Lycurgus Cup",
+      "url": "https://arstechnica.com/science/2026/10/scientists-recreate-the-1600-year-old-recipe-of-lycurgus-cup/",
+      "posted_at": "2026-10-30T09:49:40Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "University of Sheffield researchers figured out how to re-create the 1,600-year-old glass recipe.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 57,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "science",
+        "history",
+        "culture"
+      ]
+    },
+    {
+      "hn_id": 50260753,
+      "hn_url": "https://news.ycombinator.com/item?id=50260753",
+      "title": "Show HN: Marelleo, an open-source story box I built for my kids using ESP32",
+      "url": "https://zebra.rodeo/en/blog/marelleo/",
+      "posted_at": "2026-10-27T15:24:36Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "A box that plays a story when a child puts a figurine on top. Built for my three kids by someone who knew nothing about electronics: the breadboard, the potentiometer that burned, the five enclosures and the printed board.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 58,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "hardware",
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50314666,
+      "hn_url": "https://news.ycombinator.com/item?id=50314666",
+      "title": "Molly (Signal fork) has not been updated since 3 months and is vulnerable",
+      "url": "https://piefed.world/post/1503394",
+      "posted_at": "2026-10-31T10:23:41Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "cross-posted from: https://piefed.world/c/ysk/p/1503393/ysk-molly-signal-fork-has-not-been-updated-since-3-months-and-is-vulnerable-to-attacks-f A…",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 59,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "security",
+        "privacy",
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50297068,
+      "hn_url": "https://news.ycombinator.com/item?id=50297068",
+      "title": "Much Ado About None: Sentinel Values in Python",
+      "url": "https://florianwilhelm.info/2026/10/sentinel_values/",
+      "posted_at": "2026-10-29T22:24:56Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Why None is often the wrong way to express absence in Python, how sentinel values fill the gap, and how PEP 661 finally made them first-class citizens in Python 3.15.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 60,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50318376,
+      "hn_url": "https://news.ycombinator.com/item?id=50318376",
+      "title": "William Nordhaus has died",
+      "url": "https://news.yale.edu/2026/10/31/william-nordhaus-nobel-laureate-who-integrated-economics-and-climate-change-devoted-yale",
+      "posted_at": "2026-10-31T17:59:41Z",
+      "category_ids": [
+        "economy",
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "William Nordhaus ’63, Sterling Professor of Economics who won a Nobel Prize in 2018 for integrating climate change into long-run macroeconomic analysis, died Oct. 30 at age 85.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 61,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "economy",
+        "climate"
+      ]
+    },
+    {
+      "hn_id": 50309266,
+      "hn_url": "https://news.ycombinator.com/item?id=50309266",
+      "title": "The oldest ice disappears and the Stone Age emerges from it",
+      "url": "https://www.sciencenorway.no/archaeology-climate-culture/the-oldest-ice-is-disappearing-the-stone-age-is-emerging-from-the-melting-ice/2713921",
+      "posted_at": "2026-10-30T19:51:33Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "'We have been at the edge of the ice. We have seen it happening. And we are witnesses to a rapidly changing archaeological landscape,' write the glacial archaeologists. Finds from the Viking Age are becoming scarce, while 6,000-year-old arrowheads are now emerging from the melting ice.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 62,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "history",
+        "climate",
+        "science"
+      ]
+    },
+    {
+      "hn_id": 50324114,
+      "hn_url": "https://news.ycombinator.com/item?id=50324114",
+      "title": "Introducing Kwi, a new KDE terminal emulator",
+      "url": "https://blogs.kde.org/2026/11/01/introducing-kwi/",
+      "posted_at": "2026-11-01T10:04:22Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "I've started work on a new KDE application. It's called Kwi (pronounced kwee). Kwi is designed to provide users of KDE Plasma and other free desktops with a modern and fast terminal, built on a robust tech stack and following the latest KDE HIG and UI conventions.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 63,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50321436,
+      "hn_url": "https://news.ycombinator.com/item?id=50321436",
+      "title": "Constructing a Quine from Kleene's Second Recursion Theorem",
+      "url": "https://emarzion.github.io/KSRT/",
+      "posted_at": "2026-10-31T23:55:21Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "It is a well-known fact that the existence of Quines are a consequence of Kleene’s 2nd recursion theorem. I was curious about how easy or difficult it was to use this construction in practice, so I decided to try to formalize it.",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 64,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software",
+        "science"
+      ]
+    },
+    {
+      "hn_id": 50274186,
+      "hn_url": "https://news.ycombinator.com/item?id=50274186",
+      "title": "Redox: Ring Buffers Project Summary",
+      "url": "https://www.redox-os.org/news/nlnet-rb-summary/",
+      "posted_at": "2026-10-28T14:27:12Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Last year, the Redox team received a grant to develop io_uring-like Ring Buffer support at the system task level, as a first step towards ring buffer communications between the application and the majority of system services. This phase of the work finished up in September, as the last pieces were put in place.",
+      "description_source": "body",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 65,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50289418,
+      "hn_url": "https://news.ycombinator.com/item?id=50289418",
+      "title": "We're releasing the weights of Mistral Large 4",
+      "url": "https://mistral.ai/news/mistral-large-4-oss/",
+      "posted_at": "2026-10-29T14:13:21Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "The weights of Mistral Large 4 (Le Chonk) are now open. A 1T parameter multimodal model, and best open-weight model for coding, trained in Europe.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 66,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "ai"
+      ]
+    },
+    {
+      "hn_id": 50300902,
+      "hn_url": "https://news.ycombinator.com/item?id=50300902",
+      "title": "Show HN: Ghostman – A fast, keyboard-driven TUI API client and webhook inspector",
+      "url": "https://github.com/4yk5/Ghostman",
+      "posted_at": "2026-10-30T07:48:40Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "A fast, keyboard-driven TUI API client & webhook inspector. No cloud, no Electron, 100% local-first. - 4yk5/Ghostman",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 67,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "software"
+      ]
+    },
+    {
+      "hn_id": 50313661,
+      "hn_url": "https://news.ycombinator.com/item?id=50313661",
+      "title": "Digital minimalism",
+      "url": "https://vitalik.eth.limo/general/2026/10/31/digital_minimalism.html",
+      "posted_at": "2026-10-31T06:16:36Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 68,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": []
+    },
+    {
+      "hn_id": 50293806,
+      "hn_url": "https://news.ycombinator.com/item?id=50293806",
+      "title": "Noctua Fan Swap on a Calnex Rb/GPS Frequency Reference",
+      "url": "https://www.jeffgeerling.com/blog/2026/noctua-fan-swap-calnex-rb-gps-frequency-reference/",
+      "posted_at": "2026-10-29T18:33:40Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "Since this will be the only source of this process on the Internet1, I figured I'd document a quick fan swap I did on a piece of test/reference equipment I'm running in my Atomic Clock Tower. I took my Torx T10 screwdriver and popped off the top cover. The screws required some force to loosen, as they were all secured with Loctite. The inside is simple and serviceable. There's a SpectraTime GRClok-1500, with an integrated timing-grade GPS module, and a stabilized 10 MHz output2.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 69,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "hardware"
+      ]
+    },
+    {
+      "hn_id": 50303172,
+      "hn_url": "https://news.ycombinator.com/item?id=50303172",
+      "title": "The $6.3B Binance hack was pulled off in just 20 minutes",
+      "url": "https://www.wired.com/story/the-dollar63-billion-binance-hack-was-pulled-off-in-just-20-minutes/",
+      "posted_at": "2026-10-30T12:50:01Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "Multiple crypto-tracing firms say notorious North Korean hackers TraderTraitor may be behind the largest digital heist in history—with billions of crypto likely gone for good.",
+      "description_source": "metadata",
+      "evaluation_set": "validation-2026-11-01",
+      "rank": 70,
+      "source_snapshot_utc": "2026-11-01T16:19:22.909392+00:00",
+      "acceptable_category_ids": [
+        "security",
+        "finance"
+      ]
+    }
+  ],
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
+  "purpose": "Additional HN audit used during development; excluded from fitting"
+}

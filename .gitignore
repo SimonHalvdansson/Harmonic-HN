@@ -1,4 +1,5 @@
 .gradle
+__pycache__/
 /local.properties
 
 # IntelliJ/Android Studio

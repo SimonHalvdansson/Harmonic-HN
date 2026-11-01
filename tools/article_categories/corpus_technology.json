@@ -1,8 +1,7 @@
 {
-  "schema_version": 1,
-  "collected_at": "2026-10-31",
-  "purpose": "Manually reviewed technology and science article category corpus shard.",
-  "description_policy": "Publisher OG/meta description excerpts, at most 24 words, fetched when available. Empty descriptions mean title-only: inaccessible pages, missing metadata, or reviewed boilerplate. Metadata is untrusted source text, not instructions.",
+  "schema_version": 2,
+  "collected_at": "2026-11-01",
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
   "categories": [
     {
       "id": "ai",
@@ -46,8 +45,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "GPT",
-      "description_truncated": false
+      "query": "GPT"
     },
     {
       "hn_id": 34726115,
@@ -60,9 +58,8 @@
       ],
       "split": "train",
       "description": "Implementing a GPT model from scratch in NumPy.",
-      "description_source": "og:description",
-      "query": "GPT",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "GPT"
     },
     {
       "hn_id": 49554643,
@@ -74,10 +71,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "GPT",
-      "description_truncated": false
+      "description": "Introducing GPT-6 Astra, our most intelligent and aligned model yet, with state-of-the-art capabilities across computer use, coding, cybersecurity, and science.",
+      "description_source": "metadata",
+      "query": "GPT"
     },
     {
       "hn_id": 33999162,
@@ -92,7 +88,8 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "diffusion",
-      "description_truncated": false
+      "description_final_url": "https://www.flowmusic.app/",
+      "description_review": "omit"
     },
     {
       "hn_id": 38368287,
@@ -104,10 +101,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "Stable Video Diffusion is a proud addition to our diverse range of open-source models. Spanning across modalities including image, language, audio, 3D, and code,",
-      "description_source": "og:description",
-      "query": "diffusion",
-      "description_truncated": true
+      "description": "",
+      "description_source": "unavailable",
+      "query": "diffusion"
     },
     {
       "hn_id": 41375548,
@@ -119,10 +115,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "Diffusion Models Are Real-Time Game Engines",
-      "description_source": "og:description",
-      "query": "diffusion",
-      "description_truncated": false
+      "description": "We present GameNGen, the first game engine powered entirely by a neural model that enables real-time interaction with a complex environment over long trajectories at high quality. GameNGen can interactively simulate the classic game DOOM at over 20 frames per second on a single TPU. Next frame prediction achieves a PSNR of 29.4, comparable to lossy JPEG compression. Human raters are only slightly better than random chance at distinguishing short clips of the game from clips of the simulation. GameNGen is trained in two phases: (1) an RL-agent learns to play the game and the training sessions…",
+      "description_source": "body",
+      "query": "diffusion"
     },
     {
       "hn_id": 33025446,
@@ -134,10 +129,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "DreamFusion: Text-to-3D using 2D Diffusion, 2022.",
-      "description_source": "og:description",
-      "query": "diffusion",
-      "description_truncated": false
+      "description": "Recent breakthroughs in text-to-image synthesis have been driven by diffusion models trained on billions of image-text pairs. Adapting this approach to 3D synthesis would require large-scale datasets of labeled 3D assets and efficient architectures for denoising 3D data, neither of which currently exist. In this work, we circumvent these limitations by using a pretrained 2D text-to-image diffusion model to perform text-to-3D synthesis. We introduce a loss based on probability density distillation that enables the use of a 2D diffusion model as a prior for optimization of a parametric image…",
+      "description_source": "body",
+      "query": "diffusion"
     },
     {
       "hn_id": 40298927,
@@ -150,9 +144,9 @@
       ],
       "split": "train",
       "description": "Our new AI model AlphaFold 3 can predict the structure and interactions of all life’s molecules with unprecedented accuracy.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "AlphaFold",
-      "description_truncated": false
+      "description_final_url": "https://blog.google/innovation-and-ai/products/google-deepmind-isomorphic-alphafold-3-ai-model/"
     },
     {
       "hn_id": 40954497,
@@ -165,9 +159,8 @@
       ],
       "split": "train",
       "description": "A visual walkthrough of the AlphaFold3 architecture, with more details and diagrams than you were probably looking for.",
-      "description_source": "og:description",
-      "query": "AlphaFold",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "AlphaFold"
     },
     {
       "hn_id": 38338635,
@@ -180,9 +173,8 @@
       ],
       "split": "train",
       "description": "Things I Learned From Hundreds of Experiments",
-      "description_source": "og:description",
-      "query": "fine tuning",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "fine tuning"
     },
     {
       "hn_id": 36064568,
@@ -194,10 +186,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while",
-      "description_source": "og:description",
-      "query": "fine tuning",
-      "description_truncated": true
+      "description": "We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while preserving full 16-bit finetuning task performance. QLoRA backpropagates gradients through a frozen, 4-bit quantized pretrained language model into Low Rank Adapters~(LoRA). Our best model family, which we name Guanaco, outperforms all previous openly released models on the Vicuna benchmark, reaching 99.3% of the performance level of ChatGPT while only requiring 24 hours of finetuning on a single GPU. QLoRA introduces a number of innovations to save…",
+      "description_source": "metadata",
+      "query": "fine tuning"
     },
     {
       "hn_id": 38533105,
@@ -210,9 +201,8 @@
       ],
       "split": "train",
       "description": "Tips, examples, and thoughts from an exploration of the world of fine tuning",
-      "description_source": "og:description",
-      "query": "fine tuning",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "fine tuning"
     },
     {
       "hn_id": 37211519,
@@ -224,10 +214,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "fine tuning",
-      "description_truncated": false
+      "description": "And then telling it to not generate those images!",
+      "description_source": "metadata",
+      "query": "fine tuning"
     },
     {
       "hn_id": 43495617,
@@ -240,9 +229,8 @@
       ],
       "split": "train",
       "description": "Anthropic's latest interpretability research: a new microscope to understand Claude's internal mechanisms",
-      "description_source": "og:description",
-      "query": "language model",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "language model"
     },
     {
       "hn_id": 37248494,
@@ -255,9 +243,8 @@
       ],
       "split": "train",
       "description": "Code Llama, which is built on top of Llama 2, is free for research and commercial use.",
-      "description_source": "og:description",
-      "query": "language model",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "language model"
     },
     {
       "hn_id": 47927903,
@@ -268,11 +255,15 @@
       "category_ids": [
         "ai"
       ],
-      "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "split": "evaluation",
+      "description": "Have you ever daydreamed about talking to someone from the past? What would you ask someone with no knowledge of the modern world? What would they ask you? While we don’t have time machines yet, we can simulate this experience by training, in Owain Evans’s phrase, ‘vintage’ language models: LMs trained only on historical text.",
+      "description_source": "body",
       "query": "language model",
-      "description_truncated": false
+      "evaluation_set": "frontpage-2026-11-01",
+      "source_snapshot_utc": "2026-11-01T15:05:03.469735+00:00",
+      "acceptable_category_ids": [
+        "ai"
+      ]
     },
     {
       "hn_id": 39635483,
@@ -285,9 +276,8 @@
       ],
       "split": "train",
       "description": "We’re releasing an open source system, based on FSDP and QLoRA, that can train a 70b model on two 24GB GPUs.",
-      "description_source": "og:description",
-      "query": "language model",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "language model"
     },
     {
       "hn_id": 32927360,
@@ -300,9 +290,9 @@
       ],
       "split": "train",
       "description": "We’ve trained and are open-sourcing a neural net called Whisper that approaches human level robustness and accuracy on English speech recognition.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Whisper",
-      "description_truncated": false
+      "description_final_url": "https://openai.com/index/whisper/"
     },
     {
       "hn_id": 39036796,
@@ -315,9 +305,9 @@
       ],
       "split": "train",
       "description": "An Open Source text-to-speech system built by inverting Whisper. - WhisperSpeech/WhisperSpeech",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Whisper",
-      "description_truncated": false
+      "description_final_url": "https://github.com/WhisperSpeech/WhisperSpeech"
     },
     {
       "hn_id": 33877893,
@@ -330,9 +320,9 @@
       ],
       "split": "train",
       "description": "Port of OpenAI's Whisper model in C/C++. Contribute to ggml-org/whisper.cpp development by creating an account on GitHub.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Whisper",
-      "description_truncated": false
+      "description_final_url": "https://github.com/ggml-org/whisper.cpp"
     },
     {
       "hn_id": 40269489,
@@ -344,10 +334,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "Deep Reinforcement Learning: Zero to Hero! Contribute to alessiodm/drl-zh development by creating an account on GitHub.",
-      "description_source": "og:description",
-      "query": "reinforcement learning",
-      "description_truncated": false
+      "description": "Start from MDPs and tabular RL, then work your way to the algorithms behind Atari agents, continuous-control robots, AlphaZero-style planning, RLHF for language models, Decision Transformers, VLA-style policies, world models, Dreamer, and meta-learning.",
+      "description_source": "body",
+      "query": "reinforcement learning"
     },
     {
       "hn_id": 33096580,
@@ -359,10 +348,10 @@
         "ai"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "A reinforcement learning approach based on AlphaZero is used to discover efficient and provably correct algorithms for matrix multiplication, finding faster algorithms for a variety of matrix sizes.",
+      "description_source": "metadata",
       "query": "reinforcement learning",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/s41586-022-05172-4?error=cookies_not_supported&code=9bbb32b7-1a8d-448b-a109-2f5cf1a28e21"
     },
     {
       "hn_id": 30379973,
@@ -375,9 +364,9 @@
       ],
       "split": "train",
       "description": "Successfully controlling the nuclear fusion plasma in a tokamak with deep reinforcement learning",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "reinforcement learning",
-      "description_truncated": false
+      "description_final_url": "https://deepmind.google/blog/accelerating-fusion-science-through-learned-plasma-control/"
     },
     {
       "hn_id": 35808710,
@@ -389,10 +378,10 @@
         "ai"
       ],
       "split": "train",
-      "description": "We just released our work on robot soccer. I've been working on this for quite some time with my amazing colleagues at DeepMind. It's",
-      "description_source": "og:description",
+      "description": "We just released our work on robot soccer. I've been working on this for quite some time with my amazing colleagues at DeepMind. It's exciting how deep RL can produce such beautiful behaviors with low-cost robots. Full paper is available at https://t.co/A65rPLL7UD Enjoy!",
+      "description_source": "metadata",
       "query": "reinforcement learning",
-      "description_truncated": true
+      "description_final_url": "https://x.com/haarnoja/status/1651577815836270596"
     },
     {
       "hn_id": 37985489,
@@ -404,10 +393,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "Embeddings are a really neat trick that often come wrapped in a pile of intimidating jargon. If you can make it through that jargon,",
-      "description_source": "og:description",
-      "query": "embeddings",
-      "description_truncated": true
+      "description": "Embeddings are a really neat trick that often come wrapped in a pile of intimidating jargon. If you can make it through that jargon, they unlock powerful and exciting techniques …",
+      "description_source": "metadata",
+      "query": "embeddings"
     },
     {
       "hn_id": 49980487,
@@ -420,9 +408,8 @@
       ],
       "split": "train",
       "description": "Introducing EmbeddingGemma 2, an open multimodal embedding model optimized for privacy-first use cases",
-      "description_source": "og:description",
-      "query": "embeddings",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "embeddings"
     },
     {
       "hn_id": 44878151,
@@ -435,9 +422,8 @@
       ],
       "split": "train",
       "description": "End-to-end deep dive of the project, spanning a large GPU cluster, distributed RocksDB, and terabytes of sharded HNSW.",
-      "description_source": "og:description",
-      "query": "embeddings",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "embeddings"
     },
     {
       "hn_id": 41544969,
@@ -450,9 +436,8 @@
       ],
       "split": "train",
       "description": "Things you can do with the token embeddings of an LLM - dleemiller/WordLlama",
-      "description_source": "og:description",
-      "query": "embeddings",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "embeddings"
     },
     {
       "hn_id": 35459031,
@@ -466,8 +451,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "neural network",
-      "description_truncated": false
+      "query": "neural network"
     },
     {
       "hn_id": 34399142,
@@ -479,10 +463,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "While training small neural networks to perform binary addition, a surprising solution emerged that allows the network to solve the problem very effectively. This",
-      "description_source": "og:description",
-      "query": "neural network",
-      "description_truncated": true
+      "description": "While training small neural networks to perform binary addition, a surprising solution emerged that allows the network to solve the problem very effectively. This post explores the mechanism behind that solution and how it relates to analog electronics.",
+      "description_source": "metadata",
+      "query": "neural network"
     },
     {
       "hn_id": 40139398,
@@ -494,10 +477,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "CoreNet: A library for training deep neural networks - apple/corenet",
-      "description_source": "og:description",
-      "query": "neural network",
-      "description_truncated": false
+      "description": "CoreNet is a deep neural network toolkit that allows researchers and engineers to train standard and novel small and large-scale models for variety of tasks, including foundation models (e.g., CLIP and LLM), object classification, object detection, and semantic segmentation.",
+      "description_source": "body",
+      "query": "neural network"
     },
     {
       "hn_id": 31579873,
@@ -509,10 +491,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "Physicists are building neural networks out of vibrations, voltages and lasers, arguing that the future of computing lies in exploiting the universe’s complex physical",
-      "description_source": "og:description",
-      "query": "neural network",
-      "description_truncated": true
+      "description": "Physicists are building neural networks out of vibrations, voltages and lasers, arguing that the future of computing lies in exploiting the universe’s complex physical behaviors.",
+      "description_source": "metadata",
+      "query": "neural network"
     },
     {
       "hn_id": 37076210,
@@ -524,10 +505,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "An interactive introduction to grokking and mechanistic interpretability.",
-      "description_source": "og:description",
-      "query": "machine learning",
-      "description_truncated": false
+      "description": "In 2021, researchers made a striking discovery while training a series of tiny models on toy tasks . They found a set of models that suddenly flipped from memorizing their training data to correctly generalizing on unseen inputs after training for much longer. This phenomenon – where generalization seems to happen abruptly and long after fitting the training data – is called grokking and has sparked a flurry of interest .",
+      "description_source": "body",
+      "query": "machine learning"
     },
     {
       "hn_id": 42847834,
@@ -539,10 +519,9 @@
         "ai"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "machine learning",
-      "description_truncated": false
+      "description": "CMU course that covers how to build, deploy, assure, and maintain software products with machine-learned models. Includes the entire lifecycle from a prototype ML model to an entire system deployed in production. Covers also responsible AI (including safety, security, fairness, explainability) and MLOps. For earlier offerings see websites for Fall 2019, Summer 2020, Fall 2020, Spring 2021 Spring 2022, Fall 2022, Spring 2023, Spring 2024, and Fall 2024. This Spring 2025 offering is designed for students with some data science experience (e.g., has taken a machine learning course, has used…",
+      "description_source": "body",
+      "query": "machine learning"
     },
     {
       "hn_id": 28613099,
@@ -555,9 +534,8 @@
       ],
       "split": "train",
       "description": "Why this is the first rule, some baseline heuristics, and when to move on to machine learning.",
-      "description_source": "og:description",
-      "query": "machine learning",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "machine learning"
     },
     {
       "hn_id": 40345775,
@@ -570,9 +548,12 @@
       ],
       "split": "evaluation",
       "description": "We’re announcing GPT-4 Omni, our new flagship model which can reason across audio, vision, and text in real time.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "GPT",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33726816,
@@ -584,10 +565,13 @@
         "ai"
       ],
       "split": "evaluation",
-      "description": "The open source release of Stable Diffusion version 2.0.",
-      "description_source": "og:description",
+      "description": "",
+      "description_source": "unavailable",
       "query": "diffusion",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33433583,
@@ -599,10 +583,15 @@
         "ai"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "Microbial molecules from soil, seawater and human bodies are among the planet’s least understood.",
+      "description_source": "metadata",
       "query": "AlphaFold",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/d41586-022-03539-1?error=cookies_not_supported&code=4384d69d-0540-431d-91cf-5fe975487a3e",
+      "acceptable_category_ids": [
+        "ai",
+        "science"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49923692,
@@ -614,10 +603,13 @@
         "ai"
       ],
       "split": "evaluation",
-      "description": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement",
-      "description_source": "og:description",
+      "description": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+      "description_source": "metadata",
       "query": "fine tuning",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 46108780,
@@ -632,7 +624,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "language model",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47143755,
@@ -645,9 +640,12 @@
       ],
       "split": "evaluation",
       "description": "Very low latency speech to text, intent recognition, and text to speech, for building voice agents and interfaces - moonshine-ai/moonshine",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Whisper",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43270843,
@@ -659,10 +657,13 @@
         "ai"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "QWEN CHAT Hugging Face ModelScope DEMO DISCORD Scaling Reinforcement Learning (RL) has the potential to enhance model performance beyond conventional pretraining and post-training methods. Recent studies have demonstrated that RL can significantly improve the reasoning capabilities of models. For instance, DeepSeek R1 has achieved state-of-the-art performance by integrating cold-start data and multi-stage training, enabling deep thinking and complex reasoning. Our research explores the scalability of Reinforcement Learning (RL) and its impact on enhancing the intelligence of large language…",
+      "description_source": "metadata",
       "query": "reinforcement learning",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 44708028,
@@ -675,9 +676,12 @@
       ],
       "split": "evaluation",
       "description": "How Language Models Turn Text into Meaning, From Traditional",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "embeddings",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40172033,
@@ -689,10 +693,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "Rust",
-      "description_truncated": false
+      "description": "This post isn't a scientific evaluation or an A/B study. It's my personal opinion after trying to make Rust gamedev work for us, a small indie developer (2 people), trying to make enough money to fund our development with it. We're not one of those developers that have infinite money from an investor and years to burn. If you're in that category and are happy to build systems for years, none of the below will apply. I'm looking at things from the perspective of \"I want to make a game in 3-12 months maximum and release it so that people can play it and I can make some money from it.\". This is…",
+      "description_source": "body",
+      "query": "Rust"
     },
     {
       "hn_id": 25610741,
@@ -704,10 +707,9 @@
         "software"
       ],
       "split": "train",
-      "description": "In order to increase fluency in a programming language, one has to read a lot of it. But how can you read a lot",
-      "description_source": "og:description",
-      "query": "Rust",
-      "description_truncated": true
+      "description": "In order to increase fluency in a programming language, one has to read a lot of it. But how can you read a lot of it if you don’t know what it means? In this article, instead of focusing on one or...",
+      "description_source": "metadata",
+      "query": "Rust"
     },
     {
       "hn_id": 26194990,
@@ -721,8 +723,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "Rust",
-      "description_truncated": false
+      "query": "Rust"
     },
     {
       "hn_id": 46213585,
@@ -735,9 +736,8 @@
       ],
       "split": "train",
       "description": "The topic of the Rust experiment was just discussed at the annual Maintainers Summit. The cons [...]",
-      "description_source": "og:description",
-      "query": "Rust",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Rust"
     },
     {
       "hn_id": 45751400,
@@ -750,9 +750,8 @@
       ],
       "split": "train",
       "description": "Released in 2024, uv is hands-down the best tool for managing Python installations and dependencies. Here's why.",
-      "description_source": "og:description",
-      "query": "Python",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Python"
     },
     {
       "hn_id": 38923741,
@@ -765,9 +764,8 @@
       ],
       "split": "train",
       "description": "Reviewing the JIT in Python 3.13",
-      "description_source": "og:description",
-      "query": "Python",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Python"
     },
     {
       "hn_id": 43918484,
@@ -780,9 +778,8 @@
       ],
       "split": "train",
       "description": "An extremely fast Python type checker and language server, written in Rust. - astral-sh/ty",
-      "description_source": "og:description",
-      "query": "Python",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Python"
     },
     {
       "hn_id": 29104047,
@@ -795,9 +792,8 @@
       ],
       "split": "train",
       "description": "The strange world of Python, as used by big investment banks",
-      "description_source": "og:description",
-      "query": "Python",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Python"
     },
     {
       "hn_id": 27016630,
@@ -809,10 +805,9 @@
         "software"
       ],
       "split": "train",
-      "description": "I was writing a tiny website to display statistics of how much sponsored content a Youtube creator has over time when I noticed that",
-      "description_source": "description",
-      "query": "SQLite",
-      "description_truncated": true
+      "description": "I was writing a tiny website to display statistics of how much sponsored content a Youtube creator has over time when I noticed that I often write a small tool as a website that queries some data from a database and then displays it in a graph, a table, or similar. But if you want to use a",
+      "description_source": "metadata",
+      "query": "SQLite"
     },
     {
       "hn_id": 31318708,
@@ -824,10 +819,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Ben Johnson has joined Fly.io",
-      "description_source": "og:description",
-      "query": "SQLite",
-      "description_truncated": false
+      "description": "I’m Ben Johnson. I wrote BoltDB, an embedded database that is the backend for systems like etcd. Now I work at Fly.io, on Litestream. Litestream is an open-source project that makes SQLite tenable for full-stack applications through the power of ✨replication✨. If you can set up a SQLite database, you can get Litestream working in less than 10 minutes.",
+      "description_source": "body",
+      "query": "SQLite"
     },
     {
       "hn_id": 40206752,
@@ -839,10 +833,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "SQLite",
-      "description_truncated": false
+      "description": "A prepared statement is an object that represents the steps needed to accomplish the input SQL. Or, to think of it in another way, the prepared statement is the SQL statement translated into a form that is more easily understood by the computer.",
+      "description_source": "body",
+      "query": "SQLite"
     },
     {
       "hn_id": 31824030,
@@ -855,9 +848,8 @@
       ],
       "split": "train",
       "description": "I figured out how to run a SQL query directly against a CSV file using the sqlite3 command-line utility:",
-      "description_source": "og:description",
-      "query": "SQLite",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "SQLite"
     },
     {
       "hn_id": 27482243,
@@ -869,10 +861,10 @@
         "software"
       ],
       "split": "train",
-      "description": "It's a common architecture to have PostgreSQL and Redis serve as the backbone of your app, but PostgreSQL may be capable of everything you",
-      "description_source": "og:description",
+      "description": "It's a common architecture to have PostgreSQL and Redis serve as the backbone of your app, but PostgreSQL may be capable of everything you use Redis for.",
+      "description_source": "metadata",
       "query": "PostgreSQL",
-      "description_truncated": true
+      "description_final_url": "https://spin.atomicobject.com/redis-postgresql/"
     },
     {
       "hn_id": 36393030,
@@ -885,9 +877,9 @@
       ],
       "split": "train",
       "description": "In the fast-moving open-source world, programs can come and go quickly; a tool that has many us [...]",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "PostgreSQL",
-      "description_truncated": false
+      "description_final_url": "https://lwn.net/Articles/934940/"
     },
     {
       "hn_id": 39048317,
@@ -900,9 +892,8 @@
       ],
       "split": "train",
       "description": "GOV.UK Notify recently migrated our production database. Find out how we did it with the least possible disruption to our users.",
-      "description_source": "description",
-      "query": "PostgreSQL",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "PostgreSQL"
     },
     {
       "hn_id": 45516000,
@@ -914,10 +905,9 @@
         "software"
       ],
       "split": "train",
-      "description": "84 million requests a second means even rare bugs appear often. We'll reveal how we discovered a race condition in the Go arm64 compiler",
-      "description_source": "og:description",
-      "query": "compiler",
-      "description_truncated": true
+      "description": "84 million requests a second means even rare bugs appear often. We'll reveal how we discovered a race condition in the Go arm64 compiler and got it fixed.",
+      "description_source": "metadata",
+      "query": "compiler"
     },
     {
       "hn_id": 31052029,
@@ -929,10 +919,9 @@
         "software"
       ],
       "split": "train",
-      "description": "$ zig build -Denable-llvm $ zig2 build -p build-stage3 $ cat a.zig const std = @import(\"std\"); pub fn main() void { const stderr =",
-      "description_source": "og:description",
-      "query": "compiler",
-      "description_truncated": true
+      "description": "$ zig build -Denable-llvm $ zig2 build -p build-stage3 $ cat a.zig const std = @import(&quot;std&quot;); pub fn main() void { const stderr = std.io.getStdErr(); stderr.writeAll(&quot;Hello,...",
+      "description_source": "metadata",
+      "query": "compiler"
     },
     {
       "hn_id": 37383913,
@@ -947,7 +936,7 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "compiler",
-      "description_truncated": false
+      "description_review": "omit"
     },
     {
       "hn_id": 36064971,
@@ -959,10 +948,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "compiler",
-      "description_truncated": false
+      "description": "SectorC (github) is a C compiler written in x86-16 assembly that fits within the 512 byte boot sector of an x86 machine. It supports a subset of C that is large enough to write real and interesting programs. It is quite likely the smallest C compiler ever written.",
+      "description_source": "body",
+      "query": "compiler"
     },
     {
       "hn_id": 31993429,
@@ -974,10 +962,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Bundle, install, and run JavaScript & TypeScript — all in Bun. Bun is a fast JavaScript runtime & toolkit with a bundler, test runner,",
-      "description_source": "og:description",
-      "query": "JavaScript",
-      "description_truncated": true
+      "description": "Bundle, install, and run JavaScript & TypeScript — all in Bun. Bun is a fast JavaScript runtime & toolkit with a bundler, test runner, and npm-compatible package manager built in.",
+      "description_source": "metadata",
+      "query": "JavaScript"
     },
     {
       "hn_id": 42876840,
@@ -989,10 +976,9 @@
         "software"
       ],
       "split": "train",
-      "description": "A new way to handle dates and times is being added to JavaScript. Let's take a look at Temporal, what problems it solves, the",
-      "description_source": "og:description",
-      "query": "JavaScript",
-      "description_truncated": true
+      "description": "A new way to handle dates and times is being added to JavaScript. Let's take a look at Temporal, what problems it solves, the current state, and what you'll find in the new documentation about it on MDN.",
+      "description_source": "metadata",
+      "query": "JavaScript"
     },
     {
       "hn_id": 39629044,
@@ -1004,10 +990,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "JavaScript",
-      "description_truncated": false
+      "description": "Illustrations by various artists: Cover by Péchane Sumi-e. Chapter illustrations by Madalina Tantareanu. Pixel art in Chapters 7 and 16 by Antonio Perdomo Pastor. Regular expression diagrams in Chapter 9 generated with regexper.com by Jeff Avallone. Game concept for Chapter 16 by Thomas Palef.",
+      "description_source": "body",
+      "query": "JavaScript"
     },
     {
       "hn_id": 34197379,
@@ -1019,10 +1004,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Transforming a SVG path into a rope drawing turned out to be a surprisingly fun problem to solve. I'll walk you through the process",
-      "description_source": "og:description",
-      "query": "JavaScript",
-      "description_truncated": true
+      "description": "Transforming a SVG path into a rope drawing turned out to be a surprisingly fun problem to solve. I'll walk you through the process and show you a few tricks that made it work.",
+      "description_source": "metadata",
+      "query": "JavaScript"
     },
     {
       "hn_id": 34088398,
@@ -1034,10 +1018,9 @@
         "software"
       ],
       "split": "train",
-      "description": "New zine: The Pocket Guide to Debugging",
-      "description_source": "description",
-      "query": "debugging",
-      "description_truncated": false
+      "description": "I wrote this zine because debugging is a huge part of how we spend our time as programmers, but nobody teaches us how to do it! If you’re lucky, you get to pair program with someone who’s good at debugging and explaining their thought processes, and they can show you. But not all of us have that person, so we end up just struggling through it ourselves and learning strategies the hard way.",
+      "description_source": "body",
+      "query": "debugging"
     },
     {
       "hn_id": 43081713,
@@ -1050,9 +1033,8 @@
       ],
       "split": "train",
       "description": "This app has a surprising number of anti-debugging protections. Let's figure out how to bypass them.",
-      "description_source": "og:description",
-      "query": "debugging",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "debugging"
     },
     {
       "hn_id": 26925570,
@@ -1064,10 +1046,10 @@
         "software"
       ],
       "split": "train",
-      "description": "Trying out this newsletter thing... It's sort of astonishing to think about how much value I've gotten from Twitter over the last few years.",
-      "description_source": "og:description",
+      "description": "Trying out this newsletter thing... It's sort of astonishing to think about how much value I've gotten from Twitter over the last few years. At its best, my...",
+      "description_source": "metadata",
       "query": "debugging",
-      "description_truncated": true
+      "description_final_url": "https://buttondown.com/geoffreylitt/archive/starting-this-newsletter-print-debugging-byoc/"
     },
     {
       "hn_id": 34414193,
@@ -1080,9 +1062,8 @@
       ],
       "split": "train",
       "description": "Automated testing of software is great. Unfortunately, what's commonly considered best practice for how to integrate testing into the develo...",
-      "description_source": "og:description",
-      "query": "software testing",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "software testing"
     },
     {
       "hn_id": 33708867,
@@ -1094,10 +1075,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "omitted_after_review",
-      "query": "software testing",
-      "description_truncated": false
+      "description": "If you've used emulators for older platforms, you probably experienced a level of precise control over software execution that we lack on contemporary platforms.",
+      "description_source": "metadata",
+      "query": "software testing"
     },
     {
       "hn_id": 25648919,
@@ -1109,10 +1089,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Combinatorial methods reduce costs for testing, and have important applications in software engineering: Combinatorial or t-way testing is a proven method for better testing",
-      "description_source": "og:description",
-      "query": "software testing",
-      "description_truncated": true
+      "description": "Combinatorial methods reduce costs for testing, and have important applications in software engineering: Combinatorial or t-way testing is a proven method for better testing at lower cost. The key insight underlying its effectiveness resulted from a...",
+      "description_source": "metadata",
+      "query": "software testing"
     },
     {
       "hn_id": 40466868,
@@ -1125,9 +1104,8 @@
       ],
       "split": "train",
       "description": "The motivation for shifting testing left is a software release cycle in deadlock, developers forced to context switch and a glacial development velocity.",
-      "description_source": "og:description",
-      "query": "software testing",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "software testing"
     },
     {
       "hn_id": 47687273,
@@ -1139,10 +1117,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Five git log commands that diagnose a new codebase before you open a single file: code churn hotspots, bus factor, bug clusters, and crisis",
-      "description_source": "og:description",
-      "query": "Git",
-      "description_truncated": true
+      "description": "Five git log commands that diagnose a new codebase before you open a single file: code churn hotspots, bus factor, bug clusters, and crisis patterns.",
+      "description_source": "metadata",
+      "query": "Git"
     },
     {
       "hn_id": 39232976,
@@ -1154,10 +1131,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "programming language",
-      "description_truncated": false
+      "description": "When thinking about configuration, it is common to think of static languages like JSON, YAML, or Property Lists. While these languages have their own merits, they tend to fall short when configuration grows in complexity. For example, their lack of expressivity means that code often gets repeated. Additionally, it can be easy to make configuration errors, because these formats do not provide any validation of their own.",
+      "description_source": "body",
+      "query": "programming language"
     },
     {
       "hn_id": 28198641,
@@ -1169,10 +1145,9 @@
         "software"
       ],
       "split": "train",
-      "description": "Alda is a text-based programming language for music composition. It allows you to write and play back music using only a text editor and",
-      "description_source": "og:description",
-      "query": "programming language",
-      "description_truncated": true
+      "description": "Alda is a text-based programming language for music composition. It allows you to write and play back music using only a text editor and the command line.",
+      "description_source": "metadata",
+      "query": "programming language"
     },
     {
       "hn_id": 36517525,
@@ -1184,10 +1159,9 @@
         "software"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "programming language",
-      "description_truncated": false
+      "description": "The book is now available on paper and electronically. We are continuing to add material that we hope will be of interest -- historical documents, bits of code, and occasional essays on Awk and related topics.",
+      "description_source": "body",
+      "query": "programming language"
     },
     {
       "hn_id": 32081808,
@@ -1200,9 +1174,9 @@
       ],
       "split": "train",
       "description": "A few weird ideas for programming languages I came up with that it'd be \"really\" \"cool\" if someone made (wink)",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "programming language",
-      "description_truncated": false
+      "description_final_url": "https://buttondown.com/hillelwayne/archive/six-programming-languages-id-like-to-see/"
     },
     {
       "hn_id": 49724881,
@@ -1214,10 +1188,14 @@
         "software"
       ],
       "split": "evaluation",
-      "description": "In September 2026, NVIDIA announced it is leaning into native GPU programming in Rust. CUDA C++ and CUDA Python are mature, enterprise-grade toolchains, and",
-      "description_source": "og:description",
+      "description": "In September 2026, NVIDIA announced it is leaning into native GPU programming in Rust. CUDA C++ and CUDA Python are mature, enterprise-grade toolchains, and NVIDIA will be growing and maturing CUDA…",
+      "description_source": "metadata",
       "query": "Rust",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "software",
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 28300951,
@@ -1230,9 +1208,12 @@
       ],
       "split": "evaluation",
       "description": "Draw pretty maps from OpenStreetMap data! Built with osmnx +matplotlib + shapely - marceloprates/prettymaps",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Python",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49272832,
@@ -1245,9 +1226,12 @@
       ],
       "split": "evaluation",
       "description": "Tailscale and SQLite developers traced maddening corruption incidents to find the WAL-Reset data race, then uncovered a second stale expression index bug.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "SQLite",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41657986,
@@ -1260,9 +1244,12 @@
       ],
       "split": "evaluation",
       "description": "The [PostgreSQL Global Development Group](https://www.postgresql.org) today announced the release of [PostgreSQL 17](https://www.postgresql.org/docs/17/release-17.html), the latest version of the world's most advanced …",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "PostgreSQL",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 35130975,
@@ -1274,10 +1261,13 @@
         "software"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "CS 6120 is a PhD-level Cornell CS course by Adrian Sampson on programming language implementation. It covers universal compilers topics like intermediate representations, data flow, and “classic” optimizations as well as more research-flavored topics such as parallelization, just-in-time compilation, and garbage collection. The work consists of reading papers and open-source hacking tasks, which use LLVM and an educational IR invented just for this class.",
+      "description_source": "body",
       "query": "compiler",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 38497445,
@@ -1290,9 +1280,12 @@
       ],
       "split": "evaluation",
       "description": "A collection of bad practices in HTML, copied from real websites.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "JavaScript",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29260464,
@@ -1304,10 +1297,13 @@
         "software"
       ],
       "split": "evaluation",
-      "description": "It’s not every day that you get to debug what may well be a packet of death. It was certainly the first time for",
-      "description_source": "og:description",
+      "description": "It’s not every day that you get to debug what may well be a packet of death. It was certainly the first time for me. What do I mean by “a packet of death”? A software bug where the network stack crashes in reaction to a single received network packet, taking down the whole operating system with it.",
+      "description_source": "metadata",
       "query": "debugging",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 27795061,
@@ -1319,10 +1315,14 @@
         "software"
       ],
       "split": "evaluation",
-      "description": "The conventional view of Software Testing The hardware and software worlds may seem poles apart, and in many ways, they indeed are. But there’s",
-      "description_source": "og:description",
+      "description": "The conventional view of Software Testing The hardware and software worlds may seem poles apart, and in many ways, they indeed are. But there’s a wealth of knowledge that each can learn from the ot…",
+      "description_source": "metadata",
       "query": "software testing",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "software",
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 33695886,
@@ -1336,8 +1336,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "CVE",
-      "description_truncated": false
+      "query": "CVE"
     },
     {
       "hn_id": 29604097,
@@ -1349,10 +1348,10 @@
         "security"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "The Logging Services Security Team takes security seriously. This allows our users to place their trust in Log4j for protecting their mission-critical data. On this page, we will help you find guidance on security-related issues and access to known vulnerabilities.",
+      "description_source": "body",
       "query": "CVE",
-      "description_truncated": false
+      "description_final_url": "https://logging.apache.org/security.html"
     },
     {
       "hn_id": 47936479,
@@ -1365,9 +1364,8 @@
       ],
       "split": "train",
       "description": "A CVSS 8.7 vulnerability in GitHub Enterprise Server allows remote code execution. Read the threat brief and find vulnerable GHES instances from Wiz.",
-      "description_source": "og:description",
-      "query": "CVE",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "CVE"
     },
     {
       "hn_id": 48112042,
@@ -1381,8 +1379,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "CVE",
-      "description_truncated": false
+      "query": "CVE"
     },
     {
       "hn_id": 27155497,
@@ -1396,8 +1393,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "ransomware",
-      "description_truncated": false
+      "query": "ransomware"
     },
     {
       "hn_id": 38352484,
@@ -1411,8 +1407,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "ransomware",
-      "description_truncated": false
+      "query": "ransomware"
     },
     {
       "hn_id": 31527446,
@@ -1424,10 +1419,10 @@
         "security"
       ],
       "split": "train",
-      "description": "Goodwill ransomware group propagates very unusual demands in exchange for the decryption key. The Robin Hood-like group is forcing its Victims to donate to",
-      "description_source": "og:description",
+      "description": "Goodwill ransomware group propagates very unusual demands in exchange for the decryption key. The Robin Hood-like group is forcing its Victims to donate to the poor and provides financial assistance to the patients in need.",
+      "description_source": "metadata",
       "query": "ransomware",
-      "description_truncated": true
+      "description_final_url": "https://www.cloudsek.com/threatintelligence/goodwill-ransomware-forces-victims-to-donate-to-the-poor-and-provides-financial-assistance-to-patients-in-need"
     },
     {
       "hn_id": 27750040,
@@ -1441,8 +1436,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "ransomware",
-      "description_truncated": false
+      "query": "ransomware"
     },
     {
       "hn_id": 39865810,
@@ -1456,8 +1450,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "backdoor",
-      "description_truncated": false
+      "query": "backdoor"
     },
     {
       "hn_id": 41818459,
@@ -1469,10 +1462,9 @@
         "security"
       ],
       "split": "train",
-      "description": "1 bug, $50,000+ in bounties, how Zendesk intentionally left a backdoor in hundreds of Fortune 500 companies - zendesk.md",
-      "description_source": "og:description",
-      "query": "backdoor",
-      "description_truncated": false
+      "description": "hi, i'm daniel. i'm a 15-year-old with some programming experience and i do a little bug hunting in my free time. here's the insane story of how I found a single bug that affected over half of all Fortune 500 companies:",
+      "description_source": "body",
+      "query": "backdoor"
     },
     {
       "hn_id": 48546294,
@@ -1486,8 +1478,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "backdoor",
-      "description_truncated": false
+      "query": "backdoor"
     },
     {
       "hn_id": 47755629,
@@ -1499,10 +1490,9 @@
         "security"
       ],
       "split": "train",
-      "description": "Last week, I wrote about catching a supply chain attack on a WordPress plugin called Widget Logic. A trusted name, acquired by a new",
-      "description_source": "og:description",
-      "query": "backdoor",
-      "description_truncated": true
+      "description": "Last week, I wrote about catching a supply chain attack on a WordPress plugin called Widget Logic. A trusted name, acquired by a new owner, turned into",
+      "description_source": "metadata",
+      "query": "backdoor"
     },
     {
       "hn_id": 40843778,
@@ -1516,8 +1506,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "OpenSSH",
-      "description_truncated": false
+      "query": "OpenSSH"
     },
     {
       "hn_id": 44863242,
@@ -1529,10 +1518,10 @@
         "security"
       ],
       "split": "train",
-      "description": "OpenSSH post quantum cryptography",
-      "description_source": "description",
+      "description": "OpenSSH has offered post-quantum key agreement (KexAlgorithms) by default since release 9.0 (April 2022), initially via the sntrup761x25519-sha512 algorithm. More recently, in OpenSSH 9.9, we have added a second post-quantum key agreement mlkem768x25519-sha256 and it was made the new default scheme in OpenSSH 10.0 (April 2025).",
+      "description_source": "body",
       "query": "OpenSSH",
-      "description_truncated": false
+      "description_final_url": "https://www.openssh.org/pq.html"
     },
     {
       "hn_id": 29865876,
@@ -1544,10 +1533,10 @@
         "security"
       ],
       "split": "train",
-      "description": "OpenSSH agent restriction",
-      "description_source": "description",
+      "description": "The OpenSSH SSH protocol implementation includes the ssh-agent authentication agent. This tool supports two overlapping uses: a safe runtime store for unwrapped private keys, removing the need to enter a passphrase for each use, and a way to forward access to private keys to remote hosts, without exposing the private keys themselves.",
+      "description_source": "body",
       "query": "OpenSSH",
-      "description_truncated": false
+      "description_final_url": "https://www.openssh.org/agent-restrict.html"
     },
     {
       "hn_id": 36790196,
@@ -1560,9 +1549,8 @@
       ],
       "split": "train",
       "description": "CVE-2023-38408 is a remote code execution flaw in OpenSSH’s forwarded ssh-agent. Get full exploit details, impact analysis, and Qualys detection guidance.",
-      "description_source": "og:description",
-      "query": "OpenSSH",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "OpenSSH"
     },
     {
       "hn_id": 28637276,
@@ -1576,8 +1564,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "vulnerability",
-      "description_truncated": false
+      "query": "vulnerability"
     },
     {
       "hn_id": 29407636,
@@ -1590,9 +1577,9 @@
       ],
       "split": "train",
       "description": "Posted by Tavis Ormandy, Project Zero Introduction This is an unusual blog post. I normally wri...",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "vulnerability",
-      "description_truncated": false
+      "description_final_url": "https://projectzero.google/2021/12/this-shouldnt-have-happened.html"
     },
     {
       "hn_id": 27285700,
@@ -1605,9 +1592,8 @@
       ],
       "split": "train",
       "description": "M1RACLES (CVE-2021-30747) is a covert channel vulnerability in the Apple Silicon “M1” chip.",
-      "description_source": "twitter:description",
-      "query": "vulnerability",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "vulnerability"
     },
     {
       "hn_id": 40791829,
@@ -1620,9 +1606,8 @@
       ],
       "split": "train",
       "description": "The new Chinese owner of the popular Polyfill JS project injects malware into more than 100 thousand sites.",
-      "description_source": "og:description",
-      "query": "supply chain attack",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "supply chain attack"
     },
     {
       "hn_id": 38969533,
@@ -1634,10 +1619,9 @@
         "security"
       ],
       "split": "train",
-      "description": "Security tends to lag behind adoption, and AI/ML is no exception. Four months ago, Adnan Khan and I exploited a critical CI/CD vulnerability in",
-      "description_source": "og:description",
-      "query": "supply chain attack",
-      "description_truncated": true
+      "description": "Security tends to lag behind adoption, and AI/ML is no exception. Four months ago, Adnan Khan and I exploited a critical CI/CD vulnerability in PyTorch, one of the world’s leading ML platform…",
+      "description_source": "metadata",
+      "query": "supply chain attack"
     },
     {
       "hn_id": 46878338,
@@ -1649,10 +1633,10 @@
         "security"
       ],
       "split": "train",
-      "description": "Kaspersky GReAT experts discovered previously undocumented infection chains used in the Notepad++ supply chain attacks. The article provides new IoCs related to those incidents",
-      "description_source": "og:description",
+      "description": "Kaspersky GReAT experts discovered previously undocumented infection chains used in the Notepad++ supply chain attacks. The article provides new IoCs related to those incidents which employ DLL sideloading and Cobalt Strike Beacon delivery.",
+      "description_source": "metadata",
       "query": "supply chain attack",
-      "description_truncated": true
+      "description_final_url": "https://securelist.com/tr/notepad-supply-chain-attack/120106/"
     },
     {
       "hn_id": 30869261,
@@ -1665,9 +1649,8 @@
       ],
       "split": "train",
       "description": "Go tooling and design help mitigate supply chain attacks at various stages.",
-      "description_source": "og:description",
-      "query": "supply chain attack",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "supply chain attack"
     },
     {
       "hn_id": 42259278,
@@ -1680,9 +1663,8 @@
       ],
       "split": "train",
       "description": "Tools for controlling webcam LED on ThinkPad X230. Contribute to xairy/lights-out development by creating an account on GitHub.",
-      "description_source": "og:description",
-      "query": "malware",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "malware"
     },
     {
       "hn_id": 33823946,
@@ -1696,8 +1678,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "malware",
-      "description_truncated": false
+      "query": "malware"
     },
     {
       "hn_id": 26970395,
@@ -1710,9 +1691,9 @@
       ],
       "split": "train",
       "description": "Cybersecurity firm Kaspersky said today it discovered new malware that appears to have been developed by the US Central Intelligence Agency.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "malware",
-      "description_truncated": false
+      "description_final_url": "https://therecord.media/security-firm-kaspersky-believes-it-found-new-cia-malware"
     },
     {
       "hn_id": 30071098,
@@ -1724,10 +1705,9 @@
         "security"
       ],
       "split": "train",
-      "description": "Zhengbang ZB3245 review. We bought a Zhengbang Pick & Place machine and this page tells you all about our experience of setting up and",
-      "description_source": "og:description",
-      "query": "malware",
-      "description_truncated": true
+      "description": "Zhengbang ZB3245 review. We bought a Zhengbang Pick & Place machine and this page tells you all about our experience of setting up and using.",
+      "description_source": "metadata",
+      "query": "malware"
     },
     {
       "hn_id": 26863907,
@@ -1740,9 +1720,8 @@
       ],
       "split": "train",
       "description": "Bucking a major trend, company speaks out against the age-old practice.",
-      "description_source": "og:description",
-      "query": "password",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "password"
     },
     {
       "hn_id": 28267975,
@@ -1754,10 +1733,9 @@
         "security"
       ],
       "split": "train",
-      "description": "A Pluggable Authentication Module (PAM) which allows the establishment of alternate passwords that can be used to perform actions to clear sensitive data, notify",
-      "description_source": "og:description",
-      "query": "password",
-      "description_truncated": true
+      "description": "A Pluggable Authentication Module (PAM) which allows the establishment of alternate passwords that can be used to perform actions to clear sensitive data, notify IT/Security staff, close off sensit...",
+      "description_source": "metadata",
+      "query": "password"
     },
     {
       "hn_id": 39144906,
@@ -1769,10 +1747,9 @@
         "security"
       ],
       "split": "train",
-      "description": "Playing Chess is one of the many hobbies I like to do in my spare time, apart from tinkering around with technology. However, I'm",
-      "description_source": "og:description",
-      "query": "XSS",
-      "description_truncated": true
+      "description": "Playing Chess is one of the many hobbies I like to do in my spare time, apart from tinkering around with technology. However, I'm not very good at it, and after losing many games, I decided to see if I could do something I'm much better at; hacking the system!",
+      "description_source": "metadata",
+      "query": "XSS"
     },
     {
       "hn_id": 40278874,
@@ -1785,9 +1762,8 @@
       ],
       "split": "train",
       "description": "A simple XSS in Google application",
-      "description_source": "og:description",
-      "query": "XSS",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "XSS"
     },
     {
       "hn_id": 27591657,
@@ -1802,7 +1778,8 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "XSS",
-      "description_truncated": false
+      "description_final_url": "https://portswigger.net/",
+      "description_review": "omit"
     },
     {
       "hn_id": 37425007,
@@ -1814,10 +1791,10 @@
         "security"
       ],
       "split": "train",
-      "description": "Citizen Lab found an actively exploited zero-click vulnerability being used to deliver NSO Group’s Pegasus mercenary spyware while checking the device of an individual",
-      "description_source": "og:description",
+      "description": "Citizen Lab found an actively exploited zero-click vulnerability being used to deliver NSO Group’s Pegasus mercenary spyware while checking the device of an individual employed by a Washington DC-based civil society organization with international offices. We refer to the exploit chain as BLASTPASS. The exploit chain was capable of compromising iPhones running the latest version of iOS (16.6) without any interaction from the victim.",
+      "description_source": "metadata",
       "query": "exploit",
-      "description_truncated": true
+      "description_final_url": "https://citizenlab.ca/blastpass-nso-group-iphone-zero-click-zero-day-exploit-captured-in-the-wild/"
     },
     {
       "hn_id": 29568625,
@@ -1830,9 +1807,9 @@
       ],
       "split": "train",
       "description": "Posted by Ian Beer & Samuel Groß of Google Project Zero We want to thank Citizen Lab ...",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "exploit",
-      "description_truncated": false
+      "description_final_url": "https://projectzero.google/2021/12/a-deep-dive-into-nso-zero-click.html"
     },
     {
       "hn_id": 44953032,
@@ -1847,7 +1824,8 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "exploit",
-      "description_truncated": false
+      "description_final_url": "https://kudelskisecurity.com/research-blog",
+      "description_review": "omit"
     },
     {
       "hn_id": 47062748,
@@ -1860,9 +1838,12 @@
       ],
       "split": "evaluation",
       "description": "The Stable channel has been updated to 145.0.7632.75/76 for Windows/Mac and 145.0.7632.75 for Linux, which will roll out over the coming d...",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "CVE",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47660954,
@@ -1877,7 +1858,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "ransomware",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37570407,
@@ -1890,9 +1874,15 @@
       ],
       "split": "evaluation",
       "description": "New leak from the Snowden documents.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "backdoor",
-      "description_truncated": false
+      "description_final_url": "https://x.com/matthew_d_green/status/1703959863796158678",
+      "acceptable_category_ids": [
+        "security",
+        "hardware",
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41508530,
@@ -1905,9 +1895,12 @@
       ],
       "split": "evaluation",
       "description": "A disclosure for an OpenSSH keystroke obfuscation bypass affecting current OpenSSH versions after 9.4.",
-      "description_source": "description",
+      "description_source": "metadata",
       "query": "OpenSSH",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 46971516,
@@ -1922,7 +1915,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "vulnerability",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43527044,
@@ -1934,10 +1930,13 @@
         "security"
       ],
       "split": "evaluation",
-      "description": "An exposed GitHub token could have been used to launch a supply chain attack on GitHub CodeQL, resulting in source code exposure and repository",
-      "description_source": "og:description",
+      "description": "An exposed GitHub token could have been used to launch a supply chain attack on GitHub CodeQL, resulting in source code exposure and repository tampering of CodeQL users.",
+      "description_source": "metadata",
       "query": "supply chain attack",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 45038653,
@@ -1950,9 +1949,13 @@
       ],
       "split": "evaluation",
       "description": "What is s1ngularity-repository? Nx is compromised and the malware steals wallets and API keys using Claude CLI or Gemini.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "malware",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "security",
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49835996,
@@ -1964,10 +1967,13 @@
         "security"
       ],
       "split": "evaluation",
-      "description": "A wormable vulnerability allowed anyone able to inject text in a build log on builds.sr.ht (or other instances) to take over accounts who viewed",
-      "description_source": "og:description",
+      "description": "A wormable vulnerability allowed anyone able to inject text in a build log on builds.sr.ht (or other instances) to take over accounts who viewed them",
+      "description_source": "metadata",
       "query": "XSS",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47225130,
@@ -1979,10 +1985,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Bank details, sex and naked people who seem unaware they are being recorded. Behind Meta’s new smart glasses lies a hidden workforce, uneasy about",
-      "description_source": "og:description",
-      "query": "privacy",
-      "description_truncated": true
+      "description": "Bank details, sex and naked people who seem unaware they are being recorded. Behind Meta’s new smart glasses lies a hidden workforce, uneasy about peering into the most intimate parts of other people’s lives.",
+      "description_source": "metadata",
+      "query": "privacy"
     },
     {
       "hn_id": 26539673,
@@ -1994,10 +1999,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "We are pleased to announce that Firefox 87 will introduce a stricter, more privacy-preserving default Referrer Policy. From now on, by default, Firefox will",
-      "description_source": "og:description",
-      "query": "privacy",
-      "description_truncated": true
+      "description": "We are pleased to announce that Firefox 87 will introduce a stricter, more privacy-preserving default Referrer Policy. From now on, by default, Firefox will trim path and query string ...",
+      "description_source": "metadata",
+      "query": "privacy"
     },
     {
       "hn_id": 43040521,
@@ -2009,10 +2013,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Today we are announcing a new privacy feature coming to Kagi Search. Privacy Pass is an authentication protocol first introduced by Davidson et al.,",
-      "description_source": "og:description",
-      "query": "privacy",
-      "description_truncated": true
+      "description": "Today we are announcing a new privacy feature coming to Kagi Search. Privacy Pass is an authentication protocol first introduced by Davidson et al., in [1], and recently standardized by the IETF as RFCs [2—4]. Our...",
+      "description_source": "metadata",
+      "query": "privacy"
     },
     {
       "hn_id": 34626395,
@@ -2024,10 +2027,10 @@
         "privacy"
       ],
       "split": "train",
-      "description": "The European Commission is currently in the process of enacting a law called Chat control. If the law goes into effect, it will mean",
-      "description_source": "og:description",
+      "description": "The European Commission is currently in the process of enacting a law called Chat control. If the law goes into effect, it will mean that all EU citizens' communications will be monitored and listened to.",
+      "description_source": "metadata",
       "query": "surveillance",
-      "description_truncated": true
+      "description_final_url": "https://mullvad.net/nl/blog/2023/2/2/stop-the-proposal-on-mass-surveillance-of-the-eu"
     },
     {
       "hn_id": 49710883,
@@ -2039,10 +2042,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "This essay was written with Cindy Cohn, and originally appeared in Lawfare. One of the many legacies of the terrorist attacks of Sept. 11",
-      "description_source": "og:description",
-      "query": "surveillance",
-      "description_truncated": true
+      "description": "This essay was written with Cindy Cohn, and originally appeared in Lawfare. One of the many legacies of the terrorist attacks of Sept. 11 is the government-wide shift from targeted surveillance—such as individual wiretaps or pen register/trap and trace orders—to mass surveillance techniques—such as tapping into the internet backbone or mass collection of telephone or internet metadata. The legal and technical architecture of modern mass surveillance, initially framed as a necessary defense against terrorist threats, has grown far beyond that justification and national security in general.…",
+      "description_source": "metadata",
+      "query": "surveillance"
     },
     {
       "hn_id": 47023238,
@@ -2054,10 +2056,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Just a decade after a global backlash was triggered by Snowden reporting on mass domestic surveillance, the state-corporate dragnet is stronger and more invasive",
-      "description_source": "og:description",
-      "query": "surveillance",
-      "description_truncated": true
+      "description": "Just a decade after a global backlash was triggered by Snowden reporting on mass domestic surveillance, the state-corporate dragnet is stronger and more invasive than ever.",
+      "description_source": "metadata",
+      "query": "surveillance"
     },
     {
       "hn_id": 45373564,
@@ -2069,10 +2070,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Exclusive: Tech firm ends military unit’s access to AI and data services after Guardian reveals secret spy project",
-      "description_source": "og:description",
-      "query": "surveillance",
-      "description_truncated": false
+      "description": "Microsoft has terminated the Israeli military’s access to technology it used to operate a powerful surveillance system that collected millions of Palestinian civilian phone calls made each day in Gaza and the West Bank, the Guardian can reveal.",
+      "description_source": "body",
+      "query": "surveillance"
     },
     {
       "hn_id": 47689237,
@@ -2085,9 +2085,9 @@
       ],
       "split": "train",
       "description": "Flock cameras and sound detectors are spreading through cities, often followed by outcry and lawsuits. Here's what this technology actually does.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "surveillance",
-      "description_truncated": false
+      "description_final_url": "https://www.cnet.com/home/security/when-flock-comes-to-town-how-these-ai-cameras-work-and-what-to-do-about-them/"
     },
     {
       "hn_id": 44561736,
@@ -2099,10 +2099,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "For many years, data brokers have existed in the shadows, exploiting gaps in privacy laws to harvest our information—all for their own profit. They",
-      "description_source": "og:description",
-      "query": "data broker",
-      "description_truncated": true
+      "description": "For many years, data brokers have existed in the shadows, exploiting gaps in privacy laws to harvest our information—all for their own profit. They sell our precise movements without our knowledge or meaningful consent to a variety of private and state actors, including law enforcement agencies....",
+      "description_source": "metadata",
+      "query": "data broker"
     },
     {
       "hn_id": 46495220,
@@ -2115,9 +2114,8 @@
       ],
       "split": "train",
       "description": "The free and fast tool that helps Californians delete the information data brokers have about them.",
-      "description_source": "og:description",
-      "query": "data broker",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "data broker"
     },
     {
       "hn_id": 39274631,
@@ -2129,10 +2127,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Today, Mozilla Monitor (previously called Firefox Monitor), a free service that notifies you when your email has been part of a breach, announced its",
-      "description_source": "og:description",
-      "query": "data broker",
-      "description_truncated": true
+      "description": "Today, Mozilla Monitor (previously called Firefox Monitor), a free service that notifies you when your email has been part of a breach, announced its new p",
+      "description_source": "metadata",
+      "query": "data broker"
     },
     {
       "hn_id": 40012466,
@@ -2145,9 +2142,9 @@
       ],
       "split": "train",
       "description": "Could have been worse – last time researchers checked it was 98.6%",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "data broker",
-      "description_truncated": false
+      "description_final_url": "https://www.theregister.com/security/2024/04/11/hospital-websites-share-visitors-data-with-google-meta/369214"
     },
     {
       "hn_id": 37265346,
@@ -2162,7 +2159,7 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "data broker",
-      "description_truncated": false
+      "description_review": "omit"
     },
     {
       "hn_id": 33897793,
@@ -2174,10 +2171,10 @@
         "privacy"
       ],
       "split": "train",
-      "description": "iCloud uses strong security methods, employs strict policies to protect your information, and leads the industry in using privacy-preserving security technologies like end-to-end encryption",
-      "description_source": "og:description",
+      "description": "iCloud uses strong security methods, employs strict policies to protect your information, and leads the industry in using privacy-preserving security technologies like end-to-end encryption for your data.",
+      "description_source": "metadata",
       "query": "end-to-end encryption",
-      "description_truncated": true
+      "description_final_url": "https://support.apple.com/en-us/102651"
     },
     {
       "hn_id": 36035641,
@@ -2189,10 +2186,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "In response to an EU proposal to scan private messages for illegal material, the country's officials said it is “imperative that we have access",
-      "description_source": "og:description",
-      "query": "end-to-end encryption",
-      "description_truncated": true
+      "description": "In response to an EU proposal to scan private messages for illegal material, the country's officials said it is “imperative that we have access to the data.”",
+      "description_source": "metadata",
+      "query": "end-to-end encryption"
     },
     {
       "hn_id": 42284412,
@@ -2205,9 +2201,9 @@
       ],
       "split": "train",
       "description": "A privacy-preserving Raspberry Pi home security camera that uses advanced end-to-end encryption. - secluso/core",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "end-to-end encryption",
-      "description_truncated": false
+      "description_final_url": "https://github.com/secluso/core"
     },
     {
       "hn_id": 42734478,
@@ -2219,10 +2215,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Recently I came across a fantastic new paper by a group of NYU and Cornell researchers entitled “How to think about end-to-end encryption and",
-      "description_source": "og:description",
-      "query": "end-to-end encryption",
-      "description_truncated": true
+      "description": "Recently I came across a fantastic new paper by a group of NYU and Cornell researchers entitled “How to think about end-to-end encryption and AI.” I’m extremely grateful to see th…",
+      "description_source": "metadata",
+      "query": "end-to-end encryption"
     },
     {
       "hn_id": 34066965,
@@ -2234,10 +2229,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "facial recognition",
-      "description_truncated": false
+      "description": "A recent incident at Radio City Music Hall involving the mother of a Girl Scout is shedding light on the growing controversy of facial recognition, as critics claim it is being used to target perceived enemies — in this case, by one of the most famous companies in the country.",
+      "description_source": "metadata",
+      "query": "facial recognition"
     },
     {
       "hn_id": 45780228,
@@ -2250,9 +2244,8 @@
       ],
       "split": "train",
       "description": "Photos captured by Mobile Fortify will be stored for 15 years, regardless of immigration or citizenship status, the document says.",
-      "description_source": "og:description",
-      "query": "facial recognition",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "facial recognition"
     },
     {
       "hn_id": 47591104,
@@ -2265,9 +2258,8 @@
       ],
       "split": "train",
       "description": "OkCupid and Match settle with Trump FTC, don't have to pay any financial penalty.",
-      "description_source": "og:description",
-      "query": "facial recognition",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "facial recognition"
     },
     {
       "hn_id": 41111145,
@@ -2280,9 +2272,8 @@
       ],
       "split": "train",
       "description": "Attorney General Ken Paxton sued the Facebook parent company in 2022, claiming it had used personal biometric data without permission.",
-      "description_source": "og:description",
-      "query": "facial recognition",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "facial recognition"
     },
     {
       "hn_id": 42909921,
@@ -2295,9 +2286,8 @@
       ],
       "split": "train",
       "description": "How I tracked myself down using leaked location data in the in-app ads, and what I found along the way.",
-      "description_source": "og:description",
-      "query": "tracking",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "tracking"
     },
     {
       "hn_id": 36243955,
@@ -2310,9 +2300,8 @@
       ],
       "split": "train",
       "description": "iOS 17 and macOS Sonoma include even more privacy-preserving features while browsing the web. Link Tracking Protection is a new...",
-      "description_source": "og:description",
-      "query": "tracking",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "tracking"
     },
     {
       "hn_id": 27047243,
@@ -2324,10 +2313,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "ClearURLs is an add-on based on the new WebExtensions technology and will automatically remove tracking elements from URLs to help protect your privacy. -",
-      "description_source": "og:description",
-      "query": "tracking",
-      "description_truncated": true
+      "description": "ClearURLs is an add-on based on the new WebExtensions technology and will automatically remove tracking elements from URLs to help protect your privacy. - ClearURLs/Addon",
+      "description_source": "metadata",
+      "query": "tracking"
     },
     {
       "hn_id": 39444500,
@@ -2339,10 +2327,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Signal’s mission and sole focus is private communication. For years, Signal has kept your messages private, your profile information (like your name and profile",
-      "description_source": "og:description",
-      "query": "Signal",
-      "description_truncated": true
+      "description": "Signal’s mission and sole focus is private communication. For years, Signal has kept your messages private, your profile information (like your name and profile photo) private, your contacts private, and your groups private – among much else. Now we’re taking that one step further, by making your...",
+      "description_source": "metadata",
+      "query": "Signal"
     },
     {
       "hn_id": 29042603,
@@ -2355,9 +2342,8 @@
       ],
       "split": "train",
       "description": "Signal still knows nothing about you, but inexplicably the government continues to ask.",
-      "description_source": "og:description",
-      "query": "Signal",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Signal"
     },
     {
       "hn_id": 45170515,
@@ -2369,10 +2355,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "In the past, if you broke or lost your phone, your Signal message history was gone. This has been a challenge for people whose",
-      "description_source": "og:description",
-      "query": "Signal",
-      "description_truncated": true
+      "description": "In the past, if you broke or lost your phone, your Signal message history was gone. This has been a challenge for people whose most important conversations happen on Signal. Think family photos, sweet messages, important documents, or anything else you don’t want to lose forever. This explains wh...",
+      "description_source": "metadata",
+      "query": "Signal"
     },
     {
       "hn_id": 26237404,
@@ -2385,9 +2370,8 @@
       ],
       "split": "train",
       "description": "Total Cookie Protection is a major anti-tracking advance in Firefox that confines cookies to the site where they were created.",
-      "description_source": "og:description",
-      "query": "cookies",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "cookies"
     },
     {
       "hn_id": 50048642,
@@ -2399,10 +2383,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "cookies",
-      "description_truncated": false
+      "description": "You're protected from the methods I use here. You disabled JavaScript, so this fingerprinting trick can't run at all. You're still vulnerable to network-based methods. Read on to see what it does to everyone else.",
+      "description_source": "body",
+      "query": "cookies"
     },
     {
       "hn_id": 28129032,
@@ -2414,10 +2397,9 @@
         "privacy"
       ],
       "split": "train",
-      "description": "We are pleased to announce a new, major privacy enhancement to Firefox’s cookie handling that lets you fully erase your browser history for any",
-      "description_source": "og:description",
-      "query": "cookies",
-      "description_truncated": true
+      "description": "We are pleased to announce a new, major privacy enhancement to Firefox’s cookie handling that lets you fully erase your browser history for any website. Today’s new version of Firefox ...",
+      "description_source": "metadata",
+      "query": "cookies"
     },
     {
       "hn_id": 29396643,
@@ -2432,7 +2414,7 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "metadata",
-      "description_truncated": false
+      "description_review": "omit"
     },
     {
       "hn_id": 30082138,
@@ -2444,10 +2426,10 @@
         "privacy"
       ],
       "split": "train",
-      "description": "More fun publisher surveillance: Elsevier embeds a hash in the PDF metadata that is *unique for each time a PDF is downloaded*, this is",
-      "description_source": "og:description",
+      "description": "More fun publisher surveillance: Elsevier embeds a hash in the PDF metadata that is *unique for each time a PDF is downloaded*, this is a diff between metadata from two of the same paper. Combined with access timestamps, they can uniquely identify the source of any shared PDFs.",
+      "description_source": "metadata",
       "query": "metadata",
-      "description_truncated": true
+      "description_final_url": "https://x.com/json_dirs/status/1486120144141123584"
     },
     {
       "hn_id": 26639261,
@@ -2459,10 +2441,10 @@
         "privacy"
       ],
       "split": "train",
-      "description": "Academic research published last week looked at the telemetry traffic sent by modern iOS and Android devices back to Apple and Google servers and",
-      "description_source": "og:description",
+      "description": "Academic research published last week looked at the telemetry traffic sent by modern iOS and Android devices back to Apple and Google servers and found that Google collects around 20 times more telemetry data from Android devices than Apple from iOS.",
+      "description_source": "metadata",
       "query": "telemetry",
-      "description_truncated": true
+      "description_final_url": "https://therecord.media/google-collects-20-times-more-telemetry-from-android-devices-than-apple-from-ios"
     },
     {
       "hn_id": 28869462,
@@ -2475,9 +2457,9 @@
       ],
       "split": "train",
       "description": "Removes account requirements and telemetry from Oculus Quest devices - ptrpaws/Oculess",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "telemetry",
-      "description_truncated": false
+      "description_final_url": "https://github.com/ptrpaws/Oculess"
     },
     {
       "hn_id": 35691383,
@@ -2491,8 +2473,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "telemetry",
-      "description_truncated": false
+      "query": "telemetry"
     },
     {
       "hn_id": 38429370,
@@ -2504,10 +2485,13 @@
         "privacy"
       ],
       "split": "evaluation",
-      "description": "When it comes to most secure browsers, Firefox and its LibreWolf fork are the best alternatives to Chrome on our list - and, no,",
-      "description_source": "og:description",
+      "description": "When it comes to most secure browsers, Firefox and its LibreWolf fork are the best alternatives to Chrome on our list - and, no, incognito mode doesn't cut it.",
+      "description_source": "metadata",
       "query": "privacy",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 27878659,
@@ -2520,9 +2504,13 @@
       ],
       "split": "evaluation",
       "description": "Our investigation shows how repressive regimes can buy and use the kind of spying tools Edward Snowden warned us about",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "surveillance",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "privacy",
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 38990755,
@@ -2537,7 +2525,11 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "data broker",
-      "description_truncated": false
+      "description_review": "omit",
+      "acceptable_category_ids": [
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 48069192,
@@ -2549,10 +2541,14 @@
         "privacy"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "'Very few people were opting in to end-to-end encrypted messaging in DMs,' Meta says.",
+      "description_source": "metadata",
       "query": "end-to-end encryption",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "privacy",
+        "security"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 44962771,
@@ -2565,9 +2561,12 @@
       ],
       "split": "evaluation",
       "description": "The Home Depot customer says he noticed the camera at a recent trip to the store.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "facial recognition",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 26328758,
@@ -2580,9 +2579,14 @@
       ],
       "split": "evaluation",
       "description": "Pitches pro-privacy platform with customizable results filter dubbed Goggles",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "tracking",
-      "description_truncated": false
+      "description_final_url": "https://www.theregister.com/software/2021/03/03/brave-buys-a-search-engine-promises-no-tracking-no-profiling-and-may-even-offer-a-paid-for-no-ad-version/321637",
+      "acceptable_category_ids": [
+        "privacy",
+        "business"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 39742578,
@@ -2597,7 +2601,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "cookies",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47862331,
@@ -2612,7 +2619,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "telemetry",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "privacy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 48505231,
@@ -2625,9 +2635,8 @@
       ],
       "split": "train",
       "description": "New CRISPR Technique Selectively Shreds Cancer Cells, Including “Undruggable” Cancers - Innovative Genomics Institute (IGI)",
-      "description_source": "og:description",
-      "query": "CRISPR",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "CRISPR"
     },
     {
       "hn_id": 33554141,
@@ -2639,10 +2648,10 @@
         "science"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "‘Most complicated therapy ever’ tailors bespoke, genome-edited immune cells to attack tumours.",
+      "description_source": "metadata",
       "query": "CRISPR",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/d41586-022-03676-7?error=cookies_not_supported&code=a46a6ffa-0b0c-472b-8bf6-e32d50b553f2"
     },
     {
       "hn_id": 27643517,
@@ -2654,10 +2663,9 @@
         "science"
       ],
       "split": "train",
-      "description": "Scientists successfully treated a rare disease with the experimental gene-editing technique. It could open the door to new ways of treating more common disorders",
-      "description_source": "og:description",
-      "query": "CRISPR",
-      "description_truncated": true
+      "description": "Scientists successfully treated a rare disease with the experimental gene-editing technique. It could open the door to new ways of treating more common disorders in the future.",
+      "description_source": "metadata",
+      "query": "CRISPR"
     },
     {
       "hn_id": 31695881,
@@ -2669,10 +2677,9 @@
         "science"
       ],
       "split": "train",
-      "description": "A new CRISPR-based map ties every human gene to its function using a tool called Perturb-seq. The work was led by Jonathan Weissman and",
-      "description_source": "og:description",
-      "query": "CRISPR",
-      "description_truncated": true
+      "description": "A new CRISPR-based map ties every human gene to its function using a tool called Perturb-seq. The work was led by Jonathan Weissman and colleagues at MIT and the Whitehead Institute, and is free for other scientists to use.",
+      "description_source": "metadata",
+      "query": "CRISPR"
     },
     {
       "hn_id": 33971377,
@@ -2684,10 +2691,9 @@
         "science"
       ],
       "split": "train",
-      "description": "The U.S. Department of Energy (DOE) and DOE’s National Nuclear Security Administration (NNSA) today announced the achievement of fusion ignition at Lawrence Livermore National",
-      "description_source": "og:description",
-      "query": "fusion",
-      "description_truncated": true
+      "description": "The U.S. Department of Energy (DOE) and DOE’s National Nuclear Security Administration (NNSA) today announced the achievement of fusion ignition at Lawrence Livermore National Laboratory (LLNL)—a major scientific breakthrough decades in the making.",
+      "description_source": "metadata",
+      "query": "fusion"
     },
     {
       "hn_id": 28462151,
@@ -2699,10 +2705,9 @@
         "science"
       ],
       "split": "train",
-      "description": "For the first time, a large high-temperature superconducting electromagnet was ramped to a field strength of 20 tesla, the most powerful magnetic field of",
-      "description_source": "og:description",
-      "query": "fusion",
-      "description_truncated": true
+      "description": "For the first time, a large high-temperature superconducting electromagnet was ramped to a field strength of 20 tesla, the most powerful magnetic field of its kind ever created. The demonstration helps resolve the greatest uncertainty in the quest to build the first fusion power plant that can produce more energy than it consumes, according to project leaders at MIT and startup Commonwealth Fusion Systems (CFS).",
+      "description_source": "metadata",
+      "query": "fusion"
     },
     {
       "hn_id": 32755893,
@@ -2716,8 +2721,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "fusion",
-      "description_truncated": false
+      "query": "fusion"
     },
     {
       "hn_id": 43093939,
@@ -2729,10 +2733,9 @@
         "science"
       ],
       "split": "train",
-      "description": "​On 12 February, the CEA’s WEST machine was able to maintain a plasma for more than 22 minutes. In doing so, it smashed the",
-      "description_source": "og:description",
-      "query": "fusion",
-      "description_truncated": true
+      "description": "​On 12 February, the CEA’s WEST machine was able to maintain a plasma for more than 22 minutes. In doing so, it smashed the previous record for plasma duration achieved with a tokamak. This leap forward demonstrates how our knowledge of plasmas and technological control of them over longer periods is becoming more mature, and offers hope that fusion plasmas can be stabilised for greater amounts of time in machines such as ITER.",
+      "description_source": "metadata",
+      "query": "fusion"
     },
     {
       "hn_id": 42367649,
@@ -2745,9 +2748,9 @@
       ],
       "split": "train",
       "description": "Our new quantum chip demonstrates error correction and performance that paves the way to a useful, large-scale quantum computer.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "quantum",
-      "description_truncated": false
+      "description_final_url": "https://blog.google/innovation-and-ai/technology/research/google-willow-quantum-chip/"
     },
     {
       "hn_id": 43104071,
@@ -2760,9 +2763,8 @@
       ],
       "split": "train",
       "description": "Majorana 1 from Microsoft is the world’s first Quantum Processing Unit (QPU) built with a topoconductor. Discover more.",
-      "description_source": "og:description",
-      "query": "quantum",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "quantum"
     },
     {
       "hn_id": 50219666,
@@ -2776,8 +2778,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "quantum",
-      "description_truncated": false
+      "query": "quantum"
     },
     {
       "hn_id": 42037386,
@@ -2790,9 +2791,8 @@
       ],
       "split": "train",
       "description": "Stanford researchers hope new technique will flip lymphoma protein's normal action - from preventing cell death to triggering it.",
-      "description_source": "og:description",
-      "query": "protein",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "protein"
     },
     {
       "hn_id": 40366443,
@@ -2805,9 +2805,8 @@
       ],
       "split": "train",
       "description": "Study identifies 618 proteins linked to 19 types of cancer, which could lead to much earlier detection",
-      "description_source": "og:description",
-      "query": "protein",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "protein"
     },
     {
       "hn_id": 48542132,
@@ -2819,10 +2818,9 @@
         "science"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "protein",
-      "description_truncated": false
+      "description": "Monash University researchers have found in laboratory experiments that a drug which delivers copper to the brain significantly reduces toxic Alzheimer’s proteins and improves long-term spatial memory.",
+      "description_source": "metadata",
+      "query": "protein"
     },
     {
       "hn_id": 36813564,
@@ -2834,10 +2832,10 @@
         "science"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "Abnormal levels of certain proteins — many of which have roles outside the brain — could be an early hallmark of Alzheimer’s disease or similar conditions.",
+      "description_source": "metadata",
       "query": "protein",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/d41586-023-02374-2?error=cookies_not_supported&code=e3e46922-e71b-4b74-85c8-504485f5e171"
     },
     {
       "hn_id": 28764416,
@@ -2850,9 +2848,8 @@
       ],
       "split": "train",
       "description": "It is possible to compute over encrypted data without access to the secret key: https://en.wikipedia.org/wiki/Homomorphic_encryption",
-      "description_source": "og:description",
-      "query": "physics",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "physics"
     },
     {
       "hn_id": 49976265,
@@ -2863,11 +2860,14 @@
       "category_ids": [
         "science"
       ],
-      "split": "train",
-      "description": "The Nobel Prize in Physics 2026 was awarded to Francis Halzen \"for decisive contributions to the IceCube Neutrino Observatory and the discovery of high-energy",
-      "description_source": "og:description",
+      "split": "evaluation",
+      "description": "The Nobel Prize in Physics 2026 was awarded to Francis Halzen \"for decisive contributions to the IceCube Neutrino Observatory and the discovery of high-energy neutrinos of astrophysical origin\"",
+      "description_source": "metadata",
       "query": "physics",
-      "description_truncated": true
+      "description_final_url": "https://www.nobelprize.org/prizes/physics/2026/summary/",
+      "acceptable_category_ids": [
+        "science"
+      ]
     },
     {
       "hn_id": 32035054,
@@ -2880,9 +2880,8 @@
       ],
       "split": "train",
       "description": "In biology class, biology wasn't presented as a quest for the secrets of life. The textbooks wrung out the questing.",
-      "description_source": "og:description",
-      "query": "biology",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "biology"
     },
     {
       "hn_id": 45300865,
@@ -2895,9 +2894,8 @@
       ],
       "split": "train",
       "description": "Iberian harvester ant queens produce offspring of their own species and of the builder harvester ant, seemingly by cloning males",
-      "description_source": "og:description",
-      "query": "biology",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "biology"
     },
     {
       "hn_id": 47846718,
@@ -2910,9 +2908,8 @@
       ],
       "split": "train",
       "description": "The bacterial flagellar motor is finally understood after 50 years. In its workings, columnist Natalie Wolchover finds the essence of life.",
-      "description_source": "og:description",
-      "query": "biology",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "biology"
     },
     {
       "hn_id": 47957714,
@@ -2926,8 +2923,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "biology",
-      "description_truncated": false
+      "query": "biology"
     },
     {
       "hn_id": 45265745,
@@ -2936,13 +2932,13 @@
       "url": "https://www.gavi.org/vaccineswork/denmark-close-wiping-out-leading-cancer-causing-hpv-strains-after-vaccine-roll-out",
       "posted_at": "2025-09-16T18:12:29Z",
       "category_ids": [
-        "science"
+        "science",
+        "health"
       ],
       "split": "train",
-      "description": "A nationwide study suggests infections with human papillomavirus (HPV) types 16 and 18 have been virtually eliminated since vaccination began in 2008 – protecting",
-      "description_source": "og:description",
-      "query": "cancer",
-      "description_truncated": true
+      "description": "A nationwide study suggests infections with human papillomavirus (HPV) types 16 and 18 have been virtually eliminated since vaccination began in 2008 – protecting even unvaccinated women.",
+      "description_source": "metadata",
+      "query": "cancer"
     },
     {
       "hn_id": 33939491,
@@ -2955,9 +2951,8 @@
       ],
       "split": "train",
       "description": "New way of altering DNA is used to engineer an \"exciting\", experimental therapy for a 13-year-old girl.",
-      "description_source": "og:description",
-      "query": "cancer",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "cancer"
     },
     {
       "hn_id": 33517520,
@@ -2970,9 +2965,9 @@
       ],
       "split": "train",
       "description": "Bidding farewell to classic experiments.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "chemistry",
-      "description_truncated": false
+      "description_final_url": "https://blog.coredump.cx/p/a-requiem-for-amateur-chemistry"
     },
     {
       "hn_id": 41067616,
@@ -2985,9 +2980,8 @@
       ],
       "split": "train",
       "description": "Even unstimulating coffee has stimulating chemistry.",
-      "description_source": "og:description",
-      "query": "chemistry",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "chemistry"
     },
     {
       "hn_id": 31653887,
@@ -2999,10 +2993,9 @@
         "science"
       ],
       "split": "train",
-      "description": "Researchers in Australia have been able to use trace amounts of liquid platinum to create cheap and highly efficient chemical reactions at low temperatures,",
-      "description_source": "og:description",
-      "query": "chemistry",
-      "description_truncated": true
+      "description": "Researchers in Australia have been able to use trace amounts of liquid platinum to create cheap and highly efficient chemical reactions at low temperatures, opening a pathway to dramatic emissions reductions in crucial industries.",
+      "description_source": "metadata",
+      "query": "chemistry"
     },
     {
       "hn_id": 28771079,
@@ -3015,9 +3008,8 @@
       ],
       "split": "train",
       "description": "The Nobel Prize in Chemistry 2021 was awarded jointly to Benjamin List and David W.C. MacMillan \"for the development of asymmetric organocatalysis\"",
-      "description_source": "og:description",
-      "query": "chemistry",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "chemistry"
     },
     {
       "hn_id": 41630907,
@@ -3030,9 +3022,8 @@
       ],
       "split": "train",
       "description": "But neurons don’t take averages. This ubiquitous practice hides from us how the brain really works.",
-      "description_source": "og:description",
-      "query": "neuroscience",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "neuroscience"
     },
     {
       "hn_id": 43342407,
@@ -3044,10 +3035,9 @@
         "science"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "neuroscience",
-      "description_truncated": false
+      "description": "The cellular biology of brains is relatively well-understood, but neuroscientists have not yet generated a theory explaining how brains work. Explanations of how neurons collectively operate to produce what brains can do are tentative and ...",
+      "description_source": "metadata",
+      "query": "neuroscience"
     },
     {
       "hn_id": 35711317,
@@ -3059,10 +3049,9 @@
         "science"
       ],
       "split": "train",
-      "description": "Researchers found that female mice, despite ongoing hormonal fluctuations, exhibit exploratory behavior that is more stable than that of their male peers, countering the",
-      "description_source": "og:description",
-      "query": "neuroscience",
-      "description_truncated": true
+      "description": "Researchers found that female mice, despite ongoing hormonal fluctuations, exhibit exploratory behavior that is more stable than that of their male peers, countering the belief that the hormone cycle in females causes behavioral variation that could throw off results.",
+      "description_source": "metadata",
+      "query": "neuroscience"
     },
     {
       "hn_id": 34892044,
@@ -3076,8 +3065,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "neuroscience",
-      "description_truncated": false
+      "query": "neuroscience"
     },
     {
       "hn_id": 37149349,
@@ -3089,10 +3077,10 @@
         "science"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "Efforts to replicate the material have pieced together the puzzle of why it displayed superconducting-like behaviours.",
+      "description_source": "metadata",
       "query": "superconductor",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/d41586-023-02585-7?error=cookies_not_supported&code=72981363-a845-4c7d-b108-28dceb97f22b"
     },
     {
       "hn_id": 36881808,
@@ -3106,8 +3094,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "superconductor",
-      "description_truncated": false
+      "query": "superconductor"
     },
     {
       "hn_id": 42367290,
@@ -3120,9 +3107,8 @@
       ],
       "split": "train",
       "description": "Three new species of superconductivity were spotted this year, illustrating the myriad ways electrons can join together to form a frictionless quantum soup.",
-      "description_source": "og:description",
-      "query": "superconductor",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "superconductor"
     },
     {
       "hn_id": 43311610,
@@ -3134,10 +3120,9 @@
         "science"
       ],
       "split": "train",
-      "description": "A team of engineers and physicists at Southern University of Science and Technology, in China, has created a nickel-based material that behaves as a",
-      "description_source": "og:description",
-      "query": "superconductor",
-      "description_truncated": true
+      "description": "A team of engineers and physicists at Southern University of Science and Technology, in China, has created a nickel-based material that behaves as a superconductor above the -233°C (40 K) threshold under ambient pressure. In their study published in Nature, the researchers synthesized thin films of bilayer nickelate (La₂.₈₅Pr₀.₁₅Ni₂O₇) and found one that behaved as a high-temperature superconductor.",
+      "description_source": "metadata",
+      "query": "superconductor"
     },
     {
       "hn_id": 38571956,
@@ -3150,9 +3135,13 @@
       ],
       "split": "evaluation",
       "description": "The FDA has approved the world’s first medicine based on CRISPR gene-editing technology, a groundbreaking treatment for sickle cell disease.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "CRISPR",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "science",
+        "health"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 28840066,
@@ -3165,9 +3154,13 @@
       ],
       "split": "evaluation",
       "description": "Ignition is a key process that amplifies the energy output from nuclear fusion and could provide clean energy and answer some huge physics questions.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "fusion",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "science",
+        "energy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 45670443,
@@ -3180,9 +3173,14 @@
       ],
       "split": "evaluation",
       "description": "Our latest quantum breakthrough, Quantum Echoes, offers a path toward unprecedented scientific discoveries and analysis.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "quantum",
-      "description_truncated": false
+      "description_final_url": "https://blog.google/innovation-and-ai/technology/research/quantum-echoes-willow-verifiable-quantum-advantage/",
+      "acceptable_category_ids": [
+        "science",
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 41786101,
@@ -3194,10 +3192,14 @@
         "science"
       ],
       "split": "evaluation",
-      "description": "The Nobel Prize in Chemistry 2024 was divided, one half awarded to David Baker \"for computational protein design\", the other half jointly to Demis",
-      "description_source": "og:description",
+      "description": "The Nobel Prize in Chemistry 2024 was divided, one half awarded to David Baker \"for computational protein design\", the other half jointly to Demis Hassabis and John Jumper \"for protein structure prediction\"",
+      "description_source": "metadata",
       "query": "protein",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "science",
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40626332,
@@ -3210,9 +3212,12 @@
       ],
       "split": "evaluation",
       "description": "how developmental biology might contain the secrets to life, intelligence, and immortality",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "biology",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 45514164,
@@ -3225,9 +3230,12 @@
       ],
       "split": "evaluation",
       "description": "The Nobel Prize in Chemistry 2025 was awarded jointly to Susumu Kitagawa, Richard Robson and Omar M. Yaghi \"for the development of metal–organic frameworks\"",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "chemistry",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40778655,
@@ -3239,10 +3247,15 @@
         "science"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "The field is taking a leap forward thanks to innovative technologies, such as artificial intelligence. Researchers must improve consent procedures and public involvement.",
+      "description_source": "metadata",
       "query": "neuroscience",
-      "description_truncated": false
+      "description_final_url": "https://www.nature.com/articles/d41586-024-02022-3?error=cookies_not_supported&code=2819c338-5730-439f-95d0-5ec86ff30388",
+      "acceptable_category_ids": [
+        "science",
+        "health"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 38212538,
@@ -3257,7 +3270,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "superconductor",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 29854460,
@@ -3270,9 +3286,9 @@
       ],
       "split": "train",
       "description": "NASA’s James Webb Space Telescope team fully deployed its 21-foot, gold-coated primary mirror, successfully completing the final stage of all major spacecraft",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "James Webb",
-      "description_truncated": false
+      "description_final_url": "https://www.nasa.gov/news-release/nasas-webb-telescope-reaches-major-milestone-as-mirror-unfolds/"
     },
     {
       "hn_id": 34360010,
@@ -3286,8 +3302,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "James Webb",
-      "description_truncated": false
+      "query": "James Webb"
     },
     {
       "hn_id": 38695337,
@@ -3299,10 +3314,10 @@
         "space"
       ],
       "split": "train",
-      "description": "NASA’s James Webb Space Telescope recently trained its sights on unusual and enigmatic Uranus, an ice giant that spins on its side. Webb captured",
-      "description_source": "og:description",
+      "description": "NASA’s James Webb Space Telescope recently trained its sights on unusual and enigmatic Uranus, an ice giant that spins on its side. Webb captured this dynamic",
+      "description_source": "metadata",
       "query": "James Webb",
-      "description_truncated": true
+      "description_final_url": "https://science.nasa.gov/missions/webb/nasas-webb-rings-in-holidays-with-ringed-planet-uranus/"
     },
     {
       "hn_id": 35874704,
@@ -3316,8 +3331,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "James Webb",
-      "description_truncated": false
+      "query": "James Webb"
     },
     {
       "hn_id": 38640900,
@@ -3329,10 +3343,10 @@
         "space"
       ],
       "split": "train",
-      "description": "NASA’s 46-year-old Voyager 1 spacecraft has experienced a computer glitch that prevents it from returning science data to Earth from the solar system’s outer",
-      "description_source": "og:description",
+      "description": "NASA’s 46-year-old Voyager 1 spacecraft has experienced a computer glitch that prevents it from returning science data to Earth from the solar system’s outer reaches.",
+      "description_source": "metadata",
       "query": "Voyager",
-      "description_truncated": true
+      "description_final_url": "https://edition.cnn.com/2023/12/13/world/voyager-1-computer-issue-scn/index.html"
     },
     {
       "hn_id": 40561872,
@@ -3346,8 +3360,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "Voyager",
-      "description_truncated": false
+      "query": "Voyager"
     },
     {
       "hn_id": 42107078,
@@ -3360,9 +3373,8 @@
       ],
       "split": "train",
       "description": "The farthest spacecraft in the universe went momentarily rogue, but scientists breathed a sigh of relief when it reconnected at an unexpected radio frequency",
-      "description_source": "og:description",
-      "query": "Voyager",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Voyager"
     },
     {
       "hn_id": 31779964,
@@ -3375,9 +3387,8 @@
       ],
       "split": "train",
       "description": "The pioneering probes are still running after nearly 45 years in space, but they will soon lose some of their instruments",
-      "description_source": "og:description",
-      "query": "Voyager",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Voyager"
     },
     {
       "hn_id": 26323852,
@@ -3390,9 +3401,8 @@
       ],
       "split": "train",
       "description": "Amazing images as Nasa's Perseverance rover lands on Mars and seeks signs of past microbial life.",
-      "description_source": "og:description",
-      "query": "NASA",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "NASA"
     },
     {
       "hn_id": 33427157,
@@ -3405,9 +3415,8 @@
       ],
       "split": "train",
       "description": "While mapping minerals in Earth’s deserts, the agency's new detector on the ISS spotted massive contributors to climate change",
-      "description_source": "og:description",
-      "query": "NASA",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "NASA"
     },
     {
       "hn_id": 47704804,
@@ -3419,10 +3428,9 @@
         "space"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "NASA",
-      "description_truncated": false
+      "description": "The computer system aboard the current Artemis II lunar space mission is from a different world that the one from the Apollo era. Apollo astronauts navigated to the lunar surface using a computer with a 1-MHz processor and roughly 4 kilobytes of erasable memory, supported by a larger store of fixed “rope” memory. While it was a marvel of 1960s engineering, the Apollo Guidance Computer’s functional scope was focused and not in the control loop for every system. Critical environmental and power controls were managed through manual or electromechanical means, such as switches and relays.",
+      "description_source": "body",
+      "query": "NASA"
     },
     {
       "hn_id": 35640002,
@@ -3434,10 +3442,9 @@
         "space"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "Starship",
-      "description_truncated": false
+      "description": "SpaceX’s giant new rocket exploded minutes after blasting off on its first test flight and crashed into the Gulf of Mexico. Elon Musk’s company was aiming to send the nearly 400-foot (120-meter) Starship rocket on a round-the-world trip from the southern tip of Texas, near the Mexican border. It carried no people or satellites. SpaceX plans to use Starship to send people and cargo to the moon and, ultimately, Mars. A stuck valve scrapped Monday's try. Throngs of spectators watched from several miles away from the Boca Chica Beach launch site, which was off-limits.",
+      "description_source": "metadata",
+      "query": "Starship"
     },
     {
       "hn_id": 39702568,
@@ -3452,7 +3459,7 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "Starship",
-      "description_truncated": false
+      "description_review": "omit"
     },
     {
       "hn_id": 48242959,
@@ -3464,10 +3471,9 @@
         "space"
       ],
       "split": "train",
-      "description": "Starship is back.",
-      "description_source": "og:description",
-      "query": "Starship",
-      "description_truncated": false
+      "description": "Space Get the Space.com Newsletter Breaking space news, the latest updates on rocket launches, skywatching events and more! Become a Member in Seconds Unlock instant access to exclusive member features. Contact me with news and offers from other Future brands Receive email from us on behalf of our trusted partners or sponsors By submitting your information you agree to the Terms & Conditions and Privacy Policy and are aged 16 or over. You are now subscribed Your newsletter sign-up was successful Want to add more newsletters? Delivered daily Daily Newsletter Breaking space news, the latest…",
+      "description_source": "body",
+      "query": "Starship"
     },
     {
       "hn_id": 38452959,
@@ -3480,9 +3486,8 @@
       ],
       "split": "train",
       "description": "Some mistakes feel worse than death.",
-      "description_source": "og:description",
-      "query": "Mars",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Mars"
     },
     {
       "hn_id": 34213549,
@@ -3494,10 +3499,9 @@
         "space"
       ],
       "split": "train",
-      "description": "It's slow, expensive, the engineering is mostly port-a-potty chemistry, and the best-case outcome is that thirty years from now we’ll get to watch someone",
-      "description_source": "twitter:description",
-      "query": "Mars",
-      "description_truncated": true
+      "description": "It's slow, expensive, the engineering is mostly port-a-potty chemistry, and the best-case outcome is that thirty years from now we’ll get to watch someone remotely operate a soil scoop from Mars instead of Pasadena",
+      "description_source": "metadata",
+      "query": "Mars"
     },
     {
       "hn_id": 27161524,
@@ -3510,9 +3514,8 @@
       ],
       "split": "train",
       "description": "The six-wheeled robot has made the hazardous descent to the surface of the Red Planet, China announces.",
-      "description_source": "og:description",
-      "query": "Mars",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Mars"
     },
     {
       "hn_id": 39134349,
@@ -3525,9 +3528,8 @@
       ],
       "split": "train",
       "description": "NASA’s history-making Ingenuity Mars Helicopter has ended its mission at the Red Planet after surpassing expectations and making dozens more flights than",
-      "description_source": "og:description",
-      "query": "Mars",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Mars"
     },
     {
       "hn_id": 42443229,
@@ -3540,9 +3542,8 @@
       ],
       "split": "train",
       "description": "Interactive article about the Moon",
-      "description_source": "og:description",
-      "query": "Moon",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Moon"
     },
     {
       "hn_id": 44266828,
@@ -3557,7 +3558,7 @@
       "description": "",
       "description_source": "unavailable",
       "query": "Moon",
-      "description_truncated": false
+      "description_final_url": "https://www.joshworth.com/dev/pixelspace/pixelspace_solarsystem.html"
     },
     {
       "hn_id": 43228816,
@@ -3569,10 +3570,10 @@
         "space"
       ],
       "split": "train",
-      "description": "A robotic lunar lander built by Texas-based Firefly has successfully landed on the moon, becoming only the second private-sector company ever to complete such",
-      "description_source": "og:description",
+      "description": "A robotic lunar lander built by Texas-based Firefly has successfully landed on the moon, becoming only the second private-sector company ever to complete such a feat.",
+      "description_source": "metadata",
       "query": "Moon",
-      "description_truncated": true
+      "description_final_url": "https://edition.cnn.com/science/live-news/moon-landing-blue-ghost-03-02-25/index.html"
     },
     {
       "hn_id": 26837004,
@@ -3584,10 +3585,9 @@
         "space"
       ],
       "split": "train",
-      "description": "The contract marks another major victory for the hard-charging company that vaults it to the top tier of the nation’s aerospace companies and solidifies",
-      "description_source": "og:description",
-      "query": "Moon",
-      "description_truncated": true
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Moon"
     },
     {
       "hn_id": 34383529,
@@ -3600,9 +3600,8 @@
       ],
       "split": "train",
       "description": "The mission, focused on the Didymos-Dimorphos binary asteroid system, proved that an asteroid’s orbit can be altered by kinetic impactor technology.",
-      "description_source": "og:description",
-      "query": "asteroid",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "asteroid"
     },
     {
       "hn_id": 37159680,
@@ -3615,9 +3614,9 @@
       ],
       "split": "train",
       "description": "New evidence suggests the world’s largest known asteroid impact structure is buried near the New South Wales town of Deniliquin.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "asteroid",
-      "description_truncated": false
+      "description_final_url": "https://www.australiangeographic.com.au/news/2023/08/asteroid-crater-520km-in-diameter-buried-deep-in-southeast-australia/"
     },
     {
       "hn_id": 31637664,
@@ -3629,10 +3628,10 @@
         "space"
       ],
       "split": "train",
-      "description": "More than 20 types of amino acids have been detected in samples Japan's Hayabusa2 space probe brought to Earth from an asteroid in late",
-      "description_source": "og:description",
+      "description": "More than 20 types of amino acids have been detected in samples Japan's Hayabusa2 space probe brought to Earth from an asteroid in late 2020, a government official said Monday, showing for the first time the organic compounds exist on asteroids in space.",
+      "description_source": "metadata",
       "query": "asteroid",
-      "description_truncated": true
+      "description_final_url": "https://english.kyodonews.net/articles/-/34225"
     },
     {
       "hn_id": 47411480,
@@ -3644,10 +3643,9 @@
         "space"
       ],
       "split": "train",
-      "description": "All the essential ingredients to make the DNA and RNA underpinning life on Earth have been discovered in samples collected from the asteroid Ryugu,",
-      "description_source": "og:description",
-      "query": "asteroid",
-      "description_truncated": true
+      "description": "All the essential ingredients to make the DNA and RNA underpinning life on Earth have been discovered in samples collected from the asteroid Ryugu, scientists said Monday.",
+      "description_source": "metadata",
+      "query": "asteroid"
     },
     {
       "hn_id": 39673087,
@@ -3659,10 +3657,9 @@
         "space"
       ],
       "split": "train",
-      "description": "Webb measurements shed new light on a decade-long mysteryThe rate at which the Universe is expanding, known as the Hubble constant, is one of",
-      "description_source": "og:description",
-      "query": "Hubble",
-      "description_truncated": true
+      "description": "Webb measurements shed new light on a decade-long mysteryThe rate at which the Universe is expanding, known as the Hubble constant, is one of the fundamental parameters for understanding the evolution and ultimate fate of the cosmos. However, a persistent difference, called the Hubble Tension, is seen between the value of the constant measured with a wide range of independent distance indicators and its value predicted from the afterglow of the Big Bang. The NASA/ESA/CSA James Webb Space Telescope has confirmed that the Hubble Space Telescope’s keen eye was right all along, erasing any…",
+      "description_source": "metadata",
+      "query": "Hubble"
     },
     {
       "hn_id": 41234964,
@@ -3675,9 +3672,8 @@
       ],
       "split": "train",
       "description": "A long-awaited study of the cosmic expansion rate suggests that when it comes to the Hubble tension, cosmologists are still missing something.",
-      "description_source": "og:description",
-      "query": "Hubble",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Hubble"
     },
     {
       "hn_id": 35476359,
@@ -3689,10 +3685,10 @@
         "space"
       ],
       "split": "train",
-      "description": "There's an invisible monster on the loose, barreling through intergalactic space so fast that if it were in our solar system, it could travel",
-      "description_source": "og:description",
+      "description": "There's an invisible monster on the loose, barreling through intergalactic space so fast that if it were in our solar system, it could travel from Earth to",
+      "description_source": "metadata",
       "query": "Hubble",
-      "description_truncated": true
+      "description_final_url": "https://science.nasa.gov/missions/hubble/hubble-sees-possible-runaway-black-hole-creating-a-trail-of-stars/"
     },
     {
       "hn_id": 34408680,
@@ -3704,10 +3700,9 @@
         "space"
       ],
       "split": "train",
-      "description": "Black holes are gatherers, not hunters. They lie in wait until a hapless star wanders by. When the star gets close enough, the black",
-      "description_source": "og:description",
-      "query": "Hubble",
-      "description_truncated": true
+      "description": "Black holes are gatherers, not hunters. They lie in wait until a hapless star wanders by. When the star gets close enough, the black hole's gravitational grasp violently rips it apart and sloppily devours its gasses while belching out intense radiation.",
+      "description_source": "metadata",
+      "query": "Hubble"
     },
     {
       "hn_id": 38176750,
@@ -3719,10 +3714,9 @@
         "space"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "Euclid",
-      "description_truncated": false
+      "description": "Today, ESA’s Euclid space mission reveals its first full-colour images of the cosmos. Never before has a telescope been able to create such razor-sharp astronomical images across such a large patch of the sky, and looking so far into the distant Universe. These five images illustrate Euclid's full potential; they show that the telescope is ready to create the most extensive 3D map of the Universe yet, to uncover some of its hidden secrets.",
+      "description_source": "body",
+      "query": "Euclid"
     },
     {
       "hn_id": 43223596,
@@ -3734,10 +3728,9 @@
         "space"
       ],
       "split": "train",
-      "description": "Gravitational lenses are rare in the sky – galaxies bending the light-paths of light from other galaxies behind them to form distorted or even",
-      "description_source": "og:description",
-      "query": "Euclid",
-      "description_truncated": true
+      "description": "Gravitational lenses are rare in the sky – galaxies bending the light-paths of light from other galaxies behind them to form distorted or even multiple images. Even rarer is a perfect alignment of the two galaxies with us, the obervers, with the light being bent into a so-called Einstein Ring. And t",
+      "description_source": "metadata",
+      "query": "Euclid"
     },
     {
       "hn_id": 46806773,
@@ -3749,10 +3742,9 @@
         "space"
       ],
       "split": "train",
-      "description": "The first images from the Meteosat Third Generation-Sounder satellite have been shared at the European Space Conference in Brussels, showing how the mission will",
-      "description_source": "og:description",
-      "query": "satellite",
-      "description_truncated": true
+      "description": "The first images from the Meteosat Third Generation-Sounder satellite have been shared at the European Space Conference in Brussels, showing how the mission will provide data on temperature and humidity, for more accurate weather forecasting over Europe and northern Africa.",
+      "description_source": "metadata",
+      "query": "satellite"
     },
     {
       "hn_id": 32601873,
@@ -3766,8 +3758,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "satellite",
-      "description_truncated": false
+      "query": "satellite"
     },
     {
       "hn_id": 49209918,
@@ -3779,10 +3770,9 @@
         "space"
       ],
       "split": "train",
-      "description": "Live 3D flight tracking in the sky that's actually above you — aircraft, satellites and stars where they really are. A flight tracker you",
-      "description_source": "og:description",
-      "query": "satellite",
-      "description_truncated": true
+      "description": "Live 3D flight tracking in the sky that's actually above you — aircraft, satellites and stars where they really are. A flight tracker you can climb aboard.",
+      "description_source": "metadata",
+      "query": "satellite"
     },
     {
       "hn_id": 32071020,
@@ -3795,9 +3785,13 @@
       ],
       "split": "evaluation",
       "description": "Webb is the premier observatory of the next decade, serving thousands of astronomers worldwide. It studies every phase in the history of our Universe.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "James Webb",
-      "description_truncated": false
+      "description_final_url": "https://science.nasa.gov/mission/webb/",
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40687660,
@@ -3810,9 +3804,12 @@
       ],
       "split": "evaluation",
       "description": "The spacecraft has resumed full science operations after a technical issue began creating complications in November 2023.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Voyager",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37995119,
@@ -3825,9 +3822,13 @@
       ],
       "split": "evaluation",
       "description": "NASA just sent a critical software update to Voyager 2 and it took almost 18 hours to complete the upgrade.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "NASA",
-      "description_truncated": false
+      "description_final_url": "https://www.bgr.com/science/nasa-just-sent-a-software-update-to-a-spacecraft-12-billion-miles-away/",
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 42731091,
@@ -3842,7 +3843,11 @@
       "description": "",
       "description_source": "omitted_after_review",
       "query": "Starship",
-      "description_truncated": false
+      "description_review": "omit",
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 26294552,
@@ -3854,10 +3859,14 @@
         "space"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "Earth is the only planet in the solar system with aircraft capable of sustained flight. Suppose the ground-breaking Ingenuity helicopter, currently stowed aboard the similarly spectacular Mars Perseverance rover, accomplishes its planned mission. In that case, Mars will become the second planet to have a powered aircraft fly through its atmosphere.",
+      "description_source": "body",
       "query": "Mars",
-      "description_truncated": false
+      "description_final_url": "https://www.universetoday.com/articles/the-mars-helicopter-is-online-and-getting-ready-to-fly",
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47649721,
@@ -3870,9 +3879,12 @@
       ],
       "split": "evaluation",
       "description": "Astronauts on the Artemis II mission are on the third day of their journey around the far side of the Moon.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Moon",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49898778,
@@ -3884,10 +3896,13 @@
         "space"
       ],
       "split": "evaluation",
-      "description": "A live 3D map of the Solar System in your browser: planets, moons, asteroids, comets, the ISS and thousands of Earth satellites — right",
-      "description_source": "og:description",
+      "description": "A live 3D map of the Solar System in your browser: planets, moons, asteroids, comets, the ISS and thousands of Earth satellites — right where they are now. NASA JPL and CelesTrak data, updated daily.",
+      "description_source": "metadata",
       "query": "asteroid",
-      "description_truncated": true
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 40454383,
@@ -3900,9 +3915,12 @@
       ],
       "split": "evaluation",
       "description": "The first scientific pictures from the Euclid satellite mission have revealed more than 1,500 billion orphan stars scattered throughout the Perseus cluster of galaxies.",
-      "description_source": "description",
+      "description_source": "metadata",
       "query": "Euclid",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37685580,
@@ -3916,8 +3934,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "Raspberry Pi",
-      "description_truncated": false
+      "query": "Raspberry Pi"
     },
     {
       "hn_id": 43738561,
@@ -3930,9 +3947,8 @@
       ],
       "split": "train",
       "description": "an open-source, low-cost DIY 360° LiDAR scanner and panoramic 3D reconstruction system. - PiLiDAR/PiLiDAR",
-      "description_source": "og:description",
-      "query": "Raspberry Pi",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Raspberry Pi"
     },
     {
       "hn_id": 41138701,
@@ -3945,9 +3961,8 @@
       ],
       "split": "train",
       "description": "A handheld Linux terminal using Raspberry pi Zero 2W as Core with 4\" 720X720 TFT display - ZitaoTech/Hackberry-Pi_Zero",
-      "description_source": "og:description",
-      "query": "Raspberry Pi",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Raspberry Pi"
     },
     {
       "hn_id": 25885348,
@@ -3961,8 +3976,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "Raspberry Pi",
-      "description_truncated": false
+      "query": "Raspberry Pi"
     },
     {
       "hn_id": 25761469,
@@ -3976,8 +3990,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "RISC-V",
-      "description_truncated": false
+      "query": "RISC-V"
     },
     {
       "hn_id": 40718124,
@@ -3990,9 +4003,9 @@
       ],
       "split": "train",
       "description": "We’re excited to share a preview of a Framework Laptop 13 Mainboard with a new CPU architecture.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "RISC-V",
-      "description_truncated": false
+      "description_final_url": "https://frame.work/no/en/blog/introducing-a-new-risc-v-mainboard-from-deepcomputing"
     },
     {
       "hn_id": 37532397,
@@ -4004,10 +4017,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "RISC-V",
-      "description_truncated": false
+      "description": "Filip Szkandera spent two years designing and building a 32bit CPU utilising the RISC-V architecture. His CPU supports a RV32I standard, so it is compatible with available compilers. It runs at 500 kHz, has a 512 kB program memory and 512 kB RAM. It also features a simple B&W VGA card with resolution of 200x150 px, so we can connect an external monitor and display some simple graphics. He created a simple shell program, that let users interact with the CPU via a keyboard connected to one of the input ports. He made a prototype first, where all the necessary features were tested and debugged…",
+      "description_source": "body",
+      "query": "RISC-V"
     },
     {
       "hn_id": 30515014,
@@ -4019,10 +4031,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "RISC-V",
-      "description_truncated": false
+      "description": "Interest in this particular ISA is expanding, but the growth of other open-source hardware is less certain.",
+      "description_source": "metadata",
+      "query": "RISC-V"
     },
     {
       "hn_id": 40258037,
@@ -4035,9 +4046,8 @@
       ],
       "split": "train",
       "description": "For the last several decades, one avenue of technological progress has towered over nearly everything else: semiconductors.",
-      "description_source": "og:description",
-      "query": "semiconductor",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "semiconductor"
     },
     {
       "hn_id": 45949326,
@@ -4050,9 +4060,8 @@
       ],
       "split": "train",
       "description": "Britney Spears' Guide to Semiconductor Physics. Britney lectures on the semiconductor lasers and optoelectronic devices that make our lives easier.",
-      "description_source": "description",
-      "query": "semiconductor",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "semiconductor"
     },
     {
       "hn_id": 37047053,
@@ -4064,10 +4073,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "Hsinchu, Stuttgart, Munich, Eindhoven, Aug 8, 2023 – TSMC (TWSE: 2330, NYSE: TSM), Robert Bosch GmbH, Infineon Technologies AG (FSE: IFX / OTCQX: IFNNY),",
-      "description_source": "og:description",
-      "query": "semiconductor",
-      "description_truncated": true
+      "description": "",
+      "description_source": "unavailable",
+      "query": "semiconductor"
     },
     {
       "hn_id": 37062422,
@@ -4080,9 +4088,8 @@
       ],
       "split": "train",
       "description": "A technical explainer by @kognise of how your computer runs programs, from start to finish. - hackclub/putting-the-you-in-cpu",
-      "description_source": "og:description",
-      "query": "CPU",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "CPU"
     },
     {
       "hn_id": 27588258,
@@ -4095,9 +4102,8 @@
       ],
       "split": "train",
       "description": "The death of hardware store optimization.",
-      "description_source": "og:description",
-      "query": "CPU",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "CPU"
     },
     {
       "hn_id": 49420873,
@@ -4109,10 +4115,10 @@
         "hardware"
       ],
       "split": "train",
-      "description": "Xiaomi is the Chinese tech giant. Their phones compete with iPhones. Their new CPU roughly matches Apple cores on single threaded tasks, and is",
-      "description_source": "og:description",
+      "description": "Xiaomi is the Chinese tech giant. Their phones compete with iPhones. Their new CPU roughly matches Apple cores on single threaded tasks, and is much faster in multithreaded execution. Of course, Apple may soon announce their next processor, so this edge may not last long. And you may find it it di…",
+      "description_source": "metadata",
       "query": "CPU",
-      "description_truncated": true
+      "description_final_url": "https://x.com/lemire/status/2091894299289874926"
     },
     {
       "hn_id": 45559857,
@@ -4124,10 +4130,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "Full-throttle, wire-speed hardware implementation of Wireguard VPN, using low-cost Artix7 FPGA with opensource toolchain. If you seek security and privacy, nothing is private in",
-      "description_source": "og:description",
-      "query": "FPGA",
-      "description_truncated": true
+      "description": "Full-throttle, wire-speed hardware implementation of Wireguard VPN, using low-cost Artix7 FPGA with opensource toolchain. If you seek security and privacy, nothing is private in our codebase. Our d...",
+      "description_source": "metadata",
+      "query": "FPGA"
     },
     {
       "hn_id": 34022797,
@@ -4139,10 +4144,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "This post is going yet another part in the DIY camera projects which have been doing since quite some time. In this post I",
-      "description_source": "og:description",
-      "query": "FPGA",
-      "description_truncated": true
+      "description": "This post is going yet another part in the DIY camera projects which have been doing since quite some time. In this post I will showi...",
+      "description_source": "metadata",
+      "query": "FPGA"
     },
     {
       "hn_id": 39836745,
@@ -4156,8 +4160,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "FPGA",
-      "description_truncated": false
+      "query": "FPGA"
     },
     {
       "hn_id": 35804935,
@@ -4169,10 +4172,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "FPGA",
-      "description_truncated": false
+      "description": "FPGAs belong to a class of devices known as programmable logic, or sometimes referred to as programmable hardware. Essentially, an FPGA doesn’t do anything itself but it can be configured to be just about any digital circuit you want. The magic here is that nothing physically changes. You simply load a configuration into the FPGA and it starts behaving like the circuit you wanted. No soldering, no jumper wires, no fuss. An FPGA can then be reconfigured to behave like another circuit, and another, and another. The configuration is RAM based which means it can essentially be reconfigured an…",
+      "description_source": "body",
+      "query": "FPGA"
     },
     {
       "hn_id": 31344981,
@@ -4185,9 +4187,8 @@
       ],
       "split": "train",
       "description": "The first open-source release of GPU kernel modules for the Linux community helps improve NVIDIA GPU driver quality and security.",
-      "description_source": "og:description",
-      "query": "GPU",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "GPU"
     },
     {
       "hn_id": 33789940,
@@ -4199,10 +4200,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "Porting Linux to Apple Silicon",
-      "description_source": "twitter:description",
-      "query": "GPU",
-      "description_truncated": false
+      "description": "In order to handle all these moving parts in a reasonably safe way, modern GPU drivers are split into two parts: a user space driver and a kernel driver. The user space part is in charge of compiling shader programs and translating API calls (like OpenGL or Vulkan) into the specific command lists that the command processor will use to render the scene. Meanwhile, the kernel part is in charge of managing the MMU and handling memory allocation/deallocation from different apps, as well as deciding how and when to send their commands to the command processor. All modern GPU drivers work this way,…",
+      "description_source": "body",
+      "query": "GPU"
     },
     {
       "hn_id": 31367365,
@@ -4214,10 +4214,10 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "In late 2020, Apple debuted the M1 with Apple’s GPU architecture, AGX, rumoured to be derived from Imagination’s PowerVR series. Since then, we’ve been reverse-engineering AGX and building open source graphics drivers. Last January, I rendered a triangle with my own code, but there has since been a heinous bug lurking:",
+      "description_source": "body",
       "query": "GPU",
-      "description_truncated": false
+      "description_final_url": "https://alyssarosenzweig.ca/blog/asahi-gpu-part-5.html"
     },
     {
       "hn_id": 38668713,
@@ -4230,9 +4230,8 @@
       ],
       "split": "train",
       "description": "The Big Three can now all make CFETs—next stop on the Moore’s Law roadmap",
-      "description_source": "og:description",
-      "query": "transistor",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "transistor"
     },
     {
       "hn_id": 35684585,
@@ -4244,10 +4243,10 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "In 2018 I made the first lithographically fabricated integrated circuits in my garage fab. I was a senior in high school when I made the Z1 amplifier, and now I’m a senior in college so there are some long overdue improvements to the amateur silicon process. The Z1 had 6 transistors and was a great test chip to develop all the processes and equipment. The Z2 has 100 transistors on a 10µm polysilicon gate process – same technology as Intel’s first processor. My chip is a simple 10×10 array of transistors to test, characterize, and tweak the process but this is a huge step closer to more…",
+      "description_source": "body",
       "query": "transistor",
-      "description_truncated": false
+      "description_final_url": "https://sam.zeloof.xyz/second-ic/"
     },
     {
       "hn_id": 28925148,
@@ -4260,9 +4259,8 @@
       ],
       "split": "train",
       "description": "“Optical accelerator” devices could one day soon turbocharge tailored applications",
-      "description_source": "og:description",
-      "query": "transistor",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "transistor"
     },
     {
       "hn_id": 39921964,
@@ -4274,10 +4272,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "query": "transistor",
-      "description_truncated": false
+      "description": "The first full-scale prototype was publicly demonstrated at the 2016 Bay Area Maker Faire. We brought it up to the stages of successfully running various programs in assembly, BASIC, and Forth. Our second prototype, a year later, fixed a few issues that we encountered when bringing up the first version (removing all of the patch wires) but also added over 100 additional LEDs, including one for every instruction decode line on the 6502's decode ROM.",
+      "description_source": "body",
+      "query": "transistor"
     },
     {
       "hn_id": 33991007,
@@ -4291,8 +4288,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "circuit",
-      "description_truncated": false
+      "query": "circuit"
     },
     {
       "hn_id": 43233143,
@@ -4305,9 +4301,8 @@
       ],
       "split": "train",
       "description": "This article is available in German at Heise Online . In 1993, Intel released the high-performance Pentium processor, the start of the long...",
-      "description_source": "og:description",
-      "query": "circuit",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "circuit"
     },
     {
       "hn_id": 35437065,
@@ -4322,7 +4317,7 @@
       "description": "",
       "description_source": "unavailable",
       "query": "circuit",
-      "description_truncated": false
+      "description_final_url": "http://lushprojects.com/circuitjs/circuitjs"
     },
     {
       "hn_id": 32630740,
@@ -4336,8 +4331,7 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "query": "circuit",
-      "description_truncated": false
+      "query": "circuit"
     },
     {
       "hn_id": 26263508,
@@ -4350,9 +4344,9 @@
       ],
       "split": "train",
       "description": "The Framework Laptop, a thin, lightweight, high-performance 13.5” productivity notebook that can be upgraded, customized, and repaired.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Framework Laptop",
-      "description_truncated": false
+      "description_final_url": "https://frame.work/no/en/blog/introducing-the-framework-laptop"
     },
     {
       "hn_id": 31089677,
@@ -4365,9 +4359,9 @@
       ],
       "split": "train",
       "description": "Documentation for the Mainboard and other modules in the Framework Laptop 13 - FrameworkComputer/Framework-Laptop-13",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Framework Laptop",
-      "description_truncated": false
+      "description_final_url": "https://github.com/FrameworkComputer/Framework-Laptop-13"
     },
     {
       "hn_id": 35286544,
@@ -4380,9 +4374,8 @@
       ],
       "split": "train",
       "description": "We’re excited to share our next major product category, a high-performance 16” notebook, the Framework Laptop 16.",
-      "description_source": "og:description",
-      "query": "Framework Laptop",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "Framework Laptop"
     },
     {
       "hn_id": 40286029,
@@ -4395,9 +4388,8 @@
       ],
       "split": "train",
       "description": "Apple today announced M4, the latest Apple-designed silicon chip delivering phenomenal performance to the all-new iPad Pro.",
-      "description_source": "og:description",
-      "query": "chip",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "chip"
     },
     {
       "hn_id": 40769001,
@@ -4409,10 +4401,9 @@
         "hardware"
       ],
       "split": "train",
-      "description": "To use the Montreal subway (the Métro), you tap a paper ticket against the turnstile and it opens. The ticket works through a system",
-      "description_source": "og:description",
-      "query": "chip",
-      "description_truncated": true
+      "description": "To use the Montreal subway (the Métro), you tap a paper ticket against the turnstile and it opens. The ticket works through a system called ...",
+      "description_source": "metadata",
+      "query": "chip"
     },
     {
       "hn_id": 48663324,
@@ -4425,9 +4416,8 @@
       ],
       "split": "train",
       "description": "Named Jalapeño, the new processor was designed specifically for the unique needs of OpenAI's inference systems.",
-      "description_source": "og:description",
-      "query": "chip",
-      "description_truncated": false
+      "description_source": "metadata",
+      "query": "chip"
     },
     {
       "hn_id": 28740452,
@@ -4440,9 +4430,12 @@
       ],
       "split": "evaluation",
       "description": "E-Ink Magic Calendar that automatically syncs to Google Calendar and runs off a battery powered Raspberry Pi Zero - speedyg0nz/MagInkCal",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "Raspberry Pi",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 32740653,
@@ -4454,10 +4447,14 @@
         "hardware"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "San Mateo, Calif., September 6, 2022 - SiFive, Inc., the founder and leader of RISC-V computing, today announced it is providing the core CPU for NASA’s next generation High-Performance Spaceflight Computing (HPSC) processor. HPSC is expected to be used in virtually every future space mission, from planetary exploration to lunar and Mars surface missions. HPSC will utilize a multiple SiFive® Intelligence™ X280 RISC-V vector core, with additional SiFive RISC-V cores, to deliver 100x the computational capability of today’s space computers. This massive increase in computing performance will…",
+      "description_source": "body",
       "query": "RISC-V",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "hardware",
+        "space"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 34907885,
@@ -4470,9 +4467,13 @@
       ],
       "split": "evaluation",
       "description": "fab2 builds the hardware and software needed to make chips, fabs, tools, and components.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "semiconductor",
-      "description_truncated": false
+      "description_final_url": "https://fab2.com/",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 39751509,
@@ -4487,7 +4488,10 @@
       "description": "",
       "description_source": "unavailable",
       "query": "FPGA",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 37224042,
@@ -4499,10 +4503,14 @@
         "hardware"
       ],
       "split": "evaluation",
-      "description": "",
-      "description_source": "unavailable",
+      "description": "Our reverse-engineered, free and open source graphics drivers are the world’s only conformant OpenGL ES 3.1 implementation for M1- and M2-family graphics hardware. That means our driver passed tens of thousands of tests to demonstrate correctness and is now recognized by the industry.",
+      "description_source": "body",
       "query": "GPU",
-      "description_truncated": false
+      "description_final_url": "https://alyssarosenzweig.ca/blog/first-conformant-m1-gpu-driver.html",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 26907176,
@@ -4515,9 +4523,14 @@
       ],
       "split": "evaluation",
       "description": "Shift to 7-nanometer process boosts the second-generation chip’s transistor count to a mind boggling 2.6-trillion",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "transistor",
-      "description_truncated": false
+      "description_final_url": "https://spectrum.ieee.org/cerebras-giant-ai-chip-now-has-a-trillions-more-transistors",
+      "acceptable_category_ids": [
+        "hardware",
+        "ai"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 49720143,
@@ -4530,9 +4543,12 @@
       ],
       "split": "evaluation",
       "description": "Some pics, endorsements, and the reason the book exists in the first place.",
-      "description_source": "og:description",
+      "description_source": "metadata",
       "query": "circuit",
-      "description_truncated": false
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 47852177,
@@ -4544,11 +4560,14 @@
         "hardware"
       ],
       "split": "evaluation",
-      "description": "The most repairable pro laptop is here. Get 20 hours of battery & peak performance with Intel Core Ultra Series 3. CNC aluminum with",
-      "description_source": "og:description",
+      "description": "The most repairable pro laptop is here. Get 20 hours of battery & peak performance with Intel Core Ultra Series 3. CNC aluminum with excellent Linux support. Secure yours today!",
+      "description_source": "metadata",
       "query": "Framework Laptop",
-      "description_truncated": true
+      "description_final_url": "https://frame.work/no/en/laptop13pro",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "curated"
     }
-  ],
-  "description_word_limit": 24
+  ]
 }

@@ -457,14 +457,11 @@ object LinkSummaryParser {
             publishedTime = clean(publishedTime),
             language = clean(language),
             contentType = clean(contentType),
-            description = truncate(
-                HtmlDescriptionExtractor.chooseDescription(
-                    metadataDescription,
-                    document,
-                    title,
-                    fallbackTitle,
-                ),
-                MAX_DESCRIPTION_CHARS,
+            description = HtmlDescriptionExtractor.previewDescription(
+                metadataDescription,
+                document,
+                title,
+                fallbackTitle,
             ),
             imageUrl = extractImageUrl(metadata, document, finalUrl),
             finalUrl = finalUrl,

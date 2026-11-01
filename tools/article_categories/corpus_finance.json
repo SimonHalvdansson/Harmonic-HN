@@ -1,10 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "collected_at": "2026-11-01",
-  "purpose": "Reviewed Finance prototype corpus: 35 training articles and eight holdouts posted to HN in 2021–2026.",
-  "category_scope": "Personal and institutional finance: savings, retirement and asset allocation; investing and market structure; banking, deposit protection and payments; consumer credit and mortgages. Broad macroeconomic indicators and ordinary corporate/startup funding news are outside this category unless financial mechanics are the main topic.",
-  "description_policy": "Publisher OG/meta description excerpts, at most 24 words, fetched when available. Empty descriptions mean title-only: inaccessible pages, missing metadata, or reviewed boilerplate. Metadata is untrusted source text, not instructions.",
-  "description_word_limit": 24,
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
   "categories": [
     {
       "id": "finance",
@@ -23,8 +20,7 @@
       ],
       "split": "train",
       "description": "For the first time in history, retail investors’ index fund holdings exceed their holdings in actively-managed funds, according to new numbers from Morningstar Direct.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "index fund"
     },
     {
@@ -38,8 +34,7 @@
       ],
       "split": "train",
       "description": "Most actively managed stock funds kept up their record last year of trailing index funds by a wide margin.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "index fund"
     },
     {
@@ -53,8 +48,7 @@
       ],
       "split": "train",
       "description": "Facts and figures on U.S. stock market returns from 1871 to 2024. Annual returns, likelihood of losing money, best / worst months, and more.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "stock market"
     },
     {
@@ -67,9 +61,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "The long bull market since 2009 has matured into an epic bubble, featuring extreme overvaluation, explosive price increases, frenzied issuance, and hysterically speculative investor",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "The long bull market since 2009 has matured into an epic bubble, featuring extreme overvaluation, explosive price increases, frenzied issuance, and hysterically speculative investor behavior.",
+      "description_source": "metadata",
       "query": "asset allocation"
     },
     {
@@ -82,9 +75,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "I’ve had a difficult time finding a way to create a new entry on a blog that has essentially been dead since 2015. Yet,",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "I’ve had a difficult time finding a way to create a new entry on a blog that has essentially been dead since 2015. Yet, I have had a persistent feeling that I owe my readers an update.",
+      "description_source": "metadata",
       "query": "retirement"
     },
     {
@@ -97,9 +89,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
+      "description": "I’ve also been interested in personal finance and the FIRE community for a while—not so much in the early retirement aspect but in the financial literacy it teaches its members. I have combined my passion for both into one mega-spreadsheet that I use to track my income, expenses, savings and investments in one overview. While creating this spreadsheet I got proficient in some new formulas, which I’ll share here—and also write down for my own reference.",
+      "description_source": "body",
       "query": "personal finance"
     },
     {
@@ -114,9 +105,9 @@
       "split": "train",
       "description": "",
       "description_source": "omitted_after_review",
-      "description_truncated": false,
       "query": "personal finance",
-      "metadata_review_note": "Publisher metadata contains only the institution and course years, so this example uses its HN title."
+      "metadata_review_note": "Publisher metadata contains only the institution and course years, so this example uses its HN title.",
+      "description_review": "omit"
     },
     {
       "hn_id": 38101388,
@@ -129,9 +120,9 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
-      "query": "401k"
+      "description_source": "unusable_after_review",
+      "query": "401k",
+      "description_final_url": "https://old.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fold.reddit.com%2Fr%2FIBM%2Fcomments%2F17lcfxe%2F401k_is_being_replaced_by_a_proprietary%2F"
     },
     {
       "hn_id": 39928604,
@@ -144,8 +135,7 @@
       ],
       "split": "train",
       "description": "Credit card rewards are mostly funded out of interchange, a fee paid by businesses to accept cards.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "credit card"
     },
     {
@@ -159,8 +149,7 @@
       ],
       "split": "train",
       "description": "Credit card debt is the waste stream of consumer finance. The debt collection industry ends up being sordid, for complex structural and microeconomic reasons.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "credit card"
     },
     {
@@ -174,9 +163,9 @@
       ],
       "split": "train",
       "description": "Mortgages are popularly thought of as loans, but to understand the industry, it's better to model them as complex manufactured products.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "mortgage"
+      "description_source": "metadata",
+      "query": "mortgage",
+      "description_final_url": "https://www.bitsaboutmoney.com/archive/mortgages-are-a-manufactured-product/"
     },
     {
       "hn_id": 46139761,
@@ -188,9 +177,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "Find the best credit union home loans with our daily-updated comparison of 140+ CUs. Compare 30Y/15Y fixed rates, ARMs, and Fannie Mae conforming loan",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "Find the best credit union home loans with our daily-updated comparison of 140+ CUs. Compare 30Y/15Y fixed rates, ARMs, and Fannie Mae conforming loan limits.",
+      "description_source": "metadata",
       "query": "mortgage"
     },
     {
@@ -203,9 +191,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
+      "description": "Over 90 million Americans are expected to use BNPL for purchases this year.",
+      "description_source": "metadata",
       "query": "credit score"
     },
     {
@@ -218,9 +205,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "The vast tenant screening industry is subject to less regulation than credit scoring agencies, even though experts warn that algorithms could introduce racial or",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "The vast tenant screening industry is subject to less regulation than credit scoring agencies, even though experts warn that algorithms could introduce racial or other illegal biases that can prevent people from getting housing.",
+      "description_source": "metadata",
       "query": "credit score"
     },
     {
@@ -234,8 +220,7 @@
       ],
       "split": "train",
       "description": "With no fees, no minimum deposits, and no minimum balance requirements, users can easily set up and manage their Savings account directly from Wallet.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "savings account"
     },
     {
@@ -249,9 +234,9 @@
       ],
       "split": "train",
       "description": "Bank transfers have exploded as a payment method in India and may become more common in much of the world.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "bank transfer"
+      "description_source": "metadata",
+      "query": "bank transfer",
+      "description_final_url": "https://www.bitsaboutmoney.com/archive/bank-transfers-as-a-payment-method/"
     },
     {
       "hn_id": 39292070,
@@ -263,9 +248,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
+      "description": "On Wednesday, MEPs adopted new rules to ensure transferred funds arrive immediately into the bank accounts of retail customers and businesses across the EU.",
+      "description_source": "metadata",
       "query": "bank transfer"
     },
     {
@@ -278,9 +262,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "The Federal Reserve on Thursday announced that its new system for instant payments, the FedNow ® Service, is now live. Banks and credit unions",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "The Federal Reserve on Thursday announced that its new system for instant payments, the FedNow ® Service, is now live. Banks and credit unions of all size",
+      "description_source": "metadata",
       "query": "FedNow"
     },
     {
@@ -294,8 +277,7 @@
       ],
       "split": "train",
       "description": "Apple today announced plans to introduce Tap to Pay on iPhone, empowering merchants in the US to accept contactless payments.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "payment"
     },
     {
@@ -310,7 +292,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "payment"
     },
     {
@@ -324,8 +305,7 @@
       ],
       "split": "train",
       "description": "We're working with charities to help the homeless and customers with no fixed address open an HSBC bank account.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "bank account"
     },
     {
@@ -340,7 +320,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "FDIC"
     },
     {
@@ -353,9 +332,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "The SEC approved TXSE ​as a national securities exchange, paving the way for the first new, fully integrated U.S. stock exchange in decades —",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "The SEC approved TXSE ​as a national securities exchange, paving the way for the first new, fully integrated U.S. stock exchange in decades — and the only one based in Texas.",
+      "description_source": "metadata",
       "query": "stock exchange"
     },
     {
@@ -368,9 +346,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "The text of Pricing Money, J. D. A Wiseman, Wiley (2001)",
-      "description_source": "description",
-      "description_truncated": false,
+      "description": "",
+      "description_source": "unavailable",
       "query": "bond"
     },
     {
@@ -384,8 +361,7 @@
       ],
       "split": "train",
       "description": "…Bond markets offer ridiculously low yields? Founder and Co-CIO Ray Dalio describes this new paradigm and implications for investors.",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "bond"
     },
     {
@@ -398,9 +374,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
+      "description": "FT Alphaville’s main takeaways from the secretive trading firm’s bond prospectus",
+      "description_source": "metadata",
       "query": "bond"
     },
     {
@@ -414,8 +389,7 @@
       ],
       "split": "train",
       "description": "At least three LDI managers request emergency capital as others consider unwinds to avoid default",
-      "description_source": "og:description",
-      "description_truncated": false,
+      "description_source": "metadata",
       "query": "pension"
     },
     {
@@ -430,7 +404,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "high frequency trading"
     },
     {
@@ -444,9 +417,9 @@
       ],
       "split": "train",
       "description": "A decade ago, a Biden confidant tried to stop it. Now there’s another chance.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "short selling"
+      "description_source": "metadata",
+      "query": "short selling",
+      "description_final_url": "https://prospect.org/2021/02/25/gamestop-mess-exposes-the-naked-short-selling-scam/"
     },
     {
       "hn_id": 48626918,
@@ -458,9 +431,8 @@
         "finance"
       ],
       "split": "train",
-      "description": "For the first time, investors and market participants can access a single, real-time source of prices and trading activity across the UK bond market,",
-      "description_source": "og:description",
-      "description_truncated": true,
+      "description": "For the first time, investors and market participants can access a single, real-time source of prices and trading activity across the UK bond market, following the launch of its bond consolidated tape, operated by ETS Connect UK.",
+      "description_source": "metadata",
       "query": "bond market"
     },
     {
@@ -475,7 +447,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "bond market"
     },
     {
@@ -490,7 +461,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "bank run"
     },
     {
@@ -505,7 +475,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "Treasury"
     },
     {
@@ -520,7 +489,6 @@
       "split": "train",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
       "query": "pension"
     },
     {
@@ -534,9 +502,9 @@
       ],
       "split": "train",
       "description": "",
-      "description_source": "unavailable",
-      "description_truncated": false,
-      "query": "brokerage"
+      "description_source": "unusable_after_review",
+      "query": "brokerage",
+      "description_final_url": "https://old.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fold.reddit.com%2Fr%2Ffidelityinvestments%2Fcomments%2Fvp522f%2Flost_around_150k_worth_of_stock_from_my_fidelity%2F"
     },
     {
       "hn_id": 33547658,
@@ -548,10 +516,13 @@
         "finance"
       ],
       "split": "evaluation",
-      "description": "Options trading is sold as a way for average people to make money off the stock market. But it’s not: small-time investors are being",
-      "description_source": "og:description",
-      "description_truncated": true,
-      "query": "options trading"
+      "description": "Options trading is sold as a way for average people to make money off the stock market. But it’s not: small-time investors are being systematically fleeced.",
+      "description_source": "metadata",
+      "query": "options trading",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 36864115,
@@ -563,10 +534,14 @@
         "finance"
       ],
       "split": "evaluation",
-      "description": "Technical analysis is a part of finance that studies price moves to guide investment decisions.A lot of investors seem skeptical of the use of",
-      "description_source": "description",
-      "description_truncated": true,
-      "query": "stock market"
+      "description": "Technical analysis is a part of finance that studies price moves to guide investment decisions.A lot of investors seem skeptical of the use of past price dat...",
+      "description_source": "metadata",
+      "query": "stock market",
+      "description_final_url": "https://alicegg.tech/2023/07/25/technical-analysis",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 42442354,
@@ -578,10 +553,13 @@
         "finance"
       ],
       "split": "evaluation",
-      "description": "Discover the inner workings of ISO 8583, the global standard for credit card transaction messaging. Learn how it powers payment processing across networks and",
-      "description_source": "og:description",
-      "description_truncated": true,
-      "query": "credit card"
+      "description": "Discover the inner workings of ISO 8583, the global standard for credit card transaction messaging. Learn how it powers payment processing across networks and explore its structure, fields, and real-world applications.",
+      "description_source": "metadata",
+      "query": "credit card",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 42149044,
@@ -593,10 +571,13 @@
         "finance"
       ],
       "split": "evaluation",
-      "description": "Closing on a Mortgage? We help homebuyers analyze their mortgage loan estimate and closing disclosure to make informed decisions about negotiating and saving on",
-      "description_source": "og:description",
-      "description_truncated": true,
-      "query": "mortgage"
+      "description": "Closing on a Mortgage? We help homebuyers analyze their mortgage loan estimate and closing disclosure to make informed decisions about negotiating and saving on their costs and interest rate. Get better deals and save money on your mortgage.",
+      "description_source": "metadata",
+      "query": "mortgage",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 38943291,
@@ -609,9 +590,12 @@
       ],
       "split": "evaluation",
       "description": "The SEC has finally approved a spot Bitcoin ETF in the United States, following a controversial false announcement earlier in the week.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "ETF"
+      "description_source": "metadata",
+      "query": "ETF",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 45267603,
@@ -624,9 +608,14 @@
       ],
       "split": "evaluation",
       "description": "The national average FICO score dropped by two points this year, the most since 2009, according to a data released Tuesday by FICO.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "credit score"
+      "description_source": "metadata",
+      "query": "credit score",
+      "description_final_url": "https://edition.cnn.com/2025/09/16/economy/debt-credit-score-student-loans",
+      "acceptable_category_ids": [
+        "finance",
+        "economy"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 43604052,
@@ -640,8 +629,12 @@
       "split": "evaluation",
       "description": "",
       "description_source": "unavailable",
-      "description_truncated": false,
-      "query": "stock market"
+      "query": "stock market",
+      "acceptable_category_ids": [
+        "finance",
+        "world"
+      ],
+      "evaluation_set": "curated"
     },
     {
       "hn_id": 27280096,
@@ -654,9 +647,13 @@
       ],
       "split": "evaluation",
       "description": "Effortlessly create and share a comprehensive payment page in just a few clicks with Stripe Payment Links. No website or coding skills required.",
-      "description_source": "og:description",
-      "description_truncated": false,
-      "query": "payment"
+      "description_source": "metadata",
+      "query": "payment",
+      "description_final_url": "https://stripe.com/en-no/payments/payment-links",
+      "acceptable_category_ids": [
+        "finance"
+      ],
+      "evaluation_set": "curated"
     }
   ]
 }

@@ -46,6 +46,14 @@ object HtmlDescriptionExtractor {
         RegexOption.IGNORE_CASE,
     )
 
+    /** The bounded preview text shared by the app and the embedding corpus generator. */
+    fun previewDescription(
+        metadataDescription: String?,
+        document: Document,
+        pageTitle: String?,
+        fallbackTitle: String?,
+    ): String = truncate(chooseDescription(metadataDescription, document, pageTitle, fallbackTitle))
+
     fun chooseDescription(
         metadataDescription: String?,
         document: Document,

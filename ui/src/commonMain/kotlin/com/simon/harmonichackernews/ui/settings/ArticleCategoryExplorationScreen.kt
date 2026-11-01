@@ -49,7 +49,7 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
                 Text("A map of meaning", fontFamily = ProductSansFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
-                Text("Each dot is one example. Nearby dots have similar embeddings.",
+                Text("Each dot is an example headline. Nearby dots have similar embeddings. Preview text can refine a story’s matches.",
                     Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
                     fontSize = 16.sp, lineHeight = 23.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -73,11 +73,11 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
         }
         item {
             SettingsCategory("From text to labels") {
-                ExplanationStep("1", "Turn story into vector", "EmbeddingGemma encodes the title and available preview text as a normalized, 768-dimensional vector. Inference runs on your device.")
+                ExplanationStep("1", "Turn story into vector", "EmbeddingGemma encodes the headline and useful preview text as a normalized, 768-dimensional vector. If no useful preview is available, it uses the headline alone. Inference runs on your device.")
                 SettingsDivider()
-                ExplanationStep("2", "Compare against references", "Reference examples define each category’s center: the normalized mean of their embedding vectors. Cosine similarity compares the story vector with each center.")
+                ExplanationStep("2", "Compare against references", "Each input is compared with references prepared the same way: headlines with headlines, or previews with previews. We subtract their shared background, then compare topic information with each category’s center using cosine similarity.")
                 SettingsDivider()
-                ExplanationStep("3", "Apply similarity cutoff", "Cosine similarity is displayed on a 0–100 scale. Selected categories at or above your cutoff are ranked by similarity, then limited to your maximum label count.")
+                ExplanationStep("3", "Apply similarity cutoff", "Similarity is displayed on a 0–100 scale, not as a probability. Labels must meet your cutoff. Additional labels must also be at least three quarters as strong as the best match, up to your maximum label count.")
             }
         }
 
@@ -155,16 +155,17 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint, colors: List<Color>
     val categories = remember { ArticleCategories.defaults.associateBy { it.id } }
     val indices = remember { ArticleCategories.defaults.mapIndexed { i, category -> category.id to i }.toMap() }
     val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
-    val matches = point.matches.filter { it.similarity >= 0.75f }.take(3)
+    val matches = point.matches.filter { it.similarity >= ArticleCategories.MIN_CUTOFF }.take(3)
     if (matches.isEmpty()) {
-        Text("No matches at 75 or above", Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+        Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above", Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
     Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         matches.forEach { match ->
             val score = (match.similarity * 1000).roundToInt() / 10f
-            val fill = animateFloatAsState(((match.similarity - 0.75f) / 0.25f).coerceIn(0f, 1f), tween(250), label = "example similarity")
+            val fill = animateFloatAsState(((match.similarity - ArticleCategories.MIN_CUTOFF) /
+                (1f - ArticleCategories.MIN_CUTOFF)).coerceIn(0f, 1f), tween(250), label = "example similarity")
             val color = colors[indices.getValue(match.category)]
             Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
                 contentDescription = "${categories.getValue(match.category).name}, similarity $score out of 100"
@@ -181,7 +182,7 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint, colors: List<Color>
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("75", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${(ArticleCategories.MIN_CUTOFF * 100).toInt()}", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("100", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

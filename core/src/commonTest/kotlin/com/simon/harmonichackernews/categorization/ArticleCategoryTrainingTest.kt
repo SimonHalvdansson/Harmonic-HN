@@ -9,7 +9,7 @@ import kotlin.test.*
 class ArticleCategoryTrainingTest {
     @Test
     fun storedExamplesAreComparedWithTheCurrentCenterWithoutInference() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
         val category = training.create("Custom")
         training.addExamples(category, listOf(
             EmbeddedTrainingStory(ArticleTrainingStory(10, "First"), unit(0).toList()),
@@ -28,7 +28,7 @@ class ArticleCategoryTrainingTest {
 
     @Test
     fun removingAndRestoringDefaultExamplesChangesTheMean() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
         assertEquals(listOf(1, 2), training.examples("ai").map { it.id })
         training.removeExample("ai", 2)
         assertEquals(listOf(1), training.examples("ai").map { it.id })
@@ -42,12 +42,12 @@ class ArticleCategoryTrainingTest {
     @Test
     fun customTrainingSurvivesRestartAndDeletionNeverChangesHistory() = runTest {
         val store = InMemoryKeyValueStore()
-        val training = ArticleCategoryTraining(store).apply { setDefaultLoader { seedBytes() } }
+        val training = ArticleCategoryTraining(store, { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
         val category = training.create("Robotics")
         val preferences = ArticleCategorySettings(InMemoryKeyValueStore(), emptyFlow(), { training.categories })
         preferences.setSelected(category, true)
         training.addExamples(category, listOf(EmbeddedTrainingStory(ArticleTrainingStory(99, "A robot", "https://example.com/robot"), unit(2).toList())))
-        val reloaded = ArticleCategoryTraining(store).apply { setDefaultLoader { seedBytes() } }
+        val reloaded = ArticleCategoryTraining(store, { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
         assertEquals("Robotics", reloaded.categories.last().name)
         assertEquals(listOf(99), reloaded.examples(category).map { it.id })
         assertEquals(1f, reloaded.centers().getValue(category)[2])
@@ -58,7 +58,7 @@ class ArticleCategoryTrainingTest {
 
     @Test
     fun duplicateAdditionsAreNotDoubleWeightedAndInvalidVectorsCannotBeSaved() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { seedBytes() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
         val category = training.create("Custom")
         val example = EmbeddedTrainingStory(ArticleTrainingStory(10, "Example"), unit(0).toList())
         training.addExamples(category, listOf(example, example))
@@ -69,9 +69,21 @@ class ArticleCategoryTrainingTest {
     }
 
     @Test
+    fun titleAndPreviewReferencesSurviveRestartAsSeparateViews() = runTest {
+        val store = InMemoryKeyValueStore()
+        val training = ArticleCategoryTraining(store, { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
+        val category = training.create("Robotics")
+        val story = ArticleTrainingStory(99, "Robot", description = "A detailed explanation of the robot sensors and motion controller.")
+        training.addExamples(category, listOf(EmbeddedTrainingStory(story, unit(0).toList(), unit(1).toList())))
+        val reloaded = ArticleCategoryTraining(store, { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }
+        assertEquals(1f, reloaded.centers(false).getValue(category)[0])
+        assertEquals(1f, reloaded.centers(true).getValue(category)[1])
+    }
+
+    @Test
     fun labelsShowOnlyTheStrongestSelectedTopicsAndHonorTheMaximum() {
         val preferences = ArticleCategoryPreferences(enabled = true, cutoff = 0.5f, maxLabels = 2)
-        val scores = listOf(ArticleCategoryScore("world", 0.7f), ArticleCategoryScore("ai", 0.95f),
+        val scores = listOf(ArticleCategoryScore("world", 0.75f), ArticleCategoryScore("ai", 0.95f),
             ArticleCategoryScore("unknown", 1f), ArticleCategoryScore("security", 0.85f))
         assertEquals(listOf("AI", "Security"), ArticleCategories.labels(scores, preferences))
         assertEquals(listOf("AI"), ArticleCategories.labels(scores, preferences.copy(maxLabels = 1)))
@@ -80,7 +92,7 @@ class ArticleCategoryTrainingTest {
 
     @Test
     fun brokenResourceIsRejectedWithoutPublishingPartialDefaults() = runTest {
-        val training = ArticleCategoryTraining(InMemoryKeyValueStore()).apply { setDefaultLoader { seedBytes().dropLast(4).toByteArray() } }
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { seedBytes().dropLast(4).toByteArray() } }
         assertFailsWith<IllegalArgumentException> { training.loadDefaults() }
     }
 
@@ -90,13 +102,14 @@ class ArticleCategoryTrainingTest {
             val header = Json.encodeToString(ArticleTrainingSeed(
                 listOf(ArticleTrainingStory(1, "First", source = "default"), ArticleTrainingStory(2, "Second", source = "default")),
                 mapOf("ai" to listOf(1, 2)), ArticleCategoryTraining.MODEL_SHA256,
+                ArticleEmbeddingInput.VERSION, ArticleCategories.REPRESENTATION_VERSION,
             )).encodeToByteArray()
             val bytes = ArrayList<Byte>()
             fun int(value: Int) { repeat(4) { bytes.add((value ushr (it * 8)).toByte()) } }
-            bytes.addAll("HNC1".encodeToByteArray().toList())
+            bytes.addAll("HNC2".encodeToByteArray().toList())
             int(header.size)
             bytes.addAll(header.toList())
-            listOf(unit(0), unit(1)).forEach { vector -> vector.forEach { int(it.toBits()) } }
+            listOf(unit(0), unit(1)).forEach { vector -> repeat(2) { vector.forEach { int(it.toBits()) } } }
             return bytes.toByteArray()
         }
     }

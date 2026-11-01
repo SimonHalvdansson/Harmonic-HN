@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
@@ -30,24 +31,19 @@ import com.simon.harmonichackernews.categorization.ArticleCategories
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.themeBackground
-import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
 @Composable
 internal fun CategorySimilaritySetting(value: Float, onValueChange: (Float) -> Unit, onReset: () -> Unit, resetEnabled: Boolean) {
-    var density by remember { mutableStateOf<List<Float>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        try { density = CategoryExplorationResources.load().density }
-        catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { /* The standard slider remains usable if the optional plot fails. */ }
-    }
+    val curve = CategoryCoverageReference.curve
     val primary = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.outlineVariant
     val surface = HarmonicTheme.colors.cardBackground
     val state = remember {
         // Whole-point keyboard/accessibility steps, with no ticks in the custom track.
-        SliderState(value, steps = 14, trackRange = ArticleCategories.MIN_CUTOFF..ArticleCategories.MAX_CUTOFF)
+        SliderState(value, steps = ((ArticleCategories.MAX_CUTOFF - ArticleCategories.MIN_CUTOFF) * 100).roundToInt() - 1,
+            trackRange = ArticleCategories.MIN_CUTOFF..ArticleCategories.MAX_CUTOFF)
             .apply { shouldAutoSnap = false }
     }
     state.value = value
@@ -74,21 +70,21 @@ internal fun CategorySimilaritySetting(value: Float, onValueChange: (Float) -> U
                 Spacer(Modifier.fillMaxWidth().height(56.dp).drawWithCache {
                     val baseline = size.height / 2
                     val path = Path().apply {
-                        moveTo(0f, baseline)
-                        density.forEachIndexed { i, height ->
-                            lineTo(size.width * i / (density.size - 1), baseline - height * 24.dp.toPx())
+                        curve.forEachIndexed { index, point ->
+                            val x = (point.cutoff - ArticleCategories.MIN_CUTOFF) /
+                                (ArticleCategories.MAX_CUTOFF - ArticleCategories.MIN_CUTOFF) * size.width
+                            val y = baseline - point.fraction * 24.dp.toPx()
+                            if (index == 0) moveTo(x, y) else lineTo(x, y)
                         }
-                        lineTo(size.width, baseline); close()
                     }
                     onDrawBehind {
                         scale(if (layoutDirection == LayoutDirection.Rtl) -1f else 1f, 1f) {
                             val cutoff = ((slider.value - ArticleCategories.MIN_CUTOFF) /
                                 (ArticleCategories.MAX_CUTOFF - ArticleCategories.MIN_CUTOFF)).coerceIn(0f, 1f) * size.width
-                            drawPath(path, primary.copy(alpha = 0.32f))
-                            clipRect(right = cutoff) { drawPath(path, surface.copy(alpha = 0.83f)) }
+                            drawPath(path, primary.copy(alpha = 0.7f), style = Stroke(1.5.dp.toPx()))
                             drawRoundRect(muted, Offset(0f, baseline - 3.dp.toPx()),
                                 Size(size.width, 6.dp.toPx()), CornerRadius(3.dp.toPx()))
-                            clipRect(left = (cutoff + 8.dp.toPx()).coerceAtMost(size.width)) {
+                            clipRect(right = (cutoff - 8.dp.toPx()).coerceAtLeast(0f)) {
                                 drawRoundRect(primary, Offset(0f, baseline - 3.dp.toPx()),
                                     Size(size.width, 6.dp.toPx()), CornerRadius(3.dp.toPx()))
                             }
@@ -99,5 +95,11 @@ internal fun CategorySimilaritySetting(value: Float, onValueChange: (Float) -> U
                     }
                 })
             })
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${(ArticleCategories.MIN_CUTOFF * 100).roundToInt()}", fontFamily = ProductSansFontFamily,
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${(ArticleCategories.MAX_CUTOFF * 100).roundToInt()}", fontFamily = ProductSansFontFamily,
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

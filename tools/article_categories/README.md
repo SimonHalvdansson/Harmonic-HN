@@ -1,181 +1,170 @@
 # Experimental article categories
 
-`corpus.json` contains 622 manually reviewed articles posted to Hacker News between
-2021 and 2026. Each record keeps its HN item ID, HN link, article URL, posting date,
-title, category IDs, split, and publisher preview description when available.
-Titles, URLs, and dates were collected using HN Algolia and independently verified
-against the official Firebase API on 2026-10-31, with Finance verified on 2026-11-01. There are 427 fetched publisher
-metadata excerpts; 195 records use titles only because metadata was missing,
-blocked, generic, or unrelated after a redirect. Description provenance is explicit.
+The reviewed corpus contains 896 unique HN articles: 675 training stories and 221
+evaluation stories. A further 40-story HN audit is kept in `corpus_validation.json`
+and excluded from reference fitting. These are development datasets, with
+editorial topic labels, rather than an independent estimate of HN-wide accuracy.
 
-The 14 defaults are AI, Programming, Security, Privacy, Science, Space, Hardware,
-Business, Startups, Economy, Finance, World news, Climate, and Cars. Each has 35
-training examples and eight evaluation examples: 490 training and 112 labeled
-holdouts, plus 20 unrelated holdouts. These defaults can be edited in the app;
-users can also create categories taught with stories from their history.
+The 18 categories are AI, Programming, Security, Privacy, Science, Space, Hardware,
+Business, Startups, Economy, Finance, World news, Climate, Cars, History, Culture,
+Energy, and Health. Reference counts follow coverage needs: Programming and
+Hardware have 47 examples, Science has 46, History/Energy/Health have 40, Culture
+has 35, and the remaining categories have 34 or 35. Reposts and stories used as
+regressions are kept out of training when they also appear in evaluation.
 
-`corpus_technology.json`, `corpus_society.json`, and `corpus_finance.json` retain
-the reviewed collection shards. Finance covers banking, payments, investing, and
-personal finance. Tesla is no longer a standalone category. `merge_corpus.py` produces the canonical corpus and prevents reposts from
-appearing on both sides of the training/evaluation split. Discovery spans multiple
-subtopics per category; a person reviewed exact headlines and source URLs rather
-than accepting keyword-search results directly. `collect_technology_corpus.py`
-supports reviewed candidate discovery and metadata refresh; `collect_corpus.py`
-verifies the canonical corpus against Firebase.
+`corpus_technology.json`, `corpus_society.json`, `corpus_finance.json`, and
+`corpus_expansion.json` retain the reviewed source records. `corpus_frontpage.json`
+is the initial front-page snapshot plus the Talkie regression. `merge_corpus.py`
+produces the canonical corpus and groups article URLs across shards before
+assigning splits. The separate audit is never included in that merge.
 
-Use only `split == "train"` when averaging category vectors. Generate embeddings
-with the same EmbeddingGemma 2 text model, dimensionality, input prefix, and feature
-format used by the app; normalize each example, average within each category, then
-normalize the resulting mean. Keep the model identity and preprocessing version
-with exported prototypes. Changing the model or its prompt requires regeneration.
-The generation script in this directory provides the executable workflow.
+Each record retains its official HN ID, source URL, title, posting date, split,
+category IDs, and description provenance. Additional acceptable labels make
+legitimate overlaps explicit in evaluation. Primary coverage measures whether at
+least one expected topic appears; label precision counts all emitted labels
+against the accepted topics. Unknown stories should remain unlabeled.
 
-## Generate the app prototypes
+## Match the app's text pipeline
 
-Use Android Studio's JBR as `JAVA_HOME` (on this Windows machine,
-`C:/Program Files/Android/Android Studio1/jbr`). The standalone Gradle project
-uses LiteRT-LM JVM 0.19.0, the same runtime version as Android, on one CPU thread.
-It supports Windows, Linux and macOS; no Python inference packages are needed.
+`RefreshDescriptions` compiles the app's `HtmlDescriptionExtractor` and uses its
+metadata selection and paragraph fallback, capped at 600 characters. It reads at
+most 1 MiB of HTML. The app's generic HTML previews call that same bounded helper.
+Specialized provider/API previews and later publisher changes can supply different
+context, so snapshots and title-only evaluation remain necessary.
 
-Download the text-only artifact outside the repository:
+`ArticleEmbeddingInput` is compiled directly from core into the generator. It
+collapses whitespace, bounds the headline to 300 characters and useful preview
+text to 600, rejects duplicated titles and obvious boilerplate, and formats:
+
+```text
+title: HEADLINE | text: PREVIEW
+```
+
+A missing or unusable preview is replaced with the headline. No AI summary or full
+article body is embedded. Records marked `description_review: "omit"` remain
+excluded during refresh because their URLs redirected to unrelated/generic pages.
+
+## Two reference views
+
+Title-only stories are compared with title-only references. Stories with useful
+preview text are compared with contextual references; those references exclude
+examples without useful previews. Both views use the same fixed mobile model,
+768 dimensions, L2 normalization, and a maximum input length of 256 tokens.
+
+For each view, fit a background vector using training examples only. Subtract it
+from each normalized vector and normalize again. A category center is the
+normalized mean of its projected examples. Apply the same projection to a query
+before computing cosine similarity. Removing the shared background prevents a
+large generic similarity from making neighboring topics appear equally strong.
+
+The default cutoff is **0.24**, displayed as 24/100; it is not a probability.
+The slider spans 10–45, covering the useful range observed on the HN audit.
+Additional labels must also reach 75% of the strongest known topic's score, even
+when that strongest topic is deselected. Up to three selected labels are shown.
+Saved cutoffs are clamped to the slider range. Categorization has not shipped in v3.2,
+so there is no migration for intermediate development defaults.
+
+Live scoring needs one inference per input and uses the existing preview cache.
+Adding a history example stores both input views, reusing cached inference where
+possible. Removing or editing examples rebuilds both sets of centers without
+repeating their inference. Empty categories abstain. Model removal preserves
+user categories and examples; inference and score caches remain session-local.
+
+## Reproduce generation
+
+Use Android Studio's JBR as `JAVA_HOME` (on this machine,
+`C:/Program Files/Android/Android Studio1/jbr`). The standalone JVM project imports
+the repository's version catalog, so Kotlin, Ksoup, and LiteRT-LM match the app.
+
+Download the pinned text-only model outside the repository:
 
 ```text
 https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm/resolve/9be6e8b90982095dc05c2bd162e4b954ee4dbac7/embeddinggemma-2-text-270m.litertlm
 ```
 
-Verify its SHA-256 before generation:
+Its SHA-256 is
 `2d079ee2f6f066b1f368e8d7c819f55214eaef1d0513b312321901f30ab286fb`
-(164,626,432 bytes). Source model card:
-[EmbeddingGemma 2 Text 270M](https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm).
+and its size is 164,626,432 bytes. The runner records the actual model hash, input
+version, source-text hash, and both native vectors. Generation rejects stale
+source text or mismatched model/input provenance.
 
-Run from the repository root, substituting absolute paths for `MODEL`, `CORPUS`
-and the output files. Keep both output JSON files outside the repository.
+Run from the repository root, replacing placeholders with absolute paths. Quote
+individual paths inside `--args` if they contain spaces. Keep models, raw vectors,
+evaluation reports, and native caches outside the repository.
 
 ```powershell
+./gradlew -p tools/article_categories run -PmainClass=RefreshDescriptions --args='CORPUS REFRESHED_CORPUS'
+python tools/article_categories/merge_corpus.py
 ./gradlew -p tools/article_categories run --args='MODEL CORPUS EMBEDDINGS_JSON'
-python tools/article_categories/generate_prototypes.py EMBEDDINGS_JSON --kotlin core/src/commonMain/kotlin/com/simon/harmonichackernews/categorization/ArticleCategoryPrototypes.kt --training-data resources/src/commonMain/composeResources/files/article_categories.bin --report EVALUATION_JSON
+python tools/article_categories/generate_prototypes.py EMBEDDINGS_JSON --kotlin core/src/commonMain/kotlin/com/simon/harmonichackernews/categorization/ArticleCategoryPrototypes.kt --training-data resources/src/commonMain/composeResources/files/article_categories.bin --report REPORT_JSON
 ```
 
-The Java runner creates the cache beside `EMBEDDINGS_JSON`; quote individual paths
-inside `--args` if they contain spaces. The model uses 768 output dimensions,
-L2 normalization, and a maximum input length of 256 tokens. Preprocessing is
-`title: TITLE | text: DESCRIPTION`, with whitespace collapsed, title limited to
-300 characters, description to 900, and a missing description replaced by the
-title. This is document-to-document similarity, using the same representation
-for examples and live articles. Do not mix query/task prefixes into one side.
+Refresh/review each source shard before merging it. The refreshed output must
+replace its reviewed shard; a merge cannot consume pending metadata from the old
+Python collector. `collect_corpus.py` can independently verify canonical titles
+and URLs against the official Firebase API. Keyword search results are candidates,
+never automatic training labels.
 
-The checked-in Kotlin vectors were actually generated with this artifact and
-workflow on 2026-10-31, with Finance generated on 2026-11-01. Each vector is the normalized mean of the 35 normalized
-title-plus-description training embeddings for that category. Held-out records
-are never included in the means. Kotlin output records the corpus and model
-hashes so generation can be audited.
+The optional fourth runner argument selects `document`, `classification`, or
+`clustering` for controlled prompt experiments. The fifth argument is an older
+embedding JSON to reuse: only vectors from the same model and exact input text
+are reused. Production exports accept the shared document formatter only.
 
-The generated `article_categories.bin` is an HNC1 resource: four magic bytes,
-little-endian uint32 JSON-header length, UTF-8 JSON metadata (stories, category
-assignments, model hash), then one 768-dimensional float32 little-endian vector per
-training story in header order. It is about 1.65 MB. This lets the app display and
-remove default examples and recompute their means without re-embedding hundreds
-of articles on launch. No model weights are bundled.
-
-To check the saved titles and URLs against the official HN Firebase API:
+Evaluate without modifying fitted references:
 
 ```powershell
-python tools/article_categories/collect_corpus.py
+python tools/article_categories/evaluate_categories.py EMBEDDINGS_JSON --validation tools/article_categories/corpus_validation.json --validation-embeddings AUDIT_EMBEDDINGS_JSON --report REPORT_JSON
+python -m unittest discover -s tools/article_categories -p 'test_*.py'
 ```
 
-To retrieve possible replacements without changing the corpus:
+The HNC2 training resource contains a JSON header (stories, assignments, model and
+representation versions), then paired preview/title vectors as little-endian
+float32 arrays in story order. It is about 4.4 MB and contains no model weights.
+Kotlin defaults are exported separately for fast scoring without loading this
+editable resource. Tests compare both rebuilt views with the exported defaults.
+
+## Exploration asset
+
+`generate_exploration.py` uses NumPy, scikit-learn, and umap-learn. It projects the
+675 title-only reference vectors after background subtraction using UMAP, t-SNE,
+and PCA. UMAP/t-SNE use seed 42; labels never enter the projection fit. All dots,
+including outliers, share the same coordinate scale. Classification continues to
+use the original 768-dimensional view, rather than the two-dimensional map.
 
 ```powershell
-python tools/article_categories/collect_corpus.py --candidates "$env:TEMP/hn-category-candidates.json"
+python tools/article_categories/generate_exploration.py EMBEDDINGS_JSON --output resources/src/commonMain/composeResources/files/article_category_exploration.json
 ```
 
-Review each candidate's title, URL, date, category, and description manually before
-editing the corpus. A broad search can return unrelated posts; the query is retained
-only as a discovery aid. Do not promote the first result without reviewing it.
+Point comparisons include their own reference in the center, and illustrate the
+headline view.
+The asset records corpus/input/representation versions and projection libraries;
+the UI rejects an incompatible representation.
 
-## Limits and evaluation
+## Bundled cutoff curve
 
-This is an editorial seed corpus for an opt-in experiment, not a representative
-sample of HN. Publisher metadata and blocked-page coverage differ by topic, and
-title keyword discovery can introduce sampling bias. Labels describe the
-main editorial topic rather than every valid overlapping topic: AlphaFold can also
-be science, AI legislation can also concern AI, and security can also concern world
-events. Category names are presentation labels; renaming one must not change its ID
-or regenerate its meaning.
+The slider uses a fixed sample of 100 popular linked stories in
+`corpus_coverage.json`, collected from HN's current top/best feeds on 2026-11-01.
+The sample is uniform with seed 42 among 147 eligible unique articles with at least
+100 points, excluding training URLs. Its stories never enter reference fitting.
+The frozen snapshot retains the source feeds, candidate IDs, collection time,
+points, titles, URLs, and extracted description provenance.
 
-Inspect held-out similarities before choosing a default cutoff. Evaluate both
-title-only inputs and title plus description, and report false positives on the
-unclassified examples. Retrieved metadata can change over time; fixed snapshots
-make this experiment reproducible. Keep low-scoring
-stories unlabeled, allow overlapping categories, and treat cosine scores as
-similarities rather than probabilities. A higher cutoff means fewer labels.
+The shared Ksoup extractor found useful previews for 81 stories; the remaining
+19 use title-only input. `generate_coverage.py` scores them with the matching
+reference view and exports their best similarities to `CategoryCoverageReference.kt`.
+Line height is the share of the complete sample above each cutoff, including
+stories scoring below the slider minimum. It is not normalized to peak at 100%.
+This is a fixed guide using the bundled categories, not an accuracy measure or a
+prediction for personal categories, category selections, or edited examples.
+The curve is available immediately without a model, network, or browsing history.
 
-At the default cutoff of **0.78**, with at most three labels, the 112 labeled
-holdouts produce 96 correct primary-topic labels and 121 extra labels using
-available metadata. Title-only inputs produce 110 correct and 209 extra labels.
-11 of 20 unrelated holdouts stay unlabeled with metadata, and 4 with titles only.
-Finance matches five of eight holdouts with metadata and all eight with titles
-only. This development set is not an independent accuracy estimate. The lower
-cutoff improves coverage but also increases overlap and false positives.
-Additional labels may be reasonable overlaps (Finance/Economy, Startups/Business),
-but count as false positives against the corpus's single-primary-topic labels.
-
-The app keeps a bounded session cache of embeddings and performs inference only for
-composed feed and submissions rows after a short delay. A separate, bounded cache
-of 1,024 scored story identities supplies immediate tags when rows return or a
-comments screen opens. Known scores survive native-engine unloading in the
-background; the larger embedding cache does not. Training changes invalidate
-scores and reuse existing embeddings. Completed native work is retained when a
-row leaves the composition, and title-only requests never replace richer results.
-Scoring and cache updates run off the UI thread. The cache is session-local and
-does not survive process termination. Changing names, selections, or the cutoff
-reuses cached embeddings. Training changes recompute means and re-score stories
-without repeating their inference. It reuses existing preview descriptions and never fetches
-full article bodies for this feature. EmbeddingGemma is separate from the
-summarization model picker. It loads after the first frame when opted in, and
-turning categorization off releases its native engine and embedding cache. Android
-also releases them when the app goes into the background or receives a memory-pressure
-callback, and checks system memory before loading. Foregrounding resumes the model
-when memory is available; after a foreground pressure callback, the settings screen
-offers an explicit resume action. Native operations finish safely before disposal.
-Android 14 and later do not deliver the legacy foreground low-memory callbacks, so
-this is best-effort resource management, not a guarantee against process termination.
-Adding history examples while the feature is off loads the model temporarily and
-releases it afterward. Batches are saved atomically after successful inference;
-cancellation before commit saves none of that batch. The app rechecks history membership before
-saving. User categories, excluded default IDs, and normalized history vectors
-persist locally and survive removing/re-downloading the model.
-
-No article HTML, full text, credentials, model weights, or diagnostic captures are
-stored with the corpus. Download models and write evaluation output to a temporary
-directory, keeping only deliberately exported app prototypes in source control.
-
-The exploration screen uses `generate_exploration.py` to export all 490 training
-examples into `resources/src/commonMain/composeResources/files/article_category_exploration.json`.
-It fits UMAP (cosine, 20 neighbors, min_dist 0.18), t-SNE (cosine, perplexity 30,
-1,500 iterations), and PCA to the original normalized vectors, without using
-category labels. UMAP and t-SNE use seed 42. Each projection preserves a shared
-scale across its two axes and includes every point, including outliers. The asset
-records library versions and corpus SHA-256. Two-dimensional distances are for
-exploration; classification always uses the original 768-dimensional space.
-
-The slider density is a Gaussian kernel estimate (bandwidth 0.006, or 0.6 similarity points) of each
-training example’s best category cosine score. Each example is subtracted from
-its own category’s vector sum before scoring, so the curve does not benefit from
-self-inclusion. It is a fixed reference distribution over the default examples,
-not a probability or an estimate of real-feed accuracy.
-
-Generate the exploration asset with Python packages numpy, scikit-learn and
-umap-learn (versions used are recorded in the asset):
-
-```sh
-python tools/article_categories/generate_exploration.py /tmp/embeddings.json \
-  --output resources/src/commonMain/composeResources/files/article_category_exploration.json
+```powershell
+python tools/article_categories/collect_coverage.py --output RAW_SAMPLE_JSON
+./gradlew -p tools/article_categories run -PmainClass=RefreshDescriptions --args='RAW_SAMPLE_JSON SAMPLE_CORPUS_JSON'
+./gradlew -p tools/article_categories run --args='MODEL SAMPLE_CORPUS_JSON SAMPLE_EMBEDDINGS_JSON'
+python tools/article_categories/generate_coverage.py SAMPLE_EMBEDDINGS_JSON --sample SAMPLE_CORPUS_JSON --reference-embeddings EMBEDDINGS_JSON --kotlin ui/src/commonMain/kotlin/com/simon/harmonichackernews/ui/settings/CategoryCoverageReference.kt --report SCORE_REPORT_JSON
 ```
 
-The curve is sampled over the slider range 75–90. Each map example also stores
-its three highest full-dimensional cosine scores against the default category
-centers. These use the same scores as classification, including the example in
-its own default center; only the histogram uses leave-one-out scores. The map
-interpolates points, labels and connectors in Draw rather than recomputing a
-projection or recomposing every point during an animation.
+Use the absolute path to `corpus_coverage.json` for `SAMPLE_CORPUS_JSON`.
+Keep raw vectors and score reports outside the repository. The generated file
+records model, input, representation, reference corpus, and sample fingerprints.

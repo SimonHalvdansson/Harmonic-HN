@@ -37,11 +37,16 @@ class ArticleCategoryRuntime(
     private val models: LocalModelService?,
     private val engine: ArticleEmbeddingEngine?,
     private val scope: CoroutineScope,
-    private val prototypes: () -> Map<String, FloatArray> = { ArticleCategoryPrototypes.vectors },
+    private val prototypes: (Boolean) -> Map<String, FloatArray> = { titleOnly ->
+        if (titleOnly) ArticleCategoryPrototypes.titleVectors else ArticleCategoryPrototypes.vectors
+    },
     private val training: ArticleCategoryTraining? = null,
     private val isHistoryStory: (Int) -> Boolean = { false },
     private val memoryAvailable: () -> Boolean = { true },
     private val scoringDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val embeddingOrigin: (Boolean) -> FloatArray = { titleOnly ->
+        if (titleOnly) ArticleCategoryPrototypes.titleOrigin else ArticleCategoryPrototypes.origin
+    },
 ) {
     private val lock = Mutex()
     private val cache = linkedMapOf<String, FloatArray>()
@@ -169,7 +174,7 @@ class ArticleCategoryRuntime(
     private suspend fun computeScores(storyId: Int?, title: String, url: String?, description: String?): List<ArticleCategoryScore> {
         if (title.isBlank() || !settings.snapshot().enabled || state.value.status != ArticleCategoryStatus.READY) return emptyList()
         val input = ArticleCategories.input(title, description)
-        val hasDescription = !description.isNullOrBlank()
+        val hasDescription = input != ArticleCategories.input(title, null)
         if (storyId != null) cachedStory(storyId, title, url)?.takeIf { it.covers(input, hasDescription) }?.let { return it.scores }
         return lock.withLock {
             currentCoroutineContext().ensureActive()
@@ -182,7 +187,8 @@ class ArticleCategoryRuntime(
                     val configuration = training?.state?.value
                     val embedding = cachedEmbedding(input)
                     if (resources.value.paused || !resources.value.foreground || !settings.snapshot().enabled) return@withContext emptyList()
-                    val scores = ArticleCategories.scores(embedding, training?.centers() ?: prototypes())
+                    val titleOnly = !hasDescription
+                    val scores = ArticleCategories.scores(project(embedding, titleOnly), training?.centers(titleOnly) ?: prototypes(titleOnly))
                     if (configuration !== training?.state?.value) return@withContext emptyList()
                     if (storyId != null) storyScores.update { entries ->
                         LinkedHashMap(entries.filterValues { it.matches(configuration) }).apply {
@@ -217,7 +223,9 @@ class ArticleCategoryRuntime(
                 currentCoroutineContext().ensureActive()
                 check(resources.value.foreground && !resources.value.paused) { "Adding examples stopped to free memory. Try again later." }
                 onProgress(index, stories.size)
-                EmbeddedTrainingStory(story, cachedEmbedding(ArticleCategories.input(story.title, story.description)).toList())
+                val headline = cachedEmbedding(ArticleCategories.input(story.title, null))
+                val preview = cachedEmbedding(ArticleCategories.input(story.title, story.description))
+                EmbeddedTrainingStory(story, preview.toList(), headline.toList())
             }
             currentCoroutineContext().ensureActive()
             check(resources.value.foreground && !resources.value.paused) { "Adding examples stopped to free memory. Try again later." }
@@ -235,7 +243,9 @@ class ArticleCategoryRuntime(
     /** Read-only preview for visible history candidates. Completed inference is reused by Add. */
     suspend fun previewSimilarities(categoryId: String, stories: List<ArticleTrainingStory>, onResult: (Int, Float) -> Unit) = lock.withLock {
         val repository = checkNotNull(training)
-        val center = repository.centers()[categoryId] ?: return@withLock
+        val previewCenter = repository.centers(false)[categoryId]
+        val titleCenter = repository.centers(true)[categoryId]
+        if (previewCenter == null && titleCenter == null) return@withLock
         require(modelReady) { "Download embedding model" }
         check(resources.value.foreground && !resources.value.paused && memoryAvailable()) { "Similarities unavailable. Try again later." }
         val keepLoaded = settings.snapshot().enabled
@@ -246,8 +256,11 @@ class ArticleCategoryRuntime(
                 check(resources.value.foreground && !resources.value.paused) { "Similarities paused to free memory." }
                 require(isHistoryStory(story.id)) { "Choose stories from your history" }
                 val score = withContext(NonCancellable + scoringDispatcher) {
-                    val vector = cachedEmbedding(ArticleCategories.input(story.title, story.description))
-                    ArticleCategories.scores(vector, mapOf(categoryId to center)).single().similarity
+                    val input = ArticleCategories.input(story.title, story.description)
+                    val titleOnly = input == ArticleCategories.input(story.title, null)
+                    val center = checkNotNull(if (titleOnly) titleCenter else previewCenter)
+                    val vector = cachedEmbedding(input)
+                    ArticleCategories.scores(project(vector, titleOnly), mapOf(categoryId to center)).single().similarity
                 }
                 currentCoroutineContext().ensureActive()
                 check(resources.value.foreground && !resources.value.paused) { "Similarities paused to free memory." }
@@ -289,6 +302,9 @@ class ArticleCategoryRuntime(
         loaded = false
         engine?.close()
     }
+
+    private fun project(embedding: FloatArray, titleOnly: Boolean): FloatArray =
+        training?.project(embedding, titleOnly) ?: ArticleCategories.project(embedding, embeddingOrigin(titleOnly))
 
     private suspend fun cachedEmbedding(input: String): FloatArray {
         cache.remove(input)?.let { cache[input] = it; return it }

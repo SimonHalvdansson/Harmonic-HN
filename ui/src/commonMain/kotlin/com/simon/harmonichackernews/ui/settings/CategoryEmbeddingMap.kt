@@ -129,7 +129,7 @@ internal fun CategoryEmbeddingMap(data: CategoryExplorationData, projection: Cat
         }
     }) {
         val (from, to) = endpoints ?: target?.let { it to it } ?: return@Canvas
-        val fraction = progress.value // Read only in Draw: 490 points don't recompose on every frame.
+        val fraction = progress.value // Read only in Draw: the points don't recompose on every frame.
         val padding = 28.dp.toPx()
         repeat(5) { i ->
             val part = (i + 1) / 6f

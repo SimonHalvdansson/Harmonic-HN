@@ -1,10 +1,9 @@
-"""Project the real default embeddings and estimate leave-one-out match density.
+"""Project the title references for the category exploration map.
 
 Requires numpy, scikit-learn and umap-learn. Labels never enter the projection fit.
 Run with the same embeddings JSON used by generate_prototypes.py.
 """
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -13,6 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import sklearn
 import umap
+from category_model import corpus_fingerprint, fit, policy, project
 
 
 def unit(x):
@@ -28,21 +28,12 @@ def main():
     corpus = json.loads(args.corpus.read_text(encoding="utf-8"))
     records = {x["hn_id"]: x for x in json.loads(args.embeddings.read_text(encoding="utf-8"))}
     training = [x for x in corpus["examples"] if x["split"] == "train"]
-    vectors = unit(np.array([records[x["hn_id"]]["embedding"] for x in training], dtype=np.float64))
+    origin, _, raw = fit(corpus,records,title_only=True)
+    vectors = np.array([project(raw[x['hn_id']],origin) for x in training],dtype=np.float64)
     assert vectors.shape == (len(training), 768) and np.isfinite(vectors).all()
     categories = [x["id"] for x in corpus["categories"]]
-    # An example contributes no part of itself to the center it is tested against.
     membership = np.array([[c in x["category_ids"] for c in categories] for x in training])
     sums = membership.T @ vectors
-    maxima = []
-    for i, vector in enumerate(vectors):
-        centers = unit(sums - membership[i, :, None] * vector)
-        maxima.append(float(np.max(centers @ vector)))
-    # Smooth density at 101 evenly spaced positions in the actual slider range.
-    grid = np.linspace(0.75, 0.90, 101)
-    bandwidth = 0.006  # 0.6 points on the displayed 0..100 similarity scale.
-    density = np.exp(-0.5 * ((grid[:, None] - maxima) / bandwidth) ** 2).mean(axis=1)
-    density /= density.max()
     # PCA preserves overall linear variation; UMAP/t-SNE focus on neighborhoods.
     projections = {
         "pca": PCA(n_components=2, svd_solver="full").fit_transform(vectors),
@@ -58,18 +49,17 @@ def main():
         xy = (xy - (xy.min(axis=0) + xy.max(axis=0)) / 2) / np.ptp(xy, axis=0).max() + 0.5
         methods.append({"id": key, "positions": np.round(xy, 6).tolist()})
     payload = {
-        "version": 2, "corpusSha256": hashlib.sha256(args.corpus.read_bytes()).hexdigest(),
-        "generator": {"seed": 42, "numpy": np.__version__, "sklearn": sklearn.__version__, "umap": umap.__version__,
-                      "histogram": "leave-one-out best cosine; Gaussian KDE bandwidth 0.006 (0.6 similarity points); range 0.75..0.90"},
+        "version": 4, "corpusSha256": corpus_fingerprint(corpus),
+        "inputVersion":policy()['input_version'],"representationVersion":policy()['representation_version'],"inputView":"title_only",
+        "generator": {"seed": 42, "numpy": np.__version__, "sklearn": sklearn.__version__, "umap": umap.__version__},
         "points": [{"id": x["hn_id"], "title": x["title"], "category": x["category_ids"][0],
                     "matches": [{"category": categories[j], "similarity": round(float(score[j]), 6)}
                                 for j in np.argsort(-score)[:3]]}
                    for x, score in zip(training, vectors @ unit(sums).T)],
-        "methods": methods, "density": np.round(density, 6).tolist(),
+        "methods": methods,
     }
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    args.output.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8",newline='\n')
     print(f"Exported {len(training)} examples, {len(categories)} categories, three projections")
-    print(f"Leave-one-out best similarity: min={min(maxima):.3f}, median={np.median(maxima):.3f}, max={max(maxima):.3f}")
 
 
 if __name__ == "__main__":

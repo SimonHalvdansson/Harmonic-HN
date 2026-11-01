@@ -1,0 +1,3736 @@
+{
+  "schema_version": 2,
+  "collected_at": "2026-11-01",
+  "description_pipeline": "HtmlDescriptionExtractor.previewDescription; 600 characters; v1",
+  "categories": [
+    {
+      "id": "history",
+      "name": "History",
+      "description": "Past civilizations, archaeology and historical events"
+    },
+    {
+      "id": "culture",
+      "name": "Culture",
+      "description": "Art, music, literature, languages and philosophy"
+    },
+    {
+      "id": "energy",
+      "name": "Energy",
+      "description": "Electricity generation, power grids, fuels and energy storage"
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "description": "Medicine, treatments, public health and wellbeing"
+    }
+  ],
+  "examples": [
+    {
+      "hn_id": 34280239,
+      "hn_url": "https://news.ycombinator.com/item?id=34280239",
+      "title": "Why was Roman concrete so durable?",
+      "url": "https://news.mit.edu/2023/roman-concrete-durability-lime-casts-0106",
+      "posted_at": "2023-01-06T20:05:50Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Researchers have discovered ancient Roman concrete-manufacturing strategies that incorporated self-healing. Applying this knowledge toward modern cement production, they hope to improve the material’s environmental impact.",
+      "description_source": "metadata",
+      "query": "Roman"
+    },
+    {
+      "hn_id": 32607187,
+      "hn_url": "https://news.ycombinator.com/item?id=32607187",
+      "title": "Why no Roman industrial revolution?",
+      "url": "https://acoup.blog/2022/08/26/collections-why-no-roman-industrial-revolution/",
+      "posted_at": "2022-08-26T13:25:09Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "This week we are taking a look at the latest winner of the ACOUP Senate poll, which posed the question “Why didn’t the Roman Empire have an industrial revolution?” To answer that,…",
+      "description_source": "metadata",
+      "query": "Roman"
+    },
+    {
+      "hn_id": 41022653,
+      "hn_url": "https://news.ycombinator.com/item?id=41022653",
+      "title": "What is the significance of the character \"j\" at the end of a Roman Numeral? (2013)",
+      "url": "https://genealogy.stackexchange.com/questions/3748/what-is-the-significance-of-the-character-j-at-the-end-of-a-roman-numeral",
+      "posted_at": "2024-07-21T05:31:59Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Roman"
+    },
+    {
+      "hn_id": 40597216,
+      "hn_url": "https://news.ycombinator.com/item?id=40597216",
+      "title": "Roman Roads (2017)",
+      "url": "https://sashamaps.net/docs/maps/roman-roads-original/",
+      "posted_at": "2024-06-06T13:32:36Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "A map of the roads of ancient Rome, in the style of a transit diagram.",
+      "description_source": "metadata",
+      "query": "Roman",
+      "description_final_url": "https://sashamaps.net/maps/roman-roads-original/"
+    },
+    {
+      "hn_id": 38024665,
+      "hn_url": "https://news.ycombinator.com/item?id=38024665",
+      "title": "Cold war satellite images reveal unknown Roman forts",
+      "url": "https://www.theguardian.com/science/2023/oct/26/cold-war-satellite-images-hundreds-unknown-roman-forts",
+      "posted_at": "2023-10-26T12:31:58Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Declassified spy images point to 396 undiscovered forts in Syria and Iraq, shifting understanding of Roman frontier",
+      "description_source": "metadata",
+      "query": "Roman"
+    },
+    {
+      "hn_id": 45893795,
+      "hn_url": "https://news.ycombinator.com/item?id=45893795",
+      "title": "Four strange places to see London's Roman Wall",
+      "url": "https://diamondgeezer.blogspot.com/2025/11/odd-places-to-see-londons-roman-wall.html",
+      "posted_at": "2025-11-11T22:31:41Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Roman"
+    },
+    {
+      "hn_id": 31452449,
+      "hn_url": "https://news.ycombinator.com/item?id=31452449",
+      "title": "Ancient civilisation under eastern Turkey estimated to be 11k-13k years old",
+      "url": "https://www.spectator.co.uk/article/does-an-unknown-extraordinarily-ancient-civilisation-lie-buried-under-eastern-turkey-",
+      "posted_at": "2022-05-20T21:01:04Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "I am staring at about a dozen, stiff, eight-foot high, orange-red penises, carved from living bedrock, and semi-enclosed in an open chamber. A strange carved head (of a man, a demon, a priest, a God?), also hewn from the living rock, gazes at the phallic totems – like a primitivist gargoyle. The expression of the",
+      "description_source": "metadata",
+      "query": "ancient",
+      "description_final_url": "https://spectator.com/article/does-an-unknown-extraordinarily-ancient-civilisation-lie-buried-under-eastern-turkey/"
+    },
+    {
+      "hn_id": 42224330,
+      "hn_url": "https://news.ycombinator.com/item?id=42224330",
+      "title": "Evidence of oldest known alphabetic writing unearthed in ancient Syrian city",
+      "url": "https://hub.jhu.edu/2024/11/21/ancient-alphabet-discovered-syria/",
+      "posted_at": "2024-11-23T22:11:22Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Findings suggest alphabetic writing may be some 500 years older than other discoveries",
+      "description_source": "metadata",
+      "query": "alphabet"
+    },
+    {
+      "hn_id": 33318215,
+      "hn_url": "https://news.ycombinator.com/item?id=33318215",
+      "title": "What’s wrong with medieval pigs in videogames",
+      "url": "https://www.leidenmedievalistsblog.nl/articles/whats-wrong-with-medieval-pigs-in-videogames",
+      "posted_at": "2022-10-24T15:45:06Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Some medieval videogames claim historical authenticity, but one particular farm animal is often overlooked...",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 28062677,
+      "hn_url": "https://news.ycombinator.com/item?id=28062677",
+      "title": "The historical accuracy of medieval city-builder video games",
+      "url": "https://www.leidenmedievalistsblog.nl/articles/why-medieval-city-builder-video-games-are-historically-inaccurate",
+      "posted_at": "2021-08-04T16:08:23Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "This blog post explores the historical accuracy of medieval city-builder video games.",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 32363823,
+      "hn_url": "https://news.ycombinator.com/item?id=32363823",
+      "title": "I assure you, medieval people bathed (2019)",
+      "url": "https://going-medieval.com/2019/08/02/i-assure-you-medieval-people-bathed/",
+      "posted_at": "2022-08-06T01:11:00Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "I can’t believe I have to write this down right now, but my dear friends, medieval people bathed regularly. Yes. I assure you. I am very serious. It is true. In fact, medieval people loved a bath a…",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 29886907,
+      "hn_url": "https://news.ycombinator.com/item?id=29886907",
+      "title": "The medieval habit of ‘two sleeps’",
+      "url": "https://www.bbc.com/future/article/20220107-the-lost-medieval-habit-of-biphasic-sleep",
+      "posted_at": "2022-01-11T03:08:39Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "For millennia, people slept in two shifts – once in the evening, and once in the morning. But why? And how did the habit disappear?",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 42806486,
+      "hn_url": "https://news.ycombinator.com/item?id=42806486",
+      "title": "Building a Medieval Castle from Scratch",
+      "url": "https://www.guedelon.fr/en/",
+      "posted_at": "2025-01-23T18:24:30Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "It is in the Guédelon Forest, in the heart of a former quarry, that the workers are building a 13th-century fortified castle every day, right before your eyes. Quarrymen, stonemasons, bricklayers, carpenters, woodcutters, blacksmiths, tile-makers, carters, rope-makers… transform and make the most of the stone, wood and earth found on site to reveal the secrets of the medieval builders.",
+      "description_source": "body",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 37822774,
+      "hn_url": "https://news.ycombinator.com/item?id=37822774",
+      "title": "Medieval staircases were not built going clockwise for the defender's advantage",
+      "url": "https://fakehistoryhunter.net/2023/10/09/medieval-staircases-were-not-built-going-clockwise-for-the-defenders-advantage/",
+      "posted_at": "2023-10-09T17:20:54Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "This story has been making the rounds on the internet with a claim that you’ve probably been told during visits to castles, but, there’s no evidence for it whatsoever. In short the idea…",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 44598090,
+      "hn_url": "https://news.ycombinator.com/item?id=44598090",
+      "title": "The daily life of a medieval king",
+      "url": "https://www.medievalists.net/2025/07/medieval-king-daily-life/",
+      "posted_at": "2025-07-17T20:54:02Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Have you wondered what a medieval king did on a typical day? Thanks to Christine de Pizan, we have an account of what daily life was like for King Charles V of France.",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 26611413,
+      "hn_url": "https://news.ycombinator.com/item?id=26611413",
+      "title": "A forgotten medieval fruit with a vulgar name",
+      "url": "https://www.bbc.com/future/article/20210325-the-strange-medieval-fruit-the-world-forgot",
+      "posted_at": "2021-03-28T16:02:25Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Medieval Europeans were fanatical about a strange fruit that could only be eaten rotten. Then it was forgotten altogether. Why did they love it so much? And why did it disappear?",
+      "description_source": "metadata",
+      "query": "medieval"
+    },
+    {
+      "hn_id": 29439421,
+      "hn_url": "https://news.ycombinator.com/item?id=29439421",
+      "title": "Common Jobs in a Medieval City",
+      "url": "https://www.medievalists.net/2021/11/most-common-jobs-medieval-city/",
+      "posted_at": "2021-12-04T07:43:48Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "What were the most common jobs in a late medieval city? In this piece, we’ll look at the case of fifteenth-century Montpellier, a city located in the South of France.",
+      "description_source": "metadata",
+      "query": "medieval",
+      "description_final_url": "https://www.medievalists.net/2026/04/common-jobs-medieval-city/"
+    },
+    {
+      "hn_id": 44309191,
+      "hn_url": "https://news.ycombinator.com/item?id=44309191",
+      "title": "Denmark's Archaeology Experiment Is Paying Off in Gold and Knowledge",
+      "url": "https://www.scientificamerican.com/article/denmark-let-amateurs-dig-for-treasure-and-it-paid-off/",
+      "posted_at": "2025-06-18T12:13:15Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "The Danish government deputized private detectorists to unearth artifacts buried in farm fields. Their finds are revealing the country’s past in extraordinary detail",
+      "description_source": "metadata",
+      "query": "archaeology"
+    },
+    {
+      "hn_id": 26832032,
+      "hn_url": "https://news.ycombinator.com/item?id=26832032",
+      "title": "Archaeology in the Ashes of Notre Dame",
+      "url": "https://www.sapiens.org/archaeology/archaeology-notre-dame-cathedral/",
+      "posted_at": "2021-04-16T10:24:59Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "archaeology notre dame cathedral - An archaeologist outlines the unprecedented scientific research to make the most of the disaster.",
+      "description_source": "metadata",
+      "query": "archaeology"
+    },
+    {
+      "hn_id": 27937739,
+      "hn_url": "https://news.ycombinator.com/item?id=27937739",
+      "title": "Archaeologists find ancient Egyptian warship sunk near Alexandria",
+      "url": "https://arstechnica.com/science/2021/07/archaeologists-find-ancient-egyptian-warship-sunk-near-alexandria/",
+      "posted_at": "2021-07-24T01:47:57Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "The fast galley probably sank during an earthquake in the 100s BCE.",
+      "description_source": "metadata",
+      "query": "archaeology"
+    },
+    {
+      "hn_id": 25688066,
+      "hn_url": "https://news.ycombinator.com/item?id=25688066",
+      "title": "Archaeologists in Turkey unearth 2,500-year-old temple of Aphrodite",
+      "url": "https://www.smithsonianmag.com/smart-news/2500-year-old-temple-aphrodite-found-turkey-180976694/",
+      "posted_at": "2021-01-08T18:36:26Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "An inscription found at the site—dedicated to the Greek goddess of love and beauty—states, \"This is the sacred area\"",
+      "description_source": "metadata",
+      "query": "archaeology"
+    },
+    {
+      "hn_id": 29710326,
+      "hn_url": "https://news.ycombinator.com/item?id=29710326",
+      "title": "A Zimbabwean archaeologist reimagines the story of an African civilisation",
+      "url": "https://www.economist.com/interactives/christmas-specials/2021/12/18/great-zimbabwe-archaeology",
+      "posted_at": "2021-12-28T04:17:51Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "A Zimbabwean archaeologist reimagines the story of a momentous African civilisation",
+      "description_source": "metadata",
+      "query": "archaeology",
+      "description_final_url": "https://www.economist.com/interactive/christmas-specials/2021/12/18/great-zimbabwe-archaeology"
+    },
+    {
+      "hn_id": 26786838,
+      "hn_url": "https://news.ycombinator.com/item?id=26786838",
+      "title": "Skies went dark: Historians pinpoint the 'worst year' ever to be alive",
+      "url": "https://www.accuweather.com/en/severe-weather/historians-pinpoint-the-very-worst-year-to-ever-be-alive/927803",
+      "posted_at": "2021-04-13T00:31:27Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "historian"
+    },
+    {
+      "hn_id": 28997027,
+      "hn_url": "https://news.ycombinator.com/item?id=28997027",
+      "title": "A librarian and a food historian rediscovered the recipes of Moorish Spain",
+      "url": "https://www.atlasobscura.com/articles/moorish-cuisine",
+      "posted_at": "2021-10-26T06:19:20Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "A new cookbook is a translation of a rare, 13th-century volume.",
+      "description_source": "metadata",
+      "query": "historian"
+    },
+    {
+      "hn_id": 33117631,
+      "hn_url": "https://news.ycombinator.com/item?id=33117631",
+      "title": "Mercenaries Were More Common in Greek Warfare Than Ancient Historians Let On",
+      "url": "https://www.smithsonianmag.com/smart-news/mercenary-soldiers-were-more-common-in-greek-battles-than-historians-let-on-180980902/",
+      "posted_at": "2022-10-07T05:03:51Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "New research finds that many soldiers who fought in the fifth-century B.C.E. battles at Himera were born outside of the empire",
+      "description_source": "metadata",
+      "query": "historian"
+    },
+    {
+      "hn_id": 42262547,
+      "hn_url": "https://news.ycombinator.com/item?id=42262547",
+      "title": "NASA aircraft uncover Cold War nuclear missile tunnels under Greenland ice sheet",
+      "url": "https://www.space.com/the-universe/earth/nasa-aircraft-uncovers-site-of-secret-cold-war-nuclear-missile-tunnels-under-greenland-ice-sheet",
+      "posted_at": "2024-11-28T04:48:59Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "\"We were looking for the bed of the ice and out pops Camp Century. We didn't know what it was at first.\"",
+      "description_source": "metadata",
+      "query": "Cold War"
+    },
+    {
+      "hn_id": 33888799,
+      "hn_url": "https://news.ycombinator.com/item?id=33888799",
+      "title": "The cyanide tooth is a cold war fairy-tale (2018)",
+      "url": "https://www.atlasobscura.com/articles/cyanide-tooth-is-not-real",
+      "posted_at": "2022-12-06T23:52:42Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "The popular spy movie trope would have been a rather risky thing to carry around in your mouth.",
+      "description_source": "metadata",
+      "query": "Cold War"
+    },
+    {
+      "hn_id": 42110588,
+      "hn_url": "https://news.ycombinator.com/item?id=42110588",
+      "title": "Visualizing World War II",
+      "url": "https://nathangoldwag.wordpress.com/2024/10/26/visualizing-the-past-world-war-ii/",
+      "posted_at": "2024-11-11T21:28:28Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "If you’ve been reading this blog for any length of time, you’ll know that maps and history are two of my favorite things. I love history because I love learning about the vast panoply of the human …",
+      "description_source": "metadata",
+      "query": "World War"
+    },
+    {
+      "hn_id": 45613327,
+      "hn_url": "https://news.ycombinator.com/item?id=45613327",
+      "title": "Betty White's shoulder bag is a time capsule of World War II (2023)",
+      "url": "https://americanhistory.si.edu/explore/stories/betty-white-world-war-ii",
+      "posted_at": "2025-10-17T04:28:46Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "World War"
+    },
+    {
+      "hn_id": 41937319,
+      "hn_url": "https://news.ycombinator.com/item?id=41937319",
+      "title": "Post World War II Food",
+      "url": "https://www.nps.gov/articles/post-wwii-food.htm",
+      "posted_at": "2024-10-24T16:54:53Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Post War Food, part of the Material Culture of World War II and Food Rationing series.",
+      "description_source": "metadata",
+      "query": "World War"
+    },
+    {
+      "hn_id": 28804093,
+      "hn_url": "https://news.ycombinator.com/item?id=28804093",
+      "title": "Byzantine warrior with gold-threaded jaw unearthed in Greece",
+      "url": "https://www.livescience.com/byzantine-warrior-fractured-jaw",
+      "posted_at": "2021-10-08T20:56:31Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "His jaw had been shattered in two.",
+      "description_source": "metadata",
+      "query": "Byzantine"
+    },
+    {
+      "hn_id": 35640427,
+      "hn_url": "https://news.ycombinator.com/item?id=35640427",
+      "title": "Smuggling of silkworm eggs into the Byzantine Empire",
+      "url": "https://en.wikipedia.org/wiki/Smuggling_of_silkworm_eggs_into_the_Byzantine_Empire",
+      "posted_at": "2023-04-20T14:21:13Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Byzantine"
+    },
+    {
+      "hn_id": 27939893,
+      "hn_url": "https://news.ycombinator.com/item?id=27939893",
+      "title": "Beneath Istanbul, Archaeologists Explore an Ancient City's Byzantine Basements",
+      "url": "https://www.npr.org/2021/07/23/1016814868/beneath-istanbul-archaeologists-explore-an-ancient-citys-byzantine-basements",
+      "posted_at": "2021-07-24T11:14:23Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Below the surface of the sprawling, modern metropolis is a different world. Archaeologists are gaining insights into the city's ancient past by examining the basements of ordinary buildings.",
+      "description_source": "metadata",
+      "query": "Byzantine"
+    },
+    {
+      "hn_id": 42732533,
+      "hn_url": "https://news.ycombinator.com/item?id=42732533",
+      "title": "Byzantine-Sassanian War (602-628 CE): The Last Great War of Antiquity (2023)",
+      "url": "https://www.thecollector.com/byzantine-sassanian-war/",
+      "posted_at": "2025-01-17T00:00:17Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "After many years of conflict, the Sassanians and Byzantines fought one last great war that nearly destroyed both empires.",
+      "description_source": "metadata",
+      "query": "Byzantine"
+    },
+    {
+      "hn_id": 39497907,
+      "hn_url": "https://news.ycombinator.com/item?id=39497907",
+      "title": "What do we get wrong about the Byzantine Empire?",
+      "url": "https://www.historytoday.com/archive/head-head/what-do-we-get-wrong-about-byzantine-empire",
+      "posted_at": "2024-02-25T05:19:08Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Byzantine"
+    },
+    {
+      "hn_id": 40814333,
+      "hn_url": "https://news.ycombinator.com/item?id=40814333",
+      "title": "A buried ancient Egyptian port reveals connections between distant civilizations",
+      "url": "https://www.smithsonianmag.com/history/hidden-ancient-egyptian-port-reveals-180984485/",
+      "posted_at": "2024-06-27T19:49:18Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "At the site of Berenike, in the desert sands along the Red Sea, archaeologists are uncovering wondrous new finds that challenge old ideas about the makings of the modern world",
+      "description_source": "metadata",
+      "query": "ancient Egypt"
+    },
+    {
+      "hn_id": 46970733,
+      "hn_url": "https://news.ycombinator.com/item?id=46970733",
+      "title": "5,300-year-old 'bow drill' rewrites story of ancient Egyptian tools",
+      "url": "https://www.ncl.ac.uk/press/articles/latest/2026/02/ancientegyptiandrillbit/",
+      "posted_at": "2026-02-11T04:12:00Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "A new study reveals that Egyptians were using a mechanically sophisticated drilling tool far earlier than previously suggested.",
+      "description_source": "metadata",
+      "query": "ancient Egypt"
+    },
+    {
+      "hn_id": 37599312,
+      "hn_url": "https://news.ycombinator.com/item?id=37599312",
+      "title": "Sunken temple and sanctuary from ancient Egypt",
+      "url": "https://www.franckgoddio.org/projects/sunken-civilizations/heracleion/",
+      "posted_at": "2023-09-21T15:40:28Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "Off the coast of Egypt lies a sunken city that was once an ancient metropolis. Follow the work of underwater archaeologist Franck Goddio and his team to find out how the city looked like and what caused its submergence.",
+      "description_source": "metadata",
+      "query": "ancient Egypt"
+    },
+    {
+      "hn_id": 32994480,
+      "hn_url": "https://news.ycombinator.com/item?id=32994480",
+      "title": "Two hundred years ago, the Rosetta Stone unlocked the secrets of ancient Egypt",
+      "url": "https://www.smithsonianmag.com/history/rosetta-stone-hieroglyphs-champollion-decipherment-egypt-180980834/",
+      "posted_at": "2022-09-27T12:28:50Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "French scholar Jean-François Champollion announced his decipherment of Egyptian hieroglyphs on September 27, 1822",
+      "description_source": "metadata",
+      "query": "ancient Egypt"
+    },
+    {
+      "hn_id": 37519368,
+      "hn_url": "https://news.ycombinator.com/item?id=37519368",
+      "title": "VÉgA – Vocabulary of Ancient Egyptian",
+      "url": "https://vega-vocabulaire-egyptien-ancien.fr/en/welcome-page/",
+      "posted_at": "2023-09-15T06:44:15Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "train",
+      "description": "VÉgA, for Vocabulary of Ancient Egyptian in French, is an online digital dictionary, born from private/public collaboration within the LabEx Archimede (ANR-II-LABX-0032-01), supported by the CNRS and the University Paul-Valéry Montpellier 3. Its aim is to become an indispensable and regularly updated research platform for egyptology.",
+      "description_source": "metadata",
+      "query": "ancient Egypt",
+      "description_final_url": "https://www.vega-vocabulaire-egyptien-ancien.fr/en/welcome-page/"
+    },
+    {
+      "hn_id": 43857405,
+      "hn_url": "https://news.ycombinator.com/item?id=43857405",
+      "title": "Depictions of the Milky Way found in ancient Egyptian imagery",
+      "url": "https://phys.org/news/2025-04-depictions-milky-ancient-egyptian-imagery.html",
+      "posted_at": "2025-05-01T13:30:01Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "An interest in understanding the role that the Milky Way played in Egyptian culture and religion has led University of Portsmouth Associate Professor of Astrophysics, Dr. Or Graur to uncover what he thinks may be the ancient Egyptian visual depiction of the Milky Way.",
+      "description_source": "metadata",
+      "query": "ancient Egypt",
+      "acceptable_category_ids": [
+        "history",
+        "space"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41776631,
+      "hn_url": "https://news.ycombinator.com/item?id=41776631",
+      "title": "Archaeologists found an ancient Egyptian observatory",
+      "url": "https://arstechnica.com/science/2024/10/archaeologists-found-an-ancient-egyptian-observatory/",
+      "posted_at": "2024-10-08T12:32:27Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "Expedition leader: \"Everything we found shattered our expectations.\"",
+      "description_source": "metadata",
+      "query": "ancient Egypt",
+      "acceptable_category_ids": [
+        "history",
+        "space"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 36030979,
+      "hn_url": "https://news.ycombinator.com/item?id=36030979",
+      "title": "Humanity's earliest recorded kiss occurred in Mesopotamia 4,500 years ago",
+      "url": "https://phys.org/news/2023-05-humanity-earliest-mesopotamia-years.html",
+      "posted_at": "2023-05-22T13:10:15Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "Recent research has hypothesized that the earliest evidence of human lip kissing originated in a very specific geographical location in South Asia 3,500 years ago, from where it may have spread to other regions, simultaneously accelerating the spread of the herpes simplex virus 1.",
+      "description_source": "metadata",
+      "query": "Mesopotamia",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 30320108,
+      "hn_url": "https://news.ycombinator.com/item?id=30320108",
+      "title": "The most lavish Mesopotamian tomb ever found",
+      "url": "https://www.atlasobscura.com/articles/ur-queen-puabi-mesopotamia-textiles",
+      "posted_at": "2022-02-13T08:02:23Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "And her clothing tells an important story, says archeologist Rita Wright.",
+      "description_source": "metadata",
+      "query": "Mesopotamia",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 33271054,
+      "hn_url": "https://news.ycombinator.com/item?id=33271054",
+      "title": "Drone photos reveal an early Mesopotamian city made of marsh islands",
+      "url": "https://www.sciencenews.org/article/mesopotamia-city-marsh-islands-drone-lagash-iraq",
+      "posted_at": "2022-10-20T05:12:26Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "Urban growth around 4,600 years ago, near what is now southern Iraq, occurred on marshy outposts that lacked a city center.",
+      "description_source": "metadata",
+      "query": "Mesopotamia",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 29905954,
+      "hn_url": "https://news.ycombinator.com/item?id=29905954",
+      "title": "Ancient Mesopotamian discovery transforms knowledge of early farming",
+      "url": "https://www.rutgers.edu/news/ancient-mesopotamian-discovery-transforms-knowledge-early-farming",
+      "posted_at": "2022-01-12T13:18:45Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Mesopotamia",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 34906104,
+      "hn_url": "https://news.ycombinator.com/item?id=34906104",
+      "title": "Vikings went to Mediterranean for ‘summer jobs’ as mercenaries, left graffiti",
+      "url": "https://sciencenorway.no/archaeology-history-runes/vikings-tagged-the-great-lion-in-venice-with-runes/2157444",
+      "posted_at": "2023-02-23T02:50:25Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "Hundreds or thousands of Norwegian and Swedish Vikings went to the Mediterranean for ‘summer jobs’ as mercenaries. They left behind graffiti.",
+      "description_source": "metadata",
+      "query": "Viking",
+      "description_final_url": "https://www.sciencenorway.no/archaeology-history-runes/vikings-tagged-the-great-lion-in-venice-with-runes/2157444",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 47100612,
+      "hn_url": "https://news.ycombinator.com/item?id=47100612",
+      "title": "‘Viking’ was a job, not a matter of heredity: ancient DNA study (2020)",
+      "url": "https://www.science.org/content/article/viking-was-job-description-not-matter-heredity-massive-ancient-dna-study-shows",
+      "posted_at": "2026-02-21T13:24:04Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Viking",
+      "acceptable_category_ids": [
+        "history",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 47804178,
+      "hn_url": "https://news.ycombinator.com/item?id=47804178",
+      "title": "Monumental ship burial beneath ancient Norwegian mound predates the Viking Age",
+      "url": "https://phys.org/news/2026-04-monumental-ship-burial-beneath-ancient.html",
+      "posted_at": "2026-04-17T09:50:53Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "Monumental ship burials in Scandinavia may have started around a century earlier than previously thought, according to a paper published in the journal Antiquity. It reports the discovery of the remains of a 1,300-year-old ship buried on the Norwegian island of Leka, predating the Vikings.",
+      "description_source": "metadata",
+      "query": "Viking",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41936316,
+      "hn_url": "https://news.ycombinator.com/item?id=41936316",
+      "title": "Lost Silk Road Cities Discovered High in the Mountains of Central Asia",
+      "url": "https://www.scientificamerican.com/article/lost-silk-road-cities-discovered-high-in-the-mountains-of-central-asia/",
+      "posted_at": "2024-10-24T15:12:34Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "On the Silk Road, these lost twin cities may have sustained themselves in a foreboding landscape with metallurgy and commerce",
+      "description_source": "metadata",
+      "query": "Silk Road",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41701864,
+      "hn_url": "https://news.ycombinator.com/item?id=41701864",
+      "title": "Manuscripts reveal the details of everyday life on the Silk Road",
+      "url": "https://www.historytoday.com/archive/feature/secrets-silk-road",
+      "posted_at": "2024-09-30T20:43:04Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Silk Road",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 34420727,
+      "hn_url": "https://news.ycombinator.com/item?id=34420727",
+      "title": "A flurry of new studies identifies causes of the Industrial Revolution",
+      "url": "https://www.economist.com/graphic-detail/2023/01/17/a-flurry-of-new-studies-identifies-causes-of-the-industrial-revolution",
+      "posted_at": "2023-01-17T22:58:13Z",
+      "category_ids": [
+        "history"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "industrial revolution",
+      "acceptable_category_ids": [
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 35935796,
+      "hn_url": "https://news.ycombinator.com/item?id=35935796",
+      "title": "Get started making music",
+      "url": "https://learningmusic.ableton.com/",
+      "posted_at": "2023-05-14T06:28:53Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Explore the fundamentals of music via Ableton's interactive website. Experiment with beats, melody, harmony, basslines, and song structure in your web browser.",
+      "description_source": "metadata",
+      "query": "music"
+    },
+    {
+      "hn_id": 44139626,
+      "hn_url": "https://news.ycombinator.com/item?id=44139626",
+      "title": "Photos taken inside musical instruments",
+      "url": "https://www.dpreview.com/photography/5400934096/probe-lenses-and-focus-stacking-the-secrets-to-incredible-photos-taken-inside-instruments",
+      "posted_at": "2025-05-30T20:32:19Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "music"
+    },
+    {
+      "hn_id": 26870666,
+      "hn_url": "https://news.ycombinator.com/item?id=26870666",
+      "title": "The Endless Acid Banger: algorithmic self-composing acid techno music",
+      "url": "https://www.vitling.xyz/toys/acid-banger/",
+      "posted_at": "2021-04-20T04:28:29Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Algorithmic music experiement by Vitling",
+      "description_source": "metadata",
+      "query": "music"
+    },
+    {
+      "hn_id": 48930454,
+      "hn_url": "https://news.ycombinator.com/item?id=48930454",
+      "title": "The lost joy of music piracy",
+      "url": "https://www.pigeonsandplanes.com/read/music-piracy-what-cd-oink-nine-inch-nails-streaming",
+      "posted_at": "2026-07-16T04:46:21Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "What.CD, Oink, and the banalities of streaming.",
+      "description_source": "metadata",
+      "query": "music"
+    },
+    {
+      "hn_id": 30021349,
+      "hn_url": "https://news.ycombinator.com/item?id=30021349",
+      "title": "International Linguistics Olympiad – Sample Problems",
+      "url": "https://ioling.org/problems/samples/",
+      "posted_at": "2022-01-21T09:51:09Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "International Linguistics Olympiad official website",
+      "description_source": "metadata",
+      "query": "linguistics"
+    },
+    {
+      "hn_id": 42515584,
+      "hn_url": "https://news.ycombinator.com/item?id=42515584",
+      "title": "Ancient genomes provide final word in Indo-European linguistic origins",
+      "url": "https://phys.org/news/2024-12-ancient-genomes-word-indo-european.html",
+      "posted_at": "2024-12-26T15:00:27Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "A team of 91 researchers—including famed geneticist Eske Willerslev at the Lundbeck Foundation GeoGenetics Center, University of Copenhagen—has discovered a Bronze Age genetic divergence connected to eastern and western Mediterranean Indo-European language speakers.",
+      "description_source": "metadata",
+      "query": "linguistics"
+    },
+    {
+      "hn_id": 47972392,
+      "hn_url": "https://news.ycombinator.com/item?id=47972392",
+      "title": "Lost in translation: The linguistic challenges facing N. Korean defectors (2025)",
+      "url": "https://www.dailynk.com/english/lost-in-translation-the-linguistic-challenges-facing-n-korean-defectors/",
+      "posted_at": "2026-05-01T08:20:03Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "One of the linguistic shocks faced by North Korean defectors upon their arrival in South Korea involves the relationship between the words nakji and ojingeo. In South Korea, these words mean “octopus” and “squid” respectively, but in North Korea, the meanings are reversed. One defector recalls inviting South Korean coworkers to have soju with ojingeo. […]",
+      "description_source": "metadata",
+      "query": "linguistics"
+    },
+    {
+      "hn_id": 46462702,
+      "hn_url": "https://news.ycombinator.com/item?id=46462702",
+      "title": "Standard Ebooks: Public Domain Day 2026 in Literature",
+      "url": "https://standardebooks.org/blog/public-domain-day-2026",
+      "posted_at": "2026-01-02T08:40:41Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Read about the new ebooks Standard Ebooks is releasing for Public Domain Day 2026!",
+      "description_source": "metadata",
+      "query": "literature"
+    },
+    {
+      "hn_id": 41983622,
+      "hn_url": "https://news.ycombinator.com/item?id=41983622",
+      "title": "Writing in Pictures: Richard Scarry and the art of children's literature",
+      "url": "https://yalereview.org/article/chris-ware-richard-scarry",
+      "posted_at": "2024-10-29T13:24:55Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "The illustrator Chris Ware surveys the work of Richard Scarry.",
+      "description_source": "metadata",
+      "query": "literature"
+    },
+    {
+      "hn_id": 45527003,
+      "hn_url": "https://news.ycombinator.com/item?id=45527003",
+      "title": "Nobel Prize in Literature 2025: László Krasznahorkai",
+      "url": "https://www.nobelprize.org/prizes/literature/2025/press-release/",
+      "posted_at": "2025-10-09T12:54:18Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "The Nobel Prize in Literature 2025 was awarded to László Krasznahorkai \"for his compelling and visionary oeuvre that, in the midst of apocalyptic terror, reaffirms the power of art\"",
+      "description_source": "metadata",
+      "query": "literature"
+    },
+    {
+      "hn_id": 33009625,
+      "hn_url": "https://news.ycombinator.com/item?id=33009625",
+      "title": "The ‘Epic of Gilgamesh’ is not the oldest surviving work of literature",
+      "url": "https://talesoftimesforgotten.com/2022/09/22/no-the-epic-of-gilgamesh-is-not-the-oldest-surviving-work-of-literature/",
+      "posted_at": "2022-09-28T16:10:17Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "If you think you know one thing about the ancient Mesopotamian Epic of Gilgamesh, then, chances are, you probably think that the epic is the oldest surviving work of literature in the whole world. This claim pervades basically all non-academic discussion of the epic. I was taught it in my history and literature classes all … Continue reading \"No, the ‘Epic of Gilgamesh’ Is Not the Oldest Surviving Work of Literature\"",
+      "description_source": "metadata",
+      "query": "literature"
+    },
+    {
+      "hn_id": 47556076,
+      "hn_url": "https://news.ycombinator.com/item?id=47556076",
+      "title": "What major works of literature were written after age of 85? 75? 65?",
+      "url": "https://statmodeling.stat.columbia.edu/2026/03/25/what-major-works-of-literature-were-written-after-age-of-85-75-65/",
+      "posted_at": "2026-03-28T16:29:28Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "literature"
+    },
+    {
+      "hn_id": 37888606,
+      "hn_url": "https://news.ycombinator.com/item?id=37888606",
+      "title": "Show HN: \"Interactive\" Italian Poetry for English Speakers",
+      "url": "https://italianpoetry.it/",
+      "posted_at": "2023-10-15T10:37:13Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "This website aims to facilitate the appreciation of Italian poetry by English speakers who don't speak Italian.",
+      "description_source": "metadata",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 32703307,
+      "hn_url": "https://news.ycombinator.com/item?id=32703307",
+      "title": "Lost islands cited in Welsh folklore and poetry are plausible",
+      "url": "https://www.sciencedaily.com/releases/2022/08/220825120347.htm",
+      "posted_at": "2022-09-03T16:16:13Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "A Welsh tradition dating to the medieval period of a landscape lost to the sea is plausible, new evidence on the evolution of the coastline of west Wales has revealed. Drawing on geological data and a medieval map, the researchers propose how two islands may have come into existence and then disappeared again.",
+      "description_source": "metadata",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 41182895,
+      "hn_url": "https://news.ycombinator.com/item?id=41182895",
+      "title": "Poetry was an official Olympic event",
+      "url": "https://www.smithsonianmag.com/history/poetry-was-an-official-olympic-event-for-nearly-40-years-what-happened-180984838/",
+      "posted_at": "2024-08-07T16:24:12Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Pierre de Coubertin hoped the modern Games would encourage the ancient Greek notion of harmony between \"muscle and mind\"",
+      "description_source": "metadata",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 39589102,
+      "hn_url": "https://news.ycombinator.com/item?id=39589102",
+      "title": "A mathematician who finds poetry in math and math in poetry",
+      "url": "https://www.quantamagazine.org/the-theorist-who-sees-math-in-art-music-and-writing-20240112/",
+      "posted_at": "2024-03-04T11:15:03Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "The links between math, music and art have been explored for thousands of years. Sarah Hart is now turning a mathematical eye to literature.",
+      "description_source": "metadata",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 28154477,
+      "hn_url": "https://news.ycombinator.com/item?id=28154477",
+      "title": "Typography in Alien (2014)",
+      "url": "https://typesetinthefuture.com/2014/12/01/alien/",
+      "posted_at": "2021-08-12T10:32:06Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "My third post about typography in sci-fi has been gestating for a while now. Indeed, it’s been slowly taking shape – you might say it’s been forming itself inside of me – for really qui…",
+      "description_source": "metadata",
+      "query": "typography"
+    },
+    {
+      "hn_id": 44573887,
+      "hn_url": "https://news.ycombinator.com/item?id=44573887",
+      "title": "Designing for the Eye: Optical corrections in architecture and typography",
+      "url": "https://www.nubero.ch/blog/015/",
+      "posted_at": "2025-07-15T17:48:35Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "This article highlights a special aspect of both visual design and architecture: Optical corrections (or optical adjustments, if you prefer). If you found my piece about legible typefaces interesting, you’ll likely enjoy this one as well. Since I included many visual examples that are size-sensitive, make sure you read this on a big screen and not your mobile device.",
+      "description_source": "body",
+      "query": "typography"
+    },
+    {
+      "hn_id": 31528601,
+      "hn_url": "https://news.ycombinator.com/item?id=31528601",
+      "title": "Learn the logic of great typography",
+      "url": "https://learnui.design/tools/typography-tutorial.html",
+      "posted_at": "2022-05-27T12:11:39Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Learn the fundamentals of typography through this gamified walkthrough with real-time feedback and logic-based principles.",
+      "description_source": "metadata",
+      "query": "typography",
+      "description_final_url": "https://www.learnui.design/tools/typography-tutorial.html"
+    },
+    {
+      "hn_id": 28857373,
+      "hn_url": "https://news.ycombinator.com/item?id=28857373",
+      "title": "Typography of 2001: A Space Odyssey (2014)",
+      "url": "https://typesetinthefuture.com/2014/01/31/2001-a-space-odyssey/",
+      "posted_at": "2021-10-13T20:38:31Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "2001: A Space Odyssey – Stanley Kubrick’s 1968 sci-fi masterpiece – seems an appropriate place to start a blog about typography in sci-fi. Amongst other delights, it offers a zero-gravity toi…",
+      "description_source": "metadata",
+      "query": "typography"
+    },
+    {
+      "hn_id": 26688142,
+      "hn_url": "https://news.ycombinator.com/item?id=26688142",
+      "title": "Butterick’s Practical Typography 2º Edition",
+      "url": "https://practicaltypography.com/",
+      "posted_at": "2021-04-04T09:58:40Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unusable_after_review",
+      "query": "typography"
+    },
+    {
+      "hn_id": 48550569,
+      "hn_url": "https://news.ycombinator.com/item?id=48550569",
+      "title": "Show HN: Garden of Flowers – an archive of pictorial typography before ASCII art",
+      "url": "https://garden-of-flowers.heikkilotvonen.com/",
+      "posted_at": "2026-06-16T04:25:57Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "An archive of ~2500 pictorial typography and letterpress works spanning four centuries, images composed entirely of type ornaments, characters, and rule. The history of ASCII art before computers.",
+      "description_source": "metadata",
+      "query": "typography"
+    },
+    {
+      "hn_id": 38121250,
+      "hn_url": "https://news.ycombinator.com/item?id=38121250",
+      "title": "In 1886, the US commissioned watercolor paintings of every known fruit (2019)",
+      "url": "https://www.openculture.com/2019/06/the-us-government-commissioned-7500-watercolor-paintings.html",
+      "posted_at": "2023-11-02T22:30:08Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "T.S. Eliot asks in the opening stanzas of his Choruses from the Rock, “where is the knowledge we have lost in information?” The passage has been called a pointed question for our time, in which we seem to have lost the ability to learn, to make meaningful connections and contextualize events.",
+      "description_source": "metadata",
+      "query": "painting"
+    },
+    {
+      "hn_id": 25859622,
+      "hn_url": "https://news.ycombinator.com/item?id=25859622",
+      "title": "Over 700k paintings from the Rijksmuseum online copyright free",
+      "url": "https://www.ianvisits.co.uk/blog/2021/01/21/over-700000-paintings-from-the-rijksmuseum-online-copyright-free/",
+      "posted_at": "2021-01-21T15:14:02Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Amsterdam's Rijksmuseum has put over 700,000 digitised copies of its huge art collection online, and is making them available to reuse as public domain",
+      "description_source": "metadata",
+      "query": "painting",
+      "description_final_url": "https://www.ianvisits.co.uk/articles/over-700000-paintings-from-the-rijksmuseum-online-copyright-free-41073/"
+    },
+    {
+      "hn_id": 27735292,
+      "hn_url": "https://news.ycombinator.com/item?id=27735292",
+      "title": "How to get better at painting without painting anything (2015)",
+      "url": "http://www.learning-to-see.co.uk/how-to-get-better-at-painting-without-painting-anything",
+      "posted_at": "2021-07-05T06:59:28Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "painting"
+    },
+    {
+      "hn_id": 30764886,
+      "hn_url": "https://news.ycombinator.com/item?id=30764886",
+      "title": "Tolkien's Paintings",
+      "url": "https://www.tolkienestate.com/painting",
+      "posted_at": "2022-03-22T11:44:54Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "painting",
+      "description_final_url": "https://www.tolkienestate.com/painting/"
+    },
+    {
+      "hn_id": 46646263,
+      "hn_url": "https://news.ycombinator.com/item?id=46646263",
+      "title": "Michelangelo's first painting, created when he was 12 or 13",
+      "url": "https://www.openculture.com/2026/01/discover-michelangelos-first-painting.html",
+      "posted_at": "2026-01-16T13:44:25Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Think back, if you will, to the works of art you created at age twelve or thirteen. For many, perhaps most of us, our output at that stage of adolescence amounted to directionless doodles, chaotic comics, and a few unsteady-at-best school projects.",
+      "description_source": "metadata",
+      "query": "painting"
+    },
+    {
+      "hn_id": 31757452,
+      "hn_url": "https://news.ycombinator.com/item?id=31757452",
+      "title": "Rarely Seen Paintings by J.R.R. Tolkien",
+      "url": "https://www.smithsonianmag.com/smart-news/jrr-tolkiens-estate-publishes-rare-lord-of-the-rings-paintings-and-maps-online-180979674/",
+      "posted_at": "2022-06-15T18:45:26Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "The Tolkien Estate recently published a trove of rare, unpublished art by the famed fantasy author on its website",
+      "description_source": "metadata",
+      "query": "painting"
+    },
+    {
+      "hn_id": 32916994,
+      "hn_url": "https://news.ycombinator.com/item?id=32916994",
+      "title": "Philosophy of mathematics – a reading list (2020)",
+      "url": "https://www.logicmatters.net/2020/11/16/philosophy-of-mathematics-a-reading-list/",
+      "posted_at": "2022-09-20T20:00:40Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "philosophy"
+    },
+    {
+      "hn_id": 35240695,
+      "hn_url": "https://news.ycombinator.com/item?id=35240695",
+      "title": "Six Recent Studies Show an Unexpected Increase in Classical Music Listening",
+      "url": "https://tedgioia.substack.com/p/six-recent-studies-show-an-unexpected",
+      "posted_at": "2023-03-21T00:03:15Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Something has changed in the last 12-18 months, especially among younger listeners—but why?",
+      "description_source": "metadata",
+      "query": "classical music",
+      "description_final_url": "https://www.honest-broker.com/p/six-recent-studies-show-an-unexpected"
+    },
+    {
+      "hn_id": 33997962,
+      "hn_url": "https://news.ycombinator.com/item?id=33997962",
+      "title": "PhD student solves 2,500-year-old Sanskrit problem",
+      "url": "https://www.bbc.co.uk/news/articles/cg3gw9v7jnvo",
+      "posted_at": "2022-12-15T11:30:49Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Rishi Rajpopat, from India, decodes a rule taught by Panini, a master of the ancient language.",
+      "description_source": "metadata",
+      "query": "Sanskrit"
+    },
+    {
+      "hn_id": 48874190,
+      "hn_url": "https://news.ycombinator.com/item?id=48874190",
+      "title": "The Second Life of Sanskrit",
+      "url": "https://openthemagazine.com/india/the-second-life-of-sanskrit",
+      "posted_at": "2026-07-11T18:03:11Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "From coders to bikers to music lovers, the new enthusiasts of an ancient language are giving it a generational brio",
+      "description_source": "metadata",
+      "query": "Sanskrit"
+    },
+    {
+      "hn_id": 49145590,
+      "hn_url": "https://news.ycombinator.com/item?id=49145590",
+      "title": "How the words we teach English language learners changed",
+      "url": "https://pudding.cool/2026/07/essential-words/",
+      "posted_at": "2026-08-02T15:41:08Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Differences between “essential vocabulary” lists, 1953 vs. 2023",
+      "description_source": "metadata",
+      "query": "language change"
+    },
+    {
+      "hn_id": 39729819,
+      "hn_url": "https://news.ycombinator.com/item?id=39729819",
+      "title": "The language you speak changes your perception of time",
+      "url": "https://www.popsci.com/language-time-perception/",
+      "posted_at": "2024-03-16T21:53:45Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "Different languages frame time differently. Read on.",
+      "description_source": "metadata",
+      "query": "language change"
+    },
+    {
+      "hn_id": 26224117,
+      "hn_url": "https://news.ycombinator.com/item?id=26224117",
+      "title": "Languages That Could Change the Way You See the World (2015)",
+      "url": "https://nautil.us/blog/5-languages-that-could-change-the-way-you-see-the-world",
+      "posted_at": "2021-02-22T13:15:17Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "language change"
+    },
+    {
+      "hn_id": 50004777,
+      "hn_url": "https://news.ycombinator.com/item?id=50004777",
+      "title": "Anne Carson wins Nobel Prize in literature 2026",
+      "url": "https://www.theguardian.com/books/2026/oct/08/wins-the-nobel-prize-in-literature-2026",
+      "posted_at": "2026-10-08T11:58:50Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "Most prestigious literature prize goes to Canadian known for genre-crossing works such as Autobiography of Red",
+      "description_source": "metadata",
+      "query": "literature",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 48516710,
+      "hn_url": "https://news.ycombinator.com/item?id=48516710",
+      "title": "The experience of rendering Arabic typography and its technical debt",
+      "url": "https://lr0.org/blog/p/arabic/",
+      "posted_at": "2026-06-13T12:40:16Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "Once upon a time, a frontend ticket landed on my queue which was not properly mine, but the only other Arabic reader on the team was on leave. It went roughly as follows; a block of mixed-content Arabic prose on the …",
+      "description_source": "metadata",
+      "query": "typography",
+      "acceptable_category_ids": [
+        "culture",
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 30702208,
+      "hn_url": "https://news.ycombinator.com/item?id=30702208",
+      "title": "Typography is impossible (2016)",
+      "url": "https://medium.engineering/typography-is-impossible-5872b0c7f891?gi=14f21e50b8a9",
+      "posted_at": "2022-03-16T18:21:30Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "The practical guide to why laying out type never quite does what you want",
+      "description_source": "metadata",
+      "query": "typography",
+      "description_final_url": "https://medium.engineering/typography-is-impossible-5872b0c7f891?gi=861ddfcb1f7d",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 38555169,
+      "hn_url": "https://news.ycombinator.com/item?id=38555169",
+      "title": "User Interface Typography",
+      "url": "https://imperavi.com/books/ui-typography/",
+      "posted_at": "2023-12-07T11:14:43Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "We create simple, reliable tools and clear, practical books for digital design — from the Redactor editor to guides on typography and design systems.",
+      "description_source": "metadata",
+      "query": "typography",
+      "acceptable_category_ids": [
+        "culture",
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 45199931,
+      "hn_url": "https://news.ycombinator.com/item?id=45199931",
+      "title": "I didn't bring my son to a museum to look at screens",
+      "url": "https://sethpurcell.com/writing/screens-in-museums/",
+      "posted_at": "2025-09-10T16:20:55Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "museum",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 27893283,
+      "hn_url": "https://news.ycombinator.com/item?id=27893283",
+      "title": "Baltimore Museum of Art will host an exhibition curated by the museum's guards",
+      "url": "https://artbma.org/about/press/release/bma-security-officers-take-center-stage-as-guest-curators-of-a-new-exhibition-opening-in-march-2022",
+      "posted_at": "2021-07-20T13:12:56Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "In March 2022, the Baltimore Museum of Art (BMA) will present Guarding the Art, an exhibition curated entirely by 17 members of the museum’s security team.",
+      "description_source": "metadata",
+      "query": "museum",
+      "description_final_url": "https://artbma.org/press-release/bma-security-officers-take-center-stage-as-guest-curators-of-a-new-exhibition-opening-in-march-2022/",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 45455882,
+      "hn_url": "https://news.ycombinator.com/item?id=45455882",
+      "title": "The strangest letter of the alphabet: The rise and fall of yogh",
+      "url": "https://www.deadlanguagesociety.com/p/history-of-letter-yogh",
+      "posted_at": "2025-10-02T21:34:42Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "The rise and fall of yogh Colin Gorrie Sep 03, 2025 303 32 31 Share Portrait of St Mark, Lindisfarne Gospels (detail). Note the form of the ‘g’ in ‘imago leonis’ at the top… English spelling has a reputation. And it’s not a good one. It’s full of silent letters, as in numb, knee, and honour. A given sound can be spelled in multiple ways (farm, laugh, photo), and many letters make multiple sounds (get, gist, mirage). English spelling is so complex that we’ve made mastering it into a competitive sport: what would be the point of a spelling bee in a language with a predictable spelling system?…",
+      "description_source": "body",
+      "query": "alphabet",
+      "acceptable_category_ids": [
+        "culture",
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 45404022,
+      "hn_url": "https://news.ycombinator.com/item?id=45404022",
+      "title": "When I say “alphabetical order”, I mean “alphabetical order”",
+      "url": "https://sebastiano.tronto.net/blog/2025-09-28-alphabetic-order/",
+      "posted_at": "2025-09-28T13:00:16Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Last month I have been on a multi-day hike with my dad. Each of us took many pictures, and when we came back we put them all in a shared folder. We both have Android phones, and the naming scheme used for our pictures was the same: IMG_YYYYMMDD_HHmmss followed maybe by some other numbers and then a .jpg. Here YYYY stands for the year, MM for month and so on, so that sorting the pictures in alphabetical order is the same as sorting them by date.",
+      "description_source": "body",
+      "query": "alphabet",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 46605490,
+      "hn_url": "https://news.ycombinator.com/item?id=46605490",
+      "title": "AI generated music barred from Bandcamp",
+      "url": "https://old.reddit.com/r/BandCamp/comments/1qbw8ba/ai_generated_music_on_bandcamp/",
+      "posted_at": "2026-01-13T18:31:50Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unusable_after_review",
+      "query": "music",
+      "description_final_url": "https://old.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fold.reddit.com%2Fr%2FBandCamp%2Fcomments%2F1qbw8ba%2Fai_generated_music_on_bandcamp%2F",
+      "acceptable_category_ids": [
+        "culture",
+        "ai"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 43322245,
+      "hn_url": "https://news.ycombinator.com/item?id=43322245",
+      "title": "Music labels will regret coming for the Internet Archive, sound historian says",
+      "url": "https://arstechnica.com/tech-policy/2025/03/music-labels-will-regret-coming-for-the-internet-archive-sound-historian-says/",
+      "posted_at": "2025-03-10T16:28:44Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "Labels push to spike cost of Internet Archive fight over old 78s.",
+      "description_source": "metadata",
+      "query": "historian",
+      "acceptable_category_ids": [
+        "culture"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41905664,
+      "hn_url": "https://news.ycombinator.com/item?id=41905664",
+      "title": "An amateur historian has discovered a long-lost short story by Bram Stoker",
+      "url": "https://www.bbc.com/news/articles/c4g9119l64qo",
+      "posted_at": "2024-10-21T16:14:31Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "A Bram Stoker fan stumbled upon the short story that evaded scholars and biographers for a century.",
+      "description_source": "metadata",
+      "query": "historian",
+      "acceptable_category_ids": [
+        "culture",
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 26977869,
+      "hn_url": "https://news.ycombinator.com/item?id=26977869",
+      "title": "History of Techno",
+      "url": "https://www.beatportal.com/features/beatports-definitive-guide-to-techno/",
+      "posted_at": "2021-04-29T05:53:51Z",
+      "category_ids": [
+        "culture"
+      ],
+      "split": "evaluation",
+      "description": "As part of Beatportal's new series on the history of electronic dance music, we explore the rich history of techno from the 1970s to today.",
+      "description_source": "metadata",
+      "query": "history of",
+      "description_final_url": "https://www.beatportal.com/articles/40294-beatports-definitive-history-of-techno",
+      "acceptable_category_ids": [
+        "culture",
+        "history"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 28896527,
+      "hn_url": "https://news.ycombinator.com/item?id=28896527",
+      "title": "The booming business of knitting together the world’s electricity grids",
+      "url": "https://www.economist.com/business/2021/10/16/the-booming-business-of-knitting-together-the-worlds-electricity-grids",
+      "posted_at": "2021-10-17T14:07:28Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 35463182,
+      "hn_url": "https://news.ycombinator.com/item?id=35463182",
+      "title": "Adding capacity to the electricity grid is not a simple task",
+      "url": "https://www.economist.com/technology-quarterly/2023/04/05/adding-capacity-to-the-electricity-grid-is-not-a-simple-task",
+      "posted_at": "2023-04-06T02:01:47Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 39997189,
+      "hn_url": "https://news.ycombinator.com/item?id=39997189",
+      "title": "Replacing Wires Could Double How Much Electricity the US Grid Can Handle",
+      "url": "https://cleantechnica.com/2024/04/10/replacing-wires-could-double-how-much-electricity-the-us-grid-can-handle/",
+      "posted_at": "2024-04-11T00:27:36Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Reconductoring is one way to make the electrical grid more efficient so it can handle more input from wind and solar resources.",
+      "description_source": "metadata",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 42821741,
+      "hn_url": "https://news.ycombinator.com/item?id=42821741",
+      "title": "To make electricity cheaper and greener, connect the world's grids",
+      "url": "https://www.economist.com/leaders/2025/01/23/to-make-electricity-cheaper-and-greener-connect-the-worlds-grids",
+      "posted_at": "2025-01-25T14:10:51Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 40720183,
+      "hn_url": "https://news.ycombinator.com/item?id=40720183",
+      "title": "Electricity prices in France turn negative as renewable energy floods the grid",
+      "url": "https://fortune.com/2024/06/16/electricity-prices-france-negative-renewable-energy-supply-solar-power-wind-turbines/",
+      "posted_at": "2024-06-18T17:31:49Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "French day-ahead power fell to -€5.76 a megawatt-hour, the lowest in four years, in an auction on Epex Spot.",
+      "description_source": "metadata",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 47961319,
+      "hn_url": "https://news.ycombinator.com/item?id=47961319",
+      "title": "Belgium stops decommissioning nuclear power plants",
+      "url": "https://dpa-international.com/general-news/urn:newsml:dpa.com:20090101:260430-930-14717/",
+      "posted_at": "2026-04-30T12:17:14Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The agreement covers the potential acquisition of \"the complete nuclear fleet of seven reactors, the associated personnel, all nuclear subsidiaries, as well as all associated assets and liabilities, including decommissioning and dismantling obligations,\" a press release said.",
+      "description_source": "body",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 48585746,
+      "hn_url": "https://news.ycombinator.com/item?id=48585746",
+      "title": "Swiss parliament lifts ban on new nuclear power plants",
+      "url": "https://www.bluewin.ch/en/news/switzerland/parliament-lifts-ban-on-new-nuclear-power-plants-3257535.html",
+      "posted_at": "2026-06-18T14:17:07Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Things will be in full swing again at the Federal Palace in Bern through June 19. Numerous important issues will be on the agenda during the summer session of the National Council and the Council of States.",
+      "description_source": "metadata",
+      "query": "nuclear power",
+      "description_final_url": "https://www.bluewin.ch/en/news/switzerland/parliament-lifts-ban-on-new-nuclear-power-plants-li.3257535"
+    },
+    {
+      "hn_id": 30831485,
+      "hn_url": "https://news.ycombinator.com/item?id=30831485",
+      "title": "Majority in Japan backs nuclear power for first time since Fukushima",
+      "url": "https://www.japantimes.co.jp/news/2022/03/28/national/nuke-power-poll/",
+      "posted_at": "2022-03-28T15:24:25Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 26603464,
+      "hn_url": "https://news.ycombinator.com/item?id=26603464",
+      "title": "EU experts to say nuclear power qualifies for green investment label: document",
+      "url": "https://www.reuters.com/article/us-europe-regulations-finance/eu-experts-to-say-nuclear-power-qualifies-for-green-investment-label-document-idUSKBN2BJ0F0",
+      "posted_at": "2021-03-27T16:30:09Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 31478728,
+      "hn_url": "https://news.ycombinator.com/item?id=31478728",
+      "title": "Finland’s Green Party endorses nuclear power",
+      "url": "https://allianceforscience.cornell.edu/blog/2022/05/finland-green-party-nuclear/",
+      "posted_at": "2022-05-23T13:26:28Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 35658318,
+      "hn_url": "https://news.ycombinator.com/item?id=35658318",
+      "title": "Nuclear Power Is the Answer to Global and Environmental Energy Woes",
+      "url": "https://nationalinterest.org/feature/nuclear-power-answer-global-and-environmental-energy-woes-206418",
+      "posted_at": "2023-04-21T18:54:30Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The long-term energy crisis provoked by the war in Ukraine has been economically destructive to the entire world—Europe faces the prospect of deindustrialization, coal factories have been turned back on, countries in the Global South have been priced out of liquified natural gas markets, and so on. Yet demand for energy is expected to keep […]",
+      "description_source": "metadata",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 26347073,
+      "hn_url": "https://news.ycombinator.com/item?id=26347073",
+      "title": "Nuclear power must be well regulated, not ditched",
+      "url": "https://www.economist.com/leaders/2021/03/06/nuclear-power-must-be-well-regulated-not-ditched",
+      "posted_at": "2021-03-04T19:33:25Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 49652105,
+      "hn_url": "https://news.ycombinator.com/item?id=49652105",
+      "title": "Google will buy half the electricity from one of Finland's nuclear power plants",
+      "url": "https://www.bbc.com/news/articles/c8r6y4me2g6o",
+      "posted_at": "2026-09-11T00:42:41Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The US tech giant says the €13bn data centre project will create tens of thousands of jobs.",
+      "description_source": "metadata",
+      "query": "nuclear power"
+    },
+    {
+      "hn_id": 31682361,
+      "hn_url": "https://news.ycombinator.com/item?id=31682361",
+      "title": "Why are nuclear power construction costs so high?",
+      "url": "https://constructionphysics.substack.com/p/why-are-nuclear-power-construction",
+      "posted_at": "2022-06-09T15:22:26Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Nuclear power currently makes up slightly less than 20% of the total electricity produced in the US, largely from plants built in the 70s and 80s.",
+      "description_source": "metadata",
+      "query": "nuclear power",
+      "description_final_url": "https://www.construction-physics.com/p/why-are-nuclear-power-construction"
+    },
+    {
+      "hn_id": 44023226,
+      "hn_url": "https://news.ycombinator.com/item?id=44023226",
+      "title": "Building my own solar power system",
+      "url": "https://medium.com/@joe_5312/pg-e-sucks-or-how-i-learned-to-stop-worrying-and-love-building-my-own-solar-system-acf0c9f03f3b",
+      "posted_at": "2025-05-18T18:07:03Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "solar power"
+    },
+    {
+      "hn_id": 44509254,
+      "hn_url": "https://news.ycombinator.com/item?id=44509254",
+      "title": "Solar power has begun to transform the world’s energy system",
+      "url": "https://www.newyorker.com/news/annals-of-a-warming-planet/46-billion-years-on-the-sun-is-having-a-moment",
+      "posted_at": "2025-07-09T12:31:56Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "In the past two years, without much notice, solar power has begun to truly transform the world’s energy system.",
+      "description_source": "metadata",
+      "query": "solar power"
+    },
+    {
+      "hn_id": 29688907,
+      "hn_url": "https://news.ycombinator.com/item?id=29688907",
+      "title": "DIY Off-Grid Solar Power",
+      "url": "https://www.mobile-solarpower.com/",
+      "posted_at": "2021-12-26T01:42:59Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Will Prowse's tested picks for off-grid solar: batteries, inverters, solar panels, mounts and complete 48V systems. If a product fails testing, it gets pulled.",
+      "description_source": "metadata",
+      "query": "solar power",
+      "description_final_url": "https://willapproved.com/"
+    },
+    {
+      "hn_id": 35596959,
+      "hn_url": "https://news.ycombinator.com/item?id=35596959",
+      "title": "I made my blog solar-powered, then things escalated",
+      "url": "https://louwrentius.com/i-made-my-blog-solar-powered-then-things-escalated.html",
+      "posted_at": "2023-04-17T04:52:16Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "solar power"
+    },
+    {
+      "hn_id": 30597672,
+      "hn_url": "https://news.ycombinator.com/item?id=30597672",
+      "title": "Solar Power/Batteries are 60% of planned new U.S. electric generation capacity",
+      "url": "https://www.eia.gov/todayinenergy/detail.php?id=51518",
+      "posted_at": "2022-03-08T08:09:59Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Power plant developers and operators expect to add 85 gigawatts (GW) of new generating capacity to the U.S. power grid from 2022 to 2023, 60% (51 GW) of which will be made up of solar power and battery storage projects, according to data reported in our Preliminary Monthly Electric Generator Inventory. In many cases, projects combine these technologies.",
+      "description_source": "body",
+      "query": "solar power"
+    },
+    {
+      "hn_id": 46622463,
+      "hn_url": "https://news.ycombinator.com/item?id=46622463",
+      "title": "Wind power slashed 4.6B euros off electricity bills in Spain last year",
+      "url": "https://www.surinenglish.com/spain/wind-power-slashes-billion-euros-off-electricity-bills-20251217082020-nt.html",
+      "posted_at": "2026-01-14T20:18:16Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The sector has called for the unblocking of projects and the promotion of measures to comply with the national energy and climate plan",
+      "description_source": "metadata",
+      "query": "wind power"
+    },
+    {
+      "hn_id": 38151453,
+      "hn_url": "https://news.ycombinator.com/item?id=38151453",
+      "title": "Can solar and wind power Britain? An update of David MacKay's numbers",
+      "url": "https://www.sustainabilitybynumbers.com/p/can-solar-and-wind-power-britain",
+      "posted_at": "2023-11-05T14:33:34Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "These technologies have developed a lot since 2008. Should we be any more optimistic about their potential to power Britain?",
+      "description_source": "metadata",
+      "query": "wind power",
+      "description_final_url": "https://hannahritchie.substack.com/p/can-solar-and-wind-power-britain"
+    },
+    {
+      "hn_id": 38718702,
+      "hn_url": "https://news.ycombinator.com/item?id=38718702",
+      "title": "New UK record for wind power set today – 21.81 GW between 0900-0930 GMT",
+      "url": "https://grid.iamkate.com/",
+      "posted_at": "2023-12-21T09:58:37Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Shows the live status of Great Britain’s electric power transmission network",
+      "description_source": "metadata",
+      "query": "wind power"
+    },
+    {
+      "hn_id": 49050735,
+      "hn_url": "https://news.ycombinator.com/item?id=49050735",
+      "title": "Producing ammonia and fertiliser using wind power in Morris, Minnesota",
+      "url": "https://ammoniaenergy.org/articles/flexible-renewable-ammonia-demonstrator-now-operational-in-minnesota/",
+      "posted_at": "2026-07-25T19:30:24Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The project is an upscale of a successful pilot built in 2013, and can be expanded further to a network of hubs producing fertiliser for farmer cooperatives.",
+      "description_source": "metadata",
+      "query": "wind power"
+    },
+    {
+      "hn_id": 30465227,
+      "hn_url": "https://news.ycombinator.com/item?id=30465227",
+      "title": "You can have geothermal power everywhere if you drill deep enough",
+      "url": "https://www.treehugger.com/geothermal-drilling-technology-quaise-energy-5219924",
+      "posted_at": "2022-02-25T09:15:03Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Learn more about a new technology that drills with microwaves and can go down 12 miles to where the real heat is.",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 43234089,
+      "hn_url": "https://news.ycombinator.com/item?id=43234089",
+      "title": "Geothermal power is a climate moon shot beneath our feet",
+      "url": "https://www.newyorker.com/news/the-lede/geothermal-power-is-a-climate-moon-shot-beneath-our-feet",
+      "posted_at": "2025-03-02T19:33:21Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The center of the Earth is so hot that it could satisfy the entire world’s energy needs. But can scientists safely tap into it?",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 33161118,
+      "hn_url": "https://news.ycombinator.com/item?id=33161118",
+      "title": "Geothermal may beat batteries for energy storage",
+      "url": "https://spectrum.ieee.org/geothermal-energy",
+      "posted_at": "2022-10-11T09:21:43Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Enhanced geothermal systems are well suited to store excess renewable power as heat",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 32342501,
+      "hn_url": "https://news.ycombinator.com/item?id=32342501",
+      "title": "Quaise Energy is working to create geothermal wells",
+      "url": "https://news.mit.edu/2022/quaise-energy-geothermal-0628",
+      "posted_at": "2022-08-04T13:20:37Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "MIT spinout Quaise Energy is working to create geothermal wells made from the world’s deepest holes in order to repurpose coal and gas plants.",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 45152569,
+      "hn_url": "https://news.ycombinator.com/item?id=45152569",
+      "title": "Cape Station, future home of an enhanced geothermal power plant, in Utah",
+      "url": "https://www.gatesnotes.com/utahs-hottest-new-power-source-is-below-the-ground",
+      "posted_at": "2025-09-06T20:26:13Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 27775927,
+      "hn_url": "https://news.ycombinator.com/item?id=27775927",
+      "title": "Why geothermal isn't ubiquitous and how it might get that way",
+      "url": "https://austinvernon.eth.link/blog/geothermal.html",
+      "posted_at": "2021-07-08T18:24:12Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 33676044,
+      "hn_url": "https://news.ycombinator.com/item?id=33676044",
+      "title": "Digging 10 miles underground could yield enough geothermal energy to power Earth",
+      "url": "https://interestingengineering.com/innovation/digging-10-miles-geothermal-energy",
+      "posted_at": "2022-11-19T23:21:24Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "A geothermal power company 'is developing technology to blast rock with microwaves to potentially drill the deepest holes on Earth.'",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 45953568,
+      "hn_url": "https://news.ycombinator.com/item?id=45953568",
+      "title": "The time has finally come for geothermal energy",
+      "url": "https://www.newyorker.com/magazine/2025/11/24/why-the-time-has-finally-come-for-geothermal-energy",
+      "posted_at": "2025-11-17T13:55:53Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "It used to be that drawing heat from deep in the Earth was practical only in geyser-filled places such as Iceland. But new approaches may have us on the cusp of an energy revolution.",
+      "description_source": "metadata",
+      "query": "geothermal"
+    },
+    {
+      "hn_id": 45706527,
+      "hn_url": "https://news.ycombinator.com/item?id=45706527",
+      "title": "California invests in battery energy storage, leaving rolling blackouts behind",
+      "url": "https://www.latimes.com/environment/story/2025-10-17/california-made-it-through-another-summer-without-a-flex-alert",
+      "posted_at": "2025-10-25T19:58:55Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Batteries that pair with clean solar and wind energy or just bolster electrical grids in general have completely taken off and are making a big difference on the California grid.",
+      "description_source": "metadata",
+      "query": "battery storage"
+    },
+    {
+      "hn_id": 50007519,
+      "hn_url": "https://news.ycombinator.com/item?id=50007519",
+      "title": "4-hour battery storage is cheaper to install than gas turbines all across globe",
+      "url": "https://www.solarpowerworldonline.com/2026/10/4-hour-battery-storage-is-cheaper-to-install-than-gas-turbines-all-across-globe/",
+      "posted_at": "2026-10-08T16:03:33Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Wood Mackenzie’s latest global report on levelized cost of electricity (LCOE) shows that advancing technologies and market dynamics continue to drive",
+      "description_source": "metadata",
+      "query": "battery storage"
+    },
+    {
+      "hn_id": 42369622,
+      "hn_url": "https://news.ycombinator.com/item?id=42369622",
+      "title": "Fire risk assessment of battery home storage compared to general house fires",
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4995517",
+      "posted_at": "2024-12-09T19:33:40Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "battery storage"
+    },
+    {
+      "hn_id": 45091119,
+      "hn_url": "https://news.ycombinator.com/item?id=45091119",
+      "title": "UK's largest battery storage facility at Tilbury substation",
+      "url": "https://www.nationalgrid.com/national-grid-connects-uks-largest-battery-storage-facility-tilbury-substation",
+      "posted_at": "2025-09-01T09:40:47Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "The 300MW Thurrock Storage project, developed by Statera Energy, is now energised and delivering electricity flexibly to the network across London and the south east.",
+      "description_source": "metadata",
+      "query": "battery storage"
+    },
+    {
+      "hn_id": 43059826,
+      "hn_url": "https://news.ycombinator.com/item?id=43059826",
+      "title": "More Solar and Battery Storage Added to TX Grid Than Other Power Src Last Year",
+      "url": "https://insideclimatenews.org/news/10022025/solar-battery-storage-texas-grid/",
+      "posted_at": "2025-02-15T16:37:04Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "Texas has become one of the nation’s frontrunners in developing renewable energy. In recent years, the state’s reign came from wind power coupled with utility-scale solar.",
+      "description_source": "metadata",
+      "query": "battery storage"
+    },
+    {
+      "hn_id": 40834377,
+      "hn_url": "https://news.ycombinator.com/item?id=40834377",
+      "title": "Pumped-storage hydroelectricity",
+      "url": "https://en.wikipedia.org/wiki/Pumped-storage_hydroelectricity",
+      "posted_at": "2024-06-30T00:52:29Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "hydroelectric"
+    },
+    {
+      "hn_id": 50131256,
+      "hn_url": "https://news.ycombinator.com/item?id=50131256",
+      "title": "Solar surpasses nuclear power globally for first time",
+      "url": "https://www.pv-magazine.com/2026/09/29/solar-surpasses-nuclear-power-globally-for-first-time/",
+      "posted_at": "2026-10-17T14:01:01Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Solar and wind are increasingly outpacing nuclear power globally, with solar generation surpassing nuclear for the first time in 2025, according to WNISR 2026. The report highlights nuclear’s slow growth, lengthy construction timelines and limited small modular reactor deployment, contrasting them with rapid renewables and battery expansion.",
+      "description_source": "metadata",
+      "query": "nuclear power",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 50287001,
+      "hn_url": "https://news.ycombinator.com/item?id=50287001",
+      "title": "The US added a record 20.2 GWh of battery storage in just 3 months",
+      "url": "https://electrek.co/2026/08/31/the-us-added-a-record-20-2-gwh-of-battery-storage-in-just-3-months/",
+      "posted_at": "2026-10-29T10:44:49Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "US battery storage set a quarterly record in Q2 2026, adding 20.2 GWh as utility-scale projects surged in Arizona, Texas, and California.",
+      "description_source": "metadata",
+      "query": "battery storage",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 47903945,
+      "hn_url": "https://news.ycombinator.com/item?id=47903945",
+      "title": "America's Geothermal Breakthrough",
+      "url": "https://oilprice.com/Alternative-Energy/Geothermal-Energy/Americas-Geothermal-Breakthrough-Could-Unlock-a-150-Gigawatt-Energy-Revolution.html",
+      "posted_at": "2026-04-25T19:38:55Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Enhanced geothermal systems are poised to dramatically expand U.S. clean energy capacity by unlocking vast underground heat resources and providing reliable, round-the-clock power.",
+      "description_source": "metadata",
+      "query": "geothermal",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 49976993,
+      "hn_url": "https://news.ycombinator.com/item?id=49976993",
+      "title": "First enhanced geothermal power plant completed in just 23 months",
+      "url": "https://techcrunch.com/2026/10/01/worlds-first-enhanced-geothermal-power-plant-completed-in-just-23-months/",
+      "posted_at": "2026-10-06T11:34:14Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Fervo Energy completed its first power plant in less than two years. The next phases promise to connect to the grid even quicker.",
+      "description_source": "metadata",
+      "query": "geothermal",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 36793372,
+      "hn_url": "https://news.ycombinator.com/item?id=36793372",
+      "title": "Geothermal Ahead of Schedule",
+      "url": "https://twitter.com/TimMLatimer/status/1681304496234991620",
+      "posted_at": "2023-07-19T21:05:28Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "1/Today I am thrilled to announce, after years of work, our team @fervoenergy has developed a major advancement in geothermal, proven it at the field scale, and is set to deliver commercial next-gen geothermal decades ahead of schedule. THREAD. https://t.co/5TY16HU19F",
+      "description_source": "metadata",
+      "query": "geothermal",
+      "description_final_url": "https://x.com/TimMLatimer/status/1681304496234991620",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 37703317,
+      "hn_url": "https://news.ycombinator.com/item?id=37703317",
+      "title": "Rimac unveils SineStack, battery energy storage system",
+      "url": "https://www.energy-storage.news/rimac-unveils-most-technically-advanced-bess-in-the-world-sinestack/",
+      "posted_at": "2023-09-29T12:52:48Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "battery storage",
+      "acceptable_category_ids": [
+        "energy",
+        "hardware"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 47960778,
+      "hn_url": "https://news.ycombinator.com/item?id=47960778",
+      "title": "1.4 GW: battery storage at former Grohnde nuclear power plant",
+      "url": "https://www.heise.de/en/news/1-4-GW-Huge-battery-storage-at-former-Grohnde-nuclear-power-plant-11277367.html",
+      "posted_at": "2026-04-30T11:08:34Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "1.4 GW power, 6 GWh capacity: Emmerthal energy cluster to exceed Grohnde NPP output, located on major power lines.",
+      "description_source": "metadata",
+      "query": "battery storage",
+      "acceptable_category_ids": [
+        "energy"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41640941,
+      "hn_url": "https://news.ycombinator.com/item?id=41640941",
+      "title": "$1B Solar and Battery Storage Project Breaks Ground in Utah",
+      "url": "https://electrek.co/2024/09/23/a-1-billion-solar-battery-storage-project-just-broke-ground-in-utah/",
+      "posted_at": "2024-09-24T21:10:59Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Renewables developer rPlus Energies has broken ground on one of the largest solar + battery storage projects in the US, in east-central Utah.",
+      "description_source": "metadata",
+      "query": "battery storage",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 33359790,
+      "hn_url": "https://news.ycombinator.com/item?id=33359790",
+      "title": "Why is hydroelectricity unfashionable?",
+      "url": "https://spectrum.ieee.org/hydroelectric-power",
+      "posted_at": "2022-10-27T16:15:01Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "I live in Manitoba, a province of Canada where all but a tiny fraction of electricity is generated from the potential energy of water. Unlike in British Columbia and Quebec, where generation relies on huge dams, our dams on the Nelson River are low, with hydraulic heads of no more than 30 meters,",
+      "description_source": "metadata",
+      "query": "hydroelectric",
+      "acceptable_category_ids": [
+        "energy"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 49897993,
+      "hn_url": "https://news.ycombinator.com/item?id=49897993",
+      "title": "Vermont replacing power plants with home batteries",
+      "url": "https://www.bbc.com/future/article/20260928-a-virtual-power-plant-hidden-in-vermont-homes-is-keeping-the-lights-on-during-storms",
+      "posted_at": "2026-09-29T18:19:02Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Spread across thousands of ordinary homes, Vermont's virtual power plant has become its largest power source. It's protecting owners from outages and providing cheaper, cleaner energy.",
+      "description_source": "metadata",
+      "query": "power plant",
+      "acceptable_category_ids": [
+        "energy",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 45009760,
+      "hn_url": "https://news.ycombinator.com/item?id=45009760",
+      "title": "Japan has opened its first osmotic power plant",
+      "url": "https://www.theguardian.com/world/2025/aug/25/japan-osmotic-power-plant-fukuoka",
+      "posted_at": "2025-08-25T02:53:35Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "The site in Fukuoka is only the second power plant of its type in the world, harnessing the power of osmosis to run a desalination plant in the city",
+      "description_source": "metadata",
+      "query": "power plant",
+      "acceptable_category_ids": [
+        "energy"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41292018,
+      "hn_url": "https://news.ycombinator.com/item?id=41292018",
+      "title": "The gigantic and unregulated power plants in the cloud",
+      "url": "https://berthub.eu/articles/posts/the-gigantic-unregulated-power-plants-in-the-cloud/",
+      "posted_at": "2024-08-19T15:45:19Z",
+      "category_ids": [
+        "energy"
+      ],
+      "split": "evaluation",
+      "description": "Recently a Dutch hacker was able to take control of 4 million solar panel installations (FTM (Dutch), Euractiv, Victor Gevers). And this wasn’t the first time something like this has happened either (PV Magazine). As usual, huge thanks are due to the many beta readers and experts who helped improve this article with their feedback, valuable insights and knowledge! This post was machine translated (not too well) from the original Dutch version, which was also more focused on The Netherlands.",
+      "description_source": "metadata",
+      "query": "power plant",
+      "acceptable_category_ids": [
+        "energy"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 36563590,
+      "hn_url": "https://news.ycombinator.com/item?id=36563590",
+      "title": "First 'tooth regrowth' medicine moves toward clinical trials in Japan",
+      "url": "https://mainichi.jp/english/articles/20230609/p2a/00m/0sc/026000c",
+      "posted_at": "2023-07-02T17:33:17Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "OSAKA -- A Japanese research team is making progress on the development of a groundbreaking medication that may allow people to grow new teeth, with c",
+      "description_source": "metadata",
+      "query": "clinical trial"
+    },
+    {
+      "hn_id": 45188945,
+      "hn_url": "https://news.ycombinator.com/item?id=45188945",
+      "title": "Immunotherapy drug clinical trial results: half of tumors shrink or disappear",
+      "url": "https://www.rockefeller.edu/news/38120-immunotherapy-drug-eliminates-aggressive-cancers-in-clinical-trial/",
+      "posted_at": "2025-09-09T20:55:16Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "The researchers demonstrate that an engineered antibody improves a class of drugs that has struggled to make good on its early promise.",
+      "description_source": "metadata",
+      "query": "clinical trial"
+    },
+    {
+      "hn_id": 33501487,
+      "hn_url": "https://news.ycombinator.com/item?id=33501487",
+      "title": "Lab-grown blood given to people in world-first clinical trial",
+      "url": "https://www.bbc.com/news/health-63513330",
+      "posted_at": "2022-11-07T05:16:52Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "It is hoped the blood could revolutionise care for people who need regular donations.",
+      "description_source": "metadata",
+      "query": "clinical trial"
+    },
+    {
+      "hn_id": 36770624,
+      "hn_url": "https://news.ycombinator.com/item?id=36770624",
+      "title": "Medicine is plagued by untrustworthy clinical trials",
+      "url": "https://www.nature.com/articles/d41586-023-02299-w",
+      "posted_at": "2023-07-18T11:27:21Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Investigations suggest that, in some fields, at least one-quarter of clinical trials might be problematic or even entirely made up, warn some researchers. They urge stronger scrutiny.",
+      "description_source": "metadata",
+      "query": "clinical trial",
+      "description_final_url": "https://www.nature.com/articles/d41586-023-02299-w?error=cookies_not_supported&code=3c3b290c-f9bf-4dd9-9af0-cebd4e596c00"
+    },
+    {
+      "hn_id": 31485710,
+      "hn_url": "https://news.ycombinator.com/item?id=31485710",
+      "title": "First human injected with cancer-killing virus in clinical trial",
+      "url": "https://www.cancer.gov/about-cancer/treatment/clinical-trials/search/v?id=NCI-2021-08983",
+      "posted_at": "2022-05-23T22:37:21Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "clinical trial",
+      "description_final_url": "https://www.cancer.gov/research/participate/clinical-trials-search/v?id=NCI-2021-08983"
+    },
+    {
+      "hn_id": 44095866,
+      "hn_url": "https://news.ycombinator.com/item?id=44095866",
+      "title": "Sleep apnea pill shows striking success in large clinical trial",
+      "url": "https://www.science.org/content/article/sleep-apnea-pill-shows-striking-success-large-clinical-trial",
+      "posted_at": "2025-05-26T10:15:49Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "clinical trial"
+    },
+    {
+      "hn_id": 50028027,
+      "hn_url": "https://news.ycombinator.com/item?id=50028027",
+      "title": "Clinical trial of a prion disease drug candidate begins enrolling participants",
+      "url": "https://www.broadinstitute.org/news/clinical-trial-prion-disease-drug-candidate-begins-enrolling-participants",
+      "posted_at": "2026-10-09T23:53:08Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "clinical trial"
+    },
+    {
+      "hn_id": 30150586,
+      "hn_url": "https://news.ycombinator.com/item?id=30150586",
+      "title": "Moderna’s HIV vaccine has officially begun human trials",
+      "url": "https://www.them.us/story/hiv-aids-vaccine-human-trials-moderna",
+      "posted_at": "2022-01-31T17:16:12Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "We could be getting even closer to stopping the spread of HIV/AIDS.",
+      "description_source": "metadata",
+      "query": "vaccine"
+    },
+    {
+      "hn_id": 26916237,
+      "hn_url": "https://news.ycombinator.com/item?id=26916237",
+      "title": "The most effective malaria vaccine yet discovered",
+      "url": "https://blogs.sciencemag.org/pipeline/archives/2021/04/23/great-malaria-vaccine-news",
+      "posted_at": "2021-04-23T16:13:36Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "vaccine"
+    },
+    {
+      "hn_id": 36083620,
+      "hn_url": "https://news.ycombinator.com/item?id=36083620",
+      "title": "Evidence that the shingles vaccine prevents a good chunk of dementia cases",
+      "url": "https://twitter.com/PGeldsetzer1/status/1661776663074738176",
+      "posted_at": "2023-05-26T13:11:50Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Biggest thing to ever come out of my little group. Pls help spread this finding! We found clean, CAUSAL evidence that the shingles vaccine prevents a good chunk of dementia cases. So, could a virus cause Alzheimer’s->YES! Hear me out & see preprint: https://t.co/25f5XFQj8R 🧵1/",
+      "description_source": "metadata",
+      "query": "vaccine",
+      "description_final_url": "https://x.com/PGeldsetzer1/status/1661776663074738176"
+    },
+    {
+      "hn_id": 26690751,
+      "hn_url": "https://news.ycombinator.com/item?id=26690751",
+      "title": "New HIV vaccine with a 97% antibody response rate in phase I human trials",
+      "url": "https://www.europeanpharmaceuticalreview.com/news/141892/novel-hiv-vaccine-approach-shows-promise-in-landmark-first-in-human-trial/",
+      "posted_at": "2021-04-04T16:23:57Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Coverage of regulatory policy, guidance, inspections, and compliance requirements affecting pharmaceutical development, manufacturing, quality systems, approvals, and market authorisation.",
+      "description_source": "metadata",
+      "query": "vaccine",
+      "description_final_url": "https://www.europeanpharmaceuticalreview.com/topics/regulation-and-compliance"
+    },
+    {
+      "hn_id": 28275509,
+      "hn_url": "https://news.ycombinator.com/item?id=28275509",
+      "title": "FDA Approves First Covid-19 Vaccine",
+      "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-covid-19-vaccine",
+      "posted_at": "2021-08-23T13:39:58Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "FDA approved the first COVID-19 vaccine, now marketed as Comirnaty, for the prevention of COVID-19 disease in individuals 16 years of age and older.",
+      "description_source": "metadata",
+      "query": "vaccine"
+    },
+    {
+      "hn_id": 45514378,
+      "hn_url": "https://news.ycombinator.com/item?id=45514378",
+      "title": "Ultrasound is ushering a new era of surgery-free cancer treatment",
+      "url": "https://www.bbc.com/future/article/20251007-how-ultrasound-is-ushering-a-new-era-of-surgery-free-cancer-treatment",
+      "posted_at": "2025-10-08T10:18:58Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Ultrasound has long been used for helping doctors see inside the body, but focused high frequency sound waves are offering new ways of targeting cancer.",
+      "description_source": "metadata",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 40969901,
+      "hn_url": "https://news.ycombinator.com/item?id=40969901",
+      "title": "Immunotherapy Is Changing Cancer Treatment Forever",
+      "url": "https://nymag.com/intelligencer/article/cancer-treatment-immunotherapy-oncology-tcells-brain-tumor.html",
+      "posted_at": "2024-07-15T17:41:54Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Immunotherapy is making tumors melt away.",
+      "description_source": "metadata",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 36982813,
+      "hn_url": "https://news.ycombinator.com/item?id=36982813",
+      "title": "A New Mode of Cancer Treatment",
+      "url": "https://www.science.org/content/blog-post/new-mode-cancer-treatment",
+      "posted_at": "2023-08-03T08:12:15Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 47288533,
+      "hn_url": "https://news.ycombinator.com/item?id=47288533",
+      "title": "FLASH radiotherapy's bold approach to cancer treatment",
+      "url": "https://spectrum.ieee.org/flash-radiotherapy",
+      "posted_at": "2026-03-07T15:33:36Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "CERN, SLAC and other high-energy physics labs are collaborating with medical researchers on a new cancer treatment called FLASH radiotherapy.",
+      "description_source": "metadata",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 43082624,
+      "hn_url": "https://news.ycombinator.com/item?id=43082624",
+      "title": "Woman who had pioneering cancer treatment 18 years ago still in remission",
+      "url": "https://www.theguardian.com/science/2025/feb/17/woman-pioneering-cancer-treatment-remission-car-t-cell-therapy-neuroblastoma",
+      "posted_at": "2025-02-17T19:44:36Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Researchers say woman treated for neuroblastoma as a child is longest known survivor after having CAR T-cell therapy",
+      "description_source": "metadata",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 42797281,
+      "hn_url": "https://news.ycombinator.com/item?id=42797281",
+      "title": "The ultra-fast cancer treatments which could replace conventional radiotherapy",
+      "url": "https://www.bbc.com/future/article/20250121-the-physics-transforming-cancer",
+      "posted_at": "2025-01-22T20:43:40Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "A pioneering new treatment promises to tackle a wider range of cancers, with fewer side-effects than conventional radiotherapy. It also takes less than a second.",
+      "description_source": "metadata",
+      "query": "cancer treatment"
+    },
+    {
+      "hn_id": 32183302,
+      "hn_url": "https://news.ycombinator.com/item?id=32183302",
+      "title": "Potential fabrication in research threatens the amyloid theory of Alzheimer’s",
+      "url": "https://www.science.org/content/article/potential-fabrication-research-images-threatens-key-theory-alzheimers-disease",
+      "posted_at": "2022-07-21T18:54:37Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 39183063,
+      "hn_url": "https://news.ycombinator.com/item?id=39183063",
+      "title": "Alzheimer’s cases tied to no-longer-used medical procedure",
+      "url": "https://www.statnews.com/2024/01/29/first-transmitted-alzheimers-disease-cases-growth-hormone-cadavers/",
+      "posted_at": "2024-01-29T21:39:58Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Scientists document the first-ever transmitted Alzheimer’s cases, tied to a no-longer-used medical procedure.",
+      "description_source": "metadata",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 47132388,
+      "hn_url": "https://news.ycombinator.com/item?id=47132388",
+      "title": "Blood test boosts Alzheimer's diagnosis accuracy to 94.5%, clinical study shows",
+      "url": "https://medicalxpress.com/news/2026-02-blood-boosts-alzheimer-diagnosis-accuracy.html",
+      "posted_at": "2026-02-24T03:10:16Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "A protein lurking around in the blood can help with the accurate diagnosis of Alzheimer's disease. In a recent study, researchers from Spain investigated how blood-based biomarkers, such as a protein called p-tau217, affect both the clinical diagnosis of Alzheimer's and neurologists' confidence in their diagnosis.",
+      "description_source": "metadata",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 47905984,
+      "hn_url": "https://news.ycombinator.com/item?id=47905984",
+      "title": "Why has there been so little progress on Alzheimer's disease?",
+      "url": "https://freakonomics.com/podcast/why-has-there-been-so-little-progress-on-alzheimers-disease/",
+      "posted_at": "2026-04-26T00:12:47Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unusable_after_review",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 49232253,
+      "hn_url": "https://news.ycombinator.com/item?id=49232253",
+      "title": "Taxi drivers rarely die of Alzheimer's",
+      "url": "https://theconversation.com/taxi-drivers-rarely-die-of-alzheimers-how-complex-mental-maps-and-spatial-reasoning-protect-your-brain-286650",
+      "posted_at": "2026-08-09T15:21:46Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Working with and living in spatially complex environments may help delay cognitive decline, though more research is needed.",
+      "description_source": "metadata",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 39760333,
+      "hn_url": "https://news.ycombinator.com/item?id=39760333",
+      "title": "Root cause of Alzheimer's may be fat buildup in brain cells, research suggests",
+      "url": "https://medicalxpress.com/news/2024-03-root-alzheimer-fat-buildup-brain.html",
+      "posted_at": "2024-03-19T21:19:38Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "A team of neurologists, stem cell specialists and molecular biologists affiliated with several institutions in the U.S. and led by a group at Stanford University School of Medicine has found evidence that the root cause of Alzheimer's disease may be fat buildup in brain cells. The study is published in the journal Nature.",
+      "description_source": "metadata",
+      "query": "Alzheimer"
+    },
+    {
+      "hn_id": 42420352,
+      "hn_url": "https://news.ycombinator.com/item?id=42420352",
+      "title": "School smartphone ban results in better sleep and improved mood: study",
+      "url": "https://www.york.ac.uk/news-and-events/news/2024/research/school-smartphone-ban-better-sleep/",
+      "posted_at": "2024-12-14T23:51:44Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Psychologists at the University of York, who tested the impact that smartphones have on children’s behaviour for a new two-part documentary series for Channel 4, found that a ban in school impacted positively on sleep and mood.",
+      "description_source": "metadata",
+      "query": "sleep"
+    },
+    {
+      "hn_id": 48919363,
+      "hn_url": "https://news.ycombinator.com/item?id=48919363",
+      "title": "Sleep regularity is a stronger predictor of mortality risk than sleep duration (2023)",
+      "url": "https://academic.oup.com/sleep/article/47/1/zsad253/7280269",
+      "posted_at": "2026-07-15T11:46:06Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "sleep"
+    },
+    {
+      "hn_id": 34953053,
+      "hn_url": "https://news.ycombinator.com/item?id=34953053",
+      "title": "Poor sleep drove me insane, and my long path to recovery",
+      "url": "https://writing.samsonhu.com/how-poor-sleep-drove-me-insane-and-my-long-path-to-recovery/",
+      "posted_at": "2023-02-27T04:43:01Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "I'm sharing my experience dealing with what might be the most underdiagnosed and under-treated health disorder today.",
+      "description_source": "metadata",
+      "query": "sleep"
+    },
+    {
+      "hn_id": 45771636,
+      "hn_url": "https://news.ycombinator.com/item?id=45771636",
+      "title": "Attention lapses due to sleep deprivation due to flushing fluid from brain",
+      "url": "https://news.mit.edu/2025/your-brain-without-sleep-1029",
+      "posted_at": "2025-10-31T13:14:23Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "An MIT study reveals what happens in the brain as lapses of attention occur following sleep deprivation. During these lapses, a wave of cerebrospinal fluid flows out of the brain — a process that typically occurs during sleep and helps to wash away waste products that have built up during the day.",
+      "description_source": "metadata",
+      "query": "sleep"
+    },
+    {
+      "hn_id": 34780343,
+      "hn_url": "https://news.ycombinator.com/item?id=34780343",
+      "title": "Let Teenagers Sleep",
+      "url": "https://www.scientificamerican.com/article/let-teenagers-sleep/",
+      "posted_at": "2023-02-13T20:57:33Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Despite years of evidence that starting school later promotes better health and improved grades, too few schools have adopted this measure",
+      "description_source": "metadata",
+      "query": "sleep"
+    },
+    {
+      "hn_id": 43538853,
+      "hn_url": "https://news.ycombinator.com/item?id=43538853",
+      "title": "New antibiotic that kills drug-resistant bacteria found in technician's garden",
+      "url": "https://www.nature.com/articles/d41586-025-00945-z",
+      "posted_at": "2025-03-31T19:30:29Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "The molecule targets bacteria in a way that other drugs don’t.",
+      "description_source": "metadata",
+      "query": "antibiotic",
+      "description_final_url": "https://www.nature.com/articles/d41586-025-00945-z?error=cookies_not_supported&code=bbedf23c-7da9-4c51-94a6-dc719a929824"
+    },
+    {
+      "hn_id": 35700881,
+      "hn_url": "https://news.ycombinator.com/item?id=35700881",
+      "title": "Use of antibiotics in farming ‘endangering human immune system’",
+      "url": "https://www.theguardian.com/society/2023/apr/25/use-of-antibiotics-in-farming-endangering-human-immune-system",
+      "posted_at": "2023-04-25T14:20:52Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Study suggests antimicrobial used to promote livestock growth breeds bacteria more resistant to our natural defences",
+      "description_source": "metadata",
+      "query": "antibiotic"
+    },
+    {
+      "hn_id": 34518720,
+      "hn_url": "https://news.ycombinator.com/item?id=34518720",
+      "title": "Antidepressants help bacteria resist antibiotics: study",
+      "url": "https://www.nature.com/articles/d41586-023-00186-y",
+      "posted_at": "2023-01-25T14:38:03Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "A laboratory study unravels ways non-antibiotic drugs can contribute to drug resistance.",
+      "description_source": "metadata",
+      "query": "antibiotic",
+      "description_final_url": "https://www.nature.com/articles/d41586-023-00186-y?error=cookies_not_supported&code=36f4a916-1331-4268-827e-6cefc9856374"
+    },
+    {
+      "hn_id": 32036825,
+      "hn_url": "https://news.ycombinator.com/item?id=32036825",
+      "title": "No antibiotics worked, so this woman turned to phage scientists",
+      "url": "https://edition.cnn.com/2022/07/08/health/phage-superbug-killer-life-itself-wellness/index.html",
+      "posted_at": "2022-07-09T16:41:31Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "With her husband near death from an antibiotic-resistant superbug, a scientist found a cure no one had used in the US — intravenous injections of viruses called phages — and convinced the medical system to save his life.",
+      "description_source": "metadata",
+      "query": "antibiotic"
+    },
+    {
+      "hn_id": 38281137,
+      "hn_url": "https://news.ycombinator.com/item?id=38281137",
+      "title": "Australia's overuse of antibiotics driving rate of drug-resistant infections",
+      "url": "https://www.theguardian.com/society/2023/nov/16/australia-antibiotics-overuse-drug-resistant-infections",
+      "posted_at": "2023-11-15T19:21:54Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Report finds more than a third of population had at least one antimicrobial prescription subsidised by Australian government in 2022",
+      "description_source": "metadata",
+      "query": "antibiotic"
+    },
+    {
+      "hn_id": 30376777,
+      "hn_url": "https://news.ycombinator.com/item?id=30376777",
+      "title": "The Unreasonable Math of Type 1 Diabetes",
+      "url": "https://maori.geek.nz/the-unreasonable-math-of-type-1-diabetes-8c96bdf5b7fb?gi=a3b25a4cbeb0",
+      "posted_at": "2022-02-17T18:33:20Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "diabetes",
+      "description_final_url": "https://maori.geek.nz/the-unreasonable-math-of-type-1-diabetes-8c96bdf5b7fb/?gi=a3b25a4cbeb0"
+    },
+    {
+      "hn_id": 43160582,
+      "hn_url": "https://news.ycombinator.com/item?id=43160582",
+      "title": "Type 1 diabetes reversed by new cell transplantation technique",
+      "url": "https://newatlas.com/diabetes/islet-transplantation-type-1-diabetes/",
+      "posted_at": "2025-02-24T15:24:19Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Transplanting insulin-producing cells along with engineered blood-vessel-forming cells has successfully reversed type 1 diabetes, according to a new preclinical study. With further testing, the novel approach could one day cure the as-yet incurable condition.",
+      "description_source": "metadata",
+      "query": "diabetes"
+    },
+    {
+      "hn_id": 41052365,
+      "hn_url": "https://news.ycombinator.com/item?id=41052365",
+      "title": "Taking my diabetes treatment into my own hands",
+      "url": "https://martin.janiczek.cz/2024/07/23/taking-my-diabetes-treatment-into-my-own-hands.html",
+      "posted_at": "2024-07-24T00:06:59Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "First of all, this blogpost is kinda long. Let me prove to you reading it will actually have some payoff:",
+      "description_source": "metadata",
+      "query": "diabetes"
+    },
+    {
+      "hn_id": 37321028,
+      "hn_url": "https://news.ycombinator.com/item?id=37321028",
+      "title": "A DIY ‘bionic pancreas’ is changing diabetes care",
+      "url": "https://www.nature.com/articles/d41586-023-02648-9",
+      "posted_at": "2023-08-30T12:32:05Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "A community of people with type 1 diabetes got a self-built device approved. What can they offer that big companies can’t?",
+      "description_source": "metadata",
+      "query": "diabetes",
+      "description_final_url": "https://www.nature.com/articles/d41586-023-02648-9?error=cookies_not_supported&code=8b2d430d-dc00-4b87-8b51-4adea722b968"
+    },
+    {
+      "hn_id": 42625193,
+      "hn_url": "https://news.ycombinator.com/item?id=42625193",
+      "title": "Type 2 Diabetes and cardiovascular disease attributable to sugar beverages",
+      "url": "https://www.nature.com/articles/s41591-024-03345-4",
+      "posted_at": "2025-01-07T17:51:18Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "train",
+      "description": "Estimates from the Global Dietary Database indicated that 2.2 million new type 2 diabetes and 1.2 million new cardiovascular disease cases were attributable to sugar-sweetened beverages worldwide in 2020, with the highest burdens in sub-Saharan Africa, Latin America and the Caribbean.",
+      "description_source": "metadata",
+      "query": "diabetes",
+      "description_final_url": "https://www.nature.com/articles/s41591-024-03345-4?error=cookies_not_supported&code=04a2b7e0-bc47-43d7-a6f1-47ffeaa733f5"
+    },
+    {
+      "hn_id": 27556564,
+      "hn_url": "https://news.ycombinator.com/item?id=27556564",
+      "title": "Human Rapamycin Longevity Clinical Trials Begin",
+      "url": "https://www.lifespan.io/news/pearl-is-funded-rapamycin-longevity-clinical-trials-begin/",
+      "posted_at": "2021-06-19T00:17:30Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Today is a doubly important day: it marks the final day of the PEARL campaign and it is a celebration of another victory for the life extension community.",
+      "description_source": "metadata",
+      "query": "clinical trial",
+      "description_final_url": "https://lifespan.io/pearl-is-funded-rapamycin-longevity-clinical-trials-begin/",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 33545209,
+      "hn_url": "https://news.ycombinator.com/item?id=33545209",
+      "title": "Why are clinical trials so expensive? Tales from the beast’s belly",
+      "url": "https://milkyeggs.com/?p=136",
+      "posted_at": "2022-11-10T12:00:03Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Thinking about longevity practically is a tricky affair. On the one hand, we have very little definitive knowledge about how to prolong your healthy years aside from the very obvious (exercise, don’t smoke, don’t be fat); on the other hand, by the time we have established that knowledge with much certainty, you may very well no longer be alive to take advantage of it. Coming up with actionable insights is therefore a complex exercise in scientific literacy and fuzzy evaluation of risk-reward tradeoffs. In this post, I would like to describe my own personal thought process and the conclusions…",
+      "description_source": "body",
+      "query": "clinical trial",
+      "acceptable_category_ids": [
+        "health"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 49083314,
+      "hn_url": "https://news.ycombinator.com/item?id=49083314",
+      "title": "New HIV vaccine shows unprecedented success in preclinical study",
+      "url": "https://www.lji.org/news-events/news/post/new-hiv-vaccine-shows-unprecedented-success-in-preclinical-study/",
+      "posted_at": "2026-07-28T13:12:01Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Vaccine approach yields high numbers of HIV-neutralizing antibodies in non-human primates",
+      "description_source": "metadata",
+      "query": "vaccine",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 25696577,
+      "hn_url": "https://news.ycombinator.com/item?id=25696577",
+      "title": "Pfizer vaccine appears effective against mutation in new coronavirus variants",
+      "url": "https://www.cbc.ca/news/health/pfizer-biontech-vaccine-appears-effective-against-mutation-in-new-coronavirus-variants-study-suggests-1.5865885",
+      "posted_at": "2021-01-09T03:48:49Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Pfizer Inc. and BioNTech's COVID-19 vaccine appeared to work against a key mutation in the highly transmissible new variants of the coronavirus discovered in Britain and South Africa, according to a laboratory study conducted by the U.S. drugmaker.",
+      "description_source": "metadata",
+      "query": "vaccine",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 33109633,
+      "hn_url": "https://news.ycombinator.com/item?id=33109633",
+      "title": "A Universal Cancer Treatment?",
+      "url": "https://nautil.us/a-universal-cancer-treatment-241231/",
+      "posted_at": "2022-10-06T15:38:16Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "A medicine that disrupts the DNA replication of cancer cells may be within reach.",
+      "description_source": "metadata",
+      "query": "cancer treatment",
+      "description_final_url": "https://nautil.us/a-universal-cancer-treatment-241231",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 35918660,
+      "hn_url": "https://news.ycombinator.com/item?id=35918660",
+      "title": "A vaccine for pancreatic cancer treatment?",
+      "url": "https://www.science.org/content/blog-post/vaccine-pancreatic-cancer-treatment",
+      "posted_at": "2023-05-12T16:44:05Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "cancer treatment",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 31828509,
+      "hn_url": "https://news.ycombinator.com/item?id=31828509",
+      "title": "Alzheimer’s amyloid hypothesis ‘cabal’ thwarted progress toward a cure (2019)",
+      "url": "https://www.statnews.com/2019/06/25/alzheimers-cabal-thwarted-progress-toward-cure/",
+      "posted_at": "2022-06-21T20:05:54Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "The most influential researchers have long believed so dogmatically in one theory of Alzheimer’s that they thwarted alternative approaches.",
+      "description_source": "metadata",
+      "query": "Alzheimer",
+      "acceptable_category_ids": [
+        "health"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 29992889,
+      "hn_url": "https://news.ycombinator.com/item?id=29992889",
+      "title": "When my wife developed Alzheimer’s, the story of our marriage kept us connected",
+      "url": "https://thewalrus.ca/when-my-wife-developed-alzheimers-the-story-of-our-marriage-kept-us-connected/",
+      "posted_at": "2022-01-19T12:46:20Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "To prepare for a future of losing her, bit by bit, I began reciting a love letter",
+      "description_source": "metadata",
+      "query": "Alzheimer",
+      "acceptable_category_ids": [
+        "health"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 44732020,
+      "hn_url": "https://news.ycombinator.com/item?id=44732020",
+      "title": "Sleep all comes down to the mitochondria",
+      "url": "https://www.science.org/content/blog-post/it-all-comes-down-mitochondria",
+      "posted_at": "2025-07-30T08:34:10Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "sleep",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 34864753,
+      "hn_url": "https://news.ycombinator.com/item?id=34864753",
+      "title": "A broad-spectrum synthetic antibiotic that does not evoke bacterial resistance",
+      "url": "https://www.thelancet.com/journals/ebiom/article/PIIS2352-3964(23)00026-9/fulltext",
+      "posted_at": "2023-02-20T03:54:21Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "antibiotic",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 41664199,
+      "hn_url": "https://news.ycombinator.com/item?id=41664199",
+      "title": "Stem cells reverse woman’s diabetes",
+      "url": "https://www.nature.com/articles/d41586-024-03129-3",
+      "posted_at": "2024-09-26T22:28:20Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Patient is the first person with type 1 diabetes to receive this kind of transplant.",
+      "description_source": "metadata",
+      "query": "diabetes",
+      "description_final_url": "https://www.nature.com/articles/d41586-024-03129-3?error=cookies_not_supported&code=592b63d9-8ae3-482a-bdca-037462d8ed78",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 45211596,
+      "hn_url": "https://news.ycombinator.com/item?id=45211596",
+      "title": "Gene-edited pancreatic cells transplanted into a patient with type 1 diabetes",
+      "url": "https://www.wired.com/story/no-more-injections-crispr-offers-new-hope-for-treating-diabetes/",
+      "posted_at": "2025-09-11T13:45:28Z",
+      "category_ids": [
+        "health"
+      ],
+      "split": "evaluation",
+      "description": "Gene-edited pancreatic cells have been transplanted into a patient with type 1 diabetes for the first time. They produced insulin for months without the patient needing to take immunosuppressants.",
+      "description_source": "metadata",
+      "query": "diabetes",
+      "acceptable_category_ids": [
+        "health",
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 43833195,
+      "hn_url": "https://news.ycombinator.com/item?id=43833195",
+      "title": "Jepsen: Amazon RDS for PostgreSQL 17.4",
+      "url": "https://jepsen.io/analyses/amazon-rds-for-postgresql-17.4",
+      "posted_at": "2025-04-29T14:30:11Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "AWS’s Sergey Melnik, along with HN commenters matashii and Ants Aasma, have identified the cause of Long Fork in PostgreSQL clusters. As described a 2013 mailing list post, the order in which a PostgreSQL primary makes transactions visible is determined by an in-memory lock. Secondaries, however, make transactions visible based on their order in the Write-Ahead Log (WAL). The lock order and WAL order can be different, which causes primaries and secondaries to disagree on the apparent order of transactions. Melnik has written a post on the AWS blog explaining this behavior. Jepsen encourages…",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 38540761,
+      "hn_url": "https://news.ycombinator.com/item?id=38540761",
+      "title": "Why is Jepsen written in Clojure?",
+      "url": "https://aphyr.com/posts/367-why-is-jepsen-written-in-clojure",
+      "posted_at": "2023-12-06T05:32:43Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Jepsen is built for testing concurrent systems–mostly databases. Because it tests concurrent systems, the language itself needs good support for concurrency. Clojure’s immutable, persistent data structures make it easier to write correct concurrent programs, and the language and runtime have excellent concurrency support: real threads, promises, futures, atoms, locks, queues, cyclic barriers, all of java.util.concurrent, etc. I also considered languages (like Haskell) with more rigorous control over side effects, but decided that Clojure’s less-dogmatic approach was preferable.",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 46196105,
+      "hn_url": "https://news.ycombinator.com/item?id=46196105",
+      "title": "Jepsen: NATS 2.12.1",
+      "url": "https://jepsen.io/analyses/nats-2.12.1",
+      "posted_at": "2025-12-08T18:51:03Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "NATS is a popular streaming system. Producers publish messages to streams, and consumers subscribe to those streams, fetching messages from them. Regular NATS streams are allowed to drop messages. However, NATS has a subsystem called JetStream, which uses the Raft consensus algorithm to replicate data among nodes. JetStream promises “at least once” delivery: messages may be duplicated, but acknowledged messages1 should not be lost.2 Moreover, JetStream streams are totally ordered logs.",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 40369467,
+      "hn_url": "https://news.ycombinator.com/item?id=40369467",
+      "title": "Jepsen: Datomic Pro 1.0.7075",
+      "url": "https://jepsen.io/analyses/datomic-pro-1.0.7075",
+      "posted_at": "2024-05-15T16:57:30Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Datomic is a general-purpose database intended for systems of record. In many ways, Datomic is unusual. At any instant in time, the state of the database is represented by a set of [entity, attribute, value] (EAV) triples, known as datoms. Each datom declares that some entity (like a person) has a particular attribute (like a name) with a specific value (like “Vidrun”). The types and cardinality of attributes are controlled by a schema.",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 38695750,
+      "hn_url": "https://news.ycombinator.com/item?id=38695750",
+      "title": "Jepsen: MySQL 8.0.34",
+      "url": "https://jepsen.io/analyses/mysql-8.0.34",
+      "posted_at": "2023-12-19T14:17:25Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "MySQL needs little introduction. Over the last 28 years it has become one of the most widely deployed SQL databases. MySQL is primarily used for online transaction processing (OLTP) workloads, but is also deployed as a part of OLAP and queuing systems.",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 44199592,
+      "hn_url": "https://news.ycombinator.com/item?id=44199592",
+      "title": "Jepsen: TigerBeetle 0.16.11",
+      "url": "https://jepsen.io/analyses/tigerbeetle-0.16.11",
+      "posted_at": "2025-06-06T10:53:51Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "TigerBeetle is an Online Transactional Processing (OLTP) database built for double-entry accounting with a strong emphasis on safety and speed. It builds on the Viewstamped Replication (VR) consensus protocol to offer Strong Serializable consistency. Unlike general-purpose databases, TigerBeetle stores only accounts and transfers between them. This data model is well-suited for financial transactions, inventory, ticketing, or utility metering. To store other kinds of information, users typically pair TigerBeetle with other databases, linking them through user-defined identifiers.",
+      "description_source": "body",
+      "query": "Jepsen"
+    },
+    {
+      "hn_id": 42537567,
+      "hn_url": "https://news.ycombinator.com/item?id=42537567",
+      "title": "WebGL Fluid Simulation",
+      "url": "https://paveldogreat.github.io/WebGL-Fluid-Simulation/",
+      "posted_at": "2024-12-29T04:39:49Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "A WebGL fluid simulation that works in mobile browsers.",
+      "description_source": "metadata",
+      "query": "WebGL"
+    },
+    {
+      "hn_id": 29376037,
+      "hn_url": "https://news.ycombinator.com/item?id=29376037",
+      "title": "WebGL Water",
+      "url": "http://madebyevan.com/webgl-water/",
+      "posted_at": "2021-11-29T03:27:00Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "This demo requires a decent graphics card and up-to-date drivers. If you can't run the demo, you can still see it on YouTube.",
+      "description_source": "body",
+      "query": "WebGL",
+      "description_final_url": "https://madebyevan.com/webgl-water/"
+    },
+    {
+      "hn_id": 40258903,
+      "hn_url": "https://news.ycombinator.com/item?id=40258903",
+      "title": "Deno KV internals: building a database for the modern web",
+      "url": "https://deno.com/blog/building-deno-kv",
+      "posted_at": "2024-05-04T17:01:25Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "How we built a performant, scalable, ACID-compliant, JavaScript-native database on FoundationDB.",
+      "description_source": "metadata",
+      "query": "database internals"
+    },
+    {
+      "hn_id": 48718716,
+      "hn_url": "https://news.ycombinator.com/item?id=48718716",
+      "title": "Reading the internals of Postgres: Database cluster, databases, and tables",
+      "url": "https://www.buraksen.dev/articles/internals-of-postgresql-db-cluster-and-tables",
+      "posted_at": "2026-06-29T12:59:49Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Notes on PostgreSQL internals following The Internals of PostgreSQL Book.",
+      "description_source": "metadata",
+      "query": "database internals"
+    },
+    {
+      "hn_id": 34032990,
+      "hn_url": "https://news.ycombinator.com/item?id=34032990",
+      "title": "SQLite internals: How the most-used database works",
+      "url": "https://www.compileralchemy.com/books/sqlite-internals/",
+      "posted_at": "2022-12-17T22:35:32Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Explore SQLite Internals: How The World's Most Used Database Works by Abdur-Rahmaan Janhangeer. Deep dive into database internals, systems engineering, and advanced Python.",
+      "description_source": "metadata",
+      "query": "database internals"
+    },
+    {
+      "hn_id": 28230641,
+      "hn_url": "https://news.ycombinator.com/item?id=28230641",
+      "title": "How database indexing works internally",
+      "url": "https://blog.pankajtanwar.in/how-database-indexing-actually-works-internally",
+      "posted_at": "2021-08-19T05:28:11Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "database internals"
+    },
+    {
+      "hn_id": 42115611,
+      "hn_url": "https://news.ycombinator.com/item?id=42115611",
+      "title": "Jepsen: Bufstream 0.1",
+      "url": "https://jepsen.io/analyses/bufstream-0.1.0",
+      "posted_at": "2024-11-12T14:12:39Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "2024-11-13: An earlier version of this report asserted that consumers with auto-commit enabled could lose data by automatically committing offsets returned by the most recent poll. This claim was based in part on Confluent’s documentation, which states:",
+      "description_source": "body",
+      "query": "Jepsen",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 39204622,
+      "hn_url": "https://news.ycombinator.com/item?id=39204622",
+      "title": "RavenDB 6.0.2 (A Jepsen Report)",
+      "url": "https://jepsen.io/analyses/ravendb-6.0.2",
+      "posted_at": "2024-01-31T15:04:11Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "RavenDB is a distributed document database which repeatedly advertises its support for ACID transactions.1 It’s intended for OLTP workloads, and offers a variety of ETL paths for exporting data to other systems. Its transactional API revolves around a session handle, which “represents a single business transaction on a particular database.” Users create a session, perform operations like reads and writes, and finally call session.saveChanges() to commit their writes as an atomic unit.",
+      "description_source": "body",
+      "query": "Jepsen",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 32637643,
+      "hn_url": "https://news.ycombinator.com/item?id=32637643",
+      "title": "Git’s database internals I: packed object store",
+      "url": "https://github.blog/2022-08-29-gits-database-internals-i-packed-object-store/",
+      "posted_at": "2022-08-29T13:01:03Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "This blog series will examine Git’s internals to help make your engineering system more efficient. Part I discusses how Git stores its data in packfiles using custom compression techniques.",
+      "description_source": "metadata",
+      "query": "database internals",
+      "description_final_url": "https://github.blog/open-source/git/gits-database-internals-i-packed-object-store/",
+      "acceptable_category_ids": [
+        "software"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 25856291,
+      "hn_url": "https://news.ycombinator.com/item?id=25856291",
+      "title": "Raspberry Pi Pico and RP2040 Microcontroller",
+      "url": "https://www.raspberrypi.org/products/raspberry-pi-pico/",
+      "posted_at": "2021-01-21T07:00:05Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The Raspberry Pi Pico 1 series is a range of tiny, fast, and versatile boards built using RP2040, the flagship microcontroller chip designed by Raspberry Pi in the UK",
+      "description_source": "metadata",
+      "query": "microcontroller",
+      "description_final_url": "https://www.raspberrypi.com/products/raspberry-pi-pico/"
+    },
+    {
+      "hn_id": 27128531,
+      "hn_url": "https://news.ycombinator.com/item?id=27128531",
+      "title": "Reverse Engineering an Unknown Microcontroller",
+      "url": "https://dmitry.gr/?r=05.Projects&proj=30.%20Reverse%20Engineering%20an%20Unknown%20Microcontroller",
+      "posted_at": "2021-05-12T09:56:06Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Dmitry.GR: How to reverse engineer a completely undocumented microcontroller. From nothing to a full SDK in one week flat!",
+      "description_source": "metadata",
+      "query": "microcontroller"
+    },
+    {
+      "hn_id": 40783598,
+      "hn_url": "https://news.ycombinator.com/item?id=40783598",
+      "title": "SIMD-accelerated computer vision on a $2 microcontroller",
+      "url": "https://shraiwi.github.io/read.html?md=blog/simd-fast-esp32s3.md",
+      "posted_at": "2024-06-25T02:10:40Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "microcontroller"
+    },
+    {
+      "hn_id": 49922674,
+      "hn_url": "https://news.ycombinator.com/item?id=49922674",
+      "title": "Various Projects Find Hidden SDR Capabilities in ESP32 Microcontrollers",
+      "url": "https://www.rtl-sdr.com/various-projects-independently-find-hidden-sdr-capabilities-in-esp32-microcontrollers/",
+      "posted_at": "2026-10-01T15:07:42Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Back in 2025, we posted about ESPARGOS, a phased array of many patch antennas, each connected to an ESP32 WiFi microcontroller. ESPARGOS could be used to determine the direction of arrival for WiFi signals and create a live augmented reality heatmap. Recently, the ESPARGOS team has made an exciting discovery. They found that several ESP32 chips have an undocumented feature that lets the firmware bypass the fixed WiFi and Bluetooth functionality and instead capture raw IQ baseband samples. As a result, several ESP32 models can now be used as an internal SDR covering 2.2–2.7 GHz, plus 4.8–6.0…",
+      "description_source": "metadata",
+      "query": "microcontroller"
+    },
+    {
+      "hn_id": 41192341,
+      "hn_url": "https://news.ycombinator.com/item?id=41192341",
+      "title": "Raspberry Pi Pico 2, our new $5 microcontroller board, on sale now",
+      "url": "https://www.raspberrypi.com/news/raspberry-pi-pico-2-our-new-5-microcontroller-board-on-sale-now/",
+      "posted_at": "2024-08-08T15:09:21Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "On sale now at $5: Raspberry Pi Pico 2, our new microcontroller board. It's built on RP2350, our new high-performance, secure microcontroller.",
+      "description_source": "metadata",
+      "query": "microcontroller"
+    },
+    {
+      "hn_id": 35903294,
+      "hn_url": "https://news.ycombinator.com/item?id=35903294",
+      "title": "Electronics Lab Bench Setup Guide",
+      "url": "https://badar.tech/2023/04/30/electronics-lab-bench-setup-guide/",
+      "posted_at": "2023-05-11T15:09:04Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "I have set up an electronics lab bench for all my hobby and product development projects. In this article, I will dive deep into every part of the setup and guide you through the structure, organiz…",
+      "description_source": "metadata",
+      "query": "electronics"
+    },
+    {
+      "hn_id": 38666032,
+      "hn_url": "https://news.ycombinator.com/item?id=38666032",
+      "title": "The New Essential Guide to Electronics in Shenzhen",
+      "url": "https://www.bunniestudios.com/blog/?p=6886",
+      "posted_at": "2023-12-16T17:25:04Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "« Name that Ware, November 2023 Winner, Name that Ware November 2023 » The New Essential Guide to Electronics in Shenzhen Some might remember a book I released in 2016, “The Essential Guide to Electronics in Shenzhen”. A lot has changed in the world since then, and Shenzhen is no exception. There’s a new maintainer of the guide, Naomi Wu (@realsexycyborg), and she is crowdfunding an updated, new version with a snazzy red cover, called “The New Essential Guide to Electronics in Shenzhen”. While the technical Chinese terms haven’t changed much, a lot has changed in the culture and ways to do…",
+      "description_source": "body",
+      "query": "electronics",
+      "description_final_url": "https://www.bunniestudios.com/blog/2023/the-new-essential-guide-to-electronics-in-shenzhen/"
+    },
+    {
+      "hn_id": 36647364,
+      "hn_url": "https://news.ycombinator.com/item?id=36647364",
+      "title": "Learn electronics by practice",
+      "url": "https://beletronics.wordpress.com/",
+      "posted_at": "2023-07-08T18:35:06Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "This website is dedicated to electronics enthusiasts and aspirants who believe that true knowledge comes through the persistence of constant practice.",
+      "description_source": "body",
+      "query": "electronics"
+    },
+    {
+      "hn_id": 38748370,
+      "hn_url": "https://news.ycombinator.com/item?id=38748370",
+      "title": "The Art of Electronics (2015)",
+      "url": "https://artofelectronics.net/",
+      "posted_at": "2023-12-23T21:23:59Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "“Wow. Chapter 5 details every circuit artifact that I’ve encountered in the past 30 years in a thorough, pragmatic, and straightforward way. My only ‘twinge’ is that it discloses and explains (in glorious graphical detail and with real part numbers) many topics that I thought were my personal trade secrets. I love the plots. I know that it must take an enormous effort to collate all of the device characteristics. It’s worth the effort. The way the data is presented allows the reader to get terrific perspective on a lot of landscape in a single view. Nice work.” — John Willison, founder,…",
+      "description_source": "body",
+      "query": "electronics"
+    },
+    {
+      "hn_id": 44725757,
+      "hn_url": "https://news.ycombinator.com/item?id=44725757",
+      "title": "Learning basic electronics by building fireflies",
+      "url": "http://a64.in/posts/learning-basic-electronics-by-building-fireflies/",
+      "posted_at": "2025-07-29T17:00:43Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "From missing real fireflies to learning basic electronics and building my own blinking \"fireflies\"",
+      "description_source": "metadata",
+      "query": "electronics"
+    },
+    {
+      "hn_id": 38939070,
+      "hn_url": "https://news.ycombinator.com/item?id=38939070",
+      "title": "Lego Mechanical Computer",
+      "url": "https://www.drmoron.org/posts/mechanical-computer/",
+      "posted_at": "2024-01-10T13:10:24Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "mechanical computer"
+    },
+    {
+      "hn_id": 40875924,
+      "hn_url": "https://news.ycombinator.com/item?id=40875924",
+      "title": "Mechanical computer relies on kirigami cubes, not electronics",
+      "url": "https://news.ncsu.edu/2024/06/kirigami-mechanical-computer/",
+      "posted_at": "2024-07-04T16:03:32Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The mechanical computer uses a complex structure of rigid, interconnected polymer cubes to store, retrieve and erase data without relying on electronic components.",
+      "description_source": "metadata",
+      "query": "mechanical computer"
+    },
+    {
+      "hn_id": 43859464,
+      "hn_url": "https://news.ycombinator.com/item?id=43859464",
+      "title": "Show HN: Roons – Mechanical Computer Kit",
+      "url": "https://whomtech.com/show-hn/",
+      "posted_at": "2025-05-01T15:57:43Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "I got inspired a couple of years ago when I binged a bunch of mechanical logic gate YouTube videos. There are some unbelievably clever implementations — Steve Mould’s water computer was a particular inspiration.",
+      "description_source": "body",
+      "query": "mechanical computer",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 43860428,
+      "hn_url": "https://news.ycombinator.com/item?id=43860428",
+      "title": "Millihertz 5 Mechanical Computer (2022)",
+      "url": "https://www.srimech.com/MHZ5.html",
+      "posted_at": "2025-05-01T17:04:47Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "Millihertz 5 or 'Offspring' is a mechanical computer modelled on the Manchester small-scale experimental machine ('Baby'). It uses ball bearings as data elements. It has an 8x8 bit RAM and 8-bit datapath with subtractor and accumulator. It is currently under construction. There are some design documents available: a PDF: Offspring PDF or Pandoc-rendered HTML: Offspring HTML.",
+      "description_source": "body",
+      "query": "mechanical computer",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 39018106,
+      "hn_url": "https://news.ycombinator.com/item?id=39018106",
+      "title": "The mechanical Bendix Air Data Computer, part 3: pressure transducers",
+      "url": "https://www.righto.com/2024/01/bendix-cadc-pressure-transducers.html",
+      "posted_at": "2024-01-16T19:48:36Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "The Bendix Central Air Data Computer (CADC) is an electromechanical analog computer that uses gears and cams for its mathematics. It w...",
+      "description_source": "metadata",
+      "query": "mechanical computer",
+      "acceptable_category_ids": [
+        "hardware"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 39706577,
+      "hn_url": "https://news.ycombinator.com/item?id=39706577",
+      "title": "Cicadas' unique urination unlocks new understanding of fluid dynamics",
+      "url": "https://phys.org/news/2024-03-cicadas-unique-urination-fluid-dynamics.html",
+      "posted_at": "2024-03-14T17:17:38Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Cicadas are the soundtrack of summer, but their pee is more special than their music. Rather than sprinkling droplets, they emit jets of urine from their small frames. For years, Georgia Tech researchers have wanted to understand the cicada's unique urination.",
+      "description_source": "metadata",
+      "query": "fluid dynamics"
+    },
+    {
+      "hn_id": 46452696,
+      "hn_url": "https://news.ycombinator.com/item?id=46452696",
+      "title": "Scientists Uncover the Universal Geometry of Geology (2020)",
+      "url": "https://www.quantamagazine.org/scientists-uncover-the-universal-geometry-of-geology-20201119/",
+      "posted_at": "2026-01-01T09:42:02Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "An exercise in pure mathematics has led to a wide-ranging theory of how the world comes together.",
+      "description_source": "metadata",
+      "query": "geology"
+    },
+    {
+      "hn_id": 46427181,
+      "hn_url": "https://news.ycombinator.com/item?id=46427181",
+      "title": "Geology of the Gulf of the Farallones National Marine Sanctuary",
+      "url": "https://pubs.usgs.gov/fs/farallones/",
+      "posted_at": "2025-12-29T23:12:00Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Contamination of sediments in Boston Harbor, particularly by metals, is so widespread that its effects may be felt long after the sources of contamination are shut off. Where are toxic concentrations of metals located today? How did they get there? How will they move? These are questions that must be answered in detail before we can properly estimate risk in the environment.",
+      "description_source": "metadata",
+      "query": "geology"
+    },
+    {
+      "hn_id": 46855803,
+      "hn_url": "https://news.ycombinator.com/item?id=46855803",
+      "title": "Geologists may have solved mystery of Green River's 'uphill' route",
+      "url": "https://phys.org/news/2026-01-geologists-mystery-green-river-uphill.html",
+      "posted_at": "2026-02-02T13:29:13Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "New research may have solved an American mystery which has baffled geologists for a century and a half: How did a river carve a path through a mountain in one of the country's most iconic landscapes? Scientists have long sought an answer to this question of how the Green River, the largest tributary of the Colorado River, managed to create a 700-meter-deep canyon through Utah's 4km-high Uinta Mountains instead of simply flowing around them. The question is particularly confounding because, while the Uinta Mountains are 50 million years old, the Green River has been following this route for…",
+      "description_source": "metadata",
+      "query": "geology"
+    },
+    {
+      "hn_id": 40063555,
+      "hn_url": "https://news.ycombinator.com/item?id=40063555",
+      "title": "Feathers are one of evolution's cleverest inventions",
+      "url": "https://www.scientificamerican.com/article/why-feathers-are-one-of-evolutions-cleverest-inventions/",
+      "posted_at": "2024-04-17T12:17:08Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Fossil and living birds reveal the dazzling biology of feathers",
+      "description_source": "metadata",
+      "query": "evolution"
+    },
+    {
+      "hn_id": 40101290,
+      "hn_url": "https://news.ycombinator.com/item?id=40101290",
+      "title": "Two lifeforms merge in once-in-a-billion-years evolutionary event",
+      "url": "https://newatlas.com/biology/life-merger-evolution-symbiosis-organelle/",
+      "posted_at": "2024-04-20T21:46:12Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Last time this happened, Earth got plants.",
+      "description_source": "metadata",
+      "query": "evolution"
+    },
+    {
+      "hn_id": 34051868,
+      "hn_url": "https://news.ycombinator.com/item?id=34051868",
+      "title": "Evidence that the evolution of mammals began in the Southern Hemisphere",
+      "url": "https://www.australiangeographic.com.au/news/2022/12/discovery-identifies-australia-as-birthplace-of-all-modern-mammals/",
+      "posted_at": "2022-12-19T13:39:34Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Research has uncovered evidence that the evolution of mammals began in the Southern Hemisphere, not the Northern Hemisphere, challenging hundreds of years of scientific dogma.",
+      "description_source": "metadata",
+      "query": "evolution"
+    },
+    {
+      "hn_id": 38735725,
+      "hn_url": "https://news.ycombinator.com/item?id=38735725",
+      "title": "Schrödinger equation emerges mathematically from classical mechanics (2012)",
+      "url": "https://www.researchgate.net/publication/241778960_A_Pseudo-Quantum_Triad_Schrodinger%27s_Equation_the_Uncertainty_Principle_and_the_Heisenberg_Group",
+      "posted_at": "2023-12-22T16:29:27Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "classical mechanics"
+    },
+    {
+      "hn_id": 45717397,
+      "hn_url": "https://news.ycombinator.com/item?id=45717397",
+      "title": "Structure and Interpretation of Classical Mechanics (2014)",
+      "url": "https://tgvaughan.github.io/sicm/toc.html",
+      "posted_at": "2025-10-27T04:27:45Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License (CC BY-SA 3.0). Based on a work at mitpress.mit.edu.",
+      "description_source": "body",
+      "query": "classical mechanics"
+    },
+    {
+      "hn_id": 33925047,
+      "hn_url": "https://news.ycombinator.com/item?id=33925047",
+      "title": "Ten Minute Physics",
+      "url": "https://matthias-research.github.io/pages/tenMinutePhysics/index.html",
+      "posted_at": "2022-12-09T18:50:57Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "physics"
+    },
+    {
+      "hn_id": 37200615,
+      "hn_url": "https://news.ycombinator.com/item?id=37200615",
+      "title": "So you want to learn physics (2021)",
+      "url": "https://www.susanrigetti.com/physics",
+      "posted_at": "2023-08-20T16:28:13Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "physics"
+    },
+    {
+      "hn_id": 27996484,
+      "hn_url": "https://news.ycombinator.com/item?id=27996484",
+      "title": "The fig is an ecological marvel",
+      "url": "https://nautil.us/issue/104/harmony/the-incredible-fig",
+      "posted_at": "2021-07-29T13:47:52Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "ecology"
+    },
+    {
+      "hn_id": 48357905,
+      "hn_url": "https://news.ycombinator.com/item?id=48357905",
+      "title": "What appear to be biochemical processes may be a natural feature of geology",
+      "url": "https://www.quantamagazine.org/the-dirt-that-refused-to-die-20260601/",
+      "posted_at": "2026-06-01T15:11:35Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "Lifelike biochemistry continued to unfold in sterilized soil for six years, pointing to a metabolic theory for how biology began.",
+      "description_source": "metadata",
+      "query": "geology",
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 37879296,
+      "hn_url": "https://news.ycombinator.com/item?id=37879296",
+      "title": "The science of road ecology, or how roadways affect plants and animal life",
+      "url": "https://undark.org/2023/10/13/book-review-crossings/",
+      "posted_at": "2023-10-14T09:55:54Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "In \"Crossings,\" Ben Goldfarb explores the science of road ecology, or how roadways affect plants and animal life.",
+      "description_source": "metadata",
+      "query": "ecology",
+      "acceptable_category_ids": [
+        "science",
+        "climate"
+      ],
+      "evaluation_set": "expansion"
+    },
+    {
+      "hn_id": 46540126,
+      "hn_url": "https://news.ycombinator.com/item?id=46540126",
+      "title": "Some ecologists fear their field is losing touch with nature",
+      "url": "https://www.nature.com/articles/d41586-025-04150-w",
+      "posted_at": "2026-01-08T12:07:31Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "In the race to embrace new technologies, some ecologists fear their field is losing touch with nature.",
+      "description_source": "metadata",
+      "query": "ecology",
+      "description_final_url": "https://www.nature.com/articles/d41586-025-04150-w?error=cookies_not_supported&code=4d2c6e8f-e43f-4913-b324-e4f23f574325",
+      "acceptable_category_ids": [
+        "science"
+      ],
+      "evaluation_set": "expansion"
+    }
+  ]
+}

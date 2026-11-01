@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.categorization.ArticleCategories
+import com.simon.harmonichackernews.categorization.ArticleEmbeddingInput
 import com.simon.harmonichackernews.resources.BundledHarmonicResources
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,12 +23,16 @@ internal data class CategoryProjection(val id: String, val positions: List<List<
 @Serializable
 internal data class CategoryExplorationData(
     val version: Int,
+    val inputVersion: String,
+    val representationVersion: String,
+    val inputView: String,
     val points: List<CategoryMapPoint>,
     val methods: List<CategoryProjection>,
-    val density: List<Float>,
 ) {
     fun validate(): CategoryExplorationData = apply {
-        require(version == 2 && points.isNotEmpty() && points.map { it.id }.distinct().size == points.size)
+        require(version == 4 && inputVersion == ArticleEmbeddingInput.VERSION &&
+            representationVersion == ArticleCategories.REPRESENTATION_VERSION && inputView == "title_only")
+        require(points.isNotEmpty() && points.map { it.id }.distinct().size == points.size)
         require(points.all { point -> ArticleCategories.defaults.any { it.id == point.category } })
         require(points.all { point -> point.matches.size == 3 && point.matches.map { it.category }.distinct().size == 3 &&
             point.matches.all { match -> match.similarity.isFinite() && match.similarity in -1f..1f &&
@@ -37,7 +42,6 @@ internal data class CategoryExplorationData(
         require(methods.all { method -> method.positions.size == points.size && method.positions.all { xy ->
             xy.size == 2 && xy.all { it.isFinite() && it in 0f..1f }
         } })
-        require(density.size >= 2 && density.all { it.isFinite() && it in 0f..1f })
     }
 }
 
