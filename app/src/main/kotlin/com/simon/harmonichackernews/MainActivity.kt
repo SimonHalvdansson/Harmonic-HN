@@ -139,6 +139,7 @@ open class MainActivity : BaseActivity() {
 
     protected override fun onStart() {
         super.onStart()
+        (application as HarmonicApplication).onUiForeground()
         mutableWindowEnterComplete.value = false
         if (::navigationController.isInitialized) navigationController.onStart()
     }

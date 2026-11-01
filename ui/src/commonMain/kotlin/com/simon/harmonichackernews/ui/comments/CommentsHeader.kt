@@ -146,6 +146,7 @@ fun CommentsHeader(
     horizontalContentInsets: WindowInsets? = null,
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
+    val categoryLabels = LocalCommentStoryCategories.current
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
     val headerSheetProgress = { if (controller.sideBySideActive) 1f else controller.sheetSlideOffset }
@@ -398,21 +399,26 @@ fun CommentsHeader(
                                             (45.dp - sheetHandleInset()) * backClearanceProgress
                                         }
                                         val title: @Composable (Modifier) -> Unit = { modifier ->
-                                            StoryTitleText(
-                                                text = storyTitle.text,
-                                                badge = storyTitle.badge,
-                                                // Preserve text when its wrapping is unchanged. When the
-                                                // image crosses the title, fade through at the two endpoints.
-                                                modifier = modifier.sharedElement(
-                                                    rememberSharedContentState(titleLayout), visibility,
-                                                    boundsTransform = boundsTransform,
-                                                ).semantics { heading() },
-                                                color = colors.onSurface,
-                                                fontFamily = headerTypography.family,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = (headerTypography.commentsHeaderTitleSize * if (sideImage) 0.85f else 1f).sp,
-                                                style = textStyle,
-                                            )
+                                            Column(modifier) {
+                                                StoryTitleText(
+                                                    text = storyTitle.text,
+                                                    badge = storyTitle.badge,
+                                                    // Preserve text when its wrapping is unchanged. When the
+                                                    // image crosses the title, fade through at the two endpoints.
+                                                    modifier = Modifier.sharedElement(
+                                                        rememberSharedContentState(titleLayout), visibility,
+                                                        boundsTransform = boundsTransform,
+                                                    ).semantics { heading() },
+                                                    color = colors.onSurface,
+                                                    fontFamily = headerTypography.family,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = (headerTypography.commentsHeaderTitleSize * if (sideImage) 0.85f else 1f).sp,
+                                                    style = textStyle,
+                                                )
+                                                com.simon.harmonichackernews.ui.content.StoryCategoryLabels(categoryLabels, 1f,
+                                                    tintedSurface = visibleHeaderBackground.takeIf { settings.tintHeader },
+                                                    topSpacing = 3.dp, bottomSpacing = 4.dp)
+                                            }
                                         }
                                         val linkInfo: @Composable () -> Unit = {
                                             Box(Modifier.sharedBounds(

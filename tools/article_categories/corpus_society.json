@@ -1,0 +1,4074 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-31",
+  "purpose": "Expanded manually selected HN corpus shard: 245 training articles, 56 labeled holdouts, and 20 unclassified holdouts.",
+  "description_policy": "Exact HN title, article URL and posting time verified against the official Firebase API on 2026-10-31. Descriptions are actual publisher Open Graph/meta descriptions fetched on that date, never invented summaries. Missing, blocked, generic and redirected metadata is represented by an empty description and description_source=title_only. Descriptions are capped at 600 characters; source metadata tag is retained.",
+  "label_policy": "Manually reviewed primary editorial topics. Business covers established companies and corporate conduct; Startups covers founders, early-stage operations and venture funding; Economy covers macroeconomics, labor, housing, trade and public finance. Climate includes environmental change and clean energy. Cars covers automotive technology, ownership and road safety; Tesla covers the automotive company, products and operations. Related legitimate secondary topics are not exhaustively labeled, so evaluation is a development check rather than exhaustive multi-label ground truth.",
+  "sampling_notes": "35 training and 8 evaluation examples per category, selected from 2021-2026 HN posts across varied years and publishers. No identical HN ID or exact article URL repeats. Some linked articles predate their HN posting. Cars is weighted toward EVs and autonomy, reflecting HN coverage; World news is weighted toward technology-adjacent policy, major conflicts and disasters. Related companies and ongoing events can occur across splits. Twenty unlabeled holdouts cover crafts, literature, food, music, language, chess and sailing.",
+  "categories": [
+    {
+      "id": "business",
+      "name": "Business"
+    },
+    {
+      "id": "startups",
+      "name": "Startups"
+    },
+    {
+      "id": "economy",
+      "name": "Economy"
+    },
+    {
+      "id": "world",
+      "name": "World news"
+    },
+    {
+      "id": "climate",
+      "name": "Climate"
+    },
+    {
+      "id": "cars",
+      "name": "Cars"
+    }
+  ],
+  "examples": [
+    {
+      "hn_id": 32850178,
+      "hn_url": "https://news.ycombinator.com/item?id=32850178",
+      "title": "Adobe to acquire Figma for $20B",
+      "url": "https://www.bloomberg.com/news/articles/2022-09-15/adobe-is-said-to-near-deal-to-buy-online-design-startup-figma",
+      "posted_at": "2022-09-15T11:32:25Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Adobe Figma"
+    },
+    {
+      "hn_id": 35711968,
+      "hn_url": "https://news.ycombinator.com/item?id=35711968",
+      "title": "UK Blocks Microsoft’s $69B Activision Deal",
+      "url": "https://www.bloomberg.com/news/articles/2023-04-26/microsoft-s-69-billion-activision-deal-blocked-by-uk-watchdog",
+      "posted_at": "2023-04-26T11:17:28Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Microsoft Activision"
+    },
+    {
+      "hn_id": 31517184,
+      "hn_url": "https://news.ycombinator.com/item?id=31517184",
+      "title": "Broadcom to acquire VMware for $61B",
+      "url": "https://www.reuters.com/markets/us/chipmaker-broadcom-buy-vmware-61-bln-deal-2022-05-26/",
+      "posted_at": "2022-05-26T11:48:48Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Broadcom VMware"
+    },
+    {
+      "hn_id": 41164240,
+      "hn_url": "https://news.ycombinator.com/item?id=41164240",
+      "title": "Google loses antitrust suit over search deals on phones",
+      "url": "https://www.bloomberg.com/news/articles/2024-08-05/google-loses-doj-antitrust-suit-over-search",
+      "posted_at": "2024-08-05T18:58:16Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Google antitrust"
+    },
+    {
+      "hn_id": 38253384,
+      "hn_url": "https://news.ycombinator.com/item?id=38253384",
+      "title": "Google pays Apple 36% of the revenue it earns from searches in Safari",
+      "url": "https://www.bloomberg.com/news/articles/2023-11-13/apple-gets-36-of-google-revenue-from-search-deal-witness-says",
+      "posted_at": "2023-11-13T18:26:03Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Apple revenue"
+    },
+    {
+      "hn_id": 34634141,
+      "hn_url": "https://news.ycombinator.com/item?id=34634141",
+      "title": "Apple sales drop 5% in largest quarterly revenue decline since 2016",
+      "url": "https://www.cnbc.com/2023/02/02/apple-aapl-earnings-q1-2023.html",
+      "posted_at": "2023-02-02T22:28:11Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Apple's overall sales for the holiday quarter were about 5% lower than last year's, the first year-over-year sales decline since 2019.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Apple revenue"
+    },
+    {
+      "hn_id": 35232150,
+      "hn_url": "https://news.ycombinator.com/item?id=35232150",
+      "title": "Amazon to lay off 9,000 more workers after earlier cuts",
+      "url": "https://www.cnbc.com/2023/03/20/amazon-layoffs-company-to-cut-off-9000-more-workers.html",
+      "posted_at": "2023-03-20T14:39:08Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Amazon will lay off 9,000 more employees, CEO Andy Jassy said in a memo to staff Monday.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Amazon layoffs"
+    },
+    {
+      "hn_id": 41867822,
+      "hn_url": "https://news.ycombinator.com/item?id=41867822",
+      "title": "1,300 jobs will be eliminated at Intel's Hillsboro campus, company tells state",
+      "url": "https://www.opb.org/article/2024/10/15/intel-oregon-hillsboro-layoffs-workers-chipmaker-semiconductor/",
+      "posted_at": "2024-10-17T09:23:16Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Major chipmaker Intel told Oregon officials Tuesday it was permanently cutting 1,300 employees in Hillsboro.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Intel layoffs"
+    },
+    {
+      "hn_id": 41410450,
+      "hn_url": "https://news.ycombinator.com/item?id=41410450",
+      "title": "Nearly half of Nvidia's revenue comes from four mystery whales each buying $3B+",
+      "url": "https://fortune.com/2024/08/29/nvidia-jensen-huang-ai-customers/",
+      "posted_at": "2024-08-31T17:42:45Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "CEO Jensen Huang claims his AI chip business is diversified, but his own company’s filings suggest just a few whales account for every second dollar in revenue during the past quarter.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Nvidia revenue"
+    },
+    {
+      "hn_id": 37167306,
+      "hn_url": "https://news.ycombinator.com/item?id=37167306",
+      "title": "Spotify looked to ban white noise podcasts to become more profitable",
+      "url": "https://www.bloomberg.com/news/newsletters/2023-08-17/white-noise-podcasters-are-costing-spotify-38-million-a-year",
+      "posted_at": "2023-08-17T20:14:06Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Spotify profitable"
+    },
+    {
+      "hn_id": 39397064,
+      "hn_url": "https://news.ycombinator.com/item?id=39397064",
+      "title": "Showmax has displaced Netflix in Africa",
+      "url": "https://restofworld.org/2024/showmax-subscription-africa-netflix/",
+      "posted_at": "2024-02-16T13:57:58Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Showmax sits at the top of the market with a vast library of local content, partnerships with Comcast and HBO, and exclusive access to the biggest football leagues in the world.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Netflix subscription"
+    },
+    {
+      "hn_id": 31905434,
+      "hn_url": "https://news.ycombinator.com/item?id=31905434",
+      "title": "Netflix cuts 300 more jobs after subscriptions fall",
+      "url": "https://www.bbc.co.uk/news/business-61914167",
+      "posted_at": "2022-06-28T08:22:06Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "In April the streaming giant reported its first subscriber loss in more than a decade.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Netflix subscription"
+    },
+    {
+      "hn_id": 29574359,
+      "hn_url": "https://news.ycombinator.com/item?id=29574359",
+      "title": "Reddit files to go public",
+      "url": "https://www.reuters.com/markets/us/reddit-files-us-ipo-2021-12-16/",
+      "posted_at": "2021-12-16T03:09:54Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Reddit IPO"
+    },
+    {
+      "hn_id": 38172578,
+      "hn_url": "https://news.ycombinator.com/item?id=38172578",
+      "title": "WeWork, once valued at $47B, files for bankruptcy",
+      "url": "https://www.cnbc.com/2023/11/07/wework-files-for-bankruptcy.html",
+      "posted_at": "2023-11-07T02:49:43Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Office-sharing company WeWork filed for Chapter 11 bankruptcy protection in federal court Monday.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "WeWork bankruptcy"
+    },
+    {
+      "hn_id": 37825292,
+      "hn_url": "https://news.ycombinator.com/item?id=37825292",
+      "title": "John Riccitiello steps down as CEO of Unity",
+      "url": "https://venturebeat.com/games/john-riccitiello-steps-down-as-ceo-of-unity-after-pricing-battle/",
+      "posted_at": "2023-10-09T20:46:49Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Unity pricing"
+    },
+    {
+      "hn_id": 32419129,
+      "hn_url": "https://news.ycombinator.com/item?id=32419129",
+      "title": "Disney surpasses Netflix in global paid streaming subscribers",
+      "url": "https://www.axios.com/2022/08/10/disney-surpasses-netflix-global-paid-subscribers",
+      "posted_at": "2022-08-10T22:19:12Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Disney streaming"
+    },
+    {
+      "hn_id": 40902749,
+      "hn_url": "https://news.ycombinator.com/item?id=40902749",
+      "title": "Boeing to plead guilty to criminal fraud charge stemming from 737 MAX crashes",
+      "url": "https://www.cnbc.com/2024/07/08/boeing-to-plead-guilty-to-criminal-fraud-charge-stemming-from-737-max-crashes.html",
+      "posted_at": "2024-07-08T05:06:34Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The Justice Department said in May that Boeing violated its 2021 settlement by failing to implement a certain compliance program.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Boeing"
+    },
+    {
+      "hn_id": 41528075,
+      "hn_url": "https://news.ycombinator.com/item?id=41528075",
+      "title": "Boeing workers vote to strike",
+      "url": "https://www.washingtonpost.com/business/2024/09/13/boeing-union-contract-strike/",
+      "posted_at": "2024-09-13T04:41:57Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Some 96 percent of union members voted in favor of the strike, rejecting a proposal that would have boosted pay and benefits even as it fell short of other demands.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Boeing"
+    },
+    {
+      "hn_id": 48776044,
+      "hn_url": "https://news.ycombinator.com/item?id=48776044",
+      "title": "Costco is the anti-Amazon",
+      "url": "https://phenomenalworld.org/analysis/the-anti-amazon/",
+      "posted_at": "2026-07-03T15:14:55Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Costco's model and the future of retail",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Costco"
+    },
+    {
+      "hn_id": 40601934,
+      "hn_url": "https://news.ycombinator.com/item?id=40601934",
+      "title": "Costco is building out an ad business using its shoppers' data",
+      "url": "https://www.marketingbrew.com/stories/2024/06/06/costco-is-building-out-an-ad-business-using-shopper-data",
+      "posted_at": "2024-06-06T20:22:32Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The third-largest US retailer is planning on rolling out targeted ad capabilities on and off its website.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Costco"
+    },
+    {
+      "hn_id": 32843717,
+      "hn_url": "https://news.ycombinator.com/item?id=32843717",
+      "title": "Yvon Chouinard transfers 100% Patagonia ownership to environmental trust",
+      "url": "https://www.outsideonline.com/business-journal/brands/yvon-choinard-patagaonia-new-ownership/",
+      "posted_at": "2022-09-14T21:36:22Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The company's founder has given away the business, placing ownership in a trust and vowing to spend an estimated $100 million a year to fight climate change",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Patagonia ownership"
+    },
+    {
+      "hn_id": 40245509,
+      "hn_url": "https://news.ycombinator.com/item?id=40245509",
+      "title": "Apple announces $110B share buyback after quarterly profit and revenue drop",
+      "url": "https://www.thenationalnews.com/business/markets/2024/05/02/apple-announces-110bn-share-buyback-after-quarterly-profit-and-revenue-drop/",
+      "posted_at": "2024-05-03T08:40:58Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The company's stock surged almost 12% in after-hours trading on Thursday",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Apple revenue"
+    },
+    {
+      "hn_id": 36324118,
+      "hn_url": "https://news.ycombinator.com/item?id=36324118",
+      "title": "EU suggests breaking up Google's ad business in preliminary antitrust ruling",
+      "url": "https://www.theverge.com/2023/6/14/23759094/european-commission-google-antitrust-advertising-market-antitrust",
+      "posted_at": "2023-06-14T11:12:28Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The European Commission targets Google’s core business.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Google antitrust"
+    },
+    {
+      "hn_id": 38436419,
+      "hn_url": "https://news.ycombinator.com/item?id=38436419",
+      "title": "Broadcom lays off many VMware employees after closing acquisition",
+      "url": "https://www.businessinsider.com/broadcom-vmware-layoffs-employees-face-job-cuts-acquisition-2023-11",
+      "posted_at": "2023-11-27T18:48:27Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Job losses follow Broadcom's $69 billion acquisition of VMware.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Broadcom VMware"
+    },
+    {
+      "hn_id": 37757727,
+      "hn_url": "https://news.ycombinator.com/item?id=37757727",
+      "title": "Netflix is planning to raise prices again",
+      "url": "https://www.theverge.com/2023/10/3/23901315/netflix-subscription-price-raise-wga-strike",
+      "posted_at": "2023-10-03T21:20:18Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Netflix just raised prices last year.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Netflix subscription"
+    },
+    {
+      "hn_id": 36706138,
+      "hn_url": "https://news.ycombinator.com/item?id=36706138",
+      "title": "Disney, Netflix, and more are fighting FTC's 'click to cancel' proposal",
+      "url": "https://www.businessinsider.com/hollywood-streamers-oppose-ftc-proposal-regulation-click-to-cancel-subscription-2023-7",
+      "posted_at": "2023-07-13T07:42:58Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Trade groups for Netflix, Disney, and others oppose an FTC proposal that would make it easier for people to cancel streaming and other subscriptions.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Netflix subscription"
+    },
+    {
+      "hn_id": 38961080,
+      "hn_url": "https://news.ycombinator.com/item?id=38961080",
+      "title": "Pixar to undergo 20% layoffs in 2024",
+      "url": "https://techcrunch.com/2024/01/11/as-disney-pushes-towards-streaming-profitability-pixar-to-undergo-layoffs-in-2024/",
+      "posted_at": "2024-01-11T23:28:01Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Disney-owned animation studio Pixar is poised to undergo layoffs this year, TechCrunch has learned and the company confirmed. While sources at the company",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Disney streaming"
+    },
+    {
+      "hn_id": 39856413,
+      "hn_url": "https://news.ycombinator.com/item?id=39856413",
+      "title": "What Boeing did to all the guys who remember how to build a plane",
+      "url": "https://prospect.org/infrastructure/transportation/2024-03-28-suicide-mission-boeing/",
+      "posted_at": "2024-03-28T19:42:21Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "What Boeing did to all the guys who remember how to build a plane",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Boeing"
+    },
+    {
+      "hn_id": 37902399,
+      "hn_url": "https://news.ycombinator.com/item?id=37902399",
+      "title": "Costco Capitalism",
+      "url": "https://www.bryanlehrer.com/entries/costco/",
+      "posted_at": "2023-10-16T16:36:14Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Can consumers at Costco really have their free sample and eat it too?",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "twitter:description",
+      "query": "Costco"
+    },
+    {
+      "hn_id": 37481344,
+      "hn_url": "https://news.ycombinator.com/item?id=37481344",
+      "title": "Unity plan pricing and packaging updates",
+      "url": "https://blog.unity.com/news/plan-pricing-and-packaging-updates",
+      "posted_at": "2023-09-12T13:55:54Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Unity pricing",
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+    },
+    {
+      "hn_id": 45076715,
+      "hn_url": "https://news.ycombinator.com/item?id=45076715",
+      "title": "Two mystery customers alone responsible for ~40% of Nvidia's quarterly revenue",
+      "url": "https://fortune.com/2025/08/29/nvidia-revenue-anonymous-customers-chips-ai-china/",
+      "posted_at": "2025-08-30T17:59:25Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Nvidia saw a 56% jump in year-over-year revenue in the second quarter.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Nvidia revenue"
+    },
+    {
+      "hn_id": 50008187,
+      "hn_url": "https://news.ycombinator.com/item?id=50008187",
+      "title": "OpenAI annualised revenues $20B less than previously signalled",
+      "url": "https://www.cnbc.com/2026/10/08/open-ai-revenue-nvidia-oracle-coreweave.html",
+      "posted_at": "2026-10-08T16:45:58Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "OpenAI has told investors that it hit roughly $50 billion in annualized revenue at the end of September, CNBC confirmed.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Nvidia revenue"
+    },
+    {
+      "hn_id": 47544785,
+      "hn_url": "https://news.ycombinator.com/item?id=47544785",
+      "title": "Netflix raises prices for every subscription tier by up to 12.5 percent",
+      "url": "https://arstechnica.com/gadgets/2026/03/netflix-increases-prices-for-all-plans-by-up-to-2-per-month/",
+      "posted_at": "2026-03-27T16:25:50Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Netflix last raised prices in January 2025.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Netflix subscription"
+    },
+    {
+      "hn_id": 45108548,
+      "hn_url": "https://news.ycombinator.com/item?id=45108548",
+      "title": "Google can keep its Chrome browser but will be barred from exclusive contracts",
+      "url": "https://www.cnbc.com/2025/09/02/google-antitrust-search-ruling.html",
+      "posted_at": "2025-09-02T20:26:47Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "The ruling comes nearly a year after a U.S. judge ruled that Google holds an illegal monopoly in its core market of internet search.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Google antitrust"
+    },
+    {
+      "hn_id": 45773985,
+      "hn_url": "https://news.ycombinator.com/item?id=45773985",
+      "title": "Amazon says it didn't cut people because of money. But because of 'culture'",
+      "url": "https://www.cnn.com/2025/10/30/tech/amazon-layoffs-andy-jassy-ai-culture",
+      "posted_at": "2025-10-31T16:40:14Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "train",
+      "description": "Amazon chief executive Andy Jassy’s explanation for why the company is cutting 14,000 employees? Not money. Not even AI, but “culture.”",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Amazon layoffs"
+    },
+    {
+      "hn_id": 40149095,
+      "hn_url": "https://news.ycombinator.com/item?id=40149095",
+      "title": "IBM to buy HashiCorp in $6.4B deal",
+      "url": "https://www.reuters.com/markets/deals/ibm-buy-hashicorp-64-billion-deal-expand-cloud-software-2024-04-24/",
+      "posted_at": "2024-04-24T20:21:32Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "IBM Hashicorp"
+    },
+    {
+      "hn_id": 32075674,
+      "hn_url": "https://news.ycombinator.com/item?id=32075674",
+      "title": "Twitter Sues Musk After He Tries Backing Out of $44B Deal",
+      "url": "https://www.nytimes.com/2022/07/12/technology/twitter-lawsuit-musk-acquisition.html",
+      "posted_at": "2022-07-12T21:05:05Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Twitter acquisition"
+    },
+    {
+      "hn_id": 38948281,
+      "hn_url": "https://news.ycombinator.com/item?id=38948281",
+      "title": "Salesforce and Slack to pause all hiring in technology and product",
+      "url": "https://fortune.com/2024/01/10/salesforce-slack-pause-hiring-product-tech-leaked-memo/",
+      "posted_at": "2024-01-11T05:51:44Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "\"It's definitely disruptive and will affect our plans,\" Slack's chief of staff to the CTO wrote in a leaked memo.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Salesforce Slack"
+    },
+    {
+      "hn_id": 37044005,
+      "hn_url": "https://news.ycombinator.com/item?id=37044005",
+      "title": "Zoom is making its staff return to the office",
+      "url": "https://www.cnn.com/2023/08/07/business/zoom-return-to-office/index.html",
+      "posted_at": "2023-08-08T03:02:24Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "Zoom, the company that powered the remote work revolution during the pandemic, is telling its employees to come back to the office.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Zoom return office"
+    },
+    {
+      "hn_id": 39014642,
+      "hn_url": "https://news.ycombinator.com/item?id=39014642",
+      "title": "US Supreme Court declines to hear appeals in Apple-Epic Games legal battle",
+      "url": "https://www.reuters.com/legal/us-supreme-court-snubs-epic-games-legal-battle-with-apple-2024-01-16/",
+      "posted_at": "2024-01-16T15:48:14Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Apple Epic"
+    },
+    {
+      "hn_id": 35723469,
+      "hn_url": "https://news.ycombinator.com/item?id=35723469",
+      "title": "Samsung Profits Plunge 95%",
+      "url": "https://www.cnn.com/2023/04/26/tech/south-korea-samsung-q1-profits-plunge-intl-hnk/index.html",
+      "posted_at": "2023-04-27T04:51:08Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "Samsung Electronics flagged a gradual recovery for chips in the second half of the year after its semiconductor business reported a record loss on Thursday, driven by weak demand for tech devices.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Samsung profit"
+    },
+    {
+      "hn_id": 30189983,
+      "hn_url": "https://news.ycombinator.com/item?id=30189983",
+      "title": "The Nintendo Switch has now outsold the Wii",
+      "url": "https://www.theverge.com/2022/2/3/22915715/nintendo-earnings-q3-2021-switch-sales-forecast",
+      "posted_at": "2022-02-03T08:15:21Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Nintendo sales",
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+    },
+    {
+      "hn_id": 40707037,
+      "hn_url": "https://news.ycombinator.com/item?id=40707037",
+      "title": "US sues Adobe for 'deceiving' subscriptions that are too hard to cancel",
+      "url": "https://www.theverge.com/2024/6/17/24180196/adobe-us-ftc-doj-sues-subscriptions-cancel",
+      "posted_at": "2024-06-17T15:58:55Z",
+      "category_ids": [
+        "business"
+      ],
+      "split": "evaluation",
+      "description": "The DOJ accuses Adobe of trapping users in subscriptions.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Adobe subscription"
+    },
+    {
+      "hn_id": 32597811,
+      "hn_url": "https://news.ycombinator.com/item?id=32597811",
+      "title": "Move fast or die: Key startup lessons",
+      "url": "https://blog.southparkcommons.com/move-fast-or-die/",
+      "posted_at": "2022-08-25T18:20:24Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Lessons from Facebook, Dropbox, and SPC on the singular importance of speed.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 33717074,
+      "hn_url": "https://news.ycombinator.com/item?id=33717074",
+      "title": "Startup to exit: lessons from a YC founder",
+      "url": "https://www.lennysnewsletter.com/p/startup-to-exit-lessons-from-a-first",
+      "posted_at": "2022-11-23T09:42:48Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Why VC funding is a drug, when building in stealth is a mistake, what to do when you lose conviction, how to approach selling your company, and more",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 32226268,
+      "hn_url": "https://news.ycombinator.com/item?id=32226268",
+      "title": "Lessons from a Startup Pivot",
+      "url": "https://haacked.com/archive/2022/07/25/lessons-from-the-pivot/",
+      "posted_at": "2022-07-25T15:58:57Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Depending on SAAS, PAAS, and IAAS is great, but it can hurt when you should have turned left at Albuquerque if you haven’t insulated yourself from some of those choices.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 38900069,
+      "hn_url": "https://news.ycombinator.com/item?id=38900069",
+      "title": "Lessons from building nine startups in 2023",
+      "url": "https://marclou.beehiiv.com/p/7-lessons-from-building-9-startups-as-a-solopreneur",
+      "posted_at": "2024-01-07T10:34:56Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "1. Don't marry your idea 2. Ditch free plans 3. Subscriptions headache is real 4. Swap vitamins for painkillers 5. Emotions sell 6.First impressions matter 7. Food + Sleep + Workout = Psychiatrist",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 39285749,
+      "hn_url": "https://news.ycombinator.com/item?id=39285749",
+      "title": "Lessons Learned from Payments Startups",
+      "url": "https://www.pgrs.net/2024/01/26/lessons-learned-from-payemnts-startups/",
+      "posted_at": "2024-02-07T07:52:58Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Over my career so far, I’ve worked in a number of payments companies, including several startups. At the last startup, I was involved in building out a payments platform from scratch (from first line of code). This post is a collection of thoughts and lessons learned. Hopefully, at least some of this is useful to others.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 42771676,
+      "hn_url": "https://news.ycombinator.com/item?id=42771676",
+      "title": "I am (not) a failure: Lessons learned from six failed startup attempts",
+      "url": "http://blog.rongarret.info/2025/01/i-am-not-failure-lessons-learned-from.html",
+      "posted_at": "2025-01-20T18:40:45Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "A while back I wrote : I've had many, many failures in my life. (Hm, maybe I should write a blog post about that.) This is that post. I'm ...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 30357909,
+      "hn_url": "https://news.ycombinator.com/item?id=30357909",
+      "title": "6 months of working at a hypergrowth startup",
+      "url": "https://jacobbrazeal.wordpress.com/2022/02/16/lessons-from-6-months-at-a-hypergrowth-startup-100-prs-40-interviews/",
+      "posted_at": "2022-02-16T09:25:45Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "I joined Scale AI late last summer. It’s been a crazy experience — Scale is growing incredibly fast right now, hitting a valuation of over $7 billion last year and recently signing a $250 mil…",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup lessons"
+    },
+    {
+      "hn_id": 25717006,
+      "hn_url": "https://news.ycombinator.com/item?id=25717006",
+      "title": "We've been running a bootstrapped startup for a year",
+      "url": "https://newscatcherapi.com/blog/we-ve-been-running-a-bootstrapped-startup-for-1-year-our-top-15-takeaways",
+      "posted_at": "2021-01-10T17:30:18Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Were running our News API startup for over a year. We share our biggest takeaways.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "bootstrapped startup"
+    },
+    {
+      "hn_id": 26426838,
+      "hn_url": "https://news.ycombinator.com/item?id=26426838",
+      "title": "TinySeed raises $25M to back more bootstrapped startups",
+      "url": "https://www.axios.com/tinyseed-software-startup-venture-capital-ab4017d7-07de-406b-8ad8-fb82fa51a697.html",
+      "posted_at": "2021-03-11T17:49:48Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "bootstrapped startup"
+    },
+    {
+      "hn_id": 42828198,
+      "hn_url": "https://news.ycombinator.com/item?id=42828198",
+      "title": "YC Graveyard: 821 inactive Y Combinator startups",
+      "url": "https://ycgraveyard.iamwillwang.com/",
+      "posted_at": "2025-01-26T06:37:12Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "YC Graveyard lists inactive YCombinator startups.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Y Combinator startup"
+    },
+    {
+      "hn_id": 31342443,
+      "hn_url": "https://news.ycombinator.com/item?id=31342443",
+      "title": "On $600B of Y Combinator startup success",
+      "url": "https://jaredheyman.medium.com/on-600b-of-y-combinator-startup-success-fc85b2076d0d",
+      "posted_at": "2022-05-11T16:43:16Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Y Combinator startup"
+    },
+    {
+      "hn_id": 32324514,
+      "hn_url": "https://news.ycombinator.com/item?id=32324514",
+      "title": "Y Combinator Slashes Startup Accelerator Class Size by 40%",
+      "url": "https://www.theinformation.com/articles/y-combinator-slashes-startup-accelerator-class-size-by-40",
+      "posted_at": "2022-08-02T21:28:38Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Y Combinator startup"
+    },
+    {
+      "hn_id": 42243746,
+      "hn_url": "https://news.ycombinator.com/item?id=42243746",
+      "title": "Y Combinator often backs startups that duplicate other YC companies, data shows",
+      "url": "https://techcrunch.com/2024/11/22/y-combinator-often-backs-startups-that-duplicate-other-yc-companies-data-shows-its-not-just-ai-code-editors/",
+      "posted_at": "2024-11-26T08:50:00Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "An analysis of all nearly 5,000 companies YC has backed to date reveals a surprising truth: YC startups don’t have to be unique. Far from it.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Y Combinator startup"
+    },
+    {
+      "hn_id": 27700804,
+      "hn_url": "https://news.ycombinator.com/item?id=27700804",
+      "title": "Stripe Atlas: the first five years and 20k startups",
+      "url": "https://stripe.com/blog/atlas-first-five-years",
+      "posted_at": "2021-07-01T16:20:45Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "In the past five years, over 20,000 businesses have started with Stripe Atlas and have generated over $3 billion in revenue. We surveyed 1,000 founders—here’s what we found.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Stripe startup"
+    },
+    {
+      "hn_id": 26953225,
+      "hn_url": "https://news.ycombinator.com/item?id=26953225",
+      "title": "Pitching your early stage startup",
+      "url": "https://stripe.com/en-gb-be/atlas/guides/pitching",
+      "posted_at": "2021-04-27T07:54:12Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Tell your company's story more effectively, including specific details that matter to investors.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Stripe startup"
+    },
+    {
+      "hn_id": 39120647,
+      "hn_url": "https://news.ycombinator.com/item?id=39120647",
+      "title": "Show HN: Startup funding simulator",
+      "url": "https://www.fundingsimulator.com/",
+      "posted_at": "2024-01-24T18:11:55Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Add investors, Safes and priced rounds, simulate how much dilution you will get, and know how much money you will make at exit.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "description",
+      "query": "startup equity"
+    },
+    {
+      "hn_id": 39195126,
+      "hn_url": "https://news.ycombinator.com/item?id=39195126",
+      "title": "Silicon Valley investors build $300B cash pile in startup funding crunch",
+      "url": "https://www.ft.com/content/eb2e085a-ef5a-4e91-8634-747e2a602fbe",
+      "posted_at": "2024-01-30T20:15:15Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup funding"
+    },
+    {
+      "hn_id": 38497944,
+      "hn_url": "https://news.ycombinator.com/item?id=38497944",
+      "title": "Startups weather a dismal year – 543 have declared bankruptcy or shut down",
+      "url": "https://fortune.com/2023/11/30/startup-funding-bankruptcies-lower-valuations-2023/",
+      "posted_at": "2023-12-02T11:53:01Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "The year was marked by mass job cuts, plummeting investments, and lower valuations.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup shutdown"
+    },
+    {
+      "hn_id": 33236283,
+      "hn_url": "https://news.ycombinator.com/item?id=33236283",
+      "title": "I surveyed 500 startup founders about their salaries",
+      "url": "https://pilot.com/founder-salaries-2022-edition",
+      "posted_at": "2022-10-17T16:52:36Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "The 2022 Founder Salary Report is here! Get a sense of what your peers are doing, and what the trends are for companies like yours. Get access to the full report ->",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "founder startup"
+    },
+    {
+      "hn_id": 37868705,
+      "hn_url": "https://news.ycombinator.com/item?id=37868705",
+      "title": "The Advice SaaS Startup Founders Would Give Their Younger Selves",
+      "url": "https://www.justbeepit.com/post/saas-startup-founders-what-advice-would-you-give-your-younger-selves-here-s-what-they-said",
+      "posted_at": "2023-10-13T09:44:25Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Discover the top advice SaaS startup founders would give their younger selves. Learn valuable insights and actionable tips for success in this blog post.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "founder startup"
+    },
+    {
+      "hn_id": 28322857,
+      "hn_url": "https://news.ycombinator.com/item?id=28322857",
+      "title": "The QSBS Tax Exemption: A Valuable Benefit for Startup Founders and Builders",
+      "url": "https://www.brownadvisory.com/us/theadvisory/qsbs-tax-exemption-valuable-benefit-startup-founders-and-builders",
+      "posted_at": "2021-08-27T00:28:56Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "founder startup"
+    },
+    {
+      "hn_id": 41224089,
+      "hn_url": "https://news.ycombinator.com/item?id=41224089",
+      "title": "Analysis of unicorn startup founders",
+      "url": "https://slimsaas.com/blog/data-driven-analysis-startup-success",
+      "posted_at": "2024-08-12T13:22:29Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Brief overview of the unicorn landscape from a number of sources. Data reveals clear patterns in unicorn founder characteristics, challenging some common assumptions.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "founder startup"
+    },
+    {
+      "hn_id": 39526707,
+      "hn_url": "https://news.ycombinator.com/item?id=39526707",
+      "title": "The business of winding down startups is booming",
+      "url": "https://pitchbook.com/news/articles/startup-shutdown-services-vc",
+      "posted_at": "2024-02-27T17:24:11Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "From digital media startup The Messenger to \"Uber for freight\" company Convoy, the skeletons of startups-past haunt founders and investors alike.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup shutdown"
+    },
+    {
+      "hn_id": 42161218,
+      "hn_url": "https://news.ycombinator.com/item?id=42161218",
+      "title": "I shut down my startup. Here's the honest truth",
+      "url": "https://medium.com/@abi_75893/i-shut-down-my-startup-heres-the-honest-truth-c4753b8001ea",
+      "posted_at": "2024-11-17T01:30:36Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup shutdown"
+    },
+    {
+      "hn_id": 37946030,
+      "hn_url": "https://news.ycombinator.com/item?id=37946030",
+      "title": "Convoy collapse: Read CEO's memo detailing shutdown of Seattle trucking startup",
+      "url": "https://www.freightwaves.com/news/freight-brokerage-bubble-bursting-as-freight-markets-face-long-winter",
+      "posted_at": "2023-10-19T17:44:50Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Industry could see more freight brokerage closures amid a changing financial climate.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup shutdown"
+    },
+    {
+      "hn_id": 34866901,
+      "hn_url": "https://news.ycombinator.com/item?id=34866901",
+      "title": "Gitlab’s Startup Acquisition Process",
+      "url": "https://about.gitlab.com/handbook/acquisitions/acquisition-process/",
+      "posted_at": "2023-02-20T10:32:35Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "This is a detailed view of our acquisition process. For more information about our acquisitions approach visit our acquisitions handbook. Acquisition process The process is comprised of five key stages: Pipeline Building Exploratory Early Diligence Confirmatory Due Diligence Integration Pipeline Building Sourcing: The corporate development team closely collaborates with GitLab’s product leadership to identify key areas for potential M&A. We source acquisition opportunities (“Sourced Pipeline”) from: Ecosystem screen with the help of third party databases such as Crunchbase Inbound introduction",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup acquisition"
+    },
+    {
+      "hn_id": 34346446,
+      "hn_url": "https://news.ycombinator.com/item?id=34346446",
+      "title": "JP Morgan Says Startup Founder Used Fake Customers to Dupe It into Acquisition",
+      "url": "https://www.forbes.com/sites/alexandralevine/2023/01/11/jp-morgan-fake-customers-frank-charlie-javice/",
+      "posted_at": "2023-01-11T23:12:01Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup customers"
+    },
+    {
+      "hn_id": 32857429,
+      "hn_url": "https://news.ycombinator.com/item?id=32857429",
+      "title": "Figma's 50x ARR Multiple and What It Means for Startup Fundraising",
+      "url": "https://tomtunguz.com/figma-acquisition/",
+      "posted_at": "2022-09-15T19:38:24Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Adobe's $20B Figma acquisition at 50x ARR raises questions about startup valuations and market resets.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup acquisition"
+    },
+    {
+      "hn_id": 35512081,
+      "hn_url": "https://news.ycombinator.com/item?id=35512081",
+      "title": "If you’ve raised venture capital, you have to pay yourself",
+      "url": "https://techcrunch.com/2023/04/09/f-you-pay-me/",
+      "posted_at": "2023-04-10T13:34:59Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "Why you should tell investors who don't want you to pay yourself to roll up their term sheet tight and archive it into the cabinet that sees no sunlight.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "venture capital"
+    },
+    {
+      "hn_id": 35285454,
+      "hn_url": "https://news.ycombinator.com/item?id=35285454",
+      "title": "The venture capitalist's dilemma",
+      "url": "https://newsletter.mollywhite.net/p/the-venture-capitalists-dilemma",
+      "posted_at": "2023-03-24T05:39:19Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "The embarrassing investor meltdown surrounding Silicon Valley Bank should drive us to consider new models.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "venture capital"
+    },
+    {
+      "hn_id": 45051034,
+      "hn_url": "https://news.ycombinator.com/item?id=45051034",
+      "title": "Charting Form Ds to roughly see the state of venture capital “fund” raising",
+      "url": "https://tj401.com/blog/formd/index.html",
+      "posted_at": "2025-08-28T11:51:30Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "venture capital"
+    },
+    {
+      "hn_id": 30394218,
+      "hn_url": "https://news.ycombinator.com/item?id=30394218",
+      "title": "Startup tooling: our product management, sales, and marketing stack",
+      "url": "https://rosslazer.com/posts/startup-tooling/",
+      "posted_at": "2022-02-19T03:38:04Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "All of the software that makes an early stage startup tick.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup sales"
+    },
+    {
+      "hn_id": 33334062,
+      "hn_url": "https://news.ycombinator.com/item?id=33334062",
+      "title": "Startup engineering hiring anti-patterns (2021)",
+      "url": "https://blog.southparkcommons.com/startup-engineering-hiring-anti-patterns/",
+      "posted_at": "2022-10-25T18:01:16Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "The most important traps to avoid when hiring startup engineers.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup hiring"
+    },
+    {
+      "hn_id": 29162184,
+      "hn_url": "https://news.ycombinator.com/item?id=29162184",
+      "title": "The Startup CEO’s Guide to Customer Success and Onboarding",
+      "url": "https://arrows.to/resources/books/startup-ceo-guide-to-customer-success/?ref=hn",
+      "posted_at": "2021-11-09T14:30:01Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup customers",
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+    },
+    {
+      "hn_id": 44188178,
+      "hn_url": "https://news.ycombinator.com/item?id=44188178",
+      "title": "Startup Equity 101",
+      "url": "https://quarter--mile.com/Startup-Equity-101",
+      "posted_at": "2025-06-05T03:54:32Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup equity"
+    },
+    {
+      "hn_id": 28644653,
+      "hn_url": "https://news.ycombinator.com/item?id=28644653",
+      "title": "Understanding Startup Offers",
+      "url": "https://withcompound.com/manual-company-equity/understanding-startup-offers",
+      "posted_at": "2021-09-24T16:30:46Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup equity"
+    },
+    {
+      "hn_id": 30818035,
+      "hn_url": "https://news.ycombinator.com/item?id=30818035",
+      "title": "Why and how to start a startup serving emerging markets",
+      "url": "https://www.benkuhn.net/emco/",
+      "posted_at": "2022-03-27T05:51:48Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "why it’s one of the most effective ways to improve the world • why it’s hard • “local context plus high standards” • how to get started • where to live • what to work on",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup market"
+    },
+    {
+      "hn_id": 34998921,
+      "hn_url": "https://news.ycombinator.com/item?id=34998921",
+      "title": "Developer marketing for early-stage startups – what we’ve learned",
+      "url": "https://posthog.com/blog/dev-marketing-for-startups",
+      "posted_at": "2023-03-02T17:35:45Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "Since starting PostHog in 2020, we’ve learned a bunch about what does and doesn’t work when it comes to marketing to engineers. There are plenty of…",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup market"
+    },
+    {
+      "hn_id": 41721368,
+      "hn_url": "https://news.ycombinator.com/item?id=41721368",
+      "title": "VC Fund gives money back, says the market for mature startups is too weak",
+      "url": "https://www.nytimes.com/2024/10/02/technology/crv-vc-fund-returning-money.html",
+      "posted_at": "2024-10-02T15:04:25Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup market"
+    },
+    {
+      "hn_id": 43509733,
+      "hn_url": "https://news.ycombinator.com/item?id=43509733",
+      "title": "Charlie Javice convicted of defrauding JPMorgan in $175M startup sale",
+      "url": "https://apnews.com/article/charlie-javice-convicted-fraud-jp-morgan-783cb7b089f6ab5d814c4c0984f0302b",
+      "posted_at": "2025-03-28T20:55:50Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup sales"
+    },
+    {
+      "hn_id": 33015431,
+      "hn_url": "https://news.ycombinator.com/item?id=33015431",
+      "title": "KittyHawk air taxi startup is winding down",
+      "url": "https://www.wsj.com/articles/kittyhawk-google-co-founder-larry-pages-air-taxi-startup-is-winding-down-11663792210",
+      "posted_at": "2022-09-29T01:47:58Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "startup cofounder"
+    },
+    {
+      "hn_id": 30013281,
+      "hn_url": "https://news.ycombinator.com/item?id=30013281",
+      "title": "How will the correction in the stock market impact startup fundraising?",
+      "url": "https://tomtunguz.com/multiples-2022-01-19/",
+      "posted_at": "2022-01-20T19:14:24Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "Explore how the 52% stock market correction influences startup fundraising, particularly in Series A and D rounds.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup market"
+    },
+    {
+      "hn_id": 32297194,
+      "hn_url": "https://news.ycombinator.com/item?id=32297194",
+      "title": "VCs squandered billions on scooter startups",
+      "url": "https://news.crunchbase.com/transportation/scooter-startups-vc-public-market-lime-brds/",
+      "posted_at": "2022-07-31T17:46:27Z",
+      "category_ids": [
+        "startups"
+      ],
+      "split": "evaluation",
+      "description": "Investors' bets on micromobility upstarts, most of which rely wholly or partly on electric scooters, hasn’t gone particularly well.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "startup market"
+    },
+    {
+      "hn_id": 36315608,
+      "hn_url": "https://news.ycombinator.com/item?id=36315608",
+      "title": "Do high interest rates fix high inflation?",
+      "url": "https://www.lynalden.com/inflation-vs-interest-rates/",
+      "posted_at": "2023-06-13T19:27:45Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "inflation interest rates"
+    },
+    {
+      "hn_id": 36160294,
+      "hn_url": "https://news.ycombinator.com/item?id=36160294",
+      "title": "Profit-Price Spiral: Excess Profits Fuelling Inflation, Not Wages",
+      "url": "https://futurework.org.au/post/profit-price-spiral-excess-profits-fuelling-inflation-interest-rates-not-wages/",
+      "posted_at": "2023-06-02T02:53:55Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "inflation interest rates"
+    },
+    {
+      "hn_id": 30702823,
+      "hn_url": "https://news.ycombinator.com/item?id=30702823",
+      "title": "US Federal Reserve raises interest rates for first time since 2018",
+      "url": "https://www.theguardian.com/business/2022/mar/16/us-federal-reserve-interest-rates-inflation",
+      "posted_at": "2022-03-16T19:19:41Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Fed raises rates by a quarter percentage point from near zero as central bank struggles with inflation, the war in Ukraine and Covid",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Federal Reserve"
+    },
+    {
+      "hn_id": 35955092,
+      "hn_url": "https://news.ycombinator.com/item?id=35955092",
+      "title": "Argentina raises interest rate to 97% as it struggles to tackle inflation",
+      "url": "https://www.cnn.com/2023/05/15/business/argentina-interest-rates-inflation/index.html",
+      "posted_at": "2023-05-15T22:00:44Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "The Central Bank of Argentina raised its key interest rate Monday by six percentage points to 97% in an effort to tackle soaring inflation that has reached 30-year highs.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Argentina inflation"
+    },
+    {
+      "hn_id": 31857656,
+      "hn_url": "https://news.ycombinator.com/item?id=31857656",
+      "title": "Why Stocks, Crypto, and Home Values Are All Plunging at Once",
+      "url": "https://www.theatlantic.com/ideas/archive/2022/06/asset-economy-high-interest-rates-inflation/661323/",
+      "posted_at": "2022-06-24T03:55:58Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "inflation interest rates"
+    },
+    {
+      "hn_id": 38003779,
+      "hn_url": "https://news.ycombinator.com/item?id=38003779",
+      "title": "Economists first underestimated inflation, then consumers and the labor market",
+      "url": "https://www.nytimes.com/2023/10/24/business/economy/economy-interest-rates-inflation.html",
+      "posted_at": "2023-10-24T19:09:10Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "labor market"
+    },
+    {
+      "hn_id": 35127063,
+      "hn_url": "https://news.ycombinator.com/item?id=35127063",
+      "title": "Joint statement by the Department of the Treasury, Federal Reserve, and FDIC",
+      "url": "https://home.treasury.gov/news/press-releases/jy1337",
+      "posted_at": "2023-03-12T22:23:04Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "WASHINGTON, DC -- The following statement was released by Secretary of the Treasury Janet L. Yellen, Federal Reserve Board Chair Jerome H. Powell, and FDIC Chairman Martin J. Gruenberg:Today we are taking decisive actions to protect the U.S. economy by strengthening public confidence in our banking …",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Federal Reserve"
+    },
+    {
+      "hn_id": 35225146,
+      "hn_url": "https://news.ycombinator.com/item?id=35225146",
+      "title": "Federal Reserve lent $300B in emergency funds to banks in the past week",
+      "url": "https://www.pbs.org/newshour/economy/federal-reserve-lent-300-billion-in-emergency-funds-to-banks-in-the-past-week",
+      "posted_at": "2023-03-19T23:52:48Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Nearly half the money — $143 billion — went to holding companies for the two major banks that failed over the past week, Silicon Valley Bank and Signature Bank, triggering widespread alarm in financial markets.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Federal Reserve"
+    },
+    {
+      "hn_id": 38036286,
+      "hn_url": "https://news.ycombinator.com/item?id=38036286",
+      "title": "ECB holds key interest rate at 4%",
+      "url": "https://www.ft.com/content/56477a7a-ac0a-454c-b690-1fb5738a7f69",
+      "posted_at": "2023-10-27T09:17:18Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "ECB interest"
+    },
+    {
+      "hn_id": 44917835,
+      "hn_url": "https://news.ycombinator.com/item?id=44917835",
+      "title": "California unemployment rises to 5.5%, worst in the U.S. as tech falters",
+      "url": "https://www.sfchronicle.com/california/article/unemployment-rate-rises-tech-20819276.php",
+      "posted_at": "2025-08-15T22:10:26Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "The former head of California’s Employment Development Department said people seeking tech jobs are grappling with the toughest market in years, especially for new graduates and entry-level...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "unemployment"
+    },
+    {
+      "hn_id": 48428763,
+      "hn_url": "https://news.ycombinator.com/item?id=48428763",
+      "title": "New U.S. college grads now have higher unemployment than the average worker",
+      "url": "https://www.randalolson.com/2026/06/04/recent-grad-unemployment-flip/",
+      "posted_at": "2026-06-06T20:35:40Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "A recent U.S. college degree long meant lower unemployment than the average worker. That edge flipped in 2019, and the gap is now the widest on record.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "unemployment"
+    },
+    {
+      "hn_id": 45138703,
+      "hn_url": "https://news.ycombinator.com/item?id=45138703",
+      "title": "US economy added just 22,000 jobs in August, unemployment highest in 4 yrs",
+      "url": "https://www.cnn.com/2025/09/05/economy/us-jobs-report-august-final",
+      "posted_at": "2025-09-05T14:01:34Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "The US job market is stalling out.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "unemployment"
+    },
+    {
+      "hn_id": 29434150,
+      "hn_url": "https://news.ycombinator.com/item?id=29434150",
+      "title": "The U.S. productivity slowdown: an economy-wide and industry-level analysis",
+      "url": "https://www.bls.gov/opub/mlr/2021/article/the-us-productivity-slowdown-the-economy-wide-and-industry-level-analysis.htm",
+      "posted_at": "2021-12-03T19:27:30Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "economy productivity"
+    },
+    {
+      "hn_id": 33136209,
+      "hn_url": "https://news.ycombinator.com/item?id=33136209",
+      "title": "Americans are becoming less productive, and it's a risk to the economy",
+      "url": "https://www.npr.org/2022/10/07/1126967875/quiet-quitting-productivity-workers-ennui-working-jobs",
+      "posted_at": "2022-10-08T21:31:55Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Job market swings over the past few years have dampened the motivation of many workers and led to a decline in the fuel of the U.S. economy — productivity.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "economy productivity"
+    },
+    {
+      "hn_id": 44634266,
+      "hn_url": "https://news.ycombinator.com/item?id=44634266",
+      "title": "What happens when housing prices go down?",
+      "url": "https://clmarohn.substack.com/p/what-happens-when-housing-prices",
+      "posted_at": "2025-07-21T12:16:42Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "A reflection on affordability, finance, and the deep contradictions we struggle to face.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "housing prices"
+    },
+    {
+      "hn_id": 41259229,
+      "hn_url": "https://news.ycombinator.com/item?id=41259229",
+      "title": "It's the land, stupid: How the homebuilder cartel drives high housing prices",
+      "url": "https://www.thebignewsletter.com/p/its-the-land-stupid-how-the-homebuilder",
+      "posted_at": "2024-08-15T18:55:42Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Henry George was right about land values. And today we have a homebuilder cartel rooted in control of land and financing.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "housing prices"
+    },
+    {
+      "hn_id": 36631521,
+      "hn_url": "https://news.ycombinator.com/item?id=36631521",
+      "title": "A reason for high housing prices: restrictive land-use regulations",
+      "url": "https://www.strongtowns.org/journal/2023/7/5/the-invisible-reason-for-high-housing-prices-restrictive-land-use-regulations",
+      "posted_at": "2023-07-07T13:34:50Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "It is extremely difficult to build housing in Rhode Island. It’s also expensive to buy homes, with prices having increased by 34% since the summer of 2020. Why?",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "housing prices"
+    },
+    {
+      "hn_id": 37708109,
+      "hn_url": "https://news.ycombinator.com/item?id=37708109",
+      "title": "Homes “unaffordable” in 99% of nation for average American",
+      "url": "https://www.cbsnews.com/news/homes-for-sale-affordable-housing-prices/",
+      "posted_at": "2023-09-29T18:15:21Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Home prices have jumped so much that Americans must pay a third of their income on housing, according to one study.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "housing prices"
+    },
+    {
+      "hn_id": 37022661,
+      "hn_url": "https://news.ycombinator.com/item?id=37022661",
+      "title": "China's Zombie Economy",
+      "url": "https://newleftreview.org/sidecar/posts/zombie-economy",
+      "posted_at": "2023-08-06T14:58:08Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "China’s long-brewing crisis.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "China economy"
+    },
+    {
+      "hn_id": 39291545,
+      "hn_url": "https://news.ycombinator.com/item?id=39291545",
+      "title": "For First Time in Two Decades, U.S. Buys More from Mexico Than China",
+      "url": "https://www.nytimes.com/2024/02/07/business/economy/united-states-china-mexico-trade.html",
+      "posted_at": "2024-02-07T17:40:41Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "China economy"
+    },
+    {
+      "hn_id": 37135465,
+      "hn_url": "https://news.ycombinator.com/item?id=37135465",
+      "title": "China Stops Publishing Youth Unemployment Numbers Amid Faltering Economy",
+      "url": "https://www.taiwanplus.com/news/world-news/china/230815030/china-stops-publishing-youth-unemployment-numbers-amid-faltering-economy",
+      "posted_at": "2023-08-15T15:52:34Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "China has announced it will stop publishing youth unemployment numbers after the latest round of negative economic data from the world's second-largest economy. Beijing says it needs to adjust how the statistic is calculated. Figures from June show youth unemployment in China stood at over 20%.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "China economy"
+    },
+    {
+      "hn_id": 38058564,
+      "hn_url": "https://news.ycombinator.com/item?id=38058564",
+      "title": "What China's slow-motion real estate crisis means for the global economy",
+      "url": "https://www.cnbc.com/2023/10/27/what-chinas-slow-motion-property-crisis-means-for-the-global-economy.html",
+      "posted_at": "2023-10-29T13:41:30Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "China's property industry is collapsing in slow motion, with indebted major developers, and the IMF has cut growth forecasts, citing the sector as a big reason.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "China economy"
+    },
+    {
+      "hn_id": 26725749,
+      "hn_url": "https://news.ycombinator.com/item?id=26725749",
+      "title": "China Creates Its Own Digital Currency, a First for Major Economy",
+      "url": "https://www.wsj.com/articles/china-creates-its-own-digital-currency-a-first-for-major-economy-11617634118",
+      "posted_at": "2021-04-07T14:49:44Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "China economy"
+    },
+    {
+      "hn_id": 43561253,
+      "hn_url": "https://news.ycombinator.com/item?id=43561253",
+      "title": "US Administration announces 34% tariffs on China, 20% on EU",
+      "url": "https://www.bbc.com/news/live/c1dr7vy39eet",
+      "posted_at": "2025-04-02T20:39:06Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Wall Street suffers its worst day since 2020 but the White House tells investors to \"trust in President Trump\".",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "tariffs"
+    },
+    {
+      "hn_id": 46680212,
+      "hn_url": "https://news.ycombinator.com/item?id=46680212",
+      "title": "American importers and consumers bear the cost of 2025 tariffs: analysis",
+      "url": "https://www.kielinstitut.de/publications/americas-own-goal-who-pays-the-tariffs-19398/",
+      "posted_at": "2026-01-19T15:43:01Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "tariffs"
+    },
+    {
+      "hn_id": 41159372,
+      "hn_url": "https://news.ycombinator.com/item?id=41159372",
+      "title": "Japan's Nikkei Posts Biggest Single-Day Fall Since 1987 After Weak U.S. Data",
+      "url": "https://www.wsj.com/finance/stocks/japan-stocks-fall-sharply-after-weak-u-s-jobs-data-yen-strengthening-3903689f",
+      "posted_at": "2024-08-05T09:05:48Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Japan yen"
+    },
+    {
+      "hn_id": 33654176,
+      "hn_url": "https://news.ycombinator.com/item?id=33654176",
+      "title": "Japan's inflation hits 40-year high as weak yen fans import costs",
+      "url": "https://asia.nikkei.com/Economy/Inflation/Japan-s-inflation-hits-40-year-high-as-weak-yen-fans-import-costs",
+      "posted_at": "2022-11-18T13:21:23Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Japan yen"
+    },
+    {
+      "hn_id": 29029825,
+      "hn_url": "https://news.ycombinator.com/item?id=29029825",
+      "title": "What caused all the supply chain bottlenecks?",
+      "url": "https://twitter.com/typesfast/status/1453753924960219145",
+      "posted_at": "2021-10-28T18:45:04Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "What caused all the supply chain bottlenecks? Modern finance with its obsession with \"Return on Equity.\"",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "supply chain"
+    },
+    {
+      "hn_id": 43312034,
+      "hn_url": "https://news.ycombinator.com/item?id=43312034",
+      "title": "Global coffee trade grinding to a halt, hit hard by brutal price hikes",
+      "url": "https://www.reuters.com/markets/commodities/global-coffee-trade-grinding-halt-hit-hard-by-brutal-prices-hikes-2025-03-07/",
+      "posted_at": "2025-03-09T18:19:56Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "global trade"
+    },
+    {
+      "hn_id": 38086764,
+      "hn_url": "https://news.ycombinator.com/item?id=38086764",
+      "title": "Chinese Yuan Edges Out Euro as Second-Most Used Currency in Global Trade",
+      "url": "https://www.caixinglobal.com/2023-10-31/chinese-yuan-edges-out-euro-as-second-most-used-currency-in-global-trade-finance-102122297.html",
+      "posted_at": "2023-10-31T15:51:49Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "Chinese Yuan Edges Out Euro as Second-Most Used Currency in Global Trade Finance - The yuan’s share climbed to 5.8% in value last month, overtaking the euro on 5.43% for the first time in at least six years",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "description",
+      "query": "global trade"
+    },
+    {
+      "hn_id": 30689313,
+      "hn_url": "https://news.ycombinator.com/item?id=30689313",
+      "title": "Rich Like Me: How Assortative Mating Is Driving Income Inequality",
+      "url": "https://quillette.com/2019/10/18/rich-like-me-how-assortative-mating-is-driving-income-inequality/",
+      "posted_at": "2022-03-15T18:47:37Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "The top decile of young male earners have been much less likely to marry young women who are in the bottom decile of female earners.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "income inequality"
+    },
+    {
+      "hn_id": 39021485,
+      "hn_url": "https://news.ycombinator.com/item?id=39021485",
+      "title": "Growing income inequality is driving public mistrust",
+      "url": "https://www.ft.com/content/3e1b5f36-6c10-4a28-842c-2831ff89e5c2",
+      "posted_at": "2024-01-17T00:42:46Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "income inequality"
+    },
+    {
+      "hn_id": 41412054,
+      "hn_url": "https://news.ycombinator.com/item?id=41412054",
+      "title": "Landlords Face a $1.5T Commercial Real Estate Maturity Wall",
+      "url": "https://www.bloomberg.com/news/articles/2024-08-31/landlords-face-a-1-5-trillion-commercial-real-estate-maturity-wall",
+      "posted_at": "2024-08-31T21:15:21Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "commercial real estate"
+    },
+    {
+      "hn_id": 36467000,
+      "hn_url": "https://news.ycombinator.com/item?id=36467000",
+      "title": "Office real estate crash will be so sharp, values unlikely to recover by 2040",
+      "url": "https://fortune.com/2023/06/23/commercial-real-estate-crash-office-values-unlikely-to-recover-by-2040-says-capital-economics/",
+      "posted_at": "2023-06-25T11:14:21Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "The research firm’s top property economist likens the decline in office demand to what malls have experienced over the last six years—and sees a similar outcome.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "commercial real estate"
+    },
+    {
+      "hn_id": 46941850,
+      "hn_url": "https://news.ycombinator.com/item?id=46941850",
+      "title": "A tough labor market for white-collar workers has turned recruiting upside down",
+      "url": "https://www.wsj.com/lifestyle/careers/job-hunters-are-so-desperate-that-theyre-paying-to-get-recruited-44891ac2",
+      "posted_at": "2026-02-09T05:23:37Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "labor market"
+    },
+    {
+      "hn_id": 33837715,
+      "hn_url": "https://news.ycombinator.com/item?id=33837715",
+      "title": "Speech by Chair Powell on inflation and the labor market",
+      "url": "https://www.federalreserve.gov/newsevents/speech/powell20221130a.htm",
+      "posted_at": "2022-12-02T22:18:11Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "Today I will offer a progress report on the Federal Open Market Committee's (FOMC) efforts to restore price stability to the U.S. economy for the benefit of th",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "labor market"
+    },
+    {
+      "hn_id": 46990359,
+      "hn_url": "https://news.ycombinator.com/item?id=46990359",
+      "title": "Healthcare Jobs Have Become the Engine of America's Labor Market",
+      "url": "https://www.wsj.com/economy/jobs/healthcare-jobs-have-become-the-engine-of-americas-labor-market-114ffd34",
+      "posted_at": "2026-02-12T15:55:28Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "labor market"
+    },
+    {
+      "hn_id": 33044427,
+      "hn_url": "https://news.ycombinator.com/item?id=33044427",
+      "title": "A study of lights at night suggests dictators lie about economic growth",
+      "url": "https://www.economist.com/graphic-detail/2022/09/29/a-study-of-lights-at-night-suggests-dictators-lie-about-economic-growth",
+      "posted_at": "2022-10-01T06:30:47Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "economic growth"
+    },
+    {
+      "hn_id": 31708519,
+      "hn_url": "https://news.ycombinator.com/item?id=31708519",
+      "title": "Low economic growth is a slow-burning crisis for Britain",
+      "url": "https://www.economist.com/leaders/2022/06/09/low-economic-growth-is-a-slow-burning-crisis-for-britain",
+      "posted_at": "2022-06-11T21:18:13Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "economic growth"
+    },
+    {
+      "hn_id": 30101512,
+      "hn_url": "https://news.ycombinator.com/item?id=30101512",
+      "title": "In Argentina, inflation is a way of life",
+      "url": "https://www.washingtonpost.com/world/2022/01/27/argentina-inflation-strategy-tactics/",
+      "posted_at": "2022-01-27T15:15:43Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "Chronic high inflation affects the way Argentines spend, save and think.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Argentina inflation"
+    },
+    {
+      "hn_id": 41670775,
+      "hn_url": "https://news.ycombinator.com/item?id=41670775",
+      "title": "Britain paying highest electricity prices in the world",
+      "url": "https://www.telegraph.co.uk/business/2024/09/26/britain-burdened-most-expensive-electricity-prices-in-world/",
+      "posted_at": "2024-09-27T14:16:25Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "electricity prices"
+    },
+    {
+      "hn_id": 28437934,
+      "hn_url": "https://news.ycombinator.com/item?id=28437934",
+      "title": "Who Owns the US National Debt?",
+      "url": "https://www.thebalance.com/who-owns-the-u-s-national-debt-3306124",
+      "posted_at": "2021-09-06T20:48:20Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "Most of the U.S. national debt is owned by Social Security, the Federal Reserve, and foreign investors. Learn how it impacts the economy and you.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "national debt"
+    },
+    {
+      "hn_id": 47973841,
+      "hn_url": "https://news.ycombinator.com/item?id=47973841",
+      "title": "For first time since World War II, US national debt now larger than its economy",
+      "url": "https://fortune.com/2026/04/30/national-debt-larger-than-economy-gdp-ratio-100-percent/",
+      "posted_at": "2026-05-01T12:09:09Z",
+      "category_ids": [
+        "economy"
+      ],
+      "split": "evaluation",
+      "description": "“We’ve heard plenty of alarm bells in the past few years about our fiscal path,” said Maya MacGuineas of the CRFB, “but this one rings especially loudly.”",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "national debt"
+    },
+    {
+      "hn_id": 30450267,
+      "hn_url": "https://news.ycombinator.com/item?id=30450267",
+      "title": "Russia Declares War on Ukraine",
+      "url": "https://www.usatoday.com/story/news/politics/2022/02/23/russia-ukraine-invasion-crisis-update/6906567001/",
+      "posted_at": "2022-02-24T04:27:23Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Russia Ukraine invasion"
+    },
+    {
+      "hn_id": 30556430,
+      "hn_url": "https://news.ycombinator.com/item?id=30556430",
+      "title": "Russia Makes Calling Ukraine War an 'Invasion' a Criminal Offense",
+      "url": "https://www.newsweek.com/russia-ukraine-war-invasion-criminal-offense-duma-1684810",
+      "posted_at": "2022-03-04T15:53:30Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Those breaking the law passed by Russia's parliament could face 15 years in prison.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Russia Ukraine invasion"
+    },
+    {
+      "hn_id": 30591520,
+      "hn_url": "https://news.ycombinator.com/item?id=30591520",
+      "title": "How Russia’s invasion of Ukraine is redrawing air routes",
+      "url": "https://graphics.reuters.com/UKRAINE-CRISIS/AIRLINES/klpykbmropg/",
+      "posted_at": "2022-03-07T18:33:12Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "How Russia’s invasion of Ukraine is redrawing air routes",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Russia Ukraine invasion"
+    },
+    {
+      "hn_id": 28474123,
+      "hn_url": "https://news.ycombinator.com/item?id=28474123",
+      "title": "Hong Kong: Police Raid Tiananmen Square Museum",
+      "url": "https://www.bbc.co.uk/news/world-asia-china-58506598",
+      "posted_at": "2021-09-09T20:13:45Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "The raid comes a day after four members of the group that ran the venue were arrested.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Hong Kong"
+    },
+    {
+      "hn_id": 31946528,
+      "hn_url": "https://news.ycombinator.com/item?id=31946528",
+      "title": "How Hong Kong became a police state",
+      "url": "https://www.economist.com/interactive/essay/2022/07/01/how-hong-kong-became-a-police-state",
+      "posted_at": "2022-07-01T14:02:34Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Hong Kong"
+    },
+    {
+      "hn_id": 25654143,
+      "hn_url": "https://news.ycombinator.com/item?id=25654143",
+      "title": "Dozens of Hong Kong pro-democracy politicians arrested",
+      "url": "https://asia.nikkei.com/Politics/Dozens-of-Hong-Kong-pro-democracy-politicians-arrested",
+      "posted_at": "2021-01-06T02:39:07Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Hong Kong"
+    },
+    {
+      "hn_id": 38817190,
+      "hn_url": "https://news.ycombinator.com/item?id=38817190",
+      "title": "Brexit has failed for UK, say clear majority of Britons – poll",
+      "url": "https://www.theguardian.com/politics/2023/dec/30/britons-brexit-bad-uk-poll-eu-finances-nhs",
+      "posted_at": "2023-12-30T18:03:46Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Only one in 10 feel leaving the EU has helped their finances, while just 9% say it has benefited the NHS, despite £350m a week pledge",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Brexit"
+    },
+    {
+      "hn_id": 42306261,
+      "hn_url": "https://news.ycombinator.com/item?id=42306261",
+      "title": "South Korea declares martial law",
+      "url": "https://www.koreaherald.com/view.php?ud=20241203050117",
+      "posted_at": "2024-12-03T14:17:59Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "In an emergency address to the nation Tuesday, President Yoon Suk Yeol declared martial law in South Korea. Yoon said at around 10:20 p.m. that the declaration",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "South Korea martial law"
+    },
+    {
+      "hn_id": 42418871,
+      "hn_url": "https://news.ycombinator.com/item?id=42418871",
+      "title": "South Korea's parliament votes to impeach President over his martial law order",
+      "url": "https://apnews.com/article/south-korea-martial-law-yoon-impeach-6432768aafc8b55be26215667e3c19d0",
+      "posted_at": "2024-12-14T19:16:58Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "South Korea martial law"
+    },
+    {
+      "hn_id": 39631139,
+      "hn_url": "https://news.ycombinator.com/item?id=39631139",
+      "title": "Sweden Is a NATO Member",
+      "url": "https://www.government.se/press-releases/2024/03/sweden-is-a-nato-member/",
+      "posted_at": "2024-03-07T16:43:41Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Sweden NATO"
+    },
+    {
+      "hn_id": 35441375,
+      "hn_url": "https://news.ycombinator.com/item?id=35441375",
+      "title": "Finland becomes 31st member of NATO",
+      "url": "https://www.axios.com/2023/04/04/finland-nato-official-member-russia-invasion",
+      "posted_at": "2023-04-04T15:37:27Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Finland NATO"
+    },
+    {
+      "hn_id": 32928951,
+      "hn_url": "https://news.ycombinator.com/item?id=32928951",
+      "title": "Internet disrupted in Iran amid protests over death of Mahsa Amini",
+      "url": "https://netblocks.org/reports/internet-disrupted-in-iran-amid-protests-over-death-of-mahsa-amini-X8qVEwAD",
+      "posted_at": "2022-09-21T18:11:21Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Network data from NetBlocks confirm a near-total disruption disruption to internet service in parts of Kurdistan province in west Iran from the evening of Monday 19 September 2022. The regional ...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Iran protest"
+    },
+    {
+      "hn_id": 34274375,
+      "hn_url": "https://news.ycombinator.com/item?id=34274375",
+      "title": "Students in Iran are risking everything to rise up against the government",
+      "url": "https://www.washingtonpost.com/world/2023/01/05/iran-protests-students-mahsa-amini/",
+      "posted_at": "2023-01-06T13:32:59Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "The price paid by this generation of Iranian student activists is rising by the day. And as the repression deepens, their demands are becoming more radical.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Iran protest"
+    },
+    {
+      "hn_id": 28189518,
+      "hn_url": "https://news.ycombinator.com/item?id=28189518",
+      "title": "Afghan president flees the country as Taliban move on Kabul",
+      "url": "https://apnews.com/article/afghanistan-taliban-kabul-bagram-e1ed33fe0c665ee67ba132c51b8e32a5",
+      "posted_at": "2021-08-15T15:27:16Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Afghanistan Taliban"
+    },
+    {
+      "hn_id": 28190691,
+      "hn_url": "https://news.ycombinator.com/item?id=28190691",
+      "title": "How the Taliban Overran the Afghan Army, Built by the U.S. over 20 Years",
+      "url": "https://www.wsj.com/articles/afghanistan-army-collapse-taliban-11628958253",
+      "posted_at": "2021-08-15T17:46:22Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Afghanistan Taliban"
+    },
+    {
+      "hn_id": 38830281,
+      "hn_url": "https://news.ycombinator.com/item?id=38830281",
+      "title": "Magnitude 7.6 earthquake strikes Japan, tsunami warning issued for Ishikawa",
+      "url": "https://www3.nhk.or.jp/nhkworld/en/news/20240101_15/",
+      "posted_at": "2024-01-01T07:41:22Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Japan earthquake"
+    },
+    {
+      "hn_id": 34774827,
+      "hn_url": "https://news.ycombinator.com/item?id=34774827",
+      "title": "Turkey’s earthquakes show the deadly extent of construction scams",
+      "url": "https://www.economist.com/europe/2023/02/12/turkeys-earthquakes-show-the-deadly-extent-of-construction-scams",
+      "posted_at": "2023-02-13T15:40:19Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Turkey earthquake"
+    },
+    {
+      "hn_id": 34690705,
+      "hn_url": "https://news.ycombinator.com/item?id=34690705",
+      "title": "7.7 Magnitude Turkey-Syria Earthquake",
+      "url": "https://www.reuters.com/world/middle-east/earthquake-death-toll-turkey-syria-surpasses-5000-2023-02-07/",
+      "posted_at": "2023-02-07T09:49:33Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Turkey earthquake"
+    },
+    {
+      "hn_id": 45781034,
+      "hn_url": "https://news.ycombinator.com/item?id=45781034",
+      "title": "RSF forces in Sudan's civil war are preparing for mass genocide",
+      "url": "https://www.economist.com/middle-east-and-africa/2025/10/30/darfurs-besieged-capital-falls-to-the-rapid-support-forces",
+      "posted_at": "2025-11-01T12:10:46Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Sudan war"
+    },
+    {
+      "hn_id": 26285158,
+      "hn_url": "https://news.ycombinator.com/item?id=26285158",
+      "title": "A religious festival in Ethiopia turned into a massacre",
+      "url": "https://www.cnn.com/2021/02/26/africa/ethiopia-tigray-dengelat-massacre-intl/index.html",
+      "posted_at": "2021-02-27T14:46:13Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Abraham began burying the bodies in the morning and didn’t stop until nightfall. Among those killed in one November massacre were priests, women, entire families and Sunday school children, a CNN investigation has found.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Ethiopia Tigray"
+    },
+    {
+      "hn_id": 32163704,
+      "hn_url": "https://news.ycombinator.com/item?id=32163704",
+      "title": "EU Digital Markets Act, aimed at Google, Apple, Amazon, approved",
+      "url": "https://www.consilium.europa.eu/en/press/press-releases/2022/07/18/dma-council-gives-final-approval-to-new-rules-for-fair-competition-online/",
+      "posted_at": "2022-07-20T10:26:22Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "EU Digital Markets Act"
+    },
+    {
+      "hn_id": 35222999,
+      "hn_url": "https://news.ycombinator.com/item?id=35222999",
+      "title": "Nations reach accord to protect marine life on high seas",
+      "url": "https://apnews.com/article/un-oceans-biodiversity-treaty-0b024fa07e8c1947236d8b8491ebf92c",
+      "posted_at": "2023-03-19T20:07:20Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "UN treaty"
+    },
+    {
+      "hn_id": 30836756,
+      "hn_url": "https://news.ycombinator.com/item?id=30836756",
+      "title": "UN Bans Mercury Satellite Propellants Under New Minamata Treaty Provisions",
+      "url": "https://peer.org/un-bans-mercury-satellite-propellants-under-new-minamata-treaty-provisions/",
+      "posted_at": "2022-03-28T23:14:10Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "UN treaty"
+    },
+    {
+      "hn_id": 43828629,
+      "hn_url": "https://news.ycombinator.com/item?id=43828629",
+      "title": "Canada votes for Mark Carney as prime minister",
+      "url": "https://www.npr.org/2025/04/28/nx-s1-5379573/canada-election-mark-carney-prime-minister",
+      "posted_at": "2025-04-29T04:12:25Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Mark Carney wins Canada's election, seizing on strong public sentiment against President Trump. But it's still not clear if his Liberal Party has won an outright majority in Parliament.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Canada election"
+    },
+    {
+      "hn_id": 26668213,
+      "hn_url": "https://news.ycombinator.com/item?id=26668213",
+      "title": "China breaching every article in genocide convention",
+      "url": "https://www.theguardian.com/world/2021/mar/09/chinas-treatment-of-uighurs-breaches-un-genocide-convention-finds-landmark-report",
+      "posted_at": "2021-04-02T01:14:58Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Thinktank publishes first non-governmental legal examination of China’s actions in Xinjiang",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "UN treaty"
+    },
+    {
+      "hn_id": 40133670,
+      "hn_url": "https://news.ycombinator.com/item?id=40133670",
+      "title": "EU Right to repair: Making repair easier and more appealing to consumers",
+      "url": "https://www.europarl.europa.eu/news/en/press-room/20240419IPR20590/right-to-repair-making-repair-easier-and-more-appealing-to-consumers",
+      "posted_at": "2024-04-23T16:16:02Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "The new rules reinforce the right to repair, aim to reduce waste and bolster the repair sector by making it easier and more cost-effective to repair goods.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "EU right repair"
+    },
+    {
+      "hn_id": 25998427,
+      "hn_url": "https://news.ycombinator.com/item?id=25998427",
+      "title": "Aerobics instructor appears to capture Myanmar coup in dance video",
+      "url": "https://www.timesnownews.com/the-buzz/article/aerobics-instructor-appears-to-capture-myanmar-coup-in-dance-video-watch/714885",
+      "posted_at": "2021-02-02T08:12:06Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Khing Hnin Wai, an aerobics instructor, unknowingly captured what appeared to be Myanmar coup in her routine workout video. Watch:",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Myanmar coup"
+    },
+    {
+      "hn_id": 25987314,
+      "hn_url": "https://news.ycombinator.com/item?id=25987314",
+      "title": "Internet disrupted in Myanmar amid military coup",
+      "url": "https://netblocks.org/reports/internet-disrupted-in-myanmar-amid-apparent-military-uprising-JBZrmlB6",
+      "posted_at": "2021-02-01T10:12:16Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Network data from the NetBlocks Internet Observatory indicate the onset of widespread internet disruptions in Myanmar on Sunday 31 January 2021 (UTC) amid reports of a military uprising and the ...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Myanmar coup"
+    },
+    {
+      "hn_id": 50238557,
+      "hn_url": "https://news.ycombinator.com/item?id=50238557",
+      "title": "Brazil elections: Lula secures fourth term after dramatic comeback",
+      "url": "https://www.bbc.com/news/articles/cmvg7p001qj9o",
+      "posted_at": "2026-10-26T03:04:08Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "The incumbent president has pulled off a surprise win, but he will face a hostile Congress and a polarised country.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Brazil election"
+    },
+    {
+      "hn_id": 41322548,
+      "hn_url": "https://news.ycombinator.com/item?id=41322548",
+      "title": "Venezuela's Supreme Court certifies Maduro's claims he won presidential election",
+      "url": "https://www.ctvnews.ca/world/venezuela-s-supreme-court-certifies-maduro-s-claims-that-he-won-presidential-election-1.7010540",
+      "posted_at": "2024-08-22T17:33:29Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Venezuela election"
+    },
+    {
+      "hn_id": 42716440,
+      "hn_url": "https://news.ycombinator.com/item?id=42716440",
+      "title": "Israel, Hamas reach ceasefire deal to end 15 months of war in Gaza",
+      "url": "https://www.reuters.com/world/middle-east/gaza-ceasefire-appears-close-us-egyptian-leaders-put-focus-coming-hours-2025-01-14/",
+      "posted_at": "2025-01-15T20:26:49Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Israel Gaza ceasefire"
+    },
+    {
+      "hn_id": 39143043,
+      "hn_url": "https://news.ycombinator.com/item?id=39143043",
+      "title": "ICJ orders Israel to prevent genocide in Gaza, stops short of ordering ceasefire",
+      "url": "https://apnews.com/article/israel-gaza-genocide-court-south-africa-27cf84e16082cde798395a95e9143c06",
+      "posted_at": "2024-01-26T14:35:06Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Israel Gaza ceasefire"
+    },
+    {
+      "hn_id": 35056548,
+      "hn_url": "https://news.ycombinator.com/item?id=35056548",
+      "title": "French workers protest plan to increase retirement age",
+      "url": "https://www.cbc.ca/news/world/france-nationwide-strikes-pensions-1.6770345",
+      "posted_at": "2023-03-07T15:41:11Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "French unions stepped up their fight against President Emmanuel Macron's pension reform plans on Tuesday as most trains came to a halt, fuel deliveries were disrupted and schools shut in a sixth day of nationwide strikes.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "France pension protests"
+    },
+    {
+      "hn_id": 47711623,
+      "hn_url": "https://news.ycombinator.com/item?id=47711623",
+      "title": "Mexico's President Sheinbaum Decrees Universal Healthcare for 120M",
+      "url": "https://thedeepdive.ca/mexicos-president-sheinbaum-decrees-universal-healthcare-for-120-million/",
+      "posted_at": "2026-04-09T23:27:09Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "Mexico’s President Claudia Sheinbaum has issued a landmark decree to establish a Universal Health Service, initiating a process to ensure all 120 million citizens can access any public medical institution. The first phase begins April 13 with the rollout of a new Universal Health Credential, starting with citizens aged 85 and older. This unified digital […]",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Mexico president"
+    },
+    {
+      "hn_id": 27812670,
+      "hn_url": "https://news.ycombinator.com/item?id=27812670",
+      "title": "Internet outages in Cuba following widespread anti-government protests",
+      "url": "https://twitter.com/dougmadory/status/1414356912410353665",
+      "posted_at": "2021-07-12T17:20:03Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "train",
+      "description": "UPDATE: According to @kentikinc data, internet traffic to/from Cuba continues to be erratic since two brief total blackouts beginning at 20:05 UTC (4:05pm local). #SoSCuba #KeepitOn",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Cuba protest"
+    },
+    {
+      "hn_id": 38979468,
+      "hn_url": "https://news.ycombinator.com/item?id=38979468",
+      "title": "Taiwan election: William Lai, who China sees as 'troublemaker', wins election",
+      "url": "https://www.bbc.co.uk/news/live/world-asia-67954619",
+      "posted_at": "2024-01-13T12:46:04Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "The opposition Kuomintang party concedes after a partial count shows the DPP candidate in the lead.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Taiwan election"
+    },
+    {
+      "hn_id": 46946248,
+      "hn_url": "https://news.ycombinator.com/item?id=46946248",
+      "title": "Hong Kong pro-democracy tycoon Jimmy Lai gets 20 years' jail",
+      "url": "https://www.bbc.com/news/articles/c8d5pl34vv0o",
+      "posted_at": "2026-02-09T15:25:07Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "Lai's supporters say this amounts to a death sentence, but authorities say it demonstrates the rule of law.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Hong Kong"
+    },
+    {
+      "hn_id": 46611345,
+      "hn_url": "https://news.ycombinator.com/item?id=46611345",
+      "title": "South Korea seeks death penalty for ex-president Yoon over martial law bid",
+      "url": "https://www.cnbc.com/2026/01/14/south-korea-special-prosecutor-seek-death-penalty-former-president-yoon-martial-law.html",
+      "posted_at": "2026-01-14T01:56:22Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "If Yoon is sentenced to death, it will be the first execution South Korea has carried out in almost 30 years.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "South Korea martial law"
+    },
+    {
+      "hn_id": 47847928,
+      "hn_url": "https://news.ycombinator.com/item?id=47847928",
+      "title": "The abandoned war: Why no one is stopping the genocide in Sudan",
+      "url": "https://respublica.media/en/en-sudan-abandoned-war-genocide-no-one-stopping/",
+      "posted_at": "2026-04-21T12:36:50Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "Analysis · Sudan · 20.04.2026",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Sudan war"
+    },
+    {
+      "hn_id": 41199474,
+      "hn_url": "https://news.ycombinator.com/item?id=41199474",
+      "title": "Japan Issues First Ever Mega Earthquake Warning",
+      "url": "https://www.nbcnews.com/news/world/japan-earthquake-tsunami-advisory-rcna165728",
+      "posted_at": "2024-08-09T07:13:59Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "The earthquake occurred off Miyazaki Prefecture at 4:42 p.m. local time (3:42 a.m. ET) at a depth of about 18 miles, the Japan Meteorological Agency said.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Japan earthquake"
+    },
+    {
+      "hn_id": 39634224,
+      "hn_url": "https://news.ycombinator.com/item?id=39634224",
+      "title": "The EU Digital Markets Act Is Here",
+      "url": "https://element.io/blog/the-eu-digital-markets-act-is-here/",
+      "posted_at": "2024-03-07T20:29:26Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "🇪🇺 Happy DMA day, everybody! 🇪🇺 March 7th 2024 is the deadline for large messaging providers (so called ‘gatekeepers’) to comply with the EU’s Digital Markets Act regulation, which requires them to offer interoperability to third party messaging services. This lets users use their preferred messaging service, rather than being obligated",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "EU Digital Markets Act"
+    },
+    {
+      "hn_id": 32663195,
+      "hn_url": "https://news.ycombinator.com/item?id=32663195",
+      "title": "Pakistan's floods have created 100km-wide inland lake, satellite images",
+      "url": "https://www.cnn.com/2022/08/31/asia/pakistan-floods-forms-inland-lake-satellite-intl-hnk/index.html",
+      "posted_at": "2022-08-31T15:15:44Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "Striking new satellite images that reveal the extent of Pakistan’s record flooding show how an overflowing Indus River has turned part of Sindh Province into a 100 kilometer-wide inland lake.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Pakistan floods"
+    },
+    {
+      "hn_id": 31167203,
+      "hn_url": "https://news.ycombinator.com/item?id=31167203",
+      "title": "Mexico nationalises lithium in populist president’s push to extend state control",
+      "url": "https://www.ft.com/content/5e579b31-c6f0-4911-899a-e2894240ad85?accessToken=zwAAAYBJKUHukc9eV5sxxvBJEdOJmuKJQkCthQ.MEYCIQDT5j5FV-F0LSeWMHCFXSgG4l8nowaGHcpVpjipK2iW4wIhAKqENs7Q9Gpgj_wNJAPY7JNtQNMql29JEtX8iZFhnCar&sharetype=gift?token=9678583a-7c63-46e0-ae2d-c8f9e9699d9c",
+      "posted_at": "2022-04-26T13:27:40Z",
+      "category_ids": [
+        "world"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Mexico president"
+    },
+    {
+      "hn_id": 37361863,
+      "hn_url": "https://news.ycombinator.com/item?id=37361863",
+      "title": "Groundwater depletion in India may triple due to climate warming, study finds",
+      "url": "https://news.umich.edu/groundwater-depletion-rates-in-india-could-triple-in-coming-decades-as-climate-warms-study-shows/",
+      "posted_at": "2023-09-02T14:32:59Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "climate warming"
+    },
+    {
+      "hn_id": 43058886,
+      "hn_url": "https://news.ycombinator.com/item?id=43058886",
+      "title": "Increasing rat numbers in cities are linked to climate warming, urbanization",
+      "url": "https://www.science.org/doi/10.1126/sciadv.ads6782",
+      "posted_at": "2025-02-15T14:50:55Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "climate warming"
+    },
+    {
+      "hn_id": 34358759,
+      "hn_url": "https://news.ycombinator.com/item?id=34358759",
+      "title": "Exxon made ‘breathtakingly’ accurate climate predictions in 1970s and 80s",
+      "url": "https://www.theguardian.com/business/2023/jan/12/exxon-climate-change-global-warming-research",
+      "posted_at": "2023-01-12T19:05:59Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Oil company drove some of the leading science of the era only to publicly dismiss global heating",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "climate warming"
+    },
+    {
+      "hn_id": 28231507,
+      "hn_url": "https://news.ycombinator.com/item?id=28231507",
+      "title": "The protocol designed to heal the ozone layer may also have fended off warming",
+      "url": "https://www.technologyreview.com/2021/08/18/1032168/montreal-protocol-warming-lessons-climate-change-ozone/",
+      "posted_at": "2021-08-19T08:08:37Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "The Montreal Protocol was designed to heal the ozone layer. It may have also fended off several degrees of warming—and a collapse of forests and croplands.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "climate warming"
+    },
+    {
+      "hn_id": 35015181,
+      "hn_url": "https://news.ycombinator.com/item?id=35015181",
+      "title": "Carbon dioxide emissions reached a record high in 2022",
+      "url": "https://apnews.com/article/climate-emissions-global-warming-carbon-dioxide-coal-494ef490f16abe381ea2a4107f779670",
+      "posted_at": "2023-03-03T21:20:57Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "coal emissions"
+    },
+    {
+      "hn_id": 39313646,
+      "hn_url": "https://news.ycombinator.com/item?id=39313646",
+      "title": "World surpasses key warming threshold across an entire year",
+      "url": "https://www.cnbc.com/2024/02/08/climate-world-surpasses-key-warming-threshold-across-an-entire-year.html",
+      "posted_at": "2024-02-09T11:09:49Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Scientists said the findings reaffirm the urgent need to slash planet-warming greenhouse gas emissions",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "climate warming"
+    },
+    {
+      "hn_id": 38770693,
+      "hn_url": "https://news.ycombinator.com/item?id=38770693",
+      "title": "UK becomes first G20 country to halve its carbon emissions",
+      "url": "https://www.spectator.co.uk/article/uk-becomes-first-g20-country-to-halve-its-carbon-emissions/",
+      "posted_at": "2023-12-26T11:01:01Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "A major milestone has just been passed: Britain has become the first major country to halve its carbon emissions. The rapid pace of UK environmental progress means that our output is now below 320 million tonnes – less than half the 652 million tonnes of our 1970 peak. This is in spite of Britain now having",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon emissions"
+    },
+    {
+      "hn_id": 40859993,
+      "hn_url": "https://news.ycombinator.com/item?id=40859993",
+      "title": "Google's carbon emissions surge nearly 50% due to AI energy demand",
+      "url": "https://www.cnbc.com/2024/07/02/googles-carbon-emissions-surge-nearly-50percent-due-to-ai-energy-demand.html",
+      "posted_at": "2024-07-02T20:07:55Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "The increase marks a setback in Google's goal to achieve net-zero emissions by 2030.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon emissions"
+    },
+    {
+      "hn_id": 33833017,
+      "hn_url": "https://news.ycombinator.com/item?id=33833017",
+      "title": "Europe makes shipping vessels pay for carbon emissions",
+      "url": "https://www.maxinomics.com/blog/europe-makes-shipping-vessels-pay-for-carbon-emissions",
+      "posted_at": "2022-12-02T16:52:22Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "carbon emissions"
+    },
+    {
+      "hn_id": 38345313,
+      "hn_url": "https://news.ycombinator.com/item?id=38345313",
+      "title": "Richest 1% account for more carbon emissions than poorest 66%, report says",
+      "url": "https://www.theguardian.com/environment/2023/nov/20/richest-1-account-for-more-carbon-emissions-than-poorest-66-report-says",
+      "posted_at": "2023-11-20T09:22:30Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "‘Polluter elite’ are plundering the planet to point of destruction, says Oxfam after comprehensive study of climate inequality",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon emissions"
+    },
+    {
+      "hn_id": 36059901,
+      "hn_url": "https://news.ycombinator.com/item?id=36059901",
+      "title": "France bans short-haul flights to cut carbon emissions",
+      "url": "https://www.bbc.co.uk/news/world-europe-65687665",
+      "posted_at": "2023-05-24T15:57:23Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "All domestic air routes are stopped where the same journey could be made by train in under 2.5 hours.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon emissions"
+    },
+    {
+      "hn_id": 26928395,
+      "hn_url": "https://news.ycombinator.com/item?id=26928395",
+      "title": "‘Insanely cheap energy’: solar power continues to shock the world",
+      "url": "https://www.theguardian.com/australia-news/2021/apr/25/insanely-cheap-energy-how-solar-power-continues-to-shock-the-world",
+      "posted_at": "2021-04-24T21:31:30Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Australian smarts and Chinese industrial might made solar power the cheapest power humanity has seen – and no one saw it coming",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "solar energy"
+    },
+    {
+      "hn_id": 42590903,
+      "hn_url": "https://news.ycombinator.com/item?id=42590903",
+      "title": "In Colorado, a marriage of solar energy and farming",
+      "url": "https://www.ksjd.org/2024-12-31/in-colorado-a-marriage-of-solar-energy-and-farming-provides-a-model-for-a-more-sustainable-future",
+      "posted_at": "2025-01-04T00:13:13Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Jack’s Solar Garden in Longmont, Colorado is a nationally recognized site for agrivoltaic research. The farm's 3,276 solar panels generate enough electricity to power approximately 300 homes.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "solar energy"
+    },
+    {
+      "hn_id": 44762026,
+      "hn_url": "https://news.ycombinator.com/item?id=44762026",
+      "title": "Researchers map where solar energy delivers the biggest climate payoff",
+      "url": "https://www.rutgers.edu/news/researchers-map-where-solar-energy-delivers-biggest-climate-payoff",
+      "posted_at": "2025-08-01T20:21:42Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "solar energy"
+    },
+    {
+      "hn_id": 34358795,
+      "hn_url": "https://news.ycombinator.com/item?id=34358795",
+      "title": "The UK is wasting a lot of wind power",
+      "url": "https://archy.deberker.com/the-uk-is-wasting-a-lot-of-wind-power/",
+      "posted_at": "2023-01-12T19:08:36Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "The UK discarded 6% of its windpower last year, at a cost of almost £1bn. What’s going on, and how can we fix it?",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "description",
+      "query": "wind power"
+    },
+    {
+      "hn_id": 28367440,
+      "hn_url": "https://news.ycombinator.com/item?id=28367440",
+      "title": "In the US, wind power is getting bigger and better, report says",
+      "url": "https://arstechnica.com/science/2021/08/in-the-us-wind-power-is-getting-bigger-and-better-report-says/",
+      "posted_at": "2021-08-31T12:56:47Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Longer blades, taller towers among the reasons wind power is growing in the US.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "wind power"
+    },
+    {
+      "hn_id": 31791444,
+      "hn_url": "https://news.ycombinator.com/item?id=31791444",
+      "title": "DOE announces breakthrough in residential cold climate heat pump technology",
+      "url": "https://www.energy.gov/articles/doe-announces-breakthrough-residential-cold-climate-heat-pump-technology",
+      "posted_at": "2022-06-18T16:39:04Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "heat pumps"
+    },
+    {
+      "hn_id": 35390853,
+      "hn_url": "https://news.ycombinator.com/item?id=35390853",
+      "title": "Heat pump sales outpaced gas furnace sales in the US in 2022",
+      "url": "https://electrek.co/2023/03/31/heat-pump-sales-2022/",
+      "posted_at": "2023-03-31T18:07:04Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "In the US, heat pump purchases exceeded those of gas furnaces in 2022 – part of a bigger trend that saw global heat pump sales grow by 11%.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "heat pumps"
+    },
+    {
+      "hn_id": 34160672,
+      "hn_url": "https://news.ycombinator.com/item?id=34160672",
+      "title": "US companies are producing heat pumps that work below -20F",
+      "url": "https://electrek.co/2022/12/26/us-companies-are-producing-heat-pumps-that-work-below-20f/",
+      "posted_at": "2022-12-28T13:19:56Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "An air source heat pump prototype has been developed that can operate in temperatures as low as -23F (-30C).",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "heat pumps"
+    },
+    {
+      "hn_id": 29522940,
+      "hn_url": "https://news.ycombinator.com/item?id=29522940",
+      "title": "The debate about nuclear power and climate change",
+      "url": "https://bostonreview.net/articles/is-nuclear-power-our-best-bet-against-climate-change/",
+      "posted_at": "2021-12-11T18:11:36Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Beyond carbon emissions and safety, the debate must also confront how the choices we make now constrain the kind of world we can build in the future.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "nuclear power climate"
+    },
+    {
+      "hn_id": 29094422,
+      "hn_url": "https://news.ycombinator.com/item?id=29094422",
+      "title": "China to build 150 nuclear reactors- more than rest of world over last 35 years",
+      "url": "https://www.bloomberg.com/news/features/2021-11-02/china-climate-goals-hinge-on-440-billion-nuclear-power-plan-to-rival-u-s",
+      "posted_at": "2021-11-03T13:43:09Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "nuclear power climate"
+    },
+    {
+      "hn_id": 35841748,
+      "hn_url": "https://news.ycombinator.com/item?id=35841748",
+      "title": "Ocean-surface temperatures are breaking records",
+      "url": "https://www.economist.com/graphic-detail/2023/05/05/ocean-surface-temperatures-are-breaking-records",
+      "posted_at": "2023-05-06T14:32:53Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "ocean temperature"
+    },
+    {
+      "hn_id": 36855773,
+      "hn_url": "https://news.ycombinator.com/item?id=36855773",
+      "title": "100% coral mortality found in coral reef off Florida as ocean temperatures soar",
+      "url": "https://www.cbsnews.com/news/coral-reef-mortality-florida-ocean-temperatures/",
+      "posted_at": "2023-07-24T23:42:55Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Almost every single coral in a coral reef nursery in the Florida Keys has died as NOAA raises its coral bleaching warning system to the highest level possible for the area.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "ocean temperature"
+    },
+    {
+      "hn_id": 32777774,
+      "hn_url": "https://news.ycombinator.com/item?id=32777774",
+      "title": "Exceeding 1.5°C global warming could trigger multiple climate tipping points",
+      "url": "https://www.science.org/doi/10.1126/science.abn7950",
+      "posted_at": "2022-09-09T11:08:35Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "climate tipping"
+    },
+    {
+      "hn_id": 30590147,
+      "hn_url": "https://news.ycombinator.com/item?id=30590147",
+      "title": "Amazon near tipping point of shifting from rainforest to savannah study suggests",
+      "url": "https://www.cnn.com/2022/03/07/americas/amazon-tipping-point-climate-scn/index.html",
+      "posted_at": "2022-03-07T16:54:37Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "The Amazon rainforest may be nearing a critical tipping point that could see the biologically rich and diverse ecosystem transformed into a grassy savannah.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "climate tipping"
+    },
+    {
+      "hn_id": 40048842,
+      "hn_url": "https://news.ycombinator.com/item?id=40048842",
+      "title": "California exceeds 100% of energy demand with renewables over a record 30 days",
+      "url": "https://electrek.co/2024/04/15/renewables-met-100-percent-california-energy-demand-30-days/",
+      "posted_at": "2024-04-16T06:09:11Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "In a major clean energy benchmark, wind, solar, and hydro exceeded 100% of demand on California's main grid for 69 of the past 75 days.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "renewables record"
+    },
+    {
+      "hn_id": 40982276,
+      "hn_url": "https://news.ycombinator.com/item?id=40982276",
+      "title": "China installing the wind / solar equivalent of 5 nuclear power stations a week",
+      "url": "https://www.abc.net.au/news/science/2024-07-16/chinas-renewable-energy-boom-breaks-records/104086640",
+      "posted_at": "2024-07-17T03:24:26Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "While Australia debates the merits of going nuclear and frustration grows over the slower-than-needed switch to solar and wind power, China's renewables rollout is breaking all the records.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "renewables record"
+    },
+    {
+      "hn_id": 33198282,
+      "hn_url": "https://news.ycombinator.com/item?id=33198282",
+      "title": "Greece runs on 100% renewables for the first time on record",
+      "url": "https://electrek.co/2022/10/12/greece-100-percent-renewables-for-first-time-on-record/",
+      "posted_at": "2022-10-14T00:28:31Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Greece was powered entirely by renewables for the first time last week, according to the country’s independent power transmission operator.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "renewables record"
+    },
+    {
+      "hn_id": 36702992,
+      "hn_url": "https://news.ycombinator.com/item?id=36702992",
+      "title": "Grid Storage: Batteries Will Win",
+      "url": "https://caseyhandmer.wordpress.com/2023/07/12/grid-storage-batteries-will-win/",
+      "posted_at": "2023-07-12T23:18:37Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "A short and spicy post. There remains, even in 2023, a substantial fraction of the “future of energy” hivemind who are still convinced that the solution to all our problems is to build …",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "battery storage grid"
+    },
+    {
+      "hn_id": 40348727,
+      "hn_url": "https://news.ycombinator.com/item?id=40348727",
+      "title": "First sodium-ion grid battery opens with cells that can be charged in 12 minutes",
+      "url": "https://www.notebookcheck.net/First-sodium-ion-battery-storage-station-at-grid-level-opens-with-cells-that-can-be-charged-in-12-minutes.836720.0.html",
+      "posted_at": "2024-05-13T21:30:09Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "Clean electricity generation paired with the first grid-level sodium battery energy storage system can bring costs down to just $0.028 per kWh. The 10 MWh storage capacity is executed with sodium-ion cells that can be charged in just 12 minutes.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "battery storage grid"
+    },
+    {
+      "hn_id": 31752166,
+      "hn_url": "https://news.ycombinator.com/item?id=31752166",
+      "title": "Satellite Detects Largest Release of Methane in the World",
+      "url": "https://www.nytimes.com/2022/06/14/climate/methane-emissions-russia-coal-mine.html",
+      "posted_at": "2022-06-15T12:45:49Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "methane emissions"
+    },
+    {
+      "hn_id": 32423178,
+      "hn_url": "https://news.ycombinator.com/item?id=32423178",
+      "title": "Using satellites to uncover large methane emissions from landfills",
+      "url": "https://www.science.org/doi/10.1126/sciadv.abn9683",
+      "posted_at": "2022-08-11T08:56:09Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "methane emissions"
+    },
+    {
+      "hn_id": 26495536,
+      "hn_url": "https://news.ycombinator.com/item?id=26495536",
+      "title": "Feeding cattle seaweed reduces their greenhouse gas emissions 82%",
+      "url": "https://phys.org/news/2021-03-seaweed-supplements-livestock-methane-emissions.html",
+      "posted_at": "2021-03-17T19:07:23Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "A bit of seaweed in cattle feed could reduce methane emissions from beef cattle as much as 82 percent, according to new findings from researchers at the University of California, Davis. The results, published today in the journal PLOS ONE, could pave the way for the sustainable production of livestock throughout the world.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "methane emissions"
+    },
+    {
+      "hn_id": 35657570,
+      "hn_url": "https://news.ycombinator.com/item?id=35657570",
+      "title": "'Devastating' melt of Greenland, Antarctic ice sheets found",
+      "url": "https://phys.org/news/2023-04-devastating-greenland-antarctic-ice-sheets.html",
+      "posted_at": "2023-04-21T17:57:25Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "The Greenland and Antarctic ice sheets are now losing more than three times as much ice a year as they were 30 years ago, according to a new comprehensive international study.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Antarctic ice"
+    },
+    {
+      "hn_id": 30677466,
+      "hn_url": "https://news.ycombinator.com/item?id=30677466",
+      "title": "Antarctic sea ice hits lowest minimum on record",
+      "url": "https://www.nature.com/articles/d41586-022-00550-4",
+      "posted_at": "2022-03-14T20:02:17Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Antarctic ice"
+    },
+    {
+      "hn_id": 37540768,
+      "hn_url": "https://news.ycombinator.com/item?id=37540768",
+      "title": "Antarctic sea-ice at 'mind-blowing' low alarms experts",
+      "url": "https://www.bbc.com/news/science-environment-66724246",
+      "posted_at": "2023-09-17T02:05:00Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "Missing winter sea ice signals changes that could be a \"disaster for the world\", scientists say.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Antarctic ice"
+    },
+    {
+      "hn_id": 43058997,
+      "hn_url": "https://news.ycombinator.com/item?id=43058997",
+      "title": "Carbon capture more costly than switching to renewables, researchers find",
+      "url": "https://techxplore.com/news/2025-02-carbon-capture-renewables.html",
+      "posted_at": "2025-02-15T15:06:30Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "For most countries around the world, sourcing energy entirely from wind, solar, geothermal, and hydropower by 2050 would reduce their energy needs and costs, improve air quality, and help slow climate change, according to a study in Environmental Science & Technology.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon capture"
+    },
+    {
+      "hn_id": 30040065,
+      "hn_url": "https://news.ycombinator.com/item?id=30040065",
+      "title": "Shell’s carbon capture plant is emitting more than it’s capturing",
+      "url": "https://www.vice.com/en/article/7kb43x/shell-quest-carbon-capture-plant-alberta",
+      "posted_at": "2022-01-22T19:37:07Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "A new Global Witness report found that it has the same carbon footprint per year as 1.2 million gas-powered cars.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon capture"
+    },
+    {
+      "hn_id": 36339253,
+      "hn_url": "https://news.ycombinator.com/item?id=36339253",
+      "title": "Cement's future could be a combination of carbon capture and electrification",
+      "url": "https://industrydecarbonization.com/news/cements-future-could-be-a-combination-of-carbon-capture-and-electrification.html",
+      "posted_at": "2023-06-15T12:02:11Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "Cement is an industry where capturing carbon emissions may be necessary. A combination with process heat electrification could be better than CCS alone.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "carbon capture"
+    },
+    {
+      "hn_id": 37501756,
+      "hn_url": "https://news.ycombinator.com/item?id=37501756",
+      "title": "Deforestation in the Amazon rainforest continues to decline",
+      "url": "https://news.mongabay.com/2023/09/deforestation-in-the-amazon-rainforest-continues-to-plunge/",
+      "posted_at": "2023-09-13T21:09:06Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "Deforestation in the Brazilian Amazon — Earth’s largest rainforest — is on a continued downward trajectory, according to data released today by Brazil’s national space research institute, INPE. INPE’s deforestation alert system, known as DETER, indicates that forest clearing in Brazil’s section of the Amazon totaled 563 square kilometers in August 2023. This is a […]",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "deforestation"
+    },
+    {
+      "hn_id": 31286173,
+      "hn_url": "https://news.ycombinator.com/item?id=31286173",
+      "title": "Eating one-fifth less beef could halve deforestation",
+      "url": "https://www.nature.com/articles/d41586-022-01238-5",
+      "posted_at": "2022-05-06T15:17:32Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "deforestation"
+    },
+    {
+      "hn_id": 31826918,
+      "hn_url": "https://news.ycombinator.com/item?id=31826918",
+      "title": "Cheap, green hydrogen would be a breakthrough in clean energy",
+      "url": "https://www.gatesnotes.com/Energy/Clean-Hydrogen",
+      "posted_at": "2022-06-21T17:47:40Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "hydrogen energy"
+    },
+    {
+      "hn_id": 41416445,
+      "hn_url": "https://news.ycombinator.com/item?id=41416445",
+      "title": "Batteries start to rival gas on California's electricity grid",
+      "url": "https://english.elpais.com/economy-and-business/2024-08-25/batteries-start-to-rival-gas-on-californias-electricity-grid.html",
+      "posted_at": "2024-09-01T12:29:55Z",
+      "category_ids": [
+        "climate"
+      ],
+      "split": "evaluation",
+      "description": "America’s most populous state aims to use 100% clean energy by 2045, thanks to storage boom",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "electricity grid"
+    },
+    {
+      "hn_id": 34991053,
+      "hn_url": "https://news.ycombinator.com/item?id=34991053",
+      "title": "U.S. Postal Service starts nationwide electric vehicle fleet, buying 9,250 EVs",
+      "url": "https://www.cbsnews.com/news/u-s-postal-service-starts-nationwide-electric-vehicle-fleet-buying-9250-evs-and-thousands-of-charging-stations/",
+      "posted_at": "2023-03-02T02:11:11Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "The move is part of the agency's goal to have a fleet of 66,000 electric vehicles deployed by 2028.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 38304405,
+      "hn_url": "https://news.ycombinator.com/item?id=38304405",
+      "title": "Electric vehicle battery prices are falling faster than expected",
+      "url": "https://www.goldmansachs.com/intelligence/pages/electric-vehicle-battery-prices-falling.html",
+      "posted_at": "2023-11-17T14:57:16Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 33181112,
+      "hn_url": "https://news.ycombinator.com/item?id=33181112",
+      "title": "Students break acceleration world record for electric vehicles",
+      "url": "https://www.uni-stuttgart.de/en/university/news/all/Students-break-acceleration-world-record/",
+      "posted_at": "2022-10-12T18:34:52Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Self-built electric vehicle sets new best time",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 28777672,
+      "hn_url": "https://news.ycombinator.com/item?id=28777672",
+      "title": "Norway to hit 100% electric vehicle sales by early next year",
+      "url": "https://www.drive.com.au/news/norway-to-hit-100-per-cent-electric-vehicle-sales-by-next-year/",
+      "posted_at": "2021-10-06T20:00:19Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 34120237,
+      "hn_url": "https://news.ycombinator.com/item?id=34120237",
+      "title": "The cold hard truth about electric vehicles in winter",
+      "url": "https://www.axios.com/2022/03/04/the-cold-hard-truth-about-electric-vehicles-in-winter",
+      "posted_at": "2022-12-24T19:27:53Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 32450860,
+      "hn_url": "https://news.ycombinator.com/item?id=32450860",
+      "title": "Electric vehicles are way more energy-efficient than internal combustion",
+      "url": "https://www.motortrend.com/news/evs-more-efficient-than-internal-combustion-engines/",
+      "posted_at": "2022-08-13T15:38:12Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Say you drop $5 on a gallon of gas—only about $1 dollar's worth actually gets you moving in a traditional ICE vehicle. The rest is wasted.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "electric vehicle"
+    },
+    {
+      "hn_id": 29543194,
+      "hn_url": "https://news.ycombinator.com/item?id=29543194",
+      "title": "Toyota owners have to pay $8/month to keep using their key fob for remote start",
+      "url": "https://arstechnica.com/cars/2021/12/toyota-owners-have-to-pay-8-mo-to-keep-using-their-key-fob-for-remote-start/",
+      "posted_at": "2021-12-13T19:15:34Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Feature requires subscription even though it doesn’t use connected services.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Toyota"
+    },
+    {
+      "hn_id": 28232469,
+      "hn_url": "https://news.ycombinator.com/item?id=28232469",
+      "title": "Chip shortage: Toyota to cut global production by 40%",
+      "url": "https://www.bbc.com/news/business-58266794",
+      "posted_at": "2021-08-19T11:15:42Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "The world's biggest carmaker will cut output in September, while VW warns it may have to make further cuts.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Toyota"
+    },
+    {
+      "hn_id": 49823568,
+      "hn_url": "https://news.ycombinator.com/item?id=49823568",
+      "title": "Toyota is taking the Corolla electric",
+      "url": "https://electrek.co/2026/09/23/toyota-best-selling-corolla-electric/",
+      "posted_at": "2026-09-23T22:37:28Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Toyota is preparing to introduce the electric version of its best-selling car of all time, the Corolla. When is Toyota...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Toyota"
+    },
+    {
+      "hn_id": 43839123,
+      "hn_url": "https://news.ycombinator.com/item?id=43839123",
+      "title": "Waymo and Toyota outline partnership to advance autonomous driving deployment",
+      "url": "https://waymo.com/blog/2025/04/waymo-and-toyota-outline-strategic-partnership",
+      "posted_at": "2025-04-29T23:06:02Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Toyota Motor Corporation (“Toyota”) and Waymo reached a preliminary agreement to explore a collaboration focused on accelerating the development and deployment of autonomous driving technologies.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Toyota"
+    },
+    {
+      "hn_id": 33774248,
+      "hn_url": "https://news.ycombinator.com/item?id=33774248",
+      "title": "The factory that only builds white Toyota Land Cruisers",
+      "url": "https://www.topgear.com/car-news/big-reads/inside-factory-only-builds-white-toyotas",
+      "posted_at": "2022-11-28T14:48:21Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Toyota"
+    },
+    {
+      "hn_id": 43298271,
+      "hn_url": "https://news.ycombinator.com/item?id=43298271",
+      "title": "Volkswagen reintroducing physical controls for vital functions",
+      "url": "https://www.autocar.co.uk/car-news/new-cars/volkswagen-reintroducing-physical-controls-vital-functions",
+      "posted_at": "2025-03-08T07:25:49Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Brand's design chief commits to \"never\" repeating the \"mistake\" of relegating essential controls to touchscreens",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Volkswagen"
+    },
+    {
+      "hn_id": 32089522,
+      "hn_url": "https://news.ycombinator.com/item?id=32089522",
+      "title": "Volkswagen enters battery business with $20B investment",
+      "url": "https://www.arenaev.com/vw_creates_new_company_and_enters_global_battery_business-news-461.php",
+      "posted_at": "2022-07-13T22:28:31Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "VW officially broke the ground on its new battery factory in Germany where production will start in 2025. The responsibility for VW’s global battery business falls to a new company that will invest €20 billion in the area.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Volkswagen"
+    },
+    {
+      "hn_id": 26916860,
+      "hn_url": "https://news.ycombinator.com/item?id=26916860",
+      "title": "Volkswagen launches its first all-electric SUV, the ID.4",
+      "url": "https://abc7.com/volkswagen-id4-electric-suv-vehicles-volkswagon/10539182/",
+      "posted_at": "2021-04-23T17:11:11Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Volkswagen's new all-electric SUV the ID.4 is quiet and quick - and loaded with technology.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Volkswagen"
+    },
+    {
+      "hn_id": 31568672,
+      "hn_url": "https://news.ycombinator.com/item?id=31568672",
+      "title": "Ford’s electric pickup can power a house for days",
+      "url": "https://www.bloomberg.com/news/articles/2022-05-31/how-the-ford-f-150-can-be-a-backup-home-generator",
+      "posted_at": "2022-05-31T12:19:16Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "Ford electric"
+    },
+    {
+      "hn_id": 29092212,
+      "hn_url": "https://news.ycombinator.com/item?id=29092212",
+      "title": "Ford's $3900 electric crate motor and F-100 concept",
+      "url": "https://www.cnbc.com/2021/11/02/ford-unveils-a-custom-electric-pickup-ahead-of-f-150-lightning-.html",
+      "posted_at": "2021-11-03T08:21:04Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "The Ford F-100 Eluminator concept truck features the retro-styling of a 1978 F-100 pickup with electric motors and batteries from the Mustang Mach-E GT.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Ford electric"
+    },
+    {
+      "hn_id": 42667902,
+      "hn_url": "https://news.ycombinator.com/item?id=42667902",
+      "title": "Ford's electric Mach-E outsold the gas-powered Mustang in 2024",
+      "url": "https://electrek.co/2025/01/09/fords-mach-e-ev-outsold-gas-mustang-first-time/",
+      "posted_at": "2025-01-11T18:31:29Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Who said Ford’s electric crossover SUV wasn’t a real Mustang? The Mach-E outsold the gas-powered Ford Mustang for the first...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Ford electric"
+    },
+    {
+      "hn_id": 46281182,
+      "hn_url": "https://news.ycombinator.com/item?id=46281182",
+      "title": "Ford kills the All-Electric F-150",
+      "url": "https://www.wired.com/story/ford-kills-electric-f-150-lightning-for-hybrid/",
+      "posted_at": "2025-12-15T21:46:53Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "The move comes as a response to the Trump administration’s waning support for electrification and a weakening consumer market.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Ford electric"
+    },
+    {
+      "hn_id": 48437587,
+      "hn_url": "https://news.ycombinator.com/item?id=48437587",
+      "title": "How do you design a $30k electric pickup? Inside Ford's skunkworks",
+      "url": "https://arstechnica.com/cars/2026/05/how-do-you-design-a-30000-electric-pickup-inside-fords-skunkworks/",
+      "posted_at": "2026-06-07T18:56:46Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "We tour Ford’s top-secret Electric Vehicle Development Center in California.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Ford electric"
+    },
+    {
+      "hn_id": 38471815,
+      "hn_url": "https://news.ycombinator.com/item?id=38471815",
+      "title": "Hyundai Uni Wheel electric drive system could revolutionize EV design",
+      "url": "https://www.autoblog.com/2023/11/29/uni-wheel-hyundai-kia-electric-vehicle-design/",
+      "posted_at": "2023-11-30T10:19:57Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "The massive worldwide focus on electric vehicle technology has already introduced noteworthy changes to automobile design, notably due to the flat floor design",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Hyundai electric"
+    },
+    {
+      "hn_id": 46234920,
+      "hn_url": "https://news.ycombinator.com/item?id=46234920",
+      "title": "Rivian Unveils Custom Silicon, R2 Lidar Roadmap, and Universal Hands Free",
+      "url": "https://riviantrackr.com/news/rivian-unveils-custom-silicon-r2-lidar-roadmap-universal-hands-free-and-its-next-gen-autonomy-platform/",
+      "posted_at": "2025-12-11T18:17:19Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "RJ opened the first ever Autonomy and AI Day explaining why Rivian believes it is positioned to lead in this next phase of the industry. The company is leaning hard into compute, custom hardware, large scale AI systems, and a shared data foundation that touches every part of the ownership experience. Let's break it all",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 38266340,
+      "hn_url": "https://news.ycombinator.com/item?id=38266340",
+      "title": "Rivian software update bricks infotainment system, fix not obvious",
+      "url": "https://electrek.co/2023/11/14/rivian-software-update-bricks-infotainment-system-fix-not-obvious/",
+      "posted_at": "2023-11-14T17:22:50Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "On Monday, Rivian released an incremental software update 2023.42, which bricked the infotainment system in R1Ses and R1Ts. The company...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 42340000,
+      "hn_url": "https://news.ycombinator.com/item?id=42340000",
+      "title": "Rivian is opening its charging network to other EVs",
+      "url": "https://www.thedrive.com/news/rivian-is-opening-its-charger-network-to-other-evs",
+      "posted_at": "2024-12-06T14:16:49Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Each new Rivian Adventure Network station will be available to all compatible EVs, and existing chargers will receive \"gradual retrofits\" to allow other makes.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 37980323,
+      "hn_url": "https://news.ycombinator.com/item?id=37980323",
+      "title": "Rivian R1T is the first EV to win the longest off-road competition in the US",
+      "url": "https://techcrunch.com/2023/10/22/rivian-r1t-is-the-first-ev-to-win-the-longest-off-road-competition-in-the-us/",
+      "posted_at": "2023-10-23T00:33:39Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "A team driving an Rivian R1T won the Rebelle Rally, making it the first EV to place first in the longest off-road competition in the U.S.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 37930927,
+      "hn_url": "https://news.ycombinator.com/item?id=37930927",
+      "title": "Amazon reaches 10k Rivian electric delivery vans in US",
+      "url": "https://techcrunch.com/2023/10/17/amazons-fleet-of-rivian-made-electric-delivery-vans-reaches-10000-in-us/",
+      "posted_at": "2023-10-18T16:21:06Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Amazon's 10,000 Rivian-made all-electric van are delivering packages throughout the United States, the e-commerce company revealed Tuesday evening during",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 41206443,
+      "hn_url": "https://news.ycombinator.com/item?id=41206443",
+      "title": "Rivian reduced electrical wiring by 1.6 miles and 44 pounds",
+      "url": "https://www.popsci.com/technology/rivian-zonal-electrical-architecture/",
+      "posted_at": "2024-08-10T00:12:05Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Using fewer, more efficient electrical control units, Rivian says its vehicles are easier to maintain and more feature rich.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Rivian"
+    },
+    {
+      "hn_id": 45901855,
+      "hn_url": "https://news.ycombinator.com/item?id=45901855",
+      "title": "Waymo robotaxis are now giving rides on freeways in LA, SF and Phoenix",
+      "url": "https://techcrunch.com/2025/11/12/waymo-robotaxis-are-now-giving-rides-on-freeways-in-these-3-cities/",
+      "posted_at": "2025-11-12T16:06:29Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Waymo robotaxis will use freeways in Los Angeles, Phoenix, and San Francisco - an expansion that could reduce ride times by 50%.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Waymo robotaxi"
+    },
+    {
+      "hn_id": 42601489,
+      "hn_url": "https://news.ycombinator.com/item?id=42601489",
+      "title": "Waymo robotaxis safer than any human-driven cars",
+      "url": "https://cleantechnica.com/2025/01/04/waymo-robotaxis-safer-than-any-human-driven-cars-much-safer/",
+      "posted_at": "2025-01-05T13:05:31Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Swiss Re, a top reinsurer globally, has analyzed a lot of data, and it has determined that Waymo’s robotaxis are safer than human drivers, and even safer than human drivers of new cars with the latest advanced driver assistance systems (ADAS). Swiss Re has more than 500,000 liability claims and ... [continued]",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Waymo robotaxi"
+    },
+    {
+      "hn_id": 43254163,
+      "hn_url": "https://news.ycombinator.com/item?id=43254163",
+      "title": "Uber users in Austin are getting matched with Waymo robotaxis",
+      "url": "https://techcrunch.com/2025/03/04/uber-users-in-austin-are-getting-matched-with-waymo-robotaxis/",
+      "posted_at": "2025-03-04T13:19:37Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Uber users in Austin now have a choice between a Waymo robotaxi and a human driver. The two companies officially launched Tuesday the \"Waymo on Uber\"",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Waymo robotaxi"
+    },
+    {
+      "hn_id": 36332086,
+      "hn_url": "https://news.ycombinator.com/item?id=36332086",
+      "title": "Trapped Under Trucks",
+      "url": "https://www.propublica.org/article/underride-crashes-nhtsa-dot-iihs-safety-cars-trucks",
+      "posted_at": "2023-06-14T20:25:33Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "For decades, federal safety regulators ignored credible scientific research and failed to take simple steps to stop gruesome roadway crashes involving heavy trucks. Meanwhile, the bodies piled up.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car crash safety"
+    },
+    {
+      "hn_id": 29188772,
+      "hn_url": "https://news.ycombinator.com/item?id=29188772",
+      "title": "How do cars fare in crash tests they're not specifically optimized for? (2020)",
+      "url": "https://danluu.com/car-safety/",
+      "posted_at": "2021-11-11T15:22:01Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "title_only",
+      "query": "car crash safety"
+    },
+    {
+      "hn_id": 38195509,
+      "hn_url": "https://news.ycombinator.com/item?id=38195509",
+      "title": "Voters Overwhelmingly Pass Car Right to Repair Law in Maine",
+      "url": "https://www.404media.co/voters-overwhelmingly-pass-car-right-to-repair-law-in-maine/",
+      "posted_at": "2023-11-08T19:20:02Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "“Maine residents have won the right to control their destiny when it comes to car repairs.\"",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car right repair"
+    },
+    {
+      "hn_id": 38234716,
+      "hn_url": "https://news.ycombinator.com/item?id=38234716",
+      "title": "Now that cars are like smartphones, we don't really own them",
+      "url": "https://www.washingtonpost.com/technology/2023/11/10/car-right-to-repair/",
+      "posted_at": "2023-11-11T21:27:14Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "In a dispute over a repair law they don’t like, Subaru and Kia crippled their own wireless car features. Maine could be next.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car right repair"
+    },
+    {
+      "hn_id": 26277965,
+      "hn_url": "https://news.ycombinator.com/item?id=26277965",
+      "title": "In-car touchscreens are dangerous",
+      "url": "https://www.thedrive.com/news/39304/why-im-done-pretending-touchscreen-infotainment-isnt-a-stupid-hazardous-fad",
+      "posted_at": "2021-02-26T18:22:06Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "In-car touchscreens are problem enough for average, well-rested drivers. For millions of Americans like me, they're outright dangerous.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car touchscreens"
+    },
+    {
+      "hn_id": 35253753,
+      "hn_url": "https://news.ycombinator.com/item?id=35253753",
+      "title": "Hyundai promises to keep buttons in cars",
+      "url": "https://www.thedrive.com/news/hyundai-promises-to-keep-buttons-in-cars-because-touchscreen-controls-are-dangerous",
+      "posted_at": "2023-03-21T22:43:25Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "train",
+      "description": "Hyundai knows you like to keep your eyes on the road, and it's giving you the controls to do just that.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car touchscreens"
+    },
+    {
+      "hn_id": 32065026,
+      "hn_url": "https://news.ycombinator.com/item?id=32065026",
+      "title": "BMW heated seats subscription costs $18 per month in South Korea",
+      "url": "https://www.motor1.com/news/597376/bmw-heated-seats-subscription/",
+      "posted_at": "2022-07-12T02:54:04Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "BMW subscription"
+    },
+    {
+      "hn_id": 47387268,
+      "hn_url": "https://news.ycombinator.com/item?id=47387268",
+      "title": "Honda is killing its EVs",
+      "url": "https://techcrunch.com/2026/03/14/honda-is-killing-its-evs-and-any-chance-of-competing-in-the-future/",
+      "posted_at": "2026-03-15T13:38:08Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "Honda's decision to kill its three EVs for the U.S. market will reverberate far beyond North America.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Honda"
+    },
+    {
+      "hn_id": 26352039,
+      "hn_url": "https://news.ycombinator.com/item?id=26352039",
+      "title": "Honda's now selling the first production car with level 3 self-driving",
+      "url": "https://www.thedrive.com/news/39609/hondas-now-selling-the-worlds-first-production-car-with-level-3-self-driving-tech",
+      "posted_at": "2021-03-05T03:03:05Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "In a move few saw coming, Honda is the new leader in advanced driver-assistance tech.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Honda"
+    },
+    {
+      "hn_id": 30268000,
+      "hn_url": "https://news.ycombinator.com/item?id=30268000",
+      "title": "Thousands of Mazdas in the Seattle area are stuck on a single FM radio station",
+      "url": "https://www.kuow.org/stories/we-didn-t-mean-to-ruin-your-mazda-s-stereo",
+      "posted_at": "2022-02-09T02:36:50Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "Over the past couple of weeks some people who listen to KUOW in their Mazdas say their car radio is permanently stuck on 94.9. It’s only affecting KUOW, Mazdas from 2016, and we have no idea why.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Mazda"
+    },
+    {
+      "hn_id": 39850340,
+      "hn_url": "https://news.ycombinator.com/item?id=39850340",
+      "title": "Mazda’s rotary engine in the age of the electric car",
+      "url": "https://www.nippon.com/en/in-depth/d00956/",
+      "posted_at": "2024-03-28T12:22:07Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "Japan’s Mazda was once the world’s only automaker to use Wankel rotary engine tech in its cars. In late 2023 it released its first model in more than a decade to run on a rotary engine. Why the focus on this older technology in the emerging age of the electric vehicle?",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "Mazda"
+    },
+    {
+      "hn_id": 32580727,
+      "hn_url": "https://news.ycombinator.com/item?id=32580727",
+      "title": "California to ban the sale of new gasoline cars",
+      "url": "https://www.nytimes.com/2022/08/24/climate/california-gas-cars-emissions.html",
+      "posted_at": "2022-08-24T15:30:52Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "car emissions"
+    },
+    {
+      "hn_id": 31884946,
+      "hn_url": "https://news.ycombinator.com/item?id=31884946",
+      "title": "Electric Mercedes-Benz drove 747 miles without recharging, 2x Tesla's Model S",
+      "url": "https://www.businessinsider.com/mercedes-electric-car-longest-range-tesla-model-s-eqs-eqxx-2022-6",
+      "posted_at": "2022-06-26T15:39:26Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "A fully charged Mercedes-Benz Vision EQXX could drive from New York to Indianapolis without stopping — and still have some energy left over.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "electric car range"
+    },
+    {
+      "hn_id": 42207110,
+      "hn_url": "https://news.ycombinator.com/item?id=42207110",
+      "title": "Electric car batteries last longer than expected (study) – ecomento.de",
+      "url": "https://ecomento.de/2024/11/21/elektroauto-batterien-halten-viel-laenger-als-gedacht-studie/",
+      "posted_at": "2024-11-21T18:24:24Z",
+      "category_ids": [
+        "cars"
+      ],
+      "split": "evaluation",
+      "description": "P3 hat Daten von mehr als 7.000 Elektroautos analysiert und Erkenntnisse zur realen Batteriealterung in der Praxis veröffentlicht.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "car battery"
+    },
+    {
+      "hn_id": 45529255,
+      "hn_url": "https://news.ycombinator.com/item?id=45529255",
+      "title": "Post office in France rolls out croissant-scented stamp",
+      "url": "https://www.ctvnews.ca/world/article/french-post-office-rolls-out-croissant-scented-stamp/",
+      "posted_at": "2025-10-09T15:40:19Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "Scented stamps designed to celebrate artisan croissants hit letterboxes across France on Wednesday, honouring the world-famous delicacy.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "croissant"
+    },
+    {
+      "hn_id": 49870541,
+      "hn_url": "https://news.ycombinator.com/item?id=49870541",
+      "title": "My Recent Woodworking Projects",
+      "url": "https://notoriousbfg.com/recent-woodworking-projects/",
+      "posted_at": "2026-09-27T20:33:55Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "woodworking",
+      "notes": "Current publisher preview is generic, redirected, or insufficiently relevant; use the verified HN title only."
+    },
+    {
+      "hn_id": 27098467,
+      "hn_url": "https://news.ycombinator.com/item?id=27098467",
+      "title": "Science fiction stories shorter than novels",
+      "url": "https://bitmason.blogspot.com/2020/10/80-authors-80-science-fiction-stories.html",
+      "posted_at": "2021-05-09T18:37:53Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "This is an update to 50 authors, 50 science fiction stories shorter than novels . It's mostly an addition of 30 more authors (many from outs...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "science fiction novels"
+    },
+    {
+      "hn_id": 35762284,
+      "hn_url": "https://news.ycombinator.com/item?id=35762284",
+      "title": "FIDE world chess championship decided in rapid tiebreaks",
+      "url": "https://chess24.com/en/watch/live-tournaments/nepo-ding-world-chess-championship-2023/2/1/4",
+      "posted_at": "2023-04-30T13:20:09Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "chess championship"
+    },
+    {
+      "hn_id": 29681161,
+      "hn_url": "https://news.ycombinator.com/item?id=29681161",
+      "title": "The psychological drama of the world chess championship",
+      "url": "https://www.newyorker.com/sports/sporting-scene/the-psychological-drama-of-the-world-chess-championship",
+      "posted_at": "2021-12-25T07:08:19Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "The match between Magnus Carlsen and Ian Nepomniachtchi began as the most accurate in history. Then Nepomniachtchi unravelled.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "chess championship"
+    },
+    {
+      "hn_id": 37285413,
+      "hn_url": "https://news.ycombinator.com/item?id=37285413",
+      "title": "Classical music is for everyone",
+      "url": "https://www.firstthings.com/web-exclusives/2023/08/classical-music-is-for-everyone",
+      "posted_at": "2023-08-27T18:37:10Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "In the summer of 1968, a friend and I went to see the blockbuster movie of the year—2001: A Space Odyssey. We settled into our seats and the theater...",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "classical music"
+    },
+    {
+      "hn_id": 35634963,
+      "hn_url": "https://news.ycombinator.com/item?id=35634963",
+      "title": "Rhythm (taal) in Indian Classical Music (2011)",
+      "url": "https://raag-hindustani.com/Rhythm.html",
+      "posted_at": "2023-04-20T00:28:32Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "What is taal and how does it work? What are some common taals in Indian classical music? Learn how improvisation takes place within the framework of rhythm.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "description",
+      "query": "classical music"
+    },
+    {
+      "hn_id": 27721748,
+      "hn_url": "https://news.ycombinator.com/item?id=27721748",
+      "title": "What did ancient languages sound like?",
+      "url": "https://antigonejournal.com/2021/07/what-did-ancient-languages-sound-like/",
+      "posted_at": "2021-07-03T14:14:40Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "NICHOLAS SWIFT Can we really hear the ancients speak?",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "ancient language"
+    },
+    {
+      "hn_id": 49749771,
+      "hn_url": "https://news.ycombinator.com/item?id=49749771",
+      "title": "Pre-Greek: The lost language hidden within Ancient Greek",
+      "url": "https://linguisticdiscovery.com/posts/pre-greek/",
+      "posted_at": "2026-09-18T03:04:38Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "ancient language"
+    },
+    {
+      "hn_id": 29102268,
+      "hn_url": "https://news.ycombinator.com/item?id=29102268",
+      "title": "Baking bread using 4,500 year old yeast from Ancient Egyptian pottery (2019)",
+      "url": "https://twitter.com/SeamusBlackley/status/1158264819503419392",
+      "posted_at": "2021-11-04T00:19:30Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "bread baking"
+    },
+    {
+      "hn_id": 32213496,
+      "hn_url": "https://news.ycombinator.com/item?id=32213496",
+      "title": "Baking bread with the Romans part III – the panis quadratus strikes back (2018)",
+      "url": "https://tavolamediterranea.com/2018/06/14/baking-bread-romans-part-iii-panis-strikes-back/",
+      "posted_at": "2022-07-24T13:50:11Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "Join Roman bread archaeologist, Farrell Monaco, as she delves deeper into the specifics, the ingredients, the techniques and the tools that made Panis Quadratus the most iconic bread made in the Ancient Roman Mediterranean. Archaeology is delicious!",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "bread baking"
+    },
+    {
+      "hn_id": 44143199,
+      "hn_url": "https://news.ycombinator.com/item?id=44143199",
+      "title": "Consider Knitting",
+      "url": "https://journal.stuffwithstuff.com/2025/05/30/consider-knitting/",
+      "posted_at": "2025-05-31T10:06:16Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "knitting"
+    },
+    {
+      "hn_id": 44108139,
+      "hn_url": "https://news.ycombinator.com/item?id=44108139",
+      "title": "Why is everybody knitting chickens?",
+      "url": "https://ironicsans.ghost.io/why-is-everybody-knitting-chickens/",
+      "posted_at": "2025-05-27T15:52:49Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "A couple years ago, my wife began knitting. And when she takes an interest in something, she goes all in. She’s a perfectionist about learning a new craft, so in a short amount of time, she’s gotten pretty damn good. I can’t even pretend to know anything",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "knitting"
+    },
+    {
+      "hn_id": 33307845,
+      "hn_url": "https://news.ycombinator.com/item?id=33307845",
+      "title": "Five origami books by Shuzo Fujimoto are now public domain",
+      "url": "https://origami.kosmulski.org/blog/2022-10-23-fujimoto-books-public-domain",
+      "posted_at": "2022-10-23T15:50:51Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "Shuzo Fujimoto’s five self-published books: Solid Origami, Invitation to Creative Playing with Origami, and Twist Origami 1-3 Yesterday, during an online event dedicated to Shuzo Fujimoto, I was happy to announce that his children, Hitoshi Fujimoto and Shumi Okada, being his heirs, have agreed to release his five self-published books to the Public Domain. This means that you can now copy, distribute, and use the contents of these books without any restrictions (certain limitations may still apply in some jurisdictions). We made the books available in PDF format for anyone to download for free ",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "origami"
+    },
+    {
+      "hn_id": 29604560,
+      "hn_url": "https://news.ycombinator.com/item?id=29604560",
+      "title": "An Origami Samurai Made from a Single Sheet of Rice Paper",
+      "url": "https://www.openculture.com/2021/12/an-origami-samurai-made-from-a-single-sheet-of-rice-paper.html",
+      "posted_at": "2021-12-18T14:06:25Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "Origami artist Juho Könkkölä spent 50 hours folding an origami samurai from a single square sheet of paper, with no cutting or ripping used in the process. He describes his process on Reddit: Folded from a single square sheet of 95cm x 95cm Wenzhou rice paper without any cutting.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "origami"
+    },
+    {
+      "hn_id": 29055815,
+      "hn_url": "https://news.ycombinator.com/item?id=29055815",
+      "title": "Paper Grain in Origami",
+      "url": "https://origami.kosmulski.org/blog/2021-10-31-paper-grain-in-origami",
+      "posted_at": "2021-10-31T09:52:29Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "Paper is made from plant fibers. When hand-made paper is laid using a sieve, a single sheet is produced at a time. Manual movements of the sieve cause the fibers to become arranged in a roughly uniform manner in all directions. In contrast, machine-made paper is produced as a long, continuous band which moves on a kind of assembly line between different productions stages. This causes the fibers to prefer an arrangement parallel to the movement, resulting in paper grain, also called machine direction: the paper’s properties differ between the machine direction (MD) and the perpendicular direct",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "origami"
+    },
+    {
+      "hn_id": 40988395,
+      "hn_url": "https://news.ycombinator.com/item?id=40988395",
+      "title": "The unexpected poetry of PhD acknowledgements",
+      "url": "https://science.anu.edu.au/news-events/news/unexpected-poetry-phd-acknowledgements",
+      "posted_at": "2024-07-17T17:44:38Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "After reading hundreds and hundreds of PhD theses, we accidentally discovered how to write the perfect PhD acknowledgement: it's a kind of poetry.",
+      "description_source": "publisher_meta",
+      "description_meta_tag": "og:description",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 26642398,
+      "hn_url": "https://news.ycombinator.com/item?id=26642398",
+      "title": "On getting poetry",
+      "url": "https://newcriterion.com/issues/2021/4/on-getting-poetry",
+      "posted_at": "2021-03-31T01:01:18Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "poetry"
+    },
+    {
+      "hn_id": 30084217,
+      "hn_url": "https://news.ycombinator.com/item?id=30084217",
+      "title": "13 years sailing around the world",
+      "url": "http://blog.mailasail.com/wildfox",
+      "posted_at": "2022-01-26T11:25:44Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "sailing"
+    },
+    {
+      "hn_id": 43558077,
+      "hn_url": "https://news.ycombinator.com/item?id=43558077",
+      "title": "Sailing from Berkeley to Hawaii in a 19ft Sailboat",
+      "url": "https://potter-yachters.org/stories/teplow_to_hawaii.htm",
+      "posted_at": "2025-04-02T15:52:22Z",
+      "category_ids": [],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "title_only",
+      "query": "sailing"
+    }
+  ]
+}

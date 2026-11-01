@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 fun AndroidAiSummarySettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit = {},
 ) {
     val appComposition = LocalHarmonicUiDependencies.current
     val repository = appComposition.aiSummarySettings
@@ -56,6 +57,7 @@ fun AndroidAiSummarySettingsScreen(
         showNavigation = showNavigation,
         contentVersion = localRefresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
         onLocalModeUnavailable = {
             appComposition.userMessages.show(
                 "Local summarization is unavailable on this device",

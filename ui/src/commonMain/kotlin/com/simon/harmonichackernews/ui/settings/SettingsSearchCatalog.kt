@@ -34,6 +34,8 @@ internal fun settingsSearchCatalog(
         SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting,
         SettingsSection.UserAvatars -> listOf(labels.getValue(SettingsSection.Comments))
         SettingsSection.ReaderMode -> listOf(labels.getValue(SettingsSection.WebLinks))
+        SettingsSection.ArticleCategories -> listOf(labels.getValue(SettingsSection.AiSummary))
+        SettingsSection.CategoryExploration -> listOf(labels.getValue(SettingsSection.AiSummary), labels.getValue(SettingsSection.ArticleCategories))
         SettingsSection.Frontpages -> listOf(labels.getValue(SettingsSection.Stories))
         SettingsSection.Licenses -> listOf(labels.getValue(SettingsSection.About))
         SettingsSection.Glass, SettingsSection.DebugLinkPreviews -> listOf(labels.getValue(SettingsSection.Debug))
@@ -70,6 +72,10 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.Frontpages, "feeds categories tabs subscriptions unslop hide ai")
     page(SettingsSection.FiltersTags, "block mute exclude keywords users domains tags")
     page(SettingsSection.AiSummary, "artificial intelligence llm ask chat summarize summarise gemini nano gemma qwen llama phi ollama openai anthropic local offline cloud download models")
+    page(SettingsSection.ArticleCategories, "embeddinggemma embeddings categorize categorization categories labels topics similarity sensitivity cutoff experimental")
+    page(SettingsSection.CategoryExploration, "how categories work embeddings cosine similarity map umap tsne pca examples")
+    group(SettingsSection.AiSummary, "", "Article categories" to "tag stories embeddings embeddinggemma labels topics")
+    group(SettingsSection.ArticleCategories, "", "Categorize stories" to "enable embeddings", "Similarity cutoff" to "sensitivity threshold")
     page(SettingsSection.Data, "storage cache backup restore export import bookmarks history")
     page(SettingsSection.About, "version github privacy changelog updates")
     page(SettingsSection.Licenses, "open source libraries copyright dependencies")
@@ -193,17 +199,17 @@ internal fun settingsSearchCatalog(
         "Hide AI posts" to "artificial intelligence unslop news filter")
     group(SettingsSection.AiSummary, "",
         "Enable AI features" to "ask summarize summarise artificial intelligence toggle")
-    if (availability.cloudAi) group(SettingsSection.AiSummary, "Model",
+    if (availability.cloudAi) group(SettingsSection.AiSummary, "Large language model",
         "Base URL" to "api endpoint server openai compatible cloud provider",
         "API Key" to "token credential secret authentication cloud openai",
         "Model" to "name cloud llm gpt gemini claude")
-    if (availability.geminiNano) group(SettingsSection.AiSummary, "Behavior",
+    if (availability.geminiNano) group(SettingsSection.AiSummary, "Summarization",
         "Gemini Nano summarizer" to "on device local three bullets prompt summary")
-    if (availability.localAi) group(SettingsSection.AiSummary, "Model",
+    if (availability.localAi) group(SettingsSection.AiSummary, "Large language model",
         "Downloadable models" to "install download gemma qwen llama phi local offline storage")
-    if (!availability.geminiNano) group(SettingsSection.AiSummary, "Behavior",
+    if (!availability.geminiNano) group(SettingsSection.AiSummary, "Summarization",
         "System prompt" to "instructions ai assistant behavior customise customize")
-    group(SettingsSection.AiSummary, "Behavior",
+    group(SettingsSection.AiSummary, "Summarization",
         "Stream responses" to "streaming tokens live incremental",
         "Automatically summarize articles" to "auto summary summarise reading",
         "Enable bold formatting" to "markdown emphasis text",

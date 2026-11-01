@@ -3,9 +3,15 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+
+internal val LocalCommentStoryCategories = staticCompositionLocalOf<List<String>> { emptyList() }
 
 /**
  * Shared comments feature route. Platform hosts only add interop modifiers and the small pieces
@@ -25,6 +31,17 @@ fun CommentsRoute(
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val settings = controller.displaySettings
+    val categoryPreferences by dependencies.articleCategorySettings.updates.collectAsStateWithLifecycle(
+        initialValue = dependencies.articleCategorySettings.snapshot())
+    val categoryRuntime by dependencies.articleCategories.state.collectAsStateWithLifecycle()
+    val story = controller.story
+    val categoryDescription = story.presentation.linkSummaryDescription
+    val categoryLabels = com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels(
+        storyId = story.id, title = story.title, url = story.url, description = categoryDescription,
+        preferences = categoryPreferences, runtime = dependencies.articleCategories, runtimeState = categoryRuntime,
+        eligible = !story.isFrontpageLink, requestDelayMillis = 0,
+        cachedDescription = { story.url?.let { dependencies.previewResources.cachedLinkSummary(it)?.description } },
+    )
     val commentPreferences = dependencies.userSettings.comments
     val userTags = remember(controller.contentVersion, dependencies.userTags) {
         dependencies.userTags.tags()
@@ -46,7 +63,9 @@ fun CommentsRoute(
         // Keep the callback stable so CommentBodyText can retain its parsed AnnotatedString when
         // loading, voting, sheet progress, or another screen-level state causes recomposition.
         onOpenLink = openLink,
-        headerContent = { settings?.let { headerContent(it) } },
+        headerContent = { CompositionLocalProvider(LocalCommentStoryCategories provides categoryLabels) {
+            settings?.let { headerContent(it) }
+        } },
         searchDialog = { settings?.let { searchDialog(it) } },
         actionOverlay = { settings?.let { actionOverlay(it) } },
     )

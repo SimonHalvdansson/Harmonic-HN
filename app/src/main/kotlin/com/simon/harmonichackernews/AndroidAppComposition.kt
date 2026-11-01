@@ -95,6 +95,8 @@ internal fun createAndroidAppComposition(
             systemDark = { AndroidActivityTheme.uiModeNight(context) },
             localModels = localModels,
             storyCacheRepository = persistentStorage.storyCacheRepository,
+            articleEmbeddingEngine = com.simon.harmonichackernews.categorization.AndroidArticleEmbeddingEngine(context),
+            localAiMemoryAvailable = { com.simon.harmonichackernews.summary.local.localAiMemoryAvailable(context) },
             articleSnapshotStore = persistentStorage.articleSnapshotStore,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             storyResourceTints = BufferedStoryResourceTintStore(

@@ -124,6 +124,8 @@ data class SummaryResult(
 )
 
 interface LocalSummaryEngine {
+    /** Stop active work cooperatively; native resources are disposed by each request's finally. */
+    fun trimMemory() = Unit
     fun canAttempt(): Boolean = true
     suspend fun availability(): LocalSummaryAvailability = LocalSummaryAvailability(
         available = isAvailable(),

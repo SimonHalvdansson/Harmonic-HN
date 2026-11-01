@@ -39,6 +39,8 @@ class HarmonicHostConfiguration(
     val widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),
     val widgetRuntimeStore: KeyValueStore = InMemoryKeyValueStore(),
     val localModels: LocalModelService? = null,
+    val articleEmbeddingEngine: com.simon.harmonichackernews.platform.ArticleEmbeddingEngine? = null,
+    val localAiMemoryAvailable: () -> Boolean = { true },
     val articleSnapshotStore: DownloadStore? = null,
     val pdfDownloadStore: DownloadStore? = null,
     val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },

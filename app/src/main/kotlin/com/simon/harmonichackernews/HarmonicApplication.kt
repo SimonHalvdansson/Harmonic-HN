@@ -108,6 +108,8 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         if (deferredServicesStarted) return
         deferredServicesStarted = true
         val appComposition = composition
+        appComposition.articleCategories.setForeground(true)
+        appComposition.articleCategories.start()
         preloadScope.launch {
             appComposition.aiSummarySettings.awaitSnapshot()
             appComposition.aiModelDefaults.ensureInitialDefault()
@@ -130,6 +132,29 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
                     )
                 }
             }
+        }
+    }
+
+    internal fun onUiForeground() {
+        if (deferredServicesStarted) compositionOrNull?.articleCategories?.setForeground(true)
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val app = compositionOrNull ?: return
+        if (com.simon.harmonichackernews.summary.local.LocalAiMemoryPolicy.background(level)) app.articleCategories.setForeground(false)
+        if (com.simon.harmonichackernews.summary.local.LocalAiMemoryPolicy.pressure(level)) {
+            app.articleCategories.trimMemory()
+            app.localSummaryEngine?.trimMemory()
+        }
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onLowMemory() {
+        super.onLowMemory()
+        compositionOrNull?.let { app ->
+            app.articleCategories.trimMemory()
+            app.localSummaryEngine?.trimMemory()
         }
     }
 

@@ -32,6 +32,8 @@ fun StoriesRoute(
     val navigation by dependencies.navigation.state.collectAsStateWithLifecycle()
     val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     StoriesScreen(
+        categorySettings = dependencies.articleCategorySettings,
+        categoryRuntimeService = dependencies.articleCategories,
         controller = controller,
         mainListState = mainListState,
         showTapToUpdateButton = showTapToUpdateButton,

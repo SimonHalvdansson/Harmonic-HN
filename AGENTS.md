@@ -10,6 +10,9 @@ General tips:
   `ios_app/` and `desktop_app/` are the iOS and desktop hosts.
 - Building the app may require Android SDK components which may not be available in minimal environments.
 - Keep commits small and descriptive.
+- Check release tags before adding settings migrations. Settings introduced since the latest
+  release tag can be revised directly; do not migrate intermediate development defaults or
+  formats that have not shipped in a tagged release.
 - Keep generated build logs, benchmark output, diagnostic captures, and temporary research or
   asset-source notes outside the repository (use the system temporary directory or the task's
   visualization directory). Do not add standalone documentation artifacts unless requested or

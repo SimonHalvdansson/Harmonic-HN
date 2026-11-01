@@ -56,6 +56,7 @@ import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.summary.LocalSummaryBehavior
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
 
 /**
  * Platform-neutral application composition shared by Android, iOS, and future hosts.
@@ -101,6 +102,17 @@ class HarmonicAppComposition(
         userSettings.reading.externalBrowser
     }
     val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore), network.scope)
+    val articleCategoryTraining = com.simon.harmonichackernews.categorization.ArticleCategoryTraining(host.appDataStore)
+    val articleCategorySettings = com.simon.harmonichackernews.categorization.ArticleCategorySettings(
+        host.settingsStore, host.settingsChanges, { articleCategoryTraining.categories },
+        articleCategoryTraining.state.map { Unit },
+    )
+    val articleCategories = com.simon.harmonichackernews.categorization.ArticleCategoryRuntime(
+        articleCategorySettings, localModels, host.articleEmbeddingEngine, network.scope,
+        training = articleCategoryTraining,
+        isHistoryStory = { it in platform.history.historyState.value.ids },
+        memoryAvailable = host.localAiMemoryAvailable,
+    )
     val contentFilters = ContentFilterRepository(host.settingsStore)
     // User tags share the persistent content store with bookmarks, including Android 3.1 data.
     val userTags = UserTagsRepository(host.appDataStore)
@@ -138,6 +150,9 @@ class HarmonicAppComposition(
         linkSummaries = network.linkSummaryRepository,
         store = host.previewCacheStore,
         connectivity = platform.connectivity,
+    )
+    val articleCategoryHistory = com.simon.harmonichackernews.categorization.ArticleCategoryHistory(
+        platform.history, network.hackerNewsRepository, host.storyCacheRepository, previewResources,
     )
     val supportsArticleSnapshots: Boolean = host.articleSnapshotStore != null
     val storyCache = StoryCacheService(

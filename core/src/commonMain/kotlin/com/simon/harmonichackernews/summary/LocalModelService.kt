@@ -133,6 +133,7 @@ class LocalModelService(
         runtimeDelivery.runtimeLabel(runtime)
 
     suspend fun select(modelId: String?): Boolean = operationMutex.withLock {
+        if (!model(modelId).supportsSummarization) return@withLock false
         lifecycle.select(modelId).also { selected -> if (selected) refresh() }
     }
 
@@ -243,7 +244,7 @@ class LocalModelService(
     }
 
     suspend fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
-        model.downloadable && isSupported(model) && lifecycle.isDownloaded(model) &&
+        model.supportsSummarization && model.downloadable && isSupported(model) && lifecycle.isDownloaded(model) &&
             isRuntimeInstalled(model.runtime)
     }
 

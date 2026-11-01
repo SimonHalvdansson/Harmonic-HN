@@ -133,6 +133,9 @@ fun PortableSettingsDetail(
             },
         )
         SettingsSection.AiSummary -> aiSettings()
+        SettingsSection.ArticleCategories -> ArticleCategorySettingsScreen(onBack,
+            onHowItWorks = { onNavigate(SettingsSection.CategoryExploration, true) })
+        SettingsSection.CategoryExploration -> ArticleCategoryExplorationScreen(onBack)
         SettingsSection.Data -> dataSettings()
         SettingsSection.Debug -> PortableDebugSettings(
             app = app,

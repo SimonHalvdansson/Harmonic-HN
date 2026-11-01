@@ -101,6 +101,7 @@ fun AiSummarySettingsRoute(
     contentVersion: Int,
     onBack: () -> Unit,
     onLocalModeUnavailable: () -> Unit,
+    onArticleCategoriesRequested: (() -> Unit)? = null,
     localModelsContent: @Composable () -> Unit,
     dialogContent: @Composable (
         dialog: AiSummarySettingsDialog,
@@ -213,6 +214,7 @@ fun AiSummarySettingsRoute(
         onShowAdditionalInfoChanged = repository::setShowAdditionalInfo,
         onDialogRequested = { dialog = it },
         localModelsContent = localModelsContent,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
     )
     dialog?.let { dialogContent(it) { dialog = null } }
 }

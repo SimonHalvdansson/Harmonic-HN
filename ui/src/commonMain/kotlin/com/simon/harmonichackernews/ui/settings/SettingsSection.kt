@@ -6,6 +6,8 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_search_title
 import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.resources.settings_section_ai_summary
+import com.simon.harmonichackernews.resources.settings_section_article_categories
+import com.simon.harmonichackernews.resources.settings_section_category_exploration
 import com.simon.harmonichackernews.resources.settings_section_appearance
 import com.simon.harmonichackernews.resources.settings_section_font
 import com.simon.harmonichackernews.resources.settings_section_comments
@@ -50,6 +52,8 @@ enum class SettingsSection(
     ReaderMode("reader_mode", Res.string.settings_section_reader_mode),
     FiltersTags("filters_tags", Res.string.settings_section_filters_tags),
     AiSummary("ai_summary", Res.string.settings_section_ai_summary),
+    ArticleCategories("article_categories", Res.string.settings_section_article_categories),
+    CategoryExploration("category_exploration", Res.string.settings_section_category_exploration),
     Notifications("notifications", Res.string.settings_section_notifications),
     Data("data", Res.string.settings_section_data),
     Debug("debug", Res.string.settings_section_debug),

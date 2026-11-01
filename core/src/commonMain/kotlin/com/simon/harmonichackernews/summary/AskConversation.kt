@@ -164,7 +164,7 @@ class AskConversation(
                         if (config.mode == AiSummaryMode.LOCAL) {
                             val engine = localEngine ?: error("No local AI model is available. Configure AI in Settings.")
                             engine.summarizeEvents(SummaryRequest(
-                                text = input, prompt = prompt, streamResponses = config.streamResponses,
+                                text = input, prompt = prompt, streamResponses = true,
                                 useGeminiNanoSummarizationLora = false,
                                 preserveInput = true,
                                 reserveDiscussionSpace = includeArticle && reserveDiscussionSpace,
@@ -182,7 +182,7 @@ class AskConversation(
                         } else {
                             summaries.summarizeText(CloudSummaryConfig(
                                 baseUrl = config.baseUrl, apiKey = config.apiKey, model = config.model,
-                                streamResponses = config.streamResponses,
+                                streamResponses = true,
                                 systemPrompt = prompt, inputCharacterLimit = MAX_INPUT,
                             ), input).collect { event ->
                                 when (event) {

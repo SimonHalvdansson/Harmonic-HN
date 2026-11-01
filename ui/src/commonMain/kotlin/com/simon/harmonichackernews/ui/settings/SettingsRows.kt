@@ -537,6 +537,8 @@ fun SliderSetting(
     enabled: Boolean = true,
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: (() -> Unit)? = null,
+    onReset: (() -> Unit)? = null,
+    resetEnabled: Boolean = true,
 ) {
     val colors = HarmonicTheme.colors
     Column(
@@ -570,6 +572,11 @@ fun SliderSetting(
                 fontSize = 15.sp,
                 lineHeight = 20.sp,
             )
+            if (onReset != null) {
+                androidx.compose.material3.IconButton(onClick = onReset, enabled = enabled && resetEnabled) {
+                    Icon(painterResource(Res.drawable.ic_refresh), "Reset ${title.lowercase()}", Modifier.size(20.dp))
+                }
+            }
         }
         Slider(
             value = value,

@@ -50,6 +50,7 @@ fun AiSummarySettingsScreen(
     onShowAdditionalInfoChanged: (Boolean) -> Unit,
     onDialogRequested: (AiSummarySettingsDialog) -> Unit,
     localModelsContent: @Composable () -> Unit,
+    onArticleCategoriesRequested: (() -> Unit)? = null,
 ) {
     SettingsPage(
         title = stringResource(Res.string.settings_section_ai_summary),
@@ -76,7 +77,7 @@ fun AiSummarySettingsScreen(
         }
 
         item {
-            SettingsCategory("Model") {
+            SettingsCategory("Large language model") {
                 if (state.localSummarizationSupported) {
                     SegmentedSetting(
                         options = listOf(
@@ -113,8 +114,14 @@ fun AiSummarySettingsScreen(
                 }
             }
         }
+        if (onArticleCategoriesRequested != null) item {
+            SettingsCard(Modifier.padding(top = 16.dp)) {
+                SettingRow(title = "Article categories", summary = "Tag stories using embeddings",
+                    icon = Res.drawable.ic_label, onClick = onArticleCategoriesRequested)
+            }
+        }
         item {
-            SettingsCategory("Behavior") {
+            SettingsCategory("Summarization") {
                 if (state.mode == AiSummaryMode.LOCAL && state.geminiNanoSelected) {
                     SegmentedSetting(
                         title = "Gemini Nano summarizer",
@@ -182,6 +189,7 @@ fun AiSummarySettingsScreen(
                 )
             }
         }
+
     }
 }
 

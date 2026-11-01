@@ -155,7 +155,11 @@ fun SettingsShell(
                 SettingsSection.AiSummary -> AndroidAiSummarySettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
                 )
+                SettingsSection.ArticleCategories -> ArticleCategorySettingsScreen(onBack,
+                    onHowItWorks = { onNavigate(SettingsSection.CategoryExploration, true) })
+                SettingsSection.CategoryExploration -> ArticleCategoryExplorationScreen(onBack)
                 SettingsSection.Data -> AndroidDataSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,

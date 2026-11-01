@@ -247,7 +247,7 @@ internal fun AskSurface(
                                         fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
                                         baseUrl = baseUrl, maxLines = maxLines,
                                         overflow = TextOverflow.Ellipsis,
-                                        enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                                        enableBoldFormatting = true,
                                     )
                                 }
                             } else {
@@ -374,7 +374,7 @@ internal fun AskSurface(
                                     fontFamily = typography.family,
                                     fontSize = typography.commentTextSize.sp,
                                     lineHeight = (typography.commentTextSize + 2f).sp,
-                                    enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                                    enableBoldFormatting = true,
                                     onOpenLink = onOpenLink,
                                     baseUrl = baseUrl,
                                     animateStreamingText = state.running && index == state.turns.lastIndex,

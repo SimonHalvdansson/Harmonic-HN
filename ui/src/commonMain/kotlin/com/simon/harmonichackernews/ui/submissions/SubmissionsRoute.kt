@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.submissions
 
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -34,6 +36,10 @@ fun SubmissionsRoute(
     pullToRefreshEnabled: Boolean = true,
     onOpenLink: (String) -> Unit,
 ) {
+    val dependencies = LocalHarmonicUiDependencies.current
+    val categoryPreferences by dependencies.articleCategorySettings.updates.collectAsStateWithLifecycle(
+        initialValue = dependencies.articleCategorySettings.snapshot())
+    val categoryRuntime by dependencies.articleCategories.state.collectAsStateWithLifecycle()
     val state by store.state.collectAsStateWithLifecycle()
     val onIntent = remember(store) { { intent: SubmissionsIntent -> store.accept(intent) } }
     val scope = rememberCoroutineScope()
@@ -61,13 +67,21 @@ fun SubmissionsRoute(
             reserveBackButtonSpace = reserveBackButtonSpace,
             pullToRefreshEnabled = pullToRefreshEnabled,
             storyItemModel = { story, settings ->
-                rememberSubmissionStoryRowModel(
+                val preview = states[story.id]?.takeIf { it.pageUrl == story.url }
+                val model = rememberSubmissionStoryRowModel(
                     story = story,
                     settings = settings,
-                    previewState = states[story.id],
+                    previewState = preview,
                     previewResources = previewResources,
                     tintBaseColor = tintBaseColor,
                 )
+                val labels = rememberArticleCategoryLabels(
+                    storyId = story.id, title = story.title, url = story.url,
+                    description = preview?.summary?.description ?: story.linkSummaryDescription,
+                    preferences = categoryPreferences, runtime = dependencies.articleCategories, runtimeState = categoryRuntime,
+                    eligible = !story.isComment && !story.isFrontpageLink,
+                )
+                remember(model, labels) { model.copy(categoryLabels = labels) }
             },
             onOpenLink = onOpenLink,
         )

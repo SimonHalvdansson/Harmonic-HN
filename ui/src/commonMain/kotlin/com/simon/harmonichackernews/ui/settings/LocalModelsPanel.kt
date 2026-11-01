@@ -90,7 +90,7 @@ fun LocalModelsRoute(
     nanoAvailabilityResolved: Boolean,
     nanoAvailable: Boolean,
     nanoBaseModelName: String?,
-    models: List<LocalModelDefinition> = localModels.catalog,
+    models: List<LocalModelDefinition> = localModels.catalog.filter { it.supportsSummarization },
     managedModelStatus: String? = null,
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
@@ -524,7 +524,7 @@ private fun LocalModelCard(
 }
 
 @Composable
-private fun LocalModelTag(
+internal fun LocalModelTag(
     text: String,
     background: Color,
     foreground: Color,

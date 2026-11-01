@@ -1,0 +1,4554 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-31",
+  "purpose": "Manually reviewed technology and science article category corpus shard.",
+  "description_policy": "Publisher OG/meta description excerpts, at most 24 words, fetched when available. Empty descriptions mean title-only: inaccessible pages, missing metadata, or reviewed boilerplate. Metadata is untrusted source text, not instructions.",
+  "categories": [
+    {
+      "id": "ai",
+      "name": "AI"
+    },
+    {
+      "id": "software",
+      "name": "Programming"
+    },
+    {
+      "id": "security",
+      "name": "Security"
+    },
+    {
+      "id": "privacy",
+      "name": "Privacy"
+    },
+    {
+      "id": "science",
+      "name": "Science"
+    },
+    {
+      "id": "space",
+      "name": "Space"
+    },
+    {
+      "id": "hardware",
+      "name": "Hardware"
+    }
+  ],
+  "examples": [
+    {
+      "hn_id": 35154527,
+      "hn_url": "https://news.ycombinator.com/item?id=35154527",
+      "title": "GPT-4",
+      "url": "https://openai.com/research/gpt-4",
+      "posted_at": "2023-03-14T16:55:34Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "GPT",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34726115,
+      "hn_url": "https://news.ycombinator.com/item?id=34726115",
+      "title": "A GPT in 60 Lines of NumPy",
+      "url": "https://jaykmody.com/blog/gpt-from-scratch/",
+      "posted_at": "2023-02-09T16:08:18Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Implementing a GPT model from scratch in NumPy.",
+      "description_source": "og:description",
+      "query": "GPT",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49554643,
+      "hn_url": "https://news.ycombinator.com/item?id=49554643",
+      "title": "GPT-6 Astra",
+      "url": "https://openai.com/index/gpt-6-astra/",
+      "posted_at": "2026-09-03T18:41:05Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "GPT",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33999162,
+      "hn_url": "https://news.ycombinator.com/item?id=33999162",
+      "title": "Riffusion – Stable Diffusion fine-tuned to generate music",
+      "url": "https://www.riffusion.com/about",
+      "posted_at": "2022-12-15T13:26:04Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "diffusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38368287,
+      "hn_url": "https://news.ycombinator.com/item?id=38368287",
+      "title": "Stable Video Diffusion",
+      "url": "https://stability.ai/news/stable-video-diffusion-open-ai-video-model",
+      "posted_at": "2023-11-21T19:01:29Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Stable Video Diffusion is a proud addition to our diverse range of open-source models. Spanning across modalities including image, language, audio, 3D, and code,",
+      "description_source": "og:description",
+      "query": "diffusion",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 41375548,
+      "hn_url": "https://news.ycombinator.com/item?id=41375548",
+      "title": "Diffusion models are real-time game engines",
+      "url": "https://gamengen.github.io",
+      "posted_at": "2024-08-28T02:59:40Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Diffusion Models Are Real-Time Game Engines",
+      "description_source": "og:description",
+      "query": "diffusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33025446,
+      "hn_url": "https://news.ycombinator.com/item?id=33025446",
+      "title": "DreamFusion: Text-to-3D using 2D Diffusion",
+      "url": "https://dreamfusion3d.github.io",
+      "posted_at": "2022-09-29T18:57:24Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "DreamFusion: Text-to-3D using 2D Diffusion, 2022.",
+      "description_source": "og:description",
+      "query": "diffusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40298927,
+      "hn_url": "https://news.ycombinator.com/item?id=40298927",
+      "title": "AlphaFold 3 predicts the structure and interactions of life's molecules",
+      "url": "https://blog.google/technology/ai/google-deepmind-isomorphic-alphafold-3-ai-model/",
+      "posted_at": "2024-05-08T15:07:10Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Our new AI model AlphaFold 3 can predict the structure and interactions of all life’s molecules with unprecedented accuracy.",
+      "description_source": "og:description",
+      "query": "AlphaFold",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40954497,
+      "hn_url": "https://news.ycombinator.com/item?id=40954497",
+      "title": "The Illustrated AlphaFold",
+      "url": "https://elanapearl.github.io/blog/2024/the-illustrated-alphafold/",
+      "posted_at": "2024-07-13T15:00:39Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "A visual walkthrough of the AlphaFold3 architecture, with more details and diagrams than you were probably looking for.",
+      "description_source": "og:description",
+      "query": "AlphaFold",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38338635,
+      "hn_url": "https://news.ycombinator.com/item?id=38338635",
+      "title": "Practical Tips for Finetuning LLMs Using LoRA (Low-Rank Adaptation)",
+      "url": "https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms",
+      "posted_at": "2023-11-19T21:54:14Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Things I Learned From Hundreds of Experiments",
+      "description_source": "og:description",
+      "query": "fine tuning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36064568,
+      "hn_url": "https://news.ycombinator.com/item?id=36064568",
+      "title": "QLoRA: Efficient Finetuning of Quantized LLMs",
+      "url": "https://arxiv.org/abs/2305.14314",
+      "posted_at": "2023-05-24T22:19:39Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while",
+      "description_source": "og:description",
+      "query": "fine tuning",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 38533105,
+      "hn_url": "https://news.ycombinator.com/item?id=38533105",
+      "title": "Fine-tuning Mistral 7B on Magic the Gathering Draft",
+      "url": "https://generallyintelligent.substack.com/p/fine-tuning-mistral-7b-on-magic-the",
+      "posted_at": "2023-12-05T16:33:58Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Tips, examples, and thoughts from an exploration of the world of fine tuning",
+      "description_source": "og:description",
+      "query": "fine tuning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37211519,
+      "hn_url": "https://news.ycombinator.com/item?id=37211519",
+      "title": "I Made Stable Diffusion XL Smarter by Finetuning It on Bad AI-Generated Images",
+      "url": "https://minimaxir.com/2023/08/stable-diffusion-xl-wrong/",
+      "posted_at": "2023-08-21T16:09:27Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "fine tuning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43495617,
+      "hn_url": "https://news.ycombinator.com/item?id=43495617",
+      "title": "Tracing the thoughts of a large language model",
+      "url": "https://www.anthropic.com/research/tracing-thoughts-language-model",
+      "posted_at": "2025-03-27T17:05:36Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Anthropic's latest interpretability research: a new microscope to understand Claude's internal mechanisms",
+      "description_source": "og:description",
+      "query": "language model",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37248494,
+      "hn_url": "https://news.ycombinator.com/item?id=37248494",
+      "title": "Code Llama, a state-of-the-art large language model for coding",
+      "url": "https://ai.meta.com/blog/code-llama-large-language-model-coding/",
+      "posted_at": "2023-08-24T13:26:45Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Code Llama, which is built on top of Llama 2, is free for research and commercial use.",
+      "description_source": "og:description",
+      "query": "language model",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47927903,
+      "hn_url": "https://news.ycombinator.com/item?id=47927903",
+      "title": "Talkie: a 13B vintage language model from 1930",
+      "url": "https://talkie-lm.com/introducing-talkie",
+      "posted_at": "2026-04-27T21:55:48Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "language model",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39635483,
+      "hn_url": "https://news.ycombinator.com/item?id=39635483",
+      "title": "Fine tune a 70B language model at home",
+      "url": "https://www.answer.ai/posts/2024-03-06-fsdp-qlora.html",
+      "posted_at": "2024-03-07T22:38:49Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "We’re releasing an open source system, based on FSDP and QLoRA, that can train a 70b model on two 24GB GPUs.",
+      "description_source": "og:description",
+      "query": "language model",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 32927360,
+      "hn_url": "https://news.ycombinator.com/item?id=32927360",
+      "title": "Whisper – open source speech recognition by OpenAI",
+      "url": "https://openai.com/blog/whisper/",
+      "posted_at": "2022-09-21T16:16:16Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "We’ve trained and are open-sourcing a neural net called Whisper that approaches human level robustness and accuracy on English speech recognition.",
+      "description_source": "og:description",
+      "query": "Whisper",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39036796,
+      "hn_url": "https://news.ycombinator.com/item?id=39036796",
+      "title": "WhisperSpeech – An open source text-to-speech system built by inverting Whisper",
+      "url": "https://github.com/collabora/WhisperSpeech",
+      "posted_at": "2024-01-18T02:29:58Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "An Open Source text-to-speech system built by inverting Whisper. - WhisperSpeech/WhisperSpeech",
+      "description_source": "og:description",
+      "query": "Whisper",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33877893,
+      "hn_url": "https://news.ycombinator.com/item?id=33877893",
+      "title": "Show HN: Port of OpenAI's Whisper model in C/C++",
+      "url": "https://github.com/ggerganov/whisper.cpp",
+      "posted_at": "2022-12-06T10:46:25Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Port of OpenAI's Whisper model in C/C++. Contribute to ggml-org/whisper.cpp development by creating an account on GitHub.",
+      "description_source": "og:description",
+      "query": "Whisper",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40269489,
+      "hn_url": "https://news.ycombinator.com/item?id=40269489",
+      "title": "Deep Reinforcement Learning: Zero to Hero",
+      "url": "https://github.com/alessiodm/drl-zh",
+      "posted_at": "2024-05-05T23:12:28Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Deep Reinforcement Learning: Zero to Hero! Contribute to alessiodm/drl-zh development by creating an account on GitHub.",
+      "description_source": "og:description",
+      "query": "reinforcement learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33096580,
+      "hn_url": "https://news.ycombinator.com/item?id=33096580",
+      "title": "Discovering faster matrix multiplication algorithms with reinforcement learning",
+      "url": "https://www.nature.com/articles/s41586-022-05172-4",
+      "posted_at": "2022-10-05T15:12:35Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "reinforcement learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 30379973,
+      "hn_url": "https://news.ycombinator.com/item?id=30379973",
+      "title": "Controlling the nuclear fusion plasma in a tokamak with reinforcement learning",
+      "url": "https://deepmind.com/blog/article/Accelerating-fusion-science-through-learned-plasma-control",
+      "posted_at": "2022-02-17T23:08:29Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Successfully controlling the nuclear fusion plasma in a tokamak with deep reinforcement learning",
+      "description_source": "og:description",
+      "query": "reinforcement learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35808710,
+      "hn_url": "https://news.ycombinator.com/item?id=35808710",
+      "title": "Agile soccer skills for a bipedal robot with deep reinforcement learning",
+      "url": "https://twitter.com/haarnoja/status/1651577815836270596",
+      "posted_at": "2023-05-03T22:34:02Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "We just released our work on robot soccer. I've been working on this for quite some time with my amazing colleagues at DeepMind. It's",
+      "description_source": "og:description",
+      "query": "reinforcement learning",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 37985489,
+      "hn_url": "https://news.ycombinator.com/item?id=37985489",
+      "title": "Embeddings: What they are and why they matter",
+      "url": "https://simonwillison.net/2023/Oct/23/embeddings/",
+      "posted_at": "2023-10-23T13:42:12Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Embeddings are a really neat trick that often come wrapped in a pile of intimidating jargon. If you can make it through that jargon,",
+      "description_source": "og:description",
+      "query": "embeddings",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 49980487,
+      "hn_url": "https://news.ycombinator.com/item?id=49980487",
+      "title": "EmbeddingGemma 2: An open, lightweight multimodal embedding model",
+      "url": "https://blog.google/innovation-and-ai/technology/developers-tools/embeddinggemma-2/",
+      "posted_at": "2026-10-06T16:03:49Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Introducing EmbeddingGemma 2, an open multimodal embedding model optimized for privacy-first use cases",
+      "description_source": "og:description",
+      "query": "embeddings",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44878151,
+      "hn_url": "https://news.ycombinator.com/item?id=44878151",
+      "title": "Show HN: Building a web search engine from scratch with 3B neural embeddings",
+      "url": "https://blog.wilsonl.in/search-engine/",
+      "posted_at": "2025-08-12T16:02:40Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "End-to-end deep dive of the project, spanning a large GPU cluster, distributed RocksDB, and terabytes of sharded HNSW.",
+      "description_source": "og:description",
+      "query": "embeddings",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41544969,
+      "hn_url": "https://news.ycombinator.com/item?id=41544969",
+      "title": "Show HN: Wordllama – Things you can do with the token embeddings of an LLM",
+      "url": "https://github.com/dleemiller/WordLlama",
+      "posted_at": "2024-09-15T03:25:14Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Things you can do with the token embeddings of an LLM - dleemiller/WordLlama",
+      "description_source": "og:description",
+      "query": "embeddings",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35459031,
+      "hn_url": "https://news.ycombinator.com/item?id=35459031",
+      "title": "Neural Networks: Zero to Hero",
+      "url": "https://karpathy.ai/zero-to-hero.html",
+      "posted_at": "2023-04-05T19:12:09Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "neural network",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34399142,
+      "hn_url": "https://news.ycombinator.com/item?id=34399142",
+      "title": "Reverse engineering a neural network's clever solution to binary addition",
+      "url": "https://cprimozic.net/blog/reverse-engineering-a-small-neural-network/",
+      "posted_at": "2023-01-16T10:32:12Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "While training small neural networks to perform binary addition, a surprising solution emerged that allows the network to solve the problem very effectively. This",
+      "description_source": "og:description",
+      "query": "neural network",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40139398,
+      "hn_url": "https://news.ycombinator.com/item?id=40139398",
+      "title": "CoreNet: A library for training deep neural networks",
+      "url": "https://github.com/apple/corenet",
+      "posted_at": "2024-04-24T01:26:48Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "CoreNet: A library for training deep neural networks - apple/corenet",
+      "description_source": "og:description",
+      "query": "neural network",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31579873,
+      "hn_url": "https://news.ycombinator.com/item?id=31579873",
+      "title": "Physicists are building neural networks out of vibrations, voltages and lasers",
+      "url": "https://www.quantamagazine.org/how-to-make-the-universe-think-for-us-20220531/",
+      "posted_at": "2022-06-01T10:02:31Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Physicists are building neural networks out of vibrations, voltages and lasers, arguing that the future of computing lies in exploiting the universe’s complex physical",
+      "description_source": "og:description",
+      "query": "neural network",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 37076210,
+      "hn_url": "https://news.ycombinator.com/item?id=37076210",
+      "title": "Do Machine Learning Models Memorize or Generalize?",
+      "url": "https://pair.withgoogle.com/explorables/grokking/",
+      "posted_at": "2023-08-10T13:56:24Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "An interactive introduction to grokking and mechanistic interpretability.",
+      "description_source": "og:description",
+      "query": "machine learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42847834,
+      "hn_url": "https://news.ycombinator.com/item?id=42847834",
+      "title": "Machine Learning in Production (CMU Course)",
+      "url": "https://mlip-cmu.github.io/s2025/",
+      "posted_at": "2025-01-28T01:18:55Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "machine learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28613099,
+      "hn_url": "https://news.ycombinator.com/item?id=28613099",
+      "title": "The First Rule of Machine Learning: Start Without Machine Learning",
+      "url": "https://eugeneyan.com/writing/first-rule-of-ml/",
+      "posted_at": "2021-09-22T04:24:52Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "train",
+      "description": "Why this is the first rule, some baseline heuristics, and when to move on to machine learning.",
+      "description_source": "og:description",
+      "query": "machine learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40345775,
+      "hn_url": "https://news.ycombinator.com/item?id=40345775",
+      "title": "GPT-4o",
+      "url": "https://openai.com/index/hello-gpt-4o/",
+      "posted_at": "2024-05-13T17:28:00Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "We’re announcing GPT-4 Omni, our new flagship model which can reason across audio, vision, and text in real time.",
+      "description_source": "og:description",
+      "query": "GPT",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33726816,
+      "hn_url": "https://news.ycombinator.com/item?id=33726816",
+      "title": "Stable Diffusion 2.0",
+      "url": "https://stability.ai/blog/stable-diffusion-v2-release",
+      "posted_at": "2022-11-24T01:28:02Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "The open source release of Stable Diffusion version 2.0.",
+      "description_source": "og:description",
+      "query": "diffusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33433583,
+      "hn_url": "https://news.ycombinator.com/item?id=33433583",
+      "title": "AlphaFold’s new rival? Meta AI predicts shape of 600M proteins",
+      "url": "https://www.nature.com/articles/d41586-022-03539-1",
+      "posted_at": "2022-11-02T10:19:01Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "AlphaFold",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49923692,
+      "hn_url": "https://news.ycombinator.com/item?id=49923692",
+      "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "url": "https://blog.cloudflare.com/clef-decision-models/",
+      "posted_at": "2026-10-01T16:18:57Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement",
+      "description_source": "og:description",
+      "query": "fine tuning",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 46108780,
+      "hn_url": "https://news.ycombinator.com/item?id=46108780",
+      "title": "DeepSeek-v3.2: Pushing the frontier of open large language models [pdf]",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V3.2/resolve/main/assets/paper.pdf",
+      "posted_at": "2025-12-01T15:48:03Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "language model",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47143755,
+      "hn_url": "https://news.ycombinator.com/item?id=47143755",
+      "title": "Show HN: Moonshine Open-Weights STT models – higher accuracy than WhisperLargev3",
+      "url": "https://github.com/moonshine-ai/moonshine",
+      "posted_at": "2026-02-24T21:54:07Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "Very low latency speech to text, intent recognition, and text to speech, for building voice agents and interfaces - moonshine-ai/moonshine",
+      "description_source": "og:description",
+      "query": "Whisper",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43270843,
+      "hn_url": "https://news.ycombinator.com/item?id=43270843",
+      "title": "QwQ-32B: Embracing the Power of Reinforcement Learning",
+      "url": "https://qwenlm.github.io/blog/qwq-32b/",
+      "posted_at": "2025-03-05T19:09:39Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "reinforcement learning",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44708028,
+      "hn_url": "https://news.ycombinator.com/item?id=44708028",
+      "title": "LLM Embeddings Explained: A Visual and Intuitive Guide",
+      "url": "https://huggingface.co/spaces/hesamation/primer-llm-embedding",
+      "posted_at": "2025-07-28T07:02:14Z",
+      "category_ids": [
+        "ai"
+      ],
+      "split": "evaluation",
+      "description": "How Language Models Turn Text into Meaning, From Traditional",
+      "description_source": "og:description",
+      "query": "embeddings",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40172033,
+      "hn_url": "https://news.ycombinator.com/item?id=40172033",
+      "title": "Leaving Rust gamedev after 3 years",
+      "url": "https://loglog.games/blog/leaving-rust-gamedev/",
+      "posted_at": "2024-04-26T17:33:56Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Rust",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 25610741,
+      "hn_url": "https://news.ycombinator.com/item?id=25610741",
+      "title": "A half-hour to learn Rust",
+      "url": "https://fasterthanli.me/articles/a-half-hour-to-learn-rust",
+      "posted_at": "2021-01-02T05:50:39Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "In order to increase fluency in a programming language, one has to read a lot of it. But how can you read a lot",
+      "description_source": "og:description",
+      "query": "Rust",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26194990,
+      "hn_url": "https://news.ycombinator.com/item?id=26194990",
+      "title": "Tauri: An Electron alternative written in Rust",
+      "url": "https://tauri.studio/",
+      "posted_at": "2021-02-19T16:49:03Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Rust",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 46213585,
+      "hn_url": "https://news.ycombinator.com/item?id=46213585",
+      "title": "Rust in the kernel is no longer experimental",
+      "url": "https://lwn.net/Articles/1049831/",
+      "posted_at": "2025-12-10T03:15:24Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "The topic of the Rust experiment was just discussed at the annual Maintainers Summit. The cons [...]",
+      "description_source": "og:description",
+      "query": "Rust",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45751400,
+      "hn_url": "https://news.ycombinator.com/item?id=45751400",
+      "title": "Uv is the best thing to happen to the Python ecosystem in a decade",
+      "url": "https://emily.space/posts/251023-uv",
+      "posted_at": "2025-10-29T18:57:29Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Released in 2024, uv is hands-down the best tool for managing Python installations and dependencies. Here's why.",
+      "description_source": "og:description",
+      "query": "Python",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38923741,
+      "hn_url": "https://news.ycombinator.com/item?id=38923741",
+      "title": "Python 3.13 Gets a JIT",
+      "url": "https://tonybaloney.github.io/posts/python-gets-a-jit.html",
+      "posted_at": "2024-01-09T08:35:58Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Reviewing the JIT in Python 3.13",
+      "description_source": "og:description",
+      "query": "Python",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43918484,
+      "hn_url": "https://news.ycombinator.com/item?id=43918484",
+      "title": "Ty: A fast Python type checker and language server",
+      "url": "https://github.com/astral-sh/ty",
+      "posted_at": "2025-05-07T17:32:26Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "An extremely fast Python type checker and language server, written in Rust. - astral-sh/ty",
+      "description_source": "og:description",
+      "query": "Python",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29104047,
+      "hn_url": "https://news.ycombinator.com/item?id=29104047",
+      "title": "An oral history of Bank Python",
+      "url": "https://calpaterson.com/bank-python.html",
+      "posted_at": "2021-11-04T06:21:38Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "The strange world of Python, as used by big investment banks",
+      "description_source": "og:description",
+      "query": "Python",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27016630,
+      "hn_url": "https://news.ycombinator.com/item?id=27016630",
+      "title": "Hosting SQLite databases on GitHub Pages or any static file hoster",
+      "url": "https://phiresky.github.io/blog/2021/hosting-sqlite-databases-on-github-pages/",
+      "posted_at": "2021-05-02T16:43:15Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "I was writing a tiny website to display statistics of how much sponsored content a Youtube creator has over time when I noticed that",
+      "description_source": "description",
+      "query": "SQLite",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 31318708,
+      "hn_url": "https://news.ycombinator.com/item?id=31318708",
+      "title": "I'm all-in on server-side SQLite",
+      "url": "https://fly.io/blog/all-in-on-sqlite-litestream/",
+      "posted_at": "2022-05-09T19:35:41Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Ben Johnson has joined Fly.io",
+      "description_source": "og:description",
+      "query": "SQLite",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40206752,
+      "hn_url": "https://news.ycombinator.com/item?id=40206752",
+      "title": "Why SQLite Uses Bytecode",
+      "url": "https://sqlite.org/draft/whybytecode.html",
+      "posted_at": "2024-04-30T02:48:43Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "SQLite",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31824030,
+      "hn_url": "https://news.ycombinator.com/item?id=31824030",
+      "title": "One-liner for running queries against CSV files with SQLite",
+      "url": "https://til.simonwillison.net/sqlite/one-line-csv-operations",
+      "posted_at": "2022-06-21T13:59:36Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "I figured out how to run a SQL query directly against a CSV file using the sqlite3 command-line utility:",
+      "description_source": "og:description",
+      "query": "SQLite",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27482243,
+      "hn_url": "https://news.ycombinator.com/item?id=27482243",
+      "title": "Do you really need Redis? How to get away with just PostgreSQL",
+      "url": "https://spin.atomicobject.com/2021/02/04/redis-postgresql/",
+      "posted_at": "2021-06-12T06:57:14Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "It's a common architecture to have PostgreSQL and Redis serve as the backbone of your app, but PostgreSQL may be capable of everything you",
+      "description_source": "og:description",
+      "query": "PostgreSQL",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 36393030,
+      "hn_url": "https://news.ycombinator.com/item?id=36393030",
+      "title": "PostgreSQL reconsiders its process-based model",
+      "url": "https://lwn.net/SubscriberLink/934940/3abb2d4086680b78/",
+      "posted_at": "2023-06-19T16:33:04Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "In the fast-moving open-source world, programs can come and go quickly; a tool that has many us [...]",
+      "description_source": "og:description",
+      "query": "PostgreSQL",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39048317,
+      "hn_url": "https://news.ycombinator.com/item?id=39048317",
+      "title": "We migrated our PostgreSQL database with 11 seconds downtime",
+      "url": "https://gds.blog.gov.uk/2024/01/17/how-we-migrated-our-postgresql-database-with-11-seconds-downtime/",
+      "posted_at": "2024-01-18T21:51:05Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "GOV.UK Notify recently migrated our production database. Find out how we did it with the least possible disruption to our users.",
+      "description_source": "description",
+      "query": "PostgreSQL",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45516000,
+      "hn_url": "https://news.ycombinator.com/item?id=45516000",
+      "title": "We found a bug in Go's ARM64 compiler",
+      "url": "https://blog.cloudflare.com/how-we-found-a-bug-in-gos-arm64-compiler/",
+      "posted_at": "2025-10-08T13:33:15Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "84 million requests a second means even rare bugs appear often. We'll reveal how we discovered a race condition in the Go arm64 compiler",
+      "description_source": "og:description",
+      "query": "compiler",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 31052029,
+      "hn_url": "https://news.ycombinator.com/item?id=31052029",
+      "title": "Zig self hosted compiler is now capable of building itself",
+      "url": "https://github.com/ziglang/zig/pull/11442",
+      "posted_at": "2022-04-16T13:11:28Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "$ zig build -Denable-llvm $ zig2 build -p build-stage3 $ cat a.zig const std = @import(\"std\"); pub fn main() void { const stderr =",
+      "description_source": "og:description",
+      "query": "compiler",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 37383913,
+      "hn_url": "https://news.ycombinator.com/item?id=37383913",
+      "title": "Writing a C compiler in 500 lines of Python",
+      "url": "https://vgel.me/posts/c500/",
+      "posted_at": "2023-09-04T19:17:37Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "compiler",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36064971,
+      "hn_url": "https://news.ycombinator.com/item?id=36064971",
+      "title": "SectorC: A C Compiler in 512 bytes",
+      "url": "https://xorvoid.com/sectorc.html",
+      "posted_at": "2023-05-24T23:02:56Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "compiler",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31993429,
+      "hn_url": "https://news.ycombinator.com/item?id=31993429",
+      "title": "Bun: Fast JavaScript runtime, transpiler, and NPM client written in Zig",
+      "url": "https://bun.sh/?launch",
+      "posted_at": "2022-07-05T20:41:53Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Bundle, install, and run JavaScript & TypeScript — all in Bun. Bun is a fast JavaScript runtime & toolkit with a bundler, test runner,",
+      "description_source": "og:description",
+      "query": "JavaScript",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 42876840,
+      "hn_url": "https://news.ycombinator.com/item?id=42876840",
+      "title": "JavaScript Temporal is coming",
+      "url": "https://developer.mozilla.org/en-US/blog/javascript-temporal-is-coming/",
+      "posted_at": "2025-01-30T11:28:31Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "A new way to handle dates and times is being added to JavaScript. Let's take a look at Temporal, what problems it solves, the",
+      "description_source": "og:description",
+      "query": "JavaScript",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39629044,
+      "hn_url": "https://news.ycombinator.com/item?id=39629044",
+      "title": "Eloquent JavaScript 4th edition (2024)",
+      "url": "https://eloquentjavascript.net/",
+      "posted_at": "2024-03-07T13:52:16Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "JavaScript",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34197379,
+      "hn_url": "https://news.ycombinator.com/item?id=34197379",
+      "title": "Draw SVG rope using JavaScript",
+      "url": "https://muffinman.io/blog/draw-svg-rope-using-javascript/",
+      "posted_at": "2022-12-31T15:43:54Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Transforming a SVG path into a rope drawing turned out to be a surprisingly fun problem to solve. I'll walk you through the process",
+      "description_source": "og:description",
+      "query": "JavaScript",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34088398,
+      "hn_url": "https://news.ycombinator.com/item?id=34088398",
+      "title": "The pocket guide to debugging",
+      "url": "https://jvns.ca/blog/2022/12/21/new-zine--the-pocket-guide-to-debugging/",
+      "posted_at": "2022-12-22T00:58:13Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "New zine: The Pocket Guide to Debugging",
+      "description_source": "description",
+      "query": "debugging",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43081713,
+      "hn_url": "https://news.ycombinator.com/item?id=43081713",
+      "title": "Debugging an Undebuggable App",
+      "url": "https://bryce.co/undebuggable/",
+      "posted_at": "2025-02-17T18:10:35Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "This app has a surprising number of anti-debugging protections. Let's figure out how to bypass them.",
+      "description_source": "og:description",
+      "query": "debugging",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26925570,
+      "hn_url": "https://news.ycombinator.com/item?id=26925570",
+      "title": "The unreasonable effectiveness of print debugging",
+      "url": "https://buttondown.email/geoffreylitt/archive/starting-this-newsletter-print-debugging-byoc/",
+      "posted_at": "2021-04-24T15:28:43Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Trying out this newsletter thing... It's sort of astonishing to think about how much value I've gotten from Twitter over the last few years.",
+      "description_source": "og:description",
+      "query": "debugging",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34414193,
+      "hn_url": "https://news.ycombinator.com/item?id=34414193",
+      "title": "Software testing, and why I'm unhappy about it",
+      "url": "http://nhaehnle.blogspot.com/2023/01/software-testing-and-why-im-unhappy.html",
+      "posted_at": "2023-01-17T16:06:09Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Automated testing of software is great. Unfortunately, what's commonly considered best practice for how to integrate testing into the develo...",
+      "description_source": "og:description",
+      "query": "software testing",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33708867,
+      "hn_url": "https://news.ycombinator.com/item?id=33708867",
+      "title": "Deterministic Linux for controlled testing and software bug-finding",
+      "url": "https://developers.facebook.com/blog/post/2022/11/22/hermit-deterministic-linux-testing/",
+      "posted_at": "2022-11-22T18:12:52Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "software testing",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 25648919,
+      "hn_url": "https://news.ycombinator.com/item?id=25648919",
+      "title": "Automated Combinatorial Testing for Software",
+      "url": "https://csrc.nist.gov/projects/automated-combinatorial-testing-for-software",
+      "posted_at": "2021-01-05T18:25:24Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Combinatorial methods reduce costs for testing, and have important applications in software engineering: Combinatorial or t-way testing is a proven method for better testing",
+      "description_source": "og:description",
+      "query": "software testing",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40466868,
+      "hn_url": "https://news.ycombinator.com/item?id=40466868",
+      "title": "Why we shift testing left: A software dev cycle that doesn’t scale",
+      "url": "https://thenewstack.io/why-we-shift-testing-left-a-software-dev-cycle-that-doesnt-scale/",
+      "posted_at": "2024-05-24T14:54:25Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "The motivation for shifting testing left is a software release cycle in deadlock, developers forced to context switch and a glacial development velocity.",
+      "description_source": "og:description",
+      "query": "software testing",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47687273,
+      "hn_url": "https://news.ycombinator.com/item?id=47687273",
+      "title": "Git commands I run before reading any code",
+      "url": "https://piechowski.io/post/git-commands-before-reading-code/",
+      "posted_at": "2026-04-08T08:53:42Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Five git log commands that diagnose a new codebase before you open a single file: code churn hotspots, bus factor, bug clusters, and crisis",
+      "description_source": "og:description",
+      "query": "Git",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39232976,
+      "hn_url": "https://news.ycombinator.com/item?id=39232976",
+      "title": "Pkl, a Programming Language for Configuration",
+      "url": "https://pkl-lang.org/blog/introducing-pkl.html",
+      "posted_at": "2024-02-02T19:22:59Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "programming language",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28198641,
+      "hn_url": "https://news.ycombinator.com/item?id=28198641",
+      "title": "Alda – Text-Based Programming Language for Music Composition",
+      "url": "https://alda.io/tutorial/",
+      "posted_at": "2021-08-16T14:38:20Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "Alda is a text-based programming language for music composition. It allows you to write and play back music using only a text editor and",
+      "description_source": "og:description",
+      "query": "programming language",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 36517525,
+      "hn_url": "https://news.ycombinator.com/item?id=36517525",
+      "title": "The Awk Programming Language",
+      "url": "https://awk.dev/",
+      "posted_at": "2023-06-29T07:34:55Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "programming language",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 32081808,
+      "hn_url": "https://news.ycombinator.com/item?id=32081808",
+      "title": "Six programming languages I’d like to see",
+      "url": "https://buttondown.email/hillelwayne/archive/six-programming-languages-id-like-to-see/",
+      "posted_at": "2022-07-13T12:41:13Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "train",
+      "description": "A few weird ideas for programming languages I came up with that it'd be \"really\" \"cool\" if someone made (wink)",
+      "description_source": "og:description",
+      "query": "programming language",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49724881,
+      "hn_url": "https://news.ycombinator.com/item?id=49724881",
+      "title": "Nvidia announces native GPU programming in Rust",
+      "url": "https://developer.nvidia.com/blog/introducing-cuda-rust-two-tracks-for-writing-gpu-kernels/",
+      "posted_at": "2026-09-16T11:15:53Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "In September 2026, NVIDIA announced it is leaning into native GPU programming in Rust. CUDA C++ and CUDA Python are mature, enterprise-grade toolchains, and",
+      "description_source": "og:description",
+      "query": "Rust",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 28300951,
+      "hn_url": "https://news.ycombinator.com/item?id=28300951",
+      "title": "Prettymaps: Small Python library to draw customized maps from OpenStreetMap data",
+      "url": "https://github.com/marceloprates/prettymaps",
+      "posted_at": "2021-08-25T12:48:26Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Draw pretty maps from OpenStreetMap data! Built with osmnx +matplotlib + shapely - marceloprates/prettymaps",
+      "description_source": "og:description",
+      "query": "Python",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49272832,
+      "hn_url": "https://news.ycombinator.com/item?id=49272832",
+      "title": "Tracking down the 16-year-old WAL-reset SQLite bug",
+      "url": "https://tailscale.com/blog/sqlite-wal-reset-bug",
+      "posted_at": "2026-08-12T14:22:30Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "Tailscale and SQLite developers traced maddening corruption incidents to find the WAL-Reset data race, then uncovered a second stale expression index bug.",
+      "description_source": "og:description",
+      "query": "SQLite",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41657986,
+      "hn_url": "https://news.ycombinator.com/item?id=41657986",
+      "title": "PostgreSQL 17",
+      "url": "https://www.postgresql.org/about/news/postgresql-17-released-2936/",
+      "posted_at": "2024-09-26T13:10:24Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "The [PostgreSQL Global Development Group](https://www.postgresql.org) today announced the release of [PostgreSQL 17](https://www.postgresql.org/docs/17/release-17.html), the latest version of the world's most advanced …",
+      "description_source": "og:description",
+      "query": "PostgreSQL",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35130975,
+      "hn_url": "https://news.ycombinator.com/item?id=35130975",
+      "title": "Advanced Compilers: Self-Guided Online Course",
+      "url": "https://www.cs.cornell.edu/courses/cs6120/2020fa/self-guided/",
+      "posted_at": "2023-03-13T04:14:38Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "compiler",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38497445,
+      "hn_url": "https://news.ycombinator.com/item?id=38497445",
+      "title": "You don't need JavaScript for that",
+      "url": "https://www.htmhell.dev/adventcalendar/2023/2/",
+      "posted_at": "2023-12-02T09:57:05Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "A collection of bad practices in HTML, copied from real websites.",
+      "description_source": "og:description",
+      "query": "JavaScript",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29260464,
+      "hn_url": "https://news.ycombinator.com/item?id=29260464",
+      "title": "Debugging a Linux network stack crash via a single register value",
+      "url": "https://blog.cloudflare.com/the-tale-of-a-single-register-value/?a",
+      "posted_at": "2021-11-17T23:54:00Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "It’s not every day that you get to debug what may well be a packet of death. It was certainly the first time for",
+      "description_source": "og:description",
+      "query": "debugging",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 27795061,
+      "hn_url": "https://news.ycombinator.com/item?id=27795061",
+      "title": "Rethinking software testing: perspectives from the world of hardware (2019)",
+      "url": "https://software.rajivprab.com/2019/04/28/rethinking-software-testing-perspectives-from-the-world-of-hardware/",
+      "posted_at": "2021-07-10T17:37:41Z",
+      "category_ids": [
+        "software"
+      ],
+      "split": "evaluation",
+      "description": "The conventional view of Software Testing The hardware and software worlds may seem poles apart, and in many ways, they indeed are. But there’s",
+      "description_source": "og:description",
+      "query": "software testing",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 33695886,
+      "hn_url": "https://news.ycombinator.com/item?id=33695886",
+      "title": "CVE-2022-41924 – tailscaled can be used to remotely execute code on Windows",
+      "url": "https://emily.id.au/tailscale",
+      "posted_at": "2022-11-21T18:17:54Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "CVE",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29604097,
+      "hn_url": "https://news.ycombinator.com/item?id=29604097",
+      "title": "Third High Severity CVE in Log4j Is Published",
+      "url": "https://logging.apache.org/log4j/2.x/security.html",
+      "posted_at": "2021-12-18T12:47:48Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "CVE",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47936479,
+      "hn_url": "https://news.ycombinator.com/item?id=47936479",
+      "title": "GitHub RCE Vulnerability: CVE-2026-3854 Breakdown",
+      "url": "https://www.wiz.io/blog/github-rce-vulnerability-cve-2026-3854",
+      "posted_at": "2026-04-28T16:15:43Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "A CVSS 8.7 vulnerability in GitHub Enterprise Server allows remote code execution. Read the threat brief and find vulnerable GHES instances from Wiz.",
+      "description_source": "og:description",
+      "query": "CVE",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48112042,
+      "hn_url": "https://news.ycombinator.com/item?id=48112042",
+      "title": "CERT is releasing six CVEs for serious security vulnerabilities in dnsmasq",
+      "url": "https://lists.thekelleys.org.uk/pipermail/dnsmasq-discuss/2026q2/018471.html",
+      "posted_at": "2026-05-12T18:12:28Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "CVE",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27155497,
+      "hn_url": "https://news.ycombinator.com/item?id=27155497",
+      "title": "DarkSide ransomware gang quits after servers, Bitcoin stash seized",
+      "url": "https://krebsonsecurity.com/2021/05/darkside-ransomware-gang-quits-after-servers-bitcoin-stash-seized/",
+      "posted_at": "2021-05-14T15:47:30Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "ransomware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38352484,
+      "hn_url": "https://news.ycombinator.com/item?id=38352484",
+      "title": "After Boeing declines to pay up, ransomware group leaks 45 GB of data",
+      "url": "https://www.itbrew.com/stories/2023/11/17/after-boeing-declines-to-pay-up-ransomware-group-leaks-45-gb-of-data",
+      "posted_at": "2023-11-20T18:47:18Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "ransomware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31527446,
+      "hn_url": "https://news.ycombinator.com/item?id=31527446",
+      "title": "GoodWill ransomware forces victims to donate to the poor",
+      "url": "https://cloudsek.com/threatintelligence/goodwill-ransomware-forces-victims-to-donate-to-the-poor-and-provides-financial-assistance-to-patients-in-need/",
+      "posted_at": "2022-05-27T08:55:02Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Goodwill ransomware group propagates very unusual demands in exchange for the decryption key. The Robin Hood-like group is forcing its Victims to donate to",
+      "description_source": "og:description",
+      "query": "ransomware",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 27750040,
+      "hn_url": "https://news.ycombinator.com/item?id=27750040",
+      "title": "Up to 1,500 businesses affected by ransomware attack, Kaseya CEO says",
+      "url": "https://www.reuters.com/technology/hackers-demand-70-million-liberate-data-held-by-companies-hit-mass-cyberattack-2021-07-05/",
+      "posted_at": "2021-07-06T15:42:41Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "ransomware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39865810,
+      "hn_url": "https://news.ycombinator.com/item?id=39865810",
+      "title": "Backdoor in upstream xz/liblzma leading to SSH server compromise",
+      "url": "https://www.openwall.com/lists/oss-security/2024/03/29/4",
+      "posted_at": "2024-03-29T16:16:50Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "backdoor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41818459,
+      "hn_url": "https://news.ycombinator.com/item?id=41818459",
+      "title": "1 bug, $50k in bounties, a Zendesk backdoor",
+      "url": "https://gist.github.com/hackermondev/68ec8ed145fcee49d2f5e2b9d2cf2e52",
+      "posted_at": "2024-10-12T11:55:12Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "1 bug, $50,000+ in bounties, how Zendesk intentionally left a backdoor in hundreds of Fortune 500 companies - zendesk.md",
+      "description_source": "og:description",
+      "query": "backdoor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48546294,
+      "hn_url": "https://news.ycombinator.com/item?id=48546294",
+      "title": "A backdoor in a LinkedIn job offer",
+      "url": "https://roman.pt/posts/linkedin-backdoor/",
+      "posted_at": "2026-06-15T20:00:57Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "backdoor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47755629,
+      "hn_url": "https://news.ycombinator.com/item?id=47755629",
+      "title": "Someone bought 30 WordPress plugins and planted a backdoor in all of them",
+      "url": "https://anchor.host/someone-bought-30-wordpress-plugins-and-planted-a-backdoor-in-all-of-them/",
+      "posted_at": "2026-04-13T17:54:39Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Last week, I wrote about catching a supply chain attack on a WordPress plugin called Widget Logic. A trusted name, acquired by a new",
+      "description_source": "og:description",
+      "query": "backdoor",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40843778,
+      "hn_url": "https://news.ycombinator.com/item?id=40843778",
+      "title": "RegreSSHion: RCE in OpenSSH's server, on glibc-based Linux systems",
+      "url": "https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt",
+      "posted_at": "2024-07-01T08:40:54Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "OpenSSH",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44863242,
+      "hn_url": "https://news.ycombinator.com/item?id=44863242",
+      "title": "OpenSSH Post-Quantum Cryptography",
+      "url": "https://www.openssh.com/pq.html",
+      "posted_at": "2025-08-11T12:01:58Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "OpenSSH post quantum cryptography",
+      "description_source": "description",
+      "query": "OpenSSH",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29865876,
+      "hn_url": "https://news.ycombinator.com/item?id=29865876",
+      "title": "SSH Agent Restriction (new in OpenSSH 8.9)",
+      "url": "https://www.openssh.com/agent-restrict.html",
+      "posted_at": "2022-01-09T18:18:53Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "OpenSSH agent restriction",
+      "description_source": "description",
+      "query": "OpenSSH",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36790196,
+      "hn_url": "https://news.ycombinator.com/item?id=36790196",
+      "title": "Remote code execution in OpenSSH’s forwarded SSH-agent",
+      "url": "https://blog.qualys.com/vulnerabilities-threat-research/2023/07/19/cve-2023-38408-remote-code-execution-in-opensshs-forwarded-ssh-agent",
+      "posted_at": "2023-07-19T17:36:42Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "CVE-2023-38408 is a remote code execution flaw in OpenSSH’s forwarded ssh-agent. Get full exploit details, impact analysis, and Qualys detection guidance.",
+      "description_source": "og:description",
+      "query": "OpenSSH",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28637276,
+      "hn_url": "https://news.ycombinator.com/item?id=28637276",
+      "title": "Disclosure of three 0-day iOS vulnerabilities",
+      "url": "https://habr.com/en/post/579714/",
+      "posted_at": "2021-09-24T00:28:31Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "vulnerability",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29407636,
+      "hn_url": "https://news.ycombinator.com/item?id=29407636",
+      "title": "This shouldn't have happened: A vulnerability postmortem",
+      "url": "https://googleprojectzero.blogspot.com/2021/12/this-shouldnt-have-happened.html",
+      "posted_at": "2021-12-01T18:56:45Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Posted by Tavis Ormandy, Project Zero Introduction This is an unusual blog post. I normally wri...",
+      "description_source": "og:description",
+      "query": "vulnerability",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27285700,
+      "hn_url": "https://news.ycombinator.com/item?id=27285700",
+      "title": "M1racles: An Apple M1 covert channel vulnerability",
+      "url": "https://m1racles.com/",
+      "posted_at": "2021-05-26T03:02:00Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "M1RACLES (CVE-2021-30747) is a covert channel vulnerability in the Apple Silicon “M1” chip.",
+      "description_source": "twitter:description",
+      "query": "vulnerability",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40791829,
+      "hn_url": "https://news.ycombinator.com/item?id=40791829",
+      "title": "Polyfill supply chain attack hits 100K+ sites",
+      "url": "https://sansec.io/research/polyfill-supply-chain-attack",
+      "posted_at": "2024-06-25T18:27:30Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "The new Chinese owner of the popular Polyfill JS project injects malware into more than 100 thousand sites.",
+      "description_source": "og:description",
+      "query": "supply chain attack",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38969533,
+      "hn_url": "https://news.ycombinator.com/item?id=38969533",
+      "title": "A supply chain attack on PyTorch",
+      "url": "https://johnstawinski.com/2024/01/11/playing-with-fire-how-we-executed-a-critical-supply-chain-attack-on-pytorch/",
+      "posted_at": "2024-01-12T15:53:49Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Security tends to lag behind adoption, and AI/ML is no exception. Four months ago, Adnan Khan and I exploited a critical CI/CD vulnerability in",
+      "description_source": "og:description",
+      "query": "supply chain attack",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 46878338,
+      "hn_url": "https://news.ycombinator.com/item?id=46878338",
+      "title": "Notepad++ supply chain attack breakdown",
+      "url": "https://securelist.com/notepad-supply-chain-attack/118708/",
+      "posted_at": "2026-02-03T22:35:27Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Kaspersky GReAT experts discovered previously undocumented infection chains used in the Notepad++ supply chain attacks. The article provides new IoCs related to those incidents",
+      "description_source": "og:description",
+      "query": "supply chain attack",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 30869261,
+      "hn_url": "https://news.ycombinator.com/item?id=30869261",
+      "title": "How Go mitigates supply chain attacks",
+      "url": "https://go.dev/blog/supply-chain",
+      "posted_at": "2022-03-31T16:38:38Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Go tooling and design help mitigate supply chain attacks at various stages.",
+      "description_source": "og:description",
+      "query": "supply chain attack",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42259278,
+      "hn_url": "https://news.ycombinator.com/item?id=42259278",
+      "title": "Malware can turn off webcam LED and record video, demonstrated on ThinkPad X230",
+      "url": "https://github.com/xairy/lights-out",
+      "posted_at": "2024-11-27T20:10:55Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Tools for controlling webcam LED on ThinkPad X230. Contribute to xairy/lights-out development by creating an account on GitHub.",
+      "description_source": "og:description",
+      "query": "malware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33823946,
+      "hn_url": "https://news.ycombinator.com/item?id=33823946",
+      "title": "Platform certificates used to sign malware",
+      "url": "https://bugs.chromium.org/p/apvi/issues/detail?id=100",
+      "posted_at": "2022-12-01T22:35:30Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "malware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26970395,
+      "hn_url": "https://news.ycombinator.com/item?id=26970395",
+      "title": "Kaspersky believes it found new CIA malware",
+      "url": "https://therecord.media/security-firm-kaspersky-believes-it-found-new-cia-malware/",
+      "posted_at": "2021-04-28T15:20:36Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Cybersecurity firm Kaspersky said today it discovered new malware that appears to have been developed by the US Central Intelligence Agency.",
+      "description_source": "og:description",
+      "query": "malware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 30071098,
+      "hn_url": "https://news.ycombinator.com/item?id=30071098",
+      "title": "We purchased a machine from China and it came with malware preinstalled",
+      "url": "https://www.rmcybernetics.com/general/zhengbang-zb3245tss-pick-place-machine",
+      "posted_at": "2022-01-25T12:37:35Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Zhengbang ZB3245 review. We bought a Zhengbang Pick & Place machine and this page tells you all about our experience of setting up and",
+      "description_source": "og:description",
+      "query": "malware",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26863907,
+      "hn_url": "https://news.ycombinator.com/item?id=26863907",
+      "title": "Microsoft says mandatory password changing is “ancient and obsolete” (2019)",
+      "url": "https://arstechnica.com/information-technology/2019/06/microsoft-says-mandatory-password-changing-is-ancient-and-obsolete/",
+      "posted_at": "2021-04-19T15:33:48Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Bucking a major trend, company speaks out against the age-old practice.",
+      "description_source": "og:description",
+      "query": "password",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28267975,
+      "hn_url": "https://news.ycombinator.com/item?id=28267975",
+      "title": "PAM Duress – Alternate passwords for panic situations",
+      "url": "https://github.com/nuvious/pam-duress",
+      "posted_at": "2021-08-22T18:15:49Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "A Pluggable Authentication Module (PAM) which allows the establishment of alternate passwords that can be used to perform actions to clear sensitive data, notify",
+      "description_source": "og:description",
+      "query": "password",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39144906,
+      "hn_url": "https://news.ycombinator.com/item?id=39144906",
+      "title": "Rook to XSS: How I hacked chess.com with a rookie exploit",
+      "url": "https://skii.dev/rook-to-xss/",
+      "posted_at": "2024-01-26T17:03:40Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Playing Chess is one of the many hobbies I like to do in my spare time, apart from tinkering around with technology. However, I'm",
+      "description_source": "og:description",
+      "query": "XSS",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40278874,
+      "hn_url": "https://news.ycombinator.com/item?id=40278874",
+      "title": "Common Google XSS",
+      "url": "https://matan-h.com/common-google-xss",
+      "posted_at": "2024-05-06T20:02:18Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "A simple XSS in Google application",
+      "description_source": "og:description",
+      "query": "XSS",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27591657,
+      "hn_url": "https://news.ycombinator.com/item?id=27591657",
+      "title": "CSP bypass: How one Chrome XSS bug took 2.5 years and an HTML spec change to fix",
+      "url": "https://portswigger.net/daily-swig/csp-bypass-how-one-chrome-xss-bug-took-2-5-years-and-an-html-spec-change-to-fix",
+      "posted_at": "2021-06-22T13:57:45Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "XSS",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37425007,
+      "hn_url": "https://news.ycombinator.com/item?id=37425007",
+      "title": "NSO group iPhone zero-click, zero-day exploit captured in the wild",
+      "url": "https://citizenlab.ca/2023/09/blastpass-nso-group-iphone-zero-click-zero-day-exploit-captured-in-the-wild/",
+      "posted_at": "2023-09-07T20:21:01Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Citizen Lab found an actively exploited zero-click vulnerability being used to deliver NSO Group’s Pegasus mercenary spyware while checking the device of an individual",
+      "description_source": "og:description",
+      "query": "exploit",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 29568625,
+      "hn_url": "https://news.ycombinator.com/item?id=29568625",
+      "title": "A deep dive into an NSO zero-click iMessage exploit: Remote Code Execution",
+      "url": "https://googleprojectzero.blogspot.com/2021/12/a-deep-dive-into-nso-zero-click.html",
+      "posted_at": "2021-12-15T17:03:10Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "Posted by Ian Beer & Samuel Groß of Google Project Zero We want to thank Citizen Lab ...",
+      "description_source": "og:description",
+      "query": "exploit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44953032,
+      "hn_url": "https://news.ycombinator.com/item?id=44953032",
+      "title": "How we exploited CodeRabbit: From simple PR to RCE and write access on 1M repos",
+      "url": "https://research.kudelskisecurity.com/2025/08/19/how-we-exploited-coderabbit-from-a-simple-pr-to-rce-and-write-access-on-1m-repositories/",
+      "posted_at": "2025-08-19T15:55:15Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "exploit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47062748,
+      "hn_url": "https://news.ycombinator.com/item?id=47062748",
+      "title": "Zero-day CSS: CVE-2026-2441 exists in the wild",
+      "url": "https://chromereleases.googleblog.com/2026/02/stable-channel-update-for-desktop_13.html",
+      "posted_at": "2026-02-18T16:28:19Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "The Stable channel has been updated to 145.0.7632.75/76 for Windows/Mac and 145.0.7632.75 for Linux, which will roll out over the coming d...",
+      "description_source": "og:description",
+      "query": "CVE",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47660954,
+      "hn_url": "https://news.ycombinator.com/item?id=47660954",
+      "title": "German police name alleged leaders of GandCrab and REvil ransomware groups",
+      "url": "https://krebsonsecurity.com/2026/04/germany-doxes-unkn-head-of-ru-ransomware-gangs-revil-gandcrab/",
+      "posted_at": "2026-04-06T13:52:37Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "ransomware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37570407,
+      "hn_url": "https://news.ycombinator.com/item?id=37570407",
+      "title": "Snowden leak: Cavium networking hardware may contain NSA backdoor",
+      "url": "https://twitter.com/matthew_d_green/status/1703959863796158678",
+      "posted_at": "2023-09-19T14:24:27Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "New leak from the Snowden documents.",
+      "description_source": "og:description",
+      "query": "backdoor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41508530,
+      "hn_url": "https://news.ycombinator.com/item?id=41508530",
+      "title": "OpenSSH Keystroke Obfuscation Bypass",
+      "url": "https://crzphil.github.io/posts/ssh-obfuscation-bypass/",
+      "posted_at": "2024-09-11T06:19:52Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "A disclosure for an OpenSSH keystroke obfuscation bypass affecting current OpenSSH versions after 9.4.",
+      "description_source": "description",
+      "query": "OpenSSH",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 46971516,
+      "hn_url": "https://news.ycombinator.com/item?id=46971516",
+      "title": "Windows Notepad App Remote Code Execution Vulnerability",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-20841",
+      "posted_at": "2026-02-11T06:15:33Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "vulnerability",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43527044,
+      "hn_url": "https://news.ycombinator.com/item?id=43527044",
+      "title": "Public secrets exposure leads to supply chain attack on GitHub CodeQL",
+      "url": "https://www.praetorian.com/blog/codeqleaked-public-secrets-exposure-leads-to-supply-chain-attack-on-github-codeql/",
+      "posted_at": "2025-03-30T19:54:46Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "An exposed GitHub token could have been used to launch a supply chain attack on GitHub CodeQL, resulting in source code exposure and repository",
+      "description_source": "og:description",
+      "query": "supply chain attack",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 45038653,
+      "hn_url": "https://news.ycombinator.com/item?id=45038653",
+      "title": "Nx compromised: malware uses Claude code CLI to explore the filesystem",
+      "url": "https://semgrep.dev/blog/2025/security-alert-nx-compromised-to-steal-wallets-and-credentials/",
+      "posted_at": "2025-08-27T12:18:47Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "What is s1ngularity-repository? Nx is compromised and the malware steals wallets and API keys using Claude CLI or Gemini.",
+      "description_source": "og:description",
+      "query": "malware",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49835996,
+      "hn_url": "https://news.ycombinator.com/item?id=49835996",
+      "title": "Sourcehut account takeover via build logs (XSS in ansi2html)",
+      "url": "https://blog.arusekk.pl/posts/srht-account-takeover/",
+      "posted_at": "2026-09-24T19:54:21Z",
+      "category_ids": [
+        "security"
+      ],
+      "split": "evaluation",
+      "description": "A wormable vulnerability allowed anyone able to inject text in a build log on builds.sr.ht (or other instances) to take over accounts who viewed",
+      "description_source": "og:description",
+      "query": "XSS",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 47225130,
+      "hn_url": "https://news.ycombinator.com/item?id=47225130",
+      "title": "Meta’s AI smart glasses and data privacy concerns",
+      "url": "https://www.svd.se/a/K8nrV4/metas-ai-smart-glasses-and-data-privacy-concerns-workers-say-we-see-everything",
+      "posted_at": "2026-03-02T22:32:35Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Bank details, sex and naked people who seem unaware they are being recorded. Behind Meta’s new smart glasses lies a hidden workforce, uneasy about",
+      "description_source": "og:description",
+      "query": "privacy",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26539673,
+      "hn_url": "https://news.ycombinator.com/item?id=26539673",
+      "title": "Firefox 87 trims HTTP Referrers by default to protect user privacy",
+      "url": "https://blog.mozilla.org/security/2021/03/22/firefox-87-trims-http-referrers-by-default-to-protect-user-privacy/",
+      "posted_at": "2021-03-22T12:07:19Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "We are pleased to announce that Firefox 87 will introduce a stricter, more privacy-preserving default Referrer Policy. From now on, by default, Firefox will",
+      "description_source": "og:description",
+      "query": "privacy",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 43040521,
+      "hn_url": "https://news.ycombinator.com/item?id=43040521",
+      "title": "Privacy Pass Authentication for Kagi Search",
+      "url": "https://blog.kagi.com/kagi-privacy-pass",
+      "posted_at": "2025-02-13T19:57:29Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Today we are announcing a new privacy feature coming to Kagi Search. Privacy Pass is an authentication protocol first introduced by Davidson et al.,",
+      "description_source": "og:description",
+      "query": "privacy",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34626395,
+      "hn_url": "https://news.ycombinator.com/item?id=34626395",
+      "title": "Stop the proposal on mass surveillance of the EU",
+      "url": "https://mullvad.net/nl/blog/2023/2/2/stop-the-proposal-on-mass-surveillance-of-the-eu/",
+      "posted_at": "2023-02-02T13:46:39Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "The European Commission is currently in the process of enacting a law called Chat control. If the law goes into effect, it will mean",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 49710883,
+      "hn_url": "https://news.ycombinator.com/item?id=49710883",
+      "title": "25 years of mass surveillance is enough",
+      "url": "https://www.schneier.com/blog/archives/2026/09/25-years-of-mass-surveillance-is-enough.html",
+      "posted_at": "2026-09-15T11:26:48Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "This essay was written with Cindy Cohn, and originally appeared in Lawfare. One of the many legacies of the terrorist attacks of Sept. 11",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 47023238,
+      "hn_url": "https://news.ycombinator.com/item?id=47023238",
+      "title": "Amazon's Ring and Google's Nest reveal the severity of U.S. surveillance state",
+      "url": "https://greenwald.substack.com/p/amazons-ring-and-googles-nest-unwittingly",
+      "posted_at": "2026-02-15T12:42:17Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Just a decade after a global backlash was triggered by Snowden reporting on mass domestic surveillance, the state-corporate dragnet is stronger and more invasive",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 45373564,
+      "hn_url": "https://news.ycombinator.com/item?id=45373564",
+      "title": "Microsoft blocks Israel’s use of its tech in mass surveillance of Palestinians",
+      "url": "https://www.theguardian.com/world/2025/sep/25/microsoft-blocks-israels-use-of-its-technology-in-mass-surveillance-of-palestinians",
+      "posted_at": "2025-09-25T15:06:47Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Exclusive: Tech firm ends military unit’s access to AI and data services after Guardian reveals secret spy project",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47689237,
+      "hn_url": "https://news.ycombinator.com/item?id=47689237",
+      "title": "US cities are axing Flock Safety surveillance technology",
+      "url": "https://www.cnet.com/home/security/when-flock-comes-to-town-why-cities-are-axing-the-controversial-surveillance-technology/",
+      "posted_at": "2026-04-08T12:26:14Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Flock cameras and sound detectors are spreading through cities, often followed by outcry and lawsuits. Here's what this technology actually does.",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44561736,
+      "hn_url": "https://news.ycombinator.com/item?id=44561736",
+      "title": "Data brokers are selling flight information to CBP and ICE",
+      "url": "https://www.eff.org/deeplinks/2025/07/data-brokers-are-selling-your-flight-information-cbp-and-ice",
+      "posted_at": "2025-07-14T16:02:36Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "For many years, data brokers have existed in the shadows, exploiting gaps in privacy laws to harvest our information—all for their own profit. They",
+      "description_source": "og:description",
+      "query": "data broker",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 46495220,
+      "hn_url": "https://news.ycombinator.com/item?id=46495220",
+      "title": "California residents can now request all data brokers delete personal info",
+      "url": "https://consumer.drop.privacy.ca.gov/",
+      "posted_at": "2026-01-05T04:00:38Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "The free and fast tool that helps Californians delete the information data brokers have about them.",
+      "description_source": "og:description",
+      "query": "data broker",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39274631,
+      "hn_url": "https://news.ycombinator.com/item?id=39274631",
+      "title": "Mozilla Monitor Plus: automatically remove your personal info from data brokers",
+      "url": "https://blog.mozilla.org/en/mozilla/introducing-mozilla-monitor-plus-a-new-tool-to-automatically-remove-your-personal-information-from-data-broker-sites/",
+      "posted_at": "2024-02-06T14:37:19Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Today, Mozilla Monitor (previously called Firefox Monitor), a free service that notifies you when your email has been part of a breach, announced its",
+      "description_source": "og:description",
+      "query": "data broker",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40012466,
+      "hn_url": "https://news.ycombinator.com/item?id=40012466",
+      "title": "96% of US hospital websites share visitor info with Meta, Google, data brokers",
+      "url": "https://www.theregister.com/2024/04/11/hospital_website_data_sharing/",
+      "posted_at": "2024-04-12T13:24:11Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Could have been worse – last time researchers checked it was 98.6%",
+      "description_source": "og:description",
+      "query": "data broker",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37265346,
+      "hn_url": "https://news.ycombinator.com/item?id=37265346",
+      "title": "Big Ass Data Broker Opt-Out List",
+      "url": "https://github.com/yaelwrites/Big-Ass-Data-Broker-Opt-Out-List",
+      "posted_at": "2023-08-25T18:25:29Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "data broker",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33897793,
+      "hn_url": "https://news.ycombinator.com/item?id=33897793",
+      "title": "Apple introduces end-to-end encryption for backups",
+      "url": "https://support.apple.com/en-us/HT202303#advanced",
+      "posted_at": "2022-12-07T18:06:58Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "iCloud uses strong security methods, employs strict policies to protect your information, and leads the industry in using privacy-preserving security technologies like end-to-end encryption",
+      "description_source": "og:description",
+      "query": "end-to-end encryption",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 36035641,
+      "hn_url": "https://news.ycombinator.com/item?id=36035641",
+      "title": "Leaked government document shows Spain wants to ban end-to-end encryption",
+      "url": "https://www.wired.com/story/europe-break-encryption-leaked-document-csa-law/",
+      "posted_at": "2023-05-22T19:31:47Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "In response to an EU proposal to scan private messages for illegal material, the country's officials said it is “imperative that we have access",
+      "description_source": "og:description",
+      "query": "end-to-end encryption",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 42284412,
+      "hn_url": "https://news.ycombinator.com/item?id=42284412",
+      "title": "Show HN: Open-source private home security camera system (end-to-end encryption)",
+      "url": "https://github.com/privastead/privastead",
+      "posted_at": "2024-11-30T22:13:49Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "A privacy-preserving Raspberry Pi home security camera that uses advanced end-to-end encryption. - secluso/core",
+      "description_source": "og:description",
+      "query": "end-to-end encryption",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42734478,
+      "hn_url": "https://news.ycombinator.com/item?id=42734478",
+      "title": "Let's talk about AI and end-to-end encryption",
+      "url": "https://blog.cryptographyengineering.com/2025/01/17/lets-talk-about-ai-and-end-to-end-encryption/",
+      "posted_at": "2025-01-17T05:50:25Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Recently I came across a fantastic new paper by a group of NYU and Cornell researchers entitled “How to think about end-to-end encryption and",
+      "description_source": "og:description",
+      "query": "end-to-end encryption",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34066965,
+      "hn_url": "https://news.ycombinator.com/item?id=34066965",
+      "title": "Facial recognition tech gets woman booted from Rockettes show due to employer",
+      "url": "https://www.nbcnewyork.com/investigations/face-recognition-tech-gets-girl-scout-mom-booted-from-rockettes-show-due-to-her-employer/4004677/",
+      "posted_at": "2022-12-20T15:13:47Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "facial recognition",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45780228,
+      "hn_url": "https://news.ycombinator.com/item?id=45780228",
+      "title": "You can't refuse to be scanned by ICE's facial recognition app, DHS document say",
+      "url": "https://www.404media.co/you-cant-refuse-to-be-scanned-by-ices-facial-recognition-app-dhs-document-says/",
+      "posted_at": "2025-11-01T08:58:54Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Photos captured by Mobile Fortify will be stored for 15 years, regardless of immigration or citizenship status, the document says.",
+      "description_source": "og:description",
+      "query": "facial recognition",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47591104,
+      "hn_url": "https://news.ycombinator.com/item?id=47591104",
+      "title": "OkCupid gave 3M dating-app photos to facial recognition firm, FTC says",
+      "url": "https://arstechnica.com/tech-policy/2026/03/okcupid-match-pay-no-fine-for-sharing-user-photos-with-facial-recognition-firm/",
+      "posted_at": "2026-03-31T17:55:04Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "OkCupid and Match settle with Trump FTC, don't have to pay any financial penalty.",
+      "description_source": "og:description",
+      "query": "facial recognition",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41111145,
+      "hn_url": "https://news.ycombinator.com/item?id=41111145",
+      "title": "Meta to pay Texas $1.4B for using facial recognition without users' permission",
+      "url": "https://www.texastribune.org/2024/07/30/texas-meta-facebook-biometric-data-settlement/",
+      "posted_at": "2024-07-30T16:41:13Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Attorney General Ken Paxton sued the Facebook parent company in 2022, claiming it had used personal biometric data without permission.",
+      "description_source": "og:description",
+      "query": "facial recognition",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42909921,
+      "hn_url": "https://news.ycombinator.com/item?id=42909921",
+      "title": "Everyone knows your location: tracking myself down through in-app ads",
+      "url": "https://timsh.org/tracking-myself-down-through-in-app-ads/",
+      "posted_at": "2025-02-02T17:07:31Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "How I tracked myself down using leaked location data in the in-app ads, and what I found along the way.",
+      "description_source": "og:description",
+      "query": "tracking",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36243955,
+      "hn_url": "https://news.ycombinator.com/item?id=36243955",
+      "title": "iOS 17 automatically removes tracking parameters from links you click on",
+      "url": "https://9to5mac.com/2023/06/08/ios-17-link-tracking-protection/",
+      "posted_at": "2023-06-08T15:51:29Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "iOS 17 and macOS Sonoma include even more privacy-preserving features while browsing the web. Link Tracking Protection is a new...",
+      "description_source": "og:description",
+      "query": "tracking",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27047243,
+      "hn_url": "https://news.ycombinator.com/item?id=27047243",
+      "title": "ClearURLs – automatically remove tracking elements from URLs",
+      "url": "https://github.com/ClearURLs/Addon/",
+      "posted_at": "2021-05-05T07:46:54Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "ClearURLs is an add-on based on the new WebExtensions technology and will automatically remove tracking elements from URLs to help protect your privacy. -",
+      "description_source": "og:description",
+      "query": "tracking",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39444500,
+      "hn_url": "https://news.ycombinator.com/item?id=39444500",
+      "title": "Keep your phone number private with Signal usernames",
+      "url": "https://signal.org/blog/phone-number-privacy-usernames/",
+      "posted_at": "2024-02-20T18:01:05Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Signal’s mission and sole focus is private communication. For years, Signal has kept your messages private, your profile information (like your name and profile",
+      "description_source": "og:description",
+      "query": "Signal",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 29042603,
+      "hn_url": "https://news.ycombinator.com/item?id=29042603",
+      "title": "Grand jury subpoena for Signal user data, Central District of California",
+      "url": "https://signal.org/bigbrother/cd-california-grand-jury/",
+      "posted_at": "2021-10-29T19:30:06Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Signal still knows nothing about you, but inexplicably the government continues to ask.",
+      "description_source": "og:description",
+      "query": "Signal",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45170515,
+      "hn_url": "https://news.ycombinator.com/item?id=45170515",
+      "title": "Signal Secure Backups",
+      "url": "https://signal.org/blog/introducing-secure-backups/",
+      "posted_at": "2025-09-08T16:43:39Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "In the past, if you broke or lost your phone, your Signal message history was gone. This has been a challenge for people whose",
+      "description_source": "og:description",
+      "query": "Signal",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26237404,
+      "hn_url": "https://news.ycombinator.com/item?id=26237404",
+      "title": "Total Cookie Protection",
+      "url": "https://blog.mozilla.org/security/2021/02/23/total-cookie-protection/",
+      "posted_at": "2021-02-23T14:11:01Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Total Cookie Protection is a major anti-tracking advance in Firefox that confines cookies to the site where they were created.",
+      "description_source": "og:description",
+      "query": "cookies",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 50048642,
+      "hn_url": "https://news.ycombinator.com/item?id=50048642",
+      "title": "Fingerprints are the new cookies",
+      "url": "https://royfish.dev/fingerprints-are-the-new-cookies",
+      "posted_at": "2026-10-11T22:33:39Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "cookies",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28129032,
+      "hn_url": "https://news.ycombinator.com/item?id=28129032",
+      "title": "Firefox 91 introduces enhanced cookie clearing",
+      "url": "https://blog.mozilla.org/security/2021/08/10/firefox-91-introduces-enhanced-cookie-clearing/",
+      "posted_at": "2021-08-10T14:06:53Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "We are pleased to announce a new, major privacy enhancement to Firefox’s cookie handling that lets you fully erase your browser history for any",
+      "description_source": "og:description",
+      "query": "cookies",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 29396643,
+      "hn_url": "https://news.ycombinator.com/item?id=29396643",
+      "title": "FBI's ability to legally access secure messaging app content and metadata [pdf]",
+      "url": "https://propertyofthepeople.org/document-detail/?doc-id=21114562",
+      "posted_at": "2021-11-30T19:53:32Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "metadata",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 30082138,
+      "hn_url": "https://news.ycombinator.com/item?id=30082138",
+      "title": "Elsevier embeds a hash in the PDF metadata that is unique for each download",
+      "url": "https://twitter.com/json_dirs/status/1486120144141123584",
+      "posted_at": "2022-01-26T05:32:09Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "More fun publisher surveillance: Elsevier embeds a hash in the PDF metadata that is *unique for each time a PDF is downloaded*, this is",
+      "description_source": "og:description",
+      "query": "metadata",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26639261,
+      "hn_url": "https://news.ycombinator.com/item?id=26639261",
+      "title": "Google collects 20 times more telemetry from Android devices than Apple from iOS",
+      "url": "https://therecord.media/google-collects-20-times-more-telemetry-from-android-devices-than-apple-from-ios/",
+      "posted_at": "2021-03-30T19:32:45Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Academic research published last week looked at the telemetry traffic sent by modern iOS and Android devices back to Apple and Google servers and",
+      "description_source": "og:description",
+      "query": "telemetry",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 28869462,
+      "hn_url": "https://news.ycombinator.com/item?id=28869462",
+      "title": "Oculess – Removes account requirements and telemetry from Oculus Quest devices",
+      "url": "https://github.com/basti564/Oculess",
+      "posted_at": "2021-10-14T20:18:39Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "Removes account requirements and telemetry from Oculus Quest devices - ptrpaws/Oculess",
+      "description_source": "og:description",
+      "query": "telemetry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35691383,
+      "hn_url": "https://news.ycombinator.com/item?id=35691383",
+      "title": "1Password to Add Telemetry",
+      "url": "https://blog.1password.com/privacy-preserving-app-telemetry/",
+      "posted_at": "2023-04-24T18:36:32Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "telemetry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38429370,
+      "hn_url": "https://news.ycombinator.com/item?id=38429370",
+      "title": "Choose the browser that best suits your privacy needs",
+      "url": "https://tuta.com/blog/best-private-browsers",
+      "posted_at": "2023-11-27T07:57:20Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "When it comes to most secure browsers, Firefox and its LibreWolf fork are the best alternatives to Chrome on our list - and, no,",
+      "description_source": "og:description",
+      "query": "privacy",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 27878659,
+      "hn_url": "https://news.ycombinator.com/item?id=27878659",
+      "title": "Huge data leak shatters the lie that the innocent need not fear surveillance",
+      "url": "https://www.theguardian.com/news/2021/jul/18/huge-data-leak-shatters-lie-innocent-need-not-fear-surveillance",
+      "posted_at": "2021-07-19T02:29:05Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "Our investigation shows how repressive regimes can buy and use the kind of spying tools Edward Snowden warned us about",
+      "description_source": "og:description",
+      "query": "surveillance",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38990755,
+      "hn_url": "https://news.ycombinator.com/item?id=38990755",
+      "title": "How to delete your data from data brokers",
+      "url": "https://www.cybercollective.org/blog/how-to-delete-your-data-from-data-brokers",
+      "posted_at": "2024-01-14T14:34:23Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "data broker",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48069192,
+      "hn_url": "https://news.ycombinator.com/item?id=48069192",
+      "title": "Meta Shuts Down End-to-End Encryption for Instagram Messaging",
+      "url": "https://www.pcmag.com/news/meta-shuts-down-end-to-end-encryption-for-instagram-dms-messaging",
+      "posted_at": "2026-05-08T21:47:47Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "end-to-end encryption",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44962771,
+      "hn_url": "https://news.ycombinator.com/item?id=44962771",
+      "title": "Home Depot sued for 'secretly' using facial recognition at self-checkouts",
+      "url": "https://petapixel.com/2025/08/20/home-depot-sued-for-secretly-using-facial-recognition-technology-on-self-checkout-cameras/",
+      "posted_at": "2025-08-20T15:23:19Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "The Home Depot customer says he noticed the camera at a recent trip to the store.",
+      "description_source": "og:description",
+      "query": "facial recognition",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26328758,
+      "hn_url": "https://news.ycombinator.com/item?id=26328758",
+      "title": "Brave buys a search engine, promises no tracking, no profiling",
+      "url": "https://www.theregister.com/2021/03/03/brave_buys_a_search_engine/",
+      "posted_at": "2021-03-03T14:33:06Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "Pitches pro-privacy platform with customizable results filter dubbed Goggles",
+      "description_source": "og:description",
+      "query": "tracking",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39742578,
+      "hn_url": "https://news.ycombinator.com/item?id=39742578",
+      "title": "Dear Paul Graham, there is no cookie banner law",
+      "url": "https://www.amazingcto.com/cookie-banners-are-not-needed/",
+      "posted_at": "2024-03-18T11:25:16Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "cookies",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47862331,
+      "hn_url": "https://news.ycombinator.com/item?id=47862331",
+      "title": "GitHub CLI now collects pseudoanonymous telemetry",
+      "url": "https://cli.github.com/telemetry",
+      "posted_at": "2026-04-22T11:58:58Z",
+      "category_ids": [
+        "privacy"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "telemetry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48505231,
+      "hn_url": "https://news.ycombinator.com/item?id=48505231",
+      "title": "CRISPR tech selectively shreds cancer cells, including \"undruggable\" cancers",
+      "url": "https://innovativegenomics.org/news/crispr-technique-selectively-shreds-cancer-cells/",
+      "posted_at": "2026-06-12T15:15:24Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "New CRISPR Technique Selectively Shreds Cancer Cells, Including “Undruggable” Cancers - Innovative Genomics Institute (IGI)",
+      "description_source": "og:description",
+      "query": "CRISPR",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33554141,
+      "hn_url": "https://news.ycombinator.com/item?id=33554141",
+      "title": "CRISPR cancer trial success paves the way for personalized treatments",
+      "url": "https://www.nature.com/articles/d41586-022-03676-7",
+      "posted_at": "2022-11-10T22:04:54Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "CRISPR",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27643517,
+      "hn_url": "https://news.ycombinator.com/item?id=27643517",
+      "title": "CRISPR gene-editing breakthrough opens door to treating broad array of diseases",
+      "url": "https://www.npr.org/sections/health-shots/2021/06/26/1009817539/he-inherited-a-devastating-disease-a-crispr-gene-editing-breakthrough-stopped-it",
+      "posted_at": "2021-06-26T16:54:31Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Scientists successfully treated a rare disease with the experimental gene-editing technique. It could open the door to new ways of treating more common disorders",
+      "description_source": "og:description",
+      "query": "CRISPR",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 31695881,
+      "hn_url": "https://news.ycombinator.com/item?id=31695881",
+      "title": "New CRISPR-based map ties every human gene to its function",
+      "url": "https://news.mit.edu/2022/crispr-based-map-ties-every-human-gene-to-its-function-0609",
+      "posted_at": "2022-06-10T15:54:56Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "A new CRISPR-based map ties every human gene to its function using a tool called Perturb-seq. The work was led by Jonathan Weissman and",
+      "description_source": "og:description",
+      "query": "CRISPR",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 33971377,
+      "hn_url": "https://news.ycombinator.com/item?id=33971377",
+      "title": "US Department of Energy: Fusion Ignition Achieved",
+      "url": "https://www.energy.gov/articles/doe-national-laboratory-makes-history-achieving-fusion-ignition",
+      "posted_at": "2022-12-13T16:44:40Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "The U.S. Department of Energy (DOE) and DOE’s National Nuclear Security Administration (NNSA) today announced the achievement of fusion ignition at Lawrence Livermore National",
+      "description_source": "og:description",
+      "query": "fusion",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 28462151,
+      "hn_url": "https://news.ycombinator.com/item?id=28462151",
+      "title": "MIT-designed project achieves major advance toward fusion energy",
+      "url": "https://news.mit.edu/2021/MIT-CFS-major-advance-toward-fusion-energy-0908",
+      "posted_at": "2021-09-08T19:50:36Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "For the first time, a large high-temperature superconducting electromagnet was ramped to a field strength of 20 tesla, the most powerful magnetic field of",
+      "description_source": "og:description",
+      "query": "fusion",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 32755893,
+      "hn_url": "https://news.ycombinator.com/item?id=32755893",
+      "title": "Korean nuclear fusion reactor achieves 100M°C for 30 seconds",
+      "url": "https://www.shiningscience.com/2022/09/korean-nuclear-fusion-reactor-achieves.html",
+      "posted_at": "2022-09-07T19:58:27Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "fusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43093939,
+      "hn_url": "https://news.ycombinator.com/item?id=43093939",
+      "title": "Nuclear fusion: WEST beats the world record for plasma duration",
+      "url": "https://www.cea.fr/english/Pages/News/nuclear-fusion-west-beats-the-world-record-for-plasma-duration.aspx",
+      "posted_at": "2025-02-18T19:26:33Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "​On 12 February, the CEA’s WEST machine was able to maintain a plasma for more than 22 minutes. In doing so, it smashed the",
+      "description_source": "og:description",
+      "query": "fusion",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 42367649,
+      "hn_url": "https://news.ycombinator.com/item?id=42367649",
+      "title": "Willow, Our Quantum Chip",
+      "url": "https://blog.google/technology/research/google-willow-quantum-chip/",
+      "posted_at": "2024-12-09T16:28:23Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Our new quantum chip demonstrates error correction and performance that paves the way to a useful, large-scale quantum computer.",
+      "description_source": "og:description",
+      "query": "quantum",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43104071,
+      "hn_url": "https://news.ycombinator.com/item?id=43104071",
+      "title": "Microsoft unveils Majorana 1 quantum processor",
+      "url": "https://azure.microsoft.com/en-us/blog/quantum/2025/02/19/microsoft-unveils-majorana-1-the-worlds-first-quantum-processor-powered-by-topological-qubits/",
+      "posted_at": "2025-02-19T16:35:51Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Majorana 1 from Microsoft is the world’s first Quantum Processing Unit (QPU) built with a topoconductor. Discover more.",
+      "description_source": "og:description",
+      "query": "quantum",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 50219666,
+      "hn_url": "https://news.ycombinator.com/item?id=50219666",
+      "title": "I don't understand quantum physics (2018)",
+      "url": "https://www.southampton.ac.uk/~doug/quantum_physics/index.html",
+      "posted_at": "2026-10-24T09:53:26Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "quantum",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42037386,
+      "hn_url": "https://news.ycombinator.com/item?id=42037386",
+      "title": "Scientists glue two proteins together, driving cancer cells to self-destruct",
+      "url": "https://med.stanford.edu/news/all-news/2024/10/protein-cancer.html",
+      "posted_at": "2024-11-04T00:42:58Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Stanford researchers hope new technique will flip lymphoma protein's normal action - from preventing cell death to triggering it.",
+      "description_source": "og:description",
+      "query": "protein",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40366443,
+      "hn_url": "https://news.ycombinator.com/item?id=40366443",
+      "title": "Proteins in blood could provide early cancer warning 'by more than seven years'",
+      "url": "https://www.theguardian.com/society/article/2024/may/15/proteins-blood-cancer-warning-seven-years-study",
+      "posted_at": "2024-05-15T13:11:08Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Study identifies 618 proteins linked to 19 types of cancer, which could lead to much earlier detection",
+      "description_source": "og:description",
+      "query": "protein",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48542132,
+      "hn_url": "https://news.ycombinator.com/item?id=48542132",
+      "title": "Copper transport drug restores memory and clears toxic Alzheimer's proteins",
+      "url": "https://www.monash.edu/news/articles/copper-drug-restores-memory-and-clears-toxic-alzheimers-proteins",
+      "posted_at": "2026-06-15T14:48:47Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "protein",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36813564,
+      "hn_url": "https://news.ycombinator.com/item?id=36813564",
+      "title": "Dementia risk linked to blood-protein imbalance in middle age",
+      "url": "https://www.nature.com/articles/d41586-023-02374-2",
+      "posted_at": "2023-07-21T13:34:11Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "protein",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28764416,
+      "hn_url": "https://news.ycombinator.com/item?id=28764416",
+      "title": "Conterintuitive facts in mathematics, CS, and physics",
+      "url": "https://axisofordinary.substack.com/p/the-most-counterintuitive-facts-in",
+      "posted_at": "2021-10-05T19:28:42Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "It is possible to compute over encrypted data without access to the secret key: https://en.wikipedia.org/wiki/Homomorphic_encryption",
+      "description_source": "og:description",
+      "query": "physics",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49976265,
+      "hn_url": "https://news.ycombinator.com/item?id=49976265",
+      "title": "Nobel Prize in Physics 2026: Francis Halzen",
+      "url": "https://www.nobelprize.org/prizes/physics/2026/",
+      "posted_at": "2026-10-06T09:48:46Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "The Nobel Prize in Physics 2026 was awarded to Francis Halzen \"for decisive contributions to the IceCube Neutrino Observatory and the discovery of high-energy",
+      "description_source": "og:description",
+      "query": "physics",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 32035054,
+      "hn_url": "https://news.ycombinator.com/item?id=32035054",
+      "title": "I should have loved biology",
+      "url": "https://jsomers.net/i-should-have-loved-biology/",
+      "posted_at": "2022-07-09T13:48:45Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "In biology class, biology wasn't presented as a quest for the secrets of life. The textbooks wrung out the questing.",
+      "description_source": "og:description",
+      "query": "biology",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45300865,
+      "hn_url": "https://news.ycombinator.com/item?id=45300865",
+      "title": "Ants that seem to defy biology – They lay eggs that hatch into another species",
+      "url": "https://www.smithsonianmag.com/smart-news/these-ant-queens-seem-to-defy-biology-they-lay-eggs-that-hatch-into-another-species-180987292/",
+      "posted_at": "2025-09-19T12:25:50Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Iberian harvester ant queens produce offspring of their own species and of the builder harvester ant, seemingly by cloning males",
+      "description_source": "og:description",
+      "query": "biology",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47846718,
+      "hn_url": "https://news.ycombinator.com/item?id=47846718",
+      "title": "What physical ‘life force’ turns biology’s wheels?",
+      "url": "https://www.quantamagazine.org/what-physical-life-force-turns-biologys-wheels-20260420/",
+      "posted_at": "2026-04-21T09:55:49Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "The bacterial flagellar motor is finally understood after 50 years. In its workings, columnist Natalie Wolchover finds the essence of life.",
+      "description_source": "og:description",
+      "query": "biology",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47957714,
+      "hn_url": "https://news.ycombinator.com/item?id=47957714",
+      "title": "Biology is a Burrito: A text- and visual-based journey through a living cell",
+      "url": "https://burrito.bio/essays/biology-is-a-burrito",
+      "posted_at": "2026-04-30T03:24:41Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "biology",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45265745,
+      "hn_url": "https://news.ycombinator.com/item?id=45265745",
+      "title": "Denmark close to wiping out cancer-causing HPV strains after vaccine roll-out",
+      "url": "https://www.gavi.org/vaccineswork/denmark-close-wiping-out-leading-cancer-causing-hpv-strains-after-vaccine-roll-out",
+      "posted_at": "2025-09-16T18:12:29Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "A nationwide study suggests infections with human papillomavirus (HPV) types 16 and 18 have been virtually eliminated since vaccination began in 2008 – protecting",
+      "description_source": "og:description",
+      "query": "cancer",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 33939491,
+      "hn_url": "https://news.ycombinator.com/item?id=33939491",
+      "title": "Base editing: Revolutionary therapy clears girl's incurable cancer",
+      "url": "https://www.bbc.com/news/health-63859184",
+      "posted_at": "2022-12-11T02:35:47Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "New way of altering DNA is used to engineer an \"exciting\", experimental therapy for a 13-year-old girl.",
+      "description_source": "og:description",
+      "query": "cancer",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33517520,
+      "hn_url": "https://news.ycombinator.com/item?id=33517520",
+      "title": "A requiem for amateur chemistry",
+      "url": "https://lcamtuf.substack.com/p/a-requiem-for-amateur-chemistry",
+      "posted_at": "2022-11-08T09:39:07Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Bidding farewell to classic experiments.",
+      "description_source": "og:description",
+      "query": "chemistry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41067616,
+      "hn_url": "https://news.ycombinator.com/item?id=41067616",
+      "title": "A chemist explains the chemistry behind decaf coffee",
+      "url": "https://theconversation.com/retaining-flavor-while-removing-caffeine-a-chemist-explains-the-chemistry-behind-decaf-coffee-233196",
+      "posted_at": "2024-07-25T12:04:09Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Even unstimulating coffee has stimulating chemistry.",
+      "description_source": "og:description",
+      "query": "chemistry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31653887,
+      "hn_url": "https://news.ycombinator.com/item?id=31653887",
+      "title": "Liquid platinum at room temperature: possible revolution in industrial chemistry",
+      "url": "https://phys.org/news/2022-06-liquid-platinum-room-temperature-cool.html",
+      "posted_at": "2022-06-07T13:23:14Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Researchers in Australia have been able to use trace amounts of liquid platinum to create cheap and highly efficient chemical reactions at low temperatures,",
+      "description_source": "og:description",
+      "query": "chemistry",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 28771079,
+      "hn_url": "https://news.ycombinator.com/item?id=28771079",
+      "title": "The Nobel Prize in Chemistry 2021",
+      "url": "https://www.nobelprize.org/prizes/chemistry/2021/press-release/",
+      "posted_at": "2021-10-06T09:51:33Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "The Nobel Prize in Chemistry 2021 was awarded jointly to Benjamin List and David W.C. MacMillan \"for the development of asymmetric organocatalysis\"",
+      "description_source": "og:description",
+      "query": "chemistry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41630907,
+      "hn_url": "https://news.ycombinator.com/item?id=41630907",
+      "title": "Averaging is a convenient fiction of neuroscience",
+      "url": "https://www.thetransmitter.org/neural-coding/averaging-is-a-convenient-fiction-of-neuroscience/",
+      "posted_at": "2024-09-23T21:41:24Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "But neurons don’t take averages. This ubiquitous practice hides from us how the brain really works.",
+      "description_source": "og:description",
+      "query": "neuroscience",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43342407,
+      "hn_url": "https://news.ycombinator.com/item?id=43342407",
+      "title": "How far neuroscience is from understanding brains (2023)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10585277/",
+      "posted_at": "2025-03-12T12:13:42Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "neuroscience",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35711317,
+      "hn_url": "https://news.ycombinator.com/item?id=35711317",
+      "title": "We need female mice in neuroscience research",
+      "url": "https://news.harvard.edu/gazette/story/2023/03/study-confirms-why-we-need-female-mice-in-neuroscience-research/",
+      "posted_at": "2023-04-26T09:33:39Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Researchers found that female mice, despite ongoing hormonal fluctuations, exhibit exploratory behavior that is more stable than that of their male peers, countering the",
+      "description_source": "og:description",
+      "query": "neuroscience",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34892044,
+      "hn_url": "https://news.ycombinator.com/item?id=34892044",
+      "title": "Investigating cognitive neuroscience theories of human intelligence (2022)",
+      "url": "https://onlinelibrary.wiley.com/doi/10.1002/hbm.26164",
+      "posted_at": "2023-02-22T05:37:25Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "neuroscience",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37149349,
+      "hn_url": "https://news.ycombinator.com/item?id=37149349",
+      "title": "LK-99 isn’t a superconductor",
+      "url": "https://www.nature.com/articles/d41586-023-02585-7",
+      "posted_at": "2023-08-16T16:17:17Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "superconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 36881808,
+      "hn_url": "https://news.ycombinator.com/item?id=36881808",
+      "title": "Superconductor news: What’s claimed, and how strong the evidence seems to be",
+      "url": "https://www.science.org/content/blog-post/breaking-superconductor-news",
+      "posted_at": "2023-07-26T17:46:30Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "superconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42367290,
+      "hn_url": "https://news.ycombinator.com/item?id=42367290",
+      "title": "Exotic new superconductors delight and confound",
+      "url": "https://www.quantamagazine.org/exotic-new-superconductors-delight-and-confound-20241206/",
+      "posted_at": "2024-12-09T15:47:42Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "Three new species of superconductivity were spotted this year, illustrating the myriad ways electrons can join together to form a frictionless quantum soup.",
+      "description_source": "og:description",
+      "query": "superconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43311610,
+      "hn_url": "https://news.ycombinator.com/item?id=43311610",
+      "title": "Nickel superconductor works above -233°C threshold at normal pressure",
+      "url": "https://phys.org/news/2025-02-nickel-superconductor-233c-threshold-pressure.html",
+      "posted_at": "2025-03-09T17:43:15Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "train",
+      "description": "A team of engineers and physicists at Southern University of Science and Technology, in China, has created a nickel-based material that behaves as a",
+      "description_source": "og:description",
+      "query": "superconductor",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 38571956,
+      "hn_url": "https://news.ycombinator.com/item?id=38571956",
+      "title": "FDA approves a CRISPR-based medicine for treatment of sickle cell disease",
+      "url": "https://www.statnews.com/2023/12/08/fda-approves-casgevy-crispr-based-medicine-for-treatment-of-sickle-cell-disease/",
+      "posted_at": "2023-12-08T17:56:30Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "The FDA has approved the world’s first medicine based on CRISPR gene-editing technology, a groundbreaking treatment for sickle cell disease.",
+      "description_source": "og:description",
+      "query": "CRISPR",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28840066,
+      "hn_url": "https://news.ycombinator.com/item?id=28840066",
+      "title": "Major nuclear fusion milestone reached as ‘ignition’ triggered in a lab",
+      "url": "https://www.imperial.ac.uk/news/228373/major-nuclear-fusion-milestone-reached-ignition/",
+      "posted_at": "2021-10-12T14:25:19Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "Ignition is a key process that amplifies the energy output from nuclear fusion and could provide clean energy and answer some huge physics questions.",
+      "description_source": "og:description",
+      "query": "fusion",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45670443,
+      "hn_url": "https://news.ycombinator.com/item?id=45670443",
+      "title": "Willow quantum chip demonstrates verifiable quantum advantage on hardware",
+      "url": "https://blog.google/technology/research/quantum-echoes-willow-verifiable-quantum-advantage/",
+      "posted_at": "2025-10-22T15:16:19Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "Our latest quantum breakthrough, Quantum Echoes, offers a path toward unprecedented scientific discoveries and analysis.",
+      "description_source": "og:description",
+      "query": "quantum",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41786101,
+      "hn_url": "https://news.ycombinator.com/item?id=41786101",
+      "title": "Chemistry Nobel: Computational protein design and protein structure prediction",
+      "url": "https://www.nobelprize.org/prizes/chemistry/2024/press-release/",
+      "posted_at": "2024-10-09T09:54:38Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "The Nobel Prize in Chemistry 2024 was divided, one half awarded to David Baker \"for computational protein design\", the other half jointly to Demis",
+      "description_source": "og:description",
+      "query": "protein",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40626332,
+      "hn_url": "https://news.ycombinator.com/item?id=40626332",
+      "title": "A Revolution in Biology?",
+      "url": "https://www.bitsofwonder.co/p/a-revolution-in-biology",
+      "posted_at": "2024-06-09T18:13:34Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "how developmental biology might contain the secrets to life, intelligence, and immortality",
+      "description_source": "og:description",
+      "query": "biology",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45514164,
+      "hn_url": "https://news.ycombinator.com/item?id=45514164",
+      "title": "Nobel Prize in Chemistry 2025",
+      "url": "https://www.nobelprize.org/prizes/chemistry/2025/popular-information/",
+      "posted_at": "2025-10-08T09:49:36Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "The Nobel Prize in Chemistry 2025 was awarded jointly to Susumu Kitagawa, Richard Robson and Omar M. Yaghi \"for the development of metal–organic frameworks\"",
+      "description_source": "og:description",
+      "query": "chemistry",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40778655,
+      "hn_url": "https://news.ycombinator.com/item?id=40778655",
+      "title": "Human neuroscience mustn't forget its human dimension",
+      "url": "https://www.nature.com/articles/d41586-024-02022-3",
+      "posted_at": "2024-06-24T17:29:08Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "neuroscience",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38212538,
+      "hn_url": "https://news.ycombinator.com/item?id=38212538",
+      "title": "Room Temperature Superconductor Paper Retracted by Journal Nature",
+      "url": "https://www.wsj.com/science/superconductor-paper-retracted-journal-nature-ranga-dias-c437ce6e",
+      "posted_at": "2023-11-09T22:53:24Z",
+      "category_ids": [
+        "science"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "superconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 29854460,
+      "hn_url": "https://news.ycombinator.com/item?id=29854460",
+      "title": "James Webb is fully deployed",
+      "url": "https://www.nasa.gov/press-release/nasa-s-webb-telescope-reaches-major-milestone-as-mirror-unfolds",
+      "posted_at": "2022-01-08T18:19:09Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "NASA’s James Webb Space Telescope team fully deployed its 21-foot, gold-coated primary mirror, successfully completing the final stage of all major spacecraft",
+      "description_source": "og:description",
+      "query": "James Webb",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34360010,
+      "hn_url": "https://news.ycombinator.com/item?id=34360010",
+      "title": "The James Webb Space Telescope is finding too many early galaxies",
+      "url": "https://skyandtelescope.org/astronomy-news/the-james-webb-space-telescope-is-finding-too-many-early-galaxies/",
+      "posted_at": "2023-01-12T20:45:57Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "James Webb",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38695337,
+      "hn_url": "https://news.ycombinator.com/item?id=38695337",
+      "title": "James Webb Space Telescope captures high-resolution image of Uranus",
+      "url": "https://webbtelescope.org/contents/news-releases/2023/news-2023-150",
+      "posted_at": "2023-12-19T13:37:28Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "NASA’s James Webb Space Telescope recently trained its sights on unusual and enigmatic Uranus, an ice giant that spins on its side. Webb captured",
+      "description_source": "og:description",
+      "query": "James Webb",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 35874704,
+      "hn_url": "https://news.ycombinator.com/item?id=35874704",
+      "title": "James Webb Space Telescope reveals Fomalhaut's disk in detail",
+      "url": "https://skyandtelescope.org/astronomy-news/the-james-webb-space-telescope-reveals-fomalhauts-disk-in-unprecedented-detail/",
+      "posted_at": "2023-05-09T14:19:14Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "James Webb",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38640900,
+      "hn_url": "https://news.ycombinator.com/item?id=38640900",
+      "title": "Voyager 1 stops communicating with Earth",
+      "url": "https://www.cnn.com/2023/12/13/world/voyager-1-computer-issue-scn/index.html",
+      "posted_at": "2023-12-14T13:07:12Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "NASA’s 46-year-old Voyager 1 spacecraft has experienced a computer glitch that prevents it from returning science data to Earth from the solar system’s outer",
+      "description_source": "og:description",
+      "query": "Voyager",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40561872,
+      "hn_url": "https://news.ycombinator.com/item?id=40561872",
+      "title": "How many photons are received per bit transmitted from Voyager 1?",
+      "url": "https://physics.stackexchange.com/questions/816698/how-many-photons-are-received-per-bit-transmitted-from-voyager-1",
+      "posted_at": "2024-06-03T12:07:57Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Voyager",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42107078,
+      "hn_url": "https://news.ycombinator.com/item?id=42107078",
+      "title": "Voyager 1 breaks its silence with NASA via radio transmitter not used since 1981",
+      "url": "https://www.smithsonianmag.com/smart-news/voyager-1-breaks-its-silence-with-nasa-via-a-radio-transmitter-not-used-since-1981-180985399/",
+      "posted_at": "2024-11-11T13:48:39Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The farthest spacecraft in the universe went momentarily rogue, but scientists breathed a sigh of relief when it reconnected at an unexpected radio frequency",
+      "description_source": "og:description",
+      "query": "Voyager",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31779964,
+      "hn_url": "https://news.ycombinator.com/item?id=31779964",
+      "title": "Voyager spacecraft begin to power down",
+      "url": "https://www.scientificamerican.com/article/record-breaking-voyager-spacecraft-begin-to-power-down/",
+      "posted_at": "2022-06-17T15:48:51Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The pioneering probes are still running after nearly 45 years in space, but they will soon lose some of their instruments",
+      "description_source": "og:description",
+      "query": "Voyager",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26323852,
+      "hn_url": "https://news.ycombinator.com/item?id=26323852",
+      "title": "NASA's Perseverance rover sends stunning images",
+      "url": "https://www.bbc.com/news/in-pictures-56238018",
+      "posted_at": "2021-03-03T02:09:53Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Amazing images as Nasa's Perseverance rover lands on Mars and seeks signs of past microbial life.",
+      "description_source": "og:description",
+      "query": "NASA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33427157,
+      "hn_url": "https://news.ycombinator.com/item?id=33427157",
+      "title": "NASA finds super-emitters of methane",
+      "url": "https://www.smithsonianmag.com/smart-news/nasa-finds-more-than-50-super-emitters-of-methane-180981045/",
+      "posted_at": "2022-11-01T20:38:25Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "While mapping minerals in Earth’s deserts, the agency's new detector on the ISS spotted massive contributors to climate change",
+      "description_source": "og:description",
+      "query": "NASA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47704804,
+      "hn_url": "https://news.ycombinator.com/item?id=47704804",
+      "title": "How NASA built Artemis II’s fault-tolerant computer",
+      "url": "https://cacm.acm.org/news/how-nasa-built-artemis-iis-fault-tolerant-computer/",
+      "posted_at": "2026-04-09T15:12:40Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "NASA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35640002,
+      "hn_url": "https://news.ycombinator.com/item?id=35640002",
+      "title": "SpaceX Starship rocket explodes minutes after launch from Texas",
+      "url": "https://apnews.com/article/spacex-starship-launch-elon-musk-d9989401e2e07cdfc9753f352e44f6e2",
+      "posted_at": "2023-04-20T13:58:04Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Starship",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39702568,
+      "hn_url": "https://news.ycombinator.com/item?id=39702568",
+      "title": "Starship's Third Flight Test [video]",
+      "url": "https://www.spacex.com/launches/mission/?missionId=starship-flight-3",
+      "posted_at": "2024-03-14T11:37:32Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "Starship",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 48242959,
+      "hn_url": "https://news.ycombinator.com/item?id=48242959",
+      "title": "SpaceX launches Starship v3 rocket",
+      "url": "https://www.space.com/space-exploration/launches-spacecraft/spacex-starship-v3-megarocket-first-test-flight",
+      "posted_at": "2026-05-22T23:41:55Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Starship is back.",
+      "description_source": "og:description",
+      "query": "Starship",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38452959,
+      "hn_url": "https://news.ycombinator.com/item?id=38452959",
+      "title": "My $500M Mars rover mistake",
+      "url": "https://www.chrislewicki.com/articles/failurestory",
+      "posted_at": "2023-11-28T23:16:17Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Some mistakes feel worse than death.",
+      "description_source": "og:description",
+      "query": "Mars",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34213549,
+      "hn_url": "https://news.ycombinator.com/item?id=34213549",
+      "title": "Why Not Mars",
+      "url": "https://idlewords.com/2023/1/why_not_mars.htm",
+      "posted_at": "2023-01-02T02:29:45Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "It's slow, expensive, the engineering is mostly port-a-potty chemistry, and the best-case outcome is that thirty years from now we’ll get to watch someone",
+      "description_source": "twitter:description",
+      "query": "Mars",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 27161524,
+      "hn_url": "https://news.ycombinator.com/item?id=27161524",
+      "title": "China lands rover on Mars",
+      "url": "https://www.bbc.com/news/science-environment-57122914",
+      "posted_at": "2021-05-15T01:41:42Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The six-wheeled robot has made the hazardous descent to the surface of the Red Planet, China announces.",
+      "description_source": "og:description",
+      "query": "Mars",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39134349,
+      "hn_url": "https://news.ycombinator.com/item?id=39134349",
+      "title": "Due to blade damage, Mars Helicopter Ingenuity will not fly again",
+      "url": "https://www.nasa.gov/news-release/after-three-years-on-mars-nasas-ingenuity-helicopter-mission-ends/",
+      "posted_at": "2024-01-25T19:58:09Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "NASA’s history-making Ingenuity Mars Helicopter has ended its mission at the Red Planet after surpassing expectations and making dozens more flights than",
+      "description_source": "og:description",
+      "query": "Mars",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42443229,
+      "hn_url": "https://news.ycombinator.com/item?id=42443229",
+      "title": "Moon",
+      "url": "https://ciechanow.ski/moon/",
+      "posted_at": "2024-12-17T17:26:26Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Interactive article about the Moon",
+      "description_source": "og:description",
+      "query": "Moon",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 44266828,
+      "hn_url": "https://news.ycombinator.com/item?id=44266828",
+      "title": "If the moon were only 1 pixel: A tediously accurate solar system model (2014)",
+      "url": "https://joshworth.com/dev/pixelspace/pixelspace_solarsystem.html",
+      "posted_at": "2025-06-13T08:40:05Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Moon",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43228816,
+      "hn_url": "https://news.ycombinator.com/item?id=43228816",
+      "title": "Firefly ‘Blue Ghost’ lunar lander touches down on the moon",
+      "url": "https://www.cnn.com/science/live-news/moon-landing-blue-ghost-03-02-25/index.html",
+      "posted_at": "2025-03-02T09:31:50Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "A robotic lunar lander built by Texas-based Firefly has successfully landed on the moon, becoming only the second private-sector company ever to complete such",
+      "description_source": "og:description",
+      "query": "Moon",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 26837004,
+      "hn_url": "https://news.ycombinator.com/item?id=26837004",
+      "title": "SpaceX wins contract to develop spacecraft to land astronauts on the moon",
+      "url": "https://www.washingtonpost.com/technology/2021/04/16/nasa-lunar-lander-contract-spacex/",
+      "posted_at": "2021-04-16T17:49:40Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The contract marks another major victory for the hard-charging company that vaults it to the top tier of the nation’s aerospace companies and solidifies",
+      "description_source": "og:description",
+      "query": "Moon",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34383529,
+      "hn_url": "https://news.ycombinator.com/item?id=34383529",
+      "title": "NASA’s Double Asteroid Redirection Test Is a Smashing Success",
+      "url": "https://eos.org/articles/nasas-double-asteroid-redirection-test-is-a-smashing-success",
+      "posted_at": "2023-01-14T19:53:52Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The mission, focused on the Didymos-Dimorphos binary asteroid system, proved that an asteroid’s orbit can be altered by kinetic impactor technology.",
+      "description_source": "og:description",
+      "query": "asteroid",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37159680,
+      "hn_url": "https://news.ycombinator.com/item?id=37159680",
+      "title": "Asteroid crater 520km in diameter buried in southeast Australia, scientists say",
+      "url": "https://www.australiangeographic.com.au/topics/science-environment/2023/08/asteroid-crater-520km-in-diameter-buried-deep-in-southeast-australia-scientists-say/",
+      "posted_at": "2023-08-17T10:39:52Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "New evidence suggests the world’s largest known asteroid impact structure is buried near the New South Wales town of Deniliquin.",
+      "description_source": "og:description",
+      "query": "asteroid",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31637664,
+      "hn_url": "https://news.ycombinator.com/item?id=31637664",
+      "title": "Amino acids found in asteroid samples collected by Japan's Hayabusa2 probe",
+      "url": "https://english.kyodonews.net/news/2022/06/9a7dbced6c3a-amino-acids-found-in-asteroid-samples-collected-by-hayabusa2-probe.html",
+      "posted_at": "2022-06-06T06:12:37Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "More than 20 types of amino acids have been detected in samples Japan's Hayabusa2 space probe brought to Earth from an asteroid in late",
+      "description_source": "og:description",
+      "query": "asteroid",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 47411480,
+      "hn_url": "https://news.ycombinator.com/item?id=47411480",
+      "title": "Ryugu asteroid samples contain all DNA and RNA building blocks",
+      "url": "https://phys.org/news/2026-03-ryugu-asteroid-samples-dna-rna.html",
+      "posted_at": "2026-03-17T12:01:05Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "All the essential ingredients to make the DNA and RNA underpinning life on Earth have been discovered in samples collected from the asteroid Ryugu,",
+      "description_source": "og:description",
+      "query": "asteroid",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39673087,
+      "hn_url": "https://news.ycombinator.com/item?id=39673087",
+      "title": "Webb and Hubble confirm Universe's expansion rate",
+      "url": "https://www.esa.int/Science_Exploration/Space_Science/Webb/Webb_Hubble_confirm_Universe_s_expansion_rate",
+      "posted_at": "2024-03-11T20:49:35Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Webb measurements shed new light on a decade-long mysteryThe rate at which the Universe is expanding, known as the Hubble constant, is one of",
+      "description_source": "og:description",
+      "query": "Hubble",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 41234964,
+      "hn_url": "https://news.ycombinator.com/item?id=41234964",
+      "title": "The Webb Telescope further deepens the Hubble tension controversy in cosmology",
+      "url": "https://www.quantamagazine.org/the-webb-telescope-further-deepens-the-biggest-controversy-in-cosmology-20240813/",
+      "posted_at": "2024-08-13T12:50:54Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "A long-awaited study of the cosmic expansion rate suggests that when it comes to the Hubble tension, cosmologists are still missing something.",
+      "description_source": "og:description",
+      "query": "Hubble",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35476359,
+      "hn_url": "https://news.ycombinator.com/item?id=35476359",
+      "title": "Hubble sees possible runaway black hole creating a trail of stars",
+      "url": "https://hubblesite.org/contents/news-releases/2023/news-2023-010",
+      "posted_at": "2023-04-07T00:12:28Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "There's an invisible monster on the loose, barreling through intergalactic space so fast that if it were in our solar system, it could travel",
+      "description_source": "og:description",
+      "query": "Hubble",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34408680,
+      "hn_url": "https://news.ycombinator.com/item?id=34408680",
+      "title": "Hubble finds black hole twisting captured star into donut shape",
+      "url": "https://phys.org/news/2023-01-hubble-hungry-black-hole-captured.html",
+      "posted_at": "2023-01-17T03:03:47Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Black holes are gatherers, not hunters. They lie in wait until a hapless star wanders by. When the star gets close enough, the black",
+      "description_source": "og:description",
+      "query": "Hubble",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 38176750,
+      "hn_url": "https://news.ycombinator.com/item?id=38176750",
+      "title": "Euclid's First Images",
+      "url": "https://www.esa.int/Science_Exploration/Space_Science/Euclid/Euclid_s_first_images_the_dazzling_edge_of_darkness",
+      "posted_at": "2023-11-07T13:58:52Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Euclid",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43223596,
+      "hn_url": "https://news.ycombinator.com/item?id=43223596",
+      "title": "Euclid finds complete Einstein Ring in NGC galaxy",
+      "url": "https://www.euclid-ec.org/einstein-ring-in-ngc-6505/",
+      "posted_at": "2025-03-01T20:56:03Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Gravitational lenses are rare in the sky – galaxies bending the light-paths of light from other galaxies behind them to form distorted or even",
+      "description_source": "og:description",
+      "query": "Euclid",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 46806773,
+      "hn_url": "https://news.ycombinator.com/item?id=46806773",
+      "title": "Europe’s next-generation weather satellite sends back first images",
+      "url": "https://www.esa.int/Applications/Observing_the_Earth/Meteorological_missions/meteosat_third_generation/Europe_s_next-generation_weather_satellite_sends_back_first_images",
+      "posted_at": "2026-01-29T07:07:17Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "The first images from the Meteosat Third Generation-Sounder satellite have been shared at the European Space Conference in Brussels, showing how the mission will",
+      "description_source": "og:description",
+      "query": "satellite",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 32601873,
+      "hn_url": "https://news.ycombinator.com/item?id=32601873",
+      "title": "SpaceX, T-Mobile to connect satellites to cellphones in remote areas",
+      "url": "https://www.wsj.com/articles/spacex-and-t-mobile-to-connect-starlink-satellites-to-cellphones-in-remote-parts-of-u-s-11661473520",
+      "posted_at": "2022-08-26T00:32:39Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "satellite",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49209918,
+      "hn_url": "https://news.ycombinator.com/item?id=49209918",
+      "title": "Stowaway – Take the window seat on any plane or satellite overhead",
+      "url": "https://stowaway.live/",
+      "posted_at": "2026-08-07T13:15:10Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "train",
+      "description": "Live 3D flight tracking in the sky that's actually above you — aircraft, satellites and stars where they really are. A flight tracker you",
+      "description_source": "og:description",
+      "query": "satellite",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 32071020,
+      "hn_url": "https://news.ycombinator.com/item?id=32071020",
+      "title": "James Webb first images – complete set of high resolution shots now live",
+      "url": "https://webbtelescope.org/news/news-releases?Collection=First%20Images",
+      "posted_at": "2022-07-12T15:03:49Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "Webb is the premier observatory of the next decade, serving thousands of astronomers worldwide. It studies every phase in the history of our Universe.",
+      "description_source": "og:description",
+      "query": "James Webb",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40687660,
+      "hn_url": "https://news.ycombinator.com/item?id=40687660",
+      "title": "Voyager 1 is back online: NASA spacecraft returns data from all 4 instruments",
+      "url": "https://www.space.com/voyager-1-fully-operational",
+      "posted_at": "2024-06-15T05:12:45Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "The spacecraft has resumed full science operations after a technical issue began creating complications in November 2023.",
+      "description_source": "og:description",
+      "query": "Voyager",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37995119,
+      "hn_url": "https://news.ycombinator.com/item?id=37995119",
+      "title": "NASA just sent a software update to a spacecraft 12B miles away",
+      "url": "https://bgr.com/science/nasa-just-sent-a-software-update-to-a-spacecraft-12-billion-miles-away/",
+      "posted_at": "2023-10-24T05:33:52Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "NASA just sent a critical software update to Voyager 2 and it took almost 18 hours to complete the upgrade.",
+      "description_source": "og:description",
+      "query": "NASA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 42731091,
+      "hn_url": "https://news.ycombinator.com/item?id=42731091",
+      "title": "Starship Flight 7",
+      "url": "https://www.spacex.com/launches/mission/?missionId=starship-flight-7?submit",
+      "posted_at": "2025-01-16T21:25:24Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "query": "Starship",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26294552,
+      "hn_url": "https://news.ycombinator.com/item?id=26294552",
+      "title": "The Mars Helicopter Is Online and Getting Ready to Fly",
+      "url": "https://www.universetoday.com/150224/the-mars-helicopter-is-online-and-getting-ready-to-fly/",
+      "posted_at": "2021-02-28T16:41:59Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Mars",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47649721,
+      "hn_url": "https://news.ycombinator.com/item?id=47649721",
+      "title": "Artemis II crew see first glimpse of far side of Moon [video]",
+      "url": "https://www.bbc.com/news/videos/ce3d5gkd2geo",
+      "posted_at": "2026-04-05T14:18:12Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "Astronauts on the Artemis II mission are on the third day of their journey around the far side of the Moon.",
+      "description_source": "og:description",
+      "query": "Moon",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49898778,
+      "hn_url": "https://news.ycombinator.com/item?id=49898778",
+      "title": "Show HN: Real-time Solar System with 526k asteroids and all tracked satellites",
+      "url": "https://space.bl2.net/",
+      "posted_at": "2026-09-29T19:08:01Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "A live 3D map of the Solar System in your browser: planets, moons, asteroids, comets, the ISS and thousands of Earth satellites — right",
+      "description_source": "og:description",
+      "query": "asteroid",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 40454383,
+      "hn_url": "https://news.ycombinator.com/item?id=40454383",
+      "title": "First pictures from Euclid satellite reveal billions of orphan stars",
+      "url": "https://www.nottingham.ac.uk/news/first-pictures-from-euclid-satellite-reveal-billions-of-orphan-stars",
+      "posted_at": "2024-05-23T13:22:47Z",
+      "category_ids": [
+        "space"
+      ],
+      "split": "evaluation",
+      "description": "The first scientific pictures from the Euclid satellite mission have revealed more than 1,500 billion orphan stars scattered throughout the Perseus cluster of galaxies.",
+      "description_source": "description",
+      "query": "Euclid",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37685580,
+      "hn_url": "https://news.ycombinator.com/item?id=37685580",
+      "title": "Raspberry Pi 5",
+      "url": "https://www.raspberrypi.com/products/raspberry-pi-5/",
+      "posted_at": "2023-09-28T05:29:21Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Raspberry Pi",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43738561,
+      "hn_url": "https://news.ycombinator.com/item?id=43738561",
+      "title": "Raspberry Pi Lidar Scanner",
+      "url": "https://github.com/PiLiDAR/PiLiDAR",
+      "posted_at": "2025-04-19T18:53:32Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "an open-source, low-cost DIY 360° LiDAR scanner and panoramic 3D reconstruction system. - PiLiDAR/PiLiDAR",
+      "description_source": "og:description",
+      "query": "Raspberry Pi",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 41138701,
+      "hn_url": "https://news.ycombinator.com/item?id=41138701",
+      "title": "Hackberry-Pi_Zero – A handheld Linux terminal using Raspberry Pi Zero 2W",
+      "url": "https://github.com/ZitaoTech/Hackberry-Pi_Zero",
+      "posted_at": "2024-08-02T13:34:37Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "A handheld Linux terminal using Raspberry pi Zero 2W as Core with 4\" 720X720 TFT display - ZitaoTech/Hackberry-Pi_Zero",
+      "description_source": "og:description",
+      "query": "Raspberry Pi",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 25885348,
+      "hn_url": "https://news.ycombinator.com/item?id=25885348",
+      "title": "I bought 200 Raspberry Pi Model B’s and I’m going to fix them",
+      "url": "https://blog.jmdawson.co.uk/i-bought-200-raspberry-pi-model-bs-and-im-going-to-fix-them-part-1/",
+      "posted_at": "2021-01-23T19:36:55Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "Raspberry Pi",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 25761469,
+      "hn_url": "https://news.ycombinator.com/item?id=25761469",
+      "title": "BeagleV – An affordable RISC-V computer designed to run Linux",
+      "url": "https://beaglev.seeed.cc/",
+      "posted_at": "2021-01-13T13:06:29Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "RISC-V",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40718124,
+      "hn_url": "https://news.ycombinator.com/item?id=40718124",
+      "title": "A new RISC-V Mainboard from DeepComputing",
+      "url": "https://frame.work/blog/introducing-a-new-risc-v-mainboard-from-deepcomputing",
+      "posted_at": "2024-06-18T14:15:16Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "We’re excited to share a preview of a Framework Laptop 13 Mainboard with a new CPU architecture.",
+      "description_source": "og:description",
+      "query": "RISC-V",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37532397,
+      "hn_url": "https://news.ycombinator.com/item?id=37532397",
+      "title": "Pineapple ONE: open-source 32 bit RISC-V CPU that you can make at home",
+      "url": "https://pineapple-one.github.io/",
+      "posted_at": "2023-09-16T06:04:13Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "RISC-V",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 30515014,
+      "hn_url": "https://news.ycombinator.com/item?id=30515014",
+      "title": "RISC-V is succeeding",
+      "url": "https://semiengineering.com/why-risc-v-is-succeeding/",
+      "posted_at": "2022-03-01T15:05:23Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "RISC-V",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40258037,
+      "hn_url": "https://news.ycombinator.com/item?id=40258037",
+      "title": "How to build a $20B semiconductor fab",
+      "url": "https://www.construction-physics.com/p/how-to-build-a-20-billion-semiconductor",
+      "posted_at": "2024-05-04T14:42:44Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "For the last several decades, one avenue of technological progress has towered over nearly everything else: semiconductors.",
+      "description_source": "og:description",
+      "query": "semiconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 45949326,
+      "hn_url": "https://news.ycombinator.com/item?id=45949326",
+      "title": "Britney Spears' Guide to Semiconductor Physics (2000)",
+      "url": "https://britneyspears.ac/lasers.htm",
+      "posted_at": "2025-11-16T23:15:20Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Britney Spears' Guide to Semiconductor Physics. Britney lectures on the semiconductor lasers and optoelectronic devices that make our lives easier.",
+      "description_source": "description",
+      "query": "semiconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37047053,
+      "hn_url": "https://news.ycombinator.com/item?id=37047053",
+      "title": "TSMC, Bosch, Infineon, NXP to jointly build semiconductor fab in Europe",
+      "url": "https://pr.tsmc.com/english/news/3049",
+      "posted_at": "2023-08-08T10:48:20Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Hsinchu, Stuttgart, Munich, Eindhoven, Aug 8, 2023 – TSMC (TWSE: 2330, NYSE: TSM), Robert Bosch GmbH, Infineon Technologies AG (FSE: IFX / OTCQX: IFNNY),",
+      "description_source": "og:description",
+      "query": "semiconductor",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 37062422,
+      "hn_url": "https://news.ycombinator.com/item?id=37062422",
+      "title": "I'm 17 and wrote this guide on how CPUs run programs",
+      "url": "https://github.com/hackclub/putting-the-you-in-cpu",
+      "posted_at": "2023-08-09T13:33:59Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "A technical explainer by @kognise of how your computer runs programs, from start to finish. - hackclub/putting-the-you-in-cpu",
+      "description_source": "og:description",
+      "query": "CPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 27588258,
+      "hn_url": "https://news.ycombinator.com/item?id=27588258",
+      "title": "Your CPU may have slowed down on Wednesday",
+      "url": "https://travisdowns.github.io/blog/2021/06/17/rip-zero-opt.html",
+      "posted_at": "2021-06-22T05:22:32Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The death of hardware store optimization.",
+      "description_source": "og:description",
+      "query": "CPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49420873,
+      "hn_url": "https://news.ycombinator.com/item?id=49420873",
+      "title": "Xiaomi: New CPU matches Apple cores single threaded, much faster multithreaded",
+      "url": "https://twitter.com/lemire/status/2091894299289874926",
+      "posted_at": "2026-08-24T15:08:17Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Xiaomi is the Chinese tech giant. Their phones compete with iPhones. Their new CPU roughly matches Apple cores on single threaded tasks, and is",
+      "description_source": "og:description",
+      "query": "CPU",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 45559857,
+      "hn_url": "https://news.ycombinator.com/item?id=45559857",
+      "title": "Wireguard FPGA",
+      "url": "https://github.com/chili-chips-ba/wireguard-fpga",
+      "posted_at": "2025-10-12T17:12:00Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Full-throttle, wire-speed hardware implementation of Wireguard VPN, using low-cost Artix7 FPGA with opensource toolchain. If you seek security and privacy, nothing is private in",
+      "description_source": "og:description",
+      "query": "FPGA",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 34022797,
+      "hn_url": "https://news.ycombinator.com/item?id=34022797",
+      "title": "Open source USB C camera with C mount lens, MIPI Sensor, Lattice FPGA, USB 3.0",
+      "url": "https://www.circuitvalley.com/2022/06/pensource-usb-c-industrial-camera-c-mount-fpga-imx-mipi-usb-3-crosslinknx.html",
+      "posted_at": "2022-12-17T00:44:00Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "This post is going yet another part in the DIY camera projects which have been doing since quite some time. In this post I",
+      "description_source": "og:description",
+      "query": "FPGA",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 39836745,
+      "hn_url": "https://news.ycombinator.com/item?id=39836745",
+      "title": "FuryGpu – Custom PCIe FPGA GPU",
+      "url": "https://www.furygpu.com",
+      "posted_at": "2024-03-27T08:37:38Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "FPGA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35804935,
+      "hn_url": "https://news.ycombinator.com/item?id=35804935",
+      "title": "How Does an FPGA Work?",
+      "url": "https://learn.sparkfun.com/tutorials/how-does-an-fpga-work/all",
+      "posted_at": "2023-05-03T17:11:47Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "FPGA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31344981,
+      "hn_url": "https://news.ycombinator.com/item?id=31344981",
+      "title": "Nvidia releases open-source GPU kernel modules",
+      "url": "https://developer.nvidia.com/blog/nvidia-releases-open-source-gpu-kernel-modules/",
+      "posted_at": "2022-05-11T19:59:46Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The first open-source release of GPU kernel modules for the Linux community helps improve NVIDIA GPU driver quality and security.",
+      "description_source": "og:description",
+      "query": "GPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33789940,
+      "hn_url": "https://news.ycombinator.com/item?id=33789940",
+      "title": "Tales of the M1 GPU",
+      "url": "https://asahilinux.org/2022/11/tales-of-the-m1-gpu/",
+      "posted_at": "2022-11-29T16:50:20Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Porting Linux to Apple Silicon",
+      "description_source": "twitter:description",
+      "query": "GPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31367365,
+      "hn_url": "https://news.ycombinator.com/item?id=31367365",
+      "title": "The Apple GPU and the impossible bug",
+      "url": "https://rosenzweig.io/blog/asahi-gpu-part-5.html",
+      "posted_at": "2022-05-13T13:32:28Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "GPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 38668713,
+      "hn_url": "https://news.ycombinator.com/item?id=38668713",
+      "title": "Intel, Samsung, and TSMC Demo 3D-Stacked Transistors",
+      "url": "https://spectrum.ieee.org/cfet-intel-samsung-tsmc",
+      "posted_at": "2023-12-16T23:15:55Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The Big Three can now all make CFETs—next stop on the Moore’s Law roadmap",
+      "description_source": "og:description",
+      "query": "transistor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35684585,
+      "hn_url": "https://news.ycombinator.com/item?id=35684585",
+      "title": "Second IC – Homemade 1000 transistor array chip (2021)",
+      "url": "http://sam.zeloof.xyz/second-ic/",
+      "posted_at": "2023-04-24T07:20:29Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "transistor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28925148,
+      "hn_url": "https://news.ycombinator.com/item?id=28925148",
+      "title": "New Optical Switch Up to 1000x Faster Than Transistors",
+      "url": "https://spectrum.ieee.org/optical-switch-1000x-faster-transistors",
+      "posted_at": "2021-10-19T23:45:09Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "“Optical accelerator” devices could one day soon turbocharge tailored applications",
+      "description_source": "og:description",
+      "query": "transistor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39921964,
+      "hn_url": "https://news.ycombinator.com/item?id=39921964",
+      "title": "MOnSter 6502: a working transistor-scale replica of the classic MOS 6502",
+      "url": "https://monster6502.com/",
+      "posted_at": "2024-04-03T19:31:38Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "transistor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 33991007,
+      "hn_url": "https://news.ycombinator.com/item?id=33991007",
+      "title": "A circuit simulator that doesn't look like it was made in 2003",
+      "url": "https://www.withdiode.com/projects/62716731-5e1e-4622-86af-90d8e6b5123b",
+      "posted_at": "2022-12-14T21:42:28Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "circuit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 43233143,
+      "hn_url": "https://news.ycombinator.com/item?id=43233143",
+      "title": "The Pentium contains a complicated circuit to multiply by three",
+      "url": "https://www.righto.com/2025/03/pentium-multiplier-adder-reverse-engineered.html",
+      "posted_at": "2025-03-02T18:04:35Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "This article is available in German at Heise Online . In 1993, Intel released the high-performance Pentium processor, the start of the long...",
+      "description_source": "og:description",
+      "query": "circuit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35437065,
+      "hn_url": "https://news.ycombinator.com/item?id=35437065",
+      "title": "Circuit.js – Electronic circuit simulator on the web",
+      "url": "http://lushprojects.com/circuitjs/circuitjs.html",
+      "posted_at": "2023-04-04T09:21:01Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "circuit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 32630740,
+      "hn_url": "https://news.ycombinator.com/item?id=32630740",
+      "title": "Open Circuits – No Starch Press [pdf]",
+      "url": "https://nostarch.com/download/OpenCircuits_Chapter1.pdf",
+      "posted_at": "2022-08-28T18:31:26Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "circuit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26263508,
+      "hn_url": "https://news.ycombinator.com/item?id=26263508",
+      "title": "The Framework Laptop",
+      "url": "https://frame.work/blog/introducing-the-framework-laptop",
+      "posted_at": "2021-02-25T15:09:34Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "The Framework Laptop, a thin, lightweight, high-performance 13.5” productivity notebook that can be upgraded, customized, and repaired.",
+      "description_source": "og:description",
+      "query": "Framework Laptop",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 31089677,
+      "hn_url": "https://news.ycombinator.com/item?id=31089677",
+      "title": "Framework Laptop Mainboard",
+      "url": "https://github.com/FrameworkComputer/Mainboard",
+      "posted_at": "2022-04-19T21:43:41Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Documentation for the Mainboard and other modules in the Framework Laptop 13 - FrameworkComputer/Framework-Laptop-13",
+      "description_source": "og:description",
+      "query": "Framework Laptop",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 35286544,
+      "hn_url": "https://news.ycombinator.com/item?id=35286544",
+      "title": "Framework Laptop 16",
+      "url": "https://frame.work/fr/fr/blog/introducing-the-framework-laptop-16",
+      "posted_at": "2023-03-24T08:40:09Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "We’re excited to share our next major product category, a high-performance 16” notebook, the Framework Laptop 16.",
+      "description_source": "og:description",
+      "query": "Framework Laptop",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40286029,
+      "hn_url": "https://news.ycombinator.com/item?id=40286029",
+      "title": "Apple introduces M4 chip",
+      "url": "https://www.apple.com/newsroom/2024/05/apple-introduces-m4-chip/",
+      "posted_at": "2024-05-07T14:37:32Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Apple today announced M4, the latest Apple-designed silicon chip delivering phenomenal performance to the all-new iPad Pro.",
+      "description_source": "og:description",
+      "query": "chip",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 40769001,
+      "hn_url": "https://news.ycombinator.com/item?id=40769001",
+      "title": "The tiny chip that powers Montreal subway tickets",
+      "url": "http://www.righto.com/2024/06/montreal-mifare-ultralight-nfc.html",
+      "posted_at": "2024-06-23T17:22:52Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "To use the Montreal subway (the Métro), you tap a paper ticket against the turnstile and it opens. The ticket works through a system",
+      "description_source": "og:description",
+      "query": "chip",
+      "description_truncated": true
+    },
+    {
+      "hn_id": 48663324,
+      "hn_url": "https://news.ycombinator.com/item?id=48663324",
+      "title": "OpenAI unveils its first custom chip, built by Broadcom",
+      "url": "https://techcrunch.com/2026/06/24/openai-unveils-its-first-custom-chip-built-by-broadcom/",
+      "posted_at": "2026-06-24T17:47:00Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "train",
+      "description": "Named Jalapeño, the new processor was designed specifically for the unique needs of OpenAI's inference systems.",
+      "description_source": "og:description",
+      "query": "chip",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 28740452,
+      "hn_url": "https://news.ycombinator.com/item?id=28740452",
+      "title": "E-Ink Magic Calendar that runs off a battery powered Raspberry Pi",
+      "url": "https://github.com/speedyg0nz/MagInkCal",
+      "posted_at": "2021-10-03T20:59:25Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "E-Ink Magic Calendar that automatically syncs to Google Calendar and runs off a battery powered Raspberry Pi Zero - speedyg0nz/MagInkCal",
+      "description_source": "og:description",
+      "query": "Raspberry Pi",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 32740653,
+      "hn_url": "https://news.ycombinator.com/item?id=32740653",
+      "title": "NASA selects SiFive and makes RISC-V the go-to ecosystem for future missions",
+      "url": "https://www.sifive.com/press/nasa-selects-sifive-and-makes-risc-v-the-go-to-ecosystem",
+      "posted_at": "2022-09-06T17:57:50Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "RISC-V",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 34907885,
+      "hn_url": "https://news.ycombinator.com/item?id=34907885",
+      "title": "Sam Zeloof and Jim Keller start a new semiconductor fab",
+      "url": "https://atomicsemi.com/",
+      "posted_at": "2023-02-23T07:35:23Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "fab2 builds the hardware and software needed to make chips, fabs, tools, and components.",
+      "description_source": "og:description",
+      "query": "semiconductor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 39751509,
+      "hn_url": "https://news.ycombinator.com/item?id=39751509",
+      "title": "Unconventional Uses of FPGAs",
+      "url": "https://voltagedivide.com/2024/03/18/unconventional-uses-of-fpgas/",
+      "posted_at": "2024-03-18T23:59:45Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "FPGA",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 37224042,
+      "hn_url": "https://news.ycombinator.com/item?id=37224042",
+      "title": "The first conformant M1 GPU driver",
+      "url": "https://rosenzweig.io/blog/first-conformant-m1-gpu-driver.html",
+      "posted_at": "2023-08-22T15:23:09Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "query": "GPU",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 26907176,
+      "hn_url": "https://news.ycombinator.com/item?id=26907176",
+      "title": "Cerebras’ new monster AI chip adds 1.4T transistors",
+      "url": "https://spectrum.ieee.org/tech-talk/semiconductors/processors/cerebras-giant-ai-chip-now-has-a-trillions-more-transistors",
+      "posted_at": "2021-04-22T19:37:25Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "Shift to 7-nanometer process boosts the second-generation chip’s transistor count to a mind boggling 2.6-trillion",
+      "description_source": "og:description",
+      "query": "transistor",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 49720143,
+      "hn_url": "https://news.ycombinator.com/item?id=49720143",
+      "title": "The Secret Life of Circuits",
+      "url": "https://blog.coredump.cx/p/the-secret-life-of-circuits-is-here",
+      "posted_at": "2026-09-15T23:15:05Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "Some pics, endorsements, and the reason the book exists in the first place.",
+      "description_source": "og:description",
+      "query": "circuit",
+      "description_truncated": false
+    },
+    {
+      "hn_id": 47852177,
+      "hn_url": "https://news.ycombinator.com/item?id=47852177",
+      "title": "Framework Laptop 13 Pro",
+      "url": "https://frame.work/laptop13pro",
+      "posted_at": "2026-04-21T18:00:34Z",
+      "category_ids": [
+        "hardware"
+      ],
+      "split": "evaluation",
+      "description": "The most repairable pro laptop is here. Get 20 hours of battery & peak performance with Intel Core Ultra Series 3. CNC aluminum with",
+      "description_source": "og:description",
+      "query": "Framework Laptop",
+      "description_truncated": true
+    }
+  ],
+  "description_word_limit": 24
+}

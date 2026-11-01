@@ -124,6 +124,7 @@ data class StoryRowModel(
     val tintFallbackArgb: Int? = null,
     // Decoded off-thread by the caller; do not mutate pixels after publishing the model.
     val previewImageBitmap: ImageBitmap? = null,
+    val categoryLabels: List<String> = emptyList(),
 )
 
 @Immutable
@@ -489,6 +490,7 @@ fun StoryRow(
                             comments = comments,
                         ) {
                             StoryMainContent(
+                                tintedSurface = if (style.tintCard) ({ background.value }) else null,
                                 model = model,
                                 style = renderedStyle,
                                 typography = typography,
@@ -605,6 +607,7 @@ private fun StoryContentRow(
 
 @Composable
 private fun StoryMainContent(
+    tintedSurface: (() -> Color)?,
     model: StoryRowModel,
     style: StoryRowStyle,
     typography: ContentTypography,
@@ -750,6 +753,7 @@ private fun StoryMainContent(
                     fontSize = titleSize.sp,
                     style = storyRowTextStyle,
                 )
+                StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges)
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
                     animate = animateContentChanges,

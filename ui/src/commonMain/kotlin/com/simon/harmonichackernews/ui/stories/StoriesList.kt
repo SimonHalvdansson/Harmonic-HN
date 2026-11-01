@@ -65,6 +65,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.categorization.ArticleCategoryPreferences
+import com.simon.harmonichackernews.categorization.ArticleCategoryRuntime
+import com.simon.harmonichackernews.categorization.ArticleCategoryRuntimeState
+import com.simon.harmonichackernews.categorization.ArticleCategorySettings
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.LookaheadScope
@@ -122,7 +127,13 @@ internal fun StoriesList(
     modifier: Modifier = Modifier,
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
+    categorySettings: ArticleCategorySettings? = null,
+    categoryRuntimeService: ArticleCategoryRuntime? = null,
 ) {
+    val categoryPreferences = categorySettings?.updates?.collectAsStateWithLifecycle(
+        initialValue = categorySettings.snapshot(),
+    )?.value ?: ArticleCategoryPreferences()
+    val categoryRuntime = categoryRuntimeService?.state?.collectAsStateWithLifecycle()?.value ?: ArticleCategoryRuntimeState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
@@ -368,6 +379,13 @@ internal fun StoriesList(
                             val storyRevision = controller.storyRevision(story.id)
                             val previewResource = controller.previewResource(story.id)
                                 ?.takeIf { it.pageUrl == story.url }
+                            val categoryDescription = previewResource?.summary?.description
+                                ?: story.presentation.linkSummaryDescription
+                            val categoryLabels = com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels(
+                                storyId = story.id, title = story.title, url = story.url, description = categoryDescription,
+                                preferences = categoryPreferences, runtime = categoryRuntimeService, runtimeState = categoryRuntime,
+                                eligible = !story.isFrontpageLink,
+                            )
                             // Rebuild cached ages on resume, and palette tints when the theme's
                             // card background changes.
                             val model = remember(
@@ -378,6 +396,7 @@ internal fun StoriesList(
                                 previewResource,
                                 storyItemModelCacheKey,
                                 modelTimeRefresh,
+                                categoryLabels,
                             ) {
                                 storyItemModel(
                                     story,
@@ -386,7 +405,7 @@ internal fun StoriesList(
                                     previewResource,
                                     // New or changed rows still need the current time during a long session.
                                     Clock.System.now().toEpochMilliseconds(),
-                                )
+                                ).copy(categoryLabels = categoryLabels)
                             }
                             val commented = story.id in controller.commentedStoryIds
                             val style = remember(story, settings, storyRevision, model.previewText, commented) {

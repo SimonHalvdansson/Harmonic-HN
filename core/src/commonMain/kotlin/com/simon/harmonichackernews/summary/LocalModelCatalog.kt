@@ -27,6 +27,7 @@ data class LocalModelDefinition(
     val downloadable: Boolean,
     val runtime: LocalModelRuntime,
     val contextTokens: Int,
+    val supportsSummarization: Boolean = true,
 )
 
 /** Portable, immutable catalog. Platform shells only map [LocalModelBrand] to artwork. */
@@ -38,6 +39,7 @@ object LocalModelCatalog {
     const val MODEL_MINISTRAL_3B = "ministral-3-3b"
     const val MODEL_LFM3_17B = "lfm-3-1.7b"
     const val MODEL_QWEN_2B = "qwen-3.5-2b"
+    const val MODEL_EMBEDDING_GEMMA_2 = "embeddinggemma-2-text-270m"
 
     /** Prevent persisted background work from downloading a retired or replaced artifact. */
     fun isCurrentDownload(id: String, url: String, fileName: String, sizeBytes: Long): Boolean =
@@ -45,6 +47,22 @@ object LocalModelCatalog {
             it.downloadable && it.id == id && it.url == url &&
                 it.fileName == fileName && it.sizeBytes == sizeBytes
         }
+
+    val embeddingModel = LocalModelDefinition(
+        id = MODEL_EMBEDDING_GEMMA_2,
+        displayName = "EmbeddingGemma 2",
+        parameterSize = "270M text",
+        quantization = "Mixed precision",
+        brand = LocalModelBrand.GOOGLE,
+        fileName = "embeddinggemma-2-text-270m.litertlm",
+        url = "https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm/resolve/" +
+            "9be6e8b90982095dc05c2bd162e4b954ee4dbac7/embeddinggemma-2-text-270m.litertlm?download=true",
+        sizeBytes = 164_626_432L,
+        downloadable = true,
+        runtime = LocalModelRuntime.LITERT_LM,
+        contextTokens = 256,
+        supportsSummarization = false,
+    )
 
     val models: List<LocalModelDefinition> = listOf(
         LocalModelDefinition(
@@ -144,5 +162,5 @@ object LocalModelCatalog {
             LocalModelRuntime.LITERT_LM,
             4096,
         ),
-    )
+    ) + embeddingModel
 }

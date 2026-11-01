@@ -33,6 +33,10 @@
 -dontwarn com.google.re2j.**
 
 # Runtime implementations are instantiated after their on-demand feature is installed.
+-keep class com.simon.harmonichackernews.localai.litert.LiteRtArticleEmbeddingBackend {
+    public <init>();
+}
+
 -keep class com.simon.harmonichackernews.localai.litert.LiteRtInferenceEngine {
     public <init>();
 }

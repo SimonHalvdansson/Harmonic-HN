@@ -99,6 +99,7 @@ class PostAskTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
             settings.setMode(mode)
+            settings.setStreamResponses(false)
             val repo = Repository()
             val localRequests = mutableListOf<SummaryRequest>()
             val engine = object : LocalSummaryEngine {
@@ -119,6 +120,9 @@ class PostAskTest {
             advanceUntilIdle()
             conversation.ask("Give me an example")
             advanceUntilIdle()
+            assertTrue(if (mode == AiSummaryMode.CLOUD) repo.configs.all { it.streamResponses }
+                else localRequests.all { it.streamResponses }, "Ask must stream even when summaries do not")
+            assertFalse(settings.snapshot().streamResponses)
             val input = if (mode == AiSummaryMode.CLOUD) repo.requests.last() else localRequests.last().text
             val json = Json.parseToJsonElement(input).jsonObject
             assertNull(json["source_context"]!!.jsonObject["summary_source"])

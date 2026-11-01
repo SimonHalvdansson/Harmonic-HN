@@ -401,6 +401,7 @@ private fun BoxScope.SubmissionsList(
                             ),
                         ),
                         listItem = true,
+                        animateChanges = true,
                         onLinkClick = { onIntent(SubmissionsIntent.OpenStoryLink(story)) },
                         onCommentClick = { onIntent(SubmissionsIntent.OpenStoryComments(story)) },
                         onPreviewLoadSuccess = {

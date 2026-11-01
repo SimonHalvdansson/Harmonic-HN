@@ -94,6 +94,8 @@ fun StoriesScreen(
     onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
+    categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
+    categoryRuntimeService: com.simon.harmonichackernews.categorization.ArticleCategoryRuntime? = null,
 ) {
     val settings = controller.displaySettings ?: return
     val localHazeState = rememberHazeState()
@@ -222,6 +224,8 @@ fun StoriesScreen(
             Box(Modifier.fillMaxSize().sharedHazeSource(hazeState)
                 .background(MaterialTheme.colorScheme.pageBackground)) {
                 StoriesList(
+                    categorySettings = categorySettings,
+                    categoryRuntimeService = categoryRuntimeService,
                     controller = controller,
                     settings = settings,
                     stories = controller.mainStories,
@@ -244,6 +248,8 @@ fun StoriesScreen(
         },
         searchLayer = {
             StoriesList(
+                categorySettings = categorySettings,
+                categoryRuntimeService = categoryRuntimeService,
                 controller = controller,
                 settings = settings,
                 stories = controller.searchStories,

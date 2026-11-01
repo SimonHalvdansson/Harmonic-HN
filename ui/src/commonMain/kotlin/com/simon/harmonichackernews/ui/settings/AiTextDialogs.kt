@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -53,16 +55,22 @@ fun AiSummaryTextDialog(
     asciiInput: Boolean,
     onSave: suspend (String) -> String?,
     onDismiss: () -> Unit,
+    capitalization: androidx.compose.ui.text.input.KeyboardCapitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+    maxLength: Int? = null,
 ) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
     var error by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+    val normalizedValue = if (trimValue) value.trim() else value
+    val lengthError = maxLength?.takeIf { normalizedValue.length > it }?.let { "Use $it characters or fewer" }
+    val displayedError = lengthError ?: error
 
     fun save() {
         if (saving) return
         val savedValue = if (trimValue) value.trim() else value
+        if (maxLength != null && savedValue.length > maxLength) return
         if (!allowEmpty && savedValue.isEmpty()) {
             error = "Required"
             return
@@ -89,9 +97,10 @@ fun AiSummaryTextDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize()
                     .padding(top = 4.dp)
                     .then(
-                        if (maxLines <= 1) {
+                        if (maxLines <= 1 && maxLength == null) {
                             Modifier.height(
                                 HarmonicDimens.compose_settings_dialog_single_line_field_height,
                             )
@@ -101,8 +110,13 @@ fun AiSummaryTextDialog(
                     )
                     .focusRequester(focusRequester),
                 label = { Text(hint) },
-                isError = error != null,
-                supportingText = error?.let { message -> { Text(message) } },
+                isError = displayedError != null,
+                supportingText = if (maxLength != null) {
+                    { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(displayedError.orEmpty(), Modifier.weight(1f))
+                        Text("${normalizedValue.length} / $maxLength")
+                    } }
+                } else displayedError?.let { message -> { Text(message) } },
                 singleLine = maxLines <= 1,
                 minLines = minLines,
                 maxLines = maxLines,
@@ -113,13 +127,15 @@ fun AiSummaryTextDialog(
                 ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (asciiInput) KeyboardType.Ascii else KeyboardType.Text,
+                    capitalization = capitalization,
                     imeAction = if (maxLines <= 1) ImeAction.Done else ImeAction.Default,
                 ),
                 keyboardActions = KeyboardActions(onDone = { save() }),
             )
         },
         confirmButton = {
-            SettingsDialogTextButton(onClick = { save() }, enabled = !saving) { Text("Save") }
+            SettingsDialogTextButton(onClick = { save() }, enabled = !saving && lengthError == null &&
+                (maxLength == null || allowEmpty || normalizedValue.isNotEmpty())) { Text("Save") }
         },
         dismissButton = {
             SettingsDialogTextButton(onClick = onDismiss, enabled = !saving) { Text("Cancel") }

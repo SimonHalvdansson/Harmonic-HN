@@ -11,12 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material3.Icon
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,18 +26,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.PortableCommentItem
-import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import org.jetbrains.compose.resources.painterResource
 
 /** Stateless comment-search surface backed by the shared comment-thread store. */
 @Composable
@@ -80,11 +68,6 @@ fun CommentSearchScreen(
         }
     }
     val matchLabel = if (visibleComments.size == 1) "MATCH" else "MATCHES"
-    val searchFieldColor = if (HarmonicTheme.isDark) {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest
-    }
 
     Column(Modifier.fillMaxWidth()) {
         Text(
@@ -99,7 +82,7 @@ fun CommentSearchScreen(
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
         )
-        TextField(
+        com.simon.harmonichackernews.ui.common.DialogSearchField(
             value = fieldValue,
             onValueChange = { value ->
                 fieldValue = value
@@ -110,21 +93,7 @@ fun CommentSearchScreen(
                 .height(56.dp)
                 .padding(horizontal = 24.dp)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Search comments") },
-            leadingIcon = { Icon(painterResource(Res.drawable.ic_search), null) },
-            shape = RoundedCornerShape(32.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = searchFieldColor,
-                unfocusedContainerColor = searchFieldColor,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Search,
-            ),
-            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-            singleLine = true,
+            placeholder = "Search comments",
         )
         LazyColumn(
             state = listState,

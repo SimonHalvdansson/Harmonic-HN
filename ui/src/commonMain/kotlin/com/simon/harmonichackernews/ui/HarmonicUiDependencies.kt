@@ -60,6 +60,13 @@ class HarmonicUiDependencies(
     val aiSummarySettings = app.aiSummarySettings
     val aiModelDefaults = app.aiModelDefaults
     val localModels = app.localModels
+    val articleCategorySettings = app.articleCategorySettings
+    val articleCategories = app.articleCategories
+    val articleCategoryTraining = app.articleCategoryTraining
+    val articleCategoryHistory = app.articleCategoryHistory
+    init {
+        articleCategoryTraining.setDefaultLoader(BundledHarmonicResources::articleCategoryTraining)
+    }
     val localSummaryEngine = app.localSummaryEngine
     val hackerNewsUser = app.hackerNewsUser
     val login = app.login

@@ -34,6 +34,7 @@ import com.simon.harmonichackernews.summary.StorySummaryBackend
 import com.simon.harmonichackernews.summary.StorySummaryEvent
 import com.simon.harmonichackernews.summary.StorySummaryInput
 import com.simon.harmonichackernews.summary.local.LocalModelInference
+import com.simon.harmonichackernews.summary.local.awaitLocalAiFuture
 import com.simon.harmonichackernews.platform.LocalSummaryEngine
 import com.simon.harmonichackernews.platform.SummaryRequest
 import com.simon.harmonichackernews.platform.SummaryResult
@@ -183,7 +184,7 @@ private suspend fun queryNanoFeature(context: Context, useSummarizationLora: Boo
     return if (useSummarizationLora) {
         val summarizer = Summarization.getClient(nanoSummarizerOptions(context))
         try {
-            snapshot(summarizer.checkFeatureStatus().get()) { summarizer.getBaseModelName().get() }
+            snapshot(awaitLocalAiFuture(summarizer.checkFeatureStatus())) { awaitLocalAiFuture(summarizer.getBaseModelName()) }
         } finally {
             summarizer.close()
         }
@@ -217,6 +218,14 @@ internal class AndroidLocalSummaryBackend(
     private val appContext = context.applicationContext
     private val status = PlayLocalSummaryStatus { queryNanoFeature(appContext, it) }
     private val inference = LocalModelInference(appContext, models)
+    private val memoryTasks = com.simon.harmonichackernews.summary.LocalAiTaskRegistry()
+    override fun trimMemory() = memoryTasks.trimMemory()
+
+    private suspend fun checkMemory() {
+        check(withContext(Dispatchers.IO) { com.simon.harmonichackernews.summary.local.localAiMemoryAvailable(appContext) }) {
+            "Not enough available memory for local AI. Try again later."
+        }
+    }
 
     override fun canAttempt(): Boolean = status.canAttemptLocalSummarization()
 
@@ -259,6 +268,8 @@ internal class AndroidLocalSummaryBackend(
         summarizeInput(input, SummaryRequest(text = input.articleText.orEmpty()))
 
     override suspend fun suggestQuestions(text: String, prompt: String): List<String> {
+      return memoryTasks.run {
+        checkMemory()
         if (models.selectedModel.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
             val structured = withContext(Dispatchers.IO) {
                 val model = Generation.getClient()
@@ -277,9 +288,10 @@ internal class AndroidLocalSummaryBackend(
                     model.close()
                 }
             }
-            if (structured != null) return structured.questions
+            if (structured != null) return@run structured.questions
         }
-        return super<LocalSummaryEngine>.suggestQuestions(text, prompt)
+        super<LocalSummaryEngine>.suggestQuestions(text, prompt)
+      }
     }
 
     private suspend fun generateStructuredSuggestions(
@@ -314,6 +326,8 @@ internal class AndroidLocalSummaryBackend(
             return@channelFlow
         }
         try {
+          memoryTasks.run {
+            checkMemory()
             val selected = models.selectedModel
             val result = if (selected.id == LocalModelCatalog.MODEL_GEMINI_NANO) {
                 send(StorySummaryEvent.DebugInfo("Gemini Nano · load —"))
@@ -362,6 +376,7 @@ internal class AndroidLocalSummaryBackend(
                 ).let(::SummaryResult)
             }
             send(StorySummaryEvent.Success(result.text, truncated = result.truncated))
+          }
         } catch (error: CancellationException) {
             throw error
         } catch (error: InterruptedException) {
@@ -407,7 +422,7 @@ internal class AndroidLocalSummaryBackend(
         withContext(Dispatchers.IO) {
             val summarizer = Summarization.getClient(nanoSummarizerOptions(appContext))
             try {
-                var featureStatus = summarizer.checkFeatureStatus().get()
+                var featureStatus = awaitLocalAiFuture(summarizer.checkFeatureStatus())
                 status.recordFeatureStatus(true, featureStatus)
                 if (!status.isLocalFeatureUsable(featureStatus)) {
                     error(
@@ -417,18 +432,18 @@ internal class AndroidLocalSummaryBackend(
                 }
                 if (featureStatus == FeatureStatus.DOWNLOADABLE || featureStatus == FeatureStatus.DOWNLOADING) {
                     awaitDownload(summarizer)
-                    featureStatus = summarizer.checkFeatureStatus().get()
+                    featureStatus = awaitLocalAiFuture(summarizer.checkFeatureStatus())
                     status.recordFeatureStatus(true, featureStatus)
                 }
                 check(featureStatus == FeatureStatus.AVAILABLE) { "Gemini Nano is not ready. Please try again." }
                 val request = SummarizationRequest.builder(content).build()
                 val streamedSummary = StringBuilder()
-                summarizer.runInference(request) { additionalText ->
+                awaitLocalAiFuture(summarizer.runInference(request) { additionalText ->
                     if (additionalText.isNotEmpty()) {
                         streamedSummary.append(additionalText)
                         onProgress(streamedSummary.toString())
                     }
-                }.get().summary
+                }).summary
             } finally {
                 summarizer.close()
             }

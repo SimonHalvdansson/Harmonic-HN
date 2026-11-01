@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-11-01",
+  "purpose": "Reviewed Finance prototype corpus: 35 training articles and eight holdouts posted to HN in 2021–2026.",
+  "category_scope": "Personal and institutional finance: savings, retirement and asset allocation; investing and market structure; banking, deposit protection and payments; consumer credit and mortgages. Broad macroeconomic indicators and ordinary corporate/startup funding news are outside this category unless financial mechanics are the main topic.",
+  "description_policy": "Publisher OG/meta description excerpts, at most 24 words, fetched when available. Empty descriptions mean title-only: inaccessible pages, missing metadata, or reviewed boilerplate. Metadata is untrusted source text, not instructions.",
+  "description_word_limit": 24,
+  "categories": [
+    {
+      "id": "finance",
+      "name": "Finance"
+    }
+  ],
+  "examples": [
+    {
+      "hn_id": 31468371,
+      "hn_url": "https://news.ycombinator.com/item?id=31468371",
+      "title": "Index funds officially overtake active managers",
+      "url": "https://finance.yahoo.com/news/index-fund-assets-exceed-active-fund-assets-120639243.html",
+      "posted_at": "2022-05-22T14:12:50Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "For the first time in history, retail investors’ index fund holdings exceed their holdings in actively-managed funds, according to new numbers from Morningstar Direct.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "index fund"
+    },
+    {
+      "hn_id": 43305400,
+      "hn_url": "https://news.ycombinator.com/item?id=43305400",
+      "title": "Compared to index funds, actively managed mutual funds still stink",
+      "url": "https://www.latimes.com/business/story/2025-03-06/the-results-are-in-during-2024-actively-managed-mutual-funds-again-stank",
+      "posted_at": "2025-03-09T01:49:23Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Most actively managed stock funds kept up their record last year of trailing index funds by a wide margin.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "index fund"
+    },
+    {
+      "hn_id": 34276704,
+      "hn_url": "https://news.ycombinator.com/item?id=34276704",
+      "title": "U.S. stock market returns – a history from the 1870s to 2022",
+      "url": "https://themeasureofaplan.com/us-stock-market-returns-1870s-to-present/",
+      "posted_at": "2023-01-06T16:25:57Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Facts and figures on U.S. stock market returns from 1871 to 2024. Annual returns, likelihood of losing money, best / worst months, and more.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "stock market"
+    },
+    {
+      "hn_id": 25713696,
+      "hn_url": "https://news.ycombinator.com/item?id=25713696",
+      "title": "The Hazards of Asset Allocation in a Late-Stage Major Bubble",
+      "url": "https://www.gmo.com/asia/research-library/waiting-for-the-last-dance",
+      "posted_at": "2021-01-10T11:39:40Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "The long bull market since 2009 has matured into an epic bubble, featuring extreme overvaluation, explosive price increases, frenzied issuance, and hysterically speculative investor",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "asset allocation"
+    },
+    {
+      "hn_id": 26543527,
+      "hn_url": "https://news.ycombinator.com/item?id=26543527",
+      "title": "Early-Retirement Update",
+      "url": "https://livingafi.com/2021/03/17/the-2021-early-retirement-update/",
+      "posted_at": "2021-03-22T17:04:22Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "I’ve had a difficult time finding a way to create a new entry on a blog that has essentially been dead since 2015. Yet,",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "retirement"
+    },
+    {
+      "hn_id": 28037317,
+      "hn_url": "https://news.ycombinator.com/item?id=28037317",
+      "title": "Spreadsheet formulas for personal finance",
+      "url": "https://bou.ke/blog/formulas/",
+      "posted_at": "2021-08-02T14:57:58Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "personal finance"
+    },
+    {
+      "hn_id": 33890925,
+      "hn_url": "https://news.ycombinator.com/item?id=33890925",
+      "title": "CS 007: Personal Finance for Engineers",
+      "url": "https://cs007.blog/",
+      "posted_at": "2022-12-07T05:27:19Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "omitted_after_review",
+      "description_truncated": false,
+      "query": "personal finance",
+      "metadata_review_note": "Publisher metadata contains only the institution and course years, so this example uses its HN title."
+    },
+    {
+      "hn_id": 38101388,
+      "hn_url": "https://news.ycombinator.com/item?id=38101388",
+      "title": "IBM cancels 401k matching, replaces with proprietary pension fund RBA",
+      "url": "https://old.reddit.com/r/IBM/comments/17lcfxe/401k_is_being_replaced_by_a_proprietary/",
+      "posted_at": "2023-11-01T17:12:12Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "401k"
+    },
+    {
+      "hn_id": 39928604,
+      "hn_url": "https://news.ycombinator.com/item?id=39928604",
+      "title": "Anatomy of a credit card rewards program",
+      "url": "https://www.bitsaboutmoney.com/archive/anatomy-of-credit-card-rewards-programs/",
+      "posted_at": "2024-04-04T10:35:17Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Credit card rewards are mostly funded out of interchange, a fee paid by businesses to accept cards.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "credit card"
+    },
+    {
+      "hn_id": 37490241,
+      "hn_url": "https://news.ycombinator.com/item?id=37490241",
+      "title": "Credit card debt collection",
+      "url": "https://www.bitsaboutmoney.com/archive/the-waste-stream-of-consumer-finance/",
+      "posted_at": "2023-09-12T23:45:06Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Credit card debt is the waste stream of consumer finance. The debt collection industry ends up being sordid, for complex structural and microeconomic reasons.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "credit card"
+    },
+    {
+      "hn_id": 29937545,
+      "hn_url": "https://news.ycombinator.com/item?id=29937545",
+      "title": "Mortgages are a manufactured product",
+      "url": "https://bam.kalzumeus.com/archive/mortgages-are-a-manufactured-product/",
+      "posted_at": "2022-01-14T17:47:44Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Mortgages are popularly thought of as loans, but to understand the industry, it's better to model them as complex manufactured products.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "mortgage"
+    },
+    {
+      "hn_id": 46139761,
+      "hn_url": "https://news.ycombinator.com/item?id=46139761",
+      "title": "Show HN: I built a dashboard to compare mortgage rates across 120 credit unions",
+      "url": "https://finfam.app/blog/credit-union-mortgages",
+      "posted_at": "2025-12-03T20:35:27Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Find the best credit union home loans with our daily-updated comparison of 140+ CUs. Compare 30Y/15Y fixed rates, ARMs, and Fannie Mae conforming loan",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "mortgage"
+    },
+    {
+      "hn_id": 44361494,
+      "hn_url": "https://news.ycombinator.com/item?id=44361494",
+      "title": "FICO to incorporate buy-now-pay-later loans into credit scores",
+      "url": "https://www.axios.com/2025/06/23/fico-credit-scores-bnpl-buy-now-pay-later",
+      "posted_at": "2025-06-24T00:03:56Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "credit score"
+    },
+    {
+      "hn_id": 30843782,
+      "hn_url": "https://news.ycombinator.com/item?id=30843782",
+      "title": "Shadow credit score could decide whether you get an apartment",
+      "url": "https://www.propublica.org/article/how-your-shadow-credit-score-could-decide-whether-you-get-an-apartment",
+      "posted_at": "2022-03-29T15:22:13Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "The vast tenant screening industry is subject to less regulation than credit scoring agencies, even though experts warn that algorithms could introduce racial or",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "credit score"
+    },
+    {
+      "hn_id": 35600882,
+      "hn_url": "https://news.ycombinator.com/item?id=35600882",
+      "title": "Apple Card’s new high-yield Savings account is now available, offering a 4.15 p",
+      "url": "https://www.apple.com/newsroom/2023/04/apple-cards-new-high-yield-savings-account-is-now-available-offering-a-4-point-15-percent-apy/",
+      "posted_at": "2023-04-17T14:07:19Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "With no fees, no minimum deposits, and no minimum balance requirements, users can easily set up and manage their Savings account directly from Wallet.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "savings account"
+    },
+    {
+      "hn_id": 29357215,
+      "hn_url": "https://news.ycombinator.com/item?id=29357215",
+      "title": "Bank transfers as a payment method",
+      "url": "https://bam.kalzumeus.com/archive/bank-transfers-as-a-payment-method/",
+      "posted_at": "2021-11-27T03:50:05Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Bank transfers have exploded as a payment method in India and may become more common in much of the world.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "bank transfer"
+    },
+    {
+      "hn_id": 39292070,
+      "hn_url": "https://news.ycombinator.com/item?id=39292070",
+      "title": "The EU sets the limit for bank transfer time to 10 seconds",
+      "url": "https://www.europarl.europa.eu/news/en/press-room/20240202IPR17318/ensuring-euro-money-transfers-arrive-within-ten-seconds",
+      "posted_at": "2024-02-07T18:16:32Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "bank transfer"
+    },
+    {
+      "hn_id": 36801491,
+      "hn_url": "https://news.ycombinator.com/item?id=36801491",
+      "title": "FedNow Is Live",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/other20230720a.htm",
+      "posted_at": "2023-07-20T15:00:25Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "The Federal Reserve on Thursday announced that its new system for instant payments, the FedNow ® Service, is now live. Banks and credit unions",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "FedNow"
+    },
+    {
+      "hn_id": 30259183,
+      "hn_url": "https://news.ycombinator.com/item?id=30259183",
+      "title": "Apple unveils contactless payments via Tap to Pay on iPhone",
+      "url": "https://www.apple.com/newsroom/2022/02/apple-unveils-contactless-payments-via-tap-to-pay-on-iphone/",
+      "posted_at": "2022-02-08T15:03:21Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "Apple today announced plans to introduce Tap to Pay on iPhone, empowering merchants in the US to accept contactless payments.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "payment"
+    },
+    {
+      "hn_id": 43620279,
+      "hn_url": "https://news.ycombinator.com/item?id=43620279",
+      "title": "Brazil's government-run payments system has become dominant",
+      "url": "https://www.economist.com/the-americas/2025/04/03/brazils-government-run-payments-system-has-become-dominant",
+      "posted_at": "2025-04-08T10:59:26Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "payment"
+    },
+    {
+      "hn_id": 31302310,
+      "hn_url": "https://news.ycombinator.com/item?id=31302310",
+      "title": "No Fixed Address Bank Account",
+      "url": "https://www.hsbc.co.uk/help/money-worries/no-fixed-address/",
+      "posted_at": "2022-05-08T08:41:17Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "We're working with charities to help the homeless and customers with no fixed address open an HSBC bank account.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "bank account"
+    },
+    {
+      "hn_id": 35128646,
+      "hn_url": "https://news.ycombinator.com/item?id=35128646",
+      "title": "FDIC Establishes Signature Bridge Bank, N.A., As Successor to Signature Bank",
+      "url": "https://www.fdic.gov/news/press-releases/2023/pr23018.html",
+      "posted_at": "2023-03-13T00:12:39Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "FDIC"
+    },
+    {
+      "hn_id": 45474301,
+      "hn_url": "https://news.ycombinator.com/item?id=45474301",
+      "title": "SEC approves Texas Stock Exchange, first new US integrated exchange in decades",
+      "url": "https://www.cbsnews.com/texas/news/sec-approves-texas-stock-exchange-txse/",
+      "posted_at": "2025-10-04T16:04:24Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "The SEC approved TXSE ​as a national securities exchange, paving the way for the first new, fully integrated U.S. stock exchange in decades —",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "stock exchange"
+    },
+    {
+      "hn_id": 36358754,
+      "hn_url": "https://news.ycombinator.com/item?id=36358754",
+      "title": "Pricing Money: A beginner's guide to money, bonds, futures and swaps",
+      "url": "http://www.jdawiseman.com/books/pricing-money/Pricing_Money_JDAWiseman.html",
+      "posted_at": "2023-06-16T15:54:25Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "The text of Pricing Money, J. D. A Wiseman, Wiley (2001)",
+      "description_source": "description",
+      "description_truncated": false,
+      "query": "bond"
+    },
+    {
+      "hn_id": 26485756,
+      "hn_url": "https://news.ycombinator.com/item?id=26485756",
+      "title": "Why in the world would you own bonds?",
+      "url": "https://www.bridgewater.com/research-and-insights/why-in-the-world-would-you-own-bonds-when",
+      "posted_at": "2021-03-17T02:20:31Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "…Bond markets offer ridiculously low yields? Founder and Co-CIO Ray Dalio describes this new paradigm and implications for investors.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "bond"
+    },
+    {
+      "hn_id": 40220722,
+      "hn_url": "https://news.ycombinator.com/item?id=40220722",
+      "title": "Takeaways from the Jane Street bond prospectus",
+      "url": "https://www.ft.com/content/54671865-4c7f-4692-a879-867ef68f0bde",
+      "posted_at": "2024-05-01T08:05:56Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "bond"
+    },
+    {
+      "hn_id": 33028673,
+      "hn_url": "https://news.ycombinator.com/item?id=33028673",
+      "title": "UK pensions hit with margin calls as gilts and sterling slide",
+      "url": "https://www.risk.net/derivatives/7954682/uk-pensions-hit-with-ps100m-margin-calls-as-gilts-and-sterling-slide",
+      "posted_at": "2022-09-29T23:18:48Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "At least three LDI managers request emergency capital as others consider unwinds to avoid default",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "pension"
+    },
+    {
+      "hn_id": 28896640,
+      "hn_url": "https://news.ycombinator.com/item?id=28896640",
+      "title": "The high-frequency trading arms race: frequent batch auctions (2015)",
+      "url": "https://academic.oup.com/qje/article/130/4/1547/1916146",
+      "posted_at": "2021-10-17T14:20:04Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "high frequency trading"
+    },
+    {
+      "hn_id": 26271960,
+      "hn_url": "https://news.ycombinator.com/item?id=26271960",
+      "title": "The GameStop Mess Exposes the Naked Short Selling Scam – The American Prospect",
+      "url": "https://prospect.org/power/gamestop-mess-exposes-the-naked-short-selling-scam/",
+      "posted_at": "2021-02-26T06:40:20Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "A decade ago, a Biden confidant tried to stop it. Now there’s another chance.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "short selling"
+    },
+    {
+      "hn_id": 48626918,
+      "hn_url": "https://news.ycombinator.com/item?id=48626918",
+      "title": "Investors get real-time view of UK bond market activity for the first time",
+      "url": "https://www.fca.org.uk/news/press-releases/investors-get-real-time-view-uk-bond-market-activity-first-time",
+      "posted_at": "2026-06-22T07:29:17Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "For the first time, investors and market participants can access a single, real-time source of prices and trading activity across the UK bond market,",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "bond market"
+    },
+    {
+      "hn_id": 35239746,
+      "hn_url": "https://news.ycombinator.com/item?id=35239746",
+      "title": "Credit Suisse’s takeover causes turmoil in a $275B bond market",
+      "url": "https://www.economist.com/finance-and-economics/2023/03/20/credit-suisses-takeover-causes-turmoil-in-a-275bn-bond-market",
+      "posted_at": "2023-03-20T22:29:50Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "bond market"
+    },
+    {
+      "hn_id": 45537769,
+      "hn_url": "https://news.ycombinator.com/item?id=45537769",
+      "title": "Digital euro could drain up to 700B euros of deposits in bank run, ECB says",
+      "url": "https://www.reuters.com/business/finance/digital-euro-could-drain-up-700-billion-euros-deposits-bank-run-ecb-says-2025-10-10/",
+      "posted_at": "2025-10-10T11:41:58Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "bank run"
+    },
+    {
+      "hn_id": 46692594,
+      "hn_url": "https://news.ycombinator.com/item?id=46692594",
+      "title": "Danish pension fund divesting US Treasuries",
+      "url": "https://www.reuters.com/business/danish-pension-fund-divest-its-us-treasuries-2026-01-20/",
+      "posted_at": "2026-01-20T15:11:45Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "Treasury"
+    },
+    {
+      "hn_id": 48333820,
+      "hn_url": "https://news.ycombinator.com/item?id=48333820",
+      "title": "Danish pension fund excludes SpaceX citing governance and valuation",
+      "url": "https://www.reuters.com/legal/transactional/danish-pension-fund-excludes-spacex-citing-governance-valuation-2026-05-29/",
+      "posted_at": "2026-05-30T08:00:20Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "pension"
+    },
+    {
+      "hn_id": 31961389,
+      "hn_url": "https://news.ycombinator.com/item?id=31961389",
+      "title": "Lost around 150k of stock from my fidelity brokerage account (ACATS Transfer)",
+      "url": "https://old.reddit.com/r/fidelityinvestments/comments/vp522f/lost_around_150k_worth_of_stock_from_my_fidelity/",
+      "posted_at": "2022-07-02T18:54:50Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "train",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "brokerage"
+    },
+    {
+      "hn_id": 33547658,
+      "hn_url": "https://news.ycombinator.com/item?id=33547658",
+      "title": "No, You Aren’t Going to Get Rich by Options Trading",
+      "url": "https://jacobin.com/2022/11/options-trading-stock-market-inequality",
+      "posted_at": "2022-11-10T15:15:47Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "Options trading is sold as a way for average people to make money off the stock market. But it’s not: small-time investors are being",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "options trading"
+    },
+    {
+      "hn_id": 36864115,
+      "hn_url": "https://news.ycombinator.com/item?id=36864115",
+      "title": "Is technical analysis just stock market astrology?",
+      "url": "https://alicegg.tech//2023/07/25/technical-analysis.html",
+      "posted_at": "2023-07-25T15:49:39Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "Technical analysis is a part of finance that studies price moves to guide investment decisions.A lot of investors seem skeptical of the use of",
+      "description_source": "description",
+      "description_truncated": true,
+      "query": "stock market"
+    },
+    {
+      "hn_id": 42442354,
+      "hn_url": "https://news.ycombinator.com/item?id=42442354",
+      "title": "ISO 8583: The language of credit cards",
+      "url": "https://increase.com/articles/iso-8583-the-language-of-credit-cards",
+      "posted_at": "2024-12-17T15:53:52Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "Discover the inner workings of ISO 8583, the global standard for credit card transaction messaging. Learn how it powers payment processing across networks and",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "credit card"
+    },
+    {
+      "hn_id": 42149044,
+      "hn_url": "https://news.ycombinator.com/item?id=42149044",
+      "title": "Show HN: Free mortgage analysis tool to avoid getting screwed by closing costs",
+      "url": "https://closingwtf.com",
+      "posted_at": "2024-11-15T17:38:49Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "Closing on a Mortgage? We help homebuyers analyze their mortgage loan estimate and closing disclosure to make informed decisions about negotiating and saving on",
+      "description_source": "og:description",
+      "description_truncated": true,
+      "query": "mortgage"
+    },
+    {
+      "hn_id": 38943291,
+      "hn_url": "https://news.ycombinator.com/item?id=38943291",
+      "title": "Spot Bitcoin ETF receives official approval from the SEC",
+      "url": "https://cointelegraph.com/news/sec-spot-bitcoin-etf-approvals",
+      "posted_at": "2024-01-10T21:16:58Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "The SEC has finally approved a spot Bitcoin ETF in the United States, following a controversial false announcement earlier in the week.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "ETF"
+    },
+    {
+      "hn_id": 45267603,
+      "hn_url": "https://news.ycombinator.com/item?id=45267603",
+      "title": "Credit scores drop at fastest pace since the Great Recession",
+      "url": "https://www.cnn.com/2025/09/16/economy/debt-credit-score-student-loans",
+      "posted_at": "2025-09-16T20:33:28Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "The national average FICO score dropped by two points this year, the most since 2009, according to a data released Tuesday by FICO.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "credit score"
+    },
+    {
+      "hn_id": 43604052,
+      "hn_url": "https://news.ycombinator.com/item?id=43604052",
+      "title": "Capitol Trades: Tracking Stock Market Transactions of Politicians",
+      "url": "https://www.capitoltrades.com/",
+      "posted_at": "2025-04-06T19:06:58Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "",
+      "description_source": "unavailable",
+      "description_truncated": false,
+      "query": "stock market"
+    },
+    {
+      "hn_id": 27280096,
+      "hn_url": "https://news.ycombinator.com/item?id=27280096",
+      "title": "Stripe Payment Links",
+      "url": "https://stripe.com/payments/payment-links",
+      "posted_at": "2021-05-25T18:00:30Z",
+      "category_ids": [
+        "finance"
+      ],
+      "split": "evaluation",
+      "description": "Effortlessly create and share a comprehensive payment page in just a few clicks with Stripe Payment Links. No website or coding skills required.",
+      "description_source": "og:description",
+      "description_truncated": false,
+      "query": "payment"
+    }
+  ]
+}
