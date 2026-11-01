@@ -37,6 +37,7 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
     var method by rememberSaveable { mutableStateOf("umap") }
     var highlighted by rememberSaveable { mutableStateOf<String?>(null) }
     var selected by rememberSaveable { mutableStateOf<Int?>(null) }
+    var explanationStep by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(attempt) {
         failed = false
         try { if (data == null) data = CategoryExplorationResources.load() }
@@ -45,7 +46,10 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
     }
     val colors = categoryMapColors()
     SettingsPage("How categories work", true, onBack,
-        contentVersion = (data?.hashCode() ?: 0) + method.hashCode() + (highlighted?.hashCode() ?: 0) + (selected ?: 0) + attempt + failed.hashCode()) {
+        contentVersion = (data?.hashCode() ?: 0) + method.hashCode() + (highlighted?.hashCode() ?: 0) + (selected ?: 0) + attempt + failed.hashCode() + explanationStep) {
+        item(key = "embedding-walkthrough") {
+            CategoryEmbeddingWalkthrough(explanationStep, onStepChanged = { explanationStep = it })
+        }
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
                 Text("A map of meaning", fontFamily = ProductSansFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
@@ -71,16 +75,6 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
                 }
             }
         }
-        item {
-            SettingsCategory("From text to labels") {
-                ExplanationStep("1", "Turn story into vector", "EmbeddingGemma encodes the headline and useful preview text as a normalized, 768-dimensional vector. If no useful preview is available, it uses the headline alone. Inference runs on your device.")
-                SettingsDivider()
-                ExplanationStep("2", "Compare against references", "Each input is compared with references prepared the same way: headlines with headlines, or previews with previews. We subtract their shared background, then compare topic information with each category’s center using cosine similarity.")
-                SettingsDivider()
-                ExplanationStep("3", "Apply similarity cutoff", "Similarity is displayed on a 0–100 scale, not as a probability. Labels must meet your cutoff. Additional labels must also be at least three quarters as strong as the best match, up to your maximum label count.")
-            }
-        }
-
     }
 }
 
@@ -114,22 +108,6 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
                     fontFamily = ProductSansFontFamily, fontSize = 12.sp,
                     lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }
-    }
-}
-
-@Composable
-private fun ExplanationStep(number: String, title: String, body: String) {
-    Row(Modifier.padding(horizontal = 24.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
-            Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
-                Text(number, fontFamily = ProductSansFontFamily, fontSize = 14.sp)
-            }
-        }
-        Column {
-            Text(title, fontFamily = ProductSansFontFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text(body, Modifier.padding(top = 4.dp), fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 21.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
