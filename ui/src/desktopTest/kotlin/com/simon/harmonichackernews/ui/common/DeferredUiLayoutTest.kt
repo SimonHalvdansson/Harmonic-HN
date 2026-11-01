@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.ImageComposeScene
@@ -37,6 +39,58 @@ import kotlin.math.abs
 
 class DeferredUiLayoutTest {
     @Test
+    fun headerPaddingSurvivesScreenRecreationInsideLookahead() = SwingUtilities.invokeAndWait {
+        val height = mutableIntStateOf(48)
+        val visible = mutableStateOf(true)
+        val list = LazyListState()
+        val scene = ImageComposeScene(400, 800, Density(1f)) {
+            LookaheadScope {
+                if (visible.value) {
+                    val measured = remember { MeasuredHeaderState() }
+                    val padding = remember {
+                        MeasuredHeaderPadding(PaddingValues(bottom = 8.dp), measured.height, Density(1f))
+                    }
+                    MeasuredHeaderLayout(measured, Modifier.fillMaxSize().recalculateWindowInsets(), header = {
+                        Spacer(Modifier.fillMaxWidth().height(height.intValue.dp))
+                    }) {
+                        LookaheadScope {
+                            LazyColumn(state = list, contentPadding = padding,
+                                modifier = Modifier.fillMaxSize().measuredHeaderContent(measured)) {
+                                items(30, key = { it }, contentType = { "row" }) {
+                                    Spacer(Modifier.fillMaxWidth().height(40.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        var frame = 0L
+        fun render() {
+            Snapshot.sendApplyNotifications()
+            scene.render(frame++ * 16_666_667L).close()
+        }
+        try {
+            repeat(3) { render() }
+            assertEquals(48, list.layoutInfo.beforeContentPadding)
+            height.intValue = 96
+            repeat(3) { render() }
+            assertEquals(96, list.layoutInfo.beforeContentPadding)
+            for (newHeight in listOf(96, 48, 144)) {
+                visible.value = false
+                render()
+                height.intValue = newHeight
+                visible.value = true
+                repeat(3) { render() }
+                assertEquals(newHeight, list.layoutInfo.beforeContentPadding)
+                assertEquals(0, list.firstVisibleItemIndex)
+                assertEquals(0, list.firstVisibleItemScrollOffset)
+                assertEquals(0, list.layoutInfo.visibleItemsInfo.first().offset)
+            }
+        } finally { scene.close() }
+    }
+
+    @Test
     fun headerPaddingIsCorrectOnFirstLayoutAndResizesWithoutRecomposition() = SwingUtilities.invokeAndWait {
         val height = mutableIntStateOf(48)
         val list = LazyListState()
@@ -45,7 +99,7 @@ class DeferredUiLayoutTest {
             val measured = remember { MeasuredHeaderState() }
             val padding = remember { MeasuredHeaderPadding(PaddingValues(bottom = 8.dp), measured.height, Density(1f)) }
             SideEffect { commits++ }
-            MeasuredHeaderLayout(measured, Modifier.fillMaxSize(), header = {
+            MeasuredHeaderLayout(measured, Modifier.fillMaxSize().recalculateWindowInsets(), header = {
                 Spacer(Modifier.layout { measurable, constraints ->
                     val child = measurable.measure(Constraints.fixed(constraints.maxWidth, height.intValue))
                     layout(child.width, child.height) { child.place(0, 0) }

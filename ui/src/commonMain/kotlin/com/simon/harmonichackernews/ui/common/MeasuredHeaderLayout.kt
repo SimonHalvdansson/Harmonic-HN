@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.IntState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.node.LayoutModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateMeasurement
@@ -17,13 +19,14 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 
 internal class MeasuredHeaderState {
-    private var measuredHeight = 0
     val height = mutableIntStateOf(0)
     var invalidateContentMeasurement: (() -> Unit)? = null
 
     fun measured(heightPx: Int) {
-        if (measuredHeight == heightPx) return
-        measuredHeight = heightPx
+        // Compare in the same snapshot that will supply the list padding. A separate raw
+        // cache can retain a measurement from another (or discarded) snapshot and skip
+        // publishing it here. Do not subscribe the parent measure pass to its own output.
+        if (Snapshot.withoutReadObservation { height.intValue } == heightPx) return
         height.intValue = heightPx
         // Snapshot notifications arrive after layout. Mark the consumer dirty now so an
         // unchanged viewport constraint cannot reuse the lazy list's previous measurement.
@@ -79,7 +82,9 @@ internal fun MeasuredHeaderLayout(
     content: @Composable () -> Unit,
 ) {
     Layout(modifier = modifier, content = {
-        Box { header() }
+        // recalculateWindowInsets measures its content during placement. Later header-only
+        // remeasures can skip this parent's measure block, so publish those size changes too.
+        Box(Modifier.onSizeChanged { headerHeight.measured(it.height) }) { header() }
         Box { content() }
         if (foreground != null) Box { foreground() }
     }) { measurables, constraints ->
