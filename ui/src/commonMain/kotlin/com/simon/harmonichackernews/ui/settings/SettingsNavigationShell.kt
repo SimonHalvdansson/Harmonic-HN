@@ -102,7 +102,11 @@ fun SettingsNavigationShell(
     val retainedContent = rememberSettingsRetainedContent(navigationState, isTwoPane)
     val listContent: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection) -> Unit) -> Unit =
         { selected, showSelection, onBack, onSelect ->
-            retainedContent.List { renderList(selected, showSelection, onBack, onSelect) }
+            retainedContent.List {
+                CompositionLocalProvider(LocalSettingsSearchTransition provides navigation.searchTransition) {
+                    renderList(selected, showSelection, onBack, onSelect)
+                }
+            }
         }
     val renderDetailWithOrigin: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection, Boolean) -> Unit) -> Unit =
         { section, singlePane, onBack, onNavigate ->
@@ -165,6 +169,7 @@ fun SettingsNavigationShell(
                 predictiveBackOverlay = predictiveBackOverlay,
                 completedPredictiveBack = completedPredictiveBack,
                 modifier = Modifier.fillMaxSize(),
+                searchTransition = navigation.searchTransition,
             )
         } else {
             val searching = SettingsSection.Search in navigationState.detailStack
@@ -192,11 +197,16 @@ fun SettingsNavigationShell(
                         },
                     ),
                 ) {
-                    if (searching) {
-                        renderDetailWithOrigin(SettingsSection.Search, false, ::navigateBack, ::navigateTo)
-                    } else {
-                        listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) }
-                    }
+                    ActivityNavigationStack(
+                        entries = if (searching) listOf(SettingsSection.Search) else emptyList(),
+                        entryKey = { it },
+                        completedPredictiveBack = completedPredictiveBack,
+                        surfaceTransitions = mapOf(SettingsSection.Search to { transition, skipExit, content ->
+                            SettingsSearchTransitionViewport(navigation.searchTransition, transition, skipExit, content)
+                        }),
+                        root = { listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) } },
+                        content = { renderDetailWithOrigin(it, false, ::navigateBack, ::navigateTo) },
+                    )
                 }
                 entry<SettingsTwoPaneDetailDestination>(
                     metadata = ListDetailSceneStrategy.detailPane(),
@@ -250,6 +260,7 @@ fun SettingsNavigationShell(
  */
 @Composable
 private fun SinglePaneSettingsNavigation(
+    searchTransition: SettingsSearchTransitionState,
     detailStack: List<SettingsSection>,
     selectedSection: SettingsSection,
     onBackFromSettings: () -> Unit,
@@ -279,6 +290,9 @@ private fun SinglePaneSettingsNavigation(
             ActivityBackPreview(it.sourceSection, it.parentSection, it.enterModifier, it.exitModifier)
         },
         modifier = modifier,
+        surfaceTransitions = mapOf(SettingsSection.Search to { transition, skipExit, content ->
+            SettingsSearchTransitionViewport(searchTransition, transition, skipExit, content)
+        }),
         root = {
             Box(Modifier.fillMaxSize().themeBackground { pageBackground }) {
                 CompositionLocalProvider(LocalStatusBarScrollToTopEnabled provides

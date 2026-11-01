@@ -13,13 +13,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** A retained surface can supply component-specific motion with the same interruption policy. */
+interface PredictiveBackAnimation {
+    suspend fun finish()
+    suspend fun cancel()
+    suspend fun finishImmediately()
+}
+
 /** A released gesture is committed even if another gesture interrupts its settling animation. */
 class PredictiveBackCompletion {
     private var pending: (() -> Job)? = null
 
     fun finish(
         scope: CoroutineScope,
-        animation: DefaultActivityPredictiveBackAnimation,
+        animation: PredictiveBackAnimation,
         frameHoldCount: Int = 0,
         onCommit: () -> Unit,
         onFinished: () -> Unit,

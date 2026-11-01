@@ -51,6 +51,7 @@ class SettingsNavigationStore(
     // Keep reading positions for the whole Settings visit, including recreation of the
     // outer navigation surface when its retained transition changes pane layout.
     val scrollHistory = SettingsScrollHistory()
+    internal val searchTransition = SettingsSearchTransitionState()
 
     private val mutableState = MutableStateFlow(
         SettingsNavigationState(

@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
  */
 class DefaultActivityPredictiveBackAnimation(
     private val initialEvent: NavigationEvent,
-) {
+) : PredictiveBackAnimation {
     private val finishProgressAnimatable = Animatable(initialValue = 0f)
     private val progressAnimatable = Animatable(
         initialValue = BackGestureEasing.transform(initialEvent.progress),
@@ -130,7 +130,7 @@ class DefaultActivityPredictiveBackAnimation(
         progressAnimatable.animateTo(BackGestureEasing.transform(event.progress))
     }
 
-    suspend fun finish() {
+    override suspend fun finish() {
         val velocityFactor = progressAnimatable.velocity.coerceAtMost(1f)
         val progress = progressAnimatable.value
 
@@ -146,11 +146,11 @@ class DefaultActivityPredictiveBackAnimation(
         }
     }
 
-    suspend fun cancel() {
+    override suspend fun cancel() {
         progressAnimatable.animateTo(0f)
     }
 
-    internal suspend fun finishImmediately() {
+    override suspend fun finishImmediately() {
         finishProgressAnimatable.snapTo(1f)
     }
 

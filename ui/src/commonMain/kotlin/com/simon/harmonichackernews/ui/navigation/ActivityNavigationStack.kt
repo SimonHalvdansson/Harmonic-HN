@@ -6,6 +6,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -45,6 +47,12 @@ internal data class ActivityBackPreview<K : Any>(
     val exitModifier: Modifier,
 )
 
+internal typealias ActivitySurfaceTransition = @Composable (
+    transition: Transition<EnterExitState>,
+    skipExit: Boolean,
+    content: @Composable () -> Unit,
+) -> Unit
+
 private class ActivityStackLayer<T, K : Any>(
     entry: T,
     val key: K,
@@ -75,6 +83,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
     fadeOnly: (T) -> Boolean = { false },
     hideCoveredRoot: Boolean = false,
     reflowKey: Any? = Unit,
+    surfaceTransitions: Map<K, ActivitySurfaceTransition> = emptyMap(),
 ) {
     // Reflow changes pane ownership, not navigation history. Reconcile it without retained exits.
     val layers = remember(reflowKey) {
@@ -105,7 +114,8 @@ internal fun <T, K : Any> ActivityNavigationStack(
     }
     val offsetPx = with(LocalDensity.current) { ActivityNavigationTransitionOffset.roundToPx() }
     val rootOffset by animateFloatAsState(
-        targetValue = if (entries.isNotEmpty() && !fadeOnly(entries.last())) -offsetPx.toFloat() else 0f,
+        targetValue = if (entries.isNotEmpty() && !fadeOnly(entries.last()) &&
+            keys.last() !in surfaceTransitions) -offsetPx.toFloat() else 0f,
         animationSpec = if (
             completingPop || (entries.isEmpty() && layers.isEmpty())
         ) snap() else tween(
@@ -162,8 +172,10 @@ internal fun <T, K : Any> ActivityNavigationStack(
                 val completedExit = layer.exitCompleted || ((completedPredictiveBack || layer.key in completedExitKeys) && !inStack)
                 val skipExit = completingPop || layer.exitCompleted
                 val usesFade = fadeOnly(layer.entry)
+                val surfaceTransition = surfaceTransitions[layer.key]
                 val offset by animateFloatAsState(
-                    targetValue = if (inStack && !isCurrent && entries.lastOrNull()?.let(fadeOnly) != true) -offsetPx.toFloat() else 0f,
+                    targetValue = if (inStack && !isCurrent && entries.lastOrNull()?.let(fadeOnly) != true &&
+                        keys.lastOrNull() !in surfaceTransitions) -offsetPx.toFloat() else 0f,
                     animationSpec = if (skipExit) snap() else tween(
                         ActivityNavigationTransitionDurationMillis, easing = activityNavigationEasing(),
                     ),
@@ -214,7 +226,13 @@ internal fun <T, K : Any> ActivityNavigationStack(
                             }
                         }
                     }
-                    if (usesFade) {
+                    if (surfaceTransition != null) {
+                        Box(Modifier.fillMaxSize()
+                            .navigationSurfaceTranslation { if (preview == null && !skipExit) offset else 0f }
+                            .then(backModifier)) {
+                            surfaceTransition(transition, skipExit, surface)
+                        }
+                    } else if (usesFade) {
                         surface()
                     } else {
                         ActivityNavigationTransitionViewport(

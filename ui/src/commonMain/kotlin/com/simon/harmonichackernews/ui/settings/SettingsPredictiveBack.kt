@@ -46,6 +46,48 @@ fun rememberSettingsPredictiveBack(
         enabled = backHandlerEnabled && navigationState.canNavigateBackWithinSettings,
     ) { events ->
         if (backCompletion.handleFollowingBack(events, dispatcher)) return@PredictiveNavigationBackHandler
+        if (navigationState.selectedSection == SettingsSection.Search) {
+            completedPredictiveBack = false
+            var animation: SettingsSearchBackAnimation? = null
+            try {
+                events.collect { event ->
+                    val current = animation ?: SettingsSearchBackAnimation().also {
+                        animation = it
+                        navigation.searchTransition.backAnimation = it
+                    }
+                    current.animate(event.progress)
+                }
+                val current = animation
+                if (current == null) {
+                    popSettingsBackStack()
+                } else {
+                    backCompletion.finish(
+                        scope = backAnimationScope,
+                        animation = current,
+                        frameHoldCount = 3,
+                        onCommit = {
+                            completedPredictiveBack = true
+                            popSettingsBackStack()
+                        },
+                        onFinished = {
+                            if (navigation.searchTransition.backAnimation === current) {
+                                navigation.searchTransition.backAnimation = null
+                            }
+                            completedPredictiveBack = false
+                        },
+                    )
+                }
+            } catch (_: CancellationException) {
+                withContext(NonCancellable) {
+                    animation?.cancel()
+                    if (navigation.searchTransition.backAnimation === animation) {
+                        navigation.searchTransition.backAnimation = null
+                    }
+                    completedPredictiveBack = false
+                }
+            }
+            return@PredictiveNavigationBackHandler
+        }
         if (isTwoPane) {
             try {
                 events.collect {}
