@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews
 
+import android.content.Intent
 import android.graphics.BitmapFactory
+import android.os.Debug
+import android.util.Log
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import coil3.ImageLoader
@@ -10,15 +13,61 @@ import coil3.decode.DataSource
 import coil3.intercept.Interceptor
 import coil3.request.SuccessResult
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.ui.session.HarmonicSceneViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import org.json.JSONObject
 
 /** Fixed input, real Stories store/screen, and local images; absent from distributable builds. */
 @OptIn(coil3.annotation.DelicateCoilApi::class)
 class StoriesScrollBenchmarkActivity : MainActivity() {
     private var originalLoader: ImageLoader? = null
     private var fixtureLoader: ImageLoader? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        when (intent.action) {
+            "com.simon.harmonichackernews.action.BENCHMARK_OPEN_LINKED_COMMENTS" -> {
+                val storyId = intent.getIntExtra("benchmark_story_id", 0)
+                require(storyId > 0)
+                navigationController.openLinkedStory(StoryDestination(storyId))
+            }
+            "com.simon.harmonichackernews.action.BENCHMARK_APPEARANCE" -> navigationController.openSettings("appearance")
+            "com.simon.harmonichackernews.action.BENCHMARK_RETURN_STORIES" -> navigationController.navigationState.returnToStories()
+            "com.simon.harmonichackernews.action.BENCHMARK_COLOR_SCHEME" -> {
+                val scheme = requireNotNull(intent.getStringExtra("benchmark_color_scheme"))
+                require(scheme in com.simon.harmonichackernews.settings.ColorSchemePreferences.values)
+                Log.i("BenchmarkMemory", "Previous scheme: ${harmonicAppComposition.userSettings.appearance.colorSchemes.light}")
+                harmonicAppComposition.settings.setColorScheme(scheme)
+            }
+            "com.simon.harmonichackernews.action.BENCHMARK_MEMORY_SNAPSHOT" -> {
+                val label = requireNotNull(intent.getStringExtra("benchmark_memory_label"))
+                require(label.matches(Regex("[a-z0-9_]+")))
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        System.gc()
+                        delay(500)
+                        System.gc()
+                        val directory = File(getExternalFilesDir(null), "memory-snapshots").apply { mkdirs() }
+                        Debug.dumpHprofData(File(directory, "$label.hprof").absolutePath)
+                        val runtime = Runtime.getRuntime()
+                        File(directory, "$label.json").writeText(JSONObject().apply {
+                            put("javaUsedBytes", runtime.totalMemory() - runtime.freeMemory())
+                            put("javaHeapBytes", runtime.totalMemory())
+                            put("nativeAllocatedBytes", Debug.getNativeHeapAllocatedSize())
+                        }.toString())
+                        Log.i("BenchmarkMemory", "Snapshot ready: $label")
+                    }
+                }
+            }
+            else -> return
+        }
+        setIntent(Intent(this, StoriesScrollBenchmarkActivity::class.java))
+    }
 
     override fun prepareScene() {
         val session = ViewModelProvider(this, HarmonicSceneViewModel.factory(harmonicAppComposition))[
