@@ -28,6 +28,24 @@ import kotlin.test.assertTrue
 
 class CommentRenderModelCacheTest {
     @Test
+    fun quoteDetectionExcludesComparisonsAndCodeWhileKeepingRealQuoteVariants() {
+        for (html in listOf(
+            "Ordinary <b>formatted</b> text",
+            "A comparison: 4 &gt; 3",
+            "<pre><code>&gt; a code prompt</code></pre>",
+        )) {
+            val prepared = prepareCommentHtmlContent(html)
+            assertFalse(prepared.hasQuotes, html)
+            assertSame(prepared.plain, prepared.text(true))
+            assertSame(prepared.plain, prepared.text(false, true))
+        }
+        val quoted = prepareCommentHtmlContent("&gt; A quote<p>Reply")
+        assertTrue(quoted.hasQuotes)
+        assertEquals("A quote\n\nReply", quoted.text(true).text)
+        assertEquals("> A quote\n\nReply", quoted.text(false, true).text)
+    }
+
+    @Test
     fun prefetchServesBothQuoteModesAndFadeOutWithoutAnotherParseOrCacheEntry() = runTest {
         CommentRenderModelCache.clearForTest()
         CommentHtmlTextCache.clearForTest()

@@ -34,9 +34,11 @@ internal fun preparedCommentText(
     html: String,
     highlightQuotes: Boolean,
     retainQuoteDecoration: Boolean,
-): AnnotatedString = runCatching {
-    CommentHtmlTextCache.get(html, highlightQuotes, retainQuoteDecoration)
-}.getOrElse { AnnotatedString(Ksoup.parse(html).text()) }
+): AnnotatedString = preparedCommentContent(html).text(highlightQuotes, retainQuoteDecoration)
+
+internal fun preparedCommentContent(html: String): PreparedCommentHtml = runCatching {
+    CommentHtmlTextCache.getPrepared(html)
+}.getOrElse { PreparedCommentHtml(AnnotatedString(Ksoup.parse(html).text())) }
 
 internal fun AnnotatedString.hasCommentLinks(): Boolean =
     hasStringAnnotations(COMMENT_URL_TAG, 0, length)
@@ -80,6 +82,9 @@ internal data class PreparedCommentHtml(
     val highlighted: AnnotatedString = plain,
     val decoratedPlain: AnnotatedString = plain,
 ) {
+    // Quote-free content shares all three text variants, so no annotation scan is needed in UI.
+    val hasQuotes: Boolean get() = highlighted !== plain || decoratedPlain !== plain
+
     fun text(highlightQuotes: Boolean, retainQuoteDecoration: Boolean = false): AnnotatedString = when {
         highlightQuotes -> highlighted
         retainQuoteDecoration -> decoratedPlain

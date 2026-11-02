@@ -676,7 +676,9 @@ internal fun CommentBodyText(
     onLinkLongClick: (String, String, Rect) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val content = remember(html) { preparedCommentContent(html) }
     val quotePresentation = rememberCommentQuotePresentation(
+        hasQuotes = content.hasQuotes,
         enabled = highlightQuotes,
         spacing = quoteSpacing,
         color = quoteHighlightColor,
@@ -685,9 +687,7 @@ internal fun CommentBodyText(
         onSurface = colors.onSurface,
     )
     val decorateQuotes = quotePresentation.decorate
-    val prepared = remember(html, highlightQuotes, decorateQuotes) {
-        preparedCommentText(html, highlightQuotes, decorateQuotes)
-    }
+    val prepared = content.text(highlightQuotes, decorateQuotes)
     val hasLinks = remember(prepared) { prepared.hasCommentLinks() }
     val linkGestureState = if (hasLinks) remember(html) { AnnotatedLinkGestureState() } else null
     val body = if (linkGestureState != null) {

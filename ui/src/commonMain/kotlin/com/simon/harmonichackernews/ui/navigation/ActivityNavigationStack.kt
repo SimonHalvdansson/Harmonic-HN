@@ -126,7 +126,17 @@ internal fun <T, K : Any> ActivityNavigationStack(
     // A requested entry is not necessarily drawing yet. Its composition and enter transition
     // can begin on later frames, so a timer from the stack update can hide the source too soon.
     // Retain the source until the actual covering layer has finished entering.
-    val coveringLayer = layers.firstOrNull { it.key == keys.lastOrNull() }
+    // A retained page is still a complete opaque surface once its own enter has settled,
+    // including the sampled edge exposed by its source translation. It can cover older pages
+    // while a newer destination is entering above it. Custom surface transitions may expose
+    // part of their predecessor, so only the standard and fade-only surfaces count as covers.
+    // Check membership against the requested stack as well as transition state: a removed top
+    // must stop covering its parent before asynchronous visibility reconciliation runs.
+    val coveringLayerIndex = layers.indexOfLast { layer ->
+        layer.key in keys && layer.key !in surfaceTransitions && layer.visibility.let {
+            it.isIdle && it.currentState && it.targetState
+        }
+    }
     // Retention keeps compositions alive, but covered destinations must stop lifecycle work.
     // Include pending reconciliation and predictive previews, not just running animations.
     val transitioning = preview != null || layers.any {
@@ -138,9 +148,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
         else -> Lifecycle.State.CREATED
     }
     val rootCovered = hideCoveredRoot && preview == null &&
-        !completingPop && coveringLayer?.visibility?.let {
-            it.isIdle && it.currentState && it.targetState
-        } == true
+        !completingPop && coveringLayerIndex >= 0
     val rootIsPreviewParent = preview != null && preview.parent == null
     val background = MaterialTheme.colorScheme.pageBackground
     Box(modifier.fillMaxSize()) {
@@ -186,6 +194,11 @@ internal fun <T, K : Any> ActivityNavigationStack(
                     preview?.parent -> preview.enterModifier
                     else -> Modifier
                 }
+                val revealed = if (preview == null) {
+                    index >= coveringLayerIndex
+                } else {
+                    layer.key == preview.source || layer.key == preview.parent
+                }
                 LaunchedEffect(layer) {
                     snapshotFlow {
                         layer.visibility.isIdle && !layer.visibility.currentState && !layer.visibility.targetState
@@ -197,7 +210,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
                     modifier = Modifier.fillMaxSize().zIndex(index + 1f)
                         .graphicsLayer { alpha = if (completedExit) 0f else 1f }
                         .drawWithContent {
-                            if (preview == null || layer.key == preview.source || layer.key == preview.parent) {
+                            if (revealed) {
                                 drawContent()
                             }
                         }
@@ -208,7 +221,12 @@ internal fun <T, K : Any> ActivityNavigationStack(
                     exit = if (usesFade && !skipExit) fadeOut(tween(180)) else ExitTransition.None,
                 ) {
                     val surface: @Composable () -> Unit = {
-                        Box(Modifier.fillMaxSize().background(background)) {
+                        Box(Modifier.fillMaxSize()
+                            // The viewport owns a graphics layer that can re-record after a child
+                            // invalidates even when its outer draw is skipped. Keep that recording
+                            // empty too, without unplacing or disposing the retained content.
+                            .drawWithContent { if (revealed) drawContent() }
+                            .background(background)) {
                             // An opaque surface alone does not consume taps in blank areas.
                             Box(Modifier.fillMaxSize().consumeAllPointerGestures())
                             CompositionLocalProvider(

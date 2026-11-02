@@ -1,23 +1,87 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontFamily
+import com.simon.harmonichackernews.settings.QuoteHighlightColor
+import com.simon.harmonichackernews.settings.QuoteHighlightStyle
+import com.simon.harmonichackernews.settings.QuoteSpacing
 import javax.swing.SwingUtilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class QuoteSpacingLayoutTest {
+    @Test
+    fun quoteSettingsLeaveOrdinaryBodiesUnchangedAndQuotedBodiesStillRoundTrip() = SwingUtilities.invokeAndWait {
+        for (html in listOf(
+            "Ordinary <b>text</b><p>A comparison: 4 &gt; 3<pre><code>&gt; code</code></pre>",
+            "&gt; A <b>quoted</b> paragraph<p>Reply<p>Ordinary paragraph",
+        )) {
+            val enabled = mutableStateOf(false)
+            val spacing = mutableStateOf(QuoteSpacing.COMFORTABLE)
+            val color = mutableStateOf(QuoteHighlightColor.MATERIAL)
+            val style = mutableStateOf(QuoteHighlightStyle.BOTH)
+            val scene = ImageComposeScene(400, 300, Density(1f)) {
+                Box(Modifier.fillMaxSize().background(Color.White)) {
+                    CommentBodyText(
+                        highlightQuotes = enabled.value, quoteSpacing = spacing.value,
+                        quoteHighlightColor = color.value, quoteHighlightStyle = style.value,
+                        html = html, searchTerm = "", markedColor = Color.Yellow,
+                        fontFamily = FontFamily.SansSerif, fontSize = 16f,
+                        animateSearchMatches = false, onLinkClick = {}, onLinkLongClick = { _, _, _ -> },
+                    )
+                }
+            }
+            try {
+                var time = 0L
+                fun render(frames: Int = 24): IntArray {
+                    repeat(frames) { scene.render(time.also { time += 16_666_667L }).close() }
+                    return scene.render(time.also { time += 16_666_667L }).use { image ->
+                        IntArray(400 * 300).also { image.toComposeImageBitmap().readPixels(it) }
+                    }
+                }
+                val original = render()
+                val hasQuotes = prepareCommentHtmlContent(html).hasQuotes
+                enabled.value = true
+                for (nextStyle in QuoteHighlightStyle.entries) {
+                    style.value = nextStyle
+                    spacing.value = QuoteSpacing.COMPACT
+                    color.value = if (nextStyle == QuoteHighlightStyle.SIDE_LINE) {
+                        QuoteHighlightColor.MATERIAL
+                    } else QuoteHighlightColor.NEUTRAL
+                    val during = render(4)
+                    val settled = render()
+                    if (hasQuotes) {
+                        assertFalse(original.contentEquals(settled), "Quotes must still change presentation")
+                    } else {
+                        assertContentEquals(original, during, "Ordinary text must not animate with quote settings")
+                        assertContentEquals(original, settled)
+                    }
+                }
+                enabled.value = false
+                assertContentEquals(original, render(), "Disabling quotes restores original text and spacing")
+            } finally { scene.close() }
+        }
+    }
+
     @Test
     fun animatingGapDoesNotRecomposeOrRemeasureParagraphs() = SwingUtilities.invokeAndWait {
         val body = prepareCommentHtml("&gt; Quote<p>Reply")

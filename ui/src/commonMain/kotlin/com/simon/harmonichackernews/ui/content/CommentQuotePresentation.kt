@@ -24,9 +24,20 @@ internal class CommentQuotePresentation(
     val gapFraction: State<Float>,
 )
 
+private val transparentQuoteColor = object : State<Color> {
+    override val value: Color = Color.Transparent
+}
+private val undecoratedCommentQuotePresentation = CommentQuotePresentation(
+    decorate = false,
+    background = transparentQuoteColor,
+    accent = transparentQuoteColor,
+    gapFraction = object : State<Float> { override val value: Float = 1f },
+)
+
 /** Keep the decorated paragraphs until both the color fade and spacing animation have settled. */
 @Composable
 internal fun rememberCommentQuotePresentation(
+    hasQuotes: Boolean,
     enabled: Boolean,
     spacing: QuoteSpacing,
     color: QuoteHighlightColor,
@@ -34,6 +45,9 @@ internal fun rememberCommentQuotePresentation(
     primary: Color,
     onSurface: Color,
 ): CommentQuotePresentation {
+    // Ordinary bodies have no quote bounds or paragraph gaps to animate. Avoid allocating
+    // animation channels and effects for every such body entering the comment list.
+    if (!hasQuotes) return undecoratedCommentQuotePresentation
     val base = if (color == QuoteHighlightColor.MATERIAL) primary else onSurface
     val background = animateColorAsState(
         targetValue = if (!enabled || style == QuoteHighlightStyle.SIDE_LINE) Color.Transparent

@@ -36,7 +36,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.LinkAnnotation
@@ -60,6 +60,8 @@ import com.simon.harmonichackernews.ui.content.ReferenceLinkRow
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
 import com.simon.harmonichackernews.ui.content.trimmedCommentText
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
+import com.simon.harmonichackernews.ui.content.hasCommentLinks
+import com.simon.harmonichackernews.ui.content.preparedCommentText
 import com.simon.harmonichackernews.ui.content.referenceBlockTopPadding
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
@@ -232,7 +234,7 @@ fun HeaderStoryBody(
 }
 
 @Composable
-private fun HeaderStoryTextBlock(
+internal fun HeaderStoryTextBlock(
     bodyHtml: String,
     trimParagraphEdges: Boolean,
     fontFamily: FontFamily,
@@ -241,45 +243,58 @@ private fun HeaderStoryTextBlock(
 ) {
     val platform = LocalCommentsPreviewPlatform.current
     val colors = MaterialTheme.colorScheme
-    val hapticFeedback = LocalHapticFeedback.current
-    val linkGestureState = remember(bodyHtml) { AnnotatedLinkGestureState() }
-    val linkListener = remember(platform.openLink, linkGestureState) {
-        LinkInteractionListener { link ->
-            if (link is LinkAnnotation.Url &&
-                !linkGestureState.consumeSuppressedLinkClick()
-            ) {
-                platform.openLink(link.url)
-            }
-        }
-    }
-    val annotated = remember(bodyHtml, colors.primary, linkListener, trimParagraphEdges) {
-        htmlAnnotatedString(bodyHtml, colors.primary, linkListener).let {
+    val prepared = remember(bodyHtml, trimParagraphEdges) {
+        preparedCommentText(bodyHtml, highlightQuotes = true, retainQuoteDecoration = false).let {
             if (trimParagraphEdges) it.trimmedCommentText() else it
         }
     }
-    var textLayout by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
-    var textCoordinates by remember(annotated) { mutableStateOf<LayoutCoordinates?>(null) }
+    val hasLinks = remember(prepared) { prepared.hasCommentLinks() }
+    val linkGestureState = if (hasLinks) remember(bodyHtml) { AnnotatedLinkGestureState() } else null
+    val annotated = if (linkGestureState != null) {
+        val linkListener = remember(platform.openLink, linkGestureState) {
+            LinkInteractionListener { link ->
+                if (link is LinkAnnotation.Url &&
+                    !linkGestureState.consumeSuppressedLinkClick()
+                ) {
+                    platform.openLink(link.url)
+                }
+            }
+        }
+        remember(bodyHtml, colors.primary, linkListener, trimParagraphEdges) {
+            htmlAnnotatedString(bodyHtml, colors.primary, linkListener).let {
+                if (trimParagraphEdges) it.trimmedCommentText() else it
+            }
+        }
+    } else prepared
+    val geometry = if (hasLinks) remember(annotated) { HeaderTextLinkGeometry() } else null
+    val linkModifier = if (geometry != null && linkGestureState != null) {
+        Modifier.onPlaced { geometry.coordinates = it }
+            .detectAnnotatedLinkLongPress(
+                text = annotated,
+                layoutResult = { geometry.layout },
+                coordinates = { geometry.coordinates },
+                linkGestureState = linkGestureState,
+                hapticFeedback = LocalHapticFeedback.current,
+                onLongPress = onLinkLongClick,
+            )
+    } else Modifier
 
     if (annotated.isNotEmpty()) {
         Text(
             text = annotated,
-            modifier = Modifier
-                .onGloballyPositioned { textCoordinates = it }
-                .detectAnnotatedLinkLongPress(
-                    text = annotated,
-                    layoutResult = { textLayout },
-                    coordinates = { textCoordinates },
-                    linkGestureState = linkGestureState,
-                    hapticFeedback = hapticFeedback,
-                    onLongPress = onLinkLongClick,
-                ),
+            modifier = linkModifier,
             color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,
-            style = LocalCommentsPreviewPlatform.current.textStyle,
-            onTextLayout = { textLayout = it },
+            style = platform.textStyle,
+            onTextLayout = if (geometry != null) { { geometry.layout = it } } else { _ -> },
         )
     }
+}
+
+private class HeaderTextLinkGeometry {
+    var layout: TextLayoutResult? = null
+    var coordinates: LayoutCoordinates? = null
 }
 
 @Composable
