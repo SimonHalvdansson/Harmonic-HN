@@ -22,18 +22,18 @@ for (const [style, Recipe] of Object.entries(variants)) {
   for (const [name, seed] of Object.entries(seeds)) {
     for (const dark of [false, true]) {
       const scheme = new Recipe(Hct.fromInt(seed), dark, 0);
-      result += `    // Source: #${seed.toString(16).slice(2).toUpperCase()}\n    val ${name}${style === 'Balanced' ? '' : style}${dark ? 'Dark' : 'Light'} = ${dark ? 'dark' : 'light'}ColorScheme(\n`;
-      for (const role of roles) result += `        ${role} = Color(0x${scheme[role].toString(16).toUpperCase()}),\n`;
-      result += `        background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n        onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n    )\n`;
+      result += `    // Source: #${seed.toString(16).slice(2).toUpperCase()}\n    val ${name}${style === 'Balanced' ? '' : style}${dark ? 'Dark' : 'Light'}: ColorScheme by lazy {\n        ${dark ? 'dark' : 'light'}ColorScheme(\n`;
+      for (const role of roles) result += `            ${role} = Color(0x${scheme[role].toString(16).toUpperCase()}),\n`;
+      result += `            background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n            onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n        )\n    }\n`;
     }
   }
 }
 // Fixed neutral surfaces need neutral accents too, otherwise Rainbow can match Balanced.
 for (const dark of [false, true]) {
   const scheme = new SchemeMonochrome(Hct.fromInt(0xFF000000), dark, 0);
-  result += `    val monochrome${dark ? 'Dark' : 'Light'} = ${dark ? 'dark' : 'light'}ColorScheme(\n`;
-  for (const role of roles) result += `        ${role} = Color(0x${scheme[role].toString(16).toUpperCase()}),\n`;
-  result += `        background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n        onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n    )\n`;
+  result += `    val monochrome${dark ? 'Dark' : 'Light'}: ColorScheme by lazy {\n        ${dark ? 'dark' : 'light'}ColorScheme(\n`;
+  for (const role of roles) result += `            ${role} = Color(0x${scheme[role].toString(16).toUpperCase()}),\n`;
+  result += `            background = Color(0x${scheme.surface.toString(16).toUpperCase()}),\n            onBackground = Color(0x${scheme.onSurface.toString(16).toUpperCase()}),\n        )\n    }\n`;
 }
 result += `    fun generated(base: String, dark: Boolean, style: ColorSchemeStyle): ColorScheme = when (style) {\n`;
 for (const style of Object.keys(variants)) {

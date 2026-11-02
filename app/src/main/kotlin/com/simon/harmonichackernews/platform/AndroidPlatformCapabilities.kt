@@ -29,7 +29,7 @@ internal class AndroidCredentialStore(
     private val currentAccount: () -> HackerNewsAccount?,
 ) : CredentialStore {
     private val appContext = context.applicationContext
-    private val aiCredentials = AndroidAiSummaryApiKeyStore(appContext)
+    private val aiCredentials by lazy { AndroidAiSummaryApiKeyStore(appContext) }
     override fun read(id: String): String? = when (id) {
         CredentialIds.AI_SUMMARY_API_KEY -> aiCredentials.getApiKey()
         CredentialIds.HACKER_NEWS_USERNAME -> currentAccount()?.username
