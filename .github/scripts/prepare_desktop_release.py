@@ -1,4 +1,4 @@
-"""Give tagged desktop installers consistent, collision-free public filenames."""
+"""Publish versioned installers and stable aliases for website download links."""
 
 import glob
 from pathlib import Path
@@ -24,9 +24,14 @@ def prepare(package_pattern, platform, metadata, destination):
         raise ValueError(f"Invalid desktop release version: {version!r}")
     destination.mkdir(parents=True, exist_ok=True)
     output = destination / f"Harmonic-{version}-{platform}{extension}"
-    if output.exists():
-        raise FileExistsError(output)
+    # The tag workflow uploads both names. GitHub's /releases/latest/download/
+    # redirect keeps the website current without API requests or bot commits.
+    alias = destination / f"Harmonic-{platform}{extension}"
+    for target in (output, alias):
+        if target.exists():
+            raise FileExistsError(target)
     shutil.copy2(packages[0], output)
+    shutil.copy2(packages[0], alias)
     print(output)
     return output
 

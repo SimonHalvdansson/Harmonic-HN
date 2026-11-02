@@ -199,7 +199,9 @@ jobs:
           name: windows-arm64-verification-logs
           path: ${{ runner.temp }}/harmonic-arm64-verification/*.log
           if-no-files-found: ignore
-      - name: Prepare desktop release filename
+      - name: Test desktop release filenames and website aliases
+        run: python -B -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
+      - name: Prepare desktop release filenames and website download aliases
         run: >-
           python .github/scripts/prepare_desktop_release.py
           "${{ matrix.artifact_path }}" "${{ matrix.release_platform }}"

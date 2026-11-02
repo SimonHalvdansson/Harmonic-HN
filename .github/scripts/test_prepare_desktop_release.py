@@ -17,6 +17,8 @@ class DesktopReleaseFilenameTest(unittest.TestCase):
                 output = prepare(str(package), platform, metadata, root / "public")
                 self.assertEqual(output.name, f"Harmonic-3.2.1-{platform}{extension}")
                 self.assertEqual(output.read_bytes(), package.read_bytes())
+                alias = root / "public" / f"Harmonic-{platform}{extension}"
+                self.assertEqual(alias.read_bytes(), package.read_bytes())
 
     def test_missing_or_ambiguous_packages_fail(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -26,6 +28,22 @@ class DesktopReleaseFilenameTest(unittest.TestCase):
                     (root / f"package{i}.deb").touch()
                 with self.assertRaises(ValueError):
                     prepare(str(root / "*.deb"), "linux", root / "unused", root / "public")
+
+    def test_existing_alias_fails_before_creating_versioned_installer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package = root / "original.deb"
+            package.write_bytes(b"new installer")
+            metadata = root / "metadata.properties"
+            metadata.write_text("versionName=3.2.1\n")
+            destination = root / "public"
+            destination.mkdir()
+            alias = destination / "Harmonic-linux.deb"
+            alias.write_bytes(b"existing installer")
+            with self.assertRaises(FileExistsError):
+                prepare(str(package), "linux", metadata, destination)
+            self.assertEqual(alias.read_bytes(), b"existing installer")
+            self.assertFalse((destination / "Harmonic-3.2.1-linux.deb").exists())
 
     def test_existing_release_file_is_never_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:

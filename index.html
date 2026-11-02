@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#fff9f5">
+    <meta name="description" content="A thoughtful home for curious minds. Read, discuss, and make Hacker News your own with Harmonic for desktop and Android. iOS coming soon.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Harmonic — Hacker News. Made Harmonic.">
+    <meta property="og:description" content="Read, discuss, and make Hacker News your own. Available for desktop and Android. iOS coming soon.">
+    <title>Harmonic — A thoughtful home for Hacker News</title>
+    <link rel="icon" type="image/svg+xml" href="website/assets/favicon.svg">
+    <link rel="preload" href="website/fonts/google-sans-flex-rounded.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="website/style.css">
+    <script src="website/platform.js" defer></script>
+    <script src="website/script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="corner-dots corner-dots--top" aria-hidden="true"></div>
+    <div class="corner-dots corner-dots--bottom" aria-hidden="true"></div>
+
+    <header class="site-header page-width">
+      <a class="brand" href="./" aria-label="Harmonic home">
+        <img src="website/assets/harmonic.svg" alt="" width="44" height="44">
+        <span>Harmonic</span>
+      </a>
+      <a class="source-link" href="https://github.com/SimonHalvdansson/Harmonic-HN" target="_blank" rel="noopener noreferrer">
+        GitHub <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
+      </a>
+    </header>
+
+    <main id="main" class="page-width">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <img class="welcome-art" src="website/assets/welcome.svg" alt="" width="360" height="190">
+          <h1 id="hero-title">Hacker News.<br><span>Made Harmonic.</span></h1>
+          <p class="intro">A thoughtful home for curious minds.<br> Read, discuss, and make Hacker News your own.</p>
+
+          <div class="downloads" aria-label="Download Harmonic">
+            <a class="download download--desktop" data-platform-download href="https://github.com/SimonHalvdansson/Harmonic-HN/releases/latest" target="_blank" rel="noopener noreferrer">
+              <img src="website/assets/desktop.svg" width="24" height="24" alt="">
+              <span data-platform-label>Download for desktop</span><span class="sr-only"> (opens in a new tab)</span>
+            </a>
+            <a class="download download--android" href="https://play.google.com/store/apps/details?id=com.simon.harmonichackernews" target="_blank" rel="noopener noreferrer">
+              <img src="website/assets/android.svg" width="26" height="26" alt="">
+              <span>Get it for Android</span><span class="sr-only"> (opens Google Play in a new tab)</span>
+            </a>
+            <div class="ios-row"><div class="ios-availability" aria-label="Harmonic for iOS, coming soon">
+              <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path fill="currentColor" d="M16.37 12.55c.02 2.43 2.13 3.24 2.15 3.25-.02.06-.34 1.16-1.11 2.3-.67.99-1.37 1.97-2.47 1.99-1.08.02-1.43-.64-2.66-.64-1.24 0-1.63.62-2.65.66-1.06.04-1.87-1.07-2.55-2.05-1.39-2.01-2.45-5.68-1.02-8.16.71-1.23 1.98-2.01 3.36-2.03 1.05-.02 2.04.7 2.67.7.64 0 1.82-.87 3.07-.74.52.02 1.99.21 2.94 1.6-.08.05-1.75 1.02-1.73 3.12ZM14.34 6.47c.56-.68.94-1.61.84-2.55-.81.03-1.8.54-2.38 1.21-.52.6-.98 1.55-.85 2.47.91.07 1.83-.46 2.39-1.13Z"/></svg>
+              <span>iOS</span><span class="coming-soon">Coming soon</span>
+            </div></div>
+          </div>
+          <p class="platform-note" data-platform-note>macOS, Windows &amp; Linux</p>
+          <nav class="desktop-platforms" aria-label="Other desktop downloads">
+            <a data-platform-link="macos" href="https://github.com/SimonHalvdansson/Harmonic-HN/releases/latest/download/Harmonic-macos.dmg">macOS</a><span aria-hidden="true">·</span>
+            <a data-platform-link="windows" href="https://github.com/SimonHalvdansson/Harmonic-HN/releases/latest/download/Harmonic-windows.msi">Windows</a><span aria-hidden="true">·</span>
+            <a data-platform-link="linux" href="https://github.com/SimonHalvdansson/Harmonic-HN/releases/latest/download/Harmonic-linux.deb">Linux</a>
+          </nav>
+        </div>
+
+        <div class="app-showcase" aria-label="A look inside Harmonic">
+          <button class="phone-preview screenshot-preview" type="button" data-screenshot="website/assets/hero-stories.png" data-caption="Harmonic's story feed" aria-label="Enlarge app preview">
+            <img class="preview-slide is-active" src="website/assets/hero-stories.png" alt="Harmonic's light story feed with real image previews" width="1080" height="2424">
+            <img class="preview-slide" src="website/assets/hero-comments.png" alt="A threaded discussion in Harmonic" width="1080" height="2424" aria-hidden="true">
+            <img class="preview-slide" src="website/assets/hero-customization.png" alt="Harmonic's appearance settings and live app preview" width="1080" height="2424" aria-hidden="true">
+            <img class="preview-slide" src="website/assets/comment-search.png" alt="Native comment search in Harmonic" width="1080" height="2424" aria-hidden="true">
+          </button>
+          <div class="preview-nav"><div class="preview-tabs" role="group" aria-label="Choose an app preview"><button type="button" data-slide="0" aria-pressed="true">Stories</button><button type="button" data-slide="1" aria-pressed="false">Conversations</button><button type="button" data-slide="2" aria-pressed="false">Customize</button><button type="button" data-slide="3" aria-pressed="false">Search</button></div><button class="preview-pause" type="button" aria-label="Pause app previews" aria-pressed="false">Pause</button></div>
+          <p class="preview-caption" aria-live="off">Stories, at a glance.</p>
+        </div>
+      </section>
+
+      <section class="bento" aria-label="Make Harmonic your own">
+        <article class="feature feature--fonts">
+          <div class="feature-copy"><h2>Find your type.</h2><p>Eight built-in fonts. Your device font, too. Set story, comment, and reader sizes separately.</p></div><div class="type-specimens" aria-label="Three of Harmonic’s built-in fonts"><span class="type-serif">Good stories.<small>Georgia</small></span><span class="type-rounded">Good stories.<small>Google Sans Flex Rounded</small></span><span class="type-mono">Good stories.<small>JetBrains Mono</small></span></div>
+        </article>
+        <article class="feature feature--avatars">
+          <div class="feature-copy"><h2>A familiar face.</h2><p>Five generated styles. A face for every username.</p></div><div class="avatar-gallery" aria-label="Harmonic’s generated avatar styles"><figure><img src="website/assets/avatars/mosaic-1.png" alt="Mosaic avatar" width="128" height="128" loading="lazy"><img src="website/assets/avatars/mosaic-2.png" alt="Another mosaic avatar" width="128" height="128" loading="lazy"><figcaption>Mosaic</figcaption></figure><figure><img src="website/assets/avatars/pixels-1.png" alt="Pixels avatar" width="128" height="128" loading="lazy"><img src="website/assets/avatars/pixels-2.png" alt="Another pixels avatar" width="128" height="128" loading="lazy"><figcaption>Pixels</figcaption></figure><figure><img src="website/assets/avatars/abstract-1.png" alt="Abstract avatar" width="128" height="128" loading="lazy"><img src="website/assets/avatars/abstract-2.png" alt="Another abstract avatar" width="128" height="128" loading="lazy"><figcaption>Abstract</figcaption></figure><figure><img src="website/assets/avatars/robots-1.png" alt="Robots avatar" width="128" height="128" loading="lazy"><img src="website/assets/avatars/robots-2.png" alt="Another robots avatar" width="128" height="128" loading="lazy"><figcaption>Robots</figcaption></figure><figure><img src="website/assets/avatars/landscapes-1.png" alt="Landscapes avatar" width="128" height="128" loading="lazy"><img src="website/assets/avatars/landscapes-2.png" alt="Another landscapes avatar" width="128" height="128" loading="lazy"><figcaption>Landscapes</figcaption></figure></div>
+        </article>
+        <article class="feature feature--images">
+          <div class="feature-copy"><h2>Big pictures. Small pictures. No pictures.</h2><p>Four image sizes, borderless previews, and four card styles. Fine-tune tint, brightness, and colorfulness.</p></div><div class="image-options" aria-label="Actual story rows at each image size"><figure><button class="native-crop screenshot-preview " type="button" data-screenshot="website/assets/preview-off.png" data-caption="story preview with images off" aria-label="Enlarge story preview with images off" style="--crop-ratio:982/214;--image-width:109.97963%;--image-left:-4.98982%;--image-top:-32.28106%"><img src="website/assets/preview-off.png" alt="story preview with images off" width="1080" height="2424" loading="lazy"></button><figcaption>Off</figcaption></figure><figure><button class="native-crop screenshot-preview " type="button" data-screenshot="website/assets/preview-small.png" data-caption="small story image preview" aria-label="Enlarge small story image preview" style="--crop-ratio:982/257;--image-width:109.97963%;--image-left:-4.98982%;--image-top:-32.28106%"><img src="website/assets/preview-small.png" alt="small story image preview" width="1080" height="2424" loading="lazy"></button><figcaption>Small</figcaption></figure><figure><button class="native-crop screenshot-preview " type="button" data-screenshot="website/assets/preview-medium.png" data-caption="medium story image preview" aria-label="Enlarge medium story image preview" style="--crop-ratio:982/272;--image-width:109.97963%;--image-left:-4.98982%;--image-top:-32.28106%"><img src="website/assets/preview-medium.png" alt="medium story image preview" width="1080" height="2424" loading="lazy"></button><figcaption>Medium</figcaption></figure><figure><button class="native-crop screenshot-preview " type="button" data-screenshot="website/assets/preview-large.png" data-caption="large story image preview" aria-label="Enlarge large story image preview" style="--crop-ratio:982/644;--image-width:109.97963%;--image-left:-4.98982%;--image-top:-32.28106%"><img src="website/assets/preview-large.png" alt="large story image preview" width="1080" height="2424" loading="lazy"></button><figcaption>Large</figcaption></figure></div>
+        </article>
+        <article class="feature feature--themes">
+          <div class="feature-copy"><h2>Every shade of you.</h2><p>Palettes, dynamic color, and light or dark. Find your mood.</p></div><button class="native-crop screenshot-preview palette-preview" type="button" data-screenshot="website/assets/hero-customization.png" data-caption="Harmonic’s color palettes" aria-label="Enlarge Harmonic’s color palettes" style="--crop-ratio:1002/475;--image-width:107.78443%;--image-left:-3.89222%;--image-top:-123.55289%"><img src="website/assets/hero-customization.png" alt="Harmonic’s color palettes" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--desktop">
+          <div class="feature-copy"><h2>Room for the conversation.</h2><p>Stories and discussions, side by side. On macOS, Windows, and Linux.</p></div><button class="native-crop screenshot-preview desktop-preview" type="button" data-screenshot="website/assets/desktop-app.png" data-caption="Harmonic on desktop" aria-label="Enlarge Harmonic on desktop" style="--crop-ratio:2360/1050;--image-width:100.00000%;--image-left:0.00000%;--image-top:0.00000%"><img src="website/assets/desktop-app.png" alt="Harmonic on desktop" width="2360" height="1624" loading="lazy"></button>
+        </article>
+        <article class="feature feature--dark">
+          <div class="feature-copy"><h2>A very good dark side.</h2><p>Soft contrast. Rich colors. A proper dark theme.</p></div><button class="native-crop screenshot-preview dark-preview" type="button" data-screenshot="website/assets/dark-mode.png" data-caption="Harmonic’s dark story feed" aria-label="Enlarge Harmonic’s dark story feed" style="--crop-ratio:1022/854;--image-width:105.67515%;--image-left:-2.83757%;--image-top:-39.72603%"><img src="website/assets/dark-mode.png" alt="Harmonic’s dark story feed" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--embeddings">
+          <div class="feature-copy"><h2>Ideas, connected.</h2><p>On-device topic tags. Categories shaped by you.</p></div><figure class="embedding-map"><img src="website/assets/embedding-map.svg" alt="675 real example stories grouped by topic, with space stories highlighted" width="640" height="340" loading="lazy"><figcaption><span class="preview-label">Embeddings preview</span><span>675 stories. A world of connections.</span></figcaption></figure>
+        </article>
+        <article class="feature feature--ask">
+          <div class="feature-copy"><h2>Ask a little more.</h2><p>Summarize an article. Explore a comment. Ask your own questions.</p></div><div class="summary-example"><span class="example-label"><span aria-hidden="true">✧</span> Example summary</span><div class="summary-text"><p class="summary-reserve" aria-hidden="true">The discussion comes back to a few themes:
+
+• Small, focused tools are easier to understand.
+• Defaults matter, but personal preferences differ.
+• The best interface gets out of the way.</p><p class="summary-output" aria-hidden="true" data-summary>The discussion comes back to a few themes:
+
+• Small, focused tools are easier to understand.
+• Defaults matter, but personal preferences differ.
+• The best interface gets out of the way.</p></div><p class="sr-only">The discussion comes back to a few themes:
+
+• Small, focused tools are easier to understand.
+• Defaults matter, but personal preferences differ.
+• The best interface gets out of the way.</p></div><p class="feature-note">Your provider, or a local model on supported devices.</p>
+        </article>
+        <article class="feature feature--reader">
+          <div class="feature-copy"><h2>Reading, at your pace.</h2><p>Reader mode, with your font, size, and line spacing.</p></div><button class="native-crop screenshot-preview reader-preview" type="button" data-screenshot="website/assets/reader-mode.png" data-caption="Harmonic’s reader mode" aria-label="Enlarge Harmonic’s reader mode" style="--crop-ratio:990/670;--image-width:109.09091%;--image-left:-4.54545%;--image-top:-66.06061%"><img src="website/assets/reader-mode.png" alt="Harmonic’s reader mode" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--search">
+          <div class="feature-copy"><h2>Find that one reply.</h2><p>Search inside a conversation. Jump straight to a match.</p></div><button class="native-crop screenshot-preview search-preview" type="button" data-screenshot="website/assets/comment-search.png" data-caption="search within a conversation" aria-label="Enlarge search within a conversation" style="--crop-ratio:910/628;--image-width:118.68132%;--image-left:-9.34066%;--image-top:-20.43956%"><img src="website/assets/comment-search.png" alt="search within a conversation" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--threads">
+          <div class="feature-copy"><h2>Threads, your way.</h2><p>Depth colors, line widths, tap actions, and collapsible replies.</p></div><button class="native-crop screenshot-preview thread-preview" type="button" data-screenshot="website/assets/thread-colorful.png" data-caption="colorful thread depth indicators" aria-label="Enlarge colorful thread depth indicators" style="--crop-ratio:1002/648;--image-width:107.78443%;--image-left:-3.89222%;--image-top:-32.13573%"><img src="website/assets/thread-colorful.png" alt="colorful thread depth indicators" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--people">
+          <div class="feature-copy"><h2>People, remembered.</h2><p>Add personal labels to familiar usernames. Your labels, just for you.</p></div><button class="native-crop screenshot-preview tag-preview" type="button" data-screenshot="website/assets/tag-dialog.png" data-caption="Personal user labels in Harmonic" aria-label="Enlarge personal user labels" style="--crop-ratio:820/540;--image-width:131.70732%;--image-left:-15.85366%;--image-top:-108.53659%"><img src="website/assets/tag-dialog.png" alt="Harmonic’s tag editor with a Helpful label" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--frontpages">
+          <div class="feature-copy"><h2>Your favorite frontpages.</h2><p>Choose the feeds, their order, and your default.</p></div><button class="native-crop screenshot-preview frontpages-preview" type="button" data-screenshot="website/assets/frontpages.png" data-caption="frontpage settings" aria-label="Enlarge frontpage settings" style="--crop-ratio:1002/673;--image-width:107.78443%;--image-left:-3.89222%;--image-top:-39.42116%"><img src="website/assets/frontpages.png" alt="frontpage settings" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--filters">
+          <div class="feature-copy"><h2>Keep the noise out.</h2><p>Filter titles, domains, users, and job posts.</p></div><button class="native-crop screenshot-preview filters-preview" type="button" data-screenshot="website/assets/filtering.png" data-caption="story filters" aria-label="Enlarge story filters" style="--crop-ratio:1002/762;--image-width:107.78443%;--image-left:-3.89222%;--image-top:-40.51896%"><img src="website/assets/filtering.png" alt="story filters" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--saved">
+          <div class="feature-copy"><h2>Keep the good stuff.</h2><p>Bookmarks and offline caching.</p></div><svg class="feature-symbol" viewBox="0 0 960 960" width="48" height="48" aria-hidden="true"><path fill="currentColor" d="M480,720L312,792Q272,809 236,785.5Q200,762 200,719L200,200Q200,167 223.5,143.5Q247,120 280,120L680,120Q713,120 736.5,143.5Q760,167 760,200L760,719Q760,762 724,785.5Q688,809 648,792L480,720Z"/></svg>
+        </article>
+        <article class="feature feature--new">
+          <div class="feature-copy"><h2>Spot what’s new.</h2><p>New replies stand out when you return.</p></div><button class="native-crop screenshot-preview new-preview" type="button" data-screenshot="website/assets/new-comments.png" data-caption="new-comment indicator" aria-label="Enlarge new-comment indicator" style="--crop-ratio:1021/232;--image-width:105.77865%;--image-left:-2.84035%;--image-top:-31.04799%"><img src="website/assets/new-comments.png" alt="new-comment indicator" width="1080" height="2424" loading="lazy"></button>
+        </article>
+        <article class="feature feature--transfer">
+          <div class="feature-copy"><h2>Take your setup with you.</h2><p>Import and export your settings and bookmarks.</p></div><span class="transfer-symbol" aria-hidden="true">↗</span>
+        </article>
+        <article class="feature feature--quotes">
+          <div class="feature-copy"><h2>Down to the little things.</h2><p>Quote styles, link previews, swipe actions, navigation, spacing… there’s room to make it yours.</p></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer page-width">
+      <p>Made with care. <a href="https://github.com/SimonHalvdansson/Harmonic-HN" target="_blank" rel="noopener noreferrer">Open source.<span class="sr-only"> (opens in a new tab)</span></a></p>
+      <p>Harmonic for Hacker News <span class="footer-dot" aria-hidden="true">·</span> <a href="https://github.com/SimonHalvdansson/Harmonic-HN" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a></p>
+    </footer>
+
+    <dialog class="screenshot-dialog" aria-labelledby="screenshot-caption">
+      <button class="dialog-close" type="button" aria-label="Close screenshot">×</button>
+      <figure>
+        <img class="enlarged-screenshot" alt="">
+        <figcaption id="screenshot-caption"></figcaption>
+      </figure>
+    </dialog>
+  </body>
+</html>
