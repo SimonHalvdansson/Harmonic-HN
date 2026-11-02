@@ -47,22 +47,25 @@ internal fun rememberCoilImagePaletteTint(
     paletteTintConfigKey: String,
     enabled: Boolean = true,
     sharedCacheKey: String? = null,
-): Int? = if (image?.supportsOffMainPaletteSampling() == true) {
-    rememberImagePaletteTint(
-        image = image,
-        baseColorArgb = baseColorArgb,
-        paletteTintConfigKey = paletteTintConfigKey,
-        enabled = enabled,
-        sharedCacheKey = sharedCacheKey,
-    )
-} else {
-    rememberPainterPaletteTint(
-        painter = fallbackPainter,
-        baseColorArgb = baseColorArgb,
-        paletteTintConfigKey = paletteTintConfigKey,
-        enabled = enabled,
-        sharedCacheKey = sharedCacheKey,
-    )
+): Int? {
+    if (!enabled) return null
+    return if (image?.supportsOffMainPaletteSampling() == true) {
+        rememberImagePaletteTint(
+            image = image,
+            baseColorArgb = baseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            enabled = enabled,
+            sharedCacheKey = sharedCacheKey,
+        )
+    } else {
+        rememberPainterPaletteTint(
+            painter = fallbackPainter,
+            baseColorArgb = baseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            enabled = enabled,
+            sharedCacheKey = sharedCacheKey,
+        )
+    }
 }
 
 /** Keeps preview sampling identical to BitmapPainter while moving its work off the UI thread. */
@@ -74,23 +77,26 @@ internal fun rememberPreviewImagePaletteTint(
     baseColorArgb: Int,
     paletteTintConfigKey: String,
     enabled: Boolean,
-): Int? = if (image?.supportsOffMainPaletteSampling() == true && fallbackPainter is BitmapPainter) {
-    rememberImagePaletteTint(
-        image = image,
-        baseColorArgb = baseColorArgb,
-        paletteTintConfigKey = paletteTintConfigKey,
-        enabled = enabled,
-        sharedCacheKey = "preview:$sourceUrl",
-        preview = true,
-    )
-} else {
-    rememberPainterPaletteTint(
-        painter = fallbackPainter,
-        baseColorArgb = baseColorArgb,
-        paletteTintConfigKey = paletteTintConfigKey,
-        enabled = enabled,
-        sharedCacheKey = "preview:$sourceUrl",
-    )
+): Int? {
+    if (!enabled) return null
+    return if (image?.supportsOffMainPaletteSampling() == true && fallbackPainter is BitmapPainter) {
+        rememberImagePaletteTint(
+            image = image,
+            baseColorArgb = baseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            enabled = enabled,
+            sharedCacheKey = "preview:$sourceUrl",
+            preview = true,
+        )
+    } else {
+        rememberPainterPaletteTint(
+            painter = fallbackPainter,
+            baseColorArgb = baseColorArgb,
+            paletteTintConfigKey = paletteTintConfigKey,
+            enabled = enabled,
+            sharedCacheKey = "preview:$sourceUrl",
+        )
+    }
 }
 
 @Composable
@@ -102,15 +108,12 @@ private fun rememberImagePaletteTint(
     sharedCacheKey: String?,
     preview: Boolean = false,
 ): Int? {
-    var tint by remember(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey, preview) {
+    if (!enabled) return null
+    var tint by remember(image, baseColorArgb, paletteTintConfigKey, sharedCacheKey, preview) {
         mutableStateOf<Int?>(null)
     }
 
-    LaunchedEffect(image, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey, preview) {
-        if (!enabled) {
-            tint = null
-            return@LaunchedEffect
-        }
+    LaunchedEffect(image, baseColorArgb, paletteTintConfigKey, sharedCacheKey, preview) {
         val extract: suspend () -> Int? = {
             if (preview) {
                 image.extractPreviewPaletteTint(baseColorArgb, paletteTintConfigKey)
@@ -158,9 +161,10 @@ fun rememberPainterPaletteTint(
     enabled: Boolean = true,
     sharedCacheKey: String? = null,
 ): Int? {
+    if (!enabled || painter == null) return null
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    var tint by remember(painter, baseColorArgb, paletteTintConfigKey, enabled, sharedCacheKey) {
+    var tint by remember(painter, baseColorArgb, paletteTintConfigKey, sharedCacheKey) {
         mutableStateOf<Int?>(null)
     }
 
@@ -170,13 +174,8 @@ fun rememberPainterPaletteTint(
         layoutDirection,
         baseColorArgb,
         paletteTintConfigKey,
-        enabled,
         sharedCacheKey,
     ) {
-        if (!enabled || painter == null) {
-            tint = null
-            return@LaunchedEffect
-        }
         val extract: suspend () -> Int? = {
             try {
                 val sample = painter.toPainterPaletteSample(density, layoutDirection)

@@ -56,6 +56,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,6 +103,29 @@ import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
 private const val StoriesRowMotionDurationMillis = 350
+
+// Keep the boxed value once, rather than boxing a primitive in a State<Float> bridge per read.
+private class FixedStoryState<T>(override val value: T) : State<T>
+private val RevealedStoryAlpha: State<Float> = FixedStoryState(1f)
+
+/** Recycled rows that were already revealed need no reveal state, effect, or animation. */
+@Composable
+internal fun rememberStoryRevealAlpha(storyId: Int, controller: StoriesScreenController): State<Float> {
+    // Capture the initial flag: marking a new row must not switch branches and cut its fade short.
+    val initiallyRevealed = remember(storyId, controller) { controller.hasRevealedStory(storyId) }
+    if (initiallyRevealed) return RevealedStoryAlpha
+
+    var revealed by remember(storyId, controller) { mutableStateOf(false) }
+    LaunchedEffect(storyId, controller) {
+        controller.markStoryRevealed(storyId)
+        revealed = true
+    }
+    return animateFloatAsState(
+        targetValue = if (revealed) 1f else 0f,
+        animationSpec = tween(220, easing = StoriesEasing),
+        label = "loaded story reveal",
+    )
+}
 
 @Composable
 internal fun StoriesList(
@@ -364,18 +388,7 @@ internal fun StoriesList(
                             val suppressed = controller.isStorySuppressed(story.id)
                             val keepPreviewSourceVisible =
                                 controller.shouldKeepStoryPreviewSourceVisible(story.id)
-                            var revealed by remember(story.id, controller) {
-                                mutableStateOf(controller.hasRevealedStory(story.id))
-                            }
-                            LaunchedEffect(story.id, controller) {
-                                controller.markStoryRevealed(story.id)
-                                revealed = true
-                            }
-                            val revealAlpha by animateFloatAsState(
-                                targetValue = if (revealed) 1f else 0f,
-                                animationSpec = tween(220, easing = StoriesEasing),
-                                label = "loaded story reveal",
-                            )
+                            val revealAlpha by rememberStoryRevealAlpha(story.id, controller)
                             val storyRevision = controller.storyRevision(story.id)
                             val previewResource = controller.previewResource(story.id)
                                 ?.takeIf { it.pageUrl == story.url }
