@@ -20,6 +20,7 @@ import com.simon.harmonichackernews.summary.local.createAndroidLocalRuntimeDeliv
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
+import com.simon.harmonichackernews.ui.content.trimHarmonicUiMemoryCaches
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -144,6 +145,7 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         val app = compositionOrNull ?: return
         if (com.simon.harmonichackernews.summary.local.LocalAiMemoryPolicy.background(level)) app.articleCategories.setForeground(false)
         if (com.simon.harmonichackernews.summary.local.LocalAiMemoryPolicy.pressure(level)) {
+            trimUiMemoryCaches()
             app.articleCategories.trimMemory()
             app.localSummaryEngine?.trimMemory()
         }
@@ -152,9 +154,18 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onLowMemory() {
         super.onLowMemory()
+        trimUiMemoryCaches()
         compositionOrNull?.let { app ->
             app.articleCategories.trimMemory()
             app.localSummaryEngine?.trimMemory()
+        }
+    }
+
+    private fun trimUiMemoryCaches() {
+        // These caches belong to UI. Clearing their ownership preserves any content currently
+        // held by a screen; sample-image loading may briefly hold the resource cache's mutex.
+        preloadScope.launch(Dispatchers.Main.immediate) {
+            trimHarmonicUiMemoryCaches()
         }
     }
 

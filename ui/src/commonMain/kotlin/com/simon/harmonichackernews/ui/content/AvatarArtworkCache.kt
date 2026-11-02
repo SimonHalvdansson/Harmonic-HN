@@ -22,4 +22,6 @@ internal class AvatarArtworkCache<T : Any>(
         entries.install(key, artwork)
         return artwork
     }
+
+    fun clear() = entries.clear()
 }

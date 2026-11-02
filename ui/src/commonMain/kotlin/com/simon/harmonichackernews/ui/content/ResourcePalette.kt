@@ -30,6 +30,8 @@ private data class ResourcePreviewKey(val resource: DrawableResource, val enviro
 // Five bundled samples fit without retaining decoded images for every previous configuration.
 private val resourcePreviewCache = ResourcePreviewCache<ResourcePreviewKey, ResourcePreview>(maxEntries = 5)
 
+internal suspend fun clearResourcePreviewCache() = resourcePreviewCache.clearCompleted()
+
 /** Shares a single worker decode between the settings thumbnail and its original 112² palette. */
 @Composable
 internal fun rememberResourcePreview(resource: DrawableResource): ResourcePreview? {
@@ -75,6 +77,11 @@ internal class ResourcePreviewCache<K, V : Any>(private val maxEntries: Int) {
     }
 
     operator fun get(key: K): V? = completed.value[key]
+
+    /** Finish an in-progress decode before dropping its completed cache entry. */
+    suspend fun clearCompleted() = mutex.withLock {
+        completed.value = emptyMap()
+    }
 
     suspend fun getOrLoad(key: K, load: suspend () -> V): V = mutex.withLock {
         completed.value[key]?.let { return@withLock it }

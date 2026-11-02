@@ -34,6 +34,8 @@ private data class AvatarVisual(
 
 private val avatarArtworkCache = AvatarArtworkCache(create = ::GeneratedAvatarArtwork)
 
+internal fun clearAvatarArtworkCache() = avatarArtworkCache.clear()
+
 @Composable
 fun UserAvatar(
     author: String,

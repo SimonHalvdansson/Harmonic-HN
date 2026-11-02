@@ -95,10 +95,12 @@ internal object CommentRenderModelCache {
         if (entries.remove(key) != null) totalWeightedChars -= key.source.length * 2
     }
 
-    internal fun clearForTest() {
+    fun clear() {
         entries.clear()
         totalWeightedChars = 0
     }
+
+    internal fun clearForTest() = clear()
 
     internal fun entryCountForTest(): Int = entries.size
 
@@ -148,7 +150,18 @@ private object CommentCollapsedPreviewCache {
         if (entries.remove(key) != null) totalKeyChars -= key.sourcePrefix.length
     }
 
+    fun clear() {
+        entries.clear()
+        totalKeyChars = 0
+    }
+
     private data class PreviewKey(val commentId: Int, val sourcePrefix: String)
+}
+
+internal fun clearCommentContentCaches() {
+    CommentRenderModelCache.clear()
+    CommentCollapsedPreviewCache.clear()
+    CommentHtmlTextCache.clear()
 }
 
 /** UI-owned cache of immutable text; pure worker preparation never accesses these maps. */
@@ -191,10 +204,12 @@ internal object CommentHtmlTextCache {
         totalWeightedChars -= removed.weightedChars(html.length)
     }
 
-    internal fun clearForTest() {
+    fun clear() {
         entries.clear()
         totalWeightedChars = 0
     }
+
+    internal fun clearForTest() = clear()
 
     internal fun entryCountForTest(): Int = entries.size
 }
