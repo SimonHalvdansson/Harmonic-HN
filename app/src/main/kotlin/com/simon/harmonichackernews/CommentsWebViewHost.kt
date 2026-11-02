@@ -18,12 +18,13 @@ import com.simon.harmonichackernews.utils.AndroidDisplay
  * The small View island needed by Android WebView. All visible comments UI, including the
  * integrated-browser sheet and its controls, is rendered by Compose above this host.
  */
-internal class CommentsWebViewHost(context: Context) {
+internal class CommentsWebViewHost(private val context: Context) {
     val root: ProtectionLayout
     val webViewContainer: FrameLayout
     val fullscreenContainer: FrameLayout
     val webViewBackdrop: View
     val overlayState = WebContentOverlayState()
+    private var overlay: ComposeView? = null
 
     init {
         root = ProtectionLayout(context).apply {
@@ -52,7 +53,18 @@ internal class CommentsWebViewHost(context: Context) {
         }
         webViewContainer.addView(webViewBackdrop, matchParentFrameParams())
 
-        val overlay = ComposeView(context).apply {
+        fullscreenContainer = FrameLayout(context).apply {
+            id = R.id.comments_fullscreen_container
+            setBackgroundColor(Color.BLACK)
+            visibility = View.GONE
+        }
+        content.addView(fullscreenContainer, matchParentFrameParams())
+    }
+
+    /** Keep overlay creation with browser startup, outside the comments-only opening path. */
+    fun ensureOverlay() {
+        if (overlay != null) return
+        val browserOverlay = ComposeView(context).apply {
             // Preloaded browsers can be measured offscreen before a window supplies Compose's
             // lifecycle/recomposer. Only measure the overlay while attached to that window.
             visibility = View.GONE
@@ -72,14 +84,8 @@ internal class CommentsWebViewHost(context: Context) {
                 HarmonicTheme(selection) { WebContentOverlay(overlayState) }
             }
         }
-        webViewContainer.addView(overlay, matchParentFrameParams())
-
-        fullscreenContainer = FrameLayout(context).apply {
-            id = R.id.comments_fullscreen_container
-            setBackgroundColor(Color.BLACK)
-            visibility = View.GONE
-        }
-        content.addView(fullscreenContainer, matchParentFrameParams())
+        overlay = browserOverlay
+        webViewContainer.addView(browserOverlay, matchParentFrameParams())
     }
 
     companion object {

@@ -135,6 +135,7 @@ internal class AndroidCommentsWebViewController(
     private val webViewHandler = Handler(Looper.getMainLooper())
     private var webView: WebView? = null
     private var webViewContainer: FrameLayout? = null
+    private var initializeOverlay: (() -> Unit)? = null
     private var overlayState: WebContentOverlayState? = null
     private var coveredByComments = false
     private var hostStarted = true
@@ -206,6 +207,7 @@ internal class AndroidCommentsWebViewController(
         webView = null
         overlayState = host.overlayState
         webViewContainer = host.webViewContainer
+        initializeOverlay = host::ensureOverlay
     }
 
     fun configure(
@@ -1036,6 +1038,7 @@ internal class AndroidCommentsWebViewController(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
+        initializeOverlay?.invoke()
         updateWebViewVisibility()
     }
 
@@ -1354,6 +1357,7 @@ internal class AndroidCommentsWebViewController(
         pdfWebViewSession.release(webView, removeJavascriptInterface = true)
         webView = null
         webViewContainer = null
+        initializeOverlay = null
         overlayState?.reset()
         overlayState = null
         loadingUi.release()

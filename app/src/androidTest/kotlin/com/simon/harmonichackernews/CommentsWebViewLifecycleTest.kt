@@ -14,6 +14,7 @@ import android.webkit.WebSettings
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.core.view.children
+import androidx.compose.ui.platform.ComposeView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
@@ -128,11 +129,18 @@ class CommentsWebViewLifecycleTest {
                 browser.controller.initializeForVisibleWebsite()
                 assertFalse(browser.controller.hasWebView())
                 assertEquals(0, browser.host.webViewContainer.children.count { it is WebView })
+                assertEquals(0, browser.host.webViewContainer.children.count { it is ComposeView })
             }
             assertEquals(1, calls.get())
             startup.complete(Unit)
             browser.awaitStartup()
-            onMain { assertEquals(1, browser.host.webViewContainer.children.count { it is WebView }) }
+            onMain {
+                val container = browser.host.webViewContainer
+                assertEquals(1, container.children.count { it is WebView })
+                val overlay = container.children.filterIsInstance<ComposeView>().single()
+                assertTrue("The browser overlay must draw above its WebView",
+                    container.indexOfChild(overlay) > container.indexOfChild(browser.webView))
+            }
         }
     }
 
