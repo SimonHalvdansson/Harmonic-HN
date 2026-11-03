@@ -6,7 +6,6 @@ import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.ui.content.userTagColor
 
 import com.simon.harmonichackernews.resources.*
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,7 +33,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.Text
@@ -54,19 +52,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
-import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.common.TextButton
-import com.simon.harmonichackernews.presentation.detectUserProfileLinks
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -259,7 +249,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
             fontSize = 16.sp,
         )
         Text(
-            text = "Check the username’s capitalization. HN profile names are case-sensitive.",
+            text = "Check the usernameâ€™s capitalization. HN profile names are case-sensitive.",
             modifier = Modifier.padding(bottom = 10.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
@@ -300,42 +290,7 @@ private fun UserLoadedContent(
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
-    var showLinks by rememberSaveable(user.id) { mutableStateOf(false) }
     var confirmingBlock by rememberSaveable(user.id, blocked) { mutableStateOf(false) }
-    val linkColor = MaterialTheme.colorScheme.primary
-    val linkListener = remember(onOpenLink) {
-        LinkInteractionListener { annotation ->
-            if (annotation is LinkAnnotation.Url) onOpenLink(annotation.url)
-        }
-    }
-    val formattedAbout = remember(
-        user.about,
-        linkColor,
-        linkListener,
-    ) {
-        htmlAnnotatedString(user.about, linkColor, linkListener)
-    }
-    val detectedLinks = remember(formattedAbout) {
-        detectUserProfileLinks(formattedAbout.text).filter { candidate ->
-            formattedAbout.getLinkAnnotations(candidate.start, candidate.end).isEmpty()
-        }
-    }
-    val clickableAbout = remember(formattedAbout, detectedLinks, linkColor, linkListener) {
-        buildAnnotatedString {
-            append(formattedAbout)
-            detectedLinks.forEach { link ->
-                addLink(
-                    LinkAnnotation.Url(
-                        link.url,
-                        TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
-                        linkListener,
-                    ),
-                    link.start,
-                    link.end,
-                )
-            }
-        }
-    }
     AnimatedContent(
         targetState = confirmingBlock,
         modifier = Modifier.fillMaxWidth(),
@@ -359,7 +314,7 @@ private fun UserLoadedContent(
                     fontSize = 20.sp,
                 )
                 Text(
-                    "Their stories and comments will be hidden. You can unblock them from this profile or Settings → Filters and tags.",
+                    "Their stories and comments will be hidden. You can unblock them from this profile or Settings â†’ Filters and tags.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
@@ -385,25 +340,7 @@ private fun UserLoadedContent(
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
-            if (formattedAbout.isNotBlank()) {
-                SelectionContainer {
-                    Crossfade(showLinks, animationSpec = tween(180), label = "Clickable profile links") { clickable ->
-                    Text(
-                        text = if (clickable) clickableAbout else formattedAbout,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                    }
-                }
-            }
-            if (detectedLinks.isNotEmpty()) {
-                TextButton(onClick = { showLinks = !showLinks }, modifier = Modifier.align(Alignment.End)) {
-                    Icon(painterResource(Res.drawable.ic_link), contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(if (showLinks) "Plain text" else "Clickable links", modifier = Modifier.padding(start = 6.dp))
-                }
-            }
+            UserProfileBio(user.id, user.about, onOpenLink)
             if (user.hasSubmissions) {
                 UserOutlinedAction(
                     label = "Submissions",

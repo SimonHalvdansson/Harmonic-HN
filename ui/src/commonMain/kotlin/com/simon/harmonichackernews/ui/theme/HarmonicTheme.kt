@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.unit.sp
 
 /**
  * Shared canvas for screens, headers, navigation layers, and native hosts. Light themes place
@@ -72,7 +73,14 @@ fun HarmonicTheme(
     content: @Composable () -> Unit,
 ) {
     val fontFamily = ProductSansFontFamily
-    val typography = remember(fontFamily) { Typography(fontFamily = fontFamily) }
+    val typography = remember(fontFamily) {
+        val defaults = Typography(fontFamily = fontFamily)
+        // Compact UI text uses 20sp leading. Reading content supplies its own size and leading.
+        defaults.copy(
+            bodyLarge = defaults.bodyLarge.copy(lineHeight = 20.sp),
+            titleMedium = defaults.titleMedium.copy(lineHeight = 20.sp),
+        )
+    }
     // Scheme/style changes blend within the current appearance. Reset only the color animation
     // on light/dark changes, avoiding an intermediate palette that flips the surface hierarchy.
     val colors = key(darkTheme) { rememberAnimatedThemeColors(colorScheme) }

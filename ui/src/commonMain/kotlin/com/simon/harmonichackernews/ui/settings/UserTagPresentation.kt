@@ -96,11 +96,11 @@ internal fun UserTagPreview(userName: String, tag: String, color: UserTagColor) 
     Column(
         modifier = Modifier.fillMaxWidth().testTag("user-tag-preview")
             .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(16.dp))
-            .padding(14.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {},
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text("Preview", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Text("Preview", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, lineHeight = 16.sp)
         // One paragraph wraps both identity and tag, so a long username cannot consume the tag's width.
         Text(
             preview,

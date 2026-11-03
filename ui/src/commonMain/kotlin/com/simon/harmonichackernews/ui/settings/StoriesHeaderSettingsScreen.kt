@@ -53,6 +53,7 @@ import com.simon.harmonichackernews.ui.stories.FrontpageHeaderControls
 import com.simon.harmonichackernews.ui.stories.StoriesHeaderMenus
 import com.simon.harmonichackernews.ui.stories.StoryTypeChips
 import com.simon.harmonichackernews.ui.stories.frontpageHeaderBottomSpacing
+import com.simon.harmonichackernews.ui.stories.frontpageHeaderIdleStatusSpacing
 import com.simon.harmonichackernews.ui.stories.frontpageHeaderTopSpacing
 import com.simon.harmonichackernews.ui.stories.storiesHeaderIconColor
 import org.jetbrains.compose.resources.painterResource
@@ -108,7 +109,6 @@ internal fun StoriesHeaderSettingsScreen(
                 SettingsDivider()
                 SegmentedSetting(
                     title = "Header pill",
-                    summary = "Give the title and actions a rounded Material color surface",
                     options = StoriesHeaderPill.entries.map { it to it.label },
                     optionWeights = mapOf(StoriesHeaderPill.OFF to .65f, StoriesHeaderPill.SECONDARY to 1.2f),
                     selected = settings.headerPill,
@@ -117,7 +117,6 @@ internal fun StoriesHeaderSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Pill elevation",
-                    summary = "Add a soft shadow beneath the header pill",
                     icon = Res.drawable.ic_layers,
                     enabled = settings.headerPill != StoriesHeaderPill.OFF,
                     checked = settings.headerPillElevation,
@@ -156,7 +155,8 @@ private fun StoriesHeaderPreview(settings: StoryDisplaySettings, frontpages: Lis
                 // Its independent menu state cannot dismiss the live preview's dropdown.
                 Box {
                     StoriesHeaderPreviewContent(
-                        settings.copy(listSelector = StoryListSelector.CHIPS, compactHeader = false),
+                        settings.copy(listSelector = StoryListSelector.CHIPS, compactHeader = false,
+                            headerPill = StoriesHeaderPill.PRIMARY),
                         frontpages, selectedIndex, {}, animateChanges = false,
                     )
                 }
@@ -194,7 +194,7 @@ private fun StoriesHeaderPreviewContent(
         tween(320, easing = FastOutSlowInEasing), label = "Preview header top spacing",
     )
     val bottomSpacing by animateDpAsState(
-        frontpageHeaderBottomSpacing(settings.compactHeader),
+        frontpageHeaderBottomSpacing(settings.compactHeader) + frontpageHeaderIdleStatusSpacing(settings.compactHeader),
         tween(320, easing = FastOutSlowInEasing), label = "Preview header bottom spacing",
     )
     Column(
@@ -236,7 +236,8 @@ private fun StoriesHeaderPreviewContent(
             style = settings.copy(previewImageMode = StoryPreviewMode.OFF, showPreviewText = false)
                 .toStoryRowStyle(StoryRowStyleContext(score = 53, commentCount = 18, isRead = false)),
             modifier = Modifier.padding(
-                top = if (animateChanges) bottomSpacing else frontpageHeaderBottomSpacing(settings.compactHeader),
+                top = if (animateChanges) bottomSpacing else
+                    frontpageHeaderBottomSpacing(settings.compactHeader) + frontpageHeaderIdleStatusSpacing(settings.compactHeader),
             ).testTag("stories-header-preview-story"),
             listItem = true,
             animateChanges = false,

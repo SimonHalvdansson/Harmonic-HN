@@ -89,12 +89,14 @@ fun UserTagDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { saveTag() }),
                 )
-                Text("Color", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                UserTagColorChoices(
-                    selectedColor = selectedColor,
-                    enabled = !dismissal.isClosing,
-                    onSelected = { colorValue = it.storageValue },
-                )
+                Column {
+                    Text("Color", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    UserTagColorChoices(
+                        selectedColor = selectedColor,
+                        enabled = !dismissal.isClosing,
+                        onSelected = { colorValue = it.storageValue },
+                    )
+                }
                 UserTagPreview(userName, tag, selectedColor)
             }
         },

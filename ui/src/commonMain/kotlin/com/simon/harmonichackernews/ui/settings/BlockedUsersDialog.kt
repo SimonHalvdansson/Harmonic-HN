@@ -36,7 +36,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
-import com.simon.harmonichackernews.resources.ic_add
 import com.simon.harmonichackernews.resources.ic_close
 import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_person
@@ -85,11 +84,12 @@ fun BlockedUsersDialog(
             CompleteSettingsDialogDismissal(childOpening)
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Enter each account’s exact HN username. Profile lookup and blocking match the saved capitalization only.",
+                    "Case sensitive",
                     fontFamily = ProductSansFontFamily, fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = input,
                         onValueChange = { if (!inputLocked) input = it },
@@ -101,9 +101,8 @@ fun BlockedUsersDialog(
                         ),
                         keyboardActions = KeyboardActions(onDone = { add() }),
                     )
-                    IconButton(onClick = ::add, enabled = additions.isNotEmpty() && !inputLocked,
-                        modifier = Modifier.size(48.dp)) {
-                        Icon(painterResource(Res.drawable.ic_add), "Block exact username")
+                    SettingsDialogTextButton(onClick = ::add, enabled = additions.isNotEmpty() && !inputLocked) {
+                        Text("Block")
                     }
                 }
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 296.dp).testTag("blocked-users-list")) {

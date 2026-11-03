@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,7 +27,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -340,7 +338,6 @@ private fun DebugOpenSetting(
     val keyboardController = LocalSoftwareKeyboardController.current
     var value by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
-    var focused by remember { mutableStateOf(false) }
 
     fun open() {
         val trimmed = value.trim()
@@ -391,20 +388,8 @@ private fun DebugOpenSetting(
                     value = if (numeric) it.filter(Char::isDigit) else it
                     error = null
                 },
-                modifier = Modifier.weight(1f).onFocusChanged { focused = it.isFocused },
+                modifier = Modifier.weight(1f),
                 label = { Text(label, fontFamily = ProductSansFontFamily) },
-                // The iOS number pad has no Return key. Keep dismissal beside the field even
-                // when the system pans the page's navigation offscreen to reveal that field.
-                trailingIcon = if (numeric && focused) {
-                    {
-                        TextButton(onClick = {
-                            focusManager.clearFocus(force = true)
-                            keyboardController?.hide()
-                        }) {
-                            Text("Done", fontFamily = ProductSansFontFamily)
-                        }
-                    }
-                } else null,
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { message ->
@@ -413,6 +398,7 @@ private fun DebugOpenSetting(
                 textStyle = androidx.compose.ui.text.TextStyle(
                     fontFamily = ProductSansFontFamily,
                     fontSize = 16.sp,
+                    lineHeight = 20.sp,
                 ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,

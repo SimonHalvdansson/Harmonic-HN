@@ -6,6 +6,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -118,6 +119,18 @@ class StoriesHeaderPreviewTest {
                 }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
                 assertEquals(if (compact) 8f else 28f, controls.top - bounds.top, 1f,
                     "The preview must show the real gap between the screen edge and the header")
+                val previewNodes = nodes(allNodes().single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                })
+                val lastControlBottom = if (selector == StoryListSelector.CHIPS)
+                    previewNodes.single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-chips" }.boundsInRoot.bottom
+                else controls.bottom
+                val previewStory = previewNodes.single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-story"
+                }
+                assertEquals(if (compact) 10f else 26f,
+                    previewStory.boundsInRoot.top - lastControlBottom, 1f,
+                    "Include the live header's idle-status spacer as well as its bottom padding")
                 val compactTitle = allNodes().first {
                     it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Compact header" } == true
                 }.boundsInRoot
@@ -152,14 +165,14 @@ class StoriesHeaderPreviewTest {
                         it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
                     }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
                     val title = titleLayout()
-                    assertEquals(if (pill == StoriesHeaderPill.OFF) 56f else 64f, controls.height, 1f,
-                        "The pill adds 4dp above and below the existing controls")
+                    assertEquals(if (pill == StoriesHeaderPill.OFF) 56f else 68f, controls.height, 1f,
+                        "The pill adds 6dp above and below the existing controls")
                     if (pill == StoriesHeaderPill.OFF) bareTitleSize = title.layoutInput.style.fontSize.value
                     else {
                         assertTrue(title.layoutInput.style.fontSize.value < bareTitleSize,
                             "The pill title must be smaller than the bare header title")
-                        if (width == 640) assertEquals(bareTitleSize * .85f, title.layoutInput.style.fontSize.value, .05f,
-                            "Wide pill headers reduce only the title by fifteen percent")
+                        if (width == 640) assertEquals(bareTitleSize * .8f, title.layoutInput.style.fontSize.value, .05f,
+                            "Wide pill headers reduce only the title by twenty percent")
                     }
                     scene.render(time.also { time += 16_666_667L }).use { image ->
                         if (pill == StoriesHeaderPill.OFF) barePixel = image.toComposeImageBitmap().toPixelMap()[controls.center.x.toInt(), controls.top.toInt() + 2]
@@ -186,11 +199,17 @@ class StoriesHeaderPreviewTest {
                 }
                 val scheme = HarmonicThemeCatalog.scheme("dynamic", dark).colorScheme
                 settings.value = settings.value.copy(headerPill = StoriesHeaderPill.OFF)
+                val margins = mutableListOf<Float>()
+                val shadowLuminances = mutableListOf<Float>()
                 repeat(30) {
                     scene.render(time.also { time += 16_666_667L }).use { image ->
                         val bounds = nodes(allNodes().single {
                             it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
                         }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                        margins += bounds.left
+                        shadowLuminances += image.toComposeImageBitmap().toPixelMap()[bounds.center.x.toInt(), bounds.bottom.toInt() + 2].luminance()
+                        assertEquals(frameBounds!!.height, taggedBounds("stories-header-preview").height, 1f,
+                            "The preview frame must stay fixed while the pill switches off")
                         val actual = image.toComposeImageBitmap().toPixelMap()[bounds.center.x.toInt(), bounds.top.toInt() + 2]
                         for ((value, ends) in listOf(actual.red to (barePixel.red to scheme.tertiary.red),
                             actual.green to (barePixel.green to scheme.tertiary.green), actual.blue to (barePixel.blue to scheme.tertiary.blue))) {
@@ -199,6 +218,29 @@ class StoriesHeaderPreviewTest {
                         }
                     }
                 }
+                val cardInset = if (settings.value.hasBackground || settings.value.tintCardsFromImages) 12f else 8f
+                assertTrue(margins.filter { it > cardInset && it < 16f }.distinct().size >= 3,
+                    "Switching off must animate the outer margin instead of jumping to 16dp")
+                assertEquals(16f, margins.last(), 1f)
+                if (!dark) {
+                    val shadow = shadowLuminances.first()
+                    val background = shadowLuminances.last()
+                    assertTrue(shadowLuminances.count { it > shadow + .005f && it < background - .005f } >= 3,
+                        "The shadow outside the pill must fade gradually without being clipped by its alpha layer")
+                }
+                settings.value = settings.value.copy(headerPill = StoriesHeaderPill.PRIMARY)
+                margins.clear()
+                repeat(30) {
+                    scene.render(time.also { time += 16_666_667L }).close()
+                    val controls = nodes(allNodes().single {
+                        it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                    }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                    margins += controls.left
+                    assertEquals(frameBounds!!.height, taggedBounds("stories-header-preview").height, 1f)
+                }
+                assertTrue(margins.filter { it > cardInset && it < 16f }.distinct().size >= 3,
+                    "Switching on must animate the outer margin too")
+                assertEquals(cardInset, margins.last(), 1f)
             } finally {
                 scene.close()
                 bootstrap.close()

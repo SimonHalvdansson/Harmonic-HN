@@ -340,15 +340,6 @@ internal fun TitleFilterRuleEditorContent(
                 onSelected = onModeChanged,
             )
         }
-        Text(
-            if (mode == TitleFilterMatchMode.WORDS_PHRASE) {
-                "Matches whole words or a literal phrase, ignoring capitalization. Punctuation stays as typed; spaces can vary."
-            } else {
-                "Matches this text anywhere in a title, ignoring capitalization—even inside a longer word."
-            },
-            fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         RulePreview(examples, if (text.isBlank()) "Type a rule to see how it matches." else null)
     }
 }

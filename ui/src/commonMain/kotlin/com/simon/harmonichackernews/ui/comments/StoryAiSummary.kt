@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.drawBehind
@@ -132,12 +133,13 @@ fun StoryAiSummary(
                 Text(
                     "Summary",
                     fontSize = 15.sp,
+                    lineHeight = 20.sp,
                     fontFamily = typography.family,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.weight(1f))
-                if (onAsk != null) {
+                if (onAsk != null && !policyBlocked) {
                     val canAsk = story.summaryGeneratedSuccessfully && !streaming && summary.isNotBlank()
                     val askAlpha by animateFloatAsState(
                         targetValue = if (canAsk) 1f else 0f,
@@ -174,22 +176,26 @@ fun StoryAiSummary(
                 }
             }
             if (policyBlocked) {
+                val iconTopPadding = with(LocalDensity.current) {
+                    (((typography.commentTextSize + 2f).sp.toDp() - 18.dp) / 2).coerceAtLeast(0.dp)
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_block),
                         contentDescription = null,
                         modifier = Modifier
-                            .padding(end = 6.dp)
+                            .padding(top = iconTopPadding, end = 7.dp)
                             .size(18.dp),
                         tint = MaterialTheme.colorScheme.error,
                     )
                     Text(
                         text = summary,
+                        modifier = Modifier.weight(1f),
                         color = MaterialTheme.colorScheme.error,
                         fontFamily = typography.family,
                         fontSize = typography.commentTextSize.sp,

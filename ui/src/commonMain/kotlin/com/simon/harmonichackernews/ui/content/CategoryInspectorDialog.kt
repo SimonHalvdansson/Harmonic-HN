@@ -274,7 +274,7 @@ internal fun CategoryInspectorContent(
                     }
                 }
                 Text(if (sample) "These sample scores demonstrate the inspector. They are not a result for a live story."
-                    else "Cosine similarity, not a probability. Labels also need 75% of the strongest match.",
+                    else "Labels need at least 75% of the strongest match.",
                     color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
                     fontSize = 12.sp, lineHeight = 17.sp)
             }
