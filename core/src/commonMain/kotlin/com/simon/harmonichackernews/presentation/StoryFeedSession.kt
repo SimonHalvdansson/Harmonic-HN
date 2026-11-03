@@ -3,12 +3,22 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.settings.ContentFilters
+import com.simon.harmonichackernews.settings.TitleFilterRule
+import com.simon.harmonichackernews.settings.TitleFilterMatchMode
+import com.simon.harmonichackernews.settings.DomainFilterRule
+import com.simon.harmonichackernews.settings.DomainFilterHostPolicy
 
 data class StoryVisibilityConfig(
     val filteredWords: List<String> = emptyList(),
     val filteredDomains: List<String> = emptyList(),
     val filteredUsers: Set<String> = emptySet(),
     val hideJobs: Boolean = false,
+    val titleRules: List<TitleFilterRule> = filteredWords.map {
+        TitleFilterRule(it, TitleFilterMatchMode.CONTAINS_TEXT)
+    },
+    val domainRules: List<DomainFilterRule> = filteredDomains.map {
+        DomainFilterRule(it, legacyContainsText = true)
+    },
 )
 
 /** Portable filtering policy for every story source, including search results. */
@@ -31,47 +41,63 @@ class StoryVisibilityPolicy(
             filteredDomains = filters.domains,
             filteredUsers = filters.users,
             hideJobs = hideJobs,
+            titleRules = filters.titleRules,
+            domainRules = filters.domainRules,
         )
         return config != previous
     }
 
     fun shouldHide(story: Story, storyType: StoryType): Boolean {
         val current = config
-        if (current.filteredUsers.isEmpty() && current.filteredWords.isEmpty() &&
-            current.filteredDomains.isEmpty() && (!current.hideJobs || storyType == StoryType.HN_JOBS)
+        if (current.filteredUsers.isEmpty() && current.titleRules.isEmpty() &&
+            current.domainRules.isEmpty() && (!current.hideJobs || storyType == StoryType.HN_JOBS)
         ) {
             return false
         }
 
         var normalizedAuthor: String? = null
         if (current.filteredUsers.isNotEmpty()) {
-            val author = story.by.orEmpty().normalizeFilterValue()
+            val author = story.by.orEmpty().trim()
             normalizedAuthor = author
             if (author.isNotEmpty() && author in current.filteredUsers) return true
         }
 
-        if (current.filteredWords.isNotEmpty()) {
-            val title = story.title.orEmpty().lowercase()
-            if (current.filteredWords.any(title::contains)) return true
+        if (current.titleRules.isNotEmpty()) {
+            val title = story.title.orEmpty()
+            if (current.titleRules.any { it.matches(title) }) return true
         }
 
-        if (current.filteredDomains.isNotEmpty()) {
-            val domain = runCatching { story.getDisplayDomain(true).orEmpty().lowercase() }
-                .getOrDefault("")
-            if (domain.isNotEmpty() && current.filteredDomains.any(domain::contains)) return true
+        if (current.domainRules.isNotEmpty()) {
+            val needsLegacy = current.domainRules.any(DomainFilterRule::legacyContainsText)
+            val legacyDomain = if (needsLegacy) runCatching {
+                story.getDisplayDomain(true).orEmpty().lowercase()
+            }.getOrDefault("") else ""
+            val host = if (current.domainRules.any { !it.legacyContainsText }) {
+                DomainFilterHostPolicy.normalize(story.url.orEmpty())
+            } else null
+            if (current.domainRules.any { rule ->
+                    if (rule.legacyContainsText) {
+                        legacyDomain.isNotEmpty() && legacyDomain.contains(rule.domain.trim().lowercase())
+                    } else {
+                        host != null && rule.matchesHost(host)
+                    }
+                }
+            ) return true
         }
 
         if (!current.hideJobs || storyType == StoryType.HN_JOBS) return false
         if (story.isJob) return true
-        val author = normalizedAuthor ?: story.by.orEmpty().normalizeFilterValue()
+        val author = normalizedAuthor ?: story.by.orEmpty().trim()
         return author == WHO_IS_HIRING
     }
 
     private fun StoryVisibilityConfig.normalized() = copy(
         filteredWords = filteredWords.mapNotNull { it.normalizedFilterOrNull() },
         filteredDomains = filteredDomains.mapNotNull { it.normalizedFilterOrNull() },
+        titleRules = titleRules.filter { it.text.isNotBlank() },
+        domainRules = domainRules.filter { it.domain.isNotBlank() },
         filteredUsers = filteredUsers.mapNotNullTo(mutableSetOf()) {
-            it.normalizedFilterOrNull()
+            it.trim().takeIf(String::isNotEmpty)
         },
     )
 

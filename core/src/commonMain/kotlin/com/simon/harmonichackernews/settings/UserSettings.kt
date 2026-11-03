@@ -58,6 +58,7 @@ data class StoryPreferences(
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val frontpageOrder: List<String> = emptyList(),
     val swipeToHide: Boolean = false,
+    val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

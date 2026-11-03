@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.network.HackerNewsActionResult
+import com.simon.harmonichackernews.network.HackerNewsActionFailureReason
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.HackerNewsUserService
 import com.simon.harmonichackernews.platform.ConnectivityService
@@ -80,6 +81,8 @@ class EditorSubmissionWorkflow(
         private set
 
     private var pendingSubmission: EditorSubmission? = null
+    private var pendingChallenge: HackerNewsCaptchaChallenge? = null
+    private var pendingAccountName: String? = null
 
     suspend fun submit(submission: EditorSubmission): EditorWorkflowResult {
         if (isSubmitting || !submission.validate(type, titleMaxLength).canSubmit) {
@@ -88,8 +91,12 @@ class EditorSubmissionWorkflow(
         if (!connectivity.isOnline()) return offlineFailure(submission)
 
         pendingSubmission = submission
+        pendingChallenge = null
         setSubmitting(true)
-        return runRequest { initialRequest(submission) }
+        return runRequest {
+            pendingAccountName = service.accountUsername()
+            initialRequest(submission)
+        }
     }
 
     suspend fun respondToCaptcha(
@@ -97,14 +104,19 @@ class EditorSubmissionWorkflow(
         response: String,
     ): EditorWorkflowResult {
         val submission = pendingSubmission ?: return EditorWorkflowResult.Ignored
-        if (!isSubmitting) return EditorWorkflowResult.Ignored
+        if (!isSubmitting || pendingChallenge != challenge || response.isBlank()) {
+            return EditorWorkflowResult.Ignored
+        }
+        // Consume this stage before dispatch. Native callbacks can arrive after dismissal.
+        pendingChallenge = null
         if (!connectivity.isOnline()) {
             setSubmitting(false)
             return offlineFailure(submission)
         }
         return runRequest {
             if (type == EditorType.POST && challenge.isLoginChallenge) {
-                service.submitAfterLoginCaptcha(
+                service.submitAfterLoginCaptchaForAccount(
+                    pendingAccountName,
                     challenge,
                     response,
                     submission.title,
@@ -112,12 +124,14 @@ class EditorSubmissionWorkflow(
                     submission.url,
                 )
             } else {
-                service.continueCaptchaAction(challenge, response)
+                service.continueCaptchaActionForAccount(pendingAccountName, challenge, response)
             }
         }
     }
 
-    fun cancelCaptcha(): EditorWorkflowResult.CaptchaCancelled {
+    fun cancelCaptcha(): EditorWorkflowResult {
+        if (pendingChallenge == null) return EditorWorkflowResult.Ignored
+        pendingChallenge = null
         setSubmitting(false)
         return EditorWorkflowResult.CaptchaCancelled(
             if (type == EditorType.POST) {
@@ -130,9 +144,9 @@ class EditorSubmissionWorkflow(
 
     private suspend fun initialRequest(submission: EditorSubmission): HackerNewsActionResult =
         if (type == EditorType.POST) {
-            service.submit(submission.title, submission.text, submission.url)
+            service.submitForAccount(pendingAccountName, submission.title, submission.text, submission.url)
         } else {
-            service.comment(itemId.toString(), submission.comment)
+            service.commentForAccount(pendingAccountName, itemId.toString(), submission.comment)
         }
 
     private suspend fun runRequest(
@@ -140,13 +154,17 @@ class EditorSubmissionWorkflow(
     ): EditorWorkflowResult = try {
         when (val result = request()) {
             is HackerNewsActionResult.Success -> EditorWorkflowResult.Success
-            is HackerNewsActionResult.Captcha -> EditorWorkflowResult.Captcha(result.challenge)
+            is HackerNewsActionResult.Captcha -> {
+                pendingChallenge = result.challenge
+                EditorWorkflowResult.Captcha(result.challenge)
+            }
             is HackerNewsActionResult.Failure -> {
                 setSubmitting(false)
-                failure(result.summary, result.detail, pendingSubmission)
+                failure(result.summary, result.detail, pendingSubmission, result.reason)
             }
         }
     } catch (error: CancellationException) {
+        pendingChallenge = null
         setSubmitting(false)
         throw error
     }
@@ -164,6 +182,7 @@ class EditorSubmissionWorkflow(
         summary: String?,
         detail: String?,
         submission: EditorSubmission?,
+        reason: HackerNewsActionFailureReason = HackerNewsActionFailureReason.GENERAL,
     ): EditorWorkflowResult.Failure {
         val isPost = type == EditorType.POST
         val draftName = if (isPost) "post" else "comment"
@@ -172,7 +191,9 @@ class EditorSubmissionWorkflow(
             message = listOfNotNull(
                 summary?.takeIf(String::isNotEmpty),
                 detail?.takeIf(String::isNotEmpty),
-                "Your $draftName is still here, so you can edit it or try again.",
+                if (reason == HackerNewsActionFailureReason.INDETERMINATE) {
+                    "HN may have received your $draftName. Check Hacker News before submitting again to avoid a duplicate. Your draft is still here."
+                } else "Your $draftName is still here, so you can edit it or try again.",
             ).joinToString("\n\n"),
             commentDraft = submission?.comment?.takeIf { !isPost },
         )

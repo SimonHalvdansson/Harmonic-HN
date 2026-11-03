@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.summary
 
+import com.simon.harmonichackernews.categorization.DesktopArticleEmbeddingEngine
 import com.simon.harmonichackernews.network.FileResumableDownloadDestination
 import com.simon.harmonichackernews.network.KtorHttpClient
 import com.simon.harmonichackernews.network.KtorTransferClient
@@ -113,12 +114,14 @@ private class DesktopSwitchableLocalModelStorage(
 class DesktopLocalAiEnvironment private constructor(
     val models: LocalModelService,
     val summary: LocalSummaryEngine,
+    internal val articleEmbeddings: DesktopArticleEmbeddingEngine?,
     private val scope: CoroutineScope,
     private val transferClient: HttpClient,
 ) : AutoCloseable {
     override fun close() {
         models.close()
         scope.cancel()
+        articleEmbeddings?.shutdown()
         transferClient.close()
     }
 
@@ -165,6 +168,7 @@ class DesktopLocalAiEnvironment private constructor(
                         addAll(LocalModelCatalog.models.filter { it.downloadable })
                     },
                     storageLocation = storageLocation,
+                    scope = scope,
                 ).also { it.refresh() }
                 DesktopLocalAiEnvironment(
                     models = models,
@@ -173,6 +177,9 @@ class DesktopLocalAiEnvironment private constructor(
                         apple = apple,
                         liteRt = DesktopLiteRtInference(cacheRoot.toString()),
                     ),
+                    articleEmbeddings = if (DesktopLiteRtInference.supported) {
+                        DesktopArticleEmbeddingEngine(cacheRoot.toString())
+                    } else null,
                     scope = scope,
                     transferClient = transferClient,
                 ).also { environment ->

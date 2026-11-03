@@ -133,6 +133,7 @@ fun DebugSettingsScreen(
 
     var versionTapCount by remember { mutableIntStateOf(0) }
     var lastVersionTap by remember { mutableStateOf<TimeMark?>(null) }
+    var categoryInspectorPreview by remember { mutableStateOf(false) }
 
     SettingsPage(
         title = stringResource(Res.string.settings_section_debug),
@@ -240,6 +241,13 @@ fun DebugSettingsScreen(
                     icon = Res.drawable.ic_preview,
                     onClick = { navigate(onLinkPreviewsRequested) },
                 )
+                SettingsDivider()
+                SettingRow(
+                    title = "Category inspector",
+                    summary = "Sample scores, chip transitions, and story click isolation",
+                    icon = Res.drawable.ic_label,
+                    onClick = { navigate { categoryInspectorPreview = true } },
+                )
             }
         }
 
@@ -314,6 +322,7 @@ fun DebugSettingsScreen(
             }
         }
     }
+    if (categoryInspectorPreview) CategoryInspectorPreviewDialog(onDismiss = { categoryInspectorPreview = false })
 }
 
 @Composable

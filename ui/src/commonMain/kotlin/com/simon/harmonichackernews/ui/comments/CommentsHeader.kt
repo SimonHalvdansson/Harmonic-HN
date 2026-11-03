@@ -2,6 +2,8 @@
 
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.settings.UserTagColor
+
 import com.simon.harmonichackernews.settings.CommentsHeaderButton
 
 import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneControls
@@ -144,9 +146,10 @@ fun CommentsHeader(
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     contentWindowInsets: WindowInsets = WindowInsets(0),
     horizontalContentInsets: WindowInsets? = null,
+    storyPosterTagColor: UserTagColor = UserTagColor.Theme,
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
-    val categoryLabels = LocalCommentStoryCategories.current
+    val categories = LocalCommentStoryCategories.current
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
     val headerSheetProgress = { if (controller.sideBySideActive) 1f else controller.sheetSlideOffset }
@@ -415,9 +418,9 @@ fun CommentsHeader(
                                                     fontSize = (headerTypography.commentsHeaderTitleSize * if (sideImage) 0.85f else 1f).sp,
                                                     style = textStyle,
                                                 )
-                                                com.simon.harmonichackernews.ui.content.StoryCategoryLabels(categoryLabels, 1f,
+                                                com.simon.harmonichackernews.ui.content.StoryCategoryLabels(categories.labels, 1f,
                                                     tintedSurface = visibleHeaderBackground.takeIf { settings.tintHeader },
-                                                    topSpacing = 3.dp, bottomSpacing = 4.dp)
+                                                    topSpacing = 3.dp, bottomSpacing = 4.dp, inspection = categories.inspection)
                                             }
                                         }
                                         val linkInfo: @Composable () -> Unit = {
@@ -429,7 +432,7 @@ fun CommentsHeader(
                                                 boundsTransform = boundsTransform,
                                             )) {
                                                 CommentsPreviewPlatformProvider(previewPlatform) {
-                                                    HeaderLinkInfo(story, visualSettings, faviconPreview, storyPosterTag)
+                                                    HeaderLinkInfo(story, visualSettings, faviconPreview, storyPosterTag, storyPosterTagColor)
                                                 }
                                             }
                                         }
@@ -615,6 +618,7 @@ fun CommentsHeader(
                                             story = story,
                                             settings = actionSettings,
                                             storyPosterTag = storyPosterTag,
+                                            storyPosterTagColor = storyPosterTagColor,
                                             textStyle = textStyle,
                                             onAuthorClick = { controller.listener.onHeaderAction(CommentsHeaderAction.USER) },
                                             onVoteClick = { controller.listener.onHeaderAction(CommentsHeaderAction.VOTE) },

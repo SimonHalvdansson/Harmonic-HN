@@ -2,9 +2,11 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.dsl.AotMode
 import org.jetbrains.compose.desktop.application.tasks.AbstractProguardTask
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.WriteProperties
+import org.gradle.api.tasks.testing.Test
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -16,6 +18,8 @@ val desktopVersionName = providers.gradleProperty("harmonic.versionName").get()
 val desktopVersionCode = providers.gradleProperty("harmonic.versionCode").get()
 val desktopOsName = System.getProperty("os.name").orEmpty().lowercase()
 val isMacDesktopBuild = desktopOsName.contains("mac")
+val isLinuxDesktopBuild = desktopOsName.startsWith("linux")
+val isArm64DesktopBuild = System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
 val isWindowsArm64DesktopBuild = desktopOsName.startsWith("windows") &&
     System.getProperty("os.arch").lowercase() in setOf("aarch64", "arm64")
 plugins {
@@ -46,7 +50,12 @@ kotlin {
             implementation(libs.coil.network.ktor3)
             implementation(libs.jna.platform)
             implementation(libs.jbr.api)
-            implementation(if (isWindowsArm64DesktopBuild) libs.swt.win32.arm64 else libs.swt.win32.x64)
+            implementation(when {
+                isLinuxDesktopBuild && isArm64DesktopBuild -> libs.swt.gtk.arm64
+                isLinuxDesktopBuild -> libs.swt.gtk.x64
+                isWindowsArm64DesktopBuild -> libs.swt.win32.arm64
+                else -> libs.swt.win32.x64
+            })
         }
         getByName("desktopTest").dependencies {
             implementation(kotlin("test"))
@@ -95,6 +104,26 @@ val stageMacWebView = tasks.register<Sync>("stageMacWebView") {
     buildMacWebView?.let { nativeBuild -> dependsOn(nativeBuild) }
     if (isMacDesktopBuild) from(macWebViewOutput)
     into(macWebViewResources.map { it.dir("native") })
+}
+
+// Native browser fixtures are opt-in: ordinary desktop tests need neither AppKit nor a display.
+tasks.withType<Test>().configureEach {
+    if (isMacDesktopBuild && providers.systemProperty("harmonic.testMacWebView").orNull == "true") {
+        dependsOn(stageMacWebView)
+        classpath += files(macWebViewResources)
+        systemProperty("harmonic.testMacWebView", "true")
+        providers.systemProperty("harmonic.captchaFixtureHoldMs").orNull?.let {
+            systemProperty("harmonic.captchaFixtureHoldMs", it)
+        }
+        providers.systemProperty("harmonic.captchaFixtureVerifyEscape").orNull?.let {
+            systemProperty("harmonic.captchaFixtureVerifyEscape", it)
+        }
+        jvmArgs(
+            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
+        )
+    }
 }
 
 val macFoundationModelsOutput = layout.buildDirectory.file("macFoundationModels/harmonic-foundation-models")
@@ -208,6 +237,9 @@ compose.desktop {
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
         nativeDistributions {
+            // Protobuf's lite runtime loads sun.misc.Unsafe reflectively for DataStore writes.
+            modules("jdk.unsupported")
+            if (desktopOsName.startsWith("windows")) modules("jdk.accessibility")
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Harmonic"
             packageVersion = desktopVersionName
@@ -234,6 +266,13 @@ compose.desktop {
                 )
             }
         }
+    }
+}
+
+tasks.withType<AbstractJPackageTask>().configureEach {
+    if (targetFormat == TargetFormat.Deb) {
+        // SWT loads these libraries at runtime, so jpackage's ELF dependency scan cannot see them.
+        freeArgs.addAll("--linux-package-deps", "libgtk-3-0 | libgtk-3-0t64, libwebkit2gtk-4.1-0, libx11-6")
     }
 }
 

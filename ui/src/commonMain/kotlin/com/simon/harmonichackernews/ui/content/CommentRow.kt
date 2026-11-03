@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.settings.UserTagColor
+
 import com.simon.harmonichackernews.settings.QuoteSpacing
 import com.simon.harmonichackernews.settings.QuoteHighlightColor
 import com.simon.harmonichackernews.settings.QuoteHighlightStyle
@@ -374,6 +376,7 @@ fun CommentRow(
         commentTextSize = style.textSize,
     ),
     age: String = relativeTimeOnResume(comment.time),
+    userTagColor: UserTagColor = UserTagColor.Theme,
 ) {
     val colors = MaterialTheme.colorScheme
     val bodySize = animatedCommentValue(
@@ -542,6 +545,7 @@ fun CommentRow(
                 byOp = comment.by == storyAuthor,
                 byUser = !accountUser.isNullOrBlank() && comment.by == accountUser,
                 userTag = userTag,
+                tagColor = userTagColor,
                 isNew = style.markNewComments && comment.isNew,
                 hiddenPreview = hiddenPreview,
                 subtreeReplyCount = subtreeReplyCount.takeIf {

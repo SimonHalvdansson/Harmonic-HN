@@ -7,7 +7,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -23,6 +26,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -40,7 +45,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -67,35 +75,38 @@ fun SettingsAlertDialog(
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val dialogMaxWidth = settingsDialogMaxWidth()
-    PredictiveBackDialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(
-            dismissOnBackPress = properties.dismissOnBackPress,
-            dismissOnClickOutside = properties.dismissOnClickOutside,
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        SettingsAlertDialogLayout(
+    SynchronizedSettingsDialogs {
+        PredictiveBackDialog(
             onDismissRequest = onDismissRequest,
-            confirmButton = confirmButton,
-            modifier = modifier,
-            neutralButton = neutralButton,
-            dismissButton = dismissButton,
-            title = title,
-            text = text,
-            edgeToEdgeContent = edgeToEdgeContent,
-            showButtons = showButtons,
-            separateDismissButton = separateDismissButton,
-            dismissOnClickOutside = properties.dismissOnClickOutside,
-            scrollableContent = scrollableContent,
-            foreground = foreground,
-            containerColor = containerColor,
-            dialogMaxWidth = dialogMaxWidth,
-        )
+            properties = DialogProperties(
+                dismissOnBackPress = properties.dismissOnBackPress,
+                dismissOnClickOutside = properties.dismissOnClickOutside,
+                usePlatformDefaultWidth = false,
+            ),
+        ) {
+            SettingsAlertDialogLayout(
+                onDismissRequest = onDismissRequest,
+                confirmButton = confirmButton,
+                modifier = modifier,
+                neutralButton = neutralButton,
+                dismissButton = dismissButton,
+                title = title,
+                text = text,
+                edgeToEdgeContent = edgeToEdgeContent,
+                showButtons = showButtons,
+                separateDismissButton = separateDismissButton,
+                dismissOnClickOutside = properties.dismissOnClickOutside,
+                scrollableContent = scrollableContent,
+                foreground = foreground,
+                containerColor = containerColor,
+                dialogMaxWidth = dialogMaxWidth,
+            )
+        }
     }
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun SettingsAlertDialogLayout(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
@@ -114,6 +125,8 @@ private fun SettingsAlertDialogLayout(
     dialogMaxWidth: Dp,
 ) {
     val contentWindowInsets = synchronizedSettingsDialogInsets()
+    val compactScroll = rememberScrollState()
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -126,7 +139,7 @@ private fun SettingsAlertDialogLayout(
                     },
             )
         }
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(contentWindowInsets)
@@ -136,6 +149,11 @@ private fun SettingsAlertDialogLayout(
                 ),
             contentAlignment = Alignment.Center,
         ) {
+            // With a keyboard and large text, title + actions alone can fill a short window.
+            // Let the complete card scroll there while bounding the body: lazy lists inside it
+            // must still receive a finite height rather than the outer scroll's infinity.
+            val compactHeight = maxHeight < 240.dp * fontScale
+            val compactBodyHeight = (maxHeight * 0.65f).coerceAtLeast(48.dp)
             Surface(
                 modifier = modifier
                     .widthIn(max = dialogMaxWidth)
@@ -150,7 +168,12 @@ private fun SettingsAlertDialogLayout(
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
             ) {
-                Column {
+                Column(
+                    Modifier.then(
+                        if (compactHeight) Modifier.verticalScroll(compactScroll)
+                            .testTag("settings-dialog-compact-scroll") else Modifier,
+                    ),
+                ) {
                     title?.let { titleContent ->
                         Box(
                             modifier = Modifier.padding(
@@ -168,7 +191,13 @@ private fun SettingsAlertDialogLayout(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .then(
-                                    if (scrollableContent) {
+                                    if (compactHeight && scrollableContent) {
+                                        Modifier.heightIn(max = compactBodyHeight)
+                                    } else if (compactHeight) {
+                                        // Plain content participates in the complete card scroll.
+                                        // Scroll/lazy bodies opt into a finite viewport explicitly.
+                                        Modifier
+                                    } else if (scrollableContent) {
                                         Modifier.weight(1f, fill = false)
                                     } else {
                                         Modifier
@@ -199,15 +228,19 @@ private fun SettingsAlertDialogLayout(
                         }
                     }
                     if (showButtons) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
-                                    vertical = HarmonicDimens.compose_settings_dialog_action_vertical_padding,
-                                ),
+                        val actionsModifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
+                                vertical = HarmonicDimens.compose_settings_dialog_action_vertical_padding,
+                            )
+                        // Measure each complete action against the available row width before
+                        // wrapping. A Row can squeeze its final label into the remaining few
+                        // pixels even when the dialog is wide enough to miss a width heuristic.
+                        FlowRow(
+                            modifier = actionsModifier,
                             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             neutralButton?.invoke()
                             if (neutralButton != null) Spacer(Modifier.weight(1f))
@@ -268,6 +301,7 @@ fun SingleChoiceDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle(title) },
         edgeToEdgeContent = true,
+        scrollableContent = true,
         text = {
             LazyColumn(
                 modifier = Modifier
@@ -322,6 +356,7 @@ fun MultiChoiceDialog(
         onDismissRequest = onDismiss,
         title = { SettingsDialogTitle(title) },
         edgeToEdgeContent = true,
+        scrollableContent = true,
         text = {
             LazyColumn(
                 modifier = Modifier
@@ -453,6 +488,7 @@ fun SettingsDialogBodyText(text: String, modifier: Modifier = Modifier) {
 fun SettingsDialogTitle(title: String) {
     Text(
         text = title,
+        modifier = Modifier.semantics { heading() },
         color = MaterialTheme.colorScheme.onSurface,
         fontFamily = ProductSansFontFamily,
         fontWeight = FontWeight.Normal,

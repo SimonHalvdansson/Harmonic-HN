@@ -42,8 +42,11 @@ internal class GeneratedAvatarArtwork(author: String, style: UserAvatarStyle) {
             UserAvatarStyle.ORBITAL -> orbital(AvatarRandom(userAvatarSeed("$name:design:0")))
             UserAvatarStyle.ROBOT -> robot(AvatarRandom(userAvatarSeed("$name:design:1")))
             UserAvatarStyle.LANDSCAPE -> landscape(AvatarRandom(userAvatarSeed("$name:design:2")))
+            UserAvatarStyle.LETTERS -> Unit // The host draws its font-measured initial over this palette.
         }
     }
+
+    fun foreground(saturation: Float): Color = ink.resolve(saturation)
 
     fun draw(scope: DrawScope, saturation: Float) = with(scope) {
         drawRect(background.resolve(saturation), size = Size(100f, 100f))

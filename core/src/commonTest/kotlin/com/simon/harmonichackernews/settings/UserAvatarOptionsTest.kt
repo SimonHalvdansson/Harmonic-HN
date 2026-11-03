@@ -7,6 +7,19 @@ import kotlinx.coroutines.flow.emptyFlow
 
 class UserAvatarOptionsTest {
     @Test
+    fun letterStylePersistsAndUsesTheUsernameInitial() {
+        val options = UserAvatarOptions(setOf(UserAvatarStyle.LETTERS), UserAvatarShape.ROUNDED, UserAvatarColors.MUTED)
+        assertEquals(options, UserAvatarOptions.decode(options.encode()))
+        assertEquals(UserAvatarStyle.LETTERS, options.styleFor("simon"))
+        assertEquals("Letters", options.summary)
+        assertEquals("S", userAvatarInitial("simon"))
+        assertEquals("S", userAvatarInitial("Simon"))
+        assertEquals("7", userAvatarInitial("7bit"))
+        assertEquals("_", userAvatarInitial("_reader"))
+        assertEquals("?", userAvatarInitial(""))
+    }
+
+    @Test
     fun mixedStylesAndCustomizationPersistWhileDisabled() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, emptyFlow())

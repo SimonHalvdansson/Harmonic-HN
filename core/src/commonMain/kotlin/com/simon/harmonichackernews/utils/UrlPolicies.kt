@@ -66,9 +66,28 @@ object HackerNewsCaptchaWebProtocol {
     const val RESPONSE_FIELD = "g-recaptcha-response"
     const val RESPONSE_SCRIPT =
         "(function(){var el=document.getElementById('$RESPONSE_FIELD');return el?el.value:'';})()"
+    const val STATUS_SCRIPT = "window.__harmonicCaptchaStatus || 'loading'"
+    const val TRUSTED_STATUS_SCRIPT =
+        "(function(){return location.origin==='${HackerNewsLinks.BASE_URL}'?($STATUS_SCRIPT):'untrusted';})()"
+    const val TRUSTED_RESPONSE_SCRIPT =
+        "(function(){return location.origin==='${HackerNewsLinks.BASE_URL}'?($RESPONSE_SCRIPT):null;})()"
 
     fun decodeResponse(javaScriptValue: String?): String =
         JsonStringCodec.decodeJavascriptString(javaScriptValue).orEmpty()
+
+    /** CAPTCHA widgets may navigate their frames, but may never replace the trusted document. */
+    fun allowsNavigation(url: String?, isMainFrame: Boolean): Boolean {
+        if (url == "about:blank") return true
+        val parsed = url?.toNetworkUrlOrNull() ?: return false
+        if (parsed.scheme != "https" || parsed.value.port != 443) return false
+        if (!parsed.value.user.isNullOrEmpty() || !parsed.value.password.isNullOrEmpty()) return false
+        val host = parsed.host.lowercase()
+        if (host == HackerNewsLinks.HOST) return true
+        return !isMainFrame && host in setOf(
+            "google.com", "www.google.com", "recaptcha.google.com",
+            "recaptcha.net", "www.recaptcha.net",
+        )
+    }
 }
 
 object ArchiveRedirectPolicy {

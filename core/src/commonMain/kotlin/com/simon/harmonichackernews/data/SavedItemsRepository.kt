@@ -266,6 +266,20 @@ class SavedItemsRepository(
         }
     }
 
+    /** A remote action that waited for a browser challenge must not update a replacement account. */
+    suspend fun setMembershipIfAccountCurrent(
+        source: SavedItemSource,
+        id: Int,
+        present: Boolean,
+        createdAtMillis: Long,
+        expectedAccountRevision: Long,
+    ): Boolean = mutationMutex.withLock {
+        if (currentAccountRevision != expectedAccountRevision) return@withLock false
+        setMembership(source, id, present, createdAtMillis)
+        itemMutationRevisions.remove(MembershipKey(source, id, scopeFor(source)))
+        true
+    }
+
     suspend fun updateMembershipAtomic(
         source: SavedItemSource,
         id: Int,

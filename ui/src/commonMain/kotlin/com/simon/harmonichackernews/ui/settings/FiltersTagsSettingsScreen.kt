@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.content.userTagColor
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -10,11 +13,16 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_action_work_off
 import com.simon.harmonichackernews.resources.ic_delete
@@ -29,11 +37,18 @@ import org.jetbrains.compose.resources.stringResource
 
 enum class ContentFilterDialog { StoryTitle, Domain, User }
 
-data class TaggedUserUi(val username: String, val tag: String)
+data class TaggedUserUi(
+    val username: String,
+    val tag: String,
+    val color: UserTagColor = UserTagColor.Theme,
+)
 
 data class FiltersTagsSettingsUiState(
     val tags: List<TaggedUserUi>,
     val hideJobs: Boolean,
+    val legacyTags: List<TaggedUserUi> = emptyList(),
+    val blockedUserCount: Int = 0,
+    val legacyBlockedUserCount: Int = 0,
 )
 
 @Composable
@@ -47,6 +62,8 @@ fun FiltersTagsSettingsScreen(
     onProfileRequested: (String) -> Unit,
     onTagEditRequested: (String) -> Unit,
     onTagDeleteRequested: (String) -> Unit,
+    onLegacyTagReviewRequested: (String) -> Unit = {},
+    onLegacyTagDeleteRequested: (String) -> Unit = {},
     contentVersion: Int = 0,
 ) {
     SettingsPage(
@@ -71,6 +88,8 @@ fun FiltersTagsSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Blocked users",
+                    summary = "${state.blockedUserCount} active" + if (state.legacyBlockedUserCount > 0)
+                        " · ${state.legacyBlockedUserCount} ${if (state.legacyBlockedUserCount == 1) "needs" else "need"} review (inactive)" else " · Case-sensitive",
                     icon = Res.drawable.ic_person,
                     onClick = { onFilterRequested(ContentFilterDialog.User) },
                 )
@@ -109,13 +128,13 @@ fun FiltersTagsSettingsScreen(
                             ),
                         )
                     },
-                    contentKey = { tags -> tags.joinToString { "${it.username}:${it.tag}" } },
+                    contentKey = { tags -> tags.joinToString { "${it.username}:${it.tag}:${it.color}" } },
                     label = "tagged users",
                 ) { tags ->
                     Column(Modifier.fillMaxWidth()) {
                         if (tags.isEmpty()) {
                             SettingRow(
-                                title = "No user with tags",
+                                title = "No active user tags",
                                 icon = null,
                                 enabled = false,
                                 onClick = {},
@@ -123,11 +142,9 @@ fun FiltersTagsSettingsScreen(
                         } else {
                             tags.forEachIndexed { index, entry ->
                                 SettingRow(
-                                    title = if (entry.tag.isBlank()) {
-                                        entry.username
-                                    } else {
-                                        "${entry.username} (${entry.tag})"
-                                    },
+                                    title = entry.username,
+                                    summary = entry.tag,
+                                    summaryColor = userTagColor(entry.color),
                                     icon = Res.drawable.ic_person,
                                     onClick = { onProfileRequested(entry.username) },
                                     trailing = {
@@ -157,6 +174,38 @@ fun FiltersTagsSettingsScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+        if (state.legacyTags.isNotEmpty()) item {
+            SettingsCategory("Tags needing review (${state.legacyTags.size})") {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Inactive until confirmed", color = MaterialTheme.colorScheme.primary)
+                    Text("Older versions discarded capitalization. These tags are saved but will not appear on profiles or comments until you confirm the exact username.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                }
+                state.legacyTags.forEachIndexed { index, entry ->
+                    SettingRow(
+                        title = entry.username,
+                        summary = "Inactive · ${entry.tag}",
+                        summaryColor = userTagColor(entry.color),
+                        icon = Res.drawable.ic_person,
+                        onClick = { onLegacyTagReviewRequested(entry.username) },
+                        trailing = {
+                            Row {
+                                IconButton(onClick = { onLegacyTagReviewRequested(entry.username) }) {
+                                    Icon(painterResource(Res.drawable.ic_edit),
+                                        "Review saved tag for ${entry.username}")
+                                }
+                                IconButton(onClick = { onLegacyTagDeleteRequested(entry.username) }) {
+                                    Icon(painterResource(Res.drawable.ic_delete),
+                                        "Remove saved tag for ${entry.username}")
+                                }
+                            }
+                        },
+                    )
+                    if (index != state.legacyTags.lastIndex) SettingsDivider()
                 }
             }
         }

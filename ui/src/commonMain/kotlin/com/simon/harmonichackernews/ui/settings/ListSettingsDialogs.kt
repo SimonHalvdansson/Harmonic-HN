@@ -3,8 +3,14 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +56,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +90,7 @@ fun FontSelectionDialog(
             SettingsDialogTitle(if (readerMode) "Reader mode font" else "Title and comment font")
         },
         edgeToEdgeContent = true,
+        scrollableContent = true,
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp).selectableGroup(),
@@ -280,12 +288,16 @@ fun StringListEditorDialog(
     parseInput: (String) -> List<String>,
     emptyInputError: String = "",
     disableSuggestions: Boolean = false,
+    onItemProfileRequested: ((String) -> Unit)? = null,
+    nestedDialog: (@Composable () -> Unit)? = null,
     onItemsChanged: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var items by remember(initialItems) { mutableStateOf(uniqueEditorItems(initialItems)) }
     var input by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
+    val dismissal = remember { SettingsDialogDismissState() }
+    fun dismiss() = dismissal.request(onDismiss)
     val suggestions = suggestedItems.filter { suggestion ->
         items.none { it.equals(suggestion, ignoreCase = true) }
     }
@@ -296,11 +308,13 @@ fun StringListEditorDialog(
     val canAdd = additions.isNotEmpty()
 
     fun updateItems(updated: List<String>) {
+        if (dismissal.isClosing) return
         items = updated
         onItemsChanged(updated)
     }
 
     fun addValues(rawValue: String = input) {
+        if (dismissal.isClosing) return
         val toAdd = newEditorItems(items, parseInput(rawValue))
         if (toAdd.isNotEmpty()) {
             updateItems(items + toAdd)
@@ -311,15 +325,15 @@ fun StringListEditorDialog(
     }
 
     SettingsAlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::dismiss,
         properties = DialogProperties(dismissOnClickOutside = true),
-        // Insets already animate the available space with the keyboard. Animating the surface's
-        // size as well chases those constraints and clips/repositions it again after they settle.
         scrollableContent = true,
         title = { SettingsDialogTitle(title) },
         text = {
-            RequestSettingsDialogFocus(focusRequester)
-            Column(modifier = Modifier.fillMaxWidth()) {
+            com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations()
+            CompleteSettingsDialogDismissal(dismissal)
+            RequestSettingsDialogFocus(focusRequester, enabled = !dismissal.isClosing)
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Text(
                     text = subtitle,
                     modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
@@ -334,7 +348,7 @@ fun StringListEditorDialog(
                 ) {
                     OutlinedTextField(
                         value = input,
-                        onValueChange = { input = it },
+                        onValueChange = { if (!dismissal.isClosing) input = it },
                         modifier = Modifier.weight(1f).focusRequester(focusRequester),
                         label = { Text(inputLabel) },
                         singleLine = true,
@@ -344,13 +358,14 @@ fun StringListEditorDialog(
                             } else {
                                 KeyboardType.Text
                             },
+                            autoCorrectEnabled = !disableSuggestions,
                             imeAction = ImeAction.Done,
                         ),
                         keyboardActions = KeyboardActions(onDone = { addValues(input) }),
                     )
                     OutlinedIconButton(
                         onClick = { addValues(input) },
-                        enabled = canAdd,
+                        enabled = canAdd && !dismissal.isClosing,
                         modifier = Modifier
                             .padding(start = 10.dp, top = 12.dp)
                             .size(48.dp),
@@ -369,9 +384,10 @@ fun StringListEditorDialog(
 
                 LazyColumn(
                     modifier = Modifier
-                        .weight(1f, fill = false)
                         .fillMaxWidth()
-                        .heightIn(max = 224.dp),
+                        .testTag("filter-list")
+                        .heightIn(max = 224.dp)
+                        .animateContentSize(tween(280, easing = FastOutSlowInEasing)),
                 ) {
                     if (items.isEmpty()) {
                         item(key = "empty-list-message", contentType = "empty-list-message") {
@@ -394,14 +410,17 @@ fun StringListEditorDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .defaultMinSize(minHeight = 44.dp)
+                                    .heightIn(min = 48.dp)
                                     .animateItem(
                                         fadeInSpec = tween(160),
                                         placementSpec = tween(
                                             durationMillis = 220,
                                             easing = FastOutSlowInEasing,
                                         ),
-                                        fadeOutSpec = tween(140),
+                                        // Retained exit layers enlarge a wrap-content lazy list's
+                                        // measured viewport. Let the enclosing size animation own
+                                        // removal so the dialog can start shrinking immediately.
+                                        fadeOutSpec = null,
                                     ),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -411,12 +430,27 @@ fun StringListEditorDialog(
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontFamily = ProductSansFontFamily,
                                     fontSize = 16.sp,
+                                    lineHeight = 20.sp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                onItemProfileRequested?.let { openProfile ->
+                                    IconButton(
+                                        onClick = { openProfile(item) },
+                                        enabled = !dismissal.isClosing,
+                                        modifier = Modifier.size(48.dp),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.ic_person),
+                                            contentDescription = "View profile for $item",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                                 IconButton(
                                     onClick = { updateItems(items.filterNot { it == item }) },
-                                    modifier = Modifier.size(44.dp),
+                                    enabled = !dismissal.isClosing,
+                                    modifier = Modifier.size(48.dp),
                                 ) {
                                     Icon(
                                         painter = painterResource(Res.drawable.ic_close),
@@ -429,24 +463,31 @@ fun StringListEditorDialog(
                     }
                 }
 
-                if (suggestions.isNotEmpty()) {
-                    Text(
-                        text = suggestionsLabel,
-                        modifier = Modifier.padding(top = 18.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                    )
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        suggestions.forEach { suggestion ->
-                            AssistChip(
-                                onClick = { addValues(suggestion) },
-                                label = { Text(suggestion) },
-                            )
+                AnimatedVisibility(
+                    visible = suggestions.isNotEmpty(),
+                    enter = expandVertically(tween(280, easing = FastOutSlowInEasing)) + fadeIn(tween(180)),
+                    exit = shrinkVertically(tween(280, easing = FastOutSlowInEasing)) + fadeOut(tween(140)),
+                ) {
+                    Column {
+                        Text(
+                            text = suggestionsLabel,
+                            modifier = Modifier.padding(top = 18.dp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontFamily = ProductSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                AssistChip(
+                                    onClick = { addValues(suggestion) },
+                                    enabled = !dismissal.isClosing,
+                                    label = { Text(suggestion) },
+                                )
+                            }
                         }
                     }
                 }
@@ -454,19 +495,23 @@ fun StringListEditorDialog(
         },
         confirmButton = {},
         showButtons = false,
+        foreground = { nestedDialog?.invoke() },
     )
 }
 
 /** Open the IME only after this dialog owns focus and its insets/layout have had a frame. */
 @Composable
-internal fun RequestSettingsDialogFocus(focusRequester: FocusRequester) {
+internal fun RequestSettingsDialogFocus(focusRequester: FocusRequester, enabled: Boolean = true) {
     val windowInfo = LocalWindowInfo.current
-    LaunchedEffect(focusRequester, windowInfo) {
+    var requested by remember(focusRequester) { mutableStateOf(false) }
+    LaunchedEffect(focusRequester, windowInfo, enabled) {
+        if (!enabled || requested) return@LaunchedEffect
         do {
             snapshotFlow { windowInfo.isWindowFocused }.first { it }
             withFrameNanos { }
         } while (!windowInfo.isWindowFocused)
         focusRequester.requestFocus()
+        requested = true
     }
 }
 
@@ -477,63 +522,6 @@ internal fun uniqueEditorItems(items: List<String>): List<String> = items.distin
 internal fun newEditorItems(items: List<String>, candidates: List<String>): List<String> {
     val existing = items.mapTo(mutableSetOf(), String::lowercase)
     return candidates.filter { existing.add(it.lowercase()) }
-}
-
-@Composable
-fun UserTagDialog(
-    currentTag: String,
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var tag by remember(currentTag) { mutableStateOf(currentTag) }
-    val focusRequester = remember { FocusRequester() }
-    fun saveTag() = onSave(tag.trim())
-
-    val textContent: @Composable () -> Unit = {
-        // Register this dialog's animated insets before focus can start opening the keyboard.
-        LaunchedEffect(Unit) {
-            androidx.compose.runtime.withFrameNanos { }
-            focusRequester.requestFocus()
-        }
-        OutlinedTextField(
-            value = tag,
-            onValueChange = { tag = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .focusRequester(focusRequester),
-            label = { Text("Tag") },
-            trailingIcon = {
-                if (tag.isNotEmpty()) {
-                    IconButton(onClick = {
-                        tag = ""
-                        focusRequester.requestFocus()
-                    }) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_close),
-                            contentDescription = "Clear tag",
-                        )
-                    }
-                }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { saveTag() }),
-        )
-    }
-    val dismissContent: @Composable () -> Unit = {
-        SettingsDialogTextButton(onClick = onDismiss) { Text("Cancel") }
-    }
-    val confirmContent: @Composable () -> Unit = {
-        SettingsDialogTextButton(onClick = { saveTag() }) { Text("Set") }
-    }
-
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        text = textContent,
-        dismissButton = dismissContent,
-        confirmButton = confirmContent,
-    )
 }
 
 @Composable

@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +29,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
@@ -38,6 +41,7 @@ import com.simon.harmonichackernews.resources.settings_section_stories_header
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.StoryListSelector
+import com.simon.harmonichackernews.settings.StoriesHeaderPill
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.content.StoryRow
@@ -49,6 +53,7 @@ import com.simon.harmonichackernews.ui.stories.StoriesHeaderMenus
 import com.simon.harmonichackernews.ui.stories.StoryTypeChips
 import com.simon.harmonichackernews.ui.stories.frontpageHeaderBottomSpacing
 import com.simon.harmonichackernews.ui.stories.frontpageHeaderTopSpacing
+import com.simon.harmonichackernews.ui.stories.storiesHeaderIconColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -60,6 +65,7 @@ fun StoriesHeaderSettingsRoute(repository: AppSettingsRepository, onBack: () -> 
         frontpages = StoryTypeMenuPolicy.frontpages(settings.story.additionalFrontpages, settings.story.frontpageOrder),
         onSelectorChanged = repository::setStoryListSelector,
         onCompactHeaderChanged = { repository.setAppearanceBoolean(AppearanceBooleanPreference.COMPACT_HEADER, it) },
+        onHeaderPillChanged = repository::setStoriesHeaderPill,
         onBack = onBack,
     )
 }
@@ -71,6 +77,7 @@ internal fun StoriesHeaderSettingsScreen(
     onSelectorChanged: (StoryListSelector) -> Unit,
     onCompactHeaderChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
+    onHeaderPillChanged: (StoriesHeaderPill) -> Unit = {},
 ) {
     SettingsPage(
         title = stringResource(Res.string.settings_section_stories_header),
@@ -90,10 +97,19 @@ internal fun StoriesHeaderSettingsScreen(
                 SettingsDivider()
                 SwitchSettingRow(
                     title = "Compact header",
-                    summary = "Reduce spacing around the frontpage header",
+                    summary = "Reduce the space above the title and below the frontpage controls",
                     icon = Res.drawable.ic_horizontal_split,
                     checked = settings.compactHeader,
                     onCheckedChange = onCompactHeaderChanged,
+                )
+                SettingsDivider()
+                SegmentedSetting(
+                    title = "Header pill",
+                    summary = "Give the title and actions a rounded Material color surface",
+                    options = StoriesHeaderPill.entries.map { it to it.label },
+                    optionWeights = mapOf(StoriesHeaderPill.OFF to .65f, StoriesHeaderPill.SECONDARY to 1.2f),
+                    selected = settings.headerPill,
+                    onSelected = onHeaderPillChanged,
                 )
             }
         }
@@ -105,29 +121,47 @@ private fun StoriesHeaderPreview(settings: StoryDisplaySettings, frontpages: Lis
     var selectedName by rememberSaveable { mutableStateOf(StoryType.TOP_STORIES.name) }
     val selectedIndex = frontpages.indexOfFirst { it.name == selectedName }.coerceAtLeast(0)
     val select: (Int) -> Unit = { frontpages.getOrNull(it)?.let { type -> selectedName = type.name } }
-    Layout(
-        modifier = Modifier.fillMaxWidth().testTag("stories-header-preview"),
-        content = {
-            // Measure the largest layout at this width and font scale, without placing it.
-            // Its independent menu state cannot dismiss the live preview's dropdown.
-            Box {
-                StoriesHeaderPreviewContent(
-                    settings.copy(listSelector = StoryListSelector.CHIPS, compactHeader = false),
-                    frontpages, selectedIndex, {}, animateChanges = false,
-                )
+    Column {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "Top of screen",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 11.sp,
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth().testTag("stories-header-preview-top-edge"),
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+        Layout(
+            modifier = Modifier.fillMaxWidth().testTag("stories-header-preview"),
+            content = {
+                // Measure the largest layout at this width and font scale, without placing it.
+                // Its independent menu state cannot dismiss the live preview's dropdown.
+                Box {
+                    StoriesHeaderPreviewContent(
+                        settings.copy(listSelector = StoryListSelector.CHIPS, compactHeader = false),
+                        frontpages, selectedIndex, {}, animateChanges = false,
+                    )
+                }
+                Box(Modifier.testTag("stories-header-preview-content")) {
+                    StoriesHeaderPreviewContent(settings, frontpages, selectedIndex, select)
+                }
+            },
+        ) { measurables, constraints ->
+            val sampleConstraints = constraints.copy(minHeight = 0)
+            val largest = measurables[0].measure(sampleConstraints)
+            val current = measurables[1].measure(sampleConstraints)
+            val width = constraints.constrainWidth(largest.width)
+            val height = constraints.constrainHeight(largest.height)
+            layout(width, height) {
+                // Keep the top edge fixed so the compact setting demonstrates actual screen spacing.
+                current.placeRelative((width - current.width) / 2, 0)
             }
-            Box(Modifier.testTag("stories-header-preview-content")) {
-                StoriesHeaderPreviewContent(settings, frontpages, selectedIndex, select)
-            }
-        },
-    ) { measurables, constraints ->
-        val sampleConstraints = constraints.copy(minHeight = 0)
-        val largest = measurables[0].measure(sampleConstraints)
-        val current = measurables[1].measure(sampleConstraints)
-        val width = constraints.constrainWidth(largest.width)
-        val height = constraints.constrainHeight(largest.height)
-        layout(width, height) {
-            current.placeRelative((width - current.width) / 2, (height - current.height) / 2)
         }
     }
 }
@@ -163,11 +197,11 @@ private fun StoriesHeaderPreviewContent(
             selectedTypeIndex = selectedIndex,
             menus = menus,
             onTypeSelected = onSelected,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = com.simon.harmonichackernews.ui.stories.storiesHeaderSideInset(settings)),
             moreMenu = { _, _ ->
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     Icon(painterResource(Res.drawable.ic_more_vert), null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        tint = storiesHeaderIconColor())
                 }
             },
         )

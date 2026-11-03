@@ -7,6 +7,14 @@ import kotlinx.serialization.Serializable
 data class ArticleCategory(val id: String, val name: String, val description: String)
 data class ArticleCategoryScore(val categoryId: String, val similarity: Float)
 
+enum class ArticleCategoryInputSource { TITLE_ONLY, PREVIEW_TEXT }
+
+/** Scores and the input view used to produce them travel together, including cached results. */
+data class ArticleCategoryResult(
+    val scores: List<ArticleCategoryScore>,
+    val inputSource: ArticleCategoryInputSource,
+)
+
 object ArticleCategories {
     const val DIMENSIONS = 768
     const val DEFAULT_CUTOFF = 0.24f
@@ -71,11 +79,14 @@ object ArticleCategories {
         }
     }
 
-    fun labels(scores: List<ArticleCategoryScore>, settings: ArticleCategoryPreferences): List<String> {
+    fun labelScores(scores: List<ArticleCategoryScore>, settings: ArticleCategoryPreferences): List<ArticleCategoryScore> {
         if (!settings.enabled) return emptyList()
         return labelCandidates(scores, settings).filter { it.similarity >= settings.cutoff }
-            .take(settings.maxLabels.coerceIn(1, 3)).mapNotNull { score ->
+            .take(settings.maxLabels.coerceIn(1, 3))
+    }
+
+    fun labels(scores: List<ArticleCategoryScore>, settings: ArticleCategoryPreferences): List<String> =
+        labelScores(scores, settings).mapNotNull { score ->
             settings.categories.firstOrNull { it.id == score.categoryId }?.let { settings.name(it) }
         }
-    }
 }

@@ -11,7 +11,9 @@ import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
-internal val LocalCommentStoryCategories = staticCompositionLocalOf<List<String>> { emptyList() }
+internal val LocalCommentStoryCategories = staticCompositionLocalOf {
+    com.simon.harmonichackernews.ui.content.ArticleCategoryLabelPresentation.Empty
+}
 
 /**
  * Shared comments feature route. Platform hosts only add interop modifiers and the small pieces
@@ -36,7 +38,7 @@ fun CommentsRoute(
     val categoryRuntime by dependencies.articleCategories.state.collectAsStateWithLifecycle()
     val story = controller.story
     val categoryDescription = story.presentation.linkSummaryDescription
-    val categoryLabels = com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels(
+    val categories = com.simon.harmonichackernews.ui.content.rememberArticleCategoryPresentation(
         storyId = story.id, title = story.title, url = story.url, description = categoryDescription,
         preferences = categoryPreferences, runtime = dependencies.articleCategories, runtimeState = categoryRuntime,
         eligible = !story.isFrontpageLink, requestDelayMillis = 0,
@@ -45,6 +47,9 @@ fun CommentsRoute(
     val commentPreferences = dependencies.userSettings.comments
     val userTags = remember(controller.contentVersion, dependencies.userTags) {
         dependencies.userTags.tags()
+    }
+    val userTagColors = remember(controller.contentVersion, dependencies.userTags) {
+        dependencies.userTags.colors()
     }
     val openLink: (String) -> Unit = remember(dependencies.links) {
         { url: String -> dependencies.links.open(url).let { } }
@@ -60,10 +65,11 @@ fun CommentsRoute(
         showScrollbar = commentPreferences.showScrollbar,
         smoothScroll = commentPreferences.smoothScroll,
         userTags = userTags,
+        userTagColors = userTagColors,
         // Keep the callback stable so CommentBodyText can retain its parsed AnnotatedString when
         // loading, voting, sheet progress, or another screen-level state causes recomposition.
         onOpenLink = openLink,
-        headerContent = { CompositionLocalProvider(LocalCommentStoryCategories provides categoryLabels) {
+        headerContent = { CompositionLocalProvider(LocalCommentStoryCategories provides categories) {
             settings?.let { headerContent(it) }
         } },
         searchDialog = { settings?.let { searchDialog(it) } },

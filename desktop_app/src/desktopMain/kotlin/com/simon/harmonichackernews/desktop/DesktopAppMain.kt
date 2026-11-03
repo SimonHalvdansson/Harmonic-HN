@@ -63,7 +63,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.rememberWindowState
-import androidx.compose.ui.window.application
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -141,7 +140,7 @@ fun main() {
     }
     val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     try {
-        application {
+        desktopApplication {
             if (trainingRun) {
                 LaunchedEffect(Unit) {
                     // Exercise real Compose layouts and fonts, then let the JVM write its archive.
@@ -270,7 +269,7 @@ fun main() {
 private fun showDesktopStartupFailure(icon: BufferedImage?, error: Exception) {
     System.err.println("Harmonic could not initialize its desktop storage.")
     error.printStackTrace(System.err)
-    application {
+    desktopApplication {
         val windowIcon = remember(icon) { icon?.toPainter() }
         Window(
             onCloseRequest = ::exitApplication,
@@ -323,7 +322,7 @@ internal fun handleDesktopBack(
     when {
         navigation.failureRequest != null -> scene.navigation.dismissFailureDetailDialog()
         navigation.userRequest != null -> scene.navigation.dismissUserDialog()
-        navigation.captchaRequest != null -> scene.navigation.dismissCaptchaDialog()
+        navigation.captchaRequest != null -> navigation.captchaRequest?.let { scene.captchaRequests.cancel(it.serial) }
         navigation.loginDialogVisible -> scene.navigation.dismissLoginDialog()
         navigation.cacheStoriesDialogVisible -> scene.navigation.dismissCacheStoriesDialog()
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
@@ -601,6 +600,7 @@ private fun DesktopStoriesContent(
                 sessionState = scene.sessions.stories,
                 platform = app.storiesPlatformDependencies(),
                 userSettings = app.userSettings,
+                captchaResponder = scene.captchaRequests::awaitResponse,
             ),
         )
     }
@@ -746,56 +746,55 @@ private fun DesktopSettingsShell(
 
     // Compose Desktop can leave LookaheadDelegate alignment-line ownership stale when a
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only
-    // the scene machinery at the breakpoint; the navigation store stays outside this key so the
-    // selected section and detail stack survive both directions of the layout change.
+    // the scene machinery at the breakpoint. Destination ownership stays inside the shared
+    // shell and outside its reset boundary, preserving open dialogs and drafts as well.
     val scrollHistory = navigation.scrollHistory
     val density = LocalDensity.current
     val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
-    key(isTwoPane) {
-        SettingsNavigationShell(
-            navigation = navigation,
-            directive = directive,
-            supportsTwoPane = true,
-            isFoldable = false,
-            tabletPaneHorizontalPadding = if (isTwoPane) {
-                DesktopWidePaneHorizontalPadding
-            } else {
-                0.dp
-            },
-            onBackFromSettings = scene.navigation::closeSettings,
-            onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
-            searchCapabilities = SettingsSearchCapabilities(
-                webLinks = desktopWebLinksSettingsCapabilities(),
-                notifications = false, systemSettings = false, volumeNavigation = false,
-                transparentStatusBar = false, twoPane = true,
-            ),
-            renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
-                SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
-                    SettingsListScreen(
-                        selectedSection = selectedSection,
-                        showSelection = showSelection,
-                        showDebugSettings = app.metadata.debugSettingsEnabled,
-                        loggedIn = settingsAccountState.accountOrNull != null,
-                        showNotifications = false,
-                        onBack = onBack,
-                        onSectionSelected = onSectionSelected,
-                    )
-                }
-            },
-            renderDetail = { section, singlePane, onBack, onNavigate ->
-                SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
-                    DesktopSettingsDetail(
-                        section,
-                        app,
-                        scene,
-                        singlePane,
-                        onBack,
-                        onNavigate,
-                    )
-                }
-            },
-        )
-    }
+    SettingsNavigationShell(
+        navigation = navigation,
+        directive = directive,
+        supportsTwoPane = true,
+        sceneReflowKey = isTwoPane,
+        isFoldable = false,
+        tabletPaneHorizontalPadding = if (isTwoPane) {
+            DesktopWidePaneHorizontalPadding
+        } else {
+            0.dp
+        },
+        onBackFromSettings = scene.navigation::closeSettings,
+        onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
+        searchCapabilities = SettingsSearchCapabilities(
+            webLinks = desktopWebLinksSettingsCapabilities(),
+            notifications = false, systemSettings = false, volumeNavigation = false,
+            transparentStatusBar = false, twoPane = true,
+        ),
+        renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
+            SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
+                SettingsListScreen(
+                    selectedSection = selectedSection,
+                    showSelection = showSelection,
+                    showDebugSettings = app.metadata.debugSettingsEnabled,
+                    loggedIn = settingsAccountState.accountOrNull != null,
+                    showNotifications = false,
+                    onBack = onBack,
+                    onSectionSelected = onSectionSelected,
+                )
+            }
+        },
+        renderDetail = { section, singlePane, onBack, onNavigate ->
+            SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
+                DesktopSettingsDetail(
+                    section,
+                    app,
+                    scene,
+                    singlePane,
+                    onBack,
+                    onNavigate,
+                )
+            }
+        },
+    )
 }
 
 internal val DesktopWidePaneHorizontalPadding = 24.dp

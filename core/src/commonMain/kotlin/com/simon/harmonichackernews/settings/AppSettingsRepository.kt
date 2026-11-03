@@ -243,6 +243,8 @@ class AppSettingsRepository(
 
     fun setStoryListSelector(value: StoryListSelector) = mutator.setStoryListSelector(value)
 
+    fun setStoriesHeaderPill(value: StoriesHeaderPill) = mutator.setStoriesHeaderPill(value)
+
     fun setColorScheme(value: String) = mutator.setColorScheme(value)
     fun setColorStyle(value: ColorSchemeStyle) = mutator.setColorStyle(value)
     fun setNighttimeColorStyle(value: ColorSchemeStyle) = mutator.setNighttimeColorStyle(value)

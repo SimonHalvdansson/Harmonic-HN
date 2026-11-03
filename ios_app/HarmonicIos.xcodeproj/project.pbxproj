@@ -15,6 +15,7 @@
 		A10000000000000000000007 /* IosBrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* IosBrowserViewController.swift */; };
 		A10000000000000000000008 /* IosTextDocumentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* IosTextDocumentService.swift */; };
 		A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* IosLiteRtSummaryService.swift */; };
+		A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IosArticleEmbeddingService.swift */; };
 		A10000000000000000000010 /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = AC0000000000000000000002 /* LiteRTLM */; };
 		C10000000000000000000001 /* IosLocalAiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* IosLocalAiTests.swift */; };
 /* End PBXBuildFile section */
@@ -43,6 +44,7 @@
 		A20000000000000000000007 /* IosBrowserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBrowserViewController.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* IosTextDocumentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosTextDocumentService.swift; sourceTree = "<group>"; };
 		A20000000000000000000009 /* IosLiteRtSummaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLiteRtSummaryService.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* IosArticleEmbeddingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosArticleEmbeddingService.swift; sourceTree = "<group>"; };
 		C20000000000000000000001 /* IosLocalAiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLocalAiTests.swift; sourceTree = "<group>"; };
 		C20000000000000000000002 /* HarmonicIosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HarmonicIosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -84,6 +86,7 @@
 				A20000000000000000000002 /* IosNativeServices.swift */,
 				A20000000000000000000008 /* IosTextDocumentService.swift */,
 				A20000000000000000000009 /* IosLiteRtSummaryService.swift */,
+				A20000000000000000000011 /* IosArticleEmbeddingService.swift */,
 				A20000000000000000000007 /* IosBrowserViewController.swift */,
 				A20000000000000000000006 /* IosAccountStorage.swift */,
 				A20000000000000000000004 /* Assets.xcassets */,
@@ -261,6 +264,7 @@
 				A10000000000000000000002 /* IosNativeServices.swift in Sources */,
 				A10000000000000000000008 /* IosTextDocumentService.swift in Sources */,
 				A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */,
+				A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */,
 				A10000000000000000000007 /* IosBrowserViewController.swift in Sources */,
 				A10000000000000000000006 /* IosAccountStorage.swift in Sources */,
 			);

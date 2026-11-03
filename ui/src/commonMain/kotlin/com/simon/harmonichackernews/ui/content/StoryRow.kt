@@ -125,6 +125,7 @@ data class StoryRowModel(
     // Decoded off-thread by the caller; do not mutate pixels after publishing the model.
     val previewImageBitmap: ImageBitmap? = null,
     val categoryLabels: List<String> = emptyList(),
+    val categoryInspection: StoryCategoryInspection? = null,
 )
 
 @Immutable
@@ -753,7 +754,8 @@ private fun StoryMainContent(
                     fontSize = titleSize.sp,
                     style = storyRowTextStyle,
                 )
-                StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges)
+                StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
+                    inspection = model.categoryInspection)
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
                     animate = animateContentChanges,

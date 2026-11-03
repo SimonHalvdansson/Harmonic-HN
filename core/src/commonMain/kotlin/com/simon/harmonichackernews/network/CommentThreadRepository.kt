@@ -179,7 +179,9 @@ class OfficialCommentThreadLoader(
                     noInternet = false,
                     source = CommentThreadSource.OFFICIAL,
                 )
-            val normalizedFilteredUsers = filteredUsers.mapTo(mutableSetOf()) { it.lowercase() }
+            val normalizedFilteredUsers = filteredUsers.mapNotNullTo(mutableSetOf()) {
+                it.trim().takeIf(String::isNotEmpty)
+            }
             val comments = loadCommentForest(story.kids ?: intArrayOf(), normalizedFilteredUsers)
             CommentThreadLoadResult.Official(story, comments, usedAsFallback)
         } catch (error: CancellationException) {
@@ -228,8 +230,8 @@ class OfficialCommentThreadLoader(
             while (remaining > 0) {
                 val (next, comment) = completed.receive()
                 remaining--
-                val author = comment?.by ?: continue
-                if (author.lowercase() in filteredUsers) continue
+                val author = comment?.by?.trim() ?: continue
+                if (author in filteredUsers) continue
                 comment.expanded = true
                 comment.depth = next.depth
                 val childIds = comment.kidsIds

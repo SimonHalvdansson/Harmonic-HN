@@ -20,35 +20,45 @@ class AddBookmarksToFavoritesUseCase(
     private val nowMillis: () -> Long = {
         kotlin.time.Clock.System.now().toEpochMilliseconds()
     },
+    initialAccountRevision: Long? = null,
 ) {
-    suspend fun add(id: Int, fallbackTitle: String): AddBookmarkToFavoritesResult = when (
-        val result = favorites.setFavorite(id, favorite = true)
-    ) {
-        is HackerNewsActionResult.Success -> {
-            savedItems.setMembershipAtomic(
-                source = SavedItemSource.FAVORITES,
+    private var batchAccountRevision: Long? = initialAccountRevision
+
+    suspend fun add(id: Int, fallbackTitle: String): AddBookmarkToFavoritesResult {
+        val accountRevision = batchAccountRevision ?: savedItems.currentAccountRevision.also {
+            batchAccountRevision = it
+        }
+        if (savedItems.currentAccountRevision != accountRevision) return AddBookmarkToFavoritesResult(
+            id, fallbackTitle, false, "Hacker News account changed; reopen this dialog to start a new batch",
+        )
+        return when (val result = favorites.setFavorite(id, favorite = true)) {
+            is HackerNewsActionResult.Success -> {
+                val stored = savedItems.setMembershipIfAccountCurrent(
+                    source = SavedItemSource.FAVORITES,
+                    id = id,
+                    present = true,
+                    createdAtMillis = nowMillis(),
+                    expectedAccountRevision = accountRevision,
+                )
+                AddBookmarkToFavoritesResult(
+                    id = id,
+                    title = result.itemTitle?.takeIf(String::isNotBlank) ?: fallbackTitle,
+                    successful = stored,
+                    message = if (stored) "In HN favorites" else "Hacker News account changed; sync favorites with the current login",
+                )
+            }
+            is HackerNewsActionResult.Failure -> AddBookmarkToFavoritesResult(
                 id = id,
-                present = true,
-                createdAtMillis = nowMillis(),
+                title = fallbackTitle,
+                successful = false,
+                message = HackerNewsActionMessages.favoriteFailure(result.summary, result.detail),
             )
-            AddBookmarkToFavoritesResult(
+            is HackerNewsActionResult.Captcha -> AddBookmarkToFavoritesResult(
                 id = id,
-                title = result.itemTitle?.takeIf(String::isNotBlank) ?: fallbackTitle,
-                successful = true,
-                message = "In HN favorites",
+                title = fallbackTitle,
+                successful = false,
+                message = "HN requires a captcha before adding this favorite",
             )
         }
-        is HackerNewsActionResult.Failure -> AddBookmarkToFavoritesResult(
-            id = id,
-            title = fallbackTitle,
-            successful = false,
-            message = HackerNewsActionMessages.favoriteFailure(result.summary, result.detail),
-        )
-        is HackerNewsActionResult.Captcha -> AddBookmarkToFavoritesResult(
-            id = id,
-            title = fallbackTitle,
-            successful = false,
-            message = "HN requires a captcha before adding this favorite",
-        )
     }
 }

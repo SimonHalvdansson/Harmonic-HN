@@ -251,6 +251,10 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.STORY_LIST_SELECTOR, value.storedValue)
     }
 
+    fun setStoriesHeaderPill(value: StoriesHeaderPill) {
+        store.putString(UserPreferenceKeys.STORIES_HEADER_PILL, value.storedValue)
+    }
+
     fun setColorScheme(value: String) {
         val current = ColorSchemePreferences.read(store)
         val scheme = ColorSchemePreferences.sanitize(value)

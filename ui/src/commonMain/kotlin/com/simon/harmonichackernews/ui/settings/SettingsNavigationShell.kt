@@ -19,6 +19,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
@@ -93,6 +94,7 @@ fun SettingsNavigationShell(
     paneProportion: Float = if (isFoldable) 0.5f else 0.4f,
     snapToCenter: Boolean = isFoldable,
     searchCapabilities: SettingsSearchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane),
+    sceneReflowKey: Any? = Unit,
 ) {
     val isTwoPane = directive.maxHorizontalPartitions > 1
     val scrollToTopEnabled = LocalStatusBarScrollToTopEnabled.current
@@ -129,126 +131,130 @@ fun SettingsNavigationShell(
                 }
             }
         }
-    SplitPaneViewport(
-        directive = directive,
-        defaultRatio = paneProportion,
-        supportsTwoPane = supportsTwoPane,
-        isFoldable = isFoldable,
-        snapToCenter = snapToCenter,
-        modifier = modifier.fillMaxSize().themeBackground { pageBackground }
-            .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
-    ) { paneExpansionState, layoutDirective ->
-        val selectedSection = navigationState.selectedSection
+    // Hosts may need fresh Lookahead/scene machinery at an adaptive breakpoint. Keep that
+    // reset below destination ownership: movable slots retain open dialogs, drafts and scroll.
+    key(sceneReflowKey) {
+        SplitPaneViewport(
+            directive = directive,
+            defaultRatio = paneProportion,
+            supportsTwoPane = supportsTwoPane,
+            isFoldable = isFoldable,
+            snapToCenter = snapToCenter,
+            modifier = modifier.fillMaxSize().themeBackground { pageBackground }
+                .padding(horizontal = if (isTwoPane) tabletPaneHorizontalPadding else 0.dp),
+        ) { paneExpansionState, layoutDirective ->
+            val selectedSection = navigationState.selectedSection
 
-        fun navigateTo(section: SettingsSection, preserveCurrentDetail: Boolean = false) {
-            navigation.navigateTo(section, preserveCurrentDetail)
-        }
-
-        fun navigateBack() {
-            handleSettingsBack(navigation, onBackFromSettings)
-        }
-
-        // An empty one-pane stack represents the settings list. `selectedSection` intentionally has
-        // an Appearance fallback for list highlighting and the two-pane placeholder, but that fallback
-        // is not a real navigation destination and must not be persisted. Persisting it immediately
-        // pushes Appearance again and makes Up from every detail land there instead of on the list.
-        LaunchedEffect(navigationState.detailStack) {
-            navigationState.detailStack.lastOrNull()?.takeUnless { it == SettingsSection.Search }?.let(onSectionChanged)
-        }
-        LaunchedEffect(isTwoPane) { navigation.updateLayout(isTwoPane) }
-
-        if (!isTwoPane) {
-            SinglePaneSettingsNavigation(
-                detailStack = navigationState.detailStack,
-                selectedSection = selectedSection,
-                onBackFromSettings = onBackFromSettings,
-                onNavigateBack = ::navigateBack,
-                onNavigateTo = ::navigateTo,
-                renderList = listContent,
-                renderDetail = renderDetailWithOrigin,
-                predictiveBackOverlay = predictiveBackOverlay,
-                completedPredictiveBack = completedPredictiveBack,
-                modifier = Modifier.fillMaxSize(),
-                searchTransition = navigation.searchTransition,
-            )
-        } else {
-            val searching = SettingsSection.Search in navigationState.detailStack
-            val twoPaneDetail: @Composable (SettingsSection) -> Unit = { section ->
-                if (section == SettingsSection.Search) {
-                    SettingsSearchDetailPlaceholder()
-                } else {
-                    renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
-                }
+            fun navigateTo(section: SettingsSection, preserveCurrentDetail: Boolean = false) {
+                navigation.navigateTo(section, preserveCurrentDetail)
             }
-            val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
-                directive = layoutDirective,
-                paneExpansionState = paneExpansionState,
-            )
-            val provider = entryProvider<NavKey> {
-                entry<SettingsListDestination>(
-                    metadata = ListDetailSceneStrategy.listPane(
-                        detailPlaceholder = {
-                            renderDetailWithOrigin(
-                                SettingsSection.Appearance,
-                                false,
-                                ::navigateBack,
-                                ::navigateTo,
-                            )
-                        },
-                    ),
-                ) {
-                    ActivityNavigationStack(
-                        entries = if (searching) listOf(SettingsSection.Search) else emptyList(),
-                        entryKey = { it },
-                        completedPredictiveBack = completedPredictiveBack,
-                        surfaceTransitions = mapOf(SettingsSection.Search to { transition, skipExit, content ->
-                            SettingsSearchTransitionViewport(navigation.searchTransition, transition, skipExit, content)
-                        }),
-                        root = { listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) } },
-                        content = { renderDetailWithOrigin(it, false, ::navigateBack, ::navigateTo) },
-                    )
-                }
-                entry<SettingsTwoPaneDetailDestination>(
-                    metadata = ListDetailSceneStrategy.detailPane(),
-                ) {
-                    if (!animateDetailChanges) {
-                        twoPaneDetail(selectedSection)
+
+            fun navigateBack() {
+                handleSettingsBack(navigation, onBackFromSettings)
+            }
+
+            // An empty one-pane stack represents the settings list. `selectedSection` intentionally has
+            // an Appearance fallback for list highlighting and the two-pane placeholder, but that fallback
+            // is not a real navigation destination and must not be persisted. Persisting it immediately
+            // pushes Appearance again and makes Up from every detail land there instead of on the list.
+            LaunchedEffect(navigationState.detailStack) {
+                navigationState.detailStack.lastOrNull()?.takeUnless { it == SettingsSection.Search }?.let(onSectionChanged)
+            }
+            LaunchedEffect(isTwoPane) { navigation.updateLayout(isTwoPane) }
+
+            if (!isTwoPane) {
+                SinglePaneSettingsNavigation(
+                    detailStack = navigationState.detailStack,
+                    selectedSection = selectedSection,
+                    onBackFromSettings = onBackFromSettings,
+                    onNavigateBack = ::navigateBack,
+                    onNavigateTo = ::navigateTo,
+                    renderList = listContent,
+                    renderDetail = renderDetailWithOrigin,
+                    predictiveBackOverlay = predictiveBackOverlay,
+                    completedPredictiveBack = completedPredictiveBack,
+                    modifier = Modifier.fillMaxSize(),
+                    searchTransition = navigation.searchTransition,
+                )
+            } else {
+                val searching = SettingsSection.Search in navigationState.detailStack
+                val twoPaneDetail: @Composable (SettingsSection) -> Unit = { section ->
+                    if (section == SettingsSection.Search) {
+                        SettingsSearchDetailPlaceholder()
                     } else {
-                        SettingsDetailTransition(navigationState) { section ->
-                            twoPaneDetail(section)
+                        renderDetailWithOrigin(section, false, ::navigateBack, ::navigateTo)
+                    }
+                }
+                val sceneStrategy = rememberListDetailSceneStrategy<NavKey>(
+                    directive = layoutDirective,
+                    paneExpansionState = paneExpansionState,
+                )
+                val provider = entryProvider<NavKey> {
+                    entry<SettingsListDestination>(
+                        metadata = ListDetailSceneStrategy.listPane(
+                            detailPlaceholder = {
+                                renderDetailWithOrigin(
+                                    SettingsSection.Appearance,
+                                    false,
+                                    ::navigateBack,
+                                    ::navigateTo,
+                                )
+                            },
+                        ),
+                    ) {
+                        ActivityNavigationStack(
+                            entries = if (searching) listOf(SettingsSection.Search) else emptyList(),
+                            entryKey = { it },
+                            completedPredictiveBack = completedPredictiveBack,
+                            surfaceTransitions = mapOf(SettingsSection.Search to { transition, skipExit, content ->
+                                SettingsSearchTransitionViewport(navigation.searchTransition, transition, skipExit, content)
+                            }),
+                            root = { listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) } },
+                            content = { renderDetailWithOrigin(it, false, ::navigateBack, ::navigateTo) },
+                        )
+                    }
+                    entry<SettingsTwoPaneDetailDestination>(
+                        metadata = ListDetailSceneStrategy.detailPane(),
+                    ) {
+                        if (!animateDetailChanges) {
+                            twoPaneDetail(selectedSection)
+                        } else {
+                            SettingsDetailTransition(navigationState) { section ->
+                                twoPaneDetail(section)
+                            }
                         }
                     }
                 }
-            }
-            // These entries arrange the panes. The retained content above owns screen state
-            // in both layouts, so the pane wrappers need no second saveable-state holder.
-            val entries = listOf<NavKey>(SettingsListDestination, SettingsTwoPaneDetailDestination).map(provider)
-            val sceneState = rememberSceneState(
-                entries = entries,
-                sceneStrategies = listOf(sceneStrategy),
-                onBack = ::navigateBack,
-            )
-            val navigationEventState = rememberNavigationEventState(
-                currentInfo = SceneInfo(sceneState.currentScene),
-            )
-            val transitionOffsetPx = with(LocalDensity.current) {
-                ActivityNavigationTransitionOffset.roundToPx()
-            }
+                // These entries arrange the panes. The retained content above owns screen state
+                // in both layouts, so the pane wrappers need no second saveable-state holder.
+                val entries = listOf<NavKey>(SettingsListDestination, SettingsTwoPaneDetailDestination).map(provider)
+                val sceneState = rememberSceneState(
+                    entries = entries,
+                    sceneStrategies = listOf(sceneStrategy),
+                    onBack = ::navigateBack,
+                )
+                val navigationEventState = rememberNavigationEventState(
+                    currentInfo = SceneInfo(sceneState.currentScene),
+                )
+                val transitionOffsetPx = with(LocalDensity.current) {
+                    ActivityNavigationTransitionOffset.roundToPx()
+                }
 
-            NavDisplay(
-                sceneState = sceneState,
-                navigationEventState = navigationEventState,
-                modifier = Modifier.fillMaxSize(),
-                transitionSpec = {
-                    activityNavigationOpenContentTransform(transitionOffsetPx)
-                },
-                popTransitionSpec = {
-                    activityNavigationPopContentTransform(transitionOffsetPx)
-                },
-                predictivePopTransitionSpec = {
-                    activityNavigationPopContentTransform(transitionOffsetPx)
-                },
-            )
+                NavDisplay(
+                    sceneState = sceneState,
+                    navigationEventState = navigationEventState,
+                    modifier = Modifier.fillMaxSize(),
+                    transitionSpec = {
+                        activityNavigationOpenContentTransform(transitionOffsetPx)
+                    },
+                    popTransitionSpec = {
+                        activityNavigationPopContentTransform(transitionOffsetPx)
+                    },
+                    predictivePopTransitionSpec = {
+                        activityNavigationPopContentTransform(transitionOffsetPx)
+                    },
+                )
+            }
         }
     }
 }

@@ -69,10 +69,11 @@ class DesktopHarmonicAppBootstrap(
         if (closed) return
         closed = true
         if (previewScene.isInitialized()) previewScene.value.close()
+        // Stop category/runtime consumers before disposing their host-owned native workers.
+        scope.cancel()
         app.platform.accounts.close()
         closePlatformServices()
         network.close()
-        scope.cancel()
     }
 
     companion object {
@@ -81,6 +82,15 @@ class DesktopHarmonicAppBootstrap(
             userAgent: String,
             metadata: AppMetadata,
             paths: DesktopAppPaths = DesktopAppPaths.default(),
+        ): DesktopHarmonicAppBootstrap = production(
+            userAgent, metadata, paths, desktopCredentialStore(),
+        )
+
+        internal fun production(
+            userAgent: String,
+            metadata: AppMetadata,
+            paths: DesktopAppPaths,
+            credentials: CredentialStore,
         ): DesktopHarmonicAppBootstrap {
             Files.createDirectories(paths.configDirectory)
             Files.createDirectories(paths.filesDirectory)
@@ -95,7 +105,6 @@ class DesktopHarmonicAppBootstrap(
             val appData = openStore(paths.configDirectory.resolve("app-data.preferences_pb"))
             val previewCache = openStore(paths.cacheDirectory.resolve("preview-cache.preferences_pb"))
             val fileAccess = openStore(paths.cacheDirectory.resolve("file-access.preferences_pb"))
-            val credentials = desktopCredentialStore()
             val localAi = DesktopLocalAiEnvironment.create(
                 preferences = settings,
                 modelsRoot = paths.filesDirectory.resolve(
@@ -127,6 +136,7 @@ class DesktopHarmonicAppBootstrap(
                 showCommentsUpButtonByDefault = true,
                 preloadCommentsFromStoriesByDefault = true,
                 localModels = localAi.models,
+                articleEmbeddingEngine = localAi.articleEmbeddings,
                 storyCacheRepository = persistentStorage.storyCacheRepository,
                 articleSnapshotStore = persistentStorage.articleSnapshotStore,
                 pdfDownloadStore = persistentStorage.pdfDownloadStore,

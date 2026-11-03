@@ -260,6 +260,27 @@ final class HarmonicIosUITests: XCTestCase {
         add(screenshot)
     }
 
+    private func assertBrowserRespectsStatusBarEdge(file: StaticString = #filePath, line: UInt = #line) {
+        let browser = app.webViews.firstMatch.frame
+        let window = app.windows.firstMatch.frame
+        let statusBar = app.statusBars.firstMatch
+        let trailingSafeArea = window.maxX - browser.maxX
+        if trailingSafeArea >= 56 {
+            // The native viewport already excludes the wide side-indicator strip.
+            // These pane layouts have no top Up button and must not gain a top gap.
+            XCTAssertEqual(browser.minY, window.minY, accuracy: 1,
+                           "A side status strip must not add top browser padding", file: file, line: line)
+        } else if statusBar.exists && statusBar.frame.height > 0 && statusBar.frame.width > statusBar.frame.height {
+            XCTAssertGreaterThanOrEqual(browser.minY, statusBar.frame.maxY - 1,
+                                        "The browser must clear the system status bar", file: file, line: line)
+        } else {
+            // Some runtimes omit system bars from AX. A pane reaching both horizontal
+            // window edges must still protect the top indicators, as on iPad.
+            XCTAssertGreaterThan(browser.minY, window.minY,
+                                 "The browser must reserve its top status-bar safe area", file: file, line: line)
+        }
+    }
+
     func testSettingsEdgeBackReturnsToParentBeforeClosingSettings() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
         openSettings()
@@ -343,13 +364,23 @@ final class HarmonicIosUITests: XCTestCase {
     private func openDebugSettings() {
         openSettings()
         let debug = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Debug")).firstMatch
-        let listAnchor = app.labeledButton("Appearance").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        for _ in 0..<6 where !debug.isHittable {
-            listAnchor.withOffset(CGVector(dx: 0, dy: 220)).press(
-                forDuration: 0.1,
-                thenDragTo: listAnchor.withOffset(CGVector(dx: 0, dy: -40)),
-                withVelocity: .slow, thenHoldForDuration: 0.2
-            )
+        if !debug.isHittable {
+            // A retained settings list can already be scrolled. Resolve a visible row's
+            // column now; a lazy coordinate tied to Appearance disappears after a swipe.
+            let visibleRow = ["Appearance", "Stories", "Comments", "Post header", "Web and links",
+                              "Filters and tags", "AI features", "Behavior", "Data", "About"]
+                .map { app.labeledButton($0) }.first { $0.isHittable }
+            XCTAssertNotNil(visibleRow)
+            let window = app.windows.firstMatch
+            let origin = window.coordinate(withNormalizedOffset: .zero)
+            let x = visibleRow?.frame.midX ?? window.frame.midX
+            for _ in 0..<6 where !debug.isHittable {
+                origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.75)).press(
+                    forDuration: 0.1,
+                    thenDragTo: origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.30)),
+                    withVelocity: .slow, thenHoldForDuration: 0.2
+                )
+            }
         }
         XCTAssertTrue(debug.waitForExistence(timeout: 5))
         debug.tapCenter()
@@ -828,6 +859,299 @@ final class HarmonicIosUITests: XCTestCase {
         edgeSwipeBack()
         XCTAssertTrue(storyListHeader.waitForExistence(timeout: 10))
         XCTAssertFalse(articleHeader.waitForExistence(timeout: 3))
+    }
+
+    func testEmbeddedBrowserClearsStatusBarInPortraitAndLandscape() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        // Open from the feed so expanded windows use the ordinary detail pane without Up.
+        openFirstComments()
+        articleHeader.tapCenter()
+        let browser = app.webViews.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 15))
+        let window = app.windows.firstMatch.frame
+        // Compact landscape phones can put their indicators in a side rail instead.
+        if window.height > window.width || min(window.width, window.height) >= 600 {
+            assertBrowserRespectsStatusBarEdge()
+        }
+        keepScreenshot("Browser status protection in portrait")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.labeledButton("Refresh website").waitForExistence(timeout: 10))
+        XCTAssertTrue(browser.waitForExistence(timeout: 10))
+        if min(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height) >= 600 {
+            assertBrowserRespectsStatusBarEdge()
+        }
+        keepScreenshot("Browser status protection in landscape")
+    }
+
+    func testProfileTagPreviewDismissalAndInlineBlockConfirmation() throws {
+        openLinkPostFromDebugSettings()
+        XCTAssertTrue(app.labeledButton("User").waitForExistence(timeout: 15))
+        app.labeledButton("User").tapCenter()
+        let editTag = app.labeledButton("Set tag")
+        XCTAssertTrue(editTag.waitForExistence(timeout: 15))
+        let showLinks = app.labeledButton("Clickable links")
+        if showLinks.exists {
+            showLinks.tapCenter()
+            XCTAssertTrue(app.labeledButton("Plain text").waitForExistence(timeout: 5))
+        }
+        editTag.tapCenter()
+        let field = app.textViews["Tag"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tapCenter()
+        field.typeText("iOS preview")
+        let blue = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Blue tag color")
+        ).firstMatch
+        XCTAssertTrue(blue.waitForExistence(timeout: 5))
+        blue.tapCenter()
+        XCTAssertTrue(app.staticTexts["Color"].waitForExistence(timeout: 5))
+        keepScreenshot("iOS tag color preview above dimmed profile")
+        app.labeledButton("Cancel").tapCenter()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: field
+        )], timeout: 10), .completed, "Cancelling must finish hiding the keyboard and restore the profile")
+        XCTAssertTrue(editTag.isHittable)
+        app.labeledButton("Block").tapCenter()
+        XCTAssertTrue(app.labeledButton("Block user").waitForExistence(timeout: 5))
+        keepScreenshot("iOS inline block confirmation")
+        app.labeledButton("Cancel").tapCenter()
+        XCTAssertTrue(editTag.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.labeledButton("Block").isHittable)
+        keepScreenshot("iOS profile restored after cancelling block")
+    }
+
+    private func elementWithLabelContaining(_ text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    }
+
+    private func waitUntilGone(_ element: XCUIElement, _ message: String) {
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: element
+        )], timeout: 15), .completed, message)
+    }
+
+    private func showSoftwareKeyboardIfNeeded() {
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.exists && keyboard.frame.height > 150 { return }
+        // iPad can retain its hardware-keyboard assistant. Open the software keyboard
+        // through the system's own menu so these tests exercise the actual IME insets.
+        let keyboardMenu = app.buttons["Keyboard"]
+        if keyboardMenu.exists {
+            keyboardMenu.tapCenter()
+            let show = app.buttons["Show Keyboard"]
+            if show.waitForExistence(timeout: 3) { show.tapCenter() }
+        }
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5), "Exercise the visible software keyboard")
+        XCTAssertGreaterThan(keyboard.frame.height, 150)
+    }
+
+    private func openFilterRules(_ label: String) {
+        openSettings()
+        app.tapVisibleButton("Filters and tags")
+        app.tapVisibleButton(label)
+        XCTAssertTrue(app.labeledButton("Add rule").waitForExistence(timeout: 5))
+    }
+
+    func testTypedTitleRulePreviewAndCancelledModeEdit() throws {
+        openFilterRules("Filter by story title")
+        app.tapVisibleButton("Add rule")
+        let field = app.textViews["Word or phrase"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tapCenter()
+        showSoftwareKeyboardIfNeeded()
+        field.typeText("AI")
+        XCTAssertTrue(app.labeledButton("Save rule").isEnabled)
+        XCTAssertTrue(elementWithLabelContaining("ignoring capitalization").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Preview"].exists)
+        let visibleExample = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "A better office chair", "Visible"
+        )).firstMatch
+        XCTAssertTrue(visibleExample.waitForExistence(timeout: 5))
+        keepScreenshot("iOS title words rule and keyboard")
+        app.tapVisibleButton("Contains text")
+        let hiddenExample = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "A better office chair", "Hidden"
+        )).firstMatch
+        XCTAssertTrue(hiddenExample.waitForExistence(timeout: 5))
+        app.tapVisibleButton("Save rule")
+        waitUntilGone(field, "Saving a title rule must hide the keyboard and restore its list")
+        let edit = app.labeledButton("Edit AI")
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        XCTAssertTrue(elementWithLabelContaining("Contains text").exists)
+        edit.tapCenter()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        app.tapVisibleButton("Words / phrase")
+        app.tapVisibleButton("Cancel")
+        waitUntilGone(field, "Cancelling a mode edit must restore the saved rule")
+        XCTAssertTrue(edit.isHittable)
+        XCTAssertTrue(elementWithLabelContaining("Contains text").exists)
+        keepScreenshot("iOS saved title rule preserves matching mode after cancelled edit")
+        app.tapVisibleButton("Remove AI")
+        XCTAssertTrue(app.staticTexts["No story title rules"].waitForExistence(timeout: 5))
+        app.tapVisibleButton("Done")
+    }
+
+    func testTypedDomainRuleNormalizesUrlAndSavesExactHostname() throws {
+        openFilterRules("Filter by domain")
+        app.tapVisibleButton("Add rule")
+        let field = app.textViews["domain-filter-rule-input"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tapCenter()
+        showSoftwareKeyboardIfNeeded()
+        field.typeText("https://WWW.Example.com.:8080/read?x=1")
+        XCTAssertTrue(app.labeledButton("Save rule").isEnabled)
+        XCTAssertTrue(app.staticTexts["www.example.com"].waitForExistence(timeout: 5))
+        let subdomains = app.descendants(matching: .any).matching(identifier: "include-filter-subdomains").firstMatch
+        XCTAssertTrue(subdomains.waitForExistence(timeout: 5))
+        for _ in 0..<5 where !subdomains.isHittable { app.swipeUp(velocity: .slow) }
+        subdomains.tapCenter()
+        XCTAssertTrue(elementWithLabelContaining("Matches only this exact hostname").waitForExistence(timeout: 5))
+        keepScreenshot("iOS normalized domain rule with exact-host matching")
+        app.tapVisibleButton("Save rule")
+        waitUntilGone(field, "Saving a domain rule must restore its list after the keyboard closes")
+        XCTAssertTrue(app.labeledButton("Edit www.example.com").waitForExistence(timeout: 5))
+        XCTAssertTrue(elementWithLabelContaining("Exact hostname").exists)
+        keepScreenshot("iOS domain rule list with explicit matching behavior")
+        app.tapVisibleButton("Remove www.example.com")
+        XCTAssertTrue(app.staticTexts["No domain rules"].waitForExistence(timeout: 5))
+        app.tapVisibleButton("Done")
+    }
+
+    private func checkCategoryInspectorAndNestedDialogs(_ suffix: String) {
+        openDebugSettings()
+        app.tapVisibleButton("Category inspector")
+        XCTAssertTrue(elementWithLabelContaining("Category inspector preview").waitForExistence(timeout: 5))
+        func revealPreviewElement(_ element: XCUIElement, scrollUp: Bool = true) {
+            let body = app.descendants(matching: .any).matching(identifier: "category-inspector-preview-scroll").firstMatch
+            XCTAssertTrue(body.waitForExistence(timeout: 5))
+            for _ in 0..<16 where !element.isHittable {
+                let window = app.windows.firstMatch
+                let header = elementWithLabelContaining("Category inspector preview").frame
+                let footer = app.labeledButton("Close").frame
+                let viewport = body.frame.intersection(window.frame).intersection(CGRect(
+                    x: body.frame.minX, y: header.maxY, width: body.frame.width,
+                    height: max(1, footer.minY - 8 - header.maxY)))
+                XCTAssertGreaterThan(viewport.height, 32)
+                var up = scrollUp
+                if element.exists && element.frame.height > 0 {
+                    up = element.frame.midY > viewport.midY
+                }
+                // Small drags stay inside the clipped body and cannot flick past a 48dp chip.
+                let origin = window.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.minY + viewport.height * (up ? 0.68 : 0.32)))
+                let end = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.minY + viewport.height * (up ? 0.32 : 0.68)))
+                start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
+            }
+            XCTAssertTrue(element.waitForExistence(timeout: 5))
+            XCTAssertTrue(element.isHittable, "Preview body: \(body.frame), target: \(element.frame)")
+        }
+        func revealInspectorProvenance(_ text: String) {
+            let value = elementWithLabelContaining(text)
+            let body = app.descendants(matching: .any).matching(identifier: "category-inspector-scroll-content").firstMatch
+            XCTAssertTrue(body.waitForExistence(timeout: 5))
+            for _ in 0..<12 where !value.isHittable {
+                let window = app.windows.firstMatch
+                let top = app.labeledButton("Close category inspector").frame.maxY + 8
+                let bottom = app.labeledButton("Edit examples for AI").frame.minY - 8
+                let viewport = body.frame.intersection(window.frame).intersection(CGRect(
+                    x: body.frame.minX, y: top, width: body.frame.width, height: max(1, bottom - top)))
+                XCTAssertGreaterThan(viewport.height, 32)
+                let up = !value.exists || value.frame.midY > viewport.midY
+                let origin = window.coordinate(withNormalizedOffset: .zero)
+                let start = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.minY + viewport.height * (up ? 0.68 : 0.32)))
+                let end = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.minY + viewport.height * (up ? 0.32 : 0.68)))
+                start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
+            }
+            XCTAssertTrue(value.waitForExistence(timeout: 5))
+            XCTAssertTrue(value.isHittable)
+        }
+        let chip = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "AI category, similarity")).firstMatch
+        revealPreviewElement(chip)
+        chip.tapCenter()
+        XCTAssertTrue(elementWithLabelContaining("Similarity, 42 out of 100").waitForExistence(timeout: 5))
+        revealInspectorProvenance("Based on the title and preview text")
+        let edit = app.labeledButton("Edit examples for AI")
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        XCTAssertTrue(edit.isHittable, "The inspector action must remain reachable")
+        keepScreenshot("iOS category inspector with source and sample scores " + suffix)
+        edit.tapCenter()
+        let about = app.labeledButton("About category examples")
+        XCTAssertTrue(about.waitForExistence(timeout: 10))
+        about.tapCenter()
+        XCTAssertTrue(elementWithLabelContaining("Category examples").waitForExistence(timeout: 5))
+        app.tapVisibleButton("Got it")
+        XCTAssertTrue(about.waitForExistence(timeout: 5))
+        app.labeledButton("Rename category").tapCenter()
+        let name = app.textViews.matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", "Name", "Name,")).firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tapCenter()
+        showSoftwareKeyboardIfNeeded()
+        name.typeText(" draft")
+        let saveLabel = app.labeledButton("Save").staticTexts["Save"]
+        let cancelLabel = app.labeledButton("Cancel").staticTexts["Cancel"]
+        XCTAssertLessThanOrEqual(saveLabel.frame.height, cancelLabel.frame.height + 1,
+                                 "A short action label must move as a whole instead of wrapping its last letter")
+        keepScreenshot("iOS stacked category rename dialog " + suffix)
+        app.tapVisibleButton("Cancel")
+        waitUntilGone(name, "Cancelling rename must leave the example sheet mounted")
+        XCTAssertTrue(about.isHittable)
+        // The sheet exposes a real drag handle; its virtual scrim button covers the window.
+        let window = app.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        let handle = app.labeledButton("Drag handle")
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 0.1,
+            thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.5, dy: window.frame.height - 16)),
+            withVelocity: .slow, thenHoldForDuration: 0.2)
+        waitUntilGone(about, "Dismissing the example sheet must reveal the retained inspector")
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        app.tapVisibleButton("Close category inspector")
+        revealPreviewElement(app.staticTexts["Story opens: 0"])
+        let titleOnly = app.labeledButton("Title only")
+        revealPreviewElement(titleOnly, scrollUp: false)
+        titleOnly.tapCenter()
+        revealPreviewElement(chip)
+        chip.tapCenter()
+        revealInspectorProvenance("Based on the title only")
+        keepScreenshot("iOS title-only category provenance " + suffix)
+        app.tapVisibleButton("Close category inspector")
+        revealPreviewElement(app.staticTexts["Story opens: 0"])
+        app.tapVisibleButton("Close")
+    }
+
+    func testCategoryInspectorProvenanceAndNestedEditorKeepStoryClosed() throws {
+        checkCategoryInspectorAndNestedDialogs("standard text")
+    }
+
+    func testAccessibilityTextKeepsNarrowFilterAndInspectorActionsReachable() throws {
+        openFilterRules("Filter by story title")
+        let standardTextHeight = app.staticTexts["No story title rules"].frame.height
+        XCTAssertGreaterThan(standardTextHeight, 0)
+        // Compose maps the largest iOS accessibility category to its maximum 180% font scale.
+        // This per-process override leaves the simulator's global accessibility preferences intact.
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        completeFirstRunIfNeeded()
+        openFilterRules("Filter by story title")
+        XCTAssertGreaterThanOrEqual(app.staticTexts["No story title rules"].frame.height, standardTextHeight * 1.75,
+                                   "The per-process content-size override must actually enlarge Compose text")
+        app.tapVisibleButton("Add rule")
+        let field = app.textViews["Word or phrase"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tapCenter()
+        showSoftwareKeyboardIfNeeded()
+        field.typeText("AI")
+        app.tapVisibleButton("Contains text")
+        keepScreenshot("iOS accessible text title editor above keyboard")
+        app.tapVisibleButton("Cancel")
+        waitUntilGone(field, "Large text and the keyboard must leave the cancel action reachable")
+        XCTAssertTrue(app.staticTexts["No story title rules"].waitForExistence(timeout: 5))
+        keepScreenshot("iOS accessible text empty filter list")
+        app.tapVisibleButton("Done")
+        closeSettings()
+        checkCategoryInspectorAndNestedDialogs("accessibility large text")
     }
 
     func testShareDoesNotWriteToClipboard() throws {
@@ -1609,6 +1933,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(exit.waitForExistence(timeout: 10))
         XCTAssertLessThan(articleHeader.frame.maxX, app.windows.firstMatch.frame.midX + app.windows.firstMatch.frame.width * 0.1)
         XCTAssertGreaterThan(app.webViews.firstMatch.frame.minX, app.windows.firstMatch.frame.width * 0.25)
+        assertBrowserRespectsStatusBarEdge()
         keepScreenshot("Expanded side by side browser and comments")
         exit.tapCenter()
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
@@ -2136,5 +2461,166 @@ final class HarmonicBrowserIntegrationTests: XCTestCase {
         XCTAssertNil(browser.view)
         XCTAssertNil(view.navigationDelegate)
         XCTAssertNil(view.uiDelegate)
+    }
+}
+
+// Deterministic browser-protocol fixtures: these are synthetic local fields, not solved HN
+// challenges, and no login, comment, vote, or favorite request is sent by these tests.
+@MainActor
+final class IosCaptchaBrowserIntegrationTests: XCTestCase {
+    private let fixture = """
+        <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+        <script>window.__harmonicCaptchaStatus='ready';</script></head>
+        <body><label>Local CAPTCHA protocol fixture<textarea id="g-recaptcha-response"></textarea></label></body></html>
+        """
+
+    private func refresh(_ browser: IosCaptchaBrowser) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            browser.refreshStatus { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
+    }
+
+    private func response(_ browser: IosCaptchaBrowser) async throws -> String? {
+        try await withCheckedThrowingContinuation { continuation in
+            browser.readResponse { value, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: value) }
+            }
+        }
+    }
+
+    private func waitForReady(_ browser: IosCaptchaBrowser) async throws {
+        let deadline = Date().addingTimeInterval(15)
+        while !browser.ready && Date() < deadline {
+            try await refresh(browser)
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        XCTAssertTrue(browser.ready, browser.error ?? "Timed out waiting for local CAPTCHA fixture")
+        if !browser.ready { throw NSError(domain: "CaptchaFixtureTimeout", code: 1) }
+    }
+
+    private func loadedFixture() async throws -> IosCaptchaBrowser {
+        let browser = IosCaptchaBrowser(html: fixture)
+        browser.load()
+        do {
+            try await waitForReady(browser)
+            return browser
+        } catch {
+            browser.dispose()
+            throw error
+        }
+    }
+
+    func testTrustedOriginAndNativeResponseArePreservedAndConsumedOnce() async throws {
+        let browser = try await loadedFixture()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        let origin = try await view.evaluateJavaScript("location.origin") as? String
+        XCTAssertEqual(origin, "https://news.ycombinator.com")
+        _ = try await view.evaluateJavaScript(#"document.getElementById('g-recaptcha-response').value = 'fixture "quoted" ☃'; true"#)
+        let token = try await response(browser)
+        XCTAssertEqual(token, "fixture \"quoted\" ☃")
+        let duplicate = try await response(browser)
+        XCTAssertNil(duplicate, "A document must not resume the action twice")
+    }
+
+    func testIncompleteExpiredAndNetworkErrorStatesRetainTheChallengeForRetry() async throws {
+        let browser = try await loadedFixture()
+        defer { browser.dispose() }
+        let firstView = try XCTUnwrap(browser.view)
+        let incomplete = try await response(browser)
+        XCTAssertNil(incomplete)
+        XCTAssertTrue(browser.ready)
+        XCTAssertNotNil(browser.error)
+        _ = try await firstView.evaluateJavaScript("window.__harmonicCaptchaStatus='expired'; true")
+        try await refresh(browser)
+        XCTAssertTrue(browser.error?.contains("expired") == true)
+        _ = try await firstView.evaluateJavaScript("window.__harmonicCaptchaStatus='error'; true")
+        try await refresh(browser)
+        XCTAssertFalse(browser.ready)
+        XCTAssertFalse(browser.loading)
+        XCTAssertTrue(browser.canRetry)
+        browser.load()
+        try await waitForReady(browser)
+        XCTAssertFalse(firstView === browser.view)
+        XCTAssertNil(firstView.navigationDelegate)
+        XCTAssertNil(firstView.uiDelegate)
+        XCTAssertNil(browser.error)
+        XCTAssertFalse(browser.canRetry)
+    }
+
+    func testUntrustedMainFrameNavigationCannotReplaceTheChallenge() async throws {
+        let browser = try await loadedFixture()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        let rejectedBefore = browser.rejectedNavigationCount
+        _ = try await view.evaluateJavaScript("var a=document.createElement('a');a.href='https://example.invalid/blocked';document.body.appendChild(a);a.click();true")
+        let deadline = Date().addingTimeInterval(5)
+        while browser.rejectedNavigationCount == rejectedBefore && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertGreaterThan(browser.rejectedNavigationCount, rejectedBefore)
+        let origin = try await view.evaluateJavaScript("location.origin") as? String
+        XCTAssertEqual(origin, "https://news.ycombinator.com")
+        XCTAssertTrue(browser.ready)
+    }
+
+    func testDisposalRejectsAnOutstandingResponseAndReleasesNativeDelegates() async throws {
+        let browser = try await loadedFixture()
+        let view = try XCTUnwrap(browser.view)
+        _ = try await view.evaluateJavaScript("document.getElementById('g-recaptcha-response').value='fixture-only'; true")
+        let completed = expectation(description: "Cancelled response read completes without a token")
+        browser.readResponse { value, error in
+            XCTAssertNil(error)
+            XCTAssertNil(value)
+            completed.fulfill()
+        }
+        browser.dispose()
+        await fulfillment(of: [completed], timeout: 10)
+        XCTAssertNil(browser.view)
+        XCTAssertNil(view.navigationDelegate)
+        XCTAssertNil(view.uiDelegate)
+        XCTAssertFalse(browser.ready)
+    }
+
+    func testOpaqueDocumentCannotSupplyAResponseEvenIfItCopiesTheWidgetFields() async throws {
+        let browser = try await loadedFixture()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        view.loadHTMLString(fixture, baseURL: nil)
+        let deadline = Date().addingTimeInterval(10)
+        while view.isLoading && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        _ = try await view.evaluateJavaScript("document.getElementById('g-recaptcha-response').value='opaque-fixture'; true")
+        try await refresh(browser)
+        XCTAssertFalse(browser.ready)
+        XCTAssertTrue(browser.canRetry)
+        XCTAssertTrue(browser.error?.contains("secure page") == true)
+        let untrusted = try await response(browser)
+        XCTAssertNil(untrusted)
+        browser.load()
+        try await waitForReady(browser)
+        let origin = try await XCTUnwrap(browser.view).evaluateJavaScript("location.origin") as? String
+        XCTAssertEqual(origin, "https://news.ycombinator.com")
+    }
+
+    func testRendererTerminationAndLoadTimeoutAllowExplicitRetry() async throws {
+        let browser = try await loadedFixture()
+        defer { browser.dispose() }
+        let view = try XCTUnwrap(browser.view)
+        view.navigationDelegate?.webViewWebContentProcessDidTerminate?(view)
+        XCTAssertTrue(browser.canRetry)
+        XCTAssertTrue(browser.error?.contains("stopped responding") == true)
+        browser.load()
+        browser.loadTimedOut(expectedGeneration: browser.generation)
+        XCTAssertTrue(browser.canRetry)
+        XCTAssertFalse(browser.loading)
+        browser.load()
+        try await waitForReady(browser)
+        XCTAssertNil(browser.error)
     }
 }

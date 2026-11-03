@@ -39,6 +39,8 @@ class HackerNewsUserService(
 ) : HackerNewsUserItemsLoader, HackerNewsVotingService, HackerNewsFavoriteService {
     private val cookieSessionMutex = Mutex()
 
+    suspend fun accountUsername(): String? = accounts.awaitAccount()?.username
+
     suspend fun login(): HackerNewsActionResult = cookieSessionMutex.withLock {
         val account = readCredentials() ?: return@withLock missingCredentials()
         withContext(Dispatchers.Default) { session.reset() }
@@ -62,9 +64,18 @@ class HackerNewsUserService(
     suspend fun comment(itemId: String, text: String): HackerNewsActionResult =
         withCredentials("Couldn't connect to HN") { session.actions.comment(it, itemId, text) }
 
+    suspend fun commentForAccount(username: String?, itemId: String, text: String): HackerNewsActionResult =
+        withCredentials("Couldn't connect to HN", username, requireAccountMatch = true) {
+            session.actions.comment(it, itemId, text)
+        }
+
     suspend fun submit(title: String, text: String, url: String): HackerNewsActionResult =
+        submitForAccount(accountUsername(), title, text, url)
+
+    suspend fun submitForAccount(username: String?, title: String, text: String, url: String): HackerNewsActionResult =
         cookieSessionMutex.withLock {
             val account = readCredentials() ?: return@withLock missingCredentials()
+            if (account.username != username) return@withLock accountChanged()
             withContext(Dispatchers.Default) { session.reset() }
             safeAction("Couldn't connect to HN", account) {
                 session.actions.submit(account, title, text, url)
@@ -113,11 +124,76 @@ class HackerNewsUserService(
         )
     }
 
+    suspend fun submitAfterLoginCaptchaForAccount(
+        username: String?,
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        title: String,
+        text: String,
+        url: String,
+    ): HackerNewsActionResult = cookieSessionMutex.withLock {
+        withCredentials("Couldn't connect to HN", username, requireAccountMatch = true) {
+            session.actions.submitAfterLoginCaptcha(challenge, captchaResponse, title, text, url)
+        }
+    }
+
     suspend fun continueCaptchaAction(
         challenge: HackerNewsCaptchaChallenge,
         captchaResponse: String,
     ): HackerNewsActionResult = safeAction("Couldn't connect to HN") {
         session.actions.continueCaptchaAction(challenge, captchaResponse)
+    }
+
+    suspend fun continueCaptchaActionForAccount(
+        username: String?,
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        isAccountCurrent: () -> Boolean = { true },
+    ): HackerNewsActionResult = cookieSessionMutex.withLock {
+        withCredentials("Couldn't complete HN challenge", username, requireAccountMatch = true) {
+            if (isAccountCurrent()) session.actions.continueCaptchaAction(challenge, captchaResponse)
+            else accountChanged()
+        }
+    }
+
+    suspend fun continueFavoriteCaptchaForAccount(
+        username: String?,
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        itemId: Int,
+        favorite: Boolean,
+        isAccountCurrent: () -> Boolean = { true },
+    ): HackerNewsActionResult = cookieSessionMutex.withLock {
+        withCredentials("Couldn't update favorite", username, requireAccountMatch = true) {
+            if (!isAccountCurrent()) accountChanged()
+            else session.actions.continueFavoriteCaptcha(challenge, captchaResponse, itemId, favorite)
+        }
+    }
+
+    suspend fun getUserItemsAfterCaptcha(
+        username: String?,
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        path: String,
+        loginRequired: Boolean,
+    ): HackerNewsUserItemsResult = cookieSessionMutex.withLock {
+        val account = readCredentials() ?: return@withLock HackerNewsUserItemsResult.Failure(
+            "Login required", "Save your Hacker News login before syncing $path.",
+        )
+        if (account.username != username) return@withLock HackerNewsUserItemsResult.Failure(
+            "Hacker News account changed", "Try syncing again with the current login.",
+        )
+        when (val login = safeAction("Login failed", account) {
+            if (challenge.isLoginChallenge) session.actions.continueLoginWithCaptcha(challenge, captchaResponse)
+            else session.actions.continueCaptchaAction(challenge, captchaResponse)
+        }) {
+            is HackerNewsActionResult.Success -> loadUserItems(
+                if (loginRequired || challenge.useCookies || challenge.isLoginChallenge) session.authenticatedWeb else session.publicWeb,
+                path, account.username,
+            )
+            is HackerNewsActionResult.Failure -> HackerNewsUserItemsResult.Failure(login.summary, login.detail)
+            is HackerNewsActionResult.Captcha -> HackerNewsUserItemsResult.Captcha(login.challenge)
+        }
     }
 
     override suspend fun getUserItems(
@@ -139,7 +215,17 @@ class HackerNewsUserService(
             }
         }
         val repository = if (loginRequired) session.authenticatedWeb else session.publicWeb
-        HackerNewsUserItemsResult.Success(repository.getUserItems(path, account.username))
+        loadUserItems(repository, path, account.username)
+    }
+
+    private suspend fun loadUserItems(repository: HackerNewsWebRepository, path: String, username: String): HackerNewsUserItemsResult = try {
+        HackerNewsUserItemsResult.Success(repository.getUserItems(path, username))
+    } catch (required: HackerNewsUserItemsCaptchaException) {
+        HackerNewsUserItemsResult.Captcha(required.challenge)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        HackerNewsUserItemsResult.Failure("Couldn't sync $path", error.message)
     }
 
     private suspend fun withCredentials(

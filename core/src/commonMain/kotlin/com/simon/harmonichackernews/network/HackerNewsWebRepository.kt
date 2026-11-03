@@ -24,6 +24,9 @@ data class HackerNewsUserItems(
     val commentIds: List<Int>,
 )
 
+class HackerNewsUserItemsCaptchaException(val challenge: HackerNewsCaptchaChallenge) :
+    Exception("HN requires a CAPTCHA before returning the complete saved list")
+
 interface HackerNewsWebRepository {
     suspend fun getStoryList(
         path: String,
@@ -39,9 +42,10 @@ interface HackerNewsWebRepository {
 class KtorHackerNewsWebRepository(
     private val client: suspend () -> HttpClient,
     private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val useCookies: Boolean = false,
 ) : HackerNewsWebRepository {
-    constructor(client: HttpClient, requestDispatcher: CoroutineDispatcher = Dispatchers.Default) :
-        this({ client }, requestDispatcher)
+    constructor(client: HttpClient, requestDispatcher: CoroutineDispatcher = Dispatchers.Default, useCookies: Boolean = false) :
+        this({ client }, requestDispatcher, useCookies)
     override suspend fun getStoryList(
         path: String,
         commentsPage: Boolean,
@@ -91,10 +95,22 @@ class KtorHackerNewsWebRepository(
         var page = 0
         while (!nextUrl.isNullOrEmpty() && page < MAX_USER_ITEM_LIST_PAGES) {
             page++
-            val parsed = HackerNewsWebParser.parseStoryListPage(
-                client().getTextOrThrow(nextUrl),
-                commentsPage = comments,
-            )
+            val body = client().getTextOrThrow(nextUrl)
+            if (HackerNewsActionParser.isCaptchaRequired(body)) {
+                val challenge = HackerNewsActionParser.parseCaptchaChallenge(body, useCookies)
+                    ?: error("HN returned a CAPTCHA that could not be read. Existing saved items are preserved.")
+                throw HackerNewsUserItemsCaptchaException(challenge)
+            }
+            val parsed = HackerNewsWebParser.parseStoryListPage(body, commentsPage = comments)
+            if (parsed.itemIds.isEmpty()) {
+                val document = Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL)
+                check(document.selectFirst("form[action] input[name=pw]") == null) {
+                    "HN asked you to log in again. Existing saved items are preserved."
+                }
+                check(document.selectFirst("table#hnmain, table.itemlist") != null) {
+                    "HN did not return a recognizable saved list. Existing saved items are preserved."
+                }
+            }
             itemIds += parsed.itemIds
             if (comments) commentIds += parsed.commentIds
             nextUrl = parsed.nextPageUrl

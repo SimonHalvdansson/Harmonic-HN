@@ -93,7 +93,8 @@ final class IosLocalAiTests: XCTestCase {
 
     func testCatalogAndDownloadableFallbackWithoutAppleIntelligence() throws {
         createEnvironment(bridge: StubLiteRtBridge())
-        XCTAssertEqual(environment.models.catalog.count, 7)
+        XCTAssertEqual(environment.models.catalog.count, 8)
+        XCTAssertTrue(environment.models.catalog.contains { $0.id == LocalModelCatalog.shared.embeddingModel.id && !$0.supportsSummarization })
         XCTAssertTrue(environment.models.catalog.filter { $0.downloadable }.allSatisfy { $0.runtime == .litertLm })
         XCTAssertTrue(environment.models.isRuntimeInstalled(runtime: .litertLm))
         XCTAssertFalse(environment.summary.isReady())
@@ -192,6 +193,90 @@ final class IosLocalAiTests: XCTestCase {
         // The same service must drain and release the cancelled conversation before starting again.
         let result = try summarize(String(repeating: "Solar panels turn sunlight into electricity. ", count: 12))
         XCTAssertFalse(result.text.isEmpty)
+    }
+}
+
+final class IosArticleEmbeddingTests: XCTestCase {
+    private var service: IosArticleEmbeddingService!
+    private var directory: URL!
+
+    override func setUpWithError() throws {
+        service = IosArticleEmbeddingService()
+        directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        let closed = NativeEmbeddingCallback(expectation: expectation(description: "Embedding engine closed"))
+        service.close(callback: closed)
+        wait(for: [closed.finished], timeout: 30)
+        XCTAssertNil(closed.error)
+        service = nil
+        try FileManager.default.removeItem(at: directory)
+    }
+
+    private func load(_ path: String) throws {
+        let loaded = NativeEmbeddingCallback(expectation: expectation(description: "Embedding model loaded"))
+        service.load(modelPath: path, cacheDirectory: directory.path, callback: loaded)
+        wait(for: [loaded.finished], timeout: 120)
+        if let error = loaded.error { throw NSError(domain: "EmbeddingTest", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
+    }
+
+    private func embed(_ text: String) throws -> [Float] {
+        let completed = NativeEmbeddingCallback(expectation: expectation(description: "Text embedded"))
+        service.embed(text: text, callback: completed)
+        wait(for: [completed.finished], timeout: 120)
+        XCTAssertNil(completed.error)
+        let vector = try XCTUnwrap(completed.embedding)
+        return (0..<vector.size).map { vector.get(index: $0) }
+    }
+
+    func testMissingAndInvalidModelReturnErrorsWithoutCrashing() throws {
+        XCTAssertThrowsError(try load(directory.appendingPathComponent("missing.litertlm").path))
+        let invalid = directory.appendingPathComponent("invalid.litertlm")
+        try Data("invalid model".utf8).write(to: invalid)
+        XCTAssertThrowsError(try load(invalid.path))
+        let completed = NativeEmbeddingCallback(expectation: expectation(description: "Unloaded engine rejected"))
+        service.embed(text: "Text", callback: completed)
+        wait(for: [completed.finished], timeout: 30)
+        XCTAssertNotNil(completed.error)
+        XCTAssertNil(completed.embedding)
+    }
+
+    func testEmbeddingGemmaProducesNormalizedSemanticVectorsAndReloads() throws {
+        let fixture = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("embedding-test-fixture.litertlm")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: fixture.path), "Seed EmbeddingGemma 2 in Application Support/embedding-test-fixture.litertlm to run native inference.")
+        try load(fixture.path)
+        let title = "The Rust compiler improves memory safety"
+        let text = ArticleCategories.shared.input(title: title, description: "A new release of the Rust programming language.")
+        let first = try embed(text)
+        let unrelated = try embed(ArticleCategories.shared.input(title: "Astronomers discover a new planet", description: "A distant world orbits a nearby star."))
+        XCTAssertEqual(first.count, 768)
+        XCTAssertTrue(first.allSatisfy(\.isFinite))
+        XCTAssertEqual(first.reduce(0) { $0 + $1 * $1 }, 1, accuracy: 0.001)
+        try load(fixture.path) // Replacing a loaded model releases the previous native engine.
+        let repeated = try embed(text)
+        let sameSimilarity = zip(first, repeated).reduce(Float(0)) { $0 + $1.0 * $1.1 }
+        let unrelatedSimilarity = zip(first, unrelated).reduce(Float(0)) { $0 + $1.0 * $1.1 }
+        XCTAssertEqual(sameSimilarity, 1, accuracy: 0.001)
+        XCTAssertLessThan(unrelatedSimilarity, sameSimilarity - 0.05)
+        let attachment = XCTAttachment(string: "EmbeddingGemma 2: 768 dimensions; same-input similarity \(sameSimilarity); unrelated-topic similarity \(unrelatedSimilarity)")
+        attachment.name = "Real iOS category embeddings"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+
+private final class NativeEmbeddingCallback: IosArticleEmbeddingCallback {
+    let finished: XCTestExpectation
+    var embedding: KotlinFloatArray?
+    var error: String?
+    init(expectation: XCTestExpectation) { finished = expectation }
+    func complete(embedding: KotlinFloatArray?, errorMessage: String?) {
+        self.embedding = embedding
+        error = errorMessage
+        finished.fulfill()
     }
 }
 

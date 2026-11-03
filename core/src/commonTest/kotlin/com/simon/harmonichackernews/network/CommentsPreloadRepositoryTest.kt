@@ -115,7 +115,7 @@ class CommentsPreloadRepositoryTest {
         )
 
         val loaded = repository.preload(42, listOf(7, 8), setOf("blocked"))
-        val reused = repository.preload(42, listOf(7, 8), setOf("BLOCKED"))
+        val reused = repository.preload(42, listOf(7, 8), setOf(" blocked "))
 
         assertNotNull(loaded)
         assertEquals(listOf(8), loaded.parsed.comments.map { it.id })
@@ -129,6 +129,25 @@ class CommentsPreloadRepositoryTest {
         assertEquals(loaded, consumed)
         assertFalse(repository.isPrepared(42, listOf(7, 8), setOf("blocked")))
         assertEquals(0, repository.preparedCount())
+    }
+
+    @Test
+    fun differentlyCasedBlockedUsersNeverSharePreparedResults() = runTest {
+        val source = RecordingAlgoliaRepository(RESPONSE)
+        val repository = CommentsPreloadRepository(
+            algolia = source,
+            requestDispatcher = UnconfinedTestDispatcher(testScheduler),
+            nowMillis = { testScheduler.currentTime },
+        )
+        val exact = assertNotNull(repository.preload(42, filteredUsers = setOf("blocked")))
+        val different = assertNotNull(repository.preload(42, filteredUsers = setOf("BLOCKED")))
+        // Raw bytes may be reused; the identity-specific prepared results must remain distinct.
+        assertEquals(1, source.itemRequests)
+        assertEquals(listOf(8), exact.parsed.comments.map { it.id })
+        assertEquals(listOf(7, 8), different.parsed.comments.map { it.id })
+        assertEquals(exact, repository.takeOrAwait(42, filteredUsers = setOf("blocked")))
+        assertTrue(repository.isPrepared(42, filteredUsers = setOf("BLOCKED")))
+        assertEquals(different, repository.takeOrAwait(42, filteredUsers = setOf("BLOCKED")))
     }
 
     @Test

@@ -155,6 +155,7 @@ class CommentsFeatureBinding private constructor(
                     userSettings = app.userSettings,
                     canLoadArticleTextOnDemand = canLoadArticleTextOnDemand,
                     performanceTrace = performanceTrace,
+                    captchaResponder = scene.captchaRequests::awaitResponse,
                     openingRequest = scene.commentsOpeningRequests.requestFor(request.serial, request.storyId),
                     prepareInitialContent = { thread ->
                         com.simon.harmonichackernews.ui.content.prepareInitialCommentContent(

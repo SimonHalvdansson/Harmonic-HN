@@ -2,11 +2,13 @@ package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectableGroup
@@ -19,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,48 +54,54 @@ internal fun StoryTypeChips(
             listState.animateScrollToItem(selectedIndex)
         }
     }
-    HeaderChipRow(
-        state = listState,
-        modifier = modifier.fillMaxWidth().selectableGroup(),
-        contentPadding = contentPadding,
-    ) {
-        itemsIndexed(labels, key = { _, label -> label }, contentType = { _, _ -> "story-type-chip" }) { index, label ->
-            val selected = index == selectedIndex
-            FilterChip(
-                selected = selected,
-                onClick = { if (!selected) onSelected(index) },
-                modifier = Modifier.heightIn(min = 40.dp),
-                shape = RoundedCornerShape(12.dp),
-                label = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(StoryType.fromLabel(label).menuIcon),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
-                        )
-                        Text(
-                            text = label,
-                            fontFamily = fontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                        )
-                    }
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = chipBackground,
-                    labelColor = colors.onSurface,
-                    iconColor = colors.onSurfaceVariant,
-                    selectedContainerColor = selectedBackground,
-                    selectedLabelColor = colors.onSecondaryContainer,
-                    selectedLeadingIconColor = colors.onSecondaryContainer,
-                ),
-                border = null,
-            )
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val direction = LocalLayoutDirection.current
+        val maximumChipWidth = (maxWidth - contentPadding.calculateLeftPadding(direction) -
+            contentPadding.calculateRightPadding(direction)).coerceAtLeast(48.dp)
+        HeaderChipRow(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().selectableGroup(),
+            contentPadding = contentPadding,
+        ) {
+            itemsIndexed(labels, key = { _, label -> label }, contentType = { _, _ -> "story-type-chip" }) { index, label ->
+                val selected = index == selectedIndex
+                FilterChip(
+                    selected = selected,
+                    onClick = { if (!selected) onSelected(index) },
+                    modifier = Modifier.widthIn(max = maximumChipWidth).heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    label = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(StoryType.fromLabel(label).menuIcon),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                            )
+                            Text(
+                                text = label,
+                                modifier = Modifier.weight(1f, fill = false),
+                                fontFamily = fontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                lineHeight = 17.sp,
+                            )
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = chipBackground,
+                        labelColor = colors.onSurface,
+                        iconColor = colors.onSurfaceVariant,
+                        selectedContainerColor = selectedBackground,
+                        selectedLabelColor = colors.onSecondaryContainer,
+                        selectedLeadingIconColor = colors.onSecondaryContainer,
+                    ),
+                    border = null,
+                )
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -12,18 +14,22 @@ import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.StoryListSelector
+import com.simon.harmonichackernews.settings.StoriesHeaderPill
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import javax.swing.SwingUtilities
+import java.io.File
+import org.jetbrains.skia.EncodedImageFormat
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
 class StoriesHeaderPreviewTest {
     @Test
-    fun selectorAndCompactnessAnimateInsideAFixedCenteredPreview() = SwingUtilities.invokeAndWait {
+    fun selectorAndCompactnessAnimateBelowAFixedScreenEdge() = SwingUtilities.invokeAndWait {
+        val evidence = System.getenv("HARMONIC_HEADER_EVIDENCE_DIR")?.let { File(it).apply { mkdirs() } }
         for (width in listOf(320, 640)) for (dark in listOf(false, true)) {
             val bootstrap = DesktopHarmonicAppBootstrap.inMemory("StoriesHeaderPreviewTest")
             val settings = mutableStateOf(StoryDisplaySettings.from(bootstrap.app.userSettings.story))
@@ -36,6 +42,7 @@ class StoriesHeaderPreviewTest {
                             settings.value, StoryTypeMenuPolicy.baseFrontpages,
                             onSelectorChanged = { settings.value = settings.value.copy(listSelector = it) },
                             onCompactHeaderChanged = { settings.value = settings.value.copy(compactHeader = it) },
+                            onHeaderPillChanged = { settings.value = settings.value.copy(headerPill = it) },
                             onBack = {},
                         )
                     }
@@ -90,7 +97,13 @@ class StoriesHeaderPreviewTest {
                     }.boundsInRoot
                     assertEquals(bounds.right, chips.right, 1f, "Chips must reach the page edge")
                 }
-                assertEquals(bounds.center.y, content.center.y, 1f, "Center the selected layout inside the largest preview")
+                assertEquals(bounds.top, content.top, 1f, "Anchor the header below the fixed screen-edge marker")
+                assertEquals(taggedBounds("stories-header-preview-top-edge").bottom, bounds.top, 1f)
+                val controls = nodes(allNodes().single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                assertEquals(if (compact) 8f else 28f, controls.top - bounds.top, 1f,
+                    "The preview must show the real gap between the screen edge and the header")
                 val compactTitle = allNodes().first {
                     it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Compact header" } == true
                 }.boundsInRoot
@@ -116,6 +129,51 @@ class StoriesHeaderPreviewTest {
                 assertTrue(chips.height > compactChips.height + 15)
                 val returnedDropdown = preview(StoryListSelector.DROPDOWN, false)
                 assertEquals(dropdown.height, returnedDropdown.height, 1f)
+                var barePixel = androidx.compose.ui.graphics.Color.Unspecified
+                for (pill in StoriesHeaderPill.entries) {
+                    settings.value = settings.value.copy(headerPill = pill)
+                    repeat(45) { scene.render(time.also { time += 16_666_667L }).close() }
+                    val controls = nodes(allNodes().single {
+                        it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                    }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                    scene.render(time.also { time += 16_666_667L }).use { image ->
+                        if (pill == StoriesHeaderPill.OFF) barePixel = image.toComposeImageBitmap().toPixelMap()[controls.center.x.toInt(), controls.top.toInt() + 2]
+                        else {
+                            val cardInset = if (settings.value.hasBackground || settings.value.tintCardsFromImages) 12f else 8f
+                            assertEquals(cardInset, controls.left, 1f, "Pill must align with the story card margin")
+                            assertEquals(width - cardInset, controls.right, 1f)
+                            val scheme = HarmonicThemeCatalog.scheme("dynamic", dark).colorScheme
+                            val expected = when (pill) {
+                                StoriesHeaderPill.PRIMARY -> scheme.primary
+                                StoriesHeaderPill.SECONDARY -> scheme.secondary
+                                else -> scheme.tertiary
+                            }
+                            val actual = image.toComposeImageBitmap().toPixelMap()[controls.center.x.toInt(), controls.top.toInt() + 2]
+                            assertEquals(expected.red, actual.red, .01f)
+                            assertEquals(expected.green, actual.green, .01f)
+                            assertEquals(expected.blue, actual.blue, .01f)
+                        }
+                        if (evidence != null) image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                            File(evidence, "stories-header-${pill.storedValue}-$width-${if (dark) "dark" else "light"}.png")
+                                .writeBytes(it.bytes)
+                        }
+                    }
+                }
+                val scheme = HarmonicThemeCatalog.scheme("dynamic", dark).colorScheme
+                settings.value = settings.value.copy(headerPill = StoriesHeaderPill.OFF)
+                repeat(30) {
+                    scene.render(time.also { time += 16_666_667L }).use { image ->
+                        val bounds = nodes(allNodes().single {
+                            it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                        }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                        val actual = image.toComposeImageBitmap().toPixelMap()[bounds.center.x.toInt(), bounds.top.toInt() + 2]
+                        for ((value, ends) in listOf(actual.red to (barePixel.red to scheme.tertiary.red),
+                            actual.green to (barePixel.green to scheme.tertiary.green), actual.blue to (barePixel.blue to scheme.tertiary.blue))) {
+                            assertTrue(value >= minOf(ends.first, ends.second) - .015f && value <= maxOf(ends.first, ends.second) + .015f,
+                                "Fading out must not darken below either endpoint")
+                        }
+                    }
+                }
             } finally {
                 scene.close()
                 bootstrap.close()

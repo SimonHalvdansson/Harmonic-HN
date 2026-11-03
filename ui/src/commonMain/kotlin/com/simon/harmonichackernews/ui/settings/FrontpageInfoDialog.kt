@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -142,33 +143,45 @@ internal fun FrontpageInfoDialog(
                     onDismissRequest = requestDismiss,
                     onDismissAnimationFinished = onDismiss,
                 ) {
-                    Column(
-                        Modifier.fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.semantics { heading() },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Icon(
-                                painterResource(type.menuIcon),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            SettingsDialogTitle(type.label)
-                        }
-                        SettingsDialogBodyText(description)
-                        SettingsDialogTextButton(
-                            onClick = requestDismiss,
-                            modifier = Modifier.align(Alignment.End),
-                        ) { Text("OK") }
-                    }
+                    FrontpageInfoContent(type, type.label, description, requestDismiss)
                 }
             }
         }
+    }
+}
+
+
+@Composable
+internal fun FrontpageInfoContent(
+    type: StoryType,
+    title: String,
+    description: String,
+    onDismiss: () -> Unit,
+    scrollState: ScrollState = rememberScrollState(),
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .verticalScroll(scrollState)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.semantics { heading() },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painterResource(type.menuIcon),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Box(Modifier.weight(1f)) { SettingsDialogTitle(title) }
+        }
+        SettingsDialogBodyText(description)
+        SettingsDialogTextButton(
+            onClick = onDismiss,
+            modifier = Modifier.align(Alignment.End),
+        ) { Text("OK") }
     }
 }

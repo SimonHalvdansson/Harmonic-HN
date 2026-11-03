@@ -36,7 +36,7 @@ internal fun iosSideRailWidth(insets: WindowInsets = WindowInsets.safeDrawing): 
     val right = insets.getRight(density, direction)
     return with(density) {
         if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPhone &&
-            (right - left).toDp() >= 56.dp
+            right > left && iosHasSideStatusBarInsets(left.toDp(), right.toDp())
         ) right.toDp() else 0.dp
     }
 }

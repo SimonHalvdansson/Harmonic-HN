@@ -48,7 +48,7 @@ class PreparedCommentThreadTest {
 
     @Test fun firstDisplayDefersDigestAndPersistenceKeepsNeutralContent() = runTest {
         val displayParser = AlgoliaCommentsParser(sourceDigest = { error("First display must not hash") })
-        val displayed = displayParser.parseForDisplay(raw, listOf(8, 7), setOf("alice"))
+        val displayed = displayParser.parseForDisplay(raw, listOf(8, 7), setOf("Alice"))
         val pending = assertNotNull(displayed.cacheSummary?.preparedThread)
         assertEquals("", pending.sourceDigest)
         assertFalse(pending.isCompatible())
@@ -84,6 +84,16 @@ class PreparedCommentThreadTest {
         val updated = displayParser.parseForDisplay(changed, cachedThread = cached)
         assertEquals(2, hashes)
         assertEquals(parser.prepare(changed), updated.cacheSummary?.preparedThread)
+    }
+
+    @Test fun restoredContentOnlyBlocksTheExactCaseIdentity() = runTest {
+        val prepared = parser.prepare(raw, listOf(8, 7))
+        for (encoding in PreparedCommentCodec.Encoding.entries) {
+            val decoded = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(prepared, encoding)))
+            assertEquals(listOf(8), decoded.restore(filteredUsers = setOf(" Alice ")).comments.map { it.id })
+            assertEquals(listOf(8, 7, 9), decoded.restore(filteredUsers = setOf("alice")).comments.map { it.id })
+            assertEquals(listOf(8, 7, 9), decoded.restore(filteredUsers = setOf("ALICE")).comments.map { it.id })
+        }
     }
 
     @Test fun unchangedResponseReusesPreparedContentWithFreshPresentation() = runTest {

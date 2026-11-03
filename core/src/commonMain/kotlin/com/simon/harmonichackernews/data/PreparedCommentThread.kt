@@ -40,7 +40,7 @@ data class PreparedCommentThread(
     ): AlgoliaCommentsResponse {
         require(isContentCompatible()) { "Incompatible prepared comment cache" }
         val blocked = filteredUsers.mapNotNullTo(mutableSetOf()) {
-            it.trim().lowercase().takeIf(String::isNotEmpty)
+            it.trim().takeIf(String::isNotEmpty)
         }
         val roots = ArrayList<Int>()
         var index = 0
@@ -62,7 +62,7 @@ data class PreparedCommentThread(
             while (index < end) {
                 currentCoroutineContext().ensureActive()
                 val record = comments[index]
-                if (blocked.isNotEmpty() && record.author.lowercase() in blocked) {
+                if (blocked.isNotEmpty() && record.author in blocked) {
                     index = record.subtreeEndExclusive
                     continue
                 }

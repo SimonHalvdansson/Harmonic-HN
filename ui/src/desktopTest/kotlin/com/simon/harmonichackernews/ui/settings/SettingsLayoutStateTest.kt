@@ -60,6 +60,7 @@ class SettingsLayoutStateTest {
                     SettingsNavigationShell(
                         navigation, PaneScaffoldDirective(if (twoPane) 2 else 1, 24.dp, 1, 0.dp, 360.dp, emptyList()),
                         false, 0.dp, {}, {}, supportsTwoPane = true,
+                        sceneReflowKey = twoPane,
                         renderList = { _, showSelection, _, _ ->
                             Probe("list", values, identities, models, "$version:$showSelection", renderedInputs)
                         },

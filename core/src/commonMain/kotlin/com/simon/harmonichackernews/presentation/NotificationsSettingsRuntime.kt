@@ -65,7 +65,7 @@ class NotificationsSettingsRuntime(
     }
 
     fun disable() {
-        if (mutableState.value.operation != null) return
+        if (mutableState.value.operation != null || !isEnabled()) return
         notifications?.disable()
         finish("")
     }
@@ -116,7 +116,9 @@ class NotificationsSettingsRuntime(
         }
     }
 
-    private fun isEnabled(): Boolean = notifications?.configuredUsername.equals(username, ignoreCase = true)
+    private fun isEnabled(): Boolean = username.trim().let {
+        it.isNotEmpty() && notifications?.configuredUsername == it
+    }
 
     private fun finish(message: String, isError: Boolean = false) {
         mutableState.value = mutableState.value.copy(

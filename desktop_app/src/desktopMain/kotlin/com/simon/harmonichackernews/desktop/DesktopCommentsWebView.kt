@@ -497,36 +497,49 @@ private const val MATERIAL_SCROLLBAR_SCRIPT =
 private object DesktopSwtDisplayHost {
     private val started = AtomicBoolean(false)
     private val stateLock = Any()
-    private val pendingActions = mutableListOf<(Display) -> Unit>()
+    private data class Pending(val action: (Display) -> Unit, val onError: (Throwable) -> Unit)
+    private val pendingActions = mutableListOf<Pending>()
 
     @Volatile
     private var display: Display? = null
 
-    fun async(action: (Display) -> Unit) {
+    fun async(onError: (Throwable) -> Unit, action: (Display) -> Unit) {
         val currentDisplay = synchronized(stateLock) {
             display?.takeUnless(Display::isDisposed).also { activeDisplay ->
-                if (activeDisplay == null) pendingActions += action
+                if (activeDisplay == null) pendingActions += Pending(action, onError)
             }
         }
         if (currentDisplay != null) {
-            runCatching { currentDisplay.asyncExec { action(currentDisplay) } }
+            runCatching { currentDisplay.asyncExec { action(currentDisplay) } }.onFailure(onError)
             return
         }
         if (!started.compareAndSet(false, true)) return
 
         Thread(
             {
-                val localDisplay = Display()
+                val localDisplay = try {
+                    prepareLinuxSwtEmbedding()
+                    Display()
+                } catch (error: Throwable) {
+                    val failed = synchronized(stateLock) {
+                        started.set(false)
+                        pendingActions.toList().also { pendingActions.clear() }
+                    }
+                    failed.forEach { it.onError(error) }
+                    return@Thread
+                }
                 val queuedActions = synchronized(stateLock) {
                     display = localDisplay
                     pendingActions.toList().also { pendingActions.clear() }
                 }
-                queuedActions.forEach { action -> runCatching { action(localDisplay) } }
+                queuedActions.forEach { pending ->
+                    runCatching { pending.action(localDisplay) }.onFailure(pending.onError)
+                }
                 while (!localDisplay.isDisposed) {
                     if (!localDisplay.readAndDispatch()) localDisplay.sleep()
                 }
             },
-            "Harmonic-WebView2",
+            "Harmonic-NativeBrowser",
         ).apply {
             isDaemon = true
             start()
@@ -537,6 +550,9 @@ private object DesktopSwtDisplayHost {
 internal class SwtEdgeBrowserCanvas(
     private val onStateChanged: (DesktopBrowserHost, DesktopBrowserSnapshot) -> Unit,
     private val onError: (Throwable) -> Unit,
+    private val browserStyle: Int = SWT.EDGE,
+    private val navigationPolicy: ((String?, Boolean) -> Boolean)? = null,
+    private val onEscape: (() -> Unit)? = null,
 ) : Canvas(), DesktopBrowserHost {
     private val started = AtomicBoolean(false)
     private val disposed = AtomicBoolean(false)
@@ -627,7 +643,7 @@ internal class SwtEdgeBrowserCanvas(
     }
 
     private fun startSwtEventLoop() {
-        DesktopSwtDisplayHost.async { localDisplay ->
+        DesktopSwtDisplayHost.async({ error -> EventQueue.invokeLater { onError(error) } }) { localDisplay ->
             try {
                 System.setProperty(
                     "org.eclipse.swt.browser.EdgeAllowSingleSignOnUsingOSPrimaryAccount",
@@ -641,7 +657,7 @@ internal class SwtEdgeBrowserCanvas(
                 localShell.layout = FillLayout()
                 localShell.setSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
 
-                val localBrowser = Browser(localShell, SWT.EDGE)
+                val localBrowser = Browser(localShell, browserStyle)
                 installListeners(localBrowser)
                 val queuedActions = synchronized(stateLock) {
                     browser = localBrowser
@@ -652,11 +668,12 @@ internal class SwtEdgeBrowserCanvas(
                 localShell.layout(true, true)
                 EventQueue.invokeLater(::syncEmbeddedShellBounds)
 
-                val edgeVersion = System.getProperty("org.eclipse.swt.browser.EdgeVersion")
-                if (edgeVersion.isNullOrBlank()) {
-                    error("Microsoft Edge WebView2 Runtime is not available")
+                if (browserStyle == SWT.EDGE) {
+                    val edgeVersion = System.getProperty("org.eclipse.swt.browser.EdgeVersion")
+                    if (edgeVersion.isNullOrBlank()) {
+                        error("Microsoft Edge WebView2 Runtime is not available")
+                    }
                 }
-                println("Harmonic desktop WebView: Microsoft Edge WebView2 $edgeVersion")
                 queuedActions.forEach { action -> action(localBrowser) }
             } catch (error: Throwable) {
                 EventQueue.invokeLater { onError(error) }
@@ -671,6 +688,10 @@ internal class SwtEdgeBrowserCanvas(
         localBrowser.addLocationListener(
             object : LocationAdapter() {
                 override fun changing(event: LocationEvent) {
+                    if (navigationPolicy?.invoke(event.location, event.top) == false) {
+                        event.doit = false
+                        return
+                    }
                     loading = true
                     publishSnapshot(localBrowser, loading, title)
                 }
@@ -680,6 +701,19 @@ internal class SwtEdgeBrowserCanvas(
                 }
             },
         )
+        if (navigationPolicy != null) {
+            // CAPTCHA privacy/help links must not spawn an unrestricted browser window.
+            localBrowser.addOpenWindowListener { it.required = true }
+            localBrowser.addCloseWindowListener { /* The enclosing dialog owns its lifetime. */ }
+        }
+        if (onEscape != null) {
+            localBrowser.addListener(SWT.KeyDown) { event ->
+                if (event.keyCode == SWT.ESC.code) {
+                    event.doit = false
+                    EventQueue.invokeLater { if (!disposed.get()) onEscape.invoke() }
+                }
+            }
+        }
         localBrowser.addProgressListener(
             object : ProgressAdapter() {
                 override fun changed(event: ProgressEvent) {

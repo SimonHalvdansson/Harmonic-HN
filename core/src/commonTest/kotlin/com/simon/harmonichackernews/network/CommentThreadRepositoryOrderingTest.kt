@@ -95,12 +95,30 @@ class CommentThreadRepositoryOrderingTest {
             }
         }
         val result = assertIs<CommentThreadLoadResult.Official>(
-            OfficialCommentThreadLoader(repository).load(42, setOf("blocked"), true),
+            OfficialCommentThreadLoader(repository).load(42, setOf("BLOCKED"), true),
         )
         assertEquals(listOf(1, 11, 4, 14), result.comments.map { it.id })
         assertEquals(listOf(0, 1, 0, 1), result.comments.map { it.depth })
         assertEquals(setOf(1, 2, 3, 4, 11, 14), requested.toSet())
         assertEquals(true, result.usedAsFallback)
+    }
+
+    @Test
+    fun officialUserBlocksKeepCaseDistinctAuthorsAndTheirBranchesSeparate() = runTest {
+        val repository = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = intArrayOf(1, 2, 3) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+            override suspend fun getComment(id: Int) = Comment().also {
+                it.id = id
+                it.by = when (id) { 1 -> "Alice"; 2 -> "alice"; 3 -> "ALICE"; else -> "child" }
+                it.kidsIds = if (id == 1) intArrayOf(11) else intArrayOf()
+            }
+        }
+        val loader = OfficialCommentThreadLoader(repository)
+        val exact = assertIs<CommentThreadLoadResult.Official>(loader.load(42, setOf(" Alice "), false))
+        assertEquals(listOf(2, 3), exact.comments.map { it.id })
+        val different = assertIs<CommentThreadLoadResult.Official>(loader.load(42, setOf("alice"), false))
+        assertEquals(listOf(1, 11, 3), different.comments.map { it.id })
     }
 
     @Test

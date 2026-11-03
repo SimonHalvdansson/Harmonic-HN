@@ -256,6 +256,8 @@ class ArticleCategoryRuntimeTest {
         assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", null))
         assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", "An explanation of the model architecture and its training process."))
         assertEquals(1, fixture.engine.embeddings)
+        assertEquals(ArticleCategoryInputSource.PREVIEW_TEXT,
+            fixture.runtime.cachedResult(42, "A model", "https://example.com")?.inputSource)
         assertNull(fixture.runtime.cachedScores(43, "A model", "https://example.com"))
         assertNull(fixture.runtime.cachedScores(42, "Different title", "https://example.com"))
         assertNull(fixture.runtime.cachedScores(42, "A model", "https://different.example"))
@@ -267,6 +269,34 @@ class ArticleCategoryRuntimeTest {
         runCurrent()
         assertSame(scores, fixture.runtime.scoresForStory(42, "A model", "https://example.com", null))
         assertEquals(1, fixture.engine.embeddings)
+    }
+
+    @Test
+    fun cachedResultsAndObserversKeepScoresWithTheirActualInputProvenance() = runTest {
+        val fixture = fixture()
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start()
+        runCurrent()
+        val observed = mutableListOf<ArticleCategoryResult?>()
+        backgroundScope.launch { fixture.runtime.observeResult(42, "A model", "url").collect { observed += it } }
+        runCurrent()
+        assertEquals(listOf<ArticleCategoryResult?>(null), observed)
+        val titleOnly = fixture.runtime.scoresForStory(42, "A model", "url", null)
+        runCurrent()
+        assertEquals(ArticleCategoryInputSource.TITLE_ONLY, observed.last()?.inputSource)
+        assertSame(titleOnly, observed.last()?.scores)
+        assertEquals(ArticleCategoryInputSource.TITLE_ONLY, fixture.runtime.cachedResult(42, "A model", "url")?.inputSource)
+        fixture.runtime.scoresForStory(42, "A model", "url", "A model")
+        assertEquals(1, fixture.engine.embeddings, "A repeated title is not preview evidence")
+        val withPreview = fixture.runtime.scoresForStory(42, "A model", "url",
+            "An explanation of the model architecture and its training process.")
+        runCurrent()
+        assertEquals(ArticleCategoryInputSource.PREVIEW_TEXT, observed.last()?.inputSource)
+        assertSame(withPreview, observed.last()?.scores)
+        fixture.runtime.scoresForStory(42, "A model", "url", null)
+        assertEquals(ArticleCategoryInputSource.PREVIEW_TEXT, fixture.runtime.cachedResult(42, "A model", "url")?.inputSource)
+        assertEquals(2, fixture.engine.embeddings, "Inspecting cached results must not repeat inference")
     }
 
     @Test

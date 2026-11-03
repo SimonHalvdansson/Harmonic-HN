@@ -394,7 +394,7 @@ internal fun StoriesList(
                                 ?.takeIf { it.pageUrl == story.url }
                             val categoryDescription = previewResource?.summary?.description
                                 ?: story.presentation.linkSummaryDescription
-                            val categoryLabels = com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels(
+                            val categories = com.simon.harmonichackernews.ui.content.rememberArticleCategoryPresentation(
                                 storyId = story.id, title = story.title, url = story.url, description = categoryDescription,
                                 preferences = categoryPreferences, runtime = categoryRuntimeService, runtimeState = categoryRuntime,
                                 eligible = !story.isFrontpageLink,
@@ -409,7 +409,7 @@ internal fun StoriesList(
                                 previewResource,
                                 storyItemModelCacheKey,
                                 modelTimeRefresh,
-                                categoryLabels,
+                                categories,
                             ) {
                                 storyItemModel(
                                     story,
@@ -418,7 +418,7 @@ internal fun StoriesList(
                                     previewResource,
                                     // New or changed rows still need the current time during a long session.
                                     Clock.System.now().toEpochMilliseconds(),
-                                ).copy(categoryLabels = categoryLabels)
+                                ).copy(categoryLabels = categories.labels, categoryInspection = categories.inspection)
                             }
                             val commented = story.id in controller.commentedStoryIds
                             val style = remember(story, settings, storyRevision, model.previewText, commented) {

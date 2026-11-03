@@ -665,8 +665,16 @@ private fun MainNavigation(
             key(request.serial) {
                 CaptchaDialog(
                     challenge = request.challenge,
-                    onDismiss = controller::dismissCaptchaDialog,
-                    onCaptchaResponse = controller::completeCaptchaDialog,
+                    onDismiss = {
+                        if (controller.navigationState.state.value.captchaRequest?.serial == request.serial) {
+                            controller.dismissCaptchaDialog()
+                        }
+                    },
+                    onCaptchaResponse = { response ->
+                        if (controller.navigationState.state.value.captchaRequest?.serial == request.serial) {
+                            controller.completeCaptchaDialog(response)
+                        }
+                    },
                 )
             }
         }

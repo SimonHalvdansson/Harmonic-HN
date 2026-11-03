@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.desktop
 
 import com.sun.jna.Library
+import com.sun.jna.Callback
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import java.awt.Canvas
@@ -24,7 +25,18 @@ internal class MacWkWebViewCanvas(
     private val onStateChanged: (DesktopBrowserHost, DesktopBrowserSnapshot) -> Unit,
     private val onError: (Throwable) -> Unit,
     private val loadApi: () -> MacWebViewApi = { MacWebViewLibrary.api },
+    navigationPolicy: ((String?, Boolean) -> Boolean)? = null,
+    onEscape: (() -> Unit)? = null,
 ) : Canvas(), DesktopBrowserHost {
+    // Retain the JNA callback until native teardown has removed the WKNavigationDelegate.
+    private val nativeNavigationPolicy = navigationPolicy?.let { policy ->
+        MacNavigationPolicy { url, mainFrame ->
+            if (runCatching { policy(url, mainFrame != 0) }.getOrDefault(false)) 1 else 0
+        }
+    }
+    private val nativeEscapeHandler = onEscape?.let { handler ->
+        MacEscapeHandler { EventQueue.invokeLater { if (!disposed.get()) handler() } }
+    }
     private val started = AtomicBoolean(false)
     private val disposed = AtomicBoolean(false)
     private val pollingStarted = AtomicBoolean(false)
@@ -81,6 +93,10 @@ internal class MacWkWebViewCanvas(
 
     override fun loadHtml(html: String) = withHost { native, pointer ->
         native.harmonic_webview_load_html(pointer, html)
+    }
+
+    fun loadHtmlWithBaseUrl(html: String, baseUrl: String) = withHost { native, pointer ->
+        native.harmonic_webview_load_html_with_base_url(pointer, html, baseUrl)
     }
 
     override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = withHost { native, pointer ->
@@ -187,6 +203,8 @@ internal class MacWkWebViewCanvas(
         }
         api = native
         host = pointer
+        nativeNavigationPolicy?.let { native.harmonic_webview_set_navigation_policy(pointer, it) }
+        nativeEscapeHandler?.let { native.harmonic_webview_set_escape_handler(pointer, it) }
         native.harmonic_webview_set_visible(pointer, if (browserVisible) 1 else 0)
         val queuedActions = pendingActions.toList()
         pendingActions.clear()
@@ -319,6 +337,9 @@ internal interface MacWebViewApi : Library {
     fun harmonic_webview_destroy(host: Pointer)
     fun harmonic_webview_load_url(host: Pointer, url: String)
     fun harmonic_webview_load_html(host: Pointer, html: String)
+    fun harmonic_webview_load_html_with_base_url(host: Pointer, html: String, baseUrl: String)
+    fun harmonic_webview_set_navigation_policy(host: Pointer, policy: MacNavigationPolicy)
+    fun harmonic_webview_set_escape_handler(host: Pointer, handler: MacEscapeHandler)
     fun harmonic_webview_evaluate_result(host: Pointer, script: String, id: Long, callback: MacJavaScriptCallback)
     fun harmonic_webview_go_back(host: Pointer)
     fun harmonic_webview_go_forward(host: Pointer)
@@ -342,6 +363,14 @@ internal interface MacWebViewApi : Library {
         error: ByteArray,
         errorCapacity: Int,
     )
+}
+
+internal fun interface MacNavigationPolicy : Callback {
+    fun invoke(url: String?, mainFrame: Int): Int
+}
+
+internal fun interface MacEscapeHandler : Callback {
+    fun invoke()
 }
 
 private data class MacBrowserBounds(

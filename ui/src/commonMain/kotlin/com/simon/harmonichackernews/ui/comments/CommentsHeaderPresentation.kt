@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.settings.UserTagColor
+
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.data.StoryResourceTintStore
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
@@ -12,6 +14,7 @@ data class CommentsHeaderPresentation(
     val posterTag: String,
     val tint: StoryHeaderTintPresentation,
     val lastRefreshedText: String?,
+    val posterTagColor: UserTagColor = UserTagColor.Theme,
 )
 
 /** Canonical comments-header mapping; hosts inject only locale-aware clock text. */
@@ -28,6 +31,7 @@ object CommentsHeaderPresentationFactory {
         formatTime: (Long) -> String,
     ): CommentsHeaderPresentation = CommentsHeaderPresentation(
         posterTag = userTags.tagFor(story.by),
+        posterTagColor = userTags.colorFor(story.by),
         tint = storyHeaderTintPresentation(
             story = story,
             previewResource = previewResource,

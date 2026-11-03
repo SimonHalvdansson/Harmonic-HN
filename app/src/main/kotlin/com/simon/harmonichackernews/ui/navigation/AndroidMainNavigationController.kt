@@ -159,6 +159,12 @@ class AndroidMainNavigationController internal constructor(
     }
 
     internal fun dismissCaptchaDialog() {
+        navigationState.state.value.captchaRequest?.let { request ->
+            if (scene.captchaRequests.owns(request.serial)) {
+                scene.captchaRequests.cancel(request.serial)
+                return
+            }
+        }
         if (navigationState.dismissCaptchaDialog() == null) return
         val callback = captchaCallback
         captchaCallback = null
@@ -166,6 +172,12 @@ class AndroidMainNavigationController internal constructor(
     }
 
     internal fun completeCaptchaDialog(response: String) {
+        navigationState.state.value.captchaRequest?.let { request ->
+            if (scene.captchaRequests.owns(request.serial)) {
+                scene.captchaRequests.complete(request.serial, response)
+                return
+            }
+        }
         val request = navigationState.dismissCaptchaDialog() ?: return
         val callback = captchaCallback
         captchaCallback = null

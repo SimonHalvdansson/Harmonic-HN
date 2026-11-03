@@ -29,9 +29,18 @@ data class HackerNewsCaptchaChallenge(
         get() = """
             <!doctype html><html><head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+            <script>
+            window.__harmonicCaptchaStatus='loading';
+            function harmonicCaptchaReady(){window.__harmonicCaptchaStatus='ready';}
+            function harmonicCaptchaSolved(){window.__harmonicCaptchaStatus='solved';}
+            function harmonicCaptchaError(){window.__harmonicCaptchaStatus='error';}
+            function harmonicCaptchaExpired(){window.__harmonicCaptchaStatus='expired';}
+            </script>
             <style>body{margin:0;padding:16px;background:#fff;font-family:sans-serif}.wrap{min-height:420px}</style>
-            </head><body><div class="wrap"><div class="g-recaptcha" data-sitekey="${siteKey.htmlEscape()}"></div></div></body></html>
+            </head><body><div class="wrap"><div class="g-recaptcha" data-sitekey="${siteKey.htmlEscape()}" data-callback="harmonicCaptchaSolved" data-error-callback="harmonicCaptchaError" data-expired-callback="harmonicCaptchaExpired"></div></div>
+            <script>if(window.innerWidth<336){document.querySelector('.g-recaptcha').setAttribute('data-size','compact');}</script>
+            <script src="https://www.google.com/recaptcha/api.js?onload=harmonicCaptchaReady" async defer onerror="harmonicCaptchaError()"></script>
+            </body></html>
         """.trimIndent()
 
     val isLoginChallenge: Boolean
@@ -60,6 +69,8 @@ sealed interface HackerNewsActionResult {
     data class Success(
         val itemId: Int? = null,
         val itemTitle: String? = null,
+        /** Exact account ID confirmed by HN's authenticated navigation, only for login results. */
+        val authenticatedUsername: String? = null,
     ) : HackerNewsActionResult
 
     data class Failure(
@@ -136,6 +147,13 @@ interface HackerNewsActionRepository {
         itemId: Int,
         favorite: Boolean,
     ): HackerNewsActionResult
+
+    suspend fun continueFavoriteCaptcha(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        itemId: Int,
+        favorite: Boolean,
+    ): HackerNewsActionResult
 }
 
 /** Body decoding and HTML parsing always run on a worker, including for UI callers. */
@@ -197,6 +215,15 @@ class KtorHackerNewsActionRepository(
         favorite: Boolean,
     ): HackerNewsActionResult =
         withContext(dispatcher) { delegate.setFavorite(credentials, itemId, favorite) }
+
+    override suspend fun continueFavoriteCaptcha(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        itemId: Int,
+        favorite: Boolean,
+    ): HackerNewsActionResult = withContext(dispatcher) {
+        delegate.continueFavoriteCaptcha(challenge, captchaResponse, itemId, favorite)
+    }
 }
 
 private class CallerContextHackerNewsActionRepository(
@@ -205,7 +232,7 @@ private class CallerContextHackerNewsActionRepository(
 ) : HackerNewsActionRepository {
     override suspend fun login(credentials: HackerNewsCredentials): HackerNewsActionResult =
         when (val page = loadLoginPage(loginRequest(credentials))) {
-            is PageResult.Success -> HackerNewsActionResult.Success()
+            is PageResult.Success -> authenticatedLoginResult(page.body)
             is PageResult.Result -> page.value
         }
 
@@ -215,7 +242,7 @@ private class CallerContextHackerNewsActionRepository(
     ): HackerNewsActionResult = when (
         val page = loadLoginPage(buildCaptchaRequest(challenge, captchaResponse))
     ) {
-        is PageResult.Success -> HackerNewsActionResult.Success()
+        is PageResult.Success -> authenticatedLoginResult(page.body)
         is PageResult.Result -> page.value
     }
 
@@ -297,6 +324,29 @@ private class CallerContextHackerNewsActionRepository(
             is PageResult.Success -> Unit
         }
 
+        return setFavoriteAuthenticated(itemId, favorite)
+    }
+
+    override suspend fun continueFavoriteCaptcha(
+        challenge: HackerNewsCaptchaChallenge,
+        captchaResponse: String,
+        itemId: Int,
+        favorite: Boolean,
+    ): HackerNewsActionResult {
+        if (!challenge.isLoginChallenge) {
+            return when (val action = continueCaptchaAction(challenge, captchaResponse)) {
+                is HackerNewsActionResult.Success -> verifyFavorite(itemId, favorite)
+                else -> action
+            }
+        }
+        when (val loginPage = loadLoginPage(buildCaptchaRequest(challenge, captchaResponse))) {
+            is PageResult.Result -> return loginPage.value
+            is PageResult.Success -> Unit
+        }
+        return setFavoriteAuthenticated(itemId, favorite)
+    }
+
+    private suspend fun setFavoriteAuthenticated(itemId: Int, favorite: Boolean): HackerNewsActionResult {
         val itemUrl = HackerNewsLinks.itemUrl(itemId)
         val initialPage = when (val page = loadPage(cookieClient, get(itemUrl), true)) {
             is PageResult.Result -> return page.value
@@ -318,6 +368,11 @@ private class CallerContextHackerNewsActionRepository(
             else -> return action
         }
 
+        return verifyFavorite(itemId, favorite, itemTitle)
+    }
+
+    private suspend fun verifyFavorite(itemId: Int, favorite: Boolean, itemTitle: String? = null): HackerNewsActionResult {
+        val itemUrl = HackerNewsLinks.itemUrl(itemId)
         val verificationPage = when (
             val page = loadPageAfterMutation(cookieClient, get(itemUrl), true)
         ) {
@@ -381,6 +436,13 @@ private class CallerContextHackerNewsActionRepository(
         LOGIN_PARAM_PW to credentials.password,
         LOGIN_PARAM_GOTO to SUBMIT_PATH,
     )
+
+    private fun authenticatedLoginResult(body: String): HackerNewsActionResult =
+        HackerNewsActionParser.authenticatedUsername(body)?.let {
+            HackerNewsActionResult.Success(authenticatedUsername = it)
+        } ?: HackerNewsActionResult.Failure(
+            "Login not confirmed", "HN did not identify the signed-in user.",
+        )
 
     private suspend fun loadLoginPage(request: HttpRequest): PageResult =
         when (val page = loadLoginResponse(request)) {
@@ -657,6 +719,23 @@ private class CallerContextHackerNewsActionRepository(
 }
 
 object HackerNewsActionParser {
+    /** Only the authenticated header identifies the account, never the entered login spelling. */
+    fun authenticatedUsername(body: String): String? {
+        val document = Ksoup.parse(body, baseUri = HackerNewsLinks.ROOT_URL)
+        val links = document.select(".pagetop a#me[href]")
+        if (links.size != 1) return null
+        val link = links.first() ?: return null
+        val url = link.absUrl("href").toNetworkUrlOrNull() ?: return null
+        if (url.scheme != "https" || url.host != HackerNewsLinks.HOST ||
+            url.encodedPath != "/user" || url.value.user != null || url.value.password != null ||
+            url.value.port != 443 || url.fragment.isNotEmpty()
+        ) return null
+        val ids = url.value.parameters.getAll("id") ?: return null
+        if (ids.size != 1) return null
+        val exact = ids.single().takeIf { it.isNotBlank() && it == it.trim() } ?: return null
+        return exact.takeIf { link.text().trim() == it }
+    }
+
     private const val CAPTCHA_VALIDATION_TEXT =
         "Validation required. If this doesn't work, you can email"
 

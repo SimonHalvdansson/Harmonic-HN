@@ -41,11 +41,11 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
     val scope = rememberCoroutineScope()
     var examples by remember(category.id) { mutableStateOf<List<ArticleTrainingStory>?>(null) }
     var similarities by remember(category.id) { mutableStateOf<Map<Int, Float>>(emptyMap()) }
-    var rename by rememberSaveable { mutableStateOf(false) }
-    var history by rememberSaveable { mutableStateOf(false) }
-    var info by rememberSaveable { mutableStateOf(false) }
-    var reset by rememberSaveable { mutableStateOf(false) }
-    var delete by rememberSaveable { mutableStateOf(false) }
+    var rename by rememberSaveable(category.id) { mutableStateOf(false) }
+    var history by rememberSaveable(category.id) { mutableStateOf(false) }
+    var info by rememberSaveable(category.id) { mutableStateOf(false) }
+    var reset by rememberSaveable(category.id) { mutableStateOf(false) }
+    var delete by rememberSaveable(category.id) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val builtIn = ArticleCategories.defaults.any { it.id == category.id }
 

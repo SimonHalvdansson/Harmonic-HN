@@ -4,8 +4,6 @@ import androidx.lifecycle.lifecycleScope
 import com.simon.harmonichackernews.MainActivity
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.app.createEditorFeatureSession
-import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
-import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.ui.navigation.AndroidMainNavigationController
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.presentation.EditorSubmission
@@ -71,7 +69,7 @@ class AndroidEditorCoordinator(
         screenSession.dispose()
     }
 
-    private fun handleResult(result: EditorWorkflowResult) {
+    private suspend fun handleResult(result: EditorWorkflowResult) {
         val completesPendingWorkflow = when (result) {
             is EditorWorkflowResult.Captcha -> false
             EditorWorkflowResult.Ignored -> !featureSession.isSubmitting
@@ -91,21 +89,11 @@ class AndroidEditorCoordinator(
                 result.message,
                 result.commentDraft,
             )
-            is EditorWorkflowResult.Captcha -> navigation.showCaptchaDialog(
-                result.challenge,
-                object : CaptchaResultHandler {
-                    override fun onCaptchaResponse(
-                        challenge: HackerNewsCaptchaChallenge,
-                        captchaResponse: String,
-                    ) {
-                        screenSession.respondToCaptcha(challenge, captchaResponse)
-                    }
-
-                    override fun onCaptchaCancelled() {
-                        screenSession.cancelCaptcha()
-                    }
-                },
-            )
+            is EditorWorkflowResult.Captcha -> {
+                val response = navigation.scene.captchaRequests.awaitResponse(result.challenge)
+                if (response == null) screenSession.cancelCaptcha()
+                else screenSession.respondToCaptcha(result.challenge, response)
+            }
             is EditorWorkflowResult.CaptchaCancelled -> navigation.showMessage(result.message)
             EditorWorkflowResult.Ignored -> Unit
         }

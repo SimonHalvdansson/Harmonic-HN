@@ -1,14 +1,23 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -19,15 +28,32 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.theme.contrastingColor
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import kotlin.math.roundToInt
 
 internal data class StoryCategoryColors(val container: Color, val foreground: Color)
+
+/** Retained by category ID so a returning inspector follows relayouts and renamed labels. */
+internal class CategoryChipGeometry {
+    var bounds by mutableStateOf<Rect?>(null)
+    var layer by mutableStateOf<GraphicsLayer?>(null)
+}
 
 /** Keep chips in the card's own palette while retaining readable small text. */
 internal fun tintedStoryCategoryColors(surface: Color, preferredForeground: Color): StoryCategoryColors {
@@ -44,35 +70,42 @@ internal fun StoryCategoryLabels(
     animate: Boolean = true,
     topSpacing: Dp = 2.dp,
     bottomSpacing: Dp = 4.dp,
+    inspection: StoryCategoryInspection? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val colors = tintedSurface?.let { tintedStoryCategoryColors(it(), scheme.onSurface) }
         ?: StoryCategoryColors(scheme.secondaryContainer,
             contrastingColor(scheme.onSecondaryContainer, listOf(scheme.secondaryContainer), 4.5f))
-    val content: @Composable (List<String>) -> Unit = { visibleLabels ->
-        if (visibleLabels.isNotEmpty()) {
+    var inspector by remember { mutableStateOf<CategoryInspectorSource?>(null) }
+    var sourceCovered by remember(inspector) { mutableStateOf(false) }
+    val geometries = remember { mutableMapOf<String, CategoryChipGeometry>() }
+    val content: @Composable (CategoryLabelContent) -> Unit = { visible ->
+        if (visible.labels.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(top = topSpacing, bottom = bottomSpacing)
                     .graphicsLayer { this.alpha = alpha },
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                visibleLabels.forEach { label ->
-                    Text(
-                        text = label,
-                        modifier = Modifier.background(colors.container, RoundedCornerShape(5.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                        color = colors.foreground,
-                        fontFamily = ProductSansFontFamily,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 11.sp,
-                    )
+                visible.labels.forEachIndexed { index, label ->
+                    val score = visible.inspection?.labelScores?.getOrNull(index)
+                    if (score != null) {
+                        val geometry = geometries.getOrPut(score.categoryId) { CategoryChipGeometry() }
+                        InspectableCategoryChip(label, score.categoryId, (score.similarity * 100).roundToInt(), colors,
+                            covered = sourceCovered && inspector?.categoryId == score.categoryId,
+                            geometry = geometry,
+                            onOpen = { _, _ ->
+                                inspector = CategoryInspectorSource(checkNotNull(visible.inspection), score.categoryId,
+                                    colors, geometry)
+                            })
+                    } else CategoryLabelText(label, colors)
                 }
             }
         }
     }
     if (animate) AnimatedContent(
-        targetState = labels,
+        targetState = CategoryLabelContent(labels, inspection),
+        contentKey = { it.labels },
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.TopStart,
         transitionSpec = {
@@ -81,5 +114,69 @@ internal fun StoryCategoryLabels(
         },
         label = "story categories",
     ) { content(it) }
-    else content(labels)
+    else content(CategoryLabelContent(labels, inspection))
+    inspector?.let { source ->
+        CategoryInspectorDialog(source,
+            onSourceReadyToCover = { sourceCovered = true },
+            onSourceReadyToReveal = { sourceCovered = false },
+            onDismiss = { inspector = null })
+    }
+}
+
+private data class CategoryLabelContent(val labels: List<String>, val inspection: StoryCategoryInspection?)
+
+@Composable
+private fun CategoryLabelText(label: String, colors: StoryCategoryColors, modifier: Modifier = Modifier) {
+    Text(
+        text = label,
+        modifier = modifier.background(colors.container, RoundedCornerShape(5.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        color = colors.foreground,
+        fontFamily = ProductSansFontFamily,
+        style = MaterialTheme.typography.labelSmall,
+        fontSize = 11.sp,
+    )
+}
+
+@Composable
+internal fun InspectableCategoryChip(
+    label: String,
+    categoryId: String,
+    similarity: Int,
+    colors: StoryCategoryColors,
+    covered: Boolean,
+    geometry: CategoryChipGeometry = remember { CategoryChipGeometry() },
+    onOpen: (Rect?, GraphicsLayer?) -> Unit,
+) {
+    var captureRequested by remember { mutableStateOf(false) }
+    var pendingOpen by remember { mutableStateOf(false) }
+    val requestOpen = { captureRequested = true; pendingOpen = true }
+    LaunchedEffect(pendingOpen) {
+        if (pendingOpen) {
+            // Record only interacted chips. Two frames let the capture modifier draw before
+            // the overlay covers it; ordinary feed scrolling allocates no snapshot layers.
+            withFrameNanos { }
+            withFrameNanos { }
+            onOpen(geometry.bounds, geometry.layer)
+            pendingOpen = false
+        }
+    }
+    val capture = if (captureRequested) Modifier.captureSharedTransformSourceContent { geometry.layer = it } else Modifier
+    Box(
+        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+            .testTag("category-label-$categoryId")
+            .combinedClickable(
+                role = Role.Button,
+                onClickLabel = "Inspect $label category",
+                onLongClickLabel = "Inspect $label category",
+                onClick = requestOpen,
+                onLongClick = requestOpen,
+            )
+            .semantics { contentDescription = "$label category, similarity $similarity out of 100" }
+            .graphicsLayer { this.alpha = if (covered) 0f else 1f },
+        contentAlignment = Alignment.Center,
+    ) {
+        CategoryLabelText(label, colors,
+            Modifier.onGloballyPositioned { geometry.bounds = it.boundsInWindow() }.then(capture).clearAndSetSemantics { })
+    }
 }

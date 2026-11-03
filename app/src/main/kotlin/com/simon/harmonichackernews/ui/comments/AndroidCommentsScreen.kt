@@ -327,6 +327,7 @@ private fun AndroidCommentsHeader(
         settings = settings,
         contentVersion = contentVersion,
         storyPosterTag = headerPresentation.posterTag,
+        storyPosterTagColor = headerPresentation.posterTagColor,
         tintBaseColor = tintBaseColor,
         initialTint = tintPresentation.initialTintArgb,
         headerTopPadding = dimensionResource(R.dimen.comments_header_top_padding),

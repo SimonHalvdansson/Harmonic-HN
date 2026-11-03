@@ -35,6 +35,8 @@ object CommonLicenseCatalog {
         LicenseEntry("kotlinx.io", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx-io"),
         LicenseEntry("kotlinx.collections.immutable", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.collections.immutable"),
         LicenseEntry("Ktor", "JetBrains", "Apache License 2.0", "https://ktor.io/"),
+        LicenseEntry("kuri", "dexpace and Omar Aljarrah", "MIT License", "https://github.com/dexpace/kuri"),
+        LicenseEntry("Unicode character data", "Unicode, Inc.", "Unicode License v3", "https://www.unicode.org/license.txt"),
         LicenseEntry("Compose Multiplatform", "JetBrains", "Apache License 2.0", "https://www.jetbrains.com/compose-multiplatform/"),
         LicenseEntry("Haze", "Chris Banes", "Apache License 2.0", "https://github.com/chrisbanes/haze"),
         LicenseEntry("Coil", "Coil contributors", "Apache License 2.0", "https://coil-kt.github.io/coil/"),

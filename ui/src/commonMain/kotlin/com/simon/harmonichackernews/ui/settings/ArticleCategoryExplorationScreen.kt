@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,7 +54,8 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
         }
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
-                Text("A map of meaning", fontFamily = ProductSansFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                Text("A map of meaning", Modifier.semantics { heading() },
+                    fontFamily = ProductSansFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
                 Text("Each dot is an example headline. Nearby dots have similar embeddings. Preview text can refine a story’s matches.",
                     Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
                     fontSize = 16.sp, lineHeight = 23.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -63,17 +66,33 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
                 onMethodSelected = { method = it }, onSelect = { selected = it }, onRetry = { attempt++ })
         }
         item(key = "category-map-legend") {
-            FlowRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                ArticleCategories.defaults.forEachIndexed { index, category ->
-                    FilterChip(modifier = Modifier.height(32.dp), selected = highlighted == category.id, onClick = {
-                        highlighted = if (highlighted == category.id) null else category.id
-                        selected = null
-                    }, elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
-                        label = { Text(category.name, fontFamily = ProductSansFontFamily, fontSize = 12.sp) },
-                        leadingIcon = { Box(Modifier.size(8.dp).background(colors[index], CircleShape)) })
-                }
+            CategoryExplorationLegend(ArticleCategories.defaults.map { it.id to it.name }, colors, highlighted) { id ->
+                highlighted = if (highlighted == id) null else id
+                selected = null
             }
+        }
+    }
+}
+
+@Composable
+internal fun CategoryExplorationLegend(
+    categories: List<Pair<String, String>>,
+    colors: List<Color>,
+    highlighted: String?,
+    onSelected: (String) -> Unit,
+) {
+    FlowRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        categories.forEachIndexed { index, (id, name) ->
+            FilterChip(
+                modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp),
+                selected = highlighted == id,
+                onClick = { onSelected(id) },
+                elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
+                label = { Text(name, Modifier.padding(vertical = 6.dp),
+                    fontFamily = ProductSansFontFamily, fontSize = 12.sp, lineHeight = 17.sp) },
+                leadingIcon = { Box(Modifier.size(8.dp).background(colors[index], CircleShape)) },
+            )
         }
     }
 }
@@ -107,6 +126,19 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
                 } else Text("Tap a dot to compare its closest categories.",
                     fontFamily = ProductSansFontFamily, fontSize = 12.sp,
                     lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Native canvas points have no individual focus targets. These controls make
+                // the same comparisons available to keyboard and screen-reader users.
+                val examples = data?.points.orEmpty()
+                val index = examples.indexOfFirst { it.id == selected }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(enabled = examples.isNotEmpty(), onClick = {
+                        onSelect(examples[if (index <= 0) examples.lastIndex else index - 1].id)
+                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Previous example") }
+                    TextButton(enabled = examples.isNotEmpty(), onClick = {
+                        onSelect(examples[if (index < 0 || index == examples.lastIndex) 0 else index + 1].id)
+                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Next example") }
+                }
             }
         }
     }
@@ -145,11 +177,12 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint, colors: List<Color>
             val fill = animateFloatAsState(((match.similarity - ArticleCategories.MIN_CUTOFF) /
                 (1f - ArticleCategories.MIN_CUTOFF)).coerceIn(0f, 1f), tween(250), label = "example similarity")
             val color = colors[indices.getValue(match.category)]
-            Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
+            Column(Modifier.fillMaxWidth().clearAndSetSemantics {
                 contentDescription = "${categories.getValue(match.category).name}, similarity $score out of 100"
             }) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(categories.getValue(match.category).name, fontFamily = ProductSansFontFamily, fontSize = 12.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(categories.getValue(match.category).name, Modifier.weight(1f),
+                        fontFamily = ProductSansFontFamily, fontSize = 12.sp)
                     Text("$score", fontFamily = ProductSansFontFamily, fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

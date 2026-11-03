@@ -527,12 +527,14 @@ internal fun IosCommentsScaffold(
     }
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val webViewTopInset = if (reserveUpButtonInset) {
-        WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
-            if (backInTopInset) 0.dp else 64.dp
-    } else {
-        0.dp
-    }
+    // Protect a genuine top status bar even without Up. A side status strip is already
+    // excluded by horizontal safe-area padding, including in expanded pane layouts.
+    val webViewTopInset = iosBrowserTopInset(
+        statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+        sideStatusBar = iosWindowHasSideStatusBar(),
+        reserveUpButtonInset = reserveUpButtonInset,
+        backInTopInset = backInTopInset,
+    )
     val browserActionsOnRight = sideRailWidth > 0.dp
     val peekHeight = navigationBottom + if (browserActionsOnRight) {
         CommentsSheetHandleAreaHeight

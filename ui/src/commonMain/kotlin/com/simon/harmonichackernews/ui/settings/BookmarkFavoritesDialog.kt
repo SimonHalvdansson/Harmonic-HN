@@ -123,6 +123,7 @@ fun AddBookmarksToFavoritesDialog(
 
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
+        scrollableContent = true,
         modifier = Modifier.animateContentSize(
             animationSpec = tween(280, easing = FastOutSlowInEasing),
         ),

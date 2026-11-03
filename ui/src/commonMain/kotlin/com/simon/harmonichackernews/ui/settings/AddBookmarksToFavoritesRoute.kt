@@ -5,6 +5,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.presentation.AddBookmarksToFavoritesUseCase
 import com.simon.harmonichackernews.platform.HackerNewsAccountState
@@ -20,10 +24,18 @@ fun AddBookmarksToFavoritesDialog(
     val app = LocalHarmonicUiDependencies.current
     val accounts = app.platform.accounts
     val accountState by accounts.accountState.collectAsStateWithLifecycle()
-    val addFavorites = remember(app) {
+    var savedBatchRevision by rememberSaveable { mutableStateOf<Long?>(null) }
+    val batchRevision = savedBatchRevision ?: if (accountState is HackerNewsAccountState.LoggedIn) {
+        app.savedItems.currentAccountRevision
+    } else null
+    SideEffect {
+        if (savedBatchRevision == null && batchRevision != null) savedBatchRevision = batchRevision
+    }
+    val addFavorites = remember(app.scene, app.savedItems, batchRevision) {
         AddBookmarksToFavoritesUseCase(
-            favorites = app.hackerNewsUser,
+            favorites = app.scene.hackerNewsActions,
             savedItems = app.savedItems,
+            initialAccountRevision = batchRevision,
         )
     }
     val ids = remember(bookmarkIds.contentHashCode()) { bookmarkIds.copyOf() }

@@ -239,10 +239,13 @@ class AlgoliaCommentsParserTest {
 
         val filtered = AlgoliaCommentsParser().parse(
             response,
-            filteredUsers = setOf(" spammer ", "SPAMMER", "", "   "),
+            filteredUsers = setOf(" SpAmMeR ", "SPAMMER", "", "   "),
         )
         assertEquals(listOf(3), filtered.comments.map { it.id })
         assertEquals("MiXeDCase", filtered.comments.single().by)
+
+        val otherIdentity = AlgoliaCommentsParser().parse(response, filteredUsers = setOf("spammer"))
+        assertEquals(listOf(1, 2, 3), otherIdentity.comments.map { it.id })
 
         val unfiltered = AlgoliaCommentsParser().parse(response)
         assertEquals(listOf(1, 2, 3), unfiltered.comments.map { it.id })

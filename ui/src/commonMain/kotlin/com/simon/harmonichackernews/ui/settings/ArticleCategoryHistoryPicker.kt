@@ -9,8 +9,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -19,8 +23,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.categorization.ArticleTrainingStory
 import com.simon.harmonichackernews.categorization.ArticleTrainingConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +34,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.DialogSearchField
 import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
+import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.CancellationException
@@ -44,8 +51,16 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
     val compactHeight = windowHeight < 500.dp
     val listMaxHeight = windowHeight * 0.62f
     var stories by remember { mutableStateOf<List<ArticleTrainingStory>>(emptyList()) }
-    var selected by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var query by remember { mutableStateOf(TextFieldValue()) }
+    var selected by rememberSaveable(categoryId, stateSaver = CategoryHistorySelectionSaver) {
+        mutableStateOf<Set<Int>>(emptySet())
+    }
+    var query by rememberSaveable(categoryId, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
+    // Retain only a paging/scroll checkpoint, not potentially megabytes of story text in a Bundle.
+    var loadedEnd by rememberSaveable(categoryId) { mutableIntStateOf(0) }
+    val restoreEnd = remember(categoryId) { loadedEnd }
+    val restoreIndex = remember(categoryId) { listState.firstVisibleItemIndex }
+    val restoreScrollOffset = remember(categoryId) { listState.firstVisibleItemScrollOffset }
+    var restoring by remember(categoryId) { mutableStateOf(restoreEnd > 0) }
     var offset by remember { mutableIntStateOf(0) }
     var hasMore by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(true) }
@@ -61,6 +76,30 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
     var visibleIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var similarityError by remember { mutableStateOf(false) }
     var scoreRetry by remember { mutableIntStateOf(0) }
+    val keyboardAction = remember { SettingsDialogDismissState() }
+
+    fun dismissPicker() {
+        addJob?.cancel()
+        keyboardAction.request(onDismiss)
+    }
+
+    fun addSelected() {
+        if (adding || keyboardAction.isClosing || selected.isEmpty()) return
+        val chosen = stories.filter { it.id in selected }
+        keyboardAction.request {
+            adding = true
+            error = null
+            addJob = scope.launch {
+                try {
+                    app.articleCategories.train(categoryId, chosen) { done, _ -> progress = done }
+                    keyboardAction.request(onDismiss)
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    error = if (failure is IllegalArgumentException) failure.message else "Couldn't add examples. Try again."
+                } finally { adding = false }
+            }
+        }
+    }
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Int }.toSet() }
@@ -98,8 +137,9 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
             val firstStories = stories.isEmpty()
             stories = (stories + page.stories).distinctBy { it.id }
             // The loading footer must not remain the anchor when rows arrive above it.
-            if (firstStories) listState.requestScrollToItem(0)
+            if (firstStories && !restoring) listState.requestScrollToItem(0)
             offset = maxOf(offset, page.nextOffset)
+            loadedEnd = maxOf(loadedEnd, offset)
             if (page.nextOffset >= offset) hasMore = page.hasMore
             retryOffset = requestedOffset.takeIf { page.failures > 0 }
             error = if (page.failures > 0) "Some stories couldn't be loaded. Try again." else null
@@ -108,23 +148,42 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
         finally { loading = false }
     }
 
-    LaunchedEffect(Unit) { loadMore() }
+    LaunchedEffect(categoryId) {
+        do {
+            val before = offset
+            loadMore()
+            if (offset <= before || error != null) break
+        } while (hasMore && offset < restoreEnd)
+        if (restoring) listState.requestScrollToItem(restoreIndex, restoreScrollOffset)
+        restoring = false
+    }
     val visibleStories = stories.filter {
         it.title.contains(query.text, true) || DomainNamePolicy.fromUrl(it.url).orEmpty().contains(query.text, true)
     }
     SettingsAlertDialog(
-        onDismissRequest = { if (!adding) onDismiss() },
+        onDismissRequest = { if (!adding) dismissPicker() },
+        modifier = Modifier.testTag("category-history-dialog"),
+        properties = DialogProperties(
+            dismissOnBackPress = !adding && !keyboardAction.isClosing,
+            dismissOnClickOutside = !adding && !keyboardAction.isClosing,
+        ),
         title = { SettingsDialogTitle("Add to $name") },
         edgeToEdgeContent = true,
         scrollableContent = true,
         text = {
-            Column(Modifier.fillMaxWidth().animateContentSize(tween(300, easing = FastOutSlowInEasing), Alignment.TopCenter)) {
+            PlatformDisableDialogWindowAnimations()
+            CompleteSettingsDialogDismissal(keyboardAction)
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .animateContentSize(tween(300, easing = FastOutSlowInEasing), Alignment.TopCenter)) {
                 if (!compactHeight) Text(if (hasCenter) "Choose examples from your history." else "Add an example to start comparing similarities.", Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                     fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else Spacer(Modifier.height(12.dp))
-                DialogSearchField(query, { query = it; listState.requestScrollToItem(0) }, "Search loaded history",
-                    Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp), enabled = !adding)
+                DialogSearchField(query, {
+                    if (!keyboardAction.isClosing) { query = it; listState.requestScrollToItem(0) }
+                }, "Search loaded history",
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 24.dp)
+                        .testTag("category-history-query"), enabled = !adding)
                 AnimatedVisibility(visible = adding) {
                     Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
                         Text("Adding ${(progress + 1).coerceAtMost(selected.size)} of ${selected.size}…",
@@ -144,11 +203,11 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
                     "No stories yet", "Open stories in Harmonic to choose them as examples here.", compactHeight)
                 if (stories.isNotEmpty() && visibleStories.isEmpty() && !loading) CategoryHistoryEmptyState(
                     "No matching stories", "Try another title or domain.", compactHeight)
-                CategoryHistoryRows(visibleStories, selected, existing, !adding,
-                    Modifier.weight(1f, fill = false), listState = listState, maxHeight = listMaxHeight, similarities = similarities, footer = {
+                CategoryHistoryRows(visibleStories, selected, existing, !adding && !keyboardAction.isClosing,
+                    Modifier, listState = listState, maxHeight = listMaxHeight, similarities = similarities, footer = {
                         AnimatedVisibility(visible = hasMore || loading || error != null) {
                             FilledTonalButton(
-                                enabled = !loading && !adding,
+                                enabled = !loading && !adding && !keyboardAction.isClosing,
                                 onClick = { scope.launch { loadMore(retry = error != null) } },
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                             ) {
@@ -165,29 +224,26 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
                         if (selected.size >= 20) Text("Add up to 20 at a time.", Modifier.padding(horizontal = 24.dp),
                             fontFamily = ProductSansFontFamily, fontSize = 13.sp)
                     }, onSelection = { id, checked ->
-                        selected = if (checked && selected.size < 20) selected + id else selected - id
+                        if (!keyboardAction.isClosing) {
+                            selected = if (checked && selected.size < 20) selected + id else selected - id
+                        }
                     })
             }
         },
-        confirmButton = { SettingsDialogTextButton(enabled = selected.isNotEmpty() && !adding,
-            modifier = Modifier.animateContentSize(), onClick = {
-            adding = true
-            error = null
-            addJob = scope.launch {
-                try {
-                    app.articleCategories.train(categoryId, stories.filter { it.id in selected }) { done, _ -> progress = done }
-                    onDismiss()
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (failure: Exception) { error = if (failure is IllegalArgumentException) failure.message else "Couldn't add examples. Try again." }
-                finally { adding = false }
-            }
-        }) { Text(if (selected.isEmpty()) "Add" else "Add (${selected.size})", fontFamily = ProductSansFontFamily, fontSize = 16.sp,
+        confirmButton = { SettingsDialogTextButton(enabled = selected.isNotEmpty() && !adding && !keyboardAction.isClosing,
+            modifier = Modifier.animateContentSize(), onClick = ::addSelected) {
+            Text(if (selected.isEmpty()) "Add" else "Add (${selected.size})", fontFamily = ProductSansFontFamily, fontSize = 16.sp,
             style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "'liga' 0, 'clig' 0, 'calt' 0, 'dlig' 0")) } },
-        dismissButton = { SettingsDialogTextButton(onClick = { addJob?.cancel(); onDismiss() }) {
+        dismissButton = { SettingsDialogTextButton(enabled = !keyboardAction.isClosing, onClick = ::dismissPicker) {
             Text("Cancel", fontFamily = ProductSansFontFamily, fontSize = 16.sp)
         } },
     )
 }
+
+private val CategoryHistorySelectionSaver = listSaver<Set<Int>, Int>(
+    save = { it.toList() },
+    restore = { it.take(20).toSet() },
+)
 
 @Composable
 internal fun CategoryHistoryRows(stories: List<ArticleTrainingStory>, selected: Set<Int>, existing: Set<Int>,

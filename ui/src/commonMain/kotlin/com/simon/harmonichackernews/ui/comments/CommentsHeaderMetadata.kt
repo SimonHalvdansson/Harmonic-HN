@@ -40,7 +40,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.content.userTagColor
+import com.simon.harmonichackernews.ui.content.annotatedUserTagLabel
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +69,7 @@ fun CommentsHeaderMetadata(
     voteLoading: Boolean = false,
     commented: Boolean = false,
     headerColor: Color = MaterialTheme.colorScheme.surface,
+    storyPosterTagColor: UserTagColor = UserTagColor.Theme,
 ) {
     val commentIcon = if (commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment
     if (!story.loaded || settings.headerMetaInfo == com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.ON_IMAGE) return
@@ -74,6 +79,7 @@ fun CommentsHeaderMetadata(
         append(story.by.orEmpty())
         if (storyPosterTag.isNotBlank()) append(" (").append(storyPosterTag).append(')')
     }
+    val annotatedPosterLabel = annotatedUserTagLabel(posterLabel, storyPosterTag, userTagColor(storyPosterTagColor))
     if (combineActions) {
         androidx.compose.foundation.layout.Column {
             if (!story.isLink || story.isComment || story.url.isNullOrBlank()) {
@@ -87,6 +93,7 @@ fun CommentsHeaderMetadata(
                 HeaderDetailButton(
                     icon = Res.drawable.ic_account_circle,
                     label = posterLabel.ifBlank { "User" },
+                    annotatedLabel = annotatedPosterLabel.takeIf { it.isNotBlank() },
                     description = "Open profile: ${story.by.orEmpty()}",
                     typography = typography, textStyle = textStyle,
                     headerColor = headerColor,
@@ -137,7 +144,8 @@ fun CommentsHeaderMetadata(
             }
             HeaderMetaItem(commentIcon, story.descendants.toString(), typography, textStyle, highlighted = commented)
             HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle)
-            HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography, textStyle)
+            HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography, textStyle,
+                annotatedLabel = annotatedPosterLabel)
 
         }
         if (story.isLink) {
@@ -167,6 +175,7 @@ private fun HeaderDetailButton(
     /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
     highlighted: Boolean = false,
     onClick: () -> Unit,
+    annotatedLabel: AnnotatedString? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val background by animateColorAsState(
@@ -200,7 +209,7 @@ private fun HeaderDetailButton(
                     )
                 }
                 if (label.isNotEmpty()) {
-                    Text(label, Modifier.padding(start = 6.dp).weight(1f, fill = false),
+                    Text(annotatedLabel ?: AnnotatedString(label), Modifier.padding(start = 6.dp).weight(1f, fill = false),
                         fontFamily = typography.family, fontSize = typography.commentsHeaderMetaSize.sp,
                         fontWeight = FontWeight.Medium, style = textStyle,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -218,6 +227,7 @@ private fun HeaderMetaItem(
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    annotatedLabel: AnnotatedString? = null,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
@@ -227,7 +237,7 @@ private fun HeaderMetaItem(
             tint = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            label,
+            annotatedLabel ?: AnnotatedString(label),
             modifier = Modifier.padding(start = 3.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = typography.family,

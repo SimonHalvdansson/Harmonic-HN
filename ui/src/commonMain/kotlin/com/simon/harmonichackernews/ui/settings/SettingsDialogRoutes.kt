@@ -61,8 +61,10 @@ fun UserTagRoute(
     }
     UserTagDialog(
         currentTag = currentTag,
-        onSave = { tag ->
-            presenter.setTag(userName, tag)
+        currentColor = app.userTags.colorFor(userName),
+        userName = userName,
+        onSave = { tag, color ->
+            presenter.setTag(userName, tag, color)
             onSaved(tag)
         },
         onDismiss = onDismiss,

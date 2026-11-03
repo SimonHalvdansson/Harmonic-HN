@@ -51,10 +51,10 @@ class DefaultReplyScanner(
         val normalized = normalizeUsername(username)
         if (normalized.isEmpty()) return null
         val user = api.getUser(normalized) ?: return null
-        if (!user.id.equals(normalized, ignoreCase = true)) return null
+        if (user.id != normalized) return null
         val maxItemId = api.getMaxItemId()
         if (maxItemId <= 0) return null
-        return ReplySubscriptionBaseline(user.id.ifBlank { normalized }, maxItemId)
+        return ReplySubscriptionBaseline(user.id, maxItemId)
     }
 
     override suspend fun scan(
@@ -69,6 +69,7 @@ class DefaultReplyScanner(
         }
         val user = api.getUser(normalized)
             ?: return ReplyScanResult(emptyList(), previousLastSeenItemId, userFound = false)
+        if (user.id != normalized) return ReplyScanResult(emptyList(), previousLastSeenItemId, userFound = false)
         if (user.submitted.isEmpty()) return ReplyScanResult(emptyList(), currentMaxItemId)
 
         val scanned = loadRecentReplies(normalized, user.submitted, previousLastSeenItemId)
@@ -81,6 +82,7 @@ class DefaultReplyScanner(
     override suspend fun findLatestReply(username: String): LatestReplyResult {
         val normalized = normalizeUsername(username)
         val user = api.getUser(normalized) ?: return LatestReplyResult(null, false)
+        if (user.id != normalized) return LatestReplyResult(null, false)
         val scanned = loadRecentReplies(normalized, user.submitted, minimumId = 0)
         return LatestReplyResult(scanned.replies.maxByOrNull { it.id }, true)
     }
@@ -146,8 +148,8 @@ class DefaultReplyScanner(
         fallbackParentId: Int,
     ): HackerNewsReply? {
         if (item == null || item.deleted || item.dead || item.type != "comment") return null
-        val by = item.by.orEmpty()
-        if (by.isBlank() || by.equals(username, ignoreCase = true)) return null
+        val by = item.by.orEmpty().trim()
+        if (by.isBlank() || by == username) return null
         if (isOlderThanReplyWindow(item.time) || item.id <= 0) return null
         return HackerNewsReply(
             id = item.id,

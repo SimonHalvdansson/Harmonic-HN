@@ -15,7 +15,9 @@ private val LocalSettingsDialogInsets = staticCompositionLocalOf<SettingsDialogI
 /** Keeps stacked dialogs moving together with the foremost dialog's keyboard animation. */
 @Composable
 fun SynchronizedSettingsDialogs(content: @Composable () -> Unit) {
-    val state = remember { SettingsDialogInsetsState() }
+    // Nested feature hosts must join their parent's stack, rather than isolating the next window.
+    val inherited = LocalSettingsDialogInsets.current
+    val state = inherited ?: remember { SettingsDialogInsetsState() }
     CompositionLocalProvider(LocalSettingsDialogInsets provides state, content = content)
 }
 

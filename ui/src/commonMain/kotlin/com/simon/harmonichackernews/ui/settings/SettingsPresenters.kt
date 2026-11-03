@@ -334,9 +334,12 @@ class FiltersTagsSettingsPresenter(
 ) {
     fun state(snapshot: AppSettings = settings.snapshot()): FiltersTagsSettingsUiState =
         FiltersTagsSettingsUiState(
-            tags = userTags.tags(normalizeUsernames = false)
-                .map { TaggedUserUi(it.key, it.value) }
-                .sortedBy { it.username.lowercase() },
+            tags = userTags.tags()
+                .map { TaggedUserUi(it.key, it.value, userTags.colorFor(it.key)) }
+                .sortedWith(compareBy<TaggedUserUi> { it.username.lowercase() }.thenBy { it.username }),
+            legacyTags = userTags.legacyTags().map { TaggedUserUi(it.username, it.tag, it.color) },
+            blockedUserCount = filters.items(ContentFilterType.USER).size,
+            legacyBlockedUserCount = filters.legacyUsers().size,
             hideJobs = snapshot.story.hideJobs,
         )
 
@@ -346,7 +349,8 @@ class FiltersTagsSettingsPresenter(
     fun filterItems(type: ContentFilterType): List<String> = filters.items(type)
     fun setFilterItems(type: ContentFilterType, items: List<String>) = filters.setItems(type, items)
     fun tagFor(userName: String): String = userTags.tagFor(userName)
-    fun setTag(userName: String, tag: String) = userTags.setTag(userName, tag)
+    fun setTag(userName: String, tag: String, color: com.simon.harmonichackernews.settings.UserTagColor? = null) =
+        userTags.setTag(userName, tag, color)
 }
 
 data class FilterDialogContent(
@@ -362,21 +366,22 @@ val ContentFilterDialog.content: FilterDialogContent
         ContentFilterDialog.StoryTitle -> FilterDialogContent(
             ContentFilterType.STORY_TITLE,
             "Filter by story title",
-            "Hide stories containing these words or phrases in the title",
+            "Hide stories containing these words or phrases in the title. Matching ignores capitalization.",
             "Word or phrase",
             "No story title filters",
         )
         ContentFilterDialog.Domain -> FilterDialogContent(
             ContentFilterType.DOMAIN,
             "Filter by domain",
-            "Hide stories from these domains",
+            "Hide stories from these domains. Matching ignores capitalization.",
             "Domain",
             "No domain filters",
         )
         ContentFilterDialog.User -> FilterDialogContent(
             ContentFilterType.USER,
             "Blocked users",
-            "Hide stories and comments posted by these users",
+            "Use the account’s exact HN spelling. Only that spelling is blocked. " +
+                "Older entries need capitalization review before they become active.",
             "Username",
             "No blocked users",
         )

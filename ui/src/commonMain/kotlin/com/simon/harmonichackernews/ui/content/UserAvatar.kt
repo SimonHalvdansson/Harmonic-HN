@@ -18,6 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_person
@@ -25,6 +29,8 @@ import com.simon.harmonichackernews.settings.UserAvatarColors
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.UserAvatarShape
 import com.simon.harmonichackernews.settings.UserAvatarStyle
+import com.simon.harmonichackernews.settings.userAvatarInitial
+import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 private data class AvatarVisual(
@@ -84,11 +90,36 @@ fun UserAvatar(
             val artwork = remember(content) {
                 avatarArtworkCache.get(content.author, content.style)
             }
-            Canvas(Modifier.fillMaxSize()) {
-                scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {
-                    artwork.draw(this, saturation)
+            if (content.style == UserAvatarStyle.LETTERS) {
+                LetterAvatar(content.author, artwork, saturation)
+            } else {
+                Canvas(Modifier.fillMaxSize()) {
+                    scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {
+                        artwork.draw(this, saturation)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LetterAvatar(author: String, artwork: GeneratedAvatarArtwork, saturation: Float) {
+    val initial = remember(author) { userAvatarInitial(author) }
+    val textMeasurer = rememberTextMeasurer()
+    val fontFamily = ProductSansFontFamily
+    Canvas(Modifier.fillMaxSize()) {
+        scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {
+            artwork.draw(this, saturation)
+            // Use the same coordinate space as the artwork, independent of the user's font scale.
+            val text = textMeasurer.measure(
+                initial,
+                style = TextStyle(fontFamily = fontFamily, fontWeight = FontWeight.Medium, fontSize = 66f.toSp()),
+            )
+            drawText(
+                text, color = artwork.foreground(saturation),
+                topLeft = Offset((100f - text.size.width) / 2f, (100f - text.size.height) / 2f),
+            )
         }
     }
 }

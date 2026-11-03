@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
+import com.simon.harmonichackernews.settings.UserTagColor
+
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
@@ -63,6 +65,7 @@ internal fun CommentMeta(
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     animateChanges: Boolean,
     isNew: Boolean = false,
+    tagColor: UserTagColor = UserTagColor.Theme,
 ) {
     val colors = MaterialTheme.colorScheme
     val metaColor = when {
@@ -146,7 +149,7 @@ internal fun CommentMeta(
             if (!userTag.isNullOrBlank()) {
                 Text(
                     " • $userTag",
-                    color = metaColor,
+                    color = userTagColor(tagColor),
                     fontFamily = fontFamily,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,

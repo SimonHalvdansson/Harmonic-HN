@@ -35,7 +35,7 @@ class PredictiveBackDialogTest {
         assertEquals(0.42f, heldProgress, absoluteTolerance = 0.001f)
         assertEquals(0.924f, leftEdge.scale, absoluteTolerance = 0.001f)
         assertEquals(1f, leftEdge.alpha, absoluteTolerance = 0.001f)
-        assertEquals(0f, leftEdge.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
+        assertEquals(0.25f, leftEdge.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
         assertEquals(31.0f, leftEdge.translationXDp, absoluteTolerance = 0.1f)
         assertEquals(-leftEdge.translationXDp, rightEdge.translationXDp, 0.001f)
         assertEquals(leftEdge.translationYDp, rightEdge.translationYDp, 0.001f)
@@ -47,7 +47,7 @@ class PredictiveBackDialogTest {
         val visuals = dialogPredictiveBackVisuals(halfHeldProgress)
 
         assertEquals(1f, visuals.alpha, absoluteTolerance = 0.001f)
-        assertEquals(0.25f, visuals.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
+        assertEquals(0.4375f, visuals.backgroundDimAmountFraction, absoluteTolerance = 0.001f)
     }
 
     @Test
@@ -67,6 +67,18 @@ class PredictiveBackDialogTest {
         assertEquals(
             0.984f,
             dialogPredictiveBackVisuals(heldProgress + 0.01f).alpha,
+            absoluteTolerance = 0.001f,
+        )
+    }
+
+    @Test
+    fun committedSettleRemovesTheRemainingScrimGradually() {
+        val heldProgress = dialogPredictiveBackGestureProgress(1f)
+        val halfSettleProgress = heldProgress + (1f - heldProgress) / 2f
+
+        assertEquals(
+            0.125f,
+            dialogPredictiveBackVisuals(halfSettleProgress).backgroundDimAmountFraction,
             absoluteTolerance = 0.001f,
         )
     }

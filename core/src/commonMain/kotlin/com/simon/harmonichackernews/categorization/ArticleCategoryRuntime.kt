@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -59,6 +60,8 @@ class ArticleCategoryRuntime(
     ) {
         fun matches(configuration: ArticleTrainingConfiguration?) = this.configuration === configuration
         fun covers(input: String, hasDescription: Boolean) = this.input == input || (this.hasDescription && !hasDescription)
+        fun result() = ArticleCategoryResult(scores,
+            if (hasDescription) ArticleCategoryInputSource.PREVIEW_TEXT else ArticleCategoryInputSource.TITLE_ONLY)
     }
     // Small, immutable snapshots survive row disposal and native-engine unloading. Readers never
     // acquire the inference mutex or touch disk. Each screen observes only its own story's result.
@@ -68,8 +71,14 @@ class ArticleCategoryRuntime(
         cachedStory(storyId, title, url)?.scores
 
     fun observeScores(storyId: Int, title: String, url: String?): Flow<List<ArticleCategoryScore>?> =
+        observeResult(storyId, title, url).map { it?.scores }.distinctUntilChanged()
+
+    fun cachedResult(storyId: Int, title: String, url: String?): ArticleCategoryResult? =
+        cachedStory(storyId, title, url)?.result()
+
+    fun observeResult(storyId: Int, title: String, url: String?): Flow<ArticleCategoryResult?> =
         combine(storyScores, training?.state ?: flowOf<ArticleTrainingConfiguration?>(null)) { entries, configuration ->
-            entries[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(configuration) }?.scores
+            entries[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(configuration) }?.result()
         }.distinctUntilChanged()
 
     private fun cachedStory(storyId: Int, title: String, url: String?): StoryScores? =

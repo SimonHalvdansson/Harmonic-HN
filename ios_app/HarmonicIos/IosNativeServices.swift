@@ -18,6 +18,7 @@ final class IosNativeServices {
     let appearance: IosAppearanceService
     let localSummary: IosNativeSummaryBridge
     let liteRt = IosLiteRtSummaryService()
+    let articleEmbeddings = IosArticleEmbeddingService()
 
     init() {
         let vault = KeychainVault(service: "com.simon.harmonichackernews.ios")

@@ -6,6 +6,7 @@ enum class UserAvatarStyle(val storedValue: String, val label: String) {
     ORBITAL("orbital", "Abstract"),
     ROBOT("robot", "Robots"),
     LANDSCAPE("landscape", "Landscapes"),
+    LETTERS("letters", "Letters"),
 }
 
 enum class UserAvatarShape(val label: String) { CIRCLE("Circle"), ROUNDED("Rounded"), SQUARE("Square") }
@@ -52,3 +53,6 @@ data class UserAvatarOptions(
 fun userAvatarSeed(author: String): Int = author.fold(0x811c9dc5.toInt()) { hash, char ->
     (hash xor char.code) * 0x01000193
 }
+
+/** HN usernames are ASCII; preserve numeric and punctuation initials as part of their identity. */
+fun userAvatarInitial(author: String): String = author.firstOrNull()?.uppercaseChar()?.toString() ?: "?"

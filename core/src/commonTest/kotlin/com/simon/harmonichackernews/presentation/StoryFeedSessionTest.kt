@@ -27,7 +27,9 @@ class StoryFeedSessionTest {
                 StoryType.TOP_STORIES,
             ),
         )
-        assertTrue(policy.shouldHide(story(title = "Post", by = "SPAMMER"), StoryType.TOP_STORIES))
+        assertTrue(policy.shouldHide(story(title = "Post", by = "Spammer"), StoryType.TOP_STORIES))
+        assertFalse(policy.shouldHide(story(title = "Post", by = "SPAMMER"), StoryType.TOP_STORIES))
+        assertFalse(policy.shouldHide(story(title = "Post", by = "spammer"), StoryType.TOP_STORIES))
         assertTrue(policy.shouldHide(story(title = "Hiring", isJob = true), StoryType.TOP_STORIES))
         assertFalse(policy.shouldHide(story(title = "Hiring", isJob = true), StoryType.HN_JOBS))
     }
@@ -57,10 +59,11 @@ class StoryFeedSessionTest {
             ).shouldHide(ordinaryStory, StoryType.TOP_STORIES),
         )
 
-        val hiring = story(title = "Hiring", by = "WhoIsHiring")
+        val hiring = story(title = "Hiring", by = "whoishiring")
         val hideJobs = StoryVisibilityPolicy(StoryVisibilityConfig(hideJobs = true))
         assertTrue(hideJobs.shouldHide(hiring, StoryType.TOP_STORIES))
         assertFalse(hideJobs.shouldHide(hiring, StoryType.HN_JOBS))
+        assertFalse(hideJobs.shouldHide(story(title = "Hiring", by = "WhoIsHiring"), StoryType.TOP_STORIES))
     }
 
     @Test

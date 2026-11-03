@@ -34,6 +34,7 @@ kotlin {
             api(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.serialization.protobuf)
             implementation(libs.ksoup)
+            implementation(libs.kuri)
             implementation(libs.kotlinx.collections.immutable)
         }
         commonTest.dependencies {

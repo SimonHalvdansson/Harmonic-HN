@@ -150,14 +150,9 @@ internal fun IosEditorContent(
                     result.commentDraft,
                 )
                 is EditorWorkflowResult.Captcha -> {
-                    screenSession.cancelCaptcha()
-                    scene.navigation.showFailureDetailDialog(
-                        title = "Hacker News CAPTCHA required",
-                        message = "This action requires the Hacker News browser CAPTCHA. " +
-                            "The CAPTCHA handoff is not yet connected to the iOS in-app " +
-                            "browser, so complete this action on the Hacker News website.",
-                        clipboardText = null,
-                    )
+                    val response = scene.captchaRequests.awaitResponse(result.challenge)
+                    if (response == null) screenSession.cancelCaptcha()
+                    else screenSession.respondToCaptcha(result.challenge, response)
                 }
                 is EditorWorkflowResult.CaptchaCancelled ->
                     scene.userMessages.show(result.message)

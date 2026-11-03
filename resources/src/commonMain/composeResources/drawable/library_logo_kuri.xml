@@ -1,0 +1,22 @@
+<!-- Official kuri mark, extracted without changing its path or gradient from
+     https://github.com/dexpace/kuri/blob/v0.1.0/docs/assets/kuri-light.svg
+     Copyright (c) 2026 dexpace and Omar Aljarrah. SPDX-License-Identifier: MIT. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <group android:translateX="-160" android:translateY="-74">
+        <path android:pathData="M191,81L217,81L217,162L257,120L287,120L245,165L289,227L259,227L226,182L217,190L217,227L191,227Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="191" android:startY="227"
+                    android:endX="289" android:endY="81">
+                    <item android:offset="0" android:color="#7F52FF" />
+                    <item android:offset="0.48" android:color="#C711E1" />
+                    <item android:offset="1" android:color="#E44857" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

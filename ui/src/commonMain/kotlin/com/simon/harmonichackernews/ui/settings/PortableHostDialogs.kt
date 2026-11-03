@@ -16,6 +16,8 @@ import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.navigation.MainNavigationSnapshot
+import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import androidx.compose.runtime.key
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
 import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
@@ -30,7 +32,7 @@ fun BoxScope.PortableAppForeground(
     scene: HarmonicSceneComposition,
     navigation: MainNavigationSnapshot,
     storiesController: StoriesScreenController?,
-    captchaMessage: String,
+    captchaDialog: @Composable (HackerNewsCaptchaChallenge, () -> Unit, (String) -> Unit) -> Unit,
 ) {
     if (navigation.changelogDialogVisible) {
         SettingsChangelogDialog(
@@ -61,25 +63,17 @@ fun BoxScope.PortableAppForeground(
             onCreateAccount = {
                 scene.links.open("https://news.ycombinator.com/login?goto=news")
             },
-            captchaDialog = { _, cancel, _ ->
-                MessageActionDialog(
-                    title = "Hacker News CAPTCHA required",
-                    message = captchaMessage,
-                    positiveLabel = "Close",
-                    onPositive = cancel,
-                    onDismiss = cancel,
-                )
-            },
+            captchaDialog = captchaDialog,
         )
     }
-    navigation.captchaRequest?.let {
-        MessageActionDialog(
-            title = "Hacker News CAPTCHA required",
-            message = "Complete this browser-only challenge on the Hacker News website.",
-            positiveLabel = "Close",
-            onPositive = scene.navigation::dismissCaptchaDialog,
-            onDismiss = scene.navigation::dismissCaptchaDialog,
-        )
+    navigation.captchaRequest?.let { request ->
+        key(request.serial) {
+            captchaDialog(
+                request.challenge,
+                { scene.captchaRequests.cancel(request.serial) },
+                { scene.captchaRequests.complete(request.serial, it) },
+            )
+        }
     }
     navigation.userRequest?.let { request ->
         PortableUserProfileDialog(
@@ -124,6 +118,7 @@ fun PortableUserProfileDialog(
     val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(app.userTags.tagFor(userName)) }
+    var currentTagColor by remember(userName) { mutableStateOf(app.userTags.colorFor(userName)) }
 
     LaunchedEffect(session) {
         session.start()
@@ -169,6 +164,7 @@ fun PortableUserProfileDialog(
             requestedUserName = userName,
             state = state,
             tag = currentTag,
+            tagColor = currentTagColor,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
             identityResolved = runtimeState.identityResolved,
@@ -181,19 +177,21 @@ fun PortableUserProfileDialog(
             onToggleBlocked = { session.toggleBlocked() },
             onReport = session::report,
             onOpenLink = { scene.links.open(it) },
+            nestedDialog = {
+                if (tagDialogOpen) {
+                    UserTagRoute(
+                        userName = userName,
+                        currentTag = currentTag,
+                        onDismiss = { tagDialogOpen = false },
+                        onSaved = { saved ->
+                            currentTag = saved
+                            currentTagColor = app.userTags.colorFor(userName)
+                            tagDialogOpen = false
+                            onTagChanged()
+                        },
+                    )
+                }
+            },
         )
-
-        if (tagDialogOpen) {
-            UserTagRoute(
-                userName = userName,
-                currentTag = currentTag,
-                onDismiss = { tagDialogOpen = false },
-                onSaved = { saved ->
-                    currentTag = saved
-                    tagDialogOpen = false
-                    onTagChanged()
-                },
-            )
-        }
     }
 }

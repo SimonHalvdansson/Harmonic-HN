@@ -253,7 +253,7 @@ class AlgoliaCommentsParser(
         val normalizedFilteredUsers = buildSet(filteredUsers.size) {
             for (user in filteredUsers) {
                 val trimmed = user.trim()
-                if (trimmed.isNotEmpty()) add(trimmed.lowercase())
+                if (trimmed.isNotEmpty()) add(trimmed)
             }
         }
         val topLevelComments = if (topLevelCommentIds.isNotEmpty() && item.children.size > 1) {
@@ -312,7 +312,7 @@ class AlgoliaCommentsParser(
         val rawText = payload.text.trim()
         val author = payload.author.trim()
         if (rawText.isEmpty() || rawText.equals(JSON_NULL_LITERAL, ignoreCase = true)) return
-        if (filteredUsers.isNotEmpty() && author.lowercase() in filteredUsers) return
+        if (filteredUsers.isNotEmpty() && author in filteredUsers) return
 
         destination.add(Comment().also { comment ->
             comment.id = payload.id

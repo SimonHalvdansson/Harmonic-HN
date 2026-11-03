@@ -204,6 +204,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             put(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, choice(CommentIndicatorThickness.entries.map { it.storedValue }))
             put(UserPreferenceKeys.EXTRA_SIDE_PADDING, choice(ExtraSidePadding.entries.map { it.storedValue }))
             put(UserPreferenceKeys.STORY_LIST_SELECTOR, choice(StoryListSelector.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.STORIES_HEADER_PILL, choice(StoriesHeaderPill.entries.map { it.storedValue }))
             put(UserPreferenceKeys.FAVICON_PROVIDER, choice(FaviconProviderCatalog.options.map { it.value }))
             put(UserPreferenceKeys.HOTNESS, numberString(-1f..10000f, integer = true))
             put(UserPreferenceKeys.DEFAULT_STORY_TYPE, choice(StoryType.entries.filter { it != StoryType.UNKNOWN }.map { it.label }))

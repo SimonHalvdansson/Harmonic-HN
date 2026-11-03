@@ -104,6 +104,7 @@ class AndroidCommentsCoordinator(
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
+            captchaResponder = navigation.scene.captchaRequests::awaitResponse,
             canLoadArticleTextOnDemand = true,
             performanceTrace = performanceTrace,
             openingRequest = navigation.scene.commentsOpeningRequests.requestFor(sessionKey, destination.storyId),

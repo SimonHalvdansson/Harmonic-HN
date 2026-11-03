@@ -25,6 +25,7 @@ class UserProfileRuntimeTest {
                 if (attempts == 1) error("offline") else user("Alice")
             },
             account = HackerNewsAccount("alice", "secret"),
+            username = "Alice",
         )
 
         runtime.load()
@@ -50,6 +51,36 @@ class UserProfileRuntimeTest {
         val unblocked = runtime.toggleBlocked()
         assertEquals("Unblocked alice", unblocked?.message)
         assertFalse(runtime.state.value.blocked)
+    }
+
+    @Test
+    fun caseMismatchedCachedAndLoadedProfilesAreNeverDisplayed() = runTest {
+        val runtime = runtime(
+            loader = object : UserProfileLoader {
+                override fun cached(username: String) = user("alice")
+                override suspend fun load(username: String) = user("alice")
+            },
+            username = "Alice",
+        )
+        assertIs<UserProfileLoadState.Loading>(runtime.state.value.loadState)
+        runtime.load()
+        assertIs<UserProfileLoadState.Error>(runtime.state.value.loadState)
+    }
+
+    @Test
+    fun blockingOneCaseIdentityDoesNotAffectAnotherProfile() = runTest {
+        val blocks = FakeBlocks()
+        val upper = runtime(blocks = blocks, username = "Alice")
+        val lower = runtime(blocks = blocks, username = "alice")
+        upper.load()
+        lower.load()
+        assertEquals(true, upper.toggleBlocked()?.blocked)
+        lower.canActOnProfile()
+        assertFalse(lower.state.value.blocked)
+        assertEquals(true, lower.toggleBlocked()?.blocked)
+        assertEquals(false, upper.toggleBlocked()?.blocked)
+        lower.canActOnProfile()
+        assertTrue(lower.state.value.blocked)
     }
 
     @Test
@@ -158,8 +189,9 @@ class UserProfileRuntimeTest {
         loader: UserProfileLoader = UserProfileLoader { user(it) },
         account: HackerNewsAccount? = null,
         blocks: FakeBlocks = FakeBlocks(),
+        username: String = "alice",
     ) = UserProfileRuntime(
-        username = "alice",
+        username = username,
         monthNames = MONTHS,
         loader = loader,
         accounts = FakeAccounts(account),
@@ -194,9 +226,9 @@ class UserProfileRuntimeTest {
 
     private class FakeBlocks : UserProfileBlockPort {
         private val blocked = mutableSetOf<String>()
-        override fun isBlocked(username: String): Boolean = username.lowercase() in blocked
+        override fun isBlocked(username: String): Boolean = username in blocked
         override fun setBlocked(username: String, blocked: Boolean): Boolean {
-            if (blocked) this.blocked += username.lowercase() else this.blocked -= username.lowercase()
+            if (blocked) this.blocked += username else this.blocked -= username
             return true
         }
     }

@@ -43,6 +43,9 @@ interface ObservableHackerNewsAccountRepository {
         accountState.first { it !is HackerNewsAccountState.Loading }.accountOrNull
 
     suspend fun saveAccount(account: HackerNewsAccount): Boolean
+    /** Replace a provisional login only while its exact credential pair remains current. */
+    suspend fun replaceAccountIfMatches(expected: HackerNewsAccount, replacement: HackerNewsAccount): Boolean =
+        if (currentAccount == expected) saveAccount(replacement) else false
     suspend fun clearAccount(): Boolean
     /** Ignore a rejected login from a request that belongs to an older account. */
     suspend fun clearAccountIfMatches(account: HackerNewsAccount): Boolean =

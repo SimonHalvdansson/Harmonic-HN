@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.settings.ContentFilterType
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.settings.StoryListSelector
 import com.simon.harmonichackernews.settings.SurfaceEffectMode
+import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import kotlin.test.Test
@@ -138,7 +139,7 @@ class SettingsPresentersTest {
             listOf(" example.com ", "example.com", "news.example"),
         )
         fixture.filtersTags.setTag("Zed", "friend")
-        fixture.filtersTags.setTag("alice", "author")
+        fixture.filtersTags.setTag("alice", "author", UserTagColor.Blue)
         fixture.filtersTags.setHideJobs(true)
 
         assertEquals(
@@ -146,8 +147,25 @@ class SettingsPresentersTest {
             fixture.filtersTags.filterItems(ContentFilterType.DOMAIN),
         )
         assertEquals(listOf("alice", "Zed"), fixture.filtersTags.state().tags.map { it.username })
+        assertEquals(listOf(UserTagColor.Blue, UserTagColor.Theme),
+            fixture.filtersTags.state().tags.map { it.color })
         assertTrue(fixture.filtersTags.state().hideJobs)
         assertEquals(ContentFilterType.USER, ContentFilterDialog.User.content.type)
+    }
+
+    @Test
+    fun legacyStoredSpellingsAreActiveWithoutReview() {
+        val store = InMemoryKeyValueStore()
+        val originalTags = """{"Alice":"case retained","alice":"stored lowercase"}"""
+        store.putString(com.simon.harmonichackernews.settings.UserTagKeys.TAGS, originalTags)
+        store.putString(com.simon.harmonichackernews.settings.ContentFilterKeys.USERS, "alice")
+        val settings = AppSettingsRepository(store, store.changes)
+        val presenter = FiltersTagsSettingsPresenter(settings, ContentFilterRepository(store), UserTagsRepository(store))
+        assertEquals(listOf("Alice", "alice"), presenter.state().tags.map { it.username })
+        assertEquals(emptyList(), presenter.state().legacyTags)
+        assertEquals(1, presenter.state().blockedUserCount)
+        assertEquals(0, presenter.state().legacyBlockedUserCount)
+        assertEquals(originalTags, store.getString(com.simon.harmonichackernews.settings.UserTagKeys.TAGS))
     }
 
     private fun fixture(): PresenterFixture {

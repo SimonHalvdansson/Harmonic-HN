@@ -136,14 +136,9 @@ internal fun DesktopEditorContent(
                     result.commentDraft,
                 )
                 is EditorWorkflowResult.Captcha -> {
-                    screenSession.cancelCaptcha()
-                    scene.navigation.showFailureDetailDialog(
-                        title = "Hacker News CAPTCHA required",
-                        message = "This action requires the Hacker News browser CAPTCHA. " +
-                            "The desktop host does not yet have an embeddable browser engine, " +
-                            "so complete this action on the Hacker News website.",
-                        clipboardText = null,
-                    )
+                    val response = scene.captchaRequests.awaitResponse(result.challenge)
+                    if (response == null) screenSession.cancelCaptcha()
+                    else screenSession.respondToCaptcha(result.challenge, response)
                 }
                 is EditorWorkflowResult.CaptchaCancelled ->
                     scene.userMessages.show(result.message)

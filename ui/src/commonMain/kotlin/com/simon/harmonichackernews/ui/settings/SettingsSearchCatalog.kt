@@ -98,7 +98,8 @@ internal fun settingsSearchCatalog(
         "Brightness" to "lightness tone darker lighter")
     group(SettingsSection.StoriesHeader, "Layout",
         "Frontpage selector" to "tabs dropdown frontpages navigation",
-        "Compact header" to "small toolbar title")
+        "Compact header" to "spacing above title below controls",
+        "Header pill" to "rounded surface color primary secondary tertiary toolbar")
 
     group(SettingsSection.Stories, "Layout",
         "Preview image" to "images pictures photos cover large small thumbnails",

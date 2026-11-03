@@ -59,6 +59,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.rememberCommentsListState
 import com.simon.harmonichackernews.ui.comments.CommentsRoute
 import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
+import com.simon.harmonichackernews.ui.comments.SearchLinkPreviewBackHandler
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
 import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
@@ -202,7 +203,10 @@ internal fun DesktopCommentsContent(
                             accountUser = host.controller.accountUser,
                             maxDialogHeight = 720.dp,
                             onSearchTermChanged = host.controller.listener::onSearchQueryChanged,
-                            onDismiss = host.controller::dismissCommentSearch,
+                            onDismiss = {
+                                if (host.controller.linkPreviewOverlay != null) host.controller.requestDismissLinkPreview()
+                                else host.controller.dismissCommentSearch()
+                            },
                             onCommentSelected = host.controller::selectSearchResult,
                             onOpenLink = { scene.links.open(it) },
                             onLinkLongClick = { comment, url, title, bounds ->
@@ -222,6 +226,7 @@ internal fun DesktopCommentsContent(
                                 )
                             },
                             foreground = {
+                                SearchLinkPreviewBackHandler(host.controller)
                                 DesktopCommentLinkPreview(app, scene, host.controller)
                             },
                         )
@@ -382,6 +387,7 @@ private fun DesktopCommentsHeader(
         settings = settings,
         contentVersion = controller.contentVersion,
         storyPosterTag = presentation.posterTag,
+        storyPosterTagColor = presentation.posterTagColor,
         tintBaseColor = tintBase,
         initialTint = presentation.tint.initialTintArgb,
         headerTopPadding = 32.dp,

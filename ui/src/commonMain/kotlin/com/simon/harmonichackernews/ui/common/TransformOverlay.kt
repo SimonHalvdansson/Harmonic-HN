@@ -97,6 +97,7 @@ fun TransformOverlay(
     sourceContentLayer: GraphicsLayer? = null,
     sharedHazeSourceZIndex: Float? = null,
     glassBackground: Boolean = false,
+    contentWindowInsets: @Composable () -> WindowInsets = { WindowInsets.safeDrawing },
     onSourceReadyToCover: (() -> Unit)? = null,
     onSourceReadyToReveal: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
@@ -486,7 +487,7 @@ fun TransformOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .windowInsetsPadding(contentWindowInsets())
                     .padding(horizontal = horizontalPadding, vertical = verticalPadding),
                 contentAlignment = Alignment.Center,
             ) {

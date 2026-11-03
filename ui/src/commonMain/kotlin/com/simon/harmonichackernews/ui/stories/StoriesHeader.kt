@@ -24,6 +24,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +48,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -73,6 +75,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -86,9 +89,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -101,6 +106,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.settings.StoryListSelector
+import com.simon.harmonichackernews.settings.StoriesHeaderPill
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import com.simon.harmonichackernews.presentation.StoriesMenuAction
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
@@ -133,6 +139,26 @@ internal inline fun calculateStoriesHeaderCollapsePx(
 internal val LocalStoriesSearchInHeader = staticCompositionLocalOf { true }
 internal val LocalStoriesMoreMenuInHeader = staticCompositionLocalOf { true }
 internal val LocalStoriesHeaderMenus = staticCompositionLocalOf<StoriesHeaderMenus?> { null }
+private val LocalStoriesHeaderIconColor = staticCompositionLocalOf<Color?> { null }
+
+@Composable
+internal fun storiesHeaderIconColor(): Color =
+    LocalStoriesHeaderIconColor.current ?: MaterialTheme.colorScheme.onSurfaceVariant
+
+internal fun storiesHeaderSideInset(settings: com.simon.harmonichackernews.presentation.StoryDisplaySettings) =
+    if (settings.headerPill == StoriesHeaderPill.OFF) 16.dp
+    else if (settings.hasBackground || settings.tintCardsFromImages) 12.dp else 8.dp
+
+@Composable
+private fun storiesHeaderPillColors(pill: StoriesHeaderPill): Pair<Color, Color> {
+    val colors = MaterialTheme.colorScheme
+    return when (pill) {
+        StoriesHeaderPill.OFF -> colors.surface.copy(alpha = 0f) to colors.onSurface
+        StoriesHeaderPill.PRIMARY -> colors.primary to colors.onPrimary
+        StoriesHeaderPill.SECONDARY -> colors.secondary to colors.onSecondary
+        StoriesHeaderPill.TERTIARY -> colors.tertiary to colors.onTertiary
+    }
+}
 
 internal class StoriesHeaderMenus {
     var typesExpanded by mutableStateOf(false)
@@ -204,7 +230,10 @@ internal fun StoriesHeader(
                     showRefreshMenuItem = showRefreshMenuItem,
                     showWelcomeHint = showWelcomeHint,
                     onDismissWelcomeHint = onDismissWelcomeHint,
-                    modifier = Modifier.padding(start = sideStart, end = sideEnd),
+                    modifier = Modifier.padding(
+                        start = startInset + storiesHeaderSideInset(settings),
+                        end = storiesHeaderSideInset(settings),
+                    ),
                 )
                 if (controller.canFilterNewStories && controller.newStoriesFilter.active) {
                     NewStoriesFilterIndicator(
@@ -501,7 +530,35 @@ internal fun FrontpageHeaderControls(
     val searchInHeader = LocalStoriesSearchInHeader.current
     val moreInHeader = LocalStoriesMoreMenuInHeader.current
     val textMeasurer = rememberTextMeasurer()
-    BoxWithConstraints(modifier.fillMaxWidth().height(56.dp)) {
+    val pillColors = storiesHeaderPillColors(settings.headerPill)
+    // Retain the last opaque hue when switching off; only opacity should fade to zero.
+    var lastPill by remember { mutableStateOf(settings.headerPill.takeUnless { it == StoriesHeaderPill.OFF } ?: StoriesHeaderPill.PRIMARY) }
+    if (settings.headerPill != StoriesHeaderPill.OFF) lastPill = settings.headerPill
+    val opaqueColor by animateColorAsState(storiesHeaderPillColors(lastPill).first, contentTween(), label = "Header pill hue")
+    val pillAlpha by animateFloatAsState(if (settings.headerPill == StoriesHeaderPill.OFF) 0f else 1f,
+        contentTween(), label = "Header pill opacity")
+    val containerColor = opaqueColor.copy(alpha = pillAlpha)
+    val textColor by animateColorAsState(pillColors.second, contentTween(), label = "Header pill text")
+    val iconColor by animateColorAsState(
+        if (settings.headerPill == StoriesHeaderPill.OFF) MaterialTheme.colorScheme.onSurfaceVariant
+        else pillColors.second,
+        contentTween(), label = "Header pill icons",
+    )
+    val pillInset by animateDpAsState(
+        if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 8.dp,
+        contentTween(), label = "Header pill padding",
+    )
+    val pillRadius by animateDpAsState(
+        if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 28.dp,
+        contentTween(), label = "Header pill corners",
+    )
+    BoxWithConstraints(
+        modifier.fillMaxWidth().height(56.dp)
+            .testTag("stories-header-controls")
+            .clip(RoundedCornerShape(pillRadius))
+            .background(containerColor)
+            .padding(horizontal = pillInset),
+    ) {
         val preferredSize = typography.storiesDropdownSelectedSize
         val minimumSize = typography.storiesDropdownSelectedSize * 0.65f
         val titleWidth = with(density) {
@@ -527,119 +584,124 @@ internal fun FrontpageHeaderControls(
             searchInHeader = searchInHeader,
             moreInHeader = moreInHeader,
         )
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier
-                        // Grow the hit/ripple bounds around the existing text origin.
-                        .offset(x = (-4).dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .then(
-                            if (useDropdown) Modifier.combinedClickable(
-                                onClick = { menus.typesExpanded = true },
-                                onLongClick = null,
-                            ) else Modifier,
-                        )
-                        .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AnimatedContent(
-                        targetState = Triple(title, sizing, selectedTypeIndex),
-                        contentKey = { it.first },
-                        modifier = Modifier.weight(1f, fill = false),
-                        contentAlignment = Alignment.CenterStart,
-                        transitionSpec = {
-                            val direction = when {
-                                targetState.third > initialState.third -> 1
-                                targetState.third < initialState.third -> -1
-                                else -> 0
-                            }
-                            val travel = with(density) { 8.dp.roundToPx() } * direction
-                            val enter = fadeIn(tween(120, delayMillis = 310, easing = LinearEasing)) +
-                                slideInVertically(
-                                    tween(120, delayMillis = 310, easing = FastOutSlowInEasing),
-                                    initialOffsetY = { travel },
-                                )
-                            val exit = fadeOut(tween(90, easing = LinearEasing)) +
-                                slideOutVertically(
-                                    tween(90, easing = FastOutSlowInEasing),
-                                    targetOffsetY = { -travel },
-                                )
-                            (enter togetherWith exit)
-                                .using(SizeTransform(clip = false) { _, _ ->
-                                    tween(220, delayMillis = 90, easing = FastOutSlowInEasing)
-                                })
-                        },
-                        label = "story section title",
-                    ) { (visibleTitle, visibleSizing) ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = visibleTitle,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = typography.family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = with(density) {
-                                    (preferredSize * visibleSizing.textScale).dp.toSp()
-                                },
-                                letterSpacing = 0.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+        CompositionLocalProvider(LocalStoriesHeaderIconColor provides iconColor) {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier
+                            // Grow the hit/ripple bounds around the existing text origin.
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                            .offset(x = (-4).dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .then(
+                                if (useDropdown) Modifier.combinedClickable(
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClickLabel = "Choose story list",
+                                    onClick = { menus.typesExpanded = true },
+                                    onLongClick = null,
+                                ) else Modifier,
                             )
-                            Spacer(Modifier.width(visibleSizing.arrowGap.dp))
+                            .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AnimatedContent(
+                            targetState = Triple(title, sizing, selectedTypeIndex),
+                            contentKey = { it.first },
+                            modifier = Modifier.weight(1f, fill = false),
+                            contentAlignment = Alignment.CenterStart,
+                            transitionSpec = {
+                                val direction = when {
+                                    targetState.third > initialState.third -> 1
+                                    targetState.third < initialState.third -> -1
+                                    else -> 0
+                                }
+                                val travel = with(density) { 8.dp.roundToPx() } * direction
+                                val enter = fadeIn(tween(120, delayMillis = 310, easing = LinearEasing)) +
+                                    slideInVertically(
+                                        tween(120, delayMillis = 310, easing = FastOutSlowInEasing),
+                                        initialOffsetY = { travel },
+                                    )
+                                val exit = fadeOut(tween(90, easing = LinearEasing)) +
+                                    slideOutVertically(
+                                        tween(90, easing = FastOutSlowInEasing),
+                                        targetOffsetY = { -travel },
+                                    )
+                                (enter togetherWith exit)
+                                    .using(SizeTransform(clip = false) { _, _ ->
+                                        tween(220, delayMillis = 90, easing = FastOutSlowInEasing)
+                                    })
+                            },
+                            label = "story section title",
+                        ) { (visibleTitle, visibleSizing) ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = visibleTitle,
+                                    color = textColor,
+                                    fontFamily = typography.family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = with(density) {
+                                        (preferredSize * visibleSizing.textScale).dp.toSp()
+                                    },
+                                    letterSpacing = 0.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+                                )
+                                Spacer(Modifier.width(visibleSizing.arrowGap.dp))
+                            }
+                        }
+                        AnimatedVisibility(
+                            visible = useDropdown,
+                            enter = expandHorizontally(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
+                            exit = shrinkHorizontally(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                        ) {
+                            Icon(
+                                painterResource(Res.drawable.ic_keyboard_arrow_down),
+                                contentDescription = "Choose story list",
+                                modifier = Modifier.size(24.dp),
+                                tint = iconColor,
+                            )
                         }
                     }
-                    AnimatedVisibility(
-                        visible = useDropdown,
-                        enter = expandHorizontally(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
-                        exit = shrinkHorizontally(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                    StoryTypeDropdownMenu(
+                        expanded = useDropdown && menus.typesExpanded,
+                        onDismiss = { menus.typesExpanded = false },
+                        types = typeLabels.map(StoryType::fromLabel),
+                        selectedType = StoryType.fromLabel(typeLabels.getOrNull(selectedTypeIndex)),
+                        fontFamily = typography.family,
+                        fontSize = typography.storiesDropdownItemSize.sp,
+                        onSelected = { type ->
+                            menus.typesExpanded = false
+                            onTypeSelected(typeLabels.indexOf(type.label))
+                        },
+                    )
+                }
+                if (searchInHeader && !sizing.searchInMenu) StoriesTooltip("Search") {
+                    IconButton(
+                        onClick = onSearch,
                     ) {
                         Icon(
-                            painterResource(Res.drawable.ic_keyboard_arrow_down),
-                            contentDescription = "Choose story list",
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            painterResource(Res.drawable.ic_search),
+                            "Search",
+                            tint = iconColor,
                         )
                     }
                 }
-                StoryTypeDropdownMenu(
-                    expanded = useDropdown && menus.typesExpanded,
-                    onDismiss = { menus.typesExpanded = false },
-                    types = typeLabels.map(StoryType::fromLabel),
-                    selectedType = StoryType.fromLabel(typeLabels.getOrNull(selectedTypeIndex)),
-                    fontFamily = typography.family,
-                    fontSize = typography.storiesDropdownItemSize.sp,
-                    onSelected = { type ->
-                        menus.typesExpanded = false
-                        onTypeSelected(typeLabels.indexOf(type.label))
-                    },
-                )
-            }
-            if (searchInHeader && !sizing.searchInMenu) StoriesTooltip("Search") {
-                IconButton(
-                    onClick = onSearch,
+                AnimatedVisibility(
+                    visible = showRefreshButton,
+                    enter = expandHorizontally(tween(200), expandFrom = Alignment.End) + fadeIn(tween(150)),
+                    exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
                 ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_search),
-                        "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            AnimatedVisibility(
-                visible = showRefreshButton,
-                enter = expandHorizontally(tween(200), expandFrom = Alignment.End) + fadeIn(tween(150)),
-                exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
-            ) {
-                StoriesTooltip("Refresh") {
-                    IconButton(onClick = onRefresh, enabled = !refreshing) {
-                        Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    StoriesTooltip("Refresh") {
+                        IconButton(onClick = onRefresh, enabled = !refreshing) {
+                            Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
+                                tint = iconColor)
+                        }
                     }
                 }
-            }
-            if (moreInHeader) {
-                moreMenu(showRefreshMenuItem && !showRefreshButton, searchInHeader && sizing.searchInMenu)
+                if (moreInHeader) {
+                    moreMenu(showRefreshMenuItem && !showRefreshButton, searchInHeader && sizing.searchInMenu)
+                }
             }
         }
     }
@@ -676,7 +738,7 @@ internal fun StoriesMoreMenuControl(
                 Icon(
                     painterResource(Res.drawable.ic_more_vert),
                     "More options",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = storiesHeaderIconColor(),
                 )
             }
         }

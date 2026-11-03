@@ -39,6 +39,10 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalHapticFeedback
 import org.jetbrains.compose.resources.painterResource
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.content.userTagColor
+import com.simon.harmonichackernews.ui.content.annotatedUserTagLabel
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextLayoutResult
@@ -72,6 +76,7 @@ fun HeaderLinkInfo(
     settings: CommentDisplaySettings,
     faviconPreview: Painter? = null,
     posterTag: String = "",
+    posterTagColor: UserTagColor = UserTagColor.Theme,
 ) {
     if (!story.loaded) return
     val hasLink = story.isLink && !story.isComment && !story.url.isNullOrBlank()
@@ -151,7 +156,9 @@ fun HeaderLinkInfo(
                     relativeTimeOnResume(story.createdAtEpochSeconds)).joinToString(" \u00b7 ")
             } else domain.orEmpty()
             AnimatedContent(
-                targetState = label,
+                targetState = if (onImage) {
+                    annotatedUserTagLabel(label, posterTag, userTagColor(posterTagColor))
+                } else AnnotatedString(label),
                 transitionSpec = {
                     (fadeIn(tween(100, delayMillis = 80)) togetherWith fadeOut(tween(80)))
                         .using(SizeTransform(clip = false) { _, _ -> contentTween() })

@@ -22,12 +22,16 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -205,6 +210,7 @@ fun SettingRow(
     iconModifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
     backgroundColor: Color? = null,
+    summaryColor: Color? = null,
 ) {
     val colors = HarmonicTheme.colors
     val resolvedIconPainter = when {
@@ -268,7 +274,7 @@ fun SettingRow(
             if (!summary.isNullOrBlank()) {
                 Text(
                     text = summary,
-                    color = { colors.onSurfaceVariant },
+                    color = { summaryColor ?: colors.onSurfaceVariant },
                     fontFamily = ProductSansFontFamily,
                     fontSize = summaryFontSizeSp.sp,
                     lineHeight = summaryLineHeightSp.sp,
@@ -392,7 +398,7 @@ fun <T> SegmentedSetting(
                 lineHeight = 18.sp,
             )
         }
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .selectableGroup()
@@ -403,15 +409,27 @@ fun <T> SegmentedSetting(
                         0.dp
                     },
                 ),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            options.forEachIndexed { index, (value, label) ->
-                SegmentedSettingOption(
-                    value, label, index, options.lastIndex, selected == value,
-                    enabled && value !in disabledOptions, value in disabledOptions,
-                    buttonHeight, optionIcons[value], Modifier.weight(optionWeights[value] ?: 1f),
-                    optionContent, onSelected,
-                )
+            // Keep each option usable at large font sizes and in narrow settings panes. Balance
+            // the rows so four options become two pairs instead of a crowded row plus one item.
+            val columns = segmentedSettingColumns(options.size, maxWidth, LocalDensity.current.fontScale)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                options.chunked(columns).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        row.forEachIndexed { index, (value, label) ->
+                            SegmentedSettingOption(
+                                value, label, index, row.lastIndex, selected == value,
+                                enabled && value !in disabledOptions, value in disabledOptions,
+                                buttonHeight, optionIcons[value],
+                                Modifier.weight(optionWeights[value] ?: 1f).fillMaxHeight(),
+                                optionContent, onSelected,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -463,9 +481,7 @@ private fun <T> SegmentedSettingOption(
     Row(
         modifier = modifier
             .alpha(if (disabled) 0.38f else 1f)
-            .height(
-                buttonHeight,
-            )
+            .heightIn(min = buttonHeight.coerceAtLeast(48.dp))
             .background(
                 if (isSelected) {
                     selectedBackground
@@ -490,7 +506,8 @@ private fun <T> SegmentedSettingOption(
                 role = Role.RadioButton,
                 interactionSource = interactionSource,
                 onClick = { onSelected(value) },
-            ),
+            )
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -525,6 +542,14 @@ private fun <T> SegmentedSettingOption(
             )
         }
     }
+}
+
+internal fun segmentedSettingColumns(optionCount: Int, width: Dp, fontScale: Float): Int {
+    if (optionCount <= 1) return 1
+    val minimumWidth = 64.dp * fontScale.coerceAtLeast(1f)
+    val maximumColumns = ((width + 2.dp) / (minimumWidth + 2.dp)).toInt().coerceIn(1, optionCount)
+    val rows = (optionCount + maximumColumns - 1) / maximumColumns
+    return (optionCount + rows - 1) / rows
 }
 
 @Composable

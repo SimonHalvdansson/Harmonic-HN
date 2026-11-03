@@ -147,6 +147,16 @@ class ObservableAccountRepositoryAdapter(
             mutationMutex.withLock { save(account) }
         }
 
+    override suspend fun replaceAccountIfMatches(
+        expected: HackerNewsAccount,
+        replacement: HackerNewsAccount,
+    ): Boolean = withContext(storageDispatcher) {
+        mutationMutex.withLock {
+            if (currentAccount != expected) return@withLock false
+            save(replacement)
+        }
+    }
+
     private fun save(account: HackerNewsAccount): Boolean {
         val normalizedAccount = account.normalizedUsername()
         return runCatching { delegate.save(normalizedAccount) }

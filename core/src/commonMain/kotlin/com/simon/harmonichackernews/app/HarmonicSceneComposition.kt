@@ -8,6 +8,8 @@ import com.simon.harmonichackernews.navigation.MainNavigationStore
 import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.presentation.ScreenSessionRegistry
 import com.simon.harmonichackernews.presentation.UserMessageStore
+import com.simon.harmonichackernews.presentation.CaptchaRequests
+import com.simon.harmonichackernews.network.CaptchaAwareHackerNewsActions
 
 /**
  * State and routing owned by one Android task, iOS scene, or desktop window.
@@ -36,6 +38,8 @@ class HarmonicSceneComposition internal constructor(
         userProfiles.navigationChanged(it)
     })
     val launches = AppLaunchRouter(navigation)
+    val captchaRequests = CaptchaRequests(navigation)
+    val hackerNewsActions = CaptchaAwareHackerNewsActions(app.hackerNewsUser, captchaRequests::awaitResponse)
     val links = AppLinkNavigator(
         navigation = navigation,
         externalLinks = app.externalLinks,
@@ -55,6 +59,7 @@ class HarmonicSceneComposition internal constructor(
     fun close() {
         if (closed) return
         closed = true
+        captchaRequests.close()
         commentsOpeningRequests.close()
         userProfiles.close()
         userMessages.close()

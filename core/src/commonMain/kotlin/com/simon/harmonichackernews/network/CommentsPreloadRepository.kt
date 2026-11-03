@@ -294,7 +294,7 @@ class CommentsPreloadRepository(
             ) = PreloadKey(
                 storyId = storyId,
                 topLevelCommentIds = topLevelCommentIds.toList(),
-                filteredUsers = filteredUsers.mapTo(linkedSetOf()) { it.lowercase() },
+                filteredUsers = filteredUsers.mapNotNullTo(linkedSetOf()) { it.trim().takeIf(String::isNotEmpty) },
                 source = source,
             )
         }

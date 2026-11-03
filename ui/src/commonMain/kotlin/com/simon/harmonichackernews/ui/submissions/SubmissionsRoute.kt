@@ -2,7 +2,7 @@ package com.simon.harmonichackernews.ui.submissions
 
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.content.rememberArticleCategoryLabels
+import com.simon.harmonichackernews.ui.content.rememberArticleCategoryPresentation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -75,13 +75,15 @@ fun SubmissionsRoute(
                     previewResources = previewResources,
                     tintBaseColor = tintBaseColor,
                 )
-                val labels = rememberArticleCategoryLabels(
+                val categories = rememberArticleCategoryPresentation(
                     storyId = story.id, title = story.title, url = story.url,
                     description = preview?.summary?.description ?: story.linkSummaryDescription,
                     preferences = categoryPreferences, runtime = dependencies.articleCategories, runtimeState = categoryRuntime,
                     eligible = !story.isComment && !story.isFrontpageLink,
                 )
-                remember(model, labels) { model.copy(categoryLabels = labels) }
+                remember(model, categories) {
+                    model.copy(categoryLabels = categories.labels, categoryInspection = categories.inspection)
+                }
             },
             onOpenLink = onOpenLink,
         )

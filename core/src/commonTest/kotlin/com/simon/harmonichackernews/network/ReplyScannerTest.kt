@@ -52,7 +52,7 @@ class ReplyScannerTest {
             requested += id
             delay(if (id == 4) 150 else 50)
             when (id) {
-                5 -> item(id).copy(kids = (100..107).toList())
+                5 -> item(id).copy(kids = (100..108).toList())
                 4 -> item(id).copy(time = now - 15 * 24 * 60 * 60, kids = listOf(400))
                 3 -> error("Speculative read failed beyond cutoff")
                 2 -> awaitCancellation()
@@ -64,16 +64,41 @@ class ReplyScannerTest {
                 104 -> item(id).copy(type = "story")
                 105 -> item(id).copy(by = "")
                 106 -> item(id).copy(time = now - 15 * 24 * 60 * 60)
+                108 -> item(id).copy(by = "me")
                 else -> null
             }
         }
         val scanner = DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler))
         val result = scanner.scan("me", 50)
-        assertEquals(listOf(100), result.replies.map { it.id })
-        assertEquals(107, result.lastSeenItemId)
+        assertEquals(listOf(100, 101), result.replies.map { it.id })
+        assertEquals(108, result.lastSeenItemId)
         assertFalse(1 in requested) // No subsequent batch after the age cutoff.
         assertFalse(200 in requested || 300 in requested || 400 in requested)
-        assertEquals(100, scanner.findLatestReply("me").reply?.id)
+        assertEquals(101, scanner.findLatestReply("me").reply?.id)
+    }
+
+    @Test
+    fun aDifferentCaseProfileResponseCannotRebindTheReplySubscription() = runTest {
+        val requested = mutableListOf<String>()
+        var returnedIdentity = "alice"
+        val api = object : HackerNewsApi {
+            override suspend fun getUser(username: String): HackerNewsUserDto {
+                requested += username
+                return HackerNewsUserDto(id = returnedIdentity, submitted = listOf(1))
+            }
+            override suspend fun getMaxItemId() = 100
+            override suspend fun getItem(id: Int): HackerNewsItemDto? = error("Wrong identity must not be scanned")
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("Unused")
+        }
+        val scanner = DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler))
+        assertEquals(null, scanner.initialize(" Alice "))
+        val scanned = scanner.scan(" Alice ", 50)
+        assertFalse(scanned.userFound)
+        assertEquals(50, scanned.lastSeenItemId)
+        assertFalse(scanner.findLatestReply(" Alice ").userFound)
+        assertEquals(listOf("Alice", "Alice", "Alice"), requested)
+        returnedIdentity = "Alice"
+        assertEquals(ReplySubscriptionBaseline("Alice", 100), scanner.initialize(" Alice "))
     }
 
     @Test

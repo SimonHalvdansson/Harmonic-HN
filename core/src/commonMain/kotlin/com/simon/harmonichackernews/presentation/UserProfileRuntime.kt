@@ -52,7 +52,7 @@ class UserProfileRuntime(
     private val blocks: UserProfileBlockPort,
 ) {
     private val username = username.trim()
-    private var profile = loader.cached(this.username)
+    private var profile = loader.cached(this.username)?.takeIf { it.id == this.username }
     private val mutableState = MutableStateFlow(
         UserProfileRuntimeState(
             loadState = profile?.let {
@@ -78,6 +78,7 @@ class UserProfileRuntime(
         try {
             val user = (if (forceRefresh) loader.refresh(username) else loader.load(username))
                 ?: error("Hacker News user not found")
+            check(user.id == username) { "Hacker News returned a different user identity" }
             currentCoroutineContext().ensureActive()
             if (generation != loadGeneration) return
             profile = user

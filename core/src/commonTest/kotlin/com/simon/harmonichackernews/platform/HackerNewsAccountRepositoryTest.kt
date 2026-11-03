@@ -12,7 +12,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -82,6 +84,56 @@ class HackerNewsAccountRepositoryTest {
         assertEquals(bob, repository.currentAccount)
         assertTrue(repository.clearAccountIfMatches(bob))
         assertNull(repository.currentAccount)
+        repository.close()
+    }
+
+    @Test
+    fun verifiedLoginCanReplaceOnlyTheExactProvisionalCredentialPair() = runTest {
+        val repository = CredentialBackedHackerNewsAccountRepository(
+            MemoryCredentialStore(), StandardTestDispatcher(testScheduler),
+        )
+        val provisional = HackerNewsAccount("alice", "secret")
+        val authenticated = HackerNewsAccount("Alice", "secret")
+        repository.saveAccount(provisional)
+        assertTrue(repository.replaceAccountIfMatches(provisional, authenticated))
+        assertEquals(authenticated, repository.currentAccount)
+
+        val changedPassword = authenticated.copy(password = "new-secret")
+        repository.saveAccount(changedPassword)
+        assertFalse(repository.replaceAccountIfMatches(authenticated, provisional))
+        assertEquals(changedPassword, repository.currentAccount)
+
+        val changedUsername = HackerNewsAccount("Bob", "new-secret")
+        repository.saveAccount(changedUsername)
+        assertFalse(repository.replaceAccountIfMatches(changedPassword, provisional))
+        assertEquals(changedUsername, repository.currentAccount)
+        repository.clearAccount()
+        assertFalse(repository.replaceAccountIfMatches(changedUsername, provisional))
+        assertNull(repository.currentAccount)
+        repository.close()
+    }
+
+    @Test
+    fun canonicalizationChecksTheAccountInsideTheSameSerializedStorageMutation() = runTest {
+        val repository = CredentialBackedHackerNewsAccountRepository(
+            MemoryCredentialStore(), StandardTestDispatcher(testScheduler, "vault"),
+        )
+        val provisional = HackerNewsAccount("alice", "old-secret")
+        val replacement = HackerNewsAccount("Bob", "new-secret")
+        repository.saveAccount(provisional)
+
+        // Both requests queue storage work before either runs. Checking before the dispatcher
+        // switch would accept the old pair and overwrite the replacement queued ahead of it.
+        val newerLogin = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.saveAccount(replacement)
+        }
+        val canonicalization = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.replaceAccountIfMatches(provisional, provisional.copy(username = "Alice"))
+        }
+        runCurrent()
+        assertTrue(newerLogin.await())
+        assertFalse(canonicalization.await())
+        assertEquals(replacement, repository.currentAccount)
         repository.close()
     }
 

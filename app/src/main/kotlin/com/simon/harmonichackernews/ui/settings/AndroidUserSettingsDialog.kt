@@ -41,6 +41,7 @@ fun AndroidUserSettingsDialog(
     )
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
     var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
+    var currentTagColor by remember(userName) { mutableStateOf(userTags.colorFor(userName)) }
 
     LaunchedEffect(session) {
         session.start()
@@ -91,6 +92,7 @@ fun AndroidUserSettingsDialog(
             requestedUserName = userName,
             state = state,
             tag = currentTag,
+            tagColor = currentTagColor,
             blocked = runtimeState.blocked,
             ownProfile = runtimeState.ownProfile,
             identityResolved = runtimeState.identityResolved,
@@ -103,19 +105,21 @@ fun AndroidUserSettingsDialog(
             onToggleBlocked = { session.toggleBlocked() },
             onReport = session::report,
             onOpenLink = { appComposition.links.open(it) },
+            nestedDialog = {
+                if (tagDialogOpen) {
+                    UserTagRoute(
+                        userName = userName,
+                        currentTag = currentTag,
+                        onDismiss = { tagDialogOpen = false },
+                        onSaved = { saved ->
+                            currentTag = saved
+                            currentTagColor = userTags.colorFor(userName)
+                            tagDialogOpen = false
+                            onTagChanged()
+                        },
+                    )
+                }
+            },
         )
-
-        if (tagDialogOpen) {
-            UserTagRoute(
-                userName = userName,
-                currentTag = currentTag,
-                onDismiss = { tagDialogOpen = false },
-                onSaved = { saved ->
-                    currentTag = saved
-                    tagDialogOpen = false
-                    onTagChanged()
-                },
-            )
-        }
     }
 }

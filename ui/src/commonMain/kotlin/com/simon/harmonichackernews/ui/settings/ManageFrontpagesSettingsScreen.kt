@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -77,7 +79,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -159,10 +160,10 @@ fun ManageFrontpagesSettingsScreen(
     onRemove: (StoryType) -> Unit,
     onAdd: (StoryType) -> Unit,
     focusFrontpage: StoryType? = null,
+    listState: LazyListState = rememberSettingsListState(),
 ) {
     var infoFrontpage by remember { mutableStateOf<FrontpageInfoSource?>(null) }
     var infoSourceCovered by remember { mutableStateOf(false) }
-    val listState = rememberSettingsListState()
     val hazeState = rememberHazeState()
     val resetButtonShape = RoundedCornerShape(16.dp)
     val scope = rememberCoroutineScope()
@@ -296,7 +297,7 @@ fun ManageFrontpagesSettingsScreen(
                         add(CustomAccessibilityAction("Remove frontpage") { onRemove(type); true })
                     }
                 }
-                Row(
+                AdaptiveFrontpageRow(
                     modifier = Modifier
                         .zIndex(if (lifted) 1f else 0f)
                         .animateItem(placementSpec = if (lifted) null else spring(stiffness = 400f))
@@ -318,97 +319,104 @@ fun ManageFrontpagesSettingsScreen(
                         .defaultMinSize(minHeight = 52.dp)
                         .captureSharedTransformSourceContent { sourceLayer = it }
                         .padding(end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Only the name/icon area selects the default. The drag and remove controls
-                    // are siblings, so a short tap on the handle cannot bubble into selection.
-                    CompositionLocalProvider(
-                        LocalIndication provides HarmonicRipple(
-                            color = if (HarmonicTheme.isDark) Color.White else LocalContentColor.current,
-                            rippleAlpha = RippleAlpha(
-                                draggedAlpha = 0.08f, focusedAlpha = 0.06f,
-                                hoveredAlpha = 0.02f, pressedAlpha = 0.06f,
+                    label = { labelModifier ->
+                        // Only the name/icon area selects the default. The drag and remove controls
+                        // are siblings, so a short tap on the handle cannot bubble into selection.
+                        CompositionLocalProvider(
+                            LocalIndication provides HarmonicRipple(
+                                color = if (HarmonicTheme.isDark) Color.White else LocalContentColor.current,
+                                rippleAlpha = RippleAlpha(
+                                    draggedAlpha = 0.08f, focusedAlpha = 0.06f,
+                                    hoveredAlpha = 0.02f, pressedAlpha = 0.06f,
+                                ),
                             ),
-                        ),
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f)
-                                .defaultMinSize(minHeight = 52.dp)
-                                .selectable(selected, role = Role.RadioButton, onClick = { onDefaultSelected(type) })
-                                .semantics { customActions = actions }
-                                .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(
-                                painterResource(type.menuIcon),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = iconColor,
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = type.label,
-                                modifier = Modifier.weight(1f, fill = false),
-                                color = textColor,
-                                fontFamily = ProductSansFontFamily,
-                                fontSize = 16.sp,
-                                lineHeight = 20.sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            if (selected) {
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = "DEFAULT",
-                                    modifier = Modifier
-                                        .background(selectedContent.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
-                                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                                    color = selectedContent,
-                                    fontFamily = ProductSansFontFamily,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 9.sp,
-                                    lineHeight = 12.sp,
-                                    letterSpacing = 0.5.sp,
-                                    maxLines = 1,
+                            Row(
+                                modifier = labelModifier
+                                    .defaultMinSize(minHeight = 52.dp)
+                                    .selectable(selected, role = Role.RadioButton, onClick = { onDefaultSelected(type) })
+                                    .semantics { customActions = actions }
+                                    .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painterResource(type.menuIcon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = iconColor,
                                 )
+                                Spacer(Modifier.width(12.dp))
+                                FlowRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        text = type.label,
+                                        color = textColor,
+                                        fontFamily = ProductSansFontFamily,
+                                        fontSize = 16.sp,
+                                        lineHeight = 20.sp,
+                                    )
+                                    if (selected) {
+                                        Text(
+                                            text = "DEFAULT",
+                                            modifier = Modifier
+                                                .background(selectedContent.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
+                                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                                            color = selectedContent,
+                                            fontFamily = ProductSansFontFamily,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 9.sp,
+                                            lineHeight = 12.sp,
+                                            letterSpacing = 0.5.sp,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
-                    if (type in StoryType.additionalFrontpages) {
-                        IconButton(onClick = { onRemove(type) }) {
+                    },
+                    actions = {
+                        if (type in StoryType.additionalFrontpages) {
+                            IconButton(onClick = { onRemove(type) }) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_close),
+                                    contentDescription = "Remove ${type.label}",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = iconColor,
+                                )
+                            }
+                            FrontpageInfoButton(
+                                type,
+                                tint = iconColor,
+                                isTransformSource = infoFrontpage?.type == type,
+                            ) {
+                                infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.size(48.dp).semantics {
+                                contentDescription = "Drag to reorder ${type.label}"
+                                customActions = actions
+                            }.pointerInput(reorder, type) {
+                                detectDragGestures(
+                                    onDragStart = { reorder.start(type) },
+                                    onDragEnd = { reorder.finish(); currentOnOrderChanged(reorder.items) },
+                                    onDragCancel = reorder::cancel,
+                                    onDrag = { change, amount -> change.consume(); reorder.move(amount.y) },
+                                )
+                            },
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Icon(
-                                painterResource(Res.drawable.ic_close),
-                                contentDescription = "Remove ${type.label}",
-                                modifier = Modifier.size(20.dp),
+                                painterResource(Res.drawable.ic_drag_handle),
+                                contentDescription = null,
                                 tint = iconColor,
                             )
                         }
-                        FrontpageInfoButton(
-                            type,
-                            tint = iconColor,
-                            isTransformSource = infoFrontpage?.type == type,
-                        ) {
-                            infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
-                        }
-                    }
-                    Box(
-                        modifier = Modifier.size(48.dp).pointerInput(reorder, type) {
-                            detectDragGestures(
-                                onDragStart = { reorder.start(type) },
-                                onDragEnd = { reorder.finish(); currentOnOrderChanged(reorder.items) },
-                                onDragCancel = reorder::cancel,
-                                onDrag = { change, amount -> change.consume(); reorder.move(amount.y) },
-                            )
-                        },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_drag_handle),
-                            contentDescription = "Drag to reorder ${type.label}",
-                            tint = iconColor,
-                        )
-                    }
-                }
+                    },
+                )
             }
             if (available.isNotEmpty()) {
                 item(key = "add-frontpages-heading", contentType = "heading") {
@@ -429,7 +437,7 @@ fun ManageFrontpagesSettingsScreen(
                     val borderColor = focusAccent.copy(
                         alpha = if (type == focusFrontpage) 0.8f * focusPulse.value else 0f,
                     )
-                    Row(
+                    AdaptiveFrontpageRow(
                         modifier = Modifier.animateItem()
                             .padding(horizontal = 16.dp, vertical = 2.dp)
                             .onGloballyPositioned { sourceBounds = it.boundsInWindow() }
@@ -449,38 +457,42 @@ fun ManageFrontpagesSettingsScreen(
                             .clickable(role = Role.Button, onClick = { onAdd(type) })
                             .semantics { contentDescription = "Add ${type.label}" }
                             .padding(start = 16.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            painterResource(type.menuIcon),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = type.label,
-                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
-                            fontSize = 16.sp,
-                            lineHeight = 20.sp,
-                        )
-                        FrontpageInfoButton(
-                            type,
-                            isTransformSource = infoFrontpage?.type == type,
-                        ) {
-                            infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
-                        }
-                        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            Icon(
-                                painterResource(Res.drawable.ic_add),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
+                        label = { labelModifier ->
+                            Row(labelModifier.defaultMinSize(minHeight = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painterResource(type.menuIcon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = type.label,
+                                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontFamily = ProductSansFontFamily,
+                                    fontSize = 16.sp,
+                                    lineHeight = 20.sp,
+                                )
+                            }
+                        },
+                        actions = {
+                            FrontpageInfoButton(
+                                type,
+                                isTransformSource = infoFrontpage?.type == type,
+                            ) {
+                                infoFrontpage = FrontpageInfoSource(type, sourceBounds, background, sourceLayer, borderColor)
+                            }
+                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_add),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }

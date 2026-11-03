@@ -16,11 +16,25 @@ import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserProfileRepositoryTest {
+    @Test
+    fun aCaseMismatchedResponseIsRejectedWithoutCachingOrRebinding() = runTest {
+        val repository = UserProfileRepository(
+            api { user("alice") }, backgroundScope,
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        assertFailsWith<IllegalStateException> { repository.load("Alice") }
+        assertNull(repository.cached("Alice"))
+        assertNull(repository.cached("alice"))
+        assertEquals("alice", repository.load("alice").id)
+        assertEquals("alice", repository.cached("alice")?.id)
+    }
+
     @Test
     fun freshnessCaseIdentityEvictionAndCompactPublicData() = runTest {
         var now = 100L

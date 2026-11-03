@@ -83,6 +83,7 @@ class UserProfileRepository(
                 created.result = scope.async(dispatcher, start = CoroutineStart.LAZY) {
                     try {
                         val user = api.getUser(key) ?: error("Hacker News user not found")
+                        check(user.id == key) { "Hacker News returned a different user identity" }
                         val data = UserProfileData.from(user)
                         currentCoroutineContext().ensureActive()
                         mutex.withLock {

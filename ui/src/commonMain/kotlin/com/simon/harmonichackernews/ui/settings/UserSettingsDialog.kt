@@ -2,9 +2,16 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.settings.UserAvatarOptions
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.content.userTagColor
 
 import com.simon.harmonichackernews.resources.*
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -12,7 +19,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +32,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
@@ -31,20 +42,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.common.TextButton
+import com.simon.harmonichackernews.presentation.detectUserProfileLinks
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -78,70 +101,113 @@ fun UserSettingsDialog(
     identityResolved: Boolean = true,
     userAvatarsEnabled: Boolean = false,
     userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    nestedDialog: (@Composable () -> Unit)? = null,
+    tagColor: UserTagColor = UserTagColor.Theme,
 ) {
     val userName = (state as? UserDialogUiState.Loaded)?.user?.id ?: requestedUserName
+    // The host's saveable registry survives native dialog window recreation.
+    val listState = rememberLazyListState()
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         edgeToEdgeContent = true,
+        scrollableContent = true,
         text = {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 680.dp),
-                contentPadding = PaddingValues(
-                    HarmonicDimens.compose_settings_dialog_content_padding,
-                ),
-            ) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (userAvatarsEnabled) {
-                            UserAvatar(
-                                author = userName,
-                                options = userAvatarOptions,
-                                modifier = Modifier.padding(end = 8.dp).size(28.dp),
-                            )
-                        } else {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_account_circle),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(end = 8.dp).size(28.dp),
-                            )
-                        }
-                        Text(
-                            text = userName,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
-                        )
-                    }
-                }
-                item {
-                    AnimatedContent(targetState = state, label = "user content") { current ->
-                        when (current) {
-                            UserDialogUiState.Loading -> UserLoadingPlaceholder()
-                            UserDialogUiState.Error -> UserLoadError(onRetry)
-                            is UserDialogUiState.Loaded -> UserLoadedContent(
-                                user = current.user,
-                                tag = tag,
-                                blocked = blocked,
-                                ownProfile = ownProfile,
-                                identityResolved = identityResolved,
-                                onOpenSubmissions = onOpenSubmissions,
-                                onEditTag = onEditTag,
-                                onToggleBlocked = onToggleBlocked,
-                                onReport = onReport,
-                                onOpenLink = onOpenLink,
-                            )
-                        }
-                    }
-                }
-            }
+            UserProfileDialogContent(
+                userName = userName, state = state, tag = tag, tagColor = tagColor,
+                blocked = blocked, ownProfile = ownProfile, identityResolved = identityResolved,
+                userAvatarsEnabled = userAvatarsEnabled, userAvatarOptions = userAvatarOptions,
+                onRetry = onRetry, onOpenSubmissions = onOpenSubmissions, onEditTag = onEditTag,
+                onToggleBlocked = onToggleBlocked, onReport = onReport, onOpenLink = onOpenLink,
+                listState = listState,
+            )
         },
         confirmButton = {},
         showButtons = false,
+        foreground = { nestedDialog?.invoke() },
     )
+}
+
+/** Shared dialog body also measured directly by constrained-window rendering tests. */
+@Composable
+internal fun UserProfileDialogContent(
+    userName: String,
+    state: UserDialogUiState,
+    tag: String,
+    tagColor: UserTagColor = UserTagColor.Theme,
+    blocked: Boolean = false,
+    ownProfile: Boolean = false,
+    identityResolved: Boolean = true,
+    userAvatarsEnabled: Boolean = false,
+    userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
+    onRetry: () -> Unit = {},
+    onOpenSubmissions: (String) -> Unit = {},
+    onEditTag: () -> Unit = {},
+    onToggleBlocked: (String) -> Unit = {},
+    onReport: (String) -> Unit = {},
+    onOpenLink: (String) -> Unit = {},
+    listState: LazyListState = rememberLazyListState(),
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("user-profile-content")
+            .heightIn(max = 680.dp),
+        state = listState,
+        contentPadding = PaddingValues(
+            HarmonicDimens.compose_settings_dialog_content_padding,
+        ),
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { heading() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (userAvatarsEnabled) {
+                    UserAvatar(
+                        author = userName,
+                        options = userAvatarOptions,
+                        modifier = Modifier.padding(end = 8.dp).size(28.dp),
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_account_circle),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 8.dp).size(28.dp),
+                    )
+                }
+                Text(
+                    text = userName,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                )
+            }
+        }
+        item {
+            AnimatedContent(targetState = state, label = "user content") { current ->
+                when (current) {
+                    UserDialogUiState.Loading -> UserLoadingPlaceholder()
+                    UserDialogUiState.Error -> UserLoadError(onRetry)
+                    is UserDialogUiState.Loaded -> UserLoadedContent(
+                        user = current.user,
+                        tag = tag,
+                        tagColor = tagColor,
+                        blocked = blocked,
+                        ownProfile = ownProfile,
+                        identityResolved = identityResolved,
+                        onOpenSubmissions = onOpenSubmissions,
+                        onEditTag = onEditTag,
+                        onToggleBlocked = onToggleBlocked,
+                        onReport = onReport,
+                        onOpenLink = onOpenLink,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -189,6 +255,14 @@ private fun UserLoadError(onRetry: () -> Unit) {
             fontFamily = ProductSansFontFamily,
             fontSize = 16.sp,
         )
+        Text(
+            text = "Check the username’s capitalization. HN profile names are case-sensitive.",
+            modifier = Modifier.padding(bottom = 10.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = ProductSansFontFamily,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+        )
         OutlinedButton(
             onClick = onRetry,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -213,6 +287,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
 private fun UserLoadedContent(
     user: UserInfoUi,
     tag: String,
+    tagColor: UserTagColor,
     blocked: Boolean,
     ownProfile: Boolean,
     identityResolved: Boolean,
@@ -222,6 +297,8 @@ private fun UserLoadedContent(
     onReport: (String) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
+    var showLinks by rememberSaveable(user.id) { mutableStateOf(false) }
+    var confirmingBlock by rememberSaveable(user.id, blocked) { mutableStateOf(false) }
     val linkColor = MaterialTheme.colorScheme.primary
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { annotation ->
@@ -235,58 +312,145 @@ private fun UserLoadedContent(
     ) {
         htmlAnnotatedString(user.about, linkColor, linkListener)
     }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = user.meta,
-            modifier = Modifier.padding(bottom = 4.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-        )
-        if (formattedAbout.isNotBlank()) {
-            SelectionContainer {
+    val detectedLinks = remember(formattedAbout) {
+        detectUserProfileLinks(formattedAbout.text).filter { candidate ->
+            formattedAbout.getLinkAnnotations(candidate.start, candidate.end).isEmpty()
+        }
+    }
+    val clickableAbout = remember(formattedAbout, detectedLinks, linkColor, linkListener) {
+        buildAnnotatedString {
+            append(formattedAbout)
+            detectedLinks.forEach { link ->
+                addLink(
+                    LinkAnnotation.Url(
+                        link.url,
+                        TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                        linkListener,
+                    ),
+                    link.start,
+                    link.end,
+                )
+            }
+        }
+    }
+    AnimatedContent(
+        targetState = confirmingBlock,
+        modifier = Modifier.fillMaxWidth(),
+        transitionSpec = {
+            (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(100)))
+                .using(SizeTransform(clip = false) { _, _ -> tween(260) })
+        },
+        label = "block user confirmation",
+    ) { confirmBlock ->
+        if (confirmBlock) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
-                    text = formattedAbout,
+                    "Block ${user.id}?",
+                    modifier = Modifier.semantics { heading() },
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = ProductSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                )
+                Text(
+                    "Their stories and comments will be hidden. You can unblock them from this profile or Settings → Filters and tags.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                 )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    TextButton(onClick = { confirmingBlock = false }) { Text("Cancel") }
+                    TextButton(onClick = { onToggleBlocked(user.id) }) {
+                        Text("Block user", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
-        }
-        if (user.hasSubmissions) {
-            UserOutlinedAction(
-                label = "Submissions",
-                icon = Res.drawable.ic_forum,
-                onClick = { onOpenSubmissions(user.id) },
-                modifier = Modifier.padding(top = 8.dp),
+        } else Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = user.meta,
+                modifier = Modifier.padding(bottom = 4.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = ProductSansFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
             )
-        }
+            if (formattedAbout.isNotBlank()) {
+                SelectionContainer {
+                    Crossfade(showLinks, animationSpec = tween(180), label = "Clickable profile links") { clickable ->
+                    Text(
+                        text = if (clickable) clickableAbout else formattedAbout,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                    )
+                    }
+                }
+            }
+            if (detectedLinks.isNotEmpty()) {
+                TextButton(onClick = { showLinks = !showLinks }, modifier = Modifier.align(Alignment.End)) {
+                    Icon(painterResource(Res.drawable.ic_link), contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(if (showLinks) "Plain text" else "Clickable links", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+            if (user.hasSubmissions) {
+                UserOutlinedAction(
+                    label = "Submissions",
+                    icon = Res.drawable.ic_forum,
+                    onClick = { onOpenSubmissions(user.id) },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
 
-        if (identityResolved && !ownProfile) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                UserIconAction(
-                    label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
-                    icon = Res.drawable.ic_sell,
-                    onClick = onEditTag,
-                    modifier = Modifier.weight(1f),
-                )
-                UserIconAction(
-                    label = if (blocked) "Unblock" else "Block",
-                    icon = Res.drawable.ic_block,
-                    onClick = { onToggleBlocked(user.id) },
-                    modifier = Modifier.weight(1f),
-                )
-                UserIconAction(
-                    label = "Report",
-                    icon = Res.drawable.ic_flag,
-                    onClick = { onReport(user.id) },
-                    modifier = Modifier.weight(1f),
-                )
+            if (identityResolved && !ownProfile) {
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                ) {
+                    val stacked = maxWidth < 240.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
+                    val actions: @Composable (Modifier) -> Unit = { actionModifier ->
+                        UserIconAction(
+                            label = "Set tag" + if (tag.isBlank()) "" else " ($tag)",
+                            icon = Res.drawable.ic_sell,
+                            onClick = onEditTag,
+                            modifier = actionModifier,
+                            tint = if (tag.isBlank()) MaterialTheme.colorScheme.onSurface else userTagColor(tagColor),
+                            horizontal = stacked,
+                        )
+                        UserIconAction(
+                            label = if (blocked) "Unblock" else "Block",
+                            icon = Res.drawable.ic_block,
+                            onClick = {
+                                if (blocked) onToggleBlocked(user.id) else confirmingBlock = true
+                            },
+                            modifier = actionModifier,
+                            horizontal = stacked,
+                        )
+                        UserIconAction(
+                            label = "Report",
+                            icon = Res.drawable.ic_flag,
+                            onClick = { onReport(user.id) },
+                            modifier = actionModifier,
+                            horizontal = stacked,
+                        )
+                    }
+                    if (stacked) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            actions(Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            actions(Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
     }
@@ -304,13 +468,13 @@ private fun UserOutlinedAction(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .heightIn(min = 56.dp),
         enabled = enabled,
     ) {
         Icon(painter = painterResource(icon), contentDescription = null)
         Text(
             text = label,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false),
             color = MaterialTheme.colorScheme.onSurface,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
@@ -325,25 +489,37 @@ private fun UserIconAction(
     icon: DrawableResource,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+    horizontal: Boolean = false,
 ) {
     TextButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 72.dp),
+        modifier = modifier.heightIn(min = if (horizontal) 56.dp else 72.dp),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(painter = painterResource(icon), contentDescription = null)
+        val text: @Composable (Modifier) -> Unit = { textModifier ->
             Text(
                 text = label,
-                modifier = Modifier.padding(top = 4.dp),
-                color = MaterialTheme.colorScheme.onSurface,
+                modifier = textModifier,
+                color = tint,
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
+                textAlign = if (horizontal) TextAlign.Start else TextAlign.Center,
+                maxLines = if (horizontal) 3 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (horizontal) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painter = painterResource(icon), contentDescription = null, tint = tint)
+                text(Modifier.padding(start = 12.dp).weight(1f))
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(painter = painterResource(icon), contentDescription = null, tint = tint)
+                text(Modifier.padding(top = 4.dp))
+            }
         }
     }
 }

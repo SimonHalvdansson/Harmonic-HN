@@ -7,6 +7,7 @@ import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
+import com.simon.harmonichackernews.presentation.CaptchaResponseGate
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.utils.HackerNewsCaptchaWebProtocol
 import com.simon.harmonichackernews.utils.HackerNewsLinks
@@ -67,6 +69,8 @@ internal fun CaptchaDialogContent(
     }
 
     var loading by remember(challenge) { mutableStateOf(true) }
+    var reading by remember(challenge) { mutableStateOf(false) }
+    val responseGate = remember(challenge) { CaptchaResponseGate() }
     var error by remember(challenge) { mutableStateOf<String?>(null) }
     var rendererGone by remember(challenge) { mutableStateOf(false) }
     var startupComplete by remember(challenge, context) { mutableStateOf(false) }
@@ -95,6 +99,9 @@ internal fun CaptchaDialogContent(
                     setAcceptThirdPartyCookies(this@webView, true)
                 }
                 webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                        !HackerNewsCaptchaWebProtocol.allowsNavigation(request.url.toString(), request.isForMainFrame)
+
                     override fun onPageFinished(view: WebView, url: String?) {
                         loading = false
                     }
@@ -131,6 +138,9 @@ internal fun CaptchaDialogContent(
         }
     }
 
+    DisposableEffect(responseGate) {
+        onDispose(responseGate::close)
+    }
     DisposableEffect(webView) {
         onDispose {
             webView?.let { view ->
@@ -146,24 +156,34 @@ internal fun CaptchaDialogContent(
     CaptchaDialogLayout(
         loading = loading,
         error = error,
-        onDismiss = onDismiss,
+        onDismiss = {
+            responseGate.close()
+            webView?.clearFocus()
+            keyboardController?.hide()
+            onDismiss()
+        },
         onContinue = {
             val currentWebView = webView?.takeUnless { rendererGone }
             if (currentWebView == null) {
                 error = webViewError
             } else {
+                val ticket = responseGate.beginRead() ?: return@CaptchaDialogLayout
+                reading = true
                 error = null
-                currentWebView.evaluateJavascript(HackerNewsCaptchaWebProtocol.RESPONSE_SCRIPT) { value ->
-                    val response = HackerNewsCaptchaWebProtocol.decodeResponse(value)
-                    if (response.isEmpty()) {
+                currentWebView.evaluateJavascript(HackerNewsCaptchaWebProtocol.TRUSTED_RESPONSE_SCRIPT) { value ->
+                    reading = false
+                    val response = responseGate.finishRead(ticket, HackerNewsCaptchaWebProtocol.decodeResponse(value))
+                    if (response == null) {
                         error = incompleteError
                     } else {
+                        currentWebView.clearFocus()
+                        keyboardController?.hide()
                         onCaptchaResponse(response)
                     }
                 }
             }
         },
-        continueEnabled = webView != null && !rendererGone,
+        continueEnabled = webView != null && !rendererGone && !reading,
         webContent = {
             if (webView != null && !rendererGone) {
                 AndroidView(

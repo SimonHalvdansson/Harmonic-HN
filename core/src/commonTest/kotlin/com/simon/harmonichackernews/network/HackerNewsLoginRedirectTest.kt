@@ -38,7 +38,7 @@ class HackerNewsLoginRedirectTest {
                     assertEquals(HttpMethod.Get, request.method)
                     assertEquals("/submit", request.url.encodedPath)
                     assertTrue(request.headers[HttpHeaders.Cookie].orEmpty().contains("user=session-token"))
-                    respond("<html><input name=\"fnid\" value=\"token\"></html>")
+                    respond("<html><span class='pagetop'><a id='me' href='user?id=Tester'>Tester</a></span><input name=\"fnid\" value=\"token\"></html>")
                 }
             }
         }) {
@@ -50,9 +50,10 @@ class HackerNewsLoginRedirectTest {
                 cookieClient = KtorHttpClient(transport),
             )
 
-            assertIs<HackerNewsActionResult.Success>(
+            val result = assertIs<HackerNewsActionResult.Success>(
                 repository.login(HackerNewsAccount("tester", "secret")),
             )
+            assertEquals("Tester", result.authenticatedUsername)
             assertEquals(2, requestCount)
         } finally {
             transport.close()

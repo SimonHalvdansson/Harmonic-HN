@@ -59,6 +59,8 @@ import com.simon.harmonichackernews.resources.library_logo_kmpalette
 import com.simon.harmonichackernews.resources.library_logo_kotlin
 import com.simon.harmonichackernews.resources.library_logo_ksoup
 import com.simon.harmonichackernews.resources.library_logo_ktor
+import com.simon.harmonichackernews.resources.library_logo_kuri
+import com.simon.harmonichackernews.resources.ic_translate
 import com.simon.harmonichackernews.resources.library_logo_litert_lm
 import com.simon.harmonichackernews.resources.library_logo_material_components
 import com.simon.harmonichackernews.resources.library_logo_materialistic
@@ -84,6 +86,7 @@ private val InsetLicenseIcons = setOf(
     "kotlinx.collections.immutable",
     "ML Kit GenAI APIs",
     "KaTeX math fonts",
+    "Unicode character data",
 )
 
 @Composable
@@ -294,6 +297,8 @@ internal fun licenseIconResource(name: String): DrawableResource? = when (name) 
     "kotlinx.io" -> Res.drawable.library_logo_kotlin
     "kotlinx.collections.immutable" -> Res.drawable.library_logo_kotlin
     "Ktor" -> Res.drawable.library_logo_ktor
+    "kuri" -> Res.drawable.library_logo_kuri
+    "Unicode character data" -> Res.drawable.ic_translate
     "Compose Multiplatform" -> Res.drawable.library_logo_compose_multiplatform
     "Haze" -> Res.drawable.library_logo_haze
     "Coil" -> Res.drawable.library_logo_coil

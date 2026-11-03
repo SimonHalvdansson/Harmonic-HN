@@ -5,13 +5,35 @@ import com.simon.harmonichackernews.network.*
 import com.simon.harmonichackernews.platform.*
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class LoginWorkflowTest {
+    @Test
+    fun restoredChallengeCannotSubmitOrClearAReplacementAccount() = runBlocking {
+        var requests = 0
+        val transport = HttpClient(MockEngine { requests++; respond("<input name='fnid' value='fixture'>") })
+        val accounts = MemoryAccounts()
+        val replacement = HackerNewsAccount("replacement-user", "replacement-password")
+        accounts.saveAccount(replacement)
+        val challenge = HackerNewsCaptchaChallenge(
+            "https://news.ycombinator.com/login", "fixture",
+            listOf(HackerNewsCaptchaFormField("acct", "old-user"), HackerNewsCaptchaFormField("pw", "old-password")), true,
+        )
+        try {
+            val workflow = LoginWorkflow(accounts, service(transport, accounts))
+            assertEquals("Hacker News account changed", assertIs<HackerNewsActionResult.Failure>(workflow.continueWithCaptcha(challenge, "fixture-response")).summary)
+            workflow.cancelCaptcha(challenge)
+            assertEquals(replacement, accounts.currentAccount)
+            assertEquals(0, requests)
+        } finally { transport.close() }
+    }
+
     @Test
     fun cancelledLoginDoesNotRetainUnverifiedAccount() = runBlocking {
         verifyCancellation(continuingCaptcha = false, replaceAccount = false)
@@ -34,13 +56,7 @@ class LoginWorkflowTest {
             awaitCancellation()
         })
         val accounts = MemoryAccounts()
-        val actions = KtorHackerNewsActionRepository(KtorHttpClient(transport), KtorHttpClient(transport))
-        val service = HackerNewsUserService(object : HackerNewsAuthenticatedSession {
-            override val actions: HackerNewsActionRepository = actions
-            override val authenticatedWeb: HackerNewsWebRepository = UnusedWeb
-            override val publicWeb: HackerNewsWebRepository = UnusedWeb
-            override fun reset() = Unit
-        }, accounts)
+        val service = service(transport, accounts)
         val pending = HackerNewsAccount("qa-unverified", "fake-password")
         val replacement = HackerNewsAccount("other-account", "other-password")
         try {
@@ -66,6 +82,16 @@ class LoginWorkflowTest {
         } finally {
             transport.close()
         }
+    }
+
+    private fun service(transport: HttpClient, accounts: MemoryAccounts): HackerNewsUserService {
+        val actions = KtorHackerNewsActionRepository(KtorHttpClient(transport), KtorHttpClient(transport))
+        return HackerNewsUserService(object : HackerNewsAuthenticatedSession {
+            override val actions: HackerNewsActionRepository = actions
+            override val authenticatedWeb: HackerNewsWebRepository = UnusedWeb
+            override val publicWeb: HackerNewsWebRepository = UnusedWeb
+            override fun reset() = Unit
+        }, accounts)
     }
 
     private class MemoryAccounts : ObservableHackerNewsAccountRepository {

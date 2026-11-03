@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 /** Opaque-to-clear iOS safe-area material that keeps scrolling content legible. */
 @Composable
 internal fun IosStatusBarProtection(color: Color) {
+    // Side indicators are protected by horizontal safe-area layout, not a top gradient.
+    if (iosWindowHasSideStatusBar()) return
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     if (statusBarHeight <= 0.dp) return
     Spacer(

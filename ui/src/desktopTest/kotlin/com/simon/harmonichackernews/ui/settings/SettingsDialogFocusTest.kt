@@ -84,4 +84,36 @@ class SettingsDialogFocusTest {
     private class TestWindowInfo : WindowInfo {
         override var isWindowFocused: Boolean by mutableStateOf(false)
     }
+
+    @Test
+    fun temporarilyDisabledAutofocusDoesNotStealFocusWhenAChildDialogCloses() = SwingUtilities.invokeAndWait {
+        val window = TestWindowInfo().apply { isWindowFocused = true }
+        var enabled by mutableStateOf(false)
+        val requester = FocusRequester()
+        val other = FocusRequester()
+        var firstFocused = false
+        val scene = ImageComposeScene(400, 800) {
+            CompositionLocalProvider(LocalWindowInfo provides window) {
+                RequestSettingsDialogFocus(requester, enabled = enabled)
+                BasicTextField(rememberTextFieldState(), Modifier.focusRequester(requester)
+                    .onFocusChanged { firstFocused = it.isFocused })
+                BasicTextField(rememberTextFieldState(), Modifier.focusRequester(other))
+            }
+        }
+        var time = 0L
+        fun frames() { repeat(6) { scene.render(time.also { time += 16_666_667L }).close() } }
+        try {
+            frames()
+            assertFalse(firstFocused)
+            enabled = true
+            frames()
+            assertTrue(firstFocused)
+            enabled = false
+            other.requestFocus()
+            frames()
+            enabled = true
+            frames()
+            assertFalse(firstFocused, "Returning from a child must respect the user's current focus")
+        } finally { scene.close() }
+    }
 }

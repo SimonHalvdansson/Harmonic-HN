@@ -6,10 +6,19 @@
 
 // WebKit owns the cursor while the pointer is inside its native surface. Hand it back when
 // crossing into Compose, whose AWT cursor may otherwise still believe it is already the arrow.
+typedef void (*HarmonicEscapeHandler)(void);
 @interface HarmonicWKWebView : WKWebView
 @property(nonatomic, strong) NSTrackingArea *harmonicTrackingArea;
+@property(nonatomic, assign) HarmonicEscapeHandler harmonicEscapeHandler;
 @end
 @implementation HarmonicWKWebView
+- (void)keyDown:(NSEvent *)event {
+    if (event.keyCode == 53 && self.harmonicEscapeHandler != NULL) {
+        self.harmonicEscapeHandler();
+        return;
+    }
+    [super keyDown:event];
+}
 - (void)updateTrackingAreas {
     [super updateTrackingAreas];
     if (self.harmonicTrackingArea != nil) [self removeTrackingArea:self.harmonicTrackingArea];
@@ -25,13 +34,30 @@
 }
 @end
 
+typedef int (*HarmonicNavigationPolicy)(const char *, int);
+
 @interface HarmonicWebViewHost : NSObject <WKNavigationDelegate, WKUIDelegate>
 @property(nonatomic, strong) WKWebView *webView;
 @property(nonatomic, strong) NSError *loadError;
 @property(nonatomic, copy) NSString *failedUrl;
+@property(nonatomic, assign) HarmonicNavigationPolicy navigationPolicy;
+@property(nonatomic, strong) id escapeMonitor;
 @end
 
 @implementation HarmonicWebViewHost
+
+- (BOOL)allowsNavigation:(WKNavigationAction *)action {
+    if (self.navigationPolicy == NULL) return YES;
+    BOOL mainFrame = action.targetFrame == nil || action.targetFrame.mainFrame;
+    return self.navigationPolicy(action.request.URL.absoluteString.UTF8String, mainFrame ? 1 : 0) != 0;
+}
+
+- (void)webView:(WKWebView *)webView
+    decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
+    decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    decisionHandler([self allowsNavigation:navigationAction]
+        ? WKNavigationActionPolicyAllow : WKNavigationActionPolicyCancel);
+}
 
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation {
     self.loadError = nil;
@@ -61,7 +87,7 @@
                     windowFeatures:(WKWindowFeatures *)windowFeatures {
     // Desktop article links commonly use target=_blank. Keep them inside Harmonic so the shared
     // toolbar and navigation history continue to describe the visible page.
-    if (navigationAction.targetFrame == nil) {
+    if (navigationAction.targetFrame == nil && [self allowsNavigation:navigationAction]) {
         [webView loadRequest:navigationAction.request];
     }
     return nil;
@@ -151,6 +177,8 @@ void harmonic_webview_destroy(void *hostPointer) {
     HarmonicOnMainSync(^{
         @autoreleasepool {
             HarmonicWebViewHost *host = (__bridge_transfer HarmonicWebViewHost *)hostPointer;
+            if (host.escapeMonitor != nil) [NSEvent removeMonitor:host.escapeMonitor];
+            host.escapeMonitor = nil;
             host.webView.navigationDelegate = nil;
             host.webView.UIDelegate = nil;
             [host.webView stopLoading];
@@ -259,6 +287,51 @@ void harmonic_webview_load_html(void *hostPointer, const char *html) {
     NSString *document = [NSString stringWithUTF8String:html];
     HarmonicOnMainSync(^{
         [HarmonicHost(hostPointer).webView loadHTMLString:document baseURL:nil];
+    });
+}
+
+__attribute__((visibility("default")))
+void harmonic_webview_load_html_with_base_url(void *hostPointer, const char *html, const char *baseUrl) {
+    if (hostPointer == NULL || html == NULL || baseUrl == NULL) return;
+    NSString *document = [NSString stringWithUTF8String:html];
+    NSURL *origin = [NSURL URLWithString:[NSString stringWithUTF8String:baseUrl]];
+    HarmonicOnMainSync(^{
+        WKWebView *webView = HarmonicHost(hostPointer).webView;
+        if (@available(macOS 12.0, *)) {
+            // Supply the generated document as an HTTPS response without sending a bootstrap request.
+            [webView loadSimulatedRequest:[NSURLRequest requestWithURL:origin] responseHTMLString:document];
+        } else {
+            [webView loadHTMLString:document baseURL:origin];
+        }
+    });
+}
+
+__attribute__((visibility("default")))
+void harmonic_webview_set_navigation_policy(void *hostPointer, HarmonicNavigationPolicy policy) {
+    if (hostPointer == NULL) return;
+    HarmonicOnMainSync(^{ HarmonicHost(hostPointer).navigationPolicy = policy; });
+}
+
+__attribute__((visibility("default")))
+void harmonic_webview_set_escape_handler(void *hostPointer, void (*handler)(void)) {
+    if (hostPointer == NULL) return;
+    HarmonicOnMainSync(^{
+        HarmonicWebViewHost *host = HarmonicHost(hostPointer);
+        ((HarmonicWKWebView *)host.webView).harmonicEscapeHandler = handler;
+        if (host.escapeMonitor != nil) [NSEvent removeMonitor:host.escapeMonitor];
+        __weak HarmonicWebViewHost *weakHost = host;
+        host.escapeMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown
+            handler:^NSEvent *(NSEvent *event) {
+                HarmonicWebViewHost *active = weakHost;
+                NSResponder *responder = active.webView.window.firstResponder;
+                if (event.keyCode == 53 && event.window == active.webView.window &&
+                    [responder isKindOfClass:[NSView class]] &&
+                    [(NSView *)responder isDescendantOf:active.webView]) {
+                    HarmonicEscapeHandler callback = ((HarmonicWKWebView *)active.webView).harmonicEscapeHandler;
+                    if (callback != NULL) { callback(); return nil; }
+                }
+                return event;
+            }];
     });
 }
 

@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.network.AlgoliaCommentRequest
 import com.simon.harmonichackernews.network.CommentThreadRepository
+import com.simon.harmonichackernews.network.CaptchaAwareHackerNewsActions
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.network.StoryFeedRepository
@@ -80,6 +81,7 @@ data class StoriesFeatureHost(
     val sessionState: StoriesSessionState,
     val platform: StoriesPlatformDependencies,
     val userSettings: UserSettings,
+    val captchaResponder: (suspend (HackerNewsCaptchaChallenge) -> String?)? = null,
 )
 
 data class CommentsFeatureHost(
@@ -92,6 +94,7 @@ data class CommentsFeatureHost(
     val awaitInitialPresentation: suspend () -> Unit = {},
     val openingRequest: AlgoliaCommentRequest? = null,
     val prepareInitialContent: suspend (com.simon.harmonichackernews.presentation.PortableCommentThreadState) -> Unit = {},
+    val captchaResponder: (suspend (HackerNewsCaptchaChallenge) -> String?)? = null,
 )
 
 /**
@@ -103,18 +106,29 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
 ): StoriesFeatureStore {
     val featureScope = host.scope.childFeatureScope()
     val storyCacheRuntime = createStoryCacheRuntime(featureScope)
+    val captchaActions = host.captchaResponder?.let { CaptchaAwareHackerNewsActions(hackerNewsUser, it) }
     val actions = SavedItemActionUseCase(
         repository = savedItems,
         nowMillis = nowMillis,
-        voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
-        favoriteRequest = hackerNewsUser::setFavorite,
+        voteRequest = { id, direction ->
+            captchaActions?.vote(id.toString(), direction) ?: hackerNewsUser.vote(id.toString(), direction)
+        },
+        favoriteRequest = { id, favorite ->
+            captchaActions?.setFavorite(id, favorite) ?: hackerNewsUser.setFavorite(id, favorite)
+        },
         accountRequest = { action ->
             when (action.kind) {
-                SavedItemActionKind.VOTE -> hackerNewsUser.voteForAccount(
+                SavedItemActionKind.VOTE -> if (captchaActions != null) captchaActions.voteForAccount(
+                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                ) else hackerNewsUser.voteForAccount(
                     action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
                     isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
                 )
-                SavedItemActionKind.FAVORITE -> hackerNewsUser.setFavoriteForAccount(
+                SavedItemActionKind.FAVORITE -> if (captchaActions != null) captchaActions.setFavoriteForAccount(
+                    action.accountName, action.itemId, action.targetPresent,
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                ) else hackerNewsUser.setFavoriteForAccount(
                     action.accountName, action.itemId, action.targetPresent,
                     isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
                 )
@@ -127,7 +141,7 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
         algoliaRepository = network.algoliaRepository,
         hackerNewsRepository = network.hackerNewsRepository,
         hackerNewsApi = network.hackerNewsApi,
-        userItemsLoader = hackerNewsUser,
+        userItemsLoader = captchaActions ?: hackerNewsUser,
         savedItemsRepository = savedItems,
         storyFeedLoader = StoryFeedRepository(
             network.hackerNewsRepository,
@@ -176,18 +190,29 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
     host: CommentsFeatureHost,
 ): CommentsFeatureStore {
     val featureScope = host.scope.childFeatureScope()
+    val captchaActions = host.captchaResponder?.let { CaptchaAwareHackerNewsActions(hackerNewsUser, it) }
     val actions = SavedItemActionUseCase(
         repository = savedItems,
         nowMillis = nowMillis,
-        voteRequest = { id, direction -> hackerNewsUser.vote(id.toString(), direction) },
-        favoriteRequest = hackerNewsUser::setFavorite,
+        voteRequest = { id, direction ->
+            captchaActions?.vote(id.toString(), direction) ?: hackerNewsUser.vote(id.toString(), direction)
+        },
+        favoriteRequest = { id, favorite ->
+            captchaActions?.setFavorite(id, favorite) ?: hackerNewsUser.setFavorite(id, favorite)
+        },
         accountRequest = { action ->
             when (action.kind) {
-                SavedItemActionKind.VOTE -> hackerNewsUser.voteForAccount(
+                SavedItemActionKind.VOTE -> if (captchaActions != null) captchaActions.voteForAccount(
+                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                ) else hackerNewsUser.voteForAccount(
                     action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
                     isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
                 )
-                SavedItemActionKind.FAVORITE -> hackerNewsUser.setFavoriteForAccount(
+                SavedItemActionKind.FAVORITE -> if (captchaActions != null) captchaActions.setFavoriteForAccount(
+                    action.accountName, action.itemId, action.targetPresent,
+                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+                ) else hackerNewsUser.setFavoriteForAccount(
                     action.accountName, action.itemId, action.targetPresent,
                     isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
                 )
@@ -204,7 +229,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         ),
         network.pollOptionsRepository,
         actions,
-        hackerNewsUser,
+        captchaActions ?: hackerNewsUser,
         performanceTrace = host.performanceTrace,
         threadPreparationDispatcher = Dispatchers.Default,
         prepareInitialContent = host.prepareInitialContent,

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.app
 import com.simon.harmonichackernews.network.IosNetworkComponent
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.IosPlatformBindings
+import com.simon.harmonichackernews.platform.IosArticleEmbeddingEngine
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
 import com.simon.harmonichackernews.settings.AppLaunchPreferenceKeys
@@ -55,6 +56,9 @@ class IosHarmonicAppBootstrap(
     val previewCache = openStore(runtime.cacheDirectory, PreviewCachePolicy.STORE_NAME)
     val fileAccess = openStore(runtime.cacheDirectory, StorageKeyPolicy.FILE_ACCESS_STORE)
     val network = IosNetworkComponent(userAgent)
+    private val articleEmbeddingEngine = bindings.nativeArticleEmbeddings?.let {
+        IosArticleEmbeddingEngine(it, Path(runtime.cacheDirectory, "local_ai").toString())
+    }
     private val localAi = bindings.nativeLiteRt?.takeIf { runtime.localModels == null }?.let {
         IosLocalAiEnvironment.create(
             preferences = preferences,
@@ -96,6 +100,7 @@ class IosHarmonicAppBootstrap(
             articleSnapshotStore = null,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels ?: localAi?.models,
+            articleEmbeddingEngine = articleEmbeddingEngine,
         ),
     )
 
@@ -106,6 +111,7 @@ class IosHarmonicAppBootstrap(
         localAi?.close()
         network.close()
         runBlocking(Dispatchers.Default) {
+            articleEmbeddingEngine?.close()
             listOf(preferences, appData, previewCache, fileAccess).forEach { it.awaitPersisted() }
         }
     }

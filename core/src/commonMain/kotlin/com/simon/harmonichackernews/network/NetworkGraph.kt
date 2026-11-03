@@ -100,7 +100,10 @@ class NetworkGraph internal constructor(
         get() = KtorHttpClient(client = { withContext(Dispatchers.Default) { authenticatedClientProvider.get() } })
 
     val authenticatedHackerNewsWebRepository: HackerNewsWebRepository
-        get() = KtorHackerNewsWebRepository(client = { withContext(Dispatchers.Default) { authenticatedClientProvider.get() } })
+        get() = KtorHackerNewsWebRepository(
+            client = { withContext(Dispatchers.Default) { authenticatedClientProvider.get() } },
+            useCookies = true,
+        )
 
     val hackerNewsActionRepository: HackerNewsActionRepository
         get() = KtorHackerNewsActionRepository(httpClient, httpClientWithCookies)

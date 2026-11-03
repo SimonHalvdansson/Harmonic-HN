@@ -654,6 +654,8 @@ fun FiltersTagsSettingsRoute(
     var refresh by remember { mutableIntStateOf(0) }
     var filterDialog by rememberSaveable { mutableStateOf<ContentFilterDialog?>(null) }
     var tagDialogUser by rememberSaveable { mutableStateOf<String?>(null) }
+    var legacyTagUser by rememberSaveable { mutableStateOf<String?>(null) }
+    var legacyBlockUser by rememberSaveable { mutableStateOf<String?>(null) }
     var profileUser by rememberSaveable { mutableStateOf<String?>(null) }
     FiltersTagsSettingsScreen(
         state = presenter.state(snapshot),
@@ -668,36 +670,97 @@ fun FiltersTagsSettingsRoute(
             presenter.setTag(it, "")
             refresh++
         },
+        onLegacyTagReviewRequested = { legacyTagUser = it },
+        onLegacyTagDeleteRequested = { userTags.discardLegacyTag(it); refresh++ },
         contentVersion = snapshot.hashCode() + refresh,
     )
-    filterDialog?.let { type ->
-        val content = type.content
-        StringListEditorDialog(
-            title = content.title,
-            subtitle = content.subtitle,
-            inputLabel = content.inputLabel,
-            initialItems = presenter.filterItems(content.type),
-            emptyMessage = content.emptyMessage,
-            parseInput = DelimitedListPolicy::parseCommaSeparated,
-            emptyInputError = "Enter a value",
-            disableSuggestions = content.type == ContentFilterType.USER,
-            onItemsChanged = { presenter.setFilterItems(content.type, it) },
+    when (filterDialog) {
+        ContentFilterDialog.StoryTitle -> TitleFilterRulesDialog(
+            initialRules = filters.titleRules(),
+            editable = filters.canEditTitleRules(),
+            onRulesChanged = { filters.setTitleRules(it); refresh++ },
             onDismiss = { filterDialog = null },
         )
+        ContentFilterDialog.Domain -> DomainFilterRulesDialog(
+            initialRules = filters.domainRules(),
+            editable = filters.canEditDomainRules(),
+            onRulesChanged = { filters.setDomainRules(it); refresh++ },
+            onDismiss = { filterDialog = null },
+        )
+        ContentFilterDialog.User -> {
+            BlockedUsersDialog(
+                users = filters.items(ContentFilterType.USER),
+                legacyUsers = filters.legacyUsers(),
+                onUsersChanged = { filters.setItems(ContentFilterType.USER, it); refresh++ },
+                onProfileRequested = { userName -> onProfileAccepted(userName); profileUser = userName },
+                onLegacyReviewRequested = { legacyBlockUser = it },
+                onLegacyDiscardRequested = { filters.discardLegacyUser(it); refresh++ },
+                nestedDialog = {
+                    profileUser?.let { userName ->
+                        profileDialog(userName, { profileUser = null }) { refresh++ }
+                    }
+                    legacyBlockUser?.let { legacy ->
+                        LegacyUsernameReviewDialog(
+                            title = "Confirm blocked user",
+                            savedUsername = legacy,
+                            onResolve = { exact ->
+                                if (filters.resolveLegacyUser(legacy, exact)) {
+                                    refresh++
+                                    null
+                                } else "Enter one exact username for this saved block."
+                            },
+                            onDismiss = { legacyBlockUser = null },
+                        )
+                    }
+                },
+                onDismiss = { filterDialog = null },
+            )
+        }
+        null -> Unit
     }
     tagDialogUser?.let { userName ->
         UserTagDialog(
             currentTag = presenter.tagFor(userName),
-            onSave = {
-                presenter.setTag(userName, it)
+            currentColor = userTags.colorFor(userName),
+            userName = userName,
+            onSave = { tag, color ->
+                presenter.setTag(userName, tag, color)
                 refresh++
                 tagDialogUser = null
             },
             onDismiss = { tagDialogUser = null },
         )
     }
-    profileUser?.let { userName ->
-        profileDialog(userName, { profileUser = null }) { refresh++ }
+    legacyTagUser?.let { legacyUsername ->
+        userTags.legacyTags().firstOrNull { it.username == legacyUsername }?.let { legacy ->
+            LegacyUsernameReviewDialog(
+                title = "Confirm tagged user",
+                savedUsername = legacy.username,
+                savedTag = legacy.tag,
+                onResolve = { exact ->
+                    when (userTags.resolveLegacyTag(legacy.username, exact)) {
+                        com.simon.harmonichackernews.settings.LegacyTagResolution.RESOLVED -> {
+                            refresh++
+                            null
+                        }
+                        com.simon.harmonichackernews.settings.LegacyTagResolution.TARGET_EXISTS ->
+                            "That exact user already has a tag. Both saved tags have been kept."
+                        com.simon.harmonichackernews.settings.LegacyTagResolution.INVALID_USERNAME ->
+                            "Enter the exact username."
+                        com.simon.harmonichackernews.settings.LegacyTagResolution.INVALID_DATA ->
+                            "The saved tag data could not be read. It has been kept unchanged."
+                        com.simon.harmonichackernews.settings.LegacyTagResolution.NOT_FOUND ->
+                            "This saved tag is no longer awaiting review."
+                    }
+                },
+                onDismiss = { legacyTagUser = null },
+            )
+        }
+    }
+    if (filterDialog == null) {
+        profileUser?.let { userName ->
+            profileDialog(userName, { profileUser = null }) { refresh++ }
+        }
     }
 }
 

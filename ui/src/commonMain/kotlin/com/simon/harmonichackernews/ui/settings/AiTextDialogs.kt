@@ -16,11 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -30,9 +30,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 data class AiBaseUrlPreset(
     val id: String,
@@ -58,17 +60,18 @@ fun AiSummaryTextDialog(
     capitalization: androidx.compose.ui.text.input.KeyboardCapitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
     maxLength: Int? = null,
 ) {
-    var value by remember(initialValue) { mutableStateOf(initialValue) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var value by rememberSaveable(title, hint, initialValue) { mutableStateOf(initialValue) }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+    val dismissal = remember { SettingsDialogDismissState() }
     val normalizedValue = if (trimValue) value.trim() else value
     val lengthError = maxLength?.takeIf { normalizedValue.length > it }?.let { "Use $it characters or fewer" }
     val displayedError = lengthError ?: error
 
     fun save() {
-        if (saving) return
+        if (saving || dismissal.isClosing) return
         val savedValue = if (trimValue) value.trim() else value
         if (maxLength != null && savedValue.length > maxLength) return
         if (!allowEmpty && savedValue.isEmpty()) {
@@ -77,30 +80,45 @@ fun AiSummaryTextDialog(
         }
         saving = true
         scope.launch {
-            error = onSave(savedValue)
-            saving = false
-            if (error == null) onDismiss()
+            try {
+                error = onSave(savedValue)
+                if (error == null) dismissal.request(onDismiss)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                error = failure.message ?: "Couldn’t save"
+            } finally {
+                saving = false
+            }
         }
     }
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    fun dismiss() { if (!saving) dismissal.request(onDismiss) }
 
     SettingsAlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::dismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = !saving && !dismissal.isClosing,
+            dismissOnClickOutside = !saving && !dismissal.isClosing,
+        ),
         title = { SettingsDialogTitle(title) },
         text = {
+            CompleteSettingsDialogDismissal(dismissal)
+            RequestSettingsDialogFocus(focusRequester, enabled = !dismissal.isClosing && !saving)
             OutlinedTextField(
                 value = value,
                 onValueChange = {
-                    value = it
-                    error = null
+                    if (!saving && !dismissal.isClosing) {
+                        value = it
+                        error = null
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateContentSize()
                     .padding(top = 4.dp)
                     .then(
-                        if (maxLines <= 1 && maxLength == null) {
+                        if (maxLines <= 1 && maxLength == null && displayedError == null) {
                             Modifier.height(
                                 HarmonicDimens.compose_settings_dialog_single_line_field_height,
                             )
@@ -134,11 +152,11 @@ fun AiSummaryTextDialog(
             )
         },
         confirmButton = {
-            SettingsDialogTextButton(onClick = { save() }, enabled = !saving && lengthError == null &&
+            SettingsDialogTextButton(onClick = { save() }, enabled = !saving && !dismissal.isClosing && lengthError == null &&
                 (maxLength == null || allowEmpty || normalizedValue.isNotEmpty())) { Text("Save") }
         },
         dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss, enabled = !saving) { Text("Cancel") }
+            SettingsDialogTextButton(onClick = ::dismiss, enabled = !saving && !dismissal.isClosing) { Text("Cancel") }
         },
         neutralButton = if (showReset) {
             {
@@ -147,7 +165,7 @@ fun AiSummaryTextDialog(
                         error = null
                         value = defaultValue
                     },
-                    enabled = !saving,
+                    enabled = !saving && !dismissal.isClosing,
                 ) {
                     Text("Reset")
                 }
@@ -165,26 +183,35 @@ fun AiSummaryBaseUrlDialog(
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var url by remember(initialUrl) { mutableStateOf(initialUrl) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var url by rememberSaveable(initialUrl) { mutableStateOf(initialUrl) }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
+    val dismissal = remember { SettingsDialogDismissState() }
 
     fun save() {
+        if (dismissal.isClosing) return
         val savedUrl = url.trim()
         if (savedUrl.isEmpty()) {
             error = "Enter a base URL"
             return
         }
-        onSave(savedUrl)
-        onDismiss()
+        dismissal.request {
+            onSave(savedUrl)
+            onDismiss()
+        }
     }
-
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    fun dismiss() = dismissal.request(onDismiss)
 
     SettingsAlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::dismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = !dismissal.isClosing,
+            dismissOnClickOutside = !dismissal.isClosing,
+        ),
         title = { SettingsDialogTitle("Base URL") },
         text = {
+            CompleteSettingsDialogDismissal(dismissal)
+            RequestSettingsDialogFocus(focusRequester, enabled = !dismissal.isClosing)
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Presets",
@@ -202,6 +229,7 @@ fun AiSummaryBaseUrlDialog(
                         val selected = normalizeBaseUrl(provider.baseUrl) == normalizeBaseUrl(url)
                         FilterChip(
                             selected = selected,
+                            enabled = !dismissal.isClosing,
                             onClick = {
                                 url = provider.baseUrl
                                 error = null
@@ -213,11 +241,14 @@ fun AiSummaryBaseUrlDialog(
                 OutlinedTextField(
                     value = url,
                     onValueChange = {
-                        url = it
-                        error = null
+                        if (!dismissal.isClosing) {
+                            url = it
+                            error = null
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize()
                         .padding(top = 18.dp)
                         .focusRequester(focusRequester),
                     label = { Text("Base URL") },
@@ -233,10 +264,10 @@ fun AiSummaryBaseUrlDialog(
             }
         },
         confirmButton = {
-            SettingsDialogTextButton(onClick = { save() }) { Text("Save") }
+            SettingsDialogTextButton(onClick = { save() }, enabled = !dismissal.isClosing) { Text("Save") }
         },
         dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) { Text("Cancel") }
+            SettingsDialogTextButton(onClick = ::dismiss, enabled = !dismissal.isClosing) { Text("Cancel") }
         },
     )
 }

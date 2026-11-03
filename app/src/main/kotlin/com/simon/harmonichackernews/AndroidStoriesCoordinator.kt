@@ -56,6 +56,7 @@ class AndroidStoriesCoordinator(
             sessionState = sessionState,
             platform = platformDependencies,
             userSettings = userSettings,
+            captchaResponder = navigation.scene.captchaRequests::awaitResponse,
         ),
     )
     private var appSettings = appComposition.settings.snapshot()

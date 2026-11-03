@@ -414,7 +414,7 @@ internal fun handleIosBack(
     when {
         navigation.failureRequest != null -> scene.navigation.dismissFailureDetailDialog()
         navigation.userRequest != null -> scene.navigation.dismissUserDialog()
-        navigation.captchaRequest != null -> scene.navigation.dismissCaptchaDialog()
+        navigation.captchaRequest != null -> navigation.captchaRequest?.let { scene.captchaRequests.cancel(it.serial) }
         navigation.loginDialogVisible -> scene.navigation.dismissLoginDialog()
         navigation.cacheStoriesDialogVisible -> scene.navigation.dismissCacheStoriesDialog()
         navigation.changelogDialogVisible -> scene.navigation.dismissChangelogDialog()
@@ -664,6 +664,7 @@ private fun IosStoriesContent(
                 sessionState = scene.sessions.stories,
                 platform = app.storiesPlatformDependencies(),
                 userSettings = app.userSettings,
+                captchaResponder = scene.captchaRequests::awaitResponse,
             ),
         )
     }
@@ -864,8 +865,8 @@ private fun IosSettingsShell(
 
     // Compose iOS can leave LookaheadDelegate alignment-line ownership stale when a
     // Navigation 3 list/detail scene changes its pane count during a live resize. Recreate only
-    // the scene machinery at the breakpoint; the navigation store stays outside this key so the
-    // selected section and detail stack survive both directions of the layout change.
+    // the scene machinery at the breakpoint. Destination ownership stays inside the shared
+    // shell and outside its reset boundary, preserving open dialogs and drafts as well.
     val scrollHistory = navigation.scrollHistory
     val density = LocalDensity.current
     val scrollLayout = Triple(isTwoPane, density.density, density.fontScale)
@@ -875,49 +876,48 @@ private fun IosSettingsShell(
             navigationInSideRail = railWidth > 0.dp,
             backButtonRequired = true,
         )) {
-            key(isTwoPane) {
-                SettingsNavigationShell(
-                    navigation = navigation,
-                    directive = directive,
-                    supportsTwoPane = supportsTwoPane,
-                    isFoldable = expandedPhone,
-                    paneProportion = if (expandedPhone) 0.45f else 0.4f,
-                    snapToCenter = false,
-                    tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
-                    onBackFromSettings = scene.navigation::closeSettings,
-                    onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
-                    animateDetailChanges = true,
-                    searchCapabilities = SettingsSearchCapabilities(
-                        webLinks = WebLinksSettingsCapabilities(adBlocking = false, closeWebViewOnBack = false),
-                        systemSettings = false, volumeNavigation = false, transparentStatusBar = false,
-                        twoPane = supportsTwoPane,
-                    ),
-                    renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
-                        SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
-                            SettingsListScreen(
-                                selectedSection = selectedSection,
-                                showSelection = showSelection,
-                                showDebugSettings = app.metadata.debugSettingsEnabled,
-                                loggedIn = settingsAccountState.accountOrNull != null,
-                                onBack = onBack,
-                                onSectionSelected = onSectionSelected,
-                            )
-                        }
-                    },
-                    renderDetail = { section, singlePane, onBack, onNavigate ->
-                        SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
-                            IosSettingsDetail(
-                                section,
-                                app,
-                                scene,
-                                singlePane,
-                                onBack,
-                                onNavigate,
-                            )
-                        }
-                    },
-                )
-            }
+            SettingsNavigationShell(
+                navigation = navigation,
+                directive = directive,
+                supportsTwoPane = supportsTwoPane,
+                sceneReflowKey = isTwoPane,
+                isFoldable = expandedPhone,
+                paneProportion = if (expandedPhone) 0.45f else 0.4f,
+                snapToCenter = false,
+                tabletPaneHorizontalPadding = if (isTwoPane && !expandedPhone) 24.dp else 0.dp,
+                onBackFromSettings = scene.navigation::closeSettings,
+                onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
+                animateDetailChanges = true,
+                searchCapabilities = SettingsSearchCapabilities(
+                    webLinks = WebLinksSettingsCapabilities(adBlocking = false, closeWebViewOnBack = false),
+                    systemSettings = false, volumeNavigation = false, transparentStatusBar = false,
+                    twoPane = supportsTwoPane,
+                ),
+                renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
+                    SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
+                        SettingsListScreen(
+                            selectedSection = selectedSection,
+                            showSelection = showSelection,
+                            showDebugSettings = app.metadata.debugSettingsEnabled,
+                            loggedIn = settingsAccountState.accountOrNull != null,
+                            onBack = onBack,
+                            onSectionSelected = onSectionSelected,
+                        )
+                    }
+                },
+                renderDetail = { section, singlePane, onBack, onNavigate ->
+                    SettingsScrollPage(scrollHistory, scrollLayout, section.route) {
+                        IosSettingsDetail(
+                            section,
+                            app,
+                            scene,
+                            singlePane,
+                            onBack,
+                            onNavigate,
+                        )
+                    }
+                },
+            )
         }
         if (railWidth > 0.dp) {
             IosSideRailUpButton(
