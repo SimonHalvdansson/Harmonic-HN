@@ -119,9 +119,11 @@ internal class IosCommentsHost(
 
     fun summarize(loadIfNeeded: Boolean) {
         summaryJob?.cancel()
+        val retryGeneration = if (loadIfNeeded) store.summaryPageTextRetryGeneration ?: return else null
         summaryJob = scope.launch {
             val text = if (controller.integratedWebView) prepareBrowser()?.readPageText(loadIfNeeded) else null
-            store.startSummary(text)
+            if (retryGeneration != null) store.completeSummaryPageTextRetry(retryGeneration, text)
+            else store.startSummary(text)
         }
     }
 }

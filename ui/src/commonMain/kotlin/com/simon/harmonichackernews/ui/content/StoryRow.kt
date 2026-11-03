@@ -25,6 +25,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -41,6 +43,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -125,7 +128,11 @@ data class StoryRowModel(
     // Decoded off-thread by the caller; do not mutate pixels after publishing the model.
     val previewImageBitmap: ImageBitmap? = null,
     val categoryLabels: List<String> = emptyList(),
+    val categoryIds: List<String> = emptyList(),
     val categoryInspection: StoryCategoryInspection? = null,
+    val authorName: String = "",
+    val authorTag: String = "",
+    val authorTagColor: com.simon.harmonichackernews.settings.UserTagColor = com.simon.harmonichackernews.settings.UserTagColor.Theme,
 )
 
 @Immutable
@@ -152,6 +159,7 @@ data class StoryRowStyle(
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     val mediumPreviewImageHeight: Dp = 88.dp,
     val transparentNonCardBackground: Boolean = false,
+    val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -197,6 +205,7 @@ fun StoryRow(
     pageBackground: Color = MaterialTheme.colorScheme.pageBackground,
     typographyOverride: ContentTypography? = null,
     cardPadding: PaddingValues? = null,
+    inspectCategories: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val typography = typographyOverride ?: rememberContentTypography(
@@ -489,14 +498,51 @@ fun StoryRow(
                                 0.dp
                             },
                             comments = comments,
+                            smallPreview = if (hasPreview && renderedPreviewMode == StoryPreviewMode.SMALL && categoriesWithMetadata(model, style)) ({
+                                Box(Modifier.combinedClickable(enabled = onLinkClick != null || trackedLinkLongClick != null,
+                                    onClick = { onLinkClick?.invoke() }, onLongClick = trackedLinkLongClick)) {
+                                    StorySmallPreviewImage(model = model, dimAlpha = dimAlpha,
+                                        onPreviewLoadFailed = handlePreviewLoadFailed, onPreviewLoadSuccess = handlePreviewLoadSuccess,
+                                        tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
+                                        extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
+                                        onPreviewTintExtracted = handlePreviewTintExtracted, capturePreviewSource = captureSourceContent,
+                                        itemGeometry = itemGeometry, sharedTransitionScope = null,
+                                        animatedVisibilityScope = null, sharedContentKey = null)
+                                }
+                            }) else null,
+                            metadata = if (categoriesWithMetadata(model, style)) ({
+                            Column(Modifier.fillMaxWidth()
+                                .testTag("story-details")
+                                .combinedClickable(enabled = onLinkClick != null || trackedLinkLongClick != null,
+                                    onClick = { onLinkClick?.invoke() }, onLongClick = trackedLinkLongClick)
+                                .padding(start = if (style.showIndex) 43.dp else 16.dp, end = 9.dp, bottom = 10.dp)) {
+                                val categoryColors = storyCategoryColors(if (style.tintCard) ({ background.value }) else null)
+                                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                                    if (!style.compact) StoryMeta(
+                                        model = model, style = renderedStyle, typography = typography, dimAlpha = dimAlpha,
+                                        tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
+                                        extractTint = style.tintCard && !previewAvailable && model.faviconTintArgb == null,
+                                        onTintExtracted = handleFaviconTintExtracted, animateChanges = animateChanges, wrapContent = true,
+                                        modifier = Modifier.captureStoryPreviewElement(enabled = captureSourceContent,
+                                            onPositioned = { itemGeometry.metaCoordinates = it }, onLayerChanged = { itemGeometry.metaLayer = it }),
+                                    )
+                                    model.categoryLabels.forEachIndexed { index, label ->
+                                        CategoryLabelText(label, categoryColors, Modifier.graphicsLayer { alpha = dimAlpha }, model.categoryIds.getOrNull(index))
+                                    }
+                                }
+                                StoryAuthorTag(model, typography, if (style.tintCard) ({ background.value }) else null)
+                            }
+                            }) else null,
                         ) {
                             StoryMainContent(
+                                inspectCategories = inspectCategories,
                                 tintedSurface = if (style.tintCard) ({ background.value }) else null,
                                 model = model,
                                 style = renderedStyle,
                                 typography = typography,
                                 hasSmallPreview = hasPreview &&
-                                    renderedPreviewMode == StoryPreviewMode.SMALL,
+                                    renderedPreviewMode == StoryPreviewMode.SMALL && !categoriesWithMetadata(model, style),
                                 dimAlpha = dimAlpha,
                                 onLinkClick = onLinkClick,
                                 onLinkLongClick = trackedLinkLongClick,
@@ -519,6 +565,7 @@ fun StoryRow(
                                 modifier = Modifier,
                             )
                         }
+
                     }
                 if (animate && hasPreview && !listItem) {
                     SharedTransitionLayout {
@@ -540,6 +587,8 @@ private fun StoryContentRow(
     railWidth: Dp?,
     contentMinHeight: Dp,
     comments: @Composable () -> Unit,
+    metadata: (@Composable () -> Unit)? = null,
+    smallPreview: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val commentsOnLeftProgress = if (animateChanges) {
@@ -569,6 +618,8 @@ private fun StoryContentRow(
         content = {
             content()
             comments()
+            if (metadata != null) Box { metadata() }
+            if (smallPreview != null) Box { smallPreview() }
         },
     ) { measurables, constraints ->
         val minimumRowHeight = maxOf(
@@ -579,35 +630,42 @@ private fun StoryContentRow(
             ?.roundToPx()
             ?: measurables[1].maxIntrinsicWidth(constraints.maxHeight)
         val constrainedRailWidthPx = railWidthPx.coerceIn(0, constraints.maxWidth)
-        val contentWidth = (constraints.maxWidth - constrainedRailWidthPx).coerceAtLeast(0)
-        val contentPlaceable = measurables[0].measure(
-            constraints.copy(
-                minWidth = contentWidth,
-                maxWidth = contentWidth,
-                minHeight = minimumRowHeight,
-            ),
-        )
-        val rowHeight = contentPlaceable.height
-        val railPlaceable = measurables[1].measure(
-            constraints.copy(
-                minWidth = constrainedRailWidthPx,
-                maxWidth = constrainedRailWidthPx,
-                minHeight = rowHeight,
-                maxHeight = rowHeight,
-            ),
-        )
-
-        layout(constraints.maxWidth, rowHeight) {
+        val smallWidth = if (smallPreview != null) 76.dp.roundToPx().coerceAtMost(
+            constraints.maxWidth - constrainedRailWidthPx) else 0
+        val contentWidth = (constraints.maxWidth - constrainedRailWidthPx - smallWidth).coerceAtLeast(0)
+        val metadataMeasurable = if (metadata != null) measurables[2] else null
+        val inlineMetadata = metadataMeasurable != null &&
+            metadataMeasurable.maxIntrinsicWidth(androidx.compose.ui.unit.Constraints.Infinity) <= contentWidth
+        val metadataWidth = if (inlineMetadata) contentWidth else constraints.maxWidth
+        val metadataPlaceable = metadataMeasurable?.measure(constraints.copy(
+            minWidth = metadataWidth, maxWidth = metadataWidth, minHeight = 0))
+        val contentPlaceable = measurables[0].measure(constraints.copy(
+            minWidth = contentWidth, maxWidth = contentWidth,
+            minHeight = if (inlineMetadata) 0 else minimumRowHeight))
+        val smallPlaceable = if (smallPreview != null) measurables[if (metadata != null) 3 else 2]
+            .measure(constraints.copy(minWidth = smallWidth, maxWidth = smallWidth, minHeight = 0)) else null
+        val rowHeight = maxOf(minimumRowHeight, smallPlaceable?.height ?: 0,
+            contentPlaceable.height + if (inlineMetadata) metadataPlaceable!!.height else 0)
+        val railPlaceable = measurables[1].measure(constraints.copy(
+            minWidth = constrainedRailWidthPx, maxWidth = constrainedRailWidthPx,
+            minHeight = rowHeight, maxHeight = rowHeight))
+        val totalHeight = rowHeight + if (inlineMetadata) 0 else (metadataPlaceable?.height ?: 0)
+        layout(constraints.maxWidth, totalHeight) {
             val contentX = (constrainedRailWidthPx * commentsOnLeftProgress).roundToInt()
-            val railX = (contentWidth * (1f - commentsOnLeftProgress)).roundToInt()
-            contentPlaceable.placeRelative(contentX, 0)
+            val railX = ((contentWidth + smallWidth) * (1f - commentsOnLeftProgress)).roundToInt()
+            val contentY = if (inlineMetadata) ((rowHeight - contentPlaceable.height - metadataPlaceable!!.height) / 2).coerceAtLeast(0) else 0
+            contentPlaceable.placeRelative(contentX, contentY)
             railPlaceable.placeRelative(railX, 0)
+            smallPlaceable?.placeRelative(contentX + contentWidth, (rowHeight - smallPlaceable.height) / 2)
+            metadataPlaceable?.placeRelative(if (inlineMetadata) contentX else 0,
+                if (inlineMetadata) contentY + contentPlaceable.height else rowHeight)
         }
     }
 }
 
 @Composable
 private fun StoryMainContent(
+    inspectCategories: Boolean,
     tintedSurface: (() -> Color)?,
     model: StoryRowModel,
     style: StoryRowStyle,
@@ -754,8 +812,8 @@ private fun StoryMainContent(
                     fontSize = titleSize.sp,
                     style = storyRowTextStyle,
                 )
-                StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
-                    inspection = model.categoryInspection)
+                if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
+                    inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds)
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
                     animate = animateContentChanges,
@@ -780,7 +838,7 @@ private fun StoryMainContent(
                     )
                 }
                 StoryVisibility(
-                    visible = !style.compact,
+                    visible = !style.compact && !categoriesWithMetadata(model, style),
                     animate = animateChanges,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
@@ -804,6 +862,7 @@ private fun StoryMainContent(
                             ),
                     )
                 }
+                if (!categoriesWithMetadata(model, style)) StoryAuthorTag(model, typography, tintedSurface)
             }
             if (animateContentChanges) {
                 AnimatedVisibility(
@@ -894,3 +953,17 @@ private fun StoryTextColumn(
 internal val storyRowTextStyle = TextStyle(
     textMotion = TextMotion.Static,
 )
+
+internal fun categoriesWithMetadata(model: StoryRowModel, style: StoryRowStyle): Boolean =
+    style.categoryTagLocation == com.simon.harmonichackernews.settings.CategoryTagLocation.METADATA && model.categoryLabels.isNotEmpty()
+
+@Composable
+private fun StoryAuthorTag(model: StoryRowModel, typography: ContentTypography, tintedSurface: (() -> Color)?) {
+    if (model.authorName.isBlank() || model.authorTag.isBlank()) return
+    val base = userTagColor(model.authorTagColor)
+    val accent = tintedSurface?.let { com.simon.harmonichackernews.ui.theme.contrastingColor(base, listOf(it()), 4.5f) } ?: base
+    Text(annotatedUserTagLabel("${model.authorName} (${model.authorTag})", model.authorTag, accent),
+        modifier = Modifier.padding(top = 2.dp).testTag("story-author-tag"),
+        color = MaterialTheme.colorScheme.onSurface, fontFamily = typography.storyMetaFamily,
+        fontSize = typography.storyMetaSize.sp, style = storyRowTextStyle)
+}

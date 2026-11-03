@@ -59,8 +59,9 @@ class StorySummaryRuntimeTest {
             assertFalse(message.contains("example.com"))
             assertEquals(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED,
                 summaryFailureMessage(mode, "Extraction failed: Article returned HTTP 401"))
-            assertEquals("Couldn't read the article for a summary. Check your connection and try again.",
+            assertEquals("The website took too long to return the article. Try again.",
                 summaryFailureMessage(mode, "Extraction failed: timeout"))
+            assertTrue(summaryFailureMessage(mode, "Extraction failed: Article returned HTTP 429").contains("HTTP 429"))
         }
     }
 

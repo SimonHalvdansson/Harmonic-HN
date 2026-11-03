@@ -80,6 +80,14 @@ class UserProfileLinksTest {
     }
 
     @Test
+    fun recognizesTypebookFromPlainBiographyText() {
+        val text = "I am building typebook.lol."
+        val link = detectUserProfileLinks(text).single()
+        assertEquals("https://typebook.lol", link.url)
+        assertEquals("typebook.lol", text.substring(link.start, link.end))
+    }
+
+    @Test
     fun emptyAndOrdinaryBiographiesHaveNoLinks() {
         assertTrue(detectUserProfileLinks("").isEmpty())
         assertTrue(detectUserProfileLinks("I write software and read Hacker News.").isEmpty())

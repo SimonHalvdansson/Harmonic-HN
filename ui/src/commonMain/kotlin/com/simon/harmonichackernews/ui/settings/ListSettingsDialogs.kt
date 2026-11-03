@@ -3,14 +3,8 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -386,8 +380,7 @@ fun StringListEditorDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("filter-list")
-                        .heightIn(max = 224.dp)
-                        .animateContentSize(tween(280, easing = FastOutSlowInEasing)),
+                        .heightIn(max = 224.dp),
                 ) {
                     if (items.isEmpty()) {
                         item(key = "empty-list-message", contentType = "empty-list-message") {
@@ -463,11 +456,7 @@ fun StringListEditorDialog(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = suggestions.isNotEmpty(),
-                    enter = expandVertically(tween(280, easing = FastOutSlowInEasing)) + fadeIn(tween(180)),
-                    exit = shrinkVertically(tween(280, easing = FastOutSlowInEasing)) + fadeOut(tween(140)),
-                ) {
+                if (suggestions.isNotEmpty()) {
                     Column {
                         Text(
                             text = suggestionsLabel,

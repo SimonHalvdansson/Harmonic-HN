@@ -43,7 +43,7 @@ class FilterListEditorTest {
             }
         }
         compose.waitForIdle()
-        fun listHeight() = compose.onNodeWithTag("filter-list").fetchSemanticsNode().boundsInRoot.height
+        fun listHeight() = compose.onNodeWithTag("settings-dialog-animated-content").fetchSemanticsNode().boundsInRoot.height
         val before = listHeight()
         compose.mainClock.autoAdvance = false
         try {
@@ -95,6 +95,7 @@ class FilterListEditorTest {
             }
         }
         compose.onNodeWithContentDescription("View profile for MixedCase").performClick()
+        compose.waitUntil(5_000) { profileUser.value != null }
         assertEquals("MixedCase", profileUser.value)
         compose.onNodeWithText("Profile for MixedCase").assertExists()
         compose.onNodeWithContentDescription("Unblock MixedCase").assertExists()

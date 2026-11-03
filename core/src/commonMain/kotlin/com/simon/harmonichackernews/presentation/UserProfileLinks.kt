@@ -82,5 +82,5 @@ private val BARE_PROFILE_LINK_SUFFIXES = setOf(
     "live", "news", "today", "codes", "computer", "uk", "us", "ca", "au", "nz", "de",
     "fr", "nl", "be", "ch", "at", "se", "no", "dk", "fi", "is", "ie", "it", "es",
     "pt", "eu", "in", "jp", "kr", "cn", "tw", "hk", "sg", "id", "br", "mx", "za",
-    "tv", "cc", "to", "fm", "gg", "im", "nu", "sh", "so", "ac", "vc",
+    "tv", "cc", "to", "fm", "gg", "im", "nu", "sh", "so", "ac", "vc", "lol",
 )

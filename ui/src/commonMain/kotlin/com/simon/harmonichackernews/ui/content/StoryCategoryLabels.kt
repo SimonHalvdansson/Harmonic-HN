@@ -5,11 +5,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +29,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -46,6 +49,7 @@ import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceConten
 import com.simon.harmonichackernews.ui.theme.contrastingColor
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.painterResource
 
 internal data class StoryCategoryColors(val container: Color, val foreground: Color)
 
@@ -71,11 +75,9 @@ internal fun StoryCategoryLabels(
     topSpacing: Dp = 2.dp,
     bottomSpacing: Dp = 4.dp,
     inspection: StoryCategoryInspection? = null,
+    categoryIds: List<String> = inspection?.labelScores?.map { it.categoryId }.orEmpty(),
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val colors = tintedSurface?.let { tintedStoryCategoryColors(it(), scheme.onSurface) }
-        ?: StoryCategoryColors(scheme.secondaryContainer,
-            contrastingColor(scheme.onSecondaryContainer, listOf(scheme.secondaryContainer), 4.5f))
+    val colors = storyCategoryColors(tintedSurface)
     var inspector by remember { mutableStateOf<CategoryInspectorSource?>(null) }
     var sourceCovered by remember(inspector) { mutableStateOf(false) }
     val geometries = remember { mutableMapOf<String, CategoryChipGeometry>() }
@@ -98,7 +100,7 @@ internal fun StoryCategoryLabels(
                                 inspector = CategoryInspectorSource(checkNotNull(visible.inspection), score.categoryId,
                                     colors, geometry)
                             })
-                    } else CategoryLabelText(label, colors)
+                    } else CategoryLabelText(label, colors, categoryId = categoryIds.getOrNull(index))
                 }
             }
         }
@@ -126,16 +128,22 @@ internal fun StoryCategoryLabels(
 private data class CategoryLabelContent(val labels: List<String>, val inspection: StoryCategoryInspection?)
 
 @Composable
-private fun CategoryLabelText(label: String, colors: StoryCategoryColors, modifier: Modifier = Modifier) {
-    Text(
-        text = label,
-        modifier = modifier.background(colors.container, RoundedCornerShape(5.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-        color = colors.foreground,
-        fontFamily = ProductSansFontFamily,
-        style = MaterialTheme.typography.labelSmall,
-        fontSize = 11.sp,
-    )
+internal fun storyCategoryColors(tintedSurface: (() -> Color)?): StoryCategoryColors {
+    val scheme = MaterialTheme.colorScheme
+    return tintedSurface?.let { tintedStoryCategoryColors(it(), scheme.onSurface) }
+        ?: StoryCategoryColors(scheme.secondaryContainer,
+            contrastingColor(scheme.onSecondaryContainer, listOf(scheme.secondaryContainer), 4.5f))
+}
+
+@Composable
+internal fun CategoryLabelText(label: String, colors: StoryCategoryColors, modifier: Modifier = Modifier, categoryId: String? = null) {
+    Row(modifier.background(colors.container, RoundedCornerShape(5.dp))
+        .padding(horizontal = 6.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(categorySymbol(categoryId)), null, Modifier.size(12.dp), tint = colors.foreground)
+        Text(text = label, color = colors.foreground, fontFamily = ProductSansFontFamily,
+            style = MaterialTheme.typography.labelSmall, fontSize = 11.sp)
+    }
 }
 
 @Composable
@@ -163,8 +171,9 @@ internal fun InspectableCategoryChip(
     }
     val capture = if (captureRequested) Modifier.captureSharedTransformSourceContent { geometry.layer = it } else Modifier
     Box(
-        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+        modifier = Modifier
             .testTag("category-label-$categoryId")
+            .clip(RoundedCornerShape(5.dp))
             .combinedClickable(
                 role = Role.Button,
                 onClickLabel = "Inspect $label category",
@@ -174,9 +183,9 @@ internal fun InspectableCategoryChip(
             )
             .semantics { contentDescription = "$label category, similarity $similarity out of 100" }
             .graphicsLayer { this.alpha = if (covered) 0f else 1f },
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.CenterStart,
     ) {
         CategoryLabelText(label, colors,
-            Modifier.onGloballyPositioned { geometry.bounds = it.boundsInWindow() }.then(capture).clearAndSetSemantics { })
+            Modifier.onGloballyPositioned { geometry.bounds = it.boundsInWindow() }.then(capture).clearAndSetSemantics { }, categoryId)
     }
 }

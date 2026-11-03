@@ -22,6 +22,8 @@ class StoredSettingsMutator(
 
     fun setStoryString(preference: StoryStringPreference, value: String) {
         when (preference) {
+            StoryStringPreference.CATEGORY_TAG_LOCATION -> store.putString(UserPreferenceKeys.CATEGORY_TAG_LOCATION,
+                CategoryTagLocation.fromStored(value).storedValue)
             StoryStringPreference.DISPLAY_STYLE -> store.putString(
                 UserPreferenceKeys.STORY_DISPLAY_STYLE,
                 DisplayStyle.forStories(
@@ -469,6 +471,7 @@ class StoredSettingsMutator(
 
     private companion object {
         val storyLayoutPreferenceKeys = setOf(
+            UserPreferenceKeys.CATEGORY_TAG_LOCATION,
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS,
             UserPreferenceKeys.STORY_TEXT_SIZE,

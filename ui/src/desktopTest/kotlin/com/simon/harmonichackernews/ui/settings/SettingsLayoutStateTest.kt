@@ -100,7 +100,7 @@ class SettingsLayoutStateTest {
             twoPane = true
             frames()
             assertSame(listIdentity, identities["list"])
-            assertEquals("$renderVersion:true", renderedInputs["list"])
+            assertEquals("$renderVersion:false", renderedInputs["list"], "Two-pane lists should not highlight the active section")
             assertEquals("list selection", values.getValue("list").value)
             assertTrue(navigation.navigateBack())
             frames()

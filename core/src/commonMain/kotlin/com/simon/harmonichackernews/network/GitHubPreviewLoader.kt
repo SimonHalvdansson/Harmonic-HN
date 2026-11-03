@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.data.LinkPreviewType
-import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.serialization.JsonObject
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpHeaders
@@ -41,17 +40,11 @@ internal class GitHubPreviewLoader(
             cache[target] = cached
             return@withLock cached
         }
-        val page = GitHubLinkPreview.parseGitHubPage(type, client.getTextOrThrow(url), target, url)
+        val html = client.getTextOrThrow(url)
         val preview = if (type == LinkPreviewType.GITHUB_REPOSITORY) {
-            LinkPreviewData.GitHub(RepoInfo(
-                name = target.repository,
-                owner = target.owner,
-                about = page.description,
-                pageTitle = page.title,
-                imageUrl = page.imageUrl,
-            ))
+            LinkPreviewData.GitHub(GitHubLinkPreview.parseGitHubRepositoryPage(html, target, url))
         } else {
-            LinkPreviewData.Rich(page)
+            LinkPreviewData.Rich(GitHubLinkPreview.parseGitHubPage(type, html, target, url))
         }
         remember(target, preview)
         preview

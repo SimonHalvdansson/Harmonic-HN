@@ -192,7 +192,9 @@ class CategoryInspectorTest {
         try {
             frames(5)
             val chip = nodes(scene).single { it.config.getOrNull(SemanticsProperties.TestTag) == "category-label-ai" }
-            assertTrue(chip.boundsInRoot.width >= 48 && chip.boundsInRoot.height >= 48)
+            assertTrue(chip.boundsInRoot.height < 32, "The chip should not reserve a 48dp-tall layout row")
+            assertTrue(chip.touchBoundsInRoot.width >= 48 && chip.touchBoundsInRoot.height >= 48,
+                "Compact inspector chips must retain expanded touch bounds")
             assertEquals(listOf("AI category, similarity 42 out of 100"),
                 chip.config.getOrNull(SemanticsProperties.ContentDescription))
             scene.sendPointerEvent(PointerEventType.Press, chip.boundsInRoot.center, timeMillis = time / 1_000_000, type = PointerType.Touch)
@@ -208,6 +210,50 @@ class CategoryInspectorTest {
             assertEquals(0, storyClicks)
             assertEquals(0, storyLongClicks)
         } finally { scene.close() }
+    }
+
+    @Test
+    fun storiesKeepCategoryLabelsCompactAndTapsBelongToTheStory() = SwingUtilities.invokeAndWait {
+        var storyClicks = 0
+        val sample = sampleCategoryInspection()
+        val bootstrap = com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap.inMemory("CategoryFeedTest")
+        val scene = ImageComposeScene(360, 200, Density(1f)) {
+            MaterialTheme {
+                StoryRow(
+                    model = SettingsStoryPreviewModel.copy(categoryLabels = sample.labels, categoryInspection = sample),
+                    style = com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(
+                        bootstrap.app.userSettings.story).toStoryRowStyle(
+                            StoryRowStyleContext(53, 18, false)),
+                    animateChanges = false, listItem = true,
+                    onLinkClick = { storyClicks++ },
+                )
+            }
+        }
+        var time = 0L
+        fun frames() = repeat(12) { scene.render(time.also { time += 16_666_667L }).close() }
+        try {
+            frames()
+            val labels = nodes(scene).filter {
+                it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "AI" } == true
+            }
+            val label = labels.single()
+            assertTrue(label.boundsInRoot.height < 32, "Stories labels must retain their compact typography")
+            assertTrue(nodes(scene).none {
+                it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("category-label-") == true
+            }, "Stories must not expose inspector actions")
+            scene.sendPointerEvent(PointerEventType.Press, label.boundsInRoot.center, timeMillis = time / 1_000_000, type = PointerType.Touch)
+            scene.sendPointerEvent(PointerEventType.Release, label.boundsInRoot.center, timeMillis = time / 1_000_000 + 1, type = PointerType.Touch)
+            frames()
+            assertEquals(1, storyClicks, "A label tap follows the story rather than opening an inspector")
+            System.getenv("HARMONIC_CATEGORY_INSPECTOR_EVIDENCE_DIR")?.let { directory ->
+                val output = File(directory).apply { mkdirs() }
+                scene.render(time).use { image ->
+                    image.encodeToData(EncodedImageFormat.PNG)!!.use { data ->
+                        File(output, "category-story-compact.png").writeBytes(data.bytes)
+                    }
+                }
+            }
+        } finally { scene.close(); bootstrap.close() }
     }
 
     private fun nodes(scene: ImageComposeScene): List<SemanticsNode> {

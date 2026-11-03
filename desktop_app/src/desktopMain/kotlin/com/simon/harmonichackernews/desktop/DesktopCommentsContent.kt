@@ -69,15 +69,30 @@ import com.simon.harmonichackernews.utils.HtmlTextUtils
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 private class DesktopCommentsHost(
     val binding: CommentsFeatureBinding,
+    private val scope: CoroutineScope,
 ) {
     val store get() = binding.store
     val controller get() = binding.controller
     var webViewSession: DesktopCommentsWebViewSession? by mutableStateOf(null)
     var previews: StoryLinkPreviewSession? = null
     var externalArticleOpened = false
+    private var summaryJob: Job? = null
+
+    fun summarize(loadIfNeeded: Boolean) {
+        summaryJob?.cancel()
+        val retryGeneration = if (loadIfNeeded) store.summaryPageTextRetryGeneration ?: return else null
+        summaryJob = scope.launch {
+            val text = webViewSession?.readPageText(loadIfNeeded)
+            if (retryGeneration != null) store.completeSummaryPageTextRetry(retryGeneration, text)
+            else store.startSummary(text)
+        }
+    }
 }
 
 @Composable
@@ -103,7 +118,9 @@ internal fun DesktopCommentsContent(
                 request = request,
                 scope = scope,
                 sessionState = viewModel.session,
+                canLoadArticleTextOnDemand = integratedBrowserAvailable,
             ),
+            scope,
         )
     }
     val featureState by host.store.state.collectAsState()
@@ -154,7 +171,8 @@ internal fun DesktopCommentsContent(
     }
     LaunchedEffect(host) {
         host.store.effects.collect { effect ->
-            host.binding.handleEffect(effect, scene) { platformEffect ->
+            host.binding.handleEffect(effect, scene,
+                onSummaryPageTextRetry = { host.summarize(loadIfNeeded = true) }) { platformEffect ->
                 handleDesktopCommentsPlatformEffect(
                     platformEffect,
                     app,
@@ -316,7 +334,7 @@ private fun handleDesktopCommentsPlatformEffect(
             scene.userMessages.show("Text copied to clipboard")
         }
         CommentsPlatformEffect.ReloadLinkPreviews -> host.previews?.loadNetworkPreviews()
-        CommentsPlatformEffect.Summarize -> host.store.startSummary(null)
+        CommentsPlatformEffect.Summarize -> host.summarize(loadIfNeeded = false)
         is CommentsPlatformEffect.OpenStory -> scene.navigation.openStory(effect.destination)
         is CommentsPlatformEffect.OpenExternalLink -> {
             if (

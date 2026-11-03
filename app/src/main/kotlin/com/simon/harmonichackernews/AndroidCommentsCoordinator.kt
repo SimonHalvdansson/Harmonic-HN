@@ -1070,12 +1070,14 @@ class AndroidCommentsCoordinator(
     }
 
     private fun retryComposeSummaryWithWebView() {
+        val generation = commentsStore.summaryPageTextRetryGeneration ?: return
+        val complete: (String?) -> Unit = { commentsStore.completeSummaryPageTextRetry(generation, it) }
         val controller = webViewController ?: run {
-            commentsStore.startSummary(null)
+            complete(null)
             return
         }
         controller.requestSummary(
-            AndroidCommentsWebViewController.PageTextCallback(commentsStore::startSummary),
+            AndroidCommentsWebViewController.PageTextCallback(complete),
         )
     }
 

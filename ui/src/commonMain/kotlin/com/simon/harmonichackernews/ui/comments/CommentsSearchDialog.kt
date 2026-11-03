@@ -1,8 +1,5 @@
 package com.simon.harmonichackernews.ui.comments
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Box
@@ -18,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -90,17 +86,8 @@ fun CommentsSearchDialog(
         text = {
             PlatformDisableDialogWindowAnimations()
             CompleteSettingsDialogDismissal(dismissal)
-            // animateContentSize clips its bounds; keep it inside the elevated surface so
-            // the dialog's shadow can draw outside those bounds throughout resizing.
-            Box(
-                Modifier.animateContentSize(
-                    animationSpec = tween(
-                        durationMillis = SearchDialogSizeDurationMillis,
-                        easing = FastOutSlowInEasing,
-                    ),
-                    alignment = Alignment.TopCenter,
-                ),
-            ) {
+            // The shared card owns measured-size changes and snaps to live IME constraints.
+            Box {
                 CommentsSearchContent(
                     searchTerm = searchTerm,
                     fieldValue = fieldValue,
@@ -204,5 +191,3 @@ fun CommentsSearchContent(
         )
     }
 }
-
-private const val SearchDialogSizeDurationMillis = 300

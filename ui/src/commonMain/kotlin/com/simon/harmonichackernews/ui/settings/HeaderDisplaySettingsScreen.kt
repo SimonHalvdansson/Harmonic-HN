@@ -646,7 +646,7 @@ private fun HeaderDisplayPreviewContent(
         val dismiss = { imageDismissRequest += 1 }
         PlatformDialogDimHost {
         Dialog(onDismissRequest = dismiss,
-            properties = platformDialogProperties(true, false, false)) {
+            properties = platformDialogProperties(true, false, false, scrimEnabled = false)) {
             PlatformDisableDialogWindowAnimations()
             PlatformDialogBackgroundDimAmount(0f)
             TransformOverlay(

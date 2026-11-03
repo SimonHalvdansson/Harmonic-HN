@@ -105,51 +105,53 @@ fun PredictiveBackDialog(
                 usePlatformDefaultWidth = properties.usePlatformDefaultWidth,
             ),
         ) {
-            // This must live inside the Dialog composition so Android registers it with the dialog's
-            // NavigationEventDispatcherOwner instead of the activity underneath.
-            DialogPredictiveBackHandler(
-                enabled = predictiveBackEnabled,
-                onProgress = { event ->
-                    swipeDirection = event.swipeDirection
-                    visualProgress.snapTo(dialogPredictiveBackGestureProgress(event.progress))
-                },
-                onCancelled = {
-                    visualProgress.animateTo(
-                        targetValue = 0f,
-                        animationSpec = tween(
-                            durationMillis = DialogPredictiveBackCancelDurationMillis,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    )
-                },
-                onCommitted = {
-                    visualProgress.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(
-                            durationMillis = DialogPredictiveBackCommitDurationMillis,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    )
-                    onDismissRequest()
-                },
-            )
+            PlatformDialogWindowMotion(suppressExit = visualProgress.value > 0f) {
+                // This must live inside the Dialog composition so Android registers it with the dialog's
+                // NavigationEventDispatcherOwner instead of the activity underneath.
+                DialogPredictiveBackHandler(
+                    enabled = predictiveBackEnabled,
+                    onProgress = { event ->
+                        swipeDirection = event.swipeDirection
+                        visualProgress.snapTo(dialogPredictiveBackGestureProgress(event.progress))
+                    },
+                    onCancelled = {
+                        visualProgress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(
+                                durationMillis = DialogPredictiveBackCancelDurationMillis,
+                                easing = FastOutSlowInEasing,
+                            ),
+                        )
+                    },
+                    onCommitted = {
+                        visualProgress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(
+                                durationMillis = DialogPredictiveBackCommitDurationMillis,
+                                easing = FastOutSlowInEasing,
+                            ),
+                        )
+                        onDismissRequest()
+                    },
+                )
 
-            val visuals = dialogPredictiveBackVisuals(
-                progress = visualProgress.value,
-                swipeDirection = swipeDirection,
-            )
-            PlatformDialogBackgroundDimAmount(visuals.backgroundDimAmountFraction)
-            Box(
-                modifier = Modifier.graphicsLayer {
-                    scaleX = visuals.scale
-                    scaleY = visuals.scale
-                    alpha = visuals.alpha
-                    translationX = with(density) { visuals.translationXDp.dp.toPx() }
-                    translationY = with(density) { visuals.translationYDp.dp.toPx() }
-                    transformOrigin = TransformOrigin.Center
-                },
-            ) {
-                content()
+                val visuals = dialogPredictiveBackVisuals(
+                    progress = visualProgress.value,
+                    swipeDirection = swipeDirection,
+                )
+                PlatformDialogBackgroundDimAmount(visuals.backgroundDimAmountFraction)
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = visuals.scale
+                        scaleY = visuals.scale
+                        alpha = visuals.alpha
+                        translationX = with(density) { visuals.translationXDp.dp.toPx() }
+                        translationY = with(density) { visuals.translationYDp.dp.toPx() }
+                        transformOrigin = TransformOrigin.Center
+                    },
+                ) {
+                    content()
+                }
             }
         }
     }
@@ -166,6 +168,7 @@ internal expect fun platformDialogProperties(
     dismissOnClickOutside: Boolean,
     usePlatformDefaultWidth: Boolean,
     usePlatformInsets: Boolean = true,
+    scrimEnabled: Boolean = true,
 ): DialogProperties
 
 @Composable
@@ -198,6 +201,10 @@ internal fun DialogPredictiveBackHandler(
 
 @Composable
 internal expect fun PlatformDialogBackgroundDimAmount(fraction: Float)
+
+/** Android owns the native window lifecycle; Skiko already retains its own enter/exit layers. */
+@Composable
+internal expect fun PlatformDialogWindowMotion(suppressExit: Boolean, content: @Composable () -> Unit)
 
 /** Container transforms own their motion; a native window animation would move the source twice. */
 @Composable

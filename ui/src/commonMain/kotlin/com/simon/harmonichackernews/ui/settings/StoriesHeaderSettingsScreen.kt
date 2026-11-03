@@ -36,6 +36,7 @@ import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_horizontal_split
+import com.simon.harmonichackernews.resources.ic_layers
 import com.simon.harmonichackernews.resources.ic_more_vert
 import com.simon.harmonichackernews.resources.settings_section_stories_header
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -66,6 +67,7 @@ fun StoriesHeaderSettingsRoute(repository: AppSettingsRepository, onBack: () -> 
         onSelectorChanged = repository::setStoryListSelector,
         onCompactHeaderChanged = { repository.setAppearanceBoolean(AppearanceBooleanPreference.COMPACT_HEADER, it) },
         onHeaderPillChanged = repository::setStoriesHeaderPill,
+        onPillElevationChanged = { repository.setStoryBoolean(com.simon.harmonichackernews.settings.StoryBooleanPreference.HEADER_PILL_ELEVATION, it) },
         onBack = onBack,
     )
 }
@@ -78,6 +80,7 @@ internal fun StoriesHeaderSettingsScreen(
     onCompactHeaderChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
     onHeaderPillChanged: (StoriesHeaderPill) -> Unit = {},
+    onPillElevationChanged: (Boolean) -> Unit = {},
 ) {
     SettingsPage(
         title = stringResource(Res.string.settings_section_stories_header),
@@ -110,6 +113,15 @@ internal fun StoriesHeaderSettingsScreen(
                     optionWeights = mapOf(StoriesHeaderPill.OFF to .65f, StoriesHeaderPill.SECONDARY to 1.2f),
                     selected = settings.headerPill,
                     onSelected = onHeaderPillChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Pill elevation",
+                    summary = "Add a soft shadow beneath the header pill",
+                    icon = Res.drawable.ic_layers,
+                    enabled = settings.headerPill != StoriesHeaderPill.OFF,
+                    checked = settings.headerPillElevation,
+                    onCheckedChange = onPillElevationChanged,
                 )
             }
         }

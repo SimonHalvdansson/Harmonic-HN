@@ -27,6 +27,47 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GitHubPreviewLoaderTest {
     @Test
+    fun rateLimitedDiscImageStudioPreviewKeepsRealSidebarMetadataAndCachesIt() = runTest {
+        val requests = mutableListOf<String>()
+        val client = HttpClient(MockEngine { request ->
+            requests += request.url.host
+            if (request.url.host == "api.github.com") respond(
+                """{"message":"API rate limit exceeded"}""", HttpStatusCode.Forbidden,
+                headersOf("x-ratelimit-remaining", "0"),
+            ) else respond(DISC_IMAGE_STUDIO_PAGE)
+        })
+        try {
+            val repository = KtorLinkPreviewRepository(client)
+            val info = repository.getGitHubInfo(DISC_IMAGE_STUDIO_URL)
+            assertEquals(3970, info.stars)
+            assertEquals(5, info.watching)
+            assertEquals(117, info.forks)
+            assertEquals("GPL-3.0", info.license)
+            assertEquals("https://avatars.githubusercontent.com/u/60653106?s=60&v=4", info.avatarUrl)
+            assertNull(info.about)
+            assertNull(info.pageTitle)
+            assertEquals(info, repository.getGitHubInfo(DISC_IMAGE_STUDIO_URL))
+            assertEquals(listOf("api.github.com", "github.com"), requests)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun successfulApiResponseWithNoDescriptionDoesNotInventOneOrRequestHtml() = runTest {
+        var calls = 0
+        val client = HttpClient(MockEngine { request ->
+            assertEquals("api.github.com", request.url.host)
+            calls++
+            respond("""{"name":"DiscImageStudio","owner":{"login":"JiaFeiMiao-K-Cat"},"description":null,"stargazers_count":3970}""")
+        })
+        try {
+            val info = KtorLinkPreviewRepository(client).getGitHubInfo(DISC_IMAGE_STUDIO_URL)
+            assertEquals(3970, info.stars)
+            assertNull(info.about)
+            assertEquals(1, calls)
+        } finally { client.close() }
+    }
+
+    @Test
     fun repositoryFallbackHasPageMetadataAndNoInventedStatistics() = runTest {
         val requests = mutableListOf<String>()
         val client = HttpClient(MockEngine { request ->

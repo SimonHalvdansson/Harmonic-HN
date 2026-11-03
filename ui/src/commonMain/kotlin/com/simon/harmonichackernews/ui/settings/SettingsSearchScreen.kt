@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -115,12 +116,13 @@ internal fun SettingsSearchButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun SettingsSearchPillContent(modifier: Modifier = Modifier) {
+private fun SettingsSearchPillContent(modifier: Modifier = Modifier, showIcon: Boolean = true) {
     Row(
         modifier.fillMaxWidth().height(SettingsSearchBarHeight).padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(Res.drawable.ic_search), contentDescription = null, Modifier.size(24.dp))
+        if (showIcon) SettingsSearchNavigationIcon(progress = { 0f })
+        else Spacer(Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
         Text(stringResource(Res.string.settings_search_title), fontFamily = ProductSansFontFamily, fontSize = 16.sp)
     }
@@ -128,7 +130,13 @@ private fun SettingsSearchPillContent(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun SettingsSearchDetailPlaceholder() {
-    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize()
+        .consumeSettingsPaneBounds()
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+        .padding(top = SettingsSearchBarHeight)
+        .imePadding()
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+        .padding(32.dp).testTag("settings-search-detail-empty"), contentAlignment = Alignment.Center) {
         Text(
             stringResource(Res.string.settings_search_choose_result),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -167,6 +175,7 @@ internal fun SettingsSearchScreen(
     val searchLabel = stringResource(Res.string.settings_search_title)
     val motion = navigation.searchTransition
     val colorScheme = MaterialTheme.colorScheme
+    val backLabel = stringResource(Res.string.settings_search_back)
     val topInset = WindowInsets.safeDrawing.getTop(LocalDensity.current)
     val resultCount = stringResource(
         if (results.size == 1) Res.string.settings_search_one_result else Res.string.settings_search_results,
@@ -221,11 +230,8 @@ internal fun SettingsSearchScreen(
                     unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
                 ),
                 placeholder = { Text(stringResource(Res.string.settings_search_title)) },
-                leadingIcon = {
-                    IconButton(onClick = { hideKeyboard(); onBack() }) {
-                        Icon(painterResource(Res.drawable.ic_arrow_back), stringResource(Res.string.settings_search_back))
-                    }
-                },
+                // Keep the field's layout, but draw one persistent icon above both text layers.
+                leadingIcon = { Spacer(Modifier.size(48.dp)) },
                 trailingIcon = if (state.searchQuery.isNotEmpty()) {
                     {
                         IconButton(onClick = { changeQuery(""); focusRequester.requestFocus() }) {
@@ -240,7 +246,21 @@ internal fun SettingsSearchScreen(
             )
             SettingsSearchPillContent(Modifier.graphicsLayer {
                 alpha = 1f - (motion.expansion() / 0.4f).coerceIn(0f, 1f)
-            }.clearAndSetSemantics { })
+            }.clearAndSetSemantics { }, showIcon = false)
+            IconButton(
+                onClick = { hideKeyboard(); onBack() },
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)
+                    .graphicsLayer {
+                        // Pill icon center: 32dp. Expanded field icon center: 28dp.
+                        translationX = 4.dp.toPx() * (1f - motion.expansion())
+                    }
+                    .semantics { contentDescription = backLabel },
+            ) {
+                SettingsSearchNavigationIcon(
+                    progress = motion.expansion,
+                    tint = { lerp(colorScheme.onSurface, colorScheme.onSurfaceVariant, motion.expansion()) },
+                )
+            }
         }
         Column(Modifier.weight(1f).fillMaxWidth().graphicsLayer {
             alpha = ((motion.expansion() - 0.2f) / 0.8f).coerceIn(0f, 1f)
@@ -250,7 +270,7 @@ internal fun SettingsSearchScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             if (displayed.isEmpty()) {
                 Column(
-                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 32.dp),
+                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 32.dp).testTag("settings-search-list-empty"),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

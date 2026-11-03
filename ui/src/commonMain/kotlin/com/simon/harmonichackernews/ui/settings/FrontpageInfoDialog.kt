@@ -107,6 +107,7 @@ internal fun FrontpageInfoDialog(
                 dismissOnBackPress = !platformDialogPredictiveBackSupported,
                 dismissOnClickOutside = false,
                 usePlatformDefaultWidth = false,
+                scrimEnabled = false,
             ),
         ) {
             PlatformDisableDialogWindowAnimations()

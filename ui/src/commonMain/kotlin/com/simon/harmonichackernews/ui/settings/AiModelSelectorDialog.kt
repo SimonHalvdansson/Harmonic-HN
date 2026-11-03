@@ -222,6 +222,7 @@ fun AiModelSelectorDialog(
     }
 
     ModalBottomSheet(
+        scrimColor = com.simon.harmonichackernews.ui.common.DialogScrimColor,
         onDismissRequest = { dismissWithAnimation() },
         sheetState = sheetState,
         dragHandle = {

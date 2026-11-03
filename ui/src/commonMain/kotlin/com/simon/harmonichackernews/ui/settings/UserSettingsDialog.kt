@@ -8,7 +8,6 @@ import com.simon.harmonichackernews.ui.content.userTagColor
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -187,7 +186,11 @@ internal fun UserProfileDialogContent(
             }
         }
         item {
-            AnimatedContent(targetState = state, label = "user content") { current ->
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = { (fadeIn(tween(120)) togetherWith fadeOut(tween(90))).using(null) },
+                label = "user content",
+            ) { current ->
                 when (current) {
                     UserDialogUiState.Loading -> UserLoadingPlaceholder()
                     UserDialogUiState.Error -> UserLoadError(onRetry)
@@ -338,7 +341,7 @@ private fun UserLoadedContent(
         modifier = Modifier.fillMaxWidth(),
         transitionSpec = {
             (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(100)))
-                .using(SizeTransform(clip = false) { _, _ -> tween(260) })
+                .using(null)
         },
         label = "block user confirmation",
     ) { confirmBlock ->

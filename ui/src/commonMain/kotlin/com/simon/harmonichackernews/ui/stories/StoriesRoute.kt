@@ -34,6 +34,7 @@ fun StoriesRoute(
     StoriesScreen(
         categorySettings = dependencies.articleCategorySettings,
         categoryRuntimeService = dependencies.articleCategories,
+        userTags = dependencies.userTags,
         controller = controller,
         mainListState = mainListState,
         showTapToUpdateButton = showTapToUpdateButton,

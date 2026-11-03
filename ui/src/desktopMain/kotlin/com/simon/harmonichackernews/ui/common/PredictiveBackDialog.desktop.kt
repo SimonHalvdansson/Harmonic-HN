@@ -13,11 +13,13 @@ internal actual fun platformDialogProperties(
     dismissOnClickOutside: Boolean,
     usePlatformDefaultWidth: Boolean,
     usePlatformInsets: Boolean,
+    scrimEnabled: Boolean,
 ): DialogProperties = DialogProperties(
     dismissOnBackPress = dismissOnBackPress,
     dismissOnClickOutside = dismissOnClickOutside,
     usePlatformDefaultWidth = usePlatformDefaultWidth,
     usePlatformInsets = usePlatformInsets,
+    scrimColor = if (scrimEnabled) DialogScrimColor else androidx.compose.ui.graphics.Color.Transparent,
 )
 
 @Composable
@@ -25,3 +27,6 @@ internal actual fun PlatformDialogBackgroundDimAmount(fraction: Float) = Unit
 
 @Composable
 internal actual fun PlatformDisableDialogWindowAnimations() = Unit
+
+@Composable
+internal actual fun PlatformDialogWindowMotion(suppressExit: Boolean, content: @Composable () -> Unit) = content()

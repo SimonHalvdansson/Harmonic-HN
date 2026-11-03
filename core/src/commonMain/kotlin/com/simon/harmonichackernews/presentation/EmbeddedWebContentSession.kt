@@ -272,6 +272,12 @@ class EmbeddedWebContentSession(
 
     fun currentPageTextRequestGeneration(): Int = pageTextRequests.generation
 
+    fun allowPageTextRetry(generation: Int): Boolean {
+        if (!isCurrentPageTextRequest(generation)) return false
+        pageTextReadGeneration = -1
+        return true
+    }
+
     fun isCurrentPageTextRequest(generation: Int): Boolean =
         pageTextRequests.isCurrent(generation, Unit)
 

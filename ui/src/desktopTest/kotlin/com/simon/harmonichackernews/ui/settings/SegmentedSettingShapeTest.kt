@@ -9,8 +9,40 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.BeforeTest
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.TextLayoutResult
+import javax.swing.SwingUtilities
 
 class SegmentedSettingShapeTest {
+    @Test
+    fun normalOptionsKeepTheOriginalFortyDpHeightWhileLargeTextCanGrow() = SwingUtilities.invokeAndWait {
+        for (scale in listOf(1f, 2f)) {
+            val scene = ImageComposeScene(360, 240, Density(1f, scale)) {
+                MaterialTheme {
+                    SegmentedSetting(options = listOf(0 to "Under title", 1 to "Metadata"), selected = 0, onSelected = {})
+                }
+            }
+            try {
+                repeat(12) { scene.render(it * 16_666_667L).close() }
+                fun walk(n: SemanticsNode): List<SemanticsNode> = listOf(n) + n.children.flatMap(::walk)
+                val nodes = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }
+                val options = nodes.filter { it.config.getOrNull(SemanticsProperties.Role) == Role.RadioButton }
+                assertEquals(2, options.size)
+                options.forEach {
+                    if (scale == 1f) assertEquals(40f, it.boundsInRoot.height, .1f,
+                        "Normal button groups must retain their original visual height")
+                    else assertTrue(it.boundsInRoot.height >= 40f)
+                }
+                nodes.forEach {
+                    val layouts = mutableListOf<TextLayoutResult>()
+                    it.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
+                    layouts.forEach { result -> assertTextContentFits(result, "${result.layoutInput.text.text} at ${scale}x") }
+                }
+            } finally { scene.close() }
+        }
+    }
     @BeforeTest
     fun initializeDesktopGraphics() {
         ImageComposeScene(1, 1).close()

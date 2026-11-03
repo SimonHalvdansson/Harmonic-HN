@@ -110,6 +110,13 @@ class CommentsFeatureStore internal constructor(
         publish()
     }
 
+    val summaryPageTextRetryGeneration: Long? get() = runtime.summaryPageTextRetryGeneration
+
+    fun completeSummaryPageTextRetry(generation: Long, text: String?) {
+        runtime.completeSummaryPageTextRetry(generation, text)
+        publish()
+    }
+
     fun updatePresentationCapabilities(capabilities: CommentsPresentationCapabilities) {
         runtime.updatePresentationCapabilities(capabilities)
         publish()

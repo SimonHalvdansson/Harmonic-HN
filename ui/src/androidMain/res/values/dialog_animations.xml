@@ -1,0 +1,6 @@
+<resources>
+    <style name="HarmonicDialogWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/harmonic_dialog_enter</item>
+        <item name="android:windowExitAnimation">@anim/harmonic_dialog_exit</item>
+    </style>
+</resources>

@@ -8,6 +8,18 @@ import kotlin.test.assertIs
 
 class StoriesHeaderPillTest {
     @Test
+    fun elevationDefaultsOnAndCanBeDisabledAndTransferred() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, emptyFlow())
+        assertEquals(true, repository.snapshot().story.headerPillElevation)
+        repository.setStoryBoolean(StoryBooleanPreference.HEADER_PILL_ELEVATION, false)
+        assertEquals(false, StoryDisplaySettings.from(repository.snapshot().story).headerPillElevation)
+        val restored = TestKeyValueStore()
+        assertIs<SettingsImportResult.Imported>(SettingsTransfer(restored, TestKeyValueStore())
+            .import(SettingsTransfer(store, TestKeyValueStore()).export()))
+        assertEquals(false, AppSettingsRepository(restored, emptyFlow()).snapshot().story.headerPillElevation)
+    }
+    @Test
     fun defaultsToOffAndUnknownStoredColorsFallBackToOff() {
         for (store in listOf(
             TestKeyValueStore(),

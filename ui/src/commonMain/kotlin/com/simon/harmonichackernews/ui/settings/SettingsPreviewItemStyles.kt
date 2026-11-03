@@ -6,6 +6,7 @@ import com.simon.harmonichackernews.ui.content.StoryRowStyle
 
 internal fun StoriesSettingsUiState.toPreviewStoryRowStyle(): StoryRowStyle = StoryRowStyle(
     previewImageMode = previewImageMode,
+    categoryTagLocation = categoryTagLocation,
     borderlessLargeImage = borderlessLargeImage,
     compact = compact,
     showPreviewText = showPreviewText,

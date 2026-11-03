@@ -315,6 +315,7 @@ private fun PortableStoriesSettings(
     val story = app.settings.snapshot().story
     StoriesSettingsRoute(
         repository = app.settings,
+        categorySettings = app.articleCategorySettings,
         previewModel = SettingsStoryPreviewModel.copy(
             tintFallbackArgb = HarmonicTheme.targetColorScheme.cardBackground.toArgb(),
         ),

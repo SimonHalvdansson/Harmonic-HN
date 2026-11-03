@@ -41,7 +41,7 @@ class ConstrainedFilterRulesTest {
                     harness.frames()
                 }
                 assertEquals(TitleFilterMatchMode.CONTAINS_TEXT, mode.value)
-                harness.reveal("Test a title", "title-filter-rule-content")
+                harness.scrollToBottom("title-filter-rule-content")
                 harness.evidence("title-filter-$width-${scale}x")
             } finally { harness.close() }
         }
@@ -76,7 +76,7 @@ class ConstrainedFilterRulesTest {
     }
 
     @Test
-    fun domainEditorAndIpv4ExplanationRemainReachableInShortWindows() = SwingUtilities.invokeAndWait {
+    fun domainEditorControlsRemainReachableInShortWindows() = SwingUtilities.invokeAndWait {
         for (width in listOf(208, 280, 480)) for (scale in listOf(1f, 2f)) {
             val harness = Harness(width, 240, scale) {
                 DomainFilterRuleEditorContent("127.0.0.1", "127.0.0.1", DomainFilterRule("127.0.0.1", false),
@@ -122,14 +122,15 @@ class ConstrainedFilterRulesTest {
                     it.config.getOrNull(SemanticsActions.OnClick) != null &&
                         it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == label } == true
                 }
-                if (action != null && action.boundsInRoot.height >= 47.9f &&
+                if (action != null && action.touchBoundsInRoot.height >= 47.9f &&
                     action.boundsInRoot.top >= -.5f && action.boundsInRoot.bottom <= height + .5f) return action
                 scroll(tag, 48f)
             }
             error("Unreachable $label at $width×$height")
         }
         fun assertTouchTarget(node: SemanticsNode) {
-            assertTrue(node.boundsInRoot.width >= 47.9f && node.boundsInRoot.height >= 47.9f, "Target must remain48dp: ${node.boundsInRoot}")
+            assertTrue(node.touchBoundsInRoot.width >= 47.9f && node.touchBoundsInRoot.height >= 47.9f,
+                "The expanded touch target must remain 48dp around the compact control: ${node.touchBoundsInRoot}")
             assertTrue(node.boundsInRoot.left >= -.5f && node.boundsInRoot.right <= width + .5f)
         }
         fun evidence(name: String) {

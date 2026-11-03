@@ -1,13 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,32 +59,31 @@ fun BlockedUsersDialog(
     var input by rememberSaveable { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     val dismissal = remember { SettingsDialogDismissState() }
+    // Opening a profile is a keyboard handoff, not disposal of this retained list dialog.
+    val childOpening = remember { SettingsDialogDismissState() }
+    val inputLocked = dismissal.isClosing || childOpening.isClosing
     val additions = input.split(',').map(String::trim).filter(String::isNotEmpty).distinct()
         .filterNot { it in users }
     fun add() {
-        if (additions.isEmpty() || dismissal.isClosing) return
+        if (additions.isEmpty() || inputLocked) return
         onUsersChanged(users + additions)
         input = ""
     }
-    fun dismiss() = dismissal.request(onDismiss)
-    // These are estimates for the animated viewport; rows themselves can grow when text wraps.
-    val activeRowHeight = with(LocalDensity.current) { 32.sp.toDp() + 8.dp }.coerceAtLeast(56.dp)
-    val legacyRowHeight = with(LocalDensity.current) { 56.sp.toDp() + 8.dp }.coerceAtLeast(72.dp)
-    val rowsHeight = activeRowHeight * users.size + legacyRowHeight * legacyUsers.size +
-        (if (users.isNotEmpty()) 32.dp else 0.dp) + (if (legacyUsers.isNotEmpty()) 100.dp else 0.dp)
-    val listHeight by animateDpAsState(
-        rowsHeight.coerceIn(72.dp, 296.dp),
-        tween(280, easing = FastOutSlowInEasing), label = "blocked users height",
-    )
+    fun dismiss() {
+        childOpening.cancel()
+        dismissal.request(onDismiss)
+    }
     SettingsAlertDialog(
         onDismissRequest = ::dismiss,
         modifier = modifier.testTag("blocked-users-dialog"),
         title = { SettingsDialogTitle("Blocked users") },
         scrollableContent = true,
+        compactSpacing = true,
         text = {
             PlatformDisableDialogWindowAnimations()
             CompleteSettingsDialogDismissal(dismissal)
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CompleteSettingsDialogDismissal(childOpening)
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Enter each account’s exact HN username. Profile lookup and blocking match the saved capitalization only.",
                     fontFamily = ProductSansFontFamily, fontSize = 14.sp,
@@ -97,7 +92,7 @@ fun BlockedUsersDialog(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = input,
-                        onValueChange = { if (!dismissal.isClosing) input = it },
+                        onValueChange = { if (!inputLocked) input = it },
                         label = { Text("Exact username") }, singleLine = true,
                         modifier = Modifier.weight(1f).focusRequester(focus),
                         keyboardOptions = KeyboardOptions(
@@ -106,33 +101,35 @@ fun BlockedUsersDialog(
                         ),
                         keyboardActions = KeyboardActions(onDone = { add() }),
                     )
-                    IconButton(onClick = ::add, enabled = additions.isNotEmpty() && !dismissal.isClosing,
+                    IconButton(onClick = ::add, enabled = additions.isNotEmpty() && !inputLocked,
                         modifier = Modifier.size(48.dp)) {
                         Icon(painterResource(Res.drawable.ic_add), "Block exact username")
                     }
                 }
-                LazyColumn(Modifier.fillMaxWidth().height(listHeight).testTag("blocked-users-list")) {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 296.dp).testTag("blocked-users-list")) {
                     if (users.isEmpty() && legacyUsers.isEmpty()) item {
-                        Text("No blocked users", Modifier.padding(vertical = 24.dp),
+                        Text("No blocked users", Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (users.isNotEmpty()) item(key = "active-heading") {
                         Text("${users.size} active", fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(bottom = 6.dp))
+                            modifier = Modifier.padding(bottom = 2.dp))
                     }
                     items(users, key = { "active:$it" }) { username ->
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 4.dp)
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .testTag("blocked-active-row:$username").animateItem(
-                                fadeInSpec = tween(160), placementSpec = tween(220), fadeOutSpec = tween(140),
+                                fadeInSpec = tween(160), placementSpec = tween(220), fadeOutSpec = null,
                             ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(username, Modifier.weight(1f), fontFamily = ProductSansFontFamily)
-                            IconButton(onClick = { onProfileRequested(username) }, modifier = Modifier.size(48.dp)) {
+                            IconButton(onClick = { childOpening.request { onProfileRequested(username) } },
+                                enabled = !inputLocked, modifier = Modifier.size(48.dp)) {
                                 Icon(painterResource(Res.drawable.ic_person), "View profile for $username")
                             }
-                            IconButton(onClick = { onUsersChanged(users.filterNot { it == username }) }, modifier = Modifier.size(48.dp)) {
+                            IconButton(onClick = { onUsersChanged(users.filterNot { it == username }) },
+                                enabled = !inputLocked, modifier = Modifier.size(48.dp)) {
                                 Icon(painterResource(Res.drawable.ic_close), "Unblock $username")
                             }
                         }
@@ -147,9 +144,9 @@ fun BlockedUsersDialog(
                     }
                     items(legacyUsers, key = { "legacy:$it" }) { username ->
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(vertical = 4.dp)
+                            Modifier.fillMaxWidth().heightIn(min = 56.dp)
                                 .testTag("blocked-legacy-row:$username").animateItem(
-                                fadeInSpec = tween(160), placementSpec = tween(220), fadeOutSpec = tween(140),
+                                fadeInSpec = tween(160), placementSpec = tween(220), fadeOutSpec = null,
                             ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -158,10 +155,12 @@ fun BlockedUsersDialog(
                                 Text("Needs exact username", fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            IconButton(onClick = { onLegacyReviewRequested(username) }, modifier = Modifier.size(48.dp)) {
+                            IconButton(onClick = { childOpening.request { onLegacyReviewRequested(username) } },
+                                enabled = !inputLocked, modifier = Modifier.size(48.dp)) {
                                 Icon(painterResource(Res.drawable.ic_edit), "Review saved block for $username")
                             }
-                            IconButton(onClick = { onLegacyDiscardRequested(username) }, modifier = Modifier.size(48.dp)) {
+                            IconButton(onClick = { onLegacyDiscardRequested(username) },
+                                enabled = !inputLocked, modifier = Modifier.size(48.dp)) {
                                 Icon(painterResource(Res.drawable.ic_close), "Remove saved block for $username")
                             }
                         }

@@ -149,6 +149,9 @@ class SettingsPresentersTest {
         assertEquals(listOf("alice", "Zed"), fixture.filtersTags.state().tags.map { it.username })
         assertEquals(listOf(UserTagColor.Blue, UserTagColor.Theme),
             fixture.filtersTags.state().tags.map { it.color })
+        assertEquals(2, fixture.filtersTags.state().domainFilterCount)
+        fixture.filtersTags.setFilterItems(ContentFilterType.STORY_TITLE, listOf("AI", "Kotlin"))
+        assertEquals(2, fixture.filtersTags.state().titleFilterCount)
         assertTrue(fixture.filtersTags.state().hideJobs)
         assertEquals(ContentFilterType.USER, ContentFilterDialog.User.content.type)
     }

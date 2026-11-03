@@ -96,6 +96,7 @@ fun StoriesScreen(
     onDismissWelcomeHint: () -> Unit = {},
     categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
     categoryRuntimeService: com.simon.harmonichackernews.categorization.ArticleCategoryRuntime? = null,
+    userTags: com.simon.harmonichackernews.settings.UserTagsRepository? = null,
 ) {
     val settings = controller.displaySettings ?: return
     val localHazeState = rememberHazeState()
@@ -226,6 +227,7 @@ fun StoriesScreen(
                 StoriesList(
                     categorySettings = categorySettings,
                     categoryRuntimeService = categoryRuntimeService,
+                    userTags = userTags,
                     controller = controller,
                     settings = settings,
                     stories = controller.mainStories,
@@ -250,6 +252,7 @@ fun StoriesScreen(
             StoriesList(
                 categorySettings = categorySettings,
                 categoryRuntimeService = categoryRuntimeService,
+                    userTags = userTags,
                 controller = controller,
                 settings = settings,
                 stories = controller.searchStories,

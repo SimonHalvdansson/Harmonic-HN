@@ -40,6 +40,7 @@ class StoriesSettingsPresenter(
         val story = settings.story
         return StoriesSettingsUiState(
             previewModel = previewModel,
+            categoryTagLocation = story.categoryTagLocation,
             previewImageMode = story.previewImageMode,
             borderlessLargeImage = story.borderlessLargePreviewImage,
             compact = story.compactView,
@@ -340,6 +341,8 @@ class FiltersTagsSettingsPresenter(
             legacyTags = userTags.legacyTags().map { TaggedUserUi(it.username, it.tag, it.color) },
             blockedUserCount = filters.items(ContentFilterType.USER).size,
             legacyBlockedUserCount = filters.legacyUsers().size,
+            titleFilterCount = filters.titleRules().size,
+            domainFilterCount = filters.domainRules().size,
             hideJobs = snapshot.story.hideJobs,
         )
 
@@ -390,6 +393,7 @@ val ContentFilterDialog.content: FilterDialogContent
 private val StoriesStringSetting.preference: StoryStringPreference
     get() = when (this) {
         StoriesStringSetting.DisplayStyle -> StoryStringPreference.DISPLAY_STYLE
+        StoriesStringSetting.CategoryTagLocation -> StoryStringPreference.CATEGORY_TAG_LOCATION
     }
 
 private fun hotnessLabel(value: Int): String = when (value) {

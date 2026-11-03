@@ -7,6 +7,62 @@ import kotlin.test.assertNull
 
 class GitHubLinkPreviewTest {
     @Test
+    fun discImageStudioFallbackUsesExactRepositoryMetadataWithoutInventingAnAboutSection() {
+        val target = GitHubLinkPreview.githubTarget(DISC_IMAGE_STUDIO_URL)!!
+        val info = GitHubLinkPreview.parseGitHubRepositoryPage(DISC_IMAGE_STUDIO_PAGE, target, DISC_IMAGE_STUDIO_URL)
+
+        assertEquals("JiaFeiMiao-K-Cat", info.owner)
+        assertEquals("DiscImageStudio", info.name)
+        assertEquals("https://avatars.githubusercontent.com/u/60653106?s=60&v=4", info.avatarUrl)
+        assertEquals(3970, info.stars)
+        assertEquals(5, info.watching)
+        assertEquals(117, info.forks)
+        assertEquals("GPL-3.0", info.license)
+        assertNull(info.about)
+        assertNull(info.pageTitle)
+        assertNull(info.language)
+    }
+
+    @Test
+    fun matchingSidebarMetadataCanUseNestedCodeViewPayload() {
+        val page = DISC_IMAGE_STUDIO_PAGE.replace(
+            "\"payload\":{\"sidebarAbout\":",
+            "\"payload\":{\"codeViewRepoRoute\":{\"overview\":{\"sidebarAboutData\":",
+        ).replace("}}</script>", "}}}}</script>")
+        val target = GitHubLinkPreview.githubTarget(DISC_IMAGE_STUDIO_URL)!!
+        val info = GitHubLinkPreview.parseGitHubRepositoryPage(page, target, DISC_IMAGE_STUDIO_URL)
+        assertEquals(3970, info.stars)
+        assertEquals("GPL-3.0", info.license)
+    }
+
+    @Test
+    fun unrelatedOrMalformedEmbeddedMetadataLeavesUnavailableFieldsUnknown() {
+        for (page in listOf(
+            DISC_IMAGE_STUDIO_PAGE.replace("\"repoName\":\"DiscImageStudio\"", "\"repoName\":\"another-repository\""),
+            """<meta property="og:title" content="Custom repository title"><script data-target="react-app.embeddedData">{bad json}</script>""",
+        )) {
+            val target = GitHubLinkPreview.githubTarget(DISC_IMAGE_STUDIO_URL)!!
+            val info = GitHubLinkPreview.parseGitHubRepositoryPage(page, target, DISC_IMAGE_STUDIO_URL)
+            assertNull(info.stars)
+            assertNull(info.watching)
+            assertNull(info.forks)
+            assertNull(info.license)
+            assertNull(info.avatarUrl)
+        }
+    }
+
+    @Test
+    fun zeroRepositoryCountsArePreservedButInvalidCountsStayUnknown() {
+        val page = DISC_IMAGE_STUDIO_PAGE.replace("\"stargazerCount\":3970", "\"stargazerCount\":0")
+            .replace("\"watcherCount\":5", "\"watcherCount\":-1")
+            .replace("\"forksCount\":117", "\"forksCount\":2147483648")
+        val info = GitHubLinkPreview.parseGitHubRepositoryPage(page, GitHubLinkPreview.githubTarget(DISC_IMAGE_STUDIO_URL)!!, DISC_IMAGE_STUDIO_URL)
+        assertEquals(0, info.stars)
+        assertNull(info.watching)
+        assertNull(info.forks)
+    }
+
+    @Test
     fun repositoryPageCanUseHtmlTitleAndDescriptionWithoutOpenGraph() {
         val url = "https://github.com/example/repo"
         val preview = GitHubLinkPreview.parseGitHubPage(
@@ -72,3 +128,12 @@ class GitHubLinkPreviewTest {
         assertNull(info.avatarUrl)
     }
 }
+
+// Minimal metadata fixture captured from HN story 50346849's destination on 2026-11-03.
+internal const val DISC_IMAGE_STUDIO_URL = "https://github.com/JiaFeiMiao-K-Cat/DiscImageStudio"
+internal const val DISC_IMAGE_STUDIO_PAGE = """<html><head>
+    <meta property="og:title" content="GitHub - JiaFeiMiao-K-Cat/DiscImageStudio">
+    <meta property="og:description" content="Contribute to JiaFeiMiao-K-Cat/DiscImageStudio development by creating an account on GitHub.">
+    <meta property="og:image" content="https://opengraph.githubassets.com/example/JiaFeiMiao-K-Cat/DiscImageStudio">
+    </head><body><script type="application/json" data-target="react-app.embeddedData">
+    {"payload":{"sidebarAbout":{"ownerLogin":"JiaFeiMiao-K-Cat","repoName":"DiscImageStudio","stargazerCount":3970,"watcherCount":5,"forksCount":117,"repo":{"ownerAvatarUrl":"https://avatars.githubusercontent.com/u/60653106?s=60\u0026v=4","license":{"spdxId":"GPL-3.0","name":"GNU General Public License v3.0"}}}}}</script></body></html>"""

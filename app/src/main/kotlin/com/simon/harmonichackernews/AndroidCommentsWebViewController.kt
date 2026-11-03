@@ -274,7 +274,7 @@ internal class AndroidCommentsWebViewController(
             webViewContainer?.visibility = if (pageVisible) View.VISIBLE else View.INVISIBLE
         }
         val view = webView ?: return
-        val pause = !hostStarted || (!pageVisible && !fullscreenVisible)
+        val pause = !hostStarted || (!pageVisible && !fullscreenVisible && pendingSummaryCallback == null)
         if (webViewPaused == pause) return
         webViewPaused = pause
         // pauseTimers() is process-wide and would also suspend other visible browser panes.
@@ -1146,7 +1146,13 @@ internal class AndroidCommentsWebViewController(
         }
 
         pendingSummaryCallback = callback
-        webContentSession.beginPageTextRequest()
+        updateWebViewVisibility()
+        val requestGeneration = webContentSession.beginPageTextRequest()
+        // Bound the whole recovery, including page load, redirects and JS verification.
+        webViewHandler.postDelayed(
+            { finishPendingSummary(requestGeneration, null, null) },
+            WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS,
+        )
 
         val currentWebView = webView
         if (lastPageFinishedGeneration == webContentLoad.state.generation) {
@@ -1161,17 +1167,14 @@ internal class AndroidCommentsWebViewController(
         }
 
         val generation = webContentSession.currentPageTextRequestGeneration()
-        val readStarted = webContentSession.readRequestedPageText(generation) { result ->
-            finishPendingSummary(generation, result, callback)
-        }
-        if (readStarted) {
-            // Loading the article has its own WebView lifecycle timeout. Only start the extraction
-            // timeout after onPageFinished; otherwise a slow page can lose the retry before it has
-            // produced any DOM text at all.
-            webViewHandler.postDelayed(
-                Runnable { finishPendingSummary(generation, "", null) },
-                WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS,
-            )
+        webContentSession.readRequestedPageText(generation) { result ->
+            if (WebContentPageText.isReady(result) || showingErrorPage) {
+                finishPendingSummary(generation, result.takeIf { WebContentPageText.isReady(it) }, callback)
+            } else if (webContentSession.allowPageTextRetry(generation)) {
+                webViewHandler.postDelayed({
+                    if (webContentSession.isCurrentPageTextRequest(generation)) completePendingSummaryIfReady(webView)
+                }, 250L)
+            }
         }
     }
 
@@ -1192,6 +1195,7 @@ internal class AndroidCommentsWebViewController(
             return
         }
         pendingSummaryCallback = null
+        updateWebViewVisibility()
         webViewHandler.post { callback.onResult(pageText) }
     }
 

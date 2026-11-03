@@ -52,10 +52,20 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import com.simon.harmonichackernews.ui.navigation.activityNavigationEasing
 
 // Material emphasized easing. One timeline drives bounds, uniform content scale and fade-through.
 internal val AskEasing = activityNavigationEasing()
+
+// The transcript may scroll, but unconsumed scroll/fling must never reach a containing sheet.
+private val AskScrollBoundary = object : NestedScrollConnection {
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+}
 
 @Composable
 internal fun rememberAskProgress(open: Boolean, backProgress: Float): State<Float> = animateFloatAsState(
@@ -85,7 +95,14 @@ internal fun AskContainer(
     val screenCorners = rememberScreenCorners()
     val windowSize = LocalWindowInfo.current.containerSize
     var viewport by remember { mutableStateOf<Rect?>(null) }
-    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInWindow() }) {
+    BoxWithConstraints(Modifier.fillMaxSize().nestedScroll(AskScrollBoundary)
+        .onGloballyPositioned { viewport = it.boundsInWindow() }) {
+        // The shrinking Ask surface reveals the source page during back. Keep that page
+        // slightly subdued; draw-time progress avoids recomposing the conversation per frame.
+        val scrim = MaterialTheme.colorScheme.scrim
+        Canvas(Modifier.fillMaxSize()) {
+            drawRect(scrim, alpha = askBackgroundDimAlpha(progress()))
+        }
         Box(Modifier.fillMaxSize().consumeAllPointerGestures())
         val density = LocalDensity.current
         val width = with(density) { maxWidth.toPx() }

@@ -135,6 +135,16 @@ object WebContentCopy {
 
 /** Shared page-text JavaScript and result decoding for every native browser adapter. */
 object WebContentPageText {
+    /** Verification interstitials may finish loading before JavaScript replaces them with content. */
+    fun isReady(text: String?): Boolean {
+        val value = text?.trim().orEmpty()
+        if (value.isEmpty()) return false
+        if (value.length > 8_000) return true
+        return listOf("Vercel Security Checkpoint", "We're verifying your browser",
+            "Checking your browser before accessing", "Enable JavaScript and cookies to continue",
+            "Performing security verification", "Verify you are human").none { value.contains(it, ignoreCase = true) }
+    }
+
     // This is deliberately much larger than the local summarizer's normal input while still
     // bounding the JSON string copied from a browser renderer into the host process.
     const val MAX_PAGE_TEXT_CHARS = 256 * 1024

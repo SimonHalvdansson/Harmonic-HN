@@ -168,7 +168,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                     NavigationSwitchSettingRow(
                         title = preferences.name(category),
                         summary = counts[category.id]?.let(::categoryTrainingCount),
-                        icon = Res.drawable.ic_label,
+                        icon = com.simon.harmonichackernews.ui.content.categorySymbol(category.id),
                         onClick = { editing = category.id },
                         checked = category.id in preferences.selected,
                         onCheckedChange = { repository.setSelected(category.id, it) },

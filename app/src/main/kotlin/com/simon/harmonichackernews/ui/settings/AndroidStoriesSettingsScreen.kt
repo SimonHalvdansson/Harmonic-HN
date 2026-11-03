@@ -18,6 +18,7 @@ fun AndroidStoriesSettingsScreen(
     val story = repository.snapshot().story
     StoriesSettingsRoute(
         repository = repository,
+        categorySettings = LocalHarmonicUiDependencies.current.articleCategorySettings,
         previewModel = SettingsStoryPreviewModel,
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,

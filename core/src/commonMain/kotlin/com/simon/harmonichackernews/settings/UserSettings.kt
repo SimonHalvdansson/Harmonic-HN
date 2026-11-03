@@ -59,6 +59,8 @@ data class StoryPreferences(
     val frontpageOrder: List<String> = emptyList(),
     val swipeToHide: Boolean = false,
     val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
+    val headerPillElevation: Boolean = true,
+    val categoryTagLocation: CategoryTagLocation = CategoryTagLocation.TITLE,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

@@ -18,6 +18,7 @@ internal fun StoryDisplaySettings.toStoryRowStyle(
     context: StoryRowStyleContext,
 ): StoryRowStyle = StoryRowStyle(
     previewImageMode = previewImageMode,
+    categoryTagLocation = categoryTagLocation,
     borderlessLargeImage = borderlessLargePreviewImage,
     compact = compactView,
     showPreviewText = showPreviewText && context.previewTextAvailable,

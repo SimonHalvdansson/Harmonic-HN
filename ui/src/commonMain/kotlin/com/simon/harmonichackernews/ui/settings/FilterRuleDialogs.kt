@@ -3,7 +3,6 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
@@ -158,6 +157,7 @@ private fun FilterRulesDialog(
         modifier = Modifier.testTag("filter-rules-dialog"),
         title = { SettingsDialogTitle(title) },
         scrollableContent = true,
+        compactSpacing = true,
         text = {
             FilterRuleListContent(description, rows, emptyMessage, editable, onAdd, onEdit, onRemove)
         },
@@ -190,31 +190,29 @@ internal fun FilterRuleListContent(
             Text("Add rule", fontFamily = ProductSansFontFamily)
         }
         LazyColumn(
-            // The outer scroll body gives this list stable constraints while the IME
-            // moves. Animate its natural content height, including wrapped mode labels.
-            Modifier.fillMaxWidth().testTag("filter-rules-list").padding(top = 8.dp).heightIn(max = 380.dp)
-                .animateContentSize(tween(280, easing = FastOutSlowInEasing)),
+            // The shared card animates this natural height, including wrapped mode labels.
+            Modifier.fillMaxWidth().testTag("filter-rules-list").padding(top = 8.dp).heightIn(max = 380.dp),
         ) {
             if (rows.isEmpty()) item {
-                Box(Modifier.fillMaxWidth().height(88.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Text(if (editable) emptyMessage else "Saved rules unavailable", color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = ProductSansFontFamily, fontSize = 15.sp)
                 }
             }
             itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 76.dp)
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp)
                         // A disappearing item's retained layer would keep the wrap-content
                         // viewport tall; the list's size animation owns the removal instead.
                         .animateItem(tween(160), tween(280, easing = FastOutSlowInEasing), fadeOutSpec = null)
-                        .clickable(enabled = editable) { onEdit(index) }.padding(vertical = 8.dp),
+                        .clickable(enabled = editable) { onEdit(index) }.padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(row.title, fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 20.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(row.mode, fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                     }
                     IconButton(onClick = { onEdit(index) }, enabled = editable, modifier = Modifier.size(48.dp)) {
                         Icon(painterResource(Res.drawable.ic_edit), "Edit ${row.title}")
@@ -252,6 +250,7 @@ fun TitleFilterRuleEditor(
         modifier = Modifier.testTag("title-filter-rule-editor"),
         title = { SettingsDialogTitle("Title filter") },
         scrollableContent = true,
+        compactSpacing = true,
         text = {
             PlatformDisableDialogWindowAnimations()
             CompleteSettingsDialogDismissal(dismissal)
@@ -291,6 +290,7 @@ fun DomainFilterRuleEditor(
         modifier = Modifier.testTag("domain-filter-rule-editor"),
         title = { SettingsDialogTitle("Domain filter") },
         scrollableContent = true,
+        compactSpacing = true,
         text = {
             PlatformDisableDialogWindowAnimations()
             CompleteSettingsDialogDismissal(dismissal)
@@ -319,8 +319,6 @@ internal fun TitleFilterRuleEditorContent(
     focusRequester: FocusRequester,
     onSave: () -> Unit,
 ) {
-    var customTest by rememberSaveable { mutableStateOf(false) }
-    var testTitle by rememberSaveable { mutableStateOf("") }
     val rule = remember(text, mode) { TitleFilterRule(text.trim(), mode) }
     val examples = remember(rule) { titleFilterPreviewExamples(rule) }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("title-filter-rule-content"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -331,14 +329,17 @@ internal fun TitleFilterRuleEditorContent(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSave() }),
         )
-        Text("Match", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium)
-        SegmentedSetting(
-            options = TitleFilterMatchMode.entries.map { it to it.label },
-            selected = mode,
-            enabled = enabled,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            onSelected = onModeChanged,
-        )
+        Column {
+            Text("Match", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium)
+            SegmentedSetting(
+                options = TitleFilterMatchMode.entries.map { it to it.label },
+                selected = mode,
+                enabled = enabled,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentPadding = PaddingValues(top = 4.dp),
+                onSelected = onModeChanged,
+            )
+        }
         Text(
             if (mode == TitleFilterMatchMode.WORDS_PHRASE) {
                 "Matches whole words or a literal phrase, ignoring capitalization. Punctuation stays as typed; spaces can vary."
@@ -349,15 +350,6 @@ internal fun TitleFilterRuleEditorContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         RulePreview(examples, if (text.isBlank()) "Type a rule to see how it matches." else null)
-        SettingsDialogTextButton(onClick = { customTest = !customTest }, enabled = enabled,
-            modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(if (customTest) "Hide custom test" else "Test a title")
-        }
-        if (customTest) {
-            OutlinedTextField(value = testTitle, onValueChange = { testTitle = it },
-                label = { Text("Title to test") }, modifier = Modifier.fillMaxWidth().testTag("title-filter-custom-test"))
-            if (testTitle.isNotBlank()) RulePreviewResult(testTitle, rule.text.isNotBlank() && rule.matches(testTitle))
-        }
     }
 }
 
@@ -383,29 +375,21 @@ internal fun DomainFilterRuleEditorContent(
             value = text, onValueChange = { if (enabled) onTextChanged(it) },
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("domain-filter-rule-input"),
             label = { Text("Domain or URL") }, singleLine = true, isError = text.isNotBlank() && host == null,
-            supportingText = {
-                Text(if (text.isNotBlank() && host == null) "Enter a valid domain or http(s) URL without login details."
-                else "Paste a full URL or enter a domain.")
-            },
+            supportingText = if (text.isNotBlank()) {
+                {
+                    if (host == null) Text("Enter a valid domain or http(s) URL without login details.")
+                    else Row {
+                        Text("Hostname: ")
+                        Text(host, modifier = Modifier.weight(1f).testTag("normalized-filter-host"))
+                    }
+                }
+            } else null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSave() }),
         )
-        if (host != null) Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(12.dp)) {
-            Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                Text("Normalized hostname", fontFamily = ProductSansFontFamily, fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer)
-                Text(host, fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 22.sp,
-                    fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.testTag("normalized-filter-host"))
-            }
-        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                Text("Include subdomains", fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 21.sp)
-                Text(if (isIpAddress) "IPv4 addresses match exactly." else if (includeSubdomains) "Matches this hostname and its subdomains." else "Matches only this exact hostname.",
-                    fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text("Include subdomains", fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
+                modifier = Modifier.weight(1f).padding(end = 8.dp))
             Switch(checked = includeSubdomains && !isIpAddress, onCheckedChange = onIncludeSubdomainsChanged,
                 enabled = enabled && !isIpAddress,
                 modifier = Modifier.sizeIn(minWidth = 52.dp, minHeight = 48.dp).testTag("include-filter-subdomains"))

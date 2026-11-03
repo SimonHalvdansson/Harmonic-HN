@@ -85,7 +85,7 @@ class UserProfileDialogsTest {
 
     @Test
     fun inferredBioLinksRequireOptInAndDisappearAgain() {
-        val about = "Builds https://example.com and writes at www.example.org."
+        val about = "Builds https://example.com and writes at www.example.org. Also typebook.lol."
         showProfile(about)
         fun links() = compose.onNodeWithText(about, useUnmergedTree = true)
             .fetchSemanticsNode().config[SemanticsProperties.Text].single()
@@ -93,7 +93,7 @@ class UserProfileDialogsTest {
 
         assertTrue(links().isEmpty())
         compose.onNodeWithText("Clickable links").performClick()
-        assertEquals(listOf("https://example.com", "https://www.example.org"), links().map {
+        assertEquals(listOf("https://example.com", "https://www.example.org", "https://typebook.lol"), links().map {
             (it.item as androidx.compose.ui.text.LinkAnnotation.Url).url
         })
         compose.onNodeWithText("Plain text").performClick()
@@ -168,7 +168,9 @@ class UserProfileDialogsTest {
         compose.runOnIdle { assertEquals("maintainer" to UserTagColor.Purple, saved) }
         compose.onNodeWithText("Plain text").assertIsDisplayed()
         compose.waitForIdle()
-        // GPU readback can round a fully restored surface by one channel value.
+        // Native exit keeps the dim layer for its fade after the child composition leaves.
+        // GPU readback can round the restored surface by a channel value.
+        compose.waitUntil(5_000) { abs(before - brightestPixelRed(requireNotNull(profileWindow))) <= 2 }
         assertTrue(abs(before - brightestPixelRed(requireNotNull(profileWindow))) <= 2)
     }
 
@@ -234,6 +236,62 @@ class UserProfileDialogsTest {
             network.close()
             scope.cancel()
         }
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 30)
+    fun blockedListClosesItsKeyboardBeforeOpeningOneRetainedProfileWindow() {
+        var profileOpen by mutableStateOf(false)
+        var profileState by mutableStateOf<UserDialogUiState>(UserDialogUiState.Loading)
+        var listWindow: Window? = null
+        var accepted = 0
+        var imeAtOpen = -1
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SynchronizedSettingsDialogs {
+                    com.simon.harmonichackernews.ui.settings.BlockedUsersDialog(
+                        users = listOf("Alice"), legacyUsers = emptyList(), onUsersChanged = {},
+                        onProfileRequested = {
+                            imeAtOpen = ViewCompat.getRootWindowInsets(requireNotNull(listWindow).decorView)
+                                ?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: -1
+                            accepted++
+                            profileOpen = true
+                        },
+                        onLegacyReviewRequested = {}, onLegacyDiscardRequested = {}, onDismiss = {},
+                        nestedDialog = {
+                            val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+                            SideEffect { listWindow = window }
+                            if (profileOpen) UserSettingsDialog(
+                                requestedUserName = "Alice", state = profileState, tag = "", blocked = true,
+                                ownProfile = false, onDismiss = { profileOpen = false }, onRetry = {},
+                                onOpenSubmissions = {}, onEditTag = {}, onToggleBlocked = {}, onReport = {},
+                            )
+                        },
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("Exact username").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("draft")
+        compose.waitUntil(5_000) {
+            ViewCompat.getRootWindowInsets(requireNotNull(listWindow).decorView)
+                ?.getInsets(WindowInsetsCompat.Type.ime())?.bottom?.let { it > 0 } == true
+        }
+        compose.onNodeWithContentDescription("View profile for Alice").performClick()
+        compose.waitUntil(5_000) { profileOpen }
+        assertEquals("The child must open after the list's IME has finished closing", 0, imeAtOpen)
+        assertEquals(1, accepted)
+        compose.onNodeWithTag("user-profile-content").assertIsDisplayed()
+        compose.runOnIdle { profileState = profile("Loaded biography") }
+        compose.onNodeWithText("Loaded biography").assertIsDisplayed()
+        val nativeViews = WindowInspector.getGlobalWindowViews()
+        assertEquals("Opening and loading a profile retains exactly its parent and child windows", 3, nativeViews.size)
+        compose.runOnIdle { profileOpen = false }
+        compose.onNodeWithTag("user-profile-content").assertDoesNotExist()
+        assertEquals("draft", compose.onNode(hasSetTextAction()).fetchSemanticsNode()
+            .config[SemanticsProperties.EditableText].text)
+        compose.onNodeWithContentDescription("View profile for Alice").assertIsDisplayed()
     }
 
     /** Runs the production profile/session without network access or persistent user data. */

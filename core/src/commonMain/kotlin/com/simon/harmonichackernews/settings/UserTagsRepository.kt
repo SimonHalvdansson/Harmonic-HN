@@ -1,6 +1,10 @@
 package com.simon.harmonichackernews.settings
 
 import kotlin.concurrent.Volatile
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 object UserTagKeys {
     // Preserve the original raw sources while overlaying exact-identity edits.
@@ -20,10 +24,16 @@ data class LegacyUserTag(
 
 enum class LegacyTagResolution { RESOLVED, NOT_FOUND, INVALID_USERNAME, TARGET_EXISTS, INVALID_DATA }
 
+data class UserTagsSnapshot(val tags: Map<String, String>, val colors: Map<String, UserTagColor>)
+
 /** Stored username spelling is authoritative; different case spellings remain separate identities. */
 class UserTagsRepository(private val store: KeyValueStore) {
     @Volatile
     private var lookupSnapshot: LookupSnapshot? = null
+
+    private val revision = MutableStateFlow(0L)
+    fun current(): UserTagsSnapshot = snapshot().let { UserTagsSnapshot(it.tags.toMap(), it.colors.toMap()) }
+    val updates = revision.map { current() }.distinctUntilChanged()
 
     fun tags(): Map<String, String> = snapshot().tags.toMap()
 
@@ -71,6 +81,7 @@ class UserTagsRepository(private val store: KeyValueStore) {
             }))
             if (removed != source.removed) putStringSet(UserTagKeys.REVIEWED_LEGACY_TAGS, removed)
         }
+        revision.update { it + 1 }
         return true
     }
 

@@ -87,9 +87,14 @@ class AskContainerTest {
             assertTrue(preview[200, 150].red in 0.35f..0.50f,
                 "Shrinking content must visibly fade against its surface")
             assertEquals(Color.White, preview[90, 110], "The surface must remain opaque")
+            assertTrue(preview[5, 5].red in 0.87f..0.89f,
+                "The revealed source page must receive a subtle 12% scrim")
             progress.floatValue = 1f
             repeat(5) { frame() }
             assertEquals(Color.Black, frame()[200, 150])
+            progress.floatValue = 0f
+            repeat(5) { frame() }
+            assertEquals(Color.Red, frame()[5, 5], "Closing must remove the source-page scrim")
         } finally {
             scene.close()
         }

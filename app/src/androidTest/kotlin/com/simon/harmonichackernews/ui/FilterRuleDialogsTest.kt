@@ -34,7 +34,7 @@ class FilterRuleDialogsTest {
             }
         }
         compose.waitForIdle()
-        fun height() = compose.onNodeWithTag("filter-rules-list").fetchSemanticsNode().boundsInRoot.height
+        fun height() = compose.onNodeWithTag("settings-dialog-animated-content").fetchSemanticsNode().boundsInRoot.height
         val before = height()
         compose.mainClock.autoAdvance = false
         try {

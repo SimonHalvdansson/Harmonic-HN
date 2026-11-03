@@ -27,6 +27,11 @@ internal class SettingsDialogDismissState {
         if (pendingAction == null) pendingAction = action
     }
 
+    /** A later parent-close intent cancels an editor-to-child handoff still waiting for the IME. */
+    fun cancel() {
+        pendingAction = null
+    }
+
     fun complete(action: () -> Unit) {
         if (pendingAction !== action) return
         pendingAction = null

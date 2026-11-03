@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -83,6 +84,7 @@ internal fun CommentsScaffold(
     val density = LocalDensity.current
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val peekHeight = navigationBottom + CommentsSheetCollapsedHeight
+    val modalBlockingSheet = rememberUpdatedState(controller.sheetGesturesBlocked)
     val sheetState = rememberBottomSheetState(
         initialValue = if (!controller.isSheetExpanded()) {
             SheetValue.PartiallyExpanded
@@ -90,6 +92,7 @@ internal fun CommentsScaffold(
             SheetValue.Expanded
         },
         enabledValues = setOf(SheetValue.PartiallyExpanded, SheetValue.Expanded),
+        confirmValueChange = { value -> value == SheetValue.Expanded || !modalBlockingSheet.value },
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
 
@@ -182,8 +185,7 @@ internal fun CommentsScaffold(
             sheetDragHandle = null,
             // Give active summary selection ownership of drags, including movement outside the
             // text. Disable both the sheet's drag detector and its nested-scroll connection.
-            sheetSwipeEnabled = controller.integratedWebView && !controller.predictiveBackActive &&
-                controller.summarySelectionState.selectedTexts.isEmpty(),
+            sheetSwipeEnabled = controller.integratedWebView && !controller.sheetGesturesBlocked,
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             sheetContent = {

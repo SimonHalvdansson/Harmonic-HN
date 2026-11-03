@@ -36,6 +36,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -545,22 +546,35 @@ internal fun FrontpageHeaderControls(
         contentTween(), label = "Header pill icons",
     )
     val pillInset by animateDpAsState(
-        if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 8.dp,
+        if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 12.dp,
         contentTween(), label = "Header pill padding",
+    )
+    val pillVerticalInset by animateDpAsState(
+        if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 4.dp,
+        contentTween(), label = "Header pill vertical padding",
+    )
+    val titleScale by animateFloatAsState(
+        if (settings.headerPill == StoriesHeaderPill.OFF) 1f else .85f,
+        contentTween(), label = "Header pill title size",
     )
     val pillRadius by animateDpAsState(
         if (settings.headerPill == StoriesHeaderPill.OFF) 0.dp else 28.dp,
         contentTween(), label = "Header pill corners",
     )
+    val pillElevation by animateDpAsState(
+        if (settings.headerPill != StoriesHeaderPill.OFF && settings.headerPillElevation) 3.dp else 0.dp,
+        contentTween(), label = "Header pill elevation",
+    )
     BoxWithConstraints(
-        modifier.fillMaxWidth().height(56.dp)
+        modifier.fillMaxWidth().height(56.dp + pillVerticalInset * 2)
             .testTag("stories-header-controls")
+            .shadow(pillElevation, RoundedCornerShape(pillRadius), clip = false)
             .clip(RoundedCornerShape(pillRadius))
             .background(containerColor)
-            .padding(horizontal = pillInset),
+            .padding(horizontal = pillInset, vertical = pillVerticalInset),
     ) {
-        val preferredSize = typography.storiesDropdownSelectedSize
-        val minimumSize = typography.storiesDropdownSelectedSize * 0.65f
+        val preferredSize = typography.storiesDropdownSelectedSize * titleScale
+        val minimumSize = preferredSize * 0.65f
         val titleWidth = with(density) {
             textMeasurer.measure(
                 title,

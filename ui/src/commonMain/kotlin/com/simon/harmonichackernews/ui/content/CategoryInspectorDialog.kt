@@ -116,6 +116,7 @@ internal fun CategoryInspectorDialog(
                 dismissOnBackPress = !platformDialogPredictiveBackSupported,
                 dismissOnClickOutside = false,
                 usePlatformDefaultWidth = false,
+                scrimEnabled = false,
                 usePlatformInsets = false,
             ),
         ) {

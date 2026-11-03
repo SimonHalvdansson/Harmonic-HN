@@ -439,6 +439,7 @@ fun ThemeSettingsRoute(
 @Composable
 fun StoriesSettingsRoute(
     repository: AppSettingsRepository,
+    categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
     previewModel: StoryRowModel,
     faviconIcon: Painter,
     showNavigation: Boolean,
@@ -458,7 +459,12 @@ fun StoriesSettingsRoute(
     val presenter = remember(repository) { StoriesSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
-    val state = presenter.state(settings, previewModel, faviconIcon)
+    val categories = categorySettings?.updates?.collectAsStateWithLifecycle(initialValue = categorySettings.snapshot())?.value
+    val enabled = categories?.enabled == true
+    val previewCategories = if (enabled) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
+    val state = presenter.state(settings, previewModel.copy(categoryLabels = previewCategories.map { categories!!.name(it) },
+        categoryIds = previewCategories.map { it.id }), faviconIcon)
+        .copy(categorizationEnabled = enabled)
     StoriesSettingsScreen(
         state = state,
         showNavigation = showNavigation,

@@ -43,7 +43,7 @@ class StoriesListModelCacheTest {
         val settings = StoryDisplaySettings.from(StoredUserSettings(InMemoryKeyValueStore(), emptyFlow()).story)
             .copy(showFavicons = false, font = "devicedefault")
         var rows = (1..4).map { id ->
-            StoryListItemSnapshot(StorySnapshot(id, title = "Story $id", score = id),
+            StoryListItemSnapshot(StorySnapshot(id, title = "Story $id", score = id, author = "author$id"),
                 StoryPresentationSnapshot(loaded = true))
         }
         var selectedTypeIndex = 0
@@ -55,6 +55,7 @@ class StoriesListModelCacheTest {
         val owner = object : LifecycleOwner {
             override val lifecycle = LifecycleRegistry(this).apply { currentState = Lifecycle.State.RESUMED }
         }
+        val tags = com.simon.harmonichackernews.settings.UserTagsRepository(InMemoryKeyValueStore())
         val builds = mutableMapOf<Int, Int>()
         val modelTimes = mutableMapOf<Int, Long>()
         val scene = ImageComposeScene(400, 1000, Density(1f)) {
@@ -62,7 +63,7 @@ class StoriesListModelCacheTest {
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalLifecycleOwner provides owner) {
                     StoriesScreen(
-                        controller, storyItemModelCacheKey = 0,
+                        controller, storyItemModelCacheKey = 0, userTags = tags,
                         storyItemModel = { item, index, _, _, now ->
                             builds[item.id] = builds.getOrDefault(item.id, 0) + 1
                             modelTimes[item.id] = now
@@ -95,6 +96,18 @@ class StoriesListModelCacheTest {
             owner.lifecycle.currentState = Lifecycle.State.RESUMED
             settle()
             assertTrue(builds.keys.containsAll(listOf(1, 2, 3, 4)), "Resume must refresh every displayed age")
+            builds.clear()
+            tags.setTag("author2", "Friend", com.simon.harmonichackernews.settings.UserTagColor.Blue)
+            settle()
+            assertEquals(mapOf(2 to 1), builds, "A tag edit should update only its author's story model")
+            builds.clear()
+            tags.setTag("author2", "Friend", com.simon.harmonichackernews.settings.UserTagColor.Purple)
+            settle()
+            assertEquals(mapOf(2 to 1), builds, "Color-only edits must update visible author tags")
+            builds.clear()
+            tags.setTag("author2", "")
+            settle()
+            assertEquals(mapOf(2 to 1), builds, "Removing a tag updates the feed without reloading stories")
         } finally {
             scene.close()
         }

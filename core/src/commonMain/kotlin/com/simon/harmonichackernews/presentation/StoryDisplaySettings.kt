@@ -31,6 +31,8 @@ data class StoryDisplaySettings(
     val commentTextSize: Float,
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
+    val headerPillElevation: Boolean = true,
+    val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
 ) {
     val outline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -68,6 +70,8 @@ data class StoryDisplaySettings(
             compactHeader = preferences.compactHeader,
             listSelector = preferences.listSelector,
             headerPill = preferences.headerPill,
+            headerPillElevation = preferences.headerPillElevation,
+            categoryTagLocation = preferences.categoryTagLocation,
             commentsButtonOnLeft = preferences.commentsButtonOnLeft,
             displayStyle = preferences.displayStyle,
             tintCardsFromImages = preferences.tintCardsFromImages,

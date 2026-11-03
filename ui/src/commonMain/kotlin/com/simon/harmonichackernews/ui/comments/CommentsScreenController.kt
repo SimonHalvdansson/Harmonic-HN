@@ -544,6 +544,12 @@ class CommentsScreenController private constructor(
     // Includes the reverse transform so host controls stay beneath the returning surface.
     var askSurfaceVisible by mutableStateOf(false)
         internal set
+
+    /** Modal interactions own gestures until their exit animation has finished. */
+    val sheetGesturesBlocked: Boolean
+        get() = askOpen || askSurfaceVisible || predictiveBackActive ||
+            isCommentActionOverlayShowing() || isLinkPreviewOverlayShowing() ||
+            summarySelectionState.selectedTexts.isNotEmpty()
     var askOpen by mutableStateOf(false)
         private set
     var askBackProgress by mutableFloatStateOf(0f)

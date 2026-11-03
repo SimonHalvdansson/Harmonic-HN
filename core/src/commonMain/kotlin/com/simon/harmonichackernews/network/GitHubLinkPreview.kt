@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Document
 import com.simon.harmonichackernews.data.LinkPreviewDetail
 import com.simon.harmonichackernews.data.LinkPreviewInfo
 import com.simon.harmonichackernews.data.LinkPreviewType
@@ -219,6 +220,56 @@ internal object GitHubLinkPreview {
         url: String,
     ): LinkPreviewInfo {
         val document = Ksoup.parse(response, baseUri = url)
+        return parseGitHubPage(type, document, target, url)
+    }
+
+    /** Repository pages carry exact sidebar metadata even when their API is rate limited. */
+    fun parseGitHubRepositoryPage(
+        response: String,
+        target: GitHubPreviewTarget,
+        url: String,
+    ): RepoInfo {
+        val document = Ksoup.parse(response, baseUri = url)
+        val page = parseGitHubPage(LinkPreviewType.GITHUB_REPOSITORY, document, target, url)
+        val sidebar = document.select("script[data-target=\"react-app.embeddedData\"]")
+            .firstNotNullOfOrNull { script ->
+                val payload = runCatching { JsonObject(script.data()).optJSONObject("payload") }.getOrNull()
+                    ?: return@firstNotNullOfOrNull null
+                val metadata = payload.optJSONObject("sidebarAbout")
+                    ?: payload.optJSONObject("codeViewRepoRoute")?.optJSONObject("overview")
+                        ?.optJSONObject("sidebarAboutData")
+                metadata?.takeIf {
+                    it.nonBlankString("ownerLogin")?.equals(target.owner, ignoreCase = true) == true &&
+                        it.nonBlankString("repoName")?.equals(target.repository, ignoreCase = true) == true
+                }
+            }
+        val owner = sidebar?.nonBlankString("ownerLogin") ?: target.owner
+        val name = sidebar?.nonBlankString("repoName") ?: target.repository
+        val providerTitle = "GitHub - $owner/$name"
+        val metadata = sidebar?.optJSONObject("repo")
+        val license = metadata?.optJSONObject("license")
+        return RepoInfo(
+            name = name,
+            owner = owner,
+            avatarUrl = metadata?.nonBlankString("ownerAvatarUrl")?.let(LinkSummaryParser::normalizeHttpUrl),
+            about = page.description,
+            license = if (license?.nonBlankString("name") == "Other") "Other" else license?.nonBlankString("spdxId"),
+            stars = sidebar?.repositoryCount("stargazerCount"),
+            watching = sidebar?.repositoryCount("watcherCount"),
+            forks = sidebar?.repositoryCount("forksCount"),
+            pageTitle = page.title.takeUnless {
+                it.equals(providerTitle, ignoreCase = true) || it.startsWith("$providerTitle: ", ignoreCase = true)
+            },
+            imageUrl = page.imageUrl,
+        )
+    }
+
+    private fun parseGitHubPage(
+        type: LinkPreviewType,
+        document: Document,
+        target: GitHubPreviewTarget,
+        url: String,
+    ): LinkPreviewInfo {
         val repository = "${target.owner}/${target.repository}"
         val rawTitle = (document.selectFirst("meta[property=og:title]")?.attr("content")
             ?.takeIf(String::isNotBlank) ?: document.title())
@@ -330,6 +381,12 @@ internal object GitHubLinkPreview {
 
     private fun JsonObject.nullableString(key: String): String? =
         (opt(key) as? String)?.takeUnless(String::isEmpty)
+
+    private fun JsonObject.repositoryCount(key: String): Int? {
+        val value = opt(key) as? Number ?: return null
+        val whole = value.toLong()
+        return whole.takeIf { it in 0L..Int.MAX_VALUE.toLong() && value.toDouble() == it.toDouble() }?.toInt()
+    }
 }
 
 internal suspend fun HttpClient.loadGitHubInfo(url: String): RepoInfo {

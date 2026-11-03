@@ -127,7 +127,7 @@ sealed interface StorySummaryStatus {
     data object Idle : StorySummaryStatus
     data object Running : StorySummaryStatus
     data object Success : StorySummaryStatus
-    data class Failure(val message: String) : StorySummaryStatus
+    data class Failure(val message: String, val canRetryWithBrowser: Boolean = false) : StorySummaryStatus
 }
 
 data class StorySummaryState(
@@ -291,7 +291,9 @@ class StorySummaryRuntime(
         mutableState.value = mutableState.value.copy(
             text = message,
             diagnostics = mutableState.value.diagnostics?.copy(totalTimeMillis = elapsedMillis),
-            status = StorySummaryStatus.Failure(message),
+            status = StorySummaryStatus.Failure(message, canRetryWithBrowser =
+                strippedSummaryFailure(detail).let { it.startsWith("Extraction failed:", ignoreCase = true) &&
+                    !it.contains("HTTP 404") && !it.contains("HTTP 410") }),
         )
     }
 
@@ -338,12 +340,7 @@ internal fun summaryFailureMessage(mode: StorySummaryMode, detail: String): Stri
         (detail.contains("[ErrorCode 4]", ignoreCase = true) ||
             detail.contains("[ErrorCode 11]", ignoreCase = true)) &&
         detail.contains("policy check", ignoreCase = true)
-    var reason = detail.trim()
-    val prefixes = listOf("Failed to generate local summary:", "Failed to generate summary:", "Local summarization failed:")
-    while (true) {
-        val prefix = prefixes.firstOrNull { reason.startsWith(it, ignoreCase = true) } ?: break
-        reason = reason.drop(prefix.length).trim()
-    }
+    val reason = strippedSummaryFailure(detail)
     return when {
         policyBlocked -> GEMINI_NANO_POLICY_BLOCKED_MESSAGE
         reason == LOCAL_SUMMARY_ARTICLE_TOO_SHORT || reason == SUMMARY_ARTICLE_HTTP_UNAUTHORIZED ||
@@ -352,8 +349,14 @@ internal fun summaryFailureMessage(mode: StorySummaryMode, detail: String): Stri
             reason.contains("context limit", ignoreCase = true) ->
             "This article or prompt is too long for the selected model. Try a shorter prompt or another model."
         reason.startsWith("Extraction failed:", ignoreCase = true) -> when {
+            reason.contains("browser verification", ignoreCase = true) ->
+                "This website requires browser verification${if (reason.contains("HTTP 429")) " (HTTP 429)" else ""}. Open the article to complete the check."
             reason.contains("HTTP 401") -> SUMMARY_ARTICLE_HTTP_UNAUTHORIZED
-            reason.contains("HTTP 403") -> "This website doesn't allow Harmonic to read the article for a summary."
+            reason.contains("HTTP 403") -> "This website doesn't allow Harmonic to read the article for a summary (HTTP 403)."
+            reason.contains("HTTP 429") -> "This website requires browser verification or is limiting requests (HTTP 429). Open the article to complete any browser checks."
+            reason.contains("HTTP 404") || reason.contains("HTTP 410") -> "This article could not be found on the website."
+            reason.contains("no readable text", ignoreCase = true) -> "The page did not provide readable article text. It may need JavaScript to load."
+            reason.contains("timeout", ignoreCase = true) || reason.contains("timed out", ignoreCase = true) -> "The website took too long to return the article. Try again."
             reason.contains("App Transport Security", ignoreCase = true) ->
                 "Couldn't load the article for a summary because the connection was blocked. Try opening it in your browser."
             else -> "Couldn't read the article for a summary. Check your connection and try again."
@@ -363,6 +366,16 @@ internal fun summaryFailureMessage(mode: StorySummaryMode, detail: String): Stri
             "Couldn't create a summary. Please try again."
         else -> "${if (mode == StorySummaryMode.LOCAL) "Failed to generate local summary" else "Failed to generate summary"}: $reason"
     }
+}
+
+private fun strippedSummaryFailure(detail: String): String {
+    var reason = detail.trim()
+    val prefixes = listOf("Failed to generate local summary:", "Failed to generate summary:", "Local summarization failed:")
+    while (true) {
+        val prefix = prefixes.firstOrNull { reason.startsWith(it, ignoreCase = true) } ?: break
+        reason = reason.drop(prefix.length).trim()
+    }
+    return reason
 }
 
 private fun estimateTokenCount(text: String): Int =

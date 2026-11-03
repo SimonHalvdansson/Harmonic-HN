@@ -153,7 +153,10 @@ internal fun StoriesList(
     onDismissWelcomeHint: () -> Unit = {},
     categorySettings: ArticleCategorySettings? = null,
     categoryRuntimeService: ArticleCategoryRuntime? = null,
+    userTags: com.simon.harmonichackernews.settings.UserTagsRepository? = null,
 ) {
+    val authorTags = userTags?.updates?.collectAsStateWithLifecycle(initialValue = userTags.current())?.value
+        ?: com.simon.harmonichackernews.settings.UserTagsSnapshot(emptyMap(), emptyMap())
     val categoryPreferences = categorySettings?.updates?.collectAsStateWithLifecycle(
         initialValue = categorySettings.snapshot(),
     )?.value ?: ArticleCategoryPreferences()
@@ -401,6 +404,8 @@ internal fun StoriesList(
                             )
                             // Rebuild cached ages on resume, and palette tints when the theme's
                             // card background changes.
+                            val authorTag = authorTags.tags[story.by].orEmpty()
+                            val authorColor = authorTags.colors[story.by] ?: com.simon.harmonichackernews.settings.UserTagColor.Theme
                             val model = remember(
                                 story,
                                 index,
@@ -410,6 +415,8 @@ internal fun StoriesList(
                                 storyItemModelCacheKey,
                                 modelTimeRefresh,
                                 categories,
+                                authorTag,
+                                authorColor,
                             ) {
                                 storyItemModel(
                                     story,
@@ -418,7 +425,11 @@ internal fun StoriesList(
                                     previewResource,
                                     // New or changed rows still need the current time during a long session.
                                     Clock.System.now().toEpochMilliseconds(),
-                                ).copy(categoryLabels = categories.labels, categoryInspection = categories.inspection)
+                                ).copy(categoryLabels = categories.labels,
+                                    categoryIds = categories.inspection?.labelScores?.map { it.categoryId }.orEmpty(),
+                                    authorName = story.by.orEmpty(),
+                                    authorTag = authorTag,
+                                    authorTagColor = authorColor)
                             }
                             val commented = story.id in controller.commentedStoryIds
                             val style = remember(story, settings, storyRevision, model.previewText, commented) {

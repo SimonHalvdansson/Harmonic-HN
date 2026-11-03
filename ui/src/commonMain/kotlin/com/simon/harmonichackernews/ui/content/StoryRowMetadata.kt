@@ -198,6 +198,7 @@ internal fun StoryMeta(
     onTintExtracted: (Int) -> Unit,
     animateChanges: Boolean,
     modifier: Modifier,
+    wrapContent: Boolean = false,
 ) {
     val showMetaPoints = style.showPoints &&
         style.previewImageMode != StoryPreviewMode.MEDIUM
@@ -243,6 +244,7 @@ internal fun StoryMeta(
             extractTint = extractTint,
             onTintExtracted = onTintExtracted,
             metaText = metaText,
+            wrapContent = wrapContent,
             metaSize = typography.storyMetaSize,
             animateChanges = animateChanges,
             modifier = modifier,
@@ -393,6 +395,7 @@ internal fun StoryMeta(
         extractTint = extractTint,
         onTintExtracted = onTintExtracted,
         metaText = metaText,
+        wrapContent = wrapContent,
         metaSize = metaSize,
         animateChanges = animateChanges,
         modifier = modifier,
@@ -410,11 +413,12 @@ private fun StoryMetaRow(
     extractTint: Boolean,
     onTintExtracted: (Int) -> Unit,
     metaText: AnnotatedString,
+    wrapContent: Boolean,
     metaSize: Float,
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = if (wrapContent) modifier else modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         StoryVisibility(
             visible = style.showFavicon,
             animate = animateChanges,
@@ -438,7 +442,7 @@ private fun StoryMetaRow(
         }
         Text(
             text = metaText,
-            modifier = Modifier.weight(1f),
+            modifier = if (wrapContent) Modifier else Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = typography.storyMetaFamily,
             fontSize = metaSize.sp,

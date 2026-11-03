@@ -7,6 +7,15 @@ import kotlin.test.assertTrue
 
 class WebContentPolicyTest {
     @Test
+    fun articleTextWaitsForBrowserVerificationButAcceptsNormalContent() {
+        for (text in listOf(null, "", "Vercel Security Checkpoint", "We're verifying your browser",
+            "Enable JavaScript and cookies to continue", "Verify you are human")) {
+            kotlin.test.assertFalse(WebContentPageText.isReady(text))
+        }
+        assertTrue(WebContentPageText.isReady("The article is now rendered by the browser."))
+        assertTrue(WebContentPageText.isReady("A detailed article about verification. ".repeat(400) + "Vercel Security Checkpoint"))
+    }
+    @Test
     fun validatedHttpUrlAcceptsOnlyAbsoluteWebUrls() {
         assertEquals(
             "https://example.com/article",

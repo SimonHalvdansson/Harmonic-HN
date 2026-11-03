@@ -156,6 +156,14 @@ class CommentsFeatureRuntime(
     val summaryDiagnostics: StorySummaryDiagnostics?
         get() = summaryRuntime?.state?.value?.diagnostics
 
+    val summaryPageTextRetryGeneration: Long?
+        get() = summaryRuntime?.state?.value?.generation?.takeIf { summaryPageTextRetryPending }
+
+    fun completeSummaryPageTextRetry(generation: Long, text: String?) {
+        if (summaryPageTextRetryGeneration != generation) return
+        startSummary(text?.takeIf(WebContentPageText::isReady))
+    }
+
     init {
         scope.launch {
             presenter.effects.collect(::applyPresenterEffect)
@@ -602,6 +610,13 @@ class CommentsFeatureRuntime(
     }
 
     fun startSummary(articleText: String?) {
+        if (summaryPageTextRetryPending && articleText.isNullOrBlank()) {
+            // A failed browser recovery must expose the original useful failure, rather than
+            // repeating the same HTTP extraction or submitting empty input to an AI provider.
+            summaryPageTextRetryPending = false
+            summaryRuntime?.state?.value?.let(::applySummaryState)
+            return
+        }
         val currentStory = story ?: return
         val mode = when (summarySettings?.snapshot()?.mode ?: return) {
             AiSummaryMode.LOCAL -> StorySummaryMode.LOCAL
@@ -876,9 +891,10 @@ class CommentsFeatureRuntime(
         val currentStory = story ?: return
         val failure = state.status as? StorySummaryStatus.Failure
         if (canLoadArticleTextOnDemand && !summaryPageTextRetryAttempted &&
-            summarySettings?.snapshot()?.mode == AiSummaryMode.LOCAL &&
-            (failure?.message?.endsWith(LOCAL_SUMMARY_ARTICLE_TOO_SHORT) == true ||
-                failure?.message?.endsWith(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED) == true)
+            (failure?.canRetryWithBrowser == true ||
+                (summarySettings?.snapshot()?.mode == AiSummaryMode.LOCAL &&
+                    (failure?.message?.endsWith(LOCAL_SUMMARY_ARTICLE_TOO_SHORT) == true ||
+                        failure?.message?.endsWith(SUMMARY_ARTICLE_HTTP_UNAUTHORIZED) == true)))
         ) {
             summaryPageTextRetryAttempted = true
             summaryPageTextRetryPending = true

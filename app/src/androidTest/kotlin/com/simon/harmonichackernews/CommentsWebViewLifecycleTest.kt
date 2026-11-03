@@ -109,6 +109,30 @@ class CommentsWebViewLifecycleTest {
     }
 
     @Test
+    fun summaryRecoveryKeepsHiddenBrowserRunningUntilVerificationTextIsReplaced() {
+        TestServer().use { server ->
+            val story = com.simon.harmonichackernews.data.Story().apply { id = 42; url = server.url("/summary-check"); isLink = true }
+            fixture(story = story, coveredByComments = true).use { browser ->
+                val completed = CountDownLatch(1)
+                val result = AtomicReference<String?>()
+                val callbacks = AtomicInteger()
+                onMain {
+                    browser.controller.requestSummary { text ->
+                        callbacks.incrementAndGet()
+                        result.set(text)
+                        completed.countDown()
+                    }
+                }
+                assertTrue("Hidden browser recovery did not finish", completed.await(20, TimeUnit.SECONDS))
+                assertTrue(result.get().orEmpty().contains("Article rendered after verification"))
+                assertFalse(result.get().orEmpty().contains("Vercel Security Checkpoint"))
+                assertEquals(1, callbacks.get())
+                onMain { assertEquals(View.INVISIBLE, browser.host.webViewContainer.visibility) }
+            }
+        }
+    }
+
+    @Test
     fun nonHtmlHttpFailureStillShowsCustomErrorPage() {
         TestServer().use { server ->
             fixture().use { browser ->
@@ -898,6 +922,9 @@ class CommentsWebViewLifecycleTest {
                                 pageRequests.incrementAndGet()
                             }
                             val bytes = if (pdf) pdfBytes else when (path) {
+                                "/summary-check" -> "<html><head><title>Vercel Security Checkpoint</title></head>" +
+                                    "<body>We're verifying your browser<script>setTimeout(function(){" +
+                                    "document.title='Article';document.body.innerText='Article rendered after verification. The browser ran JavaScript while covered by comments.';},1500);</script></body></html>"
                                 "/challenge" -> "<html><head><title>Browser check</title></head>" +
                                     "<body><script src='/challenge.js'></script></body></html>"
                                 "/challenge.js" -> "window.location.replace('/next-article');"
@@ -912,6 +939,7 @@ class CommentsWebViewLifecycleTest {
                                 else -> "text/html"
                             }
                             val status = when (path) {
+                                "/summary-check" -> "429 Too Many Requests"
                                 "/challenge" -> "403 Forbidden"
                                 "/unavailable" -> "503 Service Unavailable"
                                 else -> "200 OK"

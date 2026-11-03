@@ -6,9 +6,11 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
@@ -54,6 +56,18 @@ class StoriesHeaderPreviewTest {
             fun taggedBounds(tag: String) = allNodes().single {
                 it.config.getOrNull(SemanticsProperties.TestTag) == tag
             }.boundsInRoot
+            fun titleLayout(): TextLayoutResult {
+                val content = scene.semanticsOwners.flatMap { nodes(it.unmergedRootSemanticsNode) }.single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
+                }
+                val title = nodes(content).single {
+                    it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Top Stories" } == true &&
+                        it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null
+                }
+                return mutableListOf<TextLayoutResult>().also {
+                    title.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(it)
+                }.single()
+            }
             var frameBounds: Rect? = null
             var previousHeight: Float? = null
             var storyId: Int? = null
@@ -130,12 +144,23 @@ class StoriesHeaderPreviewTest {
                 val returnedDropdown = preview(StoryListSelector.DROPDOWN, false)
                 assertEquals(dropdown.height, returnedDropdown.height, 1f)
                 var barePixel = androidx.compose.ui.graphics.Color.Unspecified
+                var bareTitleSize = 0f
                 for (pill in StoriesHeaderPill.entries) {
                     settings.value = settings.value.copy(headerPill = pill)
                     repeat(45) { scene.render(time.also { time += 16_666_667L }).close() }
                     val controls = nodes(allNodes().single {
                         it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-preview-content"
                     }).single { it.config.getOrNull(SemanticsProperties.TestTag) == "stories-header-controls" }.boundsInRoot
+                    val title = titleLayout()
+                    assertEquals(if (pill == StoriesHeaderPill.OFF) 56f else 64f, controls.height, 1f,
+                        "The pill adds 4dp above and below the existing controls")
+                    if (pill == StoriesHeaderPill.OFF) bareTitleSize = title.layoutInput.style.fontSize.value
+                    else {
+                        assertTrue(title.layoutInput.style.fontSize.value < bareTitleSize,
+                            "The pill title must be smaller than the bare header title")
+                        if (width == 640) assertEquals(bareTitleSize * .85f, title.layoutInput.style.fontSize.value, .05f,
+                            "Wide pill headers reduce only the title by fifteen percent")
+                    }
                     scene.render(time.also { time += 16_666_667L }).use { image ->
                         if (pill == StoriesHeaderPill.OFF) barePixel = image.toComposeImageBitmap().toPixelMap()[controls.center.x.toInt(), controls.top.toInt() + 2]
                         else {

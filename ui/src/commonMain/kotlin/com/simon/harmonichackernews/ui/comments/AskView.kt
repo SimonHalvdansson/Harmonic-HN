@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
@@ -185,6 +186,7 @@ internal fun AskSurface(
         ) { bottomSpacer ->
             LazyColumn(
                 Modifier.fillMaxSize()
+                    .testTag("ask-transcript")
                     .statusBarScrollToTop(enabled = controller.askOpen, priority = 1) {
                         followOutput = false
                         scroll.animateScrollToItem(0)
@@ -356,8 +358,8 @@ internal fun AskSurface(
                                 verticalAlignment = Alignment.Top) {
                                 Text(turn.question, Modifier.weight(1f, fill = false)
                                     .clip(RoundedCornerShape(18.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer).padding(horizontal = 14.dp, vertical = 10.dp),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    .background(askUserBubbleColors(MaterialTheme.colorScheme).first).padding(horizontal = 14.dp, vertical = 10.dp),
+                                    color = askUserBubbleColors(MaterialTheme.colorScheme).second,
                                     fontFamily = typography.family,
                                     fontSize = typography.commentTextSize.sp,
                                     lineHeight = (typography.commentTextSize + 2f).sp)

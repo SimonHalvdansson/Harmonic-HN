@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.OutlinedButton
+import com.simon.harmonichackernews.resources.*
+import org.jetbrains.compose.resources.painterResource
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -124,7 +126,7 @@ internal fun CategoryEmbeddingWalkthrough(stepIndex: Int, onStepChanged: (Int) -
                         EmbeddingStepIllustration(step, Modifier.padding(top = 16.dp).fillMaxWidth().aspectRatio(320f / 180f))
                         Text(step.caption, Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
                             fontSize = 12.sp, lineHeight = 17.sp, color = scheme.onSurfaceVariant)
-                        Column(Modifier.fillMaxWidth().heightIn(min = 206.dp).padding(top = 20.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
                             Text(step.title, fontFamily = ProductSansFontFamily, fontSize = 22.sp,
                                 lineHeight = 28.sp, fontWeight = FontWeight.Medium)
                             Text(step.body, Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
@@ -132,12 +134,17 @@ internal fun CategoryEmbeddingWalkthrough(stepIndex: Int, onStepChanged: (Int) -
                         }
                     }
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                FlowRow(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { onStepChanged(stepIndex - 1) }, enabled = stepIndex > 0) {
+                        Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Previous", fontFamily = ProductSansFontFamily)
                     }
                     Button(onClick = { onStepChanged(stepIndex + 1) }, enabled = stepIndex < steps.lastIndex) {
                         Text("Next", fontFamily = ProductSansFontFamily)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(painterResource(Res.drawable.ic_arrow_forward), null, Modifier.size(18.dp))
                     }
                 }
             }

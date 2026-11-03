@@ -209,7 +209,7 @@ fun SettingsNavigationShell(
                             surfaceTransitions = mapOf(SettingsSection.Search to { transition, skipExit, content ->
                                 SettingsSearchTransitionViewport(navigation.searchTransition, transition, skipExit, content)
                             }),
-                            root = { listContent(selectedSection, true, onBackFromSettings) { navigateTo(it) } },
+                            root = { listContent(selectedSection, false, onBackFromSettings) { navigateTo(it) } },
                             content = { renderDetailWithOrigin(it, false, ::navigateBack, ::navigateTo) },
                         )
                     }

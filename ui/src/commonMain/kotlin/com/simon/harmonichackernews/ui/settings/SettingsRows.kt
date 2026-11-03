@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -358,6 +359,10 @@ fun <T> SegmentedSetting(
     disabledOptions: Set<T> = emptySet(),
     containerColor: Color? = null,
     optionContent: (@Composable (T, Boolean) -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(
+        horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
+        vertical = HarmonicDimens.compose_settings_inline_control_padding,
+    ),
     onSelected: (T) -> Unit,
 ) {
     val colors = HarmonicTheme.colors
@@ -368,10 +373,7 @@ fun <T> SegmentedSetting(
             .themeBackground { containerColor ?: cardBackground }
             .settingsSearchTarget(title)
             .alpha(if (enabled) 1f else 0.38f)
-            .padding(
-                horizontal = HarmonicDimens.compose_settings_row_horizontal_padding,
-                vertical = HarmonicDimens.compose_settings_inline_control_padding,
-            ),
+            .padding(contentPadding),
     ) {
         if (!title.isNullOrBlank()) {
             Text(
@@ -481,7 +483,7 @@ private fun <T> SegmentedSettingOption(
     Row(
         modifier = modifier
             .alpha(if (disabled) 0.38f else 1f)
-            .heightIn(min = buttonHeight.coerceAtLeast(48.dp))
+            .heightIn(min = buttonHeight)
             .background(
                 if (isSelected) {
                     selectedBackground
@@ -507,7 +509,7 @@ private fun <T> SegmentedSettingOption(
                 interactionSource = interactionSource,
                 onClick = { onSelected(value) },
             )
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = if (LocalDensity.current.fontScale > 1f) 4.dp else 0.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {

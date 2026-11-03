@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.shareIn
 
 /** Typed story toggles accepted by [StoredSettingsMutator]. */
 enum class StoryBooleanPreference(internal val storageKey: String) {
+    HEADER_PILL_ELEVATION(UserPreferenceKeys.STORIES_HEADER_PILL_ELEVATION),
     BORDERLESS_LARGE_IMAGE(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS),
     TINT_CARD_USING_PREVIEW(UserPreferenceKeys.TINT_CARD_USING_PREVIEW),
     COMPACT_VIEW(UserPreferenceKeys.COMPACT_VIEW),
@@ -31,7 +32,7 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
     HIDE_JOBS(UserPreferenceKeys.HIDE_JOBS),
 }
 
-enum class StoryStringPreference { DISPLAY_STYLE }
+enum class StoryStringPreference { DISPLAY_STYLE, CATEGORY_TAG_LOCATION }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
     HIGHLIGHT_QUOTES(UserPreferenceKeys.HIGHLIGHT_QUOTES),

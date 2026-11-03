@@ -99,9 +99,11 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.StoriesHeader, "Layout",
         "Frontpage selector" to "tabs dropdown frontpages navigation",
         "Compact header" to "spacing above title below controls",
-        "Header pill" to "rounded surface color primary secondary tertiary toolbar")
+        "Header pill" to "rounded surface color primary secondary tertiary toolbar",
+        "Pill elevation" to "header shadow raised depth")
 
     group(SettingsSection.Stories, "Layout",
+        "Category tag location" to "article categorization labels title metadata domain tags placement",
         "Preview image" to "images pictures photos cover large small thumbnails",
         "Borderless image" to "edge to edge photo cover padding margins",
         "Text size" to "font bigger smaller accessibility zoom",

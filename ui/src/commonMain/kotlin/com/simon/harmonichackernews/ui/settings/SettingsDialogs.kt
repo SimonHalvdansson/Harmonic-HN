@@ -71,6 +71,7 @@ fun SettingsAlertDialog(
     separateDismissButton: Boolean = false,
     properties: DialogProperties = DialogProperties(),
     scrollableContent: Boolean = false,
+    compactSpacing: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
@@ -97,6 +98,7 @@ fun SettingsAlertDialog(
                 separateDismissButton = separateDismissButton,
                 dismissOnClickOutside = properties.dismissOnClickOutside,
                 scrollableContent = scrollableContent,
+                compactSpacing = compactSpacing,
                 foreground = foreground,
                 containerColor = containerColor,
                 dialogMaxWidth = dialogMaxWidth,
@@ -120,6 +122,7 @@ private fun SettingsAlertDialogLayout(
     separateDismissButton: Boolean = false,
     dismissOnClickOutside: Boolean = true,
     scrollableContent: Boolean = false,
+    compactSpacing: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
     dialogMaxWidth: Dp,
@@ -168,87 +171,93 @@ private fun SettingsAlertDialogLayout(
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
             ) {
-                Column(
-                    Modifier.then(
-                        if (compactHeight) Modifier.verticalScroll(compactScroll)
-                            .testTag("settings-dialog-compact-scroll") else Modifier,
-                    ),
+                Box(
+                    Modifier.testTag("settings-dialog-animated-content")
+                        .animateSettingsDialogContentSize(),
+                    propagateMinConstraints = true,
                 ) {
-                    title?.let { titleContent ->
-                        Box(
-                            modifier = Modifier.padding(
-                                start = HarmonicDimens.compose_settings_dialog_content_padding,
-                                top = HarmonicDimens.compose_settings_dialog_content_padding,
-                                end = HarmonicDimens.compose_settings_dialog_content_padding,
-                                bottom = 0.dp,
-                            ),
-                        ) {
-                            titleContent()
-                        }
-                    }
-                    text?.let { textContent ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (compactHeight && scrollableContent) {
-                                        Modifier.heightIn(max = compactBodyHeight)
-                                    } else if (compactHeight) {
-                                        // Plain content participates in the complete card scroll.
-                                        // Scroll/lazy bodies opt into a finite viewport explicitly.
-                                        Modifier
-                                    } else if (scrollableContent) {
-                                        Modifier.weight(1f, fill = false)
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .padding(
-                                    start = if (edgeToEdgeContent) {
-                                        0.dp
-                                    } else {
-                                        HarmonicDimens.compose_settings_dialog_content_padding
-                                    },
-                                    top = if (edgeToEdgeContent) {
-                                        0.dp
-                                    } else if (title == null) {
-                                        HarmonicDimens.compose_settings_dialog_content_padding
-                                    } else {
-                                        0.dp
-                                    },
-                                    end = if (edgeToEdgeContent) {
-                                        0.dp
-                                    } else {
-                                        HarmonicDimens.compose_settings_dialog_content_padding
-                                    },
-                                    bottom = if (edgeToEdgeContent) 0.dp else 8.dp,
+                    Column(
+                        Modifier.then(
+                            if (compactHeight) Modifier.verticalScroll(compactScroll)
+                                .testTag("settings-dialog-compact-scroll") else Modifier,
+                        ),
+                    ) {
+                        title?.let { titleContent ->
+                            Box(
+                                modifier = Modifier.padding(
+                                    start = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    top = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    end = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    bottom = 0.dp,
                                 ),
-                        ) {
-                            textContent()
-                        }
-                    }
-                    if (showButtons) {
-                        val actionsModifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
-                                vertical = HarmonicDimens.compose_settings_dialog_action_vertical_padding,
-                            )
-                        // Measure each complete action against the available row width before
-                        // wrapping. A Row can squeeze its final label into the remaining few
-                        // pixels even when the dialog is wide enough to miss a width heuristic.
-                        FlowRow(
-                            modifier = actionsModifier,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            neutralButton?.invoke()
-                            if (neutralButton != null) Spacer(Modifier.weight(1f))
-                            dismissButton?.invoke()
-                            if (separateDismissButton && dismissButton != null) {
-                                Spacer(Modifier.weight(1f))
+                            ) {
+                                titleContent()
                             }
-                            confirmButton()
+                        }
+                        text?.let { textContent ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (compactHeight && scrollableContent) {
+                                            Modifier.heightIn(max = compactBodyHeight)
+                                        } else if (compactHeight) {
+                                            // Plain content participates in the complete card scroll.
+                                            // Scroll/lazy bodies opt into a finite viewport explicitly.
+                                            Modifier
+                                        } else if (scrollableContent) {
+                                            Modifier.weight(1f, fill = false)
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .padding(
+                                        start = if (edgeToEdgeContent) {
+                                            0.dp
+                                        } else {
+                                            HarmonicDimens.compose_settings_dialog_content_padding
+                                        },
+                                        top = if (edgeToEdgeContent) {
+                                            0.dp
+                                        } else if (title == null) {
+                                            HarmonicDimens.compose_settings_dialog_content_padding
+                                        } else {
+                                            0.dp
+                                        },
+                                        end = if (edgeToEdgeContent) {
+                                            0.dp
+                                        } else {
+                                            HarmonicDimens.compose_settings_dialog_content_padding
+                                        },
+                                        bottom = if (edgeToEdgeContent || compactSpacing) 0.dp else 8.dp,
+                                    ),
+                            ) {
+                                textContent()
+                            }
+                        }
+                        if (showButtons) {
+                            val actionsModifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    vertical = if (compactSpacing) 6.dp else HarmonicDimens.compose_settings_dialog_action_vertical_padding,
+                                )
+                            // Measure each complete action against the available row width before
+                            // wrapping. A Row can squeeze its final label into the remaining few
+                            // pixels even when the dialog is wide enough to miss a width heuristic.
+                            FlowRow(
+                                modifier = actionsModifier,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                neutralButton?.invoke()
+                                if (neutralButton != null) Spacer(Modifier.weight(1f))
+                                dismissButton?.invoke()
+                                if (separateDismissButton && dismissButton != null) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                                confirmButton()
+                            }
                         }
                     }
                 }

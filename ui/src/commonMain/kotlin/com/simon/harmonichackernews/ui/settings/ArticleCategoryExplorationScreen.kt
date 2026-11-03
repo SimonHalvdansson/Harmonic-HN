@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.categorization.ArticleCategories
+import com.simon.harmonichackernews.resources.*
+import org.jetbrains.compose.resources.painterResource
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import com.simon.harmonichackernews.ui.theme.contrastingColor
 import kotlinx.coroutines.CancellationException
@@ -91,7 +93,8 @@ internal fun CategoryExplorationLegend(
                 elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                 label = { Text(name, Modifier.padding(vertical = 6.dp),
                     fontFamily = ProductSansFontFamily, fontSize = 12.sp, lineHeight = 17.sp) },
-                leadingIcon = { Box(Modifier.size(8.dp).background(colors[index], CircleShape)) },
+                leadingIcon = { Icon(painterResource(com.simon.harmonichackernews.ui.content.categorySymbol(id)),
+                    null, Modifier.size(18.dp), tint = colors[index]) },
             )
         }
     }
@@ -134,10 +137,18 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(enabled = examples.isNotEmpty(), onClick = {
                         onSelect(examples[if (index <= 0) examples.lastIndex else index - 1].id)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Previous example") }
+                    }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Previous example")
+                    }
                     TextButton(enabled = examples.isNotEmpty(), onClick = {
                         onSelect(examples[if (index < 0 || index == examples.lastIndex) 0 else index + 1].id)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Next example") }
+                    }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("Next example")
+                        Spacer(Modifier.width(8.dp))
+                        Icon(painterResource(Res.drawable.ic_arrow_forward), null, Modifier.size(18.dp))
+                    }
                 }
             }
         }

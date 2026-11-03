@@ -88,6 +88,11 @@ import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.ui.reader.ReaderModeResources
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
+import com.simon.harmonichackernews.presentation.WebContentPageText
+import com.simon.harmonichackernews.presentation.WebContentTiming
 import kotlinx.serialization.json.JsonPrimitive
 
 internal data class DesktopBrowserSnapshot(
@@ -114,9 +119,27 @@ internal interface DesktopBrowserHost {
 internal class DesktopCommentsWebViewSession(
     initialUrl: String,
 ) {
-    private var browserHost: DesktopBrowserHost? = null
+    private var browserHost by mutableStateOf<DesktopBrowserHost?>(null)
+    var backgroundLoadRequested by mutableStateOf(false)
+        private set
     var reader: NativeReaderModeSession? = null
     private var documentGeneration = 0
+
+    suspend fun readPageText(loadIfNeeded: Boolean): String? {
+        if (!loadIfNeeded && (browserHost == null || isLoading)) return null
+        if (loadIfNeeded) backgroundLoadRequested = true
+        return withTimeoutOrNull(WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS) {
+            while (true) {
+                snapshotFlow { (browserHost != null && !isLoading) || loadError != null }.first { it }
+                if (loadError != null) return@withTimeoutOrNull null
+                val text = evaluateResult(WebContentPageText.READ_COMMAND)?.take(WebContentPageText.MAX_PAGE_TEXT_CHARS)
+                if (WebContentPageText.isReady(text)) return@withTimeoutOrNull text
+                if (!loadIfNeeded) return@withTimeoutOrNull null
+                delay(250)
+            }
+            @Suppress("UNREACHABLE_CODE") null
+        }
+    }
 
     suspend fun evaluateResult(script: String): String? {
         val host = browserHost ?: return null
@@ -299,7 +322,7 @@ internal fun DesktopCommentsWebViewScaffold(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.pageBackground),
         ) {
-            if (browserStarted) {
+            if (browserStarted || session.backgroundLoadRequested) {
                 DesktopEmbeddedBrowserSurface(
                     session = session,
                     visible = showWebsite && nativeSurfaceAllowed,

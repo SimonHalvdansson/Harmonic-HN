@@ -252,13 +252,19 @@ class IosCommentsWebView(
         withTimeoutOrNull(WebContentTiming.SUMMARY_LOAD_TIMEOUT_MILLIS) {
             if (loadIfNeeded) ensureLoaded()
             if (view == null || disposed) return@withTimeoutOrNull null
-            val wasLoading = loading
-            snapshotFlow { loading }.first { !it }
-            if (failure != null) return@withTimeoutOrNull null
-            if (wasLoading) delay(WebContentTiming.SUMMARY_PAGE_TEXT_SETTLE_MILLIS)
-            if (loading || failure != null) return@withTimeoutOrNull null
-            evaluate(WebContentPageText.READ_COMMAND)?.take(WebContentPageText.MAX_PAGE_TEXT_CHARS)
-                ?.takeIf { it.isNotBlank() }
+            while (!disposed) {
+                val wasLoading = loading
+                snapshotFlow { loading }.first { !it }
+                if (failure != null) return@withTimeoutOrNull null
+                if (wasLoading) delay(WebContentTiming.SUMMARY_PAGE_TEXT_SETTLE_MILLIS)
+                if (!loading) {
+                    val text = evaluate(WebContentPageText.READ_COMMAND)?.take(WebContentPageText.MAX_PAGE_TEXT_CHARS)
+                    if (WebContentPageText.isReady(text)) return@withTimeoutOrNull text
+                }
+                if (!loadIfNeeded) return@withTimeoutOrNull null
+                delay(250)
+            }
+            null
         }
 
     fun updateAppearance(dark: Boolean, matchTheme: Boolean) {
@@ -547,8 +553,7 @@ internal fun IosCommentsScaffold(
     // must not hand a downward drag to the sheet underneath it.
     val canDragSheet = remember(controller, listState) {
         {
-            !controller.isCommentActionOverlayShowing() &&
-                !controller.isLinkPreviewOverlayShowing() &&
+            !controller.sheetGesturesBlocked &&
                 canDragCommentsSheet(
                     firstVisibleItemIndex = listState.firstVisibleItemIndex,
                     firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
@@ -758,6 +763,7 @@ internal fun IosCommentsScaffold(
     if (dialog != null && controller.sheetSlideOffset < 0.5f) {
         var input by remember(dialog) { mutableStateOf(dialog.defaultText) }
         AlertDialog(
+            properties = com.simon.harmonichackernews.ui.common.platformDialogProperties(true, true, true),
             onDismissRequest = { webView.finishDialog(null) },
             title = { Text(dialog.origin) },
             text = {

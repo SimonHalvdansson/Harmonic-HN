@@ -28,7 +28,9 @@ object UserPreferenceKeys {
     const val SHOW_INDEX = "pref_show_index"
     const val COMPACT_HEADER = "pref_compact_header"
     const val STORY_LIST_SELECTOR = "pref_story_list_selector"
+    const val CATEGORY_TAG_LOCATION = "pref_category_tag_location"
     const val STORIES_HEADER_PILL = "pref_stories_header_pill"
+    const val STORIES_HEADER_PILL_ELEVATION = "pref_stories_header_pill_elevation"
     const val LEFT_ALIGN = "pref_left_align"
     const val STORY_DISPLAY_STYLE = "pref_story_display_style"
     const val COMMENT_DISPLAY_STYLE = "pref_comment_display_style"
@@ -155,9 +157,11 @@ class StoredUserSettings(
                 listSelector = StoryListSelector.fromStored(
                     string(UserPreferenceKeys.STORY_LIST_SELECTOR, StoryListSelector.DROPDOWN.storedValue),
                 ),
+                categoryTagLocation = CategoryTagLocation.fromStored(string(UserPreferenceKeys.CATEGORY_TAG_LOCATION, CategoryTagLocation.TITLE.storedValue)),
                 headerPill = StoriesHeaderPill.fromStored(
                     string(UserPreferenceKeys.STORIES_HEADER_PILL, StoriesHeaderPill.OFF.storedValue),
                 ),
+                headerPillElevation = boolean(UserPreferenceKeys.STORIES_HEADER_PILL_ELEVATION, true),
                 commentsButtonOnLeft = boolean(UserPreferenceKeys.LEFT_ALIGN, false),
                 displayStyle = DisplayStyle.forStories(
                     string(UserPreferenceKeys.STORY_DISPLAY_STYLE, STANDARD),

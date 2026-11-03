@@ -930,6 +930,68 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun extractionFailuresRecoverThroughBrowserOnceWithoutRetryingProviderFailures() = runTest {
+        for (mode in AiSummaryMode.entries) for (recovered in listOf("Article loaded after browser verification.", null,
+            "Vercel Security Checkpoint: We're verifying your browser")) for (isExtraction in listOf(true, false)) {
+            val session = CommentsSessionState()
+            val presenter = CommentsPresenter(backgroundScope, session,
+                CommentThreadRepository(FakeAlgoliaRepository("{}"), UnusedHackerNewsRepository,
+                    requestDispatcher = UnconfinedTestDispatcher(testScheduler)),
+                UnusedPollOptions, savedItemActions(), UnusedVotingService)
+            val settings = AiSummarySettingsRepository(TestKeyValueStore(mapOf(
+                AiSummaryPreferenceKeys.ENABLED to true, AiSummaryPreferenceKeys.MODE to mode.storedValue)),
+                TestCredentialStore(), flowOf())
+            val inputs = mutableListOf<com.simon.harmonichackernews.summary.StorySummaryInput>()
+            val backend = StorySummaryBackend { input -> flow {
+                inputs += input
+                if (input.hasArticleText) {
+                    emit(StorySummaryEvent.SourceInput(input.articleText!!))
+                    emit(StorySummaryEvent.Success("Recovered summary"))
+                } else emit(StorySummaryEvent.Failure(if (isExtraction)
+                    "Extraction failed: Article returned HTTP 429" else "Provider returned HTTP 429"))
+            } }
+            val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter,
+                summarySettings = settings, localSummaryAvailable = { true },
+                summaryRuntime = StorySummaryRuntime(backgroundScope, backend, backend),
+                canLoadArticleTextOnDemand = true, nowMillis = { 0L })
+            val story = Story().apply { id = 1; url = "https://example.com/verification"; isLink = true }
+            runtime.initialize(story, false, -1, "Default", restoring = false)
+            val effects = mutableListOf<CommentsFeatureEffect>()
+            backgroundScope.launch { runtime.effects.collect(effects::add) }
+            runCurrent()
+            runtime.startSummary(null)
+            runCurrent()
+            if (!isExtraction) {
+                assertFalse(runtime.summaryLoading)
+                assertEquals(0, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
+                assertEquals(1, inputs.size)
+            } else {
+                assertTrue(runtime.summaryLoading)
+                assertEquals(null, story.aiSummaryText)
+                assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
+                val generation = assertNotNull(runtime.summaryPageTextRetryGeneration)
+                runtime.completeSummaryPageTextRetry(generation, recovered)
+                runCurrent()
+                assertFalse(runtime.summaryLoading)
+                if (WebContentPageText.isReady(recovered)) {
+                    assertEquals(2, inputs.size)
+                    assertEquals(recovered, inputs.last().articleText)
+                    assertEquals("Recovered summary", story.aiSummaryText)
+                } else {
+                    assertEquals(1, inputs.size, "A failed or interstitial browser read must not repeat HTTP extraction or AI submission")
+                    assertTrue(story.aiSummaryText.orEmpty().contains("HTTP 429"))
+                }
+                val attempts = inputs.size
+                runtime.completeSummaryPageTextRetry(generation, "Late duplicate browser response")
+                runCurrent()
+                assertEquals(attempts, inputs.size)
+                assertEquals(1, effects.count { it == CommentsFeatureEffect.RequestSummaryPageTextRetry })
+            }
+            runtime.dispose()
+        }
+    }
+
+    @Test
     fun localHttp401ExtractionFailureRequestsPageTextOnlyOnce() = runTest {
         val session = CommentsSessionState()
         val presenter = CommentsPresenter(

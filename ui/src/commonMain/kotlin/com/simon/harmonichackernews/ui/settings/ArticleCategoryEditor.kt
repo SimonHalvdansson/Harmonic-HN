@@ -59,6 +59,7 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        scrimColor = com.simon.harmonichackernews.ui.common.DialogScrimColor,
         // The sheet has no text fields. Its child dialogs own the keyboard; inactive windows
         // receive the final IME inset early during predictive back, causing a one-frame jump.
         contentWindowInsets = { WindowInsets.safeDrawing.exclude(WindowInsets.ime).union(WindowInsets.navigationBars) },

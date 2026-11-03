@@ -73,7 +73,7 @@ internal fun CategoryInspectorPreviewDialog(onDismiss: () -> Unit) {
                     selected = source, onSelected = { source = it },
                 )
                 StoryRow(model, settings.toStoryRowStyle(StoryRowStyleContext(model.points, model.commentCount, false)),
-                    animateChanges = false, onLinkClick = { storyOpens += 1 },
+                    animateChanges = false, inspectCategories = true, onLinkClick = { storyOpens += 1 },
                     modifier = Modifier.testTag("category-inspector-sample-story"))
                 Text("Story opens: $storyOpens", Modifier.testTag("category-inspector-story-opens"))
                 SettingsDialogBodyText("Sample scores are for this preview only. Edit examples opens the real category editor.")

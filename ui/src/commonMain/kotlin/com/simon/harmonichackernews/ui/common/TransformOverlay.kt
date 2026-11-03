@@ -279,7 +279,7 @@ fun TransformOverlay(
     }
     val movingElevation =
         (shadowElevation.value * shadowProgress * backScale * verticalSwipeScale).dp
-    val scrimAlpha = 0.32f * progress *
+    val scrimAlpha = DialogScrimAlpha * progress *
         (1f - 0.55f * predictiveVisualProgress) *
         (1f - verticalSwipeProgress)
     SideEffect { onScrimAlphaChanged(scrimAlpha) }

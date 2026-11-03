@@ -49,6 +49,8 @@ data class FiltersTagsSettingsUiState(
     val legacyTags: List<TaggedUserUi> = emptyList(),
     val blockedUserCount: Int = 0,
     val legacyBlockedUserCount: Int = 0,
+    val titleFilterCount: Int = 0,
+    val domainFilterCount: Int = 0,
 )
 
 @Composable
@@ -76,12 +78,14 @@ fun FiltersTagsSettingsScreen(
             SettingsCategory("Filters") {
                 SettingRow(
                     title = "Filter by story title",
+                    summary = "${state.titleFilterCount} active ${if (state.titleFilterCount == 1) "filter" else "filters"}",
                     icon = Res.drawable.ic_title,
                     onClick = { onFilterRequested(ContentFilterDialog.StoryTitle) },
                 )
                 SettingsDivider()
                 SettingRow(
                     title = "Filter by domain",
+                    summary = "${state.domainFilterCount} active ${if (state.domainFilterCount == 1) "filter" else "filters"}",
                     icon = Res.drawable.ic_public,
                     onClick = { onFilterRequested(ContentFilterDialog.Domain) },
                 )

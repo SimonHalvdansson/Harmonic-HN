@@ -4,8 +4,26 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.*
+import androidx.compose.runtime.snapshots.Snapshot
 
 class DesktopCommentsWebViewTest {
+    @Test
+    fun backgroundSummaryWaitsForAttachmentAndVerificationWithoutOpeningTheArticle() = runBlocking {
+        val session = DesktopCommentsWebViewSession("https://example.com/article")
+        val host = RecordingBrowser().apply { resultText = "Vercel Security Checkpoint" }
+        assertEquals(null, session.readPageText(loadIfNeeded = false))
+        assertFalse(session.backgroundLoadRequested)
+        val result = async(start = CoroutineStart.UNDISPATCHED) { session.readPageText(loadIfNeeded = true) }
+        assertTrue(session.backgroundLoadRequested)
+        session.attach(host)
+        session.updateFromBrowser(host, DesktopBrowserSnapshot("https://example.com/article", "Browser check", false, false, false))
+        Snapshot.sendApplyNotifications()
+        yield()
+        assertFalse(result.isCompleted, "Verification text must never become summary input")
+        host.resultText = "The article rendered after the browser's JavaScript check."
+        assertEquals(host.resultText, withTimeout(3_000) { result.await() })
+    }
     @Test
     fun firstNavigationFailureStopsLoadingAndRetryCanRecover() {
         val session = DesktopCommentsWebViewSession("http://127.0.0.1:1/article")
@@ -35,10 +53,11 @@ class DesktopCommentsWebViewTest {
     }
 
     private class RecordingBrowser : DesktopBrowserHost {
+        var resultText: String? = null
         var reloaded: String? = null
         override fun loadUrl(url: String) = Unit
         override fun loadHtml(html: String) = Unit
-        override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = result(null)
+        override fun evaluateJavaScriptResult(script: String, result: (String?) -> Unit) = result(resultText)
         override fun navigateBack() = Unit
         override fun navigateForward() = Unit
         override fun reload(fallbackUrl: String) { reloaded = fallbackUrl }

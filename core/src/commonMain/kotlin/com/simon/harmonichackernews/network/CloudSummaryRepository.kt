@@ -79,9 +79,17 @@ class KtorCloudSummaryRepository(
         val response = client.newBuilder().readTimeoutMillis(10_000).build().execute(request, maxBytes = MAX_ARTICLE_BYTES)
         try {
             if (!response.isSuccessful) {
-                throw CloudSummaryException("Article returned HTTP ${response.code}")
+                throw CloudSummaryException(if (response.header("x-vercel-mitigated") == "challenge")
+                    "Article requires browser verification (HTTP ${response.code})" else "Article returned HTTP ${response.code}")
             }
-            Ksoup.parse(response.body.readText(MAX_ARTICLE_BYTES), baseUri = url).body().text()
+            val document = Ksoup.parse(response.body.readText(MAX_ARTICLE_BYTES), baseUri = url)
+            val text = document.body().text()
+            if (!com.simon.harmonichackernews.presentation.WebContentPageText.isReady(text) ||
+                document.title().contains("Vercel Security Checkpoint", ignoreCase = true)) {
+                throw CloudSummaryException(if (text.isBlank()) "Article page contained no readable text"
+                    else "Article requires browser verification")
+            }
+            text
         } finally {
             response.close()
         }

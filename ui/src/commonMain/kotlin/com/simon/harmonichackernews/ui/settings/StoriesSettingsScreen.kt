@@ -1,8 +1,19 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import com.simon.harmonichackernews.ui.content.contentTween
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.*
@@ -42,6 +53,8 @@ data class StoriesSettingsUiState(
     val faviconProvider: String,
     val faviconIcon: Painter,
     val swipeToHide: Boolean = false,
+    val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
+    val categorizationEnabled: Boolean = false,
 )
 
 enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
@@ -63,7 +76,7 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
     DimReadStories(StoryBooleanPreference.GRAY_OUT_CLICKED),
 }
 
-enum class StoriesStringSetting { DisplayStyle }
+enum class StoriesStringSetting { DisplayStyle, CategoryTagLocation }
 enum class StoriesSettingsDialog { Hotness, FaviconProvider }
 
 @Composable
@@ -89,13 +102,30 @@ fun StoriesSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            StoryRow(
-                model = state.previewModel,
-                style = state.toPreviewStoryRowStyle(),
-            )
+            AnimatedContent(
+                modifier = Modifier.fillMaxWidth().testTag("stories-settings-preview"),
+                targetState = state.categoryTagLocation,
+                transitionSpec = {
+                    ((fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 12 }) togetherWith
+                        (fadeOut(contentTween()) + slideOutVertically(contentTween()) { -it / 12 }))
+                        .using(SizeTransform(clip = false) { _, _ -> contentTween() })
+                }, label = "category tag location preview",
+            ) { location ->
+                StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle().copy(categoryTagLocation = location))
+            }
         },
     ) {
         settingsCategory("Layout") {
+            row {
+                SegmentedSetting(
+                    title = "Category tag location",
+                    summary = if (state.categorizationEnabled) null else "Enable article categorization to choose a location.",
+                    options = com.simon.harmonichackernews.settings.CategoryTagLocation.entries.map { it to it.label },
+                    selected = state.categoryTagLocation,
+                    enabled = state.categorizationEnabled,
+                    onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
+                )
+            }
             row {
                 SegmentedSetting(
                     title = "Preview image",
