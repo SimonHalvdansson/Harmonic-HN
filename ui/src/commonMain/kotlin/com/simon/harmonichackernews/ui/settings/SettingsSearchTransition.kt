@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -37,11 +38,13 @@ private val SearchExpansionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 /** Window coordinates keep the pill aligned in scrolled lists, split panes and inset hosts. */
 internal class SettingsSearchTransitionState {
     var sourceBounds by mutableStateOf<Rect?>(null)
+    var sourceVisibleBounds by mutableStateOf<Rect?>(null)
     var viewportBounds by mutableStateOf(Rect.Zero)
     var backAnimation by mutableStateOf<SettingsSearchBackAnimation?>(null)
     var expansion: () -> Float = { 1f }
 
     fun sourceInViewport(): Rect? = sourceBounds?.translate(-viewportBounds.topLeft)
+    fun sourceVisibleInViewport(): Rect? = sourceVisibleBounds?.translate(-viewportBounds.topLeft)
 }
 
 internal fun Modifier.settingsSearchHeaderMotion(state: SettingsSearchTransitionState, topInset: Int): Modifier =
@@ -93,7 +96,17 @@ internal fun SettingsSearchTransitionViewport(
                         bottom = lerp(source.bottom, size.height, fraction),
                         cornerRadius = CornerRadius(source.height / 2f * (1f - fraction)),
                     ))
-                    clipPath(path) { this@drawWithContent.drawContent() }
+                    // Scrolling can clip the source pill at the list edge. Keep its full
+                    // geometry for the morph, and animate that clipping independently.
+                    val visible = state.sourceVisibleInViewport() ?: source
+                    clipRect(
+                        left = lerp(visible.left, 0f, fraction),
+                        top = lerp(visible.top, 0f, fraction),
+                        right = lerp(visible.right, size.width, fraction),
+                        bottom = lerp(visible.bottom, size.height, fraction),
+                    ) {
+                        clipPath(path) { this@drawWithContent.drawContent() }
+                    }
                 }
             },
         content = { content() },

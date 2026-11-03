@@ -93,7 +93,7 @@ fun FiltersTagsSettingsScreen(
                 SettingRow(
                     title = "Blocked users",
                     summary = "${state.blockedUserCount} active" + if (state.legacyBlockedUserCount > 0)
-                        " · ${state.legacyBlockedUserCount} ${if (state.legacyBlockedUserCount == 1) "needs" else "need"} review (inactive)" else " · Case-sensitive",
+                        " · ${state.legacyBlockedUserCount} ${if (state.legacyBlockedUserCount == 1) "needs" else "need"} review (inactive)" else "",
                     icon = Res.drawable.ic_person,
                     onClick = { onFilterRequested(ContentFilterDialog.User) },
                 )

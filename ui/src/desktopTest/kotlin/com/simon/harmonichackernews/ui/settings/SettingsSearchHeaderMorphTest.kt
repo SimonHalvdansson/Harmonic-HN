@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.ImageComposeScene
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
@@ -54,7 +53,7 @@ class SettingsSearchHeaderMorphTest {
                     assertTrue(button.touchBoundsInRoot.width >= 48f && button.touchBoundsInRoot.height >= 48f)
                     scene.render(time.also { time += 16_666_667L }).use { image ->
                         val pixels = image.toComposeImageBitmap().toPixelMap()
-                        val tint = lerp(palette.colorScheme.onSurface, palette.colorScheme.onSurfaceVariant, fraction)
+                        val tint = palette.colorScheme.onSurfaceVariant
                         var fullTintPixels = 0
                         for (y in bounds.top.toInt() until bounds.bottom.toInt()) {
                             for (x in bounds.left.toInt() until bounds.right.toInt()) {

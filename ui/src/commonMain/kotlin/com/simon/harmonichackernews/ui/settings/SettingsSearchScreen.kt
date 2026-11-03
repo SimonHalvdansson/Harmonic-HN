@@ -109,7 +109,10 @@ internal fun SettingsSearchButton(onClick: () -> Unit) {
         onClick = onClick,
         shape = RoundedCornerShape(SettingsSearchBarHeight / 2),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        modifier = Modifier.fillMaxWidth().onGloballyPositioned { motion?.sourceBounds = it.boundsInWindow() },
+        modifier = Modifier.fillMaxWidth().onGloballyPositioned {
+            motion?.sourceBounds = it.boundsInWindow(clipBounds = false)
+            motion?.sourceVisibleBounds = it.boundsInWindow()
+        },
     ) {
         SettingsSearchPillContent()
     }
@@ -121,10 +124,12 @@ private fun SettingsSearchPillContent(modifier: Modifier = Modifier, showIcon: B
         modifier.fillMaxWidth().height(SettingsSearchBarHeight).padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showIcon) SettingsSearchNavigationIcon(progress = { 0f })
+        if (showIcon) Icon(painterResource(Res.drawable.ic_search), null, Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
         else Spacer(Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
-        Text(stringResource(Res.string.settings_search_title), fontFamily = ProductSansFontFamily, fontSize = 16.sp)
+        Text(stringResource(Res.string.settings_search_title), fontFamily = ProductSansFontFamily, fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -247,18 +252,26 @@ internal fun SettingsSearchScreen(
             SettingsSearchPillContent(Modifier.graphicsLayer {
                 alpha = 1f - (motion.expansion() / 0.4f).coerceIn(0f, 1f)
             }.clearAndSetSemantics { }, showIcon = false)
-            IconButton(
-                onClick = { hideKeyboard(); onBack() },
+            Box(
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)
                     .graphicsLayer {
                         // Pill icon center: 32dp. Expanded field icon center: 28dp.
                         translationX = 4.dp.toPx() * (1f - motion.expansion())
                     }
-                    .semantics { contentDescription = backLabel },
+                    .size(48.dp),
+                contentAlignment = Alignment.Center,
             ) {
+                // Fade press feedback with the expanded control, while the icon keeps
+                // morphing into the source pill without a ripple disappearing at handoff.
+                IconButton(
+                    onClick = { hideKeyboard(); onBack() },
+                    modifier = Modifier.fillMaxSize()
+                        .graphicsLayer { alpha = motion.expansion() }
+                        .semantics { contentDescription = backLabel },
+                ) { }
                 SettingsSearchNavigationIcon(
                     progress = motion.expansion,
-                    tint = { lerp(colorScheme.onSurface, colorScheme.onSurfaceVariant, motion.expansion()) },
+                    tint = { colorScheme.onSurfaceVariant },
                 )
             }
         }
