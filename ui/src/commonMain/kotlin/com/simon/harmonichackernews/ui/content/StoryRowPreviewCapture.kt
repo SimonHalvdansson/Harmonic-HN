@@ -29,6 +29,7 @@ internal class StoryRowGeometry {
     var smallImageCoordinates: LayoutCoordinates? = null
     var titleCoordinates: LayoutCoordinates? = null
     var summaryCoordinates: LayoutCoordinates? = null
+    var authorCoordinates: LayoutCoordinates? = null
     var metaCoordinates: LayoutCoordinates? = null
     var indexCoordinates: LayoutCoordinates? = null
     var commentsCoordinates: LayoutCoordinates? = null
@@ -36,6 +37,7 @@ internal class StoryRowGeometry {
     var smallImageLayer: GraphicsLayer? = null
     var titleLayer: GraphicsLayer? = null
     var summaryLayer: GraphicsLayer? = null
+    var authorLayer: GraphicsLayer? = null
     var metaLayer: GraphicsLayer? = null
     var indexLayer: GraphicsLayer? = null
     var commentsLayer: GraphicsLayer? = null
@@ -65,8 +67,9 @@ internal class StoryRowGeometry {
                 .takeIf { style.showPreviewText }
                 .windowBoundsOrNull(),
             meta = metaCoordinates
-                .takeIf { !style.compact }
+                .takeIf { !style.compact || style.categoryTagLocation == com.simon.harmonichackernews.settings.CategoryTagLocation.METADATA }
                 .windowBoundsOrNull(),
+            author = authorCoordinates.windowBoundsOrNull(),
             index = indexCoordinates.windowBoundsOrNull(),
             comments = commentsCoordinates.windowBoundsOrNull(),
             imageCornerRadiusPx = imageCornerRadiusPx,
@@ -74,6 +77,7 @@ internal class StoryRowGeometry {
             titleLayer = titleLayer?.takeUnless(GraphicsLayer::isReleased),
             summaryLayer = summaryLayer?.takeUnless(GraphicsLayer::isReleased),
             metaLayer = metaLayer?.takeUnless(GraphicsLayer::isReleased),
+            authorLayer = authorLayer?.takeUnless(GraphicsLayer::isReleased),
             indexLayer = indexLayer?.takeUnless(GraphicsLayer::isReleased),
             commentsLayer = commentsLayer?.takeUnless(GraphicsLayer::isReleased),
         )

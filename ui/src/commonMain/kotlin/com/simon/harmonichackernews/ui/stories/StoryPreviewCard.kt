@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
@@ -87,6 +89,13 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.NetworkImage
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
+import com.simon.harmonichackernews.ui.content.StoryAuthorTag
+import com.simon.harmonichackernews.ui.content.StoryCategoryLabels
+import com.simon.harmonichackernews.ui.content.CategoryLabelText
+import com.simon.harmonichackernews.ui.content.storyCategoryColors
+import com.simon.harmonichackernews.ui.content.rememberArticleCategoryPresentation
+import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
+import com.simon.harmonichackernews.settings.CategoryTagLocation
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.utils.HtmlTextUtils
@@ -152,7 +161,7 @@ fun StoryPreviewCard(
         )
     }
     val displayedImageUrl = imageUrl?.takeIf { !imageLoadFailed }
-    val description = if (story.isLink) {
+    val rawDescription = if (story.isLink) {
         summaryState.result?.description?.takeIf(String::isNotBlank)
             ?: story.presentation.linkSummaryDescription
                 ?.takeIf { story.presentation.linkSummaryLoaded && it.isNotBlank() }
@@ -165,6 +174,7 @@ fun StoryPreviewCard(
                 .orEmpty()
         }
     }
+    val description = remember(rawDescription) { rawDescription?.let(HtmlTextUtils::decodeEntities) }
     val canLoadLinkPreview = story.isLink && !story.url.isNullOrBlank()
     val contentLoadFailed = previewResource?.contentLoadFailed == true
     val imagePending = shouldReserveStoryPreviewImage(
@@ -189,11 +199,12 @@ fun StoryPreviewCard(
             videoTitle = story.presentation.videoTitle,
         )
     }
-    val title = if (storyTitle.badge != null) {
+    val rawTitle = if (storyTitle.badge != null) {
         storyTitle.text
     } else {
         summaryState.result?.title?.takeIf(String::isNotBlank) ?: storyTitle.text
     }
+    val title = remember(rawTitle) { HtmlTextUtils.decodeEntities(rawTitle) }
     val domain = remember(story.isLink, story.url, story.author) {
         if (story.isLink) {
             story.url?.let { DomainNamePolicy.fromUrl(it) ?: it }
@@ -209,6 +220,33 @@ fun StoryPreviewCard(
             if (!domain.isNullOrBlank()) append(" • ").append(domain)
             append(" • ").append(ItemTimeFormatter.format(story.createdAtEpochSeconds, nowMillis))
         }
+    }
+    val dependencies = LocalHarmonicUiDependencies.current
+    val authorTags by dependencies.userTags.updates.collectAsStateWithLifecycle(initialValue = dependencies.userTags.current())
+    val authorTag = authorTags.tags[story.author].orEmpty()
+    val categoryPreferences by dependencies.articleCategorySettings.updates.collectAsStateWithLifecycle(
+        initialValue = dependencies.articleCategorySettings.snapshot(),
+    )
+    val categoryRuntimeState by dependencies.articleCategories.state.collectAsStateWithLifecycle()
+    val categories = rememberArticleCategoryPresentation(
+        storyId = story.id,
+        title = story.title,
+        url = story.url,
+        description = description,
+        preferences = categoryPreferences,
+        runtime = dependencies.articleCategories,
+        runtimeState = categoryRuntimeState,
+        eligible = !story.isFrontpageLink,
+    )
+    val categoryLabels: @Composable () -> Unit = {
+        StoryCategoryLabels(
+            labels = categories.labels,
+            alpha = 1f,
+            tintedSurface = if (settings.tintCardsFromImages) ({ cardColor }) else null,
+            topSpacing = 6.dp,
+            bottomSpacing = 0.dp,
+            categoryIds = categories.inspection?.labelScores?.map { it.categoryId }.orEmpty(),
+        )
     }
 
     Box(modifier = modifier) {
@@ -286,59 +324,82 @@ fun StoryPreviewCard(
                     Modifier.padding(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 7.dp),
                 ) {
                     StoryPreviewSharedElement(StoryPreviewSharedElement.Title) {
-                        AnimatedContent(
-                            targetState = title,
-                            transitionSpec = {
-                                fadeIn(tween(220)).togetherWith(fadeOut(tween(150)))
-                            },
-                            label = "story preview title content",
-                        ) { currentTitle ->
-                            StoryTitleText(
-                                text = currentTitle,
-                                badge = storyTitle.badge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = typography.family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = (typography.storyTitleSize + 2.5f).sp,
-                                lineHeight = (typography.storyTitleSize + 5.5f).sp,
-                            )
+                        Column {
+                            AnimatedContent(
+                                targetState = title,
+                                transitionSpec = {
+                                    fadeIn(tween(220)).togetherWith(fadeOut(tween(150)))
+                                },
+                                label = "story preview title content",
+                            ) { currentTitle ->
+                                StoryTitleText(
+                                    text = currentTitle,
+                                    badge = storyTitle.badge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontFamily = typography.family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = (typography.storyTitleSize + 2.5f).sp,
+                                    lineHeight = (typography.storyTitleSize + 5.5f).sp,
+                                )
+                            }
+                            if (settings.categoryTagLocation == CategoryTagLocation.TITLE) categoryLabels()
                         }
                     }
                     StoryPreviewSharedElement(
                         element = StoryPreviewSharedElement.Meta,
                         modifier = Modifier.padding(top = 8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (faviconUrl != null) {
-                                AsyncImage(
-                                    model = faviconUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(17.dp),
-                                    placeholder = tintedPainterResource(
-                                        Res.drawable.ic_public,
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    error = tintedPainterResource(
-                                        Res.drawable.ic_public,
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    fallback = tintedPainterResource(
-                                        Res.drawable.ic_public,
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (faviconUrl != null) {
+                                    AsyncImage(
+                                        model = faviconUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(17.dp),
+                                        placeholder = tintedPainterResource(
+                                            Res.drawable.ic_public,
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                        error = tintedPainterResource(
+                                            Res.drawable.ic_public,
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                        fallback = tintedPainterResource(
+                                            Res.drawable.ic_public,
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = meta,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = typography.storyMetaFamily,
+                                    fontSize = typography.storyMetaSize.sp,
+                                    lineHeight = (typography.storyMetaSize + 3f).sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = storyPreviewMetaTextStyle,
                                 )
-                                Spacer(Modifier.width(4.dp))
                             }
-                            Text(
-                                text = meta,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = typography.storyMetaFamily,
-                                fontSize = typography.storyMetaSize.sp,
-                                lineHeight = (typography.storyMetaSize + 3f).sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                style = storyPreviewMetaTextStyle,
-                            )
+                            if (settings.categoryTagLocation == CategoryTagLocation.METADATA) {
+                                val colors = storyCategoryColors(if (settings.tintCardsFromImages) ({ cardColor }) else null)
+                                categories.labels.forEachIndexed { index, label ->
+                                    CategoryLabelText(label, colors,
+                                        categoryId = categories.inspection?.labelScores?.getOrNull(index)?.categoryId)
+                                }
+                            }
+                        }
+                    }
+                    if (authorTag.isNotBlank()) {
+                        StoryPreviewSharedElement(StoryPreviewSharedElement.Author, Modifier.padding(top = 6.dp)) {
+                            StoryAuthorTag(story.author.orEmpty(), authorTag,
+                                authorTags.colors[story.author] ?: com.simon.harmonichackernews.settings.UserTagColor.Theme,
+                                typography, if (settings.tintCardsFromImages) ({ cardColor }) else null)
                         }
                     }
                 }

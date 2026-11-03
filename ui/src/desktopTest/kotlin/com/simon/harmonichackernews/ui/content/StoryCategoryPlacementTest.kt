@@ -10,17 +10,65 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.geometry.Offset
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.*
 import com.simon.harmonichackernews.ui.*
 import com.simon.harmonichackernews.ui.theme.*
+import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import javax.swing.SwingUtilities
 import java.io.File
 import org.jetbrains.skia.EncodedImageFormat
 import kotlin.test.*
 
 class StoryCategoryPlacementTest {
+    @Test fun previewCaptureIncludesEveryCategoryInBothPlacementsAndCompactRows() = SwingUtilities.invokeAndWait {
+        val app = DesktopHarmonicAppBootstrap.inMemory("CategoryPreviewCapture")
+        try {
+            for (location in CategoryTagLocation.entries) for (compact in listOf(false, true)) {
+                val style = StoryDisplaySettings.from(app.app.userSettings.story).copy(
+                    previewImageMode = StoryPreviewMode.OFF, showPreviewText = false,
+                    categoryTagLocation = location, compactView = compact,
+                ).toStoryRowStyle(StoryRowStyleContext(53, 18, false))
+                val labels = listOf("Programming", "Science", "World news")
+                val model = SettingsStoryPreviewModel.copy(categoryLabels = labels,
+                    authorName = "tester", authorTag = "Maintainer", authorTagColor = UserTagColor.Purple)
+                var capture: StoryPreviewSourceGeometry? = null
+                val scene = ImageComposeScene(300, 700) {
+                    MaterialTheme {
+                        StoryRow(model, style, listItem = true, animateChanges = false,
+                            capturePreviewSourceGeometry = true,
+                            onPreviewSourceGeometryChanged = { capture = it })
+                    }
+                }
+                try {
+                    repeat(12) { scene.render(it * 16_666_667L).close() }
+                    val geometry = assertNotNull(capture)
+                    val authorBounds = nodes(scene).single {
+                        it.config.getOrNull(SemanticsProperties.TestTag) == "story-author-tag"
+                    }.boundsInRoot
+                    val authorCapture = assertNotNull(geometry.author)
+                    assertNotNull(geometry.authorLayer)
+                    assertTrue(authorCapture.contains(authorBounds.center),
+                        "The author label must have its own captured transition layer")
+                    val group = assertNotNull(if (location == CategoryTagLocation.TITLE) geometry.title else geometry.meta)
+                    assertNotNull(if (location == CategoryTagLocation.TITLE) geometry.titleLayer else geometry.metaLayer)
+                    for (label in labels) {
+                        val chipText = nodes(scene).single {
+                            it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == label } == true
+                        }.boundsInRoot
+                        assertTrue(group.left <= chipText.left && group.top <= chipText.top &&
+                            group.right >= chipText.right && group.bottom >= chipText.bottom,
+                            "$location compact=$compact must capture $label in the moving group: $group / $chipText")
+                    }
+                } finally { scene.close() }
+            }
+        } finally { app.close() }
+    }
+
     @Test fun metadataFollowsTheWholeImageRowAndTaggedAuthorsWrapWithoutClipping() = SwingUtilities.invokeAndWait {
         val app = DesktopHarmonicAppBootstrap.inMemory("CategoryPlacementTest")
         try {
@@ -83,10 +131,13 @@ class StoryCategoryPlacementTest {
                     .toStoryRowStyle(StoryRowStyleContext(53, 18, false))
                 val model = SettingsStoryPreviewModel.copy(title = "Astra can read and write weights to improve Qwen",
                     domain = "rikiyat.github.io", domainWithoutTopLevel = "rikiyat.github", categoryLabels = listOf("AI"), categoryIds = listOf("ai"))
+                var linkClicks = 0
+                var commentClicks = 0
                 val scene = ImageComposeScene(width, 400) {
                     val palette = HarmonicThemeCatalog.scheme("dynamic", false)
                     HarmonicTheme(palette.colorScheme, false) {
-                        StoryRow(model, style, listItem = true, animateChanges = false)
+                        StoryRow(model, style, listItem = true, animateChanges = false,
+                            onLinkClick = { linkClicks++ }, onCommentClick = { commentClicks++ })
                     }
                 }
                 try {
@@ -99,6 +150,22 @@ class StoryCategoryPlacementTest {
                         assertTrue(details.right <= image.left + 1f, "Fitting metadata must remain beside the image: $details / $image")
                         assertTrue(details.top < image.bottom, "Fitting metadata must not be pushed below the image")
                     } else assertTrue(details.top >= image.bottom - 1f, "Crowded metadata needs the full width")
+                    val link = nodes.single { it.config.getOrNull(SemanticsProperties.TestTag) == "story-link-area" }
+                    val title = nodes.single { it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == model.title } == true }
+                    assertTrue(link.boundsInRoot.contains(details.center) && link.boundsInRoot.contains(title.boundsInRoot.center),
+                        "Title and metadata must share one link interaction surface")
+                    fun tap(point: Offset) {
+                        scene.sendPointerEvent(PointerEventType.Press, point, type = PointerType.Touch)
+                        scene.sendPointerEvent(PointerEventType.Release, point, type = PointerType.Touch)
+                    }
+                    tap(title.boundsInRoot.center)
+                    tap(details.center)
+                    assertEquals(2, linkClicks)
+                    val comments = nodes.single { node -> node.config.getOrNull(SemanticsProperties.ContentDescription)
+                        ?.any { it.endsWith("${model.commentCount} comments") } == true }
+                    tap(comments.boundsInRoot.center)
+                    assertEquals(1, commentClicks, "Comments must retain their separate touch target")
+                    assertEquals(2, linkClicks, "Comment taps must not open the story link")
                     System.getenv("HARMONIC_STORY_DETAILS_EVIDENCE")?.let { folder ->
                         File(folder).mkdirs()
                         scene.render(500_000_000L).use { image -> image.encodeToData(EncodedImageFormat.PNG)!!.use { data ->

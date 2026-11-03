@@ -5,6 +5,10 @@ import com.fleeksoft.ksoup.parser.Parser
 import com.fleeksoft.ksoup.select.Selector
 
 object HtmlTextUtils {
+    /** Decode residual entities in already-extracted text without treating literal tags as HTML. */
+    fun decodeEntities(text: String): String =
+        if ('&' in text) Parser.unescapeEntities(text, false) else text
+
     fun plainText(inputHtml: String?): String {
         if (inputHtml.isNullOrEmpty()) return ""
         // Printable ASCII with normalized spaces and no markup/entities is already DOM text.

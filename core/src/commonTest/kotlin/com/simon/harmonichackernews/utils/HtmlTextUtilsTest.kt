@@ -7,6 +7,15 @@ import kotlin.test.assertEquals
 
 class HtmlTextUtilsTest {
     @Test
+    fun residualEntitiesDecodeWithoutRemovingLiteralMarkupOrDecodingRepeatedly() {
+        assertEquals("read & write weights", HtmlTextUtils.decodeEntities("read &amp; write weights"))
+        assertEquals("\"Qwen\" — café 😀", HtmlTextUtils.decodeEntities("&quot;Qwen&quot; &#8212; caf&#xE9; &#x1F600;"))
+        assertEquals("List<T> & <b>literal</b>", HtmlTextUtils.decodeEntities("List<T> &amp; &lt;b&gt;literal&lt;/b&gt;"))
+        assertEquals("&amp;", HtmlTextUtils.decodeEntities("&amp;amp;"))
+        assertEquals("AT&T &unknown;", HtmlTextUtils.decodeEntities("AT&T &unknown;"))
+    }
+
+    @Test
     fun plainTextKeepsHtmlParserOutputForAsciiUnicodeEntitiesAndWhitespace() {
         val inputs = buildList {
             addAll(listOf(

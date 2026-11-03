@@ -1,13 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import com.simon.harmonichackernews.ui.content.contentTween
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
@@ -102,16 +97,8 @@ fun StoriesSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            AnimatedContent(
-                modifier = Modifier.fillMaxWidth().testTag("stories-settings-preview"),
-                targetState = state.categoryTagLocation,
-                transitionSpec = {
-                    ((fadeIn(contentTween()) + slideInVertically(contentTween()) { it / 12 }) togetherWith
-                        (fadeOut(contentTween()) + slideOutVertically(contentTween()) { -it / 12 }))
-                        .using(SizeTransform(clip = false) { _, _ -> contentTween() })
-                }, label = "category tag location preview",
-            ) { location ->
-                StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle().copy(categoryTagLocation = location))
+            Box(Modifier.fillMaxWidth().testTag("stories-settings-preview").animateContentSize(contentTween())) {
+                StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle())
             }
         },
     ) {

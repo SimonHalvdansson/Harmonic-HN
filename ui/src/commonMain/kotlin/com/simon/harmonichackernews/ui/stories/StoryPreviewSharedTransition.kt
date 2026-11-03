@@ -52,6 +52,7 @@ data class StoryPreviewSourceGeometry(
     val title: Rect? = null,
     val summary: Rect? = null,
     val meta: Rect? = null,
+    val author: Rect? = null,
     val index: Rect? = null,
     val comments: Rect? = null,
     val imageCornerRadiusPx: Float = 0f,
@@ -59,6 +60,7 @@ data class StoryPreviewSourceGeometry(
     val titleLayer: GraphicsLayer? = null,
     val summaryLayer: GraphicsLayer? = null,
     val metaLayer: GraphicsLayer? = null,
+    val authorLayer: GraphicsLayer? = null,
     val indexLayer: GraphicsLayer? = null,
     val commentsLayer: GraphicsLayer? = null,
 )
@@ -68,6 +70,7 @@ internal enum class StoryPreviewSourceElement {
     Title,
     Summary,
     Meta,
+    Author,
     Index,
     Comments,
 }
@@ -77,6 +80,7 @@ internal enum class StoryPreviewSharedElement {
     Title,
     Summary,
     Meta,
+    Author,
     Supplementary,
 }
 
@@ -414,6 +418,12 @@ private fun DrawScope.drawTransitionContent(
         transition.sourceSnapshot(StoryPreviewSourceElement.Meta),
     )
 
+    drawElement(
+        StoryPreviewSharedElement.Author,
+        source.author,
+        transition.sourceSnapshot(StoryPreviewSourceElement.Author),
+    )
+
     val supplementary = transition
         .targetBounds(StoryPreviewSharedElement.Supplementary)
         ?.localTo(transition.rootOffset)
@@ -490,6 +500,7 @@ private fun StoryPreviewSourceGeometry.localTo(offset: Offset): StoryPreviewSour
         title = title?.localTo(offset),
         summary = summary?.localTo(offset),
         meta = meta?.localTo(offset),
+        author = author?.localTo(offset),
         index = index?.localTo(offset),
         comments = comments?.localTo(offset),
     )

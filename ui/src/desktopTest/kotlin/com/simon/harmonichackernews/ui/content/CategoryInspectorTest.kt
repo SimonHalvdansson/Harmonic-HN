@@ -107,6 +107,9 @@ class CategoryInspectorTest {
                         } == true
                     })
                     val close = described("Close category inspector")
+                    val closeTarget = nodes.single { it.config.getOrNull(SemanticsProperties.TestTag) == "category-inspector-close" }
+                    assertTrue(closeTarget.touchBoundsInRoot.width >= 56 && closeTarget.touchBoundsInRoot.height >= 56,
+                        "The close action must keep its enlarged 56dp touch target")
                     assertTrue(close.boundsInRoot.top >= 0 && close.boundsInRoot.bottom <= height,
                         "Close must remain visible at ${width}dp and ${fontScale}x font")
                     val edit = nodes.single { it.config.getOrNull(SemanticsProperties.TestTag) == "category-inspector-edit-examples" }

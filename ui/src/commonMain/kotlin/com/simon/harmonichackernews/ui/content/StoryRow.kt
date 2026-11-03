@@ -24,6 +24,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ripple
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
@@ -488,6 +491,8 @@ fun StoryRow(
                             }
                         }
                         StoryContentRow(
+                            onLinkClick = onLinkClick,
+                            onLinkLongClick = trackedLinkLongClick,
                             commentsOnLeft = style.commentsOnLeft && !mediumPreview,
                             animateChanges = animateChanges,
                             railWidth = animatedRailWidth,
@@ -499,8 +504,7 @@ fun StoryRow(
                             },
                             comments = comments,
                             smallPreview = if (hasPreview && renderedPreviewMode == StoryPreviewMode.SMALL && categoriesWithMetadata(model, style)) ({
-                                Box(Modifier.combinedClickable(enabled = onLinkClick != null || trackedLinkLongClick != null,
-                                    onClick = { onLinkClick?.invoke() }, onLongClick = trackedLinkLongClick)) {
+                                Box {
                                     StorySmallPreviewImage(model = model, dimAlpha = dimAlpha,
                                         onPreviewLoadFailed = handlePreviewLoadFailed, onPreviewLoadSuccess = handlePreviewLoadSuccess,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
@@ -513,25 +517,29 @@ fun StoryRow(
                             metadata = if (categoriesWithMetadata(model, style)) ({
                             Column(Modifier.fillMaxWidth()
                                 .testTag("story-details")
-                                .combinedClickable(enabled = onLinkClick != null || trackedLinkLongClick != null,
-                                    onClick = { onLinkClick?.invoke() }, onLongClick = trackedLinkLongClick)
                                 .padding(start = if (style.showIndex) 43.dp else 16.dp, end = 9.dp, bottom = 10.dp)) {
                                 val categoryColors = storyCategoryColors(if (style.tintCard) ({ background.value }) else null)
-                                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                FlowRow(Modifier.fillMaxWidth()
+                                    .captureStoryPreviewElement(enabled = captureSourceContent,
+                                        onPositioned = { itemGeometry.metaCoordinates = it },
+                                        onLayerChanged = { itemGeometry.metaLayer = it }),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                                     if (!style.compact) StoryMeta(
                                         model = model, style = renderedStyle, typography = typography, dimAlpha = dimAlpha,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
                                         extractTint = style.tintCard && !previewAvailable && model.faviconTintArgb == null,
                                         onTintExtracted = handleFaviconTintExtracted, animateChanges = animateChanges, wrapContent = true,
-                                        modifier = Modifier.captureStoryPreviewElement(enabled = captureSourceContent,
-                                            onPositioned = { itemGeometry.metaCoordinates = it }, onLayerChanged = { itemGeometry.metaLayer = it }),
+                                        modifier = Modifier,
                                     )
                                     model.categoryLabels.forEachIndexed { index, label ->
                                         CategoryLabelText(label, categoryColors, Modifier.graphicsLayer { alpha = dimAlpha }, model.categoryIds.getOrNull(index))
                                     }
                                 }
-                                StoryAuthorTag(model, typography, if (style.tintCard) ({ background.value }) else null)
+                                StoryAuthorTag(model, typography, if (style.tintCard) ({ background.value }) else null,
+                                    Modifier.captureStoryPreviewElement(captureSourceContent,
+                                        onPositioned = { itemGeometry.authorCoordinates = it },
+                                        onLayerChanged = { itemGeometry.authorLayer = it }))
                             }
                             }) else null,
                         ) {
@@ -544,8 +552,8 @@ fun StoryRow(
                                 hasSmallPreview = hasPreview &&
                                     renderedPreviewMode == StoryPreviewMode.SMALL && !categoriesWithMetadata(model, style),
                                 dimAlpha = dimAlpha,
-                                onLinkClick = onLinkClick,
-                                onLinkLongClick = trackedLinkLongClick,
+                                onLinkClick = onLinkClick.takeUnless { categoriesWithMetadata(model, style) },
+                                onLinkLongClick = trackedLinkLongClick.takeUnless { categoriesWithMetadata(model, style) },
                                 onPreviewLoadFailed = handlePreviewLoadFailed,
                                 onPreviewLoadSuccess = handlePreviewLoadSuccess,
                                 tintBaseColorArgb = tintBaseColorArgb,
@@ -582,6 +590,8 @@ fun StoryRow(
 /** Measures the metric rail at its requested or intrinsic width, then matches it to the content height. */
 @Composable
 private fun StoryContentRow(
+    onLinkClick: (() -> Unit)?,
+    onLinkLongClick: (() -> Unit)?,
     commentsOnLeft: Boolean,
     animateChanges: Boolean,
     railWidth: Dp?,
@@ -591,6 +601,17 @@ private fun StoryContentRow(
     smallPreview: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
+    val linkInteractions = remember { MutableInteractionSource() }
+    val linkFeedback = remember { StoryLinkFeedback() }
+    val linkModifier = if (metadata != null) Modifier
+        .testTag("story-link-area")
+        .combinedClickable(
+            interactionSource = linkInteractions, indication = null,
+            enabled = onLinkClick != null || onLinkLongClick != null,
+            onClick = { onLinkClick?.invoke() }, onLongClick = onLinkLongClick,
+        )
+        .onSecondaryClick(enabled = onLinkLongClick != null) { onLinkLongClick?.invoke() }
+    else Modifier
     val commentsOnLeftProgress = if (animateChanges) {
         val animatedProgress by animateFloatAsState(
             targetValue = if (commentsOnLeft) 1f else 0f,
@@ -614,12 +635,13 @@ private fun StoryContentRow(
         contentMinHeight
     }
     Layout(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(linkModifier),
         content = {
             content()
             comments()
             if (metadata != null) Box { metadata() }
             if (smallPreview != null) Box { smallPreview() }
+            if (metadata != null) Box(Modifier.clipStoryLinkFeedback(linkFeedback).indication(linkInteractions, ripple()))
         },
     ) { measurables, constraints ->
         val minimumRowHeight = maxOf(
@@ -650,8 +672,13 @@ private fun StoryContentRow(
             minWidth = constrainedRailWidthPx, maxWidth = constrainedRailWidthPx,
             minHeight = rowHeight, maxHeight = rowHeight))
         val totalHeight = rowHeight + if (inlineMetadata) 0 else (metadataPlaceable?.height ?: 0)
+        val feedbackPlaceable = if (metadata != null) measurables.last().measure(
+            androidx.compose.ui.unit.Constraints.fixed(constraints.maxWidth, totalHeight)) else null
         layout(constraints.maxWidth, totalHeight) {
             val contentX = (constrainedRailWidthPx * commentsOnLeftProgress).roundToInt()
+            linkFeedback.main = Rect(contentX.toFloat(), 0f, (contentX + contentWidth + smallWidth).toFloat(), rowHeight.toFloat())
+            linkFeedback.footer = if (metadataPlaceable != null && !inlineMetadata)
+                Rect(0f, rowHeight.toFloat(), constraints.maxWidth.toFloat(), totalHeight.toFloat()) else null
             val railX = ((contentWidth + smallWidth) * (1f - commentsOnLeftProgress)).roundToInt()
             val contentY = if (inlineMetadata) ((rowHeight - contentPlaceable.height - metadataPlaceable!!.height) / 2).coerceAtLeast(0) else 0
             contentPlaceable.placeRelative(contentX, contentY)
@@ -659,6 +686,7 @@ private fun StoryContentRow(
             smallPlaceable?.placeRelative(contentX + contentWidth, (rowHeight - smallPlaceable.height) / 2)
             metadataPlaceable?.placeRelative(if (inlineMetadata) contentX else 0,
                 if (inlineMetadata) contentY + contentPlaceable.height else rowHeight)
+            feedbackPlaceable?.placeRelative(0, 0)
         }
     }
 }
@@ -753,11 +781,10 @@ private fun StoryMainContent(
     }
     Box(
         modifier = modifier
-            .combinedClickable(
-                enabled = onLinkClick != null || onLinkLongClick != null,
+            .then(if (onLinkClick != null || onLinkLongClick != null) Modifier.combinedClickable(
                 onClick = { onLinkClick?.invoke() },
                 onLongClick = onLinkLongClick,
-            )
+            ) else Modifier)
             .onSecondaryClick(enabled = onLinkLongClick != null) {
                 onLinkLongClick?.invoke()
             }
@@ -797,23 +824,24 @@ private fun StoryMainContent(
                     )
                     .alignBy(FirstBaseline),
             ) {
-                StoryTitleText(
-                    text = model.title,
-                    badge = model.titleBadge,
-                    modifier = Modifier
-                        .captureStoryPreviewElement(
-                            enabled = capturePreviewSource,
-                            onPositioned = { itemGeometry.titleCoordinates = it },
-                            onLayerChanged = { itemGeometry.titleLayer = it },
-                        ),
-                    color = foreground,
-                    fontFamily = typography.family,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = titleSize.sp,
-                    style = storyRowTextStyle,
-                )
-                if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
-                    inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds)
+                // Capture the complete title group so its category chips travel with the preview.
+                Column(Modifier.captureStoryPreviewElement(
+                    enabled = capturePreviewSource,
+                    onPositioned = { itemGeometry.titleCoordinates = it },
+                    onLayerChanged = { itemGeometry.titleLayer = it },
+                )) {
+                    StoryTitleText(
+                        text = model.title,
+                        badge = model.titleBadge,
+                        color = foreground,
+                        fontFamily = typography.family,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = titleSize.sp,
+                        style = storyRowTextStyle,
+                    )
+                    if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
+                        inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds)
+                }
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
                     animate = animateContentChanges,
@@ -837,8 +865,8 @@ private fun StoryMainContent(
                         style = storyRowTextStyle,
                     )
                 }
-                StoryVisibility(
-                    visible = !style.compact && !categoriesWithMetadata(model, style),
+                if (!categoriesWithMetadata(model, style)) StoryVisibility(
+                    visible = !style.compact,
                     animate = animateChanges,
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
@@ -862,7 +890,10 @@ private fun StoryMainContent(
                             ),
                     )
                 }
-                if (!categoriesWithMetadata(model, style)) StoryAuthorTag(model, typography, tintedSurface)
+                if (!categoriesWithMetadata(model, style)) StoryAuthorTag(model, typography, tintedSurface,
+                    Modifier.captureStoryPreviewElement(capturePreviewSource,
+                        onPositioned = { itemGeometry.authorCoordinates = it },
+                        onLayerChanged = { itemGeometry.authorLayer = it }))
             }
             if (animateContentChanges) {
                 AnimatedVisibility(
@@ -958,12 +989,23 @@ internal fun categoriesWithMetadata(model: StoryRowModel, style: StoryRowStyle):
     style.categoryTagLocation == com.simon.harmonichackernews.settings.CategoryTagLocation.METADATA && model.categoryLabels.isNotEmpty()
 
 @Composable
-private fun StoryAuthorTag(model: StoryRowModel, typography: ContentTypography, tintedSurface: (() -> Color)?) {
-    if (model.authorName.isBlank() || model.authorTag.isBlank()) return
-    val base = userTagColor(model.authorTagColor)
+private fun StoryAuthorTag(model: StoryRowModel, typography: ContentTypography, tintedSurface: (() -> Color)?, modifier: Modifier = Modifier) =
+    StoryAuthorTag(model.authorName, model.authorTag, model.authorTagColor, typography, tintedSurface, modifier)
+
+@Composable
+internal fun StoryAuthorTag(
+    authorName: String,
+    tag: String,
+    tagColor: com.simon.harmonichackernews.settings.UserTagColor,
+    typography: ContentTypography,
+    tintedSurface: (() -> Color)?,
+    modifier: Modifier = Modifier,
+) {
+    if (authorName.isBlank() || tag.isBlank()) return
+    val base = userTagColor(tagColor)
     val accent = tintedSurface?.let { com.simon.harmonichackernews.ui.theme.contrastingColor(base, listOf(it()), 4.5f) } ?: base
-    Text(annotatedUserTagLabel("${model.authorName} (${model.authorTag})", model.authorTag, accent),
-        modifier = Modifier.padding(top = 2.dp).testTag("story-author-tag"),
+    Text(annotatedUserTagLabel("$authorName ($tag)", tag, accent),
+        modifier = modifier.padding(top = 2.dp).testTag("story-author-tag"),
         color = MaterialTheme.colorScheme.onSurface, fontFamily = typography.storyMetaFamily,
         fontSize = typography.storyMetaSize.sp, style = storyRowTextStyle)
 }

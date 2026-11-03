@@ -58,6 +58,14 @@ class CategoryLocationSettingsTest {
                     it.config.getOrNull(SemanticsProperties.TestTag) == "stories-settings-preview"
                 }
                 heights += preview.boundsInRoot.height.toInt()
+                assertEquals(1, walk(preview).count { node ->
+                    node.config.getOrNull(SemanticsProperties.Text)?.any {
+                        it.text == SettingsStoryPreviewModel.title
+                    } == true
+                }, "Placement changes must retain one card instead of crossfading duplicate cards")
+                assertEquals(1, walk(preview).count { node ->
+                    node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains("science.org") } == true
+                }, "Moving metadata must not leave a second fading copy under the title")
             }
             assertTrue(heights.size >= 3, "Category placement must animate through intermediate preview heights: $heights")
             frames()

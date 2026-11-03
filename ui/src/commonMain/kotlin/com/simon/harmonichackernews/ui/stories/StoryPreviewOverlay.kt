@@ -165,6 +165,7 @@ fun StoryPreviewOverlay(
     var targetImageBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
     var targetTitleBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
     var targetSummaryBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
+    var targetAuthorBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
     var targetMetaBounds by remember(state.sessionId, currentStory.id) { mutableStateOf<Rect?>(null) }
     var targetSupplementaryBounds by remember(state.sessionId, currentStory.id) {
         mutableStateOf<Rect?>(null)
@@ -181,6 +182,7 @@ fun StoryPreviewOverlay(
     var targetSummaryLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
+    var targetAuthorLayer by remember(state.sessionId, currentStory.id) { mutableStateOf<GraphicsLayer?>(null) }
     var targetMetaLayer by remember(state.sessionId, currentStory.id) {
         mutableStateOf<GraphicsLayer?>(null)
     }
@@ -204,6 +206,7 @@ fun StoryPreviewOverlay(
     val targetImageCapture = rememberGraphicsLayerSnapshot(targetImageLayer, snapshotRefreshKey)
     val targetTitleCapture = rememberGraphicsLayerSnapshot(targetTitleLayer, snapshotRefreshKey)
     val targetSummaryCapture = rememberGraphicsLayerSnapshot(targetSummaryLayer, snapshotRefreshKey)
+    val targetAuthorCapture = rememberGraphicsLayerSnapshot(targetAuthorLayer, snapshotRefreshKey)
     val targetMetaCapture = rememberGraphicsLayerSnapshot(targetMetaLayer, snapshotRefreshKey)
     val targetSupplementaryCapture =
         rememberGraphicsLayerSnapshot(targetSupplementaryLayer, snapshotRefreshKey)
@@ -211,6 +214,7 @@ fun StoryPreviewOverlay(
     val sourceImageCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.imageLayer, snapshotRefreshKey)
     val sourceTitleCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.titleLayer, snapshotRefreshKey)
     val sourceSummaryCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.summaryLayer, snapshotRefreshKey)
+    val sourceAuthorCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.authorLayer, snapshotRefreshKey)
     val sourceMetaCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.metaLayer, snapshotRefreshKey)
     val sourceIndexCapture = rememberGraphicsLayerSnapshot(sourceGeometry?.indexLayer, snapshotRefreshKey)
     val sourceCommentsCapture = rememberGraphicsLayerSnapshot(
@@ -220,11 +224,13 @@ fun StoryPreviewOverlay(
     val targetImageSnapshot = targetImageCapture.image
     val targetTitleSnapshot = targetTitleCapture.image
     val targetSummarySnapshot = targetSummaryCapture.image
+    val targetAuthorSnapshot = targetAuthorCapture.image
     val targetMetaSnapshot = targetMetaCapture.image
     val targetSupplementarySnapshot = targetSupplementaryCapture.image
     val sourceImageSnapshot = sourceImageCapture.image
     val sourceTitleSnapshot = sourceTitleCapture.image
     val sourceSummarySnapshot = sourceSummaryCapture.image
+    val sourceAuthorSnapshot = sourceAuthorCapture.image
     val sourceMetaSnapshot = sourceMetaCapture.image
     val sourceIndexSnapshot = sourceIndexCapture.image
     val sourceCommentsSnapshot = sourceCommentsCapture.image
@@ -241,11 +247,13 @@ fun StoryPreviewOverlay(
             sourceSnapshotReady(sourceGeometry.image, sourceImageCapture) &&
             sourceSnapshotReady(sourceGeometry.title, sourceTitleCapture) &&
             sourceSnapshotReady(sourceGeometry.summary, sourceSummaryCapture) &&
+            sourceSnapshotReady(sourceGeometry.author, sourceAuthorCapture) &&
             sourceSnapshotReady(sourceGeometry.meta, sourceMetaCapture) &&
             sourceSnapshotReady(sourceGeometry.index, sourceIndexCapture) &&
             sourceSnapshotReady(sourceGeometry.comments, sourceCommentsCapture)
     val targetImageLayerHasContent = targetImageLayer
         ?.takeIf { it.size.width > 0 && it.size.height > 0 } != null
+    val targetAuthorLayerHasContent = targetAuthorLayer?.takeIf { it.size.width > 0 && it.size.height > 0 } != null
     val targetSummaryLayerHasContent = targetSummaryLayer
         ?.takeIf { it.size.width > 0 && it.size.height > 0 } != null
     val snapshotsReadyForTransition =
@@ -258,12 +266,14 @@ fun StoryPreviewOverlay(
             targetSupplementaryCapture.isCurrent(snapshotRefreshKey) &&
             (!targetImageLayerHasContent ||
                 targetImageCapture.isCurrent(snapshotRefreshKey)) &&
+            (!targetAuthorLayerHasContent || targetAuthorCapture.isCurrent(snapshotRefreshKey)) &&
             (!targetSummaryLayerHasContent ||
                 targetSummaryCapture.isCurrent(snapshotRefreshKey))
     val snapshotsUnavailableForTransition = sourceGeometry == null ||
         sourceSnapshotUnavailable(sourceGeometry.image, sourceImageCapture) ||
         sourceSnapshotUnavailable(sourceGeometry.title, sourceTitleCapture) ||
         sourceSnapshotUnavailable(sourceGeometry.summary, sourceSummaryCapture) ||
+        sourceSnapshotUnavailable(sourceGeometry.author, sourceAuthorCapture) ||
         sourceSnapshotUnavailable(sourceGeometry.meta, sourceMetaCapture) ||
         sourceSnapshotUnavailable(sourceGeometry.index, sourceIndexCapture) ||
         sourceSnapshotUnavailable(sourceGeometry.comments, sourceCommentsCapture) ||
@@ -274,6 +284,7 @@ fun StoryPreviewOverlay(
             targetImageLayerHasContent,
             targetImageCapture.isUnavailable(snapshotRefreshKey),
         ) ||
+        storyPreviewOptionalSnapshotUnavailable(targetAuthorLayerHasContent, targetAuthorCapture.isUnavailable(snapshotRefreshKey)) ||
         storyPreviewOptionalSnapshotUnavailable(
             targetSummaryLayerHasContent,
             targetSummaryCapture.isUnavailable(snapshotRefreshKey),
@@ -514,6 +525,7 @@ fun StoryPreviewOverlay(
                 StoryPreviewSourceElement.Image -> sourceImageSnapshot
                 StoryPreviewSourceElement.Title -> sourceTitleSnapshot
                 StoryPreviewSourceElement.Summary -> sourceSummarySnapshot
+                StoryPreviewSourceElement.Author -> sourceAuthorSnapshot
                 StoryPreviewSourceElement.Meta -> sourceMetaSnapshot
                 StoryPreviewSourceElement.Index -> sourceIndexSnapshot
                 StoryPreviewSourceElement.Comments -> sourceCommentsSnapshot
@@ -534,6 +546,7 @@ fun StoryPreviewOverlay(
                 StoryPreviewSharedElement.Image -> targetImageBounds
                 StoryPreviewSharedElement.Title -> targetTitleBounds
                 StoryPreviewSharedElement.Summary -> targetSummaryBounds
+                StoryPreviewSharedElement.Author -> targetAuthorBounds
                 StoryPreviewSharedElement.Meta -> targetMetaBounds
                 StoryPreviewSharedElement.Supplementary -> targetSupplementaryBounds
             })
@@ -543,6 +556,7 @@ fun StoryPreviewOverlay(
                 StoryPreviewSharedElement.Image -> targetImageSnapshot
                 StoryPreviewSharedElement.Title -> targetTitleSnapshot
                 StoryPreviewSharedElement.Summary -> targetSummarySnapshot
+                StoryPreviewSharedElement.Author -> targetAuthorSnapshot
                 StoryPreviewSharedElement.Meta -> targetMetaSnapshot
                 StoryPreviewSharedElement.Supplementary -> targetSupplementarySnapshot
             }
@@ -558,6 +572,9 @@ fun StoryPreviewOverlay(
                     }
                     StoryPreviewSharedElement.Summary -> {
                         if (targetSummaryBounds != bounds) targetSummaryBounds = bounds
+                    }
+                    StoryPreviewSharedElement.Author -> {
+                        if (targetAuthorBounds != bounds) targetAuthorBounds = bounds
                     }
                     StoryPreviewSharedElement.Meta -> {
                         if (targetMetaBounds != bounds) targetMetaBounds = bounds
@@ -580,6 +597,9 @@ fun StoryPreviewOverlay(
                 }
                 StoryPreviewSharedElement.Summary -> {
                     if (targetSummaryLayer !== layer) targetSummaryLayer = layer
+                }
+                StoryPreviewSharedElement.Author -> {
+                    if (targetAuthorLayer !== layer) targetAuthorLayer = layer
                 }
                 StoryPreviewSharedElement.Meta -> {
                     if (targetMetaLayer !== layer) targetMetaLayer = layer

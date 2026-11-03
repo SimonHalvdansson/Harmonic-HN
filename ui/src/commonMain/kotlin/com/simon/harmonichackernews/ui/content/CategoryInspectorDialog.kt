@@ -199,26 +199,26 @@ internal fun CategoryInspectorContent(
         val compactHeight = maxHeight < 360.dp
         Column(
             Modifier.fillMaxWidth()
-                .padding(if (compactHeight) 12.dp else 24.dp)
+                .padding(horizontal = if (compactHeight) 12.dp else 20.dp, vertical = 12.dp)
                 .animateContentSize(contentTween()),
-            verticalArrangement = Arrangement.spacedBy(if (compactHeight) 8.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (compactHeight) { if (sample) "Sample" else "Category" }
                     else if (sample) "Sample category inspector" else "Category match",
-                    Modifier.weight(1f).padding(top = if (compactHeight) 8.dp else 12.dp),
+                    Modifier.weight(1f),
                     color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
                     style = MaterialTheme.typography.titleSmall,
                     fontSize = if (compactHeight) 12.sp else MaterialTheme.typography.titleSmall.fontSize,
                     lineHeight = if (compactHeight) 16.sp else MaterialTheme.typography.titleSmall.lineHeight,
                     maxLines = if (compactHeight) 1 else 2, overflow = TextOverflow.Ellipsis)
-                IconButton(onClick = onDismiss) {
-                    Icon(painterResource(Res.drawable.ic_close), "Close category inspector")
+                IconButton(onClick = onDismiss, modifier = Modifier.size(56.dp).testTag("category-inspector-close")) {
+                    Icon(painterResource(Res.drawable.ic_close), "Close category inspector", Modifier.size(24.dp))
                 }
             }
             Column(Modifier.weight(1f, fill = false).testTag("category-inspector-scroll-content")
                 .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(name, Modifier.semantics { heading() },
                     color = colors.onSurface, fontFamily = ProductSansFontFamily,
                     style = MaterialTheme.typography.headlineSmall)
@@ -249,7 +249,7 @@ internal fun CategoryInspectorContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                if (nearby.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (nearby.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Nearby categories", Modifier.semantics { heading() }, color = colors.onSurface,
                         fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.titleSmall)
                     nearby.forEach { match ->

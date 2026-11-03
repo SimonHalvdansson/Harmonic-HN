@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.animateContentSize
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -309,7 +311,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
     val isRelease = info.type == LinkPreviewType.GITHUB_RELEASE
     var expanded by rememberSaveable(info.url) { mutableStateOf(false) }
     var truncated by remember(info.url, info.description) { mutableStateOf(false) }
-    Column(Modifier.animateContentSize()) {
+    Column {
         PreviewHeader(
             text = info.title,
             icon = info.type.linkPreviewIcon(),
@@ -332,7 +334,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 markdown = info.description.orEmpty(),
                 baseUrl = info.url,
                 onOpenLink = platform.openLink,
-                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                modifier = Modifier.animateContentSize(contentTween()).padding(top = 4.dp, bottom = 4.dp),
                 color = MaterialTheme.colorScheme.onSurface,
                 linkColor = MaterialTheme.colorScheme.primary,
                 fontFamily = LocalPreviewFontFamily.current,
@@ -344,6 +346,9 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
             )
             if (expanded || truncated) {
                 TextButton(onClick = { expanded = !expanded }) {
+                    Icon(painterResource(if (expanded) Res.drawable.ic_remove else Res.drawable.ic_add),
+                        contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(if (expanded) "Show less" else "Show more", fontFamily = LocalPreviewFontFamily.current)
                 }
             }
