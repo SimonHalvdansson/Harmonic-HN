@@ -1,9 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import com.simon.harmonichackernews.ui.content.contentTween
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.LookaheadScope
+import com.simon.harmonichackernews.ui.content.StoryRowPlacementAnimation
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
@@ -97,8 +98,12 @@ fun StoriesSettingsScreen(
         onBack = onBack,
         contentVersion = contentVersion,
         pinnedContent = {
-            Box(Modifier.fillMaxWidth().testTag("stories-settings-preview").animateContentSize(contentTween())) {
-                StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle())
+            LookaheadScope {
+                val placementAnimation = remember(this) { StoryRowPlacementAnimation(this) }
+                Box(Modifier.fillMaxWidth().testTag("stories-settings-preview")) {
+                    StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle(),
+                        placementAnimation = placementAnimation)
+                }
             }
         },
     ) {

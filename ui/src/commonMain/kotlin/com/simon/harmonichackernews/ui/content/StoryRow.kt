@@ -4,6 +4,8 @@ package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateBounds
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.ExitTransition
@@ -209,6 +211,7 @@ fun StoryRow(
     typographyOverride: ContentTypography? = null,
     cardPadding: PaddingValues? = null,
     inspectCategories: Boolean = false,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val typography = typographyOverride ?: rememberContentTypography(
@@ -314,9 +317,11 @@ fun StoryRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(geometryModifier)
-                    // The children already animate their measured sizes. A second size
-                    // animation here trails those measurements and clips the moving content.
-                    .then(cardDecorationModifier),
+                    .then(cardDecorationModifier)
+                    // Settings placement moves children at their final sizes; only its card
+                    // resizes. Feed rows retain their existing content-arrival animations.
+                    .then(if (placementAnimation != null) Modifier.animateContentSize(
+                        tween(StoryCategoryPlacementDurationMillis, easing = ContentMotionEasing)) else Modifier),
             ) {
                 StoryVisibility(
                     visible = renderedPreviewMode == StoryPreviewMode.LARGE && hasPreview,
@@ -491,6 +496,7 @@ fun StoryRow(
                             }
                         }
                         StoryContentRow(
+                            placementAnimation = placementAnimation,
                             onLinkClick = onLinkClick,
                             onLinkLongClick = trackedLinkLongClick,
                             commentsOnLeft = style.commentsOnLeft && !mediumPreview,
@@ -506,6 +512,7 @@ fun StoryRow(
                             smallPreview = if (hasPreview && renderedPreviewMode == StoryPreviewMode.SMALL && categoriesWithMetadata(model, style)) ({
                                 Box {
                                     StorySmallPreviewImage(model = model, dimAlpha = dimAlpha,
+                                        placementAnimation = placementAnimation,
                                         onPreviewLoadFailed = handlePreviewLoadFailed, onPreviewLoadSuccess = handlePreviewLoadSuccess,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
                                         extractPreviewTint = style.tintCard && model.previewImageTintArgb == null,
@@ -525,15 +532,17 @@ fun StoryRow(
                                         onLayerChanged = { itemGeometry.metaLayer = it }),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                                    if (!style.compact) StoryMeta(
+                                    if (!style.compact) StoryRowMovingContent(placementAnimation, "metadata") { StoryMeta(
                                         model = model, style = renderedStyle, typography = typography, dimAlpha = dimAlpha,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
                                         extractTint = style.tintCard && !previewAvailable && model.faviconTintArgb == null,
                                         onTintExtracted = handleFaviconTintExtracted, animateChanges = animateChanges, wrapContent = true,
                                         modifier = Modifier,
-                                    )
+                                    ) }
                                     model.categoryLabels.forEachIndexed { index, label ->
-                                        CategoryLabelText(label, categoryColors, Modifier.graphicsLayer { alpha = dimAlpha }, model.categoryIds.getOrNull(index))
+                                        StoryRowMovingContent(placementAnimation, "category-$label") {
+                                            CategoryLabelText(label, categoryColors, Modifier.graphicsLayer { alpha = dimAlpha }, model.categoryIds.getOrNull(index))
+                                        }
                                     }
                                 }
                                 StoryAuthorTag(model, typography, if (style.tintCard) ({ background.value }) else null,
@@ -544,6 +553,7 @@ fun StoryRow(
                             }) else null,
                         ) {
                             StoryMainContent(
+                                placementAnimation = placementAnimation,
                                 inspectCategories = inspectCategories,
                                 tintedSurface = if (style.tintCard) ({ background.value }) else null,
                                 model = model,
@@ -590,6 +600,7 @@ fun StoryRow(
 /** Measures the metric rail at its requested or intrinsic width, then matches it to the content height. */
 @Composable
 private fun StoryContentRow(
+    placementAnimation: StoryRowPlacementAnimation?,
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
     commentsOnLeft: Boolean,
@@ -638,7 +649,11 @@ private fun StoryContentRow(
         modifier = Modifier.fillMaxWidth().then(linkModifier),
         content = {
             content()
-            comments()
+            if (placementAnimation == null) comments() else {
+                Box(Modifier.animateBounds(placementAnimation.scope,
+                    boundsTransform = { _, _ -> tween(StoryCategoryPlacementDurationMillis, easing = ContentMotionEasing) }),
+                    propagateMinConstraints = true) { comments() }
+            }
             if (metadata != null) Box { metadata() }
             if (smallPreview != null) Box { smallPreview() }
             if (metadata != null) Box(Modifier.clipStoryLinkFeedback(linkFeedback).indication(linkInteractions, ripple()))
@@ -693,6 +708,7 @@ private fun StoryContentRow(
 
 @Composable
 private fun StoryMainContent(
+    placementAnimation: StoryRowPlacementAnimation?,
     inspectCategories: Boolean,
     tintedSurface: (() -> Color)?,
     model: StoryRowModel,
@@ -799,6 +815,7 @@ private fun StoryMainContent(
                 text = model.index,
                 modifier = Modifier
                     .width(indexWidth)
+                    .animateStoryRowPlacement(placementAnimation)
                     .padding(vertical = 10.dp)
                     .alignBy(FirstBaseline)
                     .captureStoryPreviewElement(
@@ -832,6 +849,7 @@ private fun StoryMainContent(
                 )) {
                     StoryTitleText(
                         text = model.title,
+                        modifier = Modifier.animateStoryRowPlacement(placementAnimation),
                         badge = model.titleBadge,
                         color = foreground,
                         fontFamily = typography.family,
@@ -840,7 +858,8 @@ private fun StoryMainContent(
                         style = storyRowTextStyle,
                     )
                     if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
-                        inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds)
+                        inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds,
+                        placementAnimation = placementAnimation)
                 }
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
@@ -871,7 +890,7 @@ private fun StoryMainContent(
                     enter = fadeIn(contentTween()) + expandVertically(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
-                    StoryMeta(
+                    StoryRowMovingContent(placementAnimation, "metadata") { StoryMeta(
                         model = model,
                         style = style,
                         typography = typography,
@@ -881,6 +900,7 @@ private fun StoryMainContent(
                         extractTint = extractFaviconTint,
                         onTintExtracted = onFaviconTintExtracted,
                         animateChanges = animateChanges,
+                        wrapContent = placementAnimation != null,
                         modifier = Modifier
                             .padding(top = 3.dp)
                             .captureStoryPreviewElement(
@@ -888,7 +908,7 @@ private fun StoryMainContent(
                                 onPositioned = { itemGeometry.metaCoordinates = it },
                                 onLayerChanged = { itemGeometry.metaLayer = it },
                             ),
-                    )
+                    ) }
                 }
                 if (!categoriesWithMetadata(model, style)) StoryAuthorTag(model, typography, tintedSurface,
                     Modifier.captureStoryPreviewElement(capturePreviewSource,
@@ -896,13 +916,18 @@ private fun StoryMainContent(
                         onLayerChanged = { itemGeometry.authorLayer = it }))
             }
             if (animateContentChanges) {
+                val separateSmallPreview = placementAnimation != null && categoriesWithMetadata(model, style) &&
+                    style.previewImageMode == StoryPreviewMode.SMALL
+                // Moving the thumbnail to the metadata layout must not retain a second,
+                // shrinking thumbnail here and temporarily squeeze the title between them.
                 AnimatedVisibility(
-                    visible = hasSmallPreview,
+                    visible = hasSmallPreview || separateSmallPreview,
                     modifier = Modifier.align(Alignment.CenterVertically),
                     enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
                     exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
                 ) {
-                    StorySmallPreviewImage(
+                    if (!separateSmallPreview) StorySmallPreviewImage(
+                        placementAnimation = placementAnimation,
                         model = model,
                         dimAlpha = dimAlpha,
                         onPreviewLoadFailed = onPreviewLoadFailed,
@@ -920,6 +945,7 @@ private fun StoryMainContent(
                 }
             } else if (hasSmallPreview) {
                 StorySmallPreviewImage(
+                    placementAnimation = placementAnimation,
                     model = model,
                     dimAlpha = dimAlpha,
                     onPreviewLoadFailed = onPreviewLoadFailed,

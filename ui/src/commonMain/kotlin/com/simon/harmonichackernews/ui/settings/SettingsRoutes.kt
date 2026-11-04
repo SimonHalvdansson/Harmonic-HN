@@ -460,10 +460,12 @@ fun StoriesSettingsRoute(
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
     val categories = categorySettings?.updates?.collectAsStateWithLifecycle(initialValue = categorySettings.snapshot())?.value
-    val enabled = categories?.enabled == true
-    val previewCategories = if (enabled) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
-    val state = presenter.state(settings, previewModel.copy(categoryLabels = previewCategories.map { categories!!.name(it) },
-        categoryIds = previewCategories.map { it.id }), faviconIcon)
+    val mockCategories = DebugStoryCategoryPreview.enabled
+    val enabled = categories?.enabled == true || mockCategories
+    val previewCategories = if (categories?.enabled == true) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
+    val state = presenter.state(settings, previewModel.copy(
+        categoryLabels = if (mockCategories) listOf("AI", "Programming") else previewCategories.map { categories!!.name(it) },
+        categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }), faviconIcon)
         .copy(categorizationEnabled = enabled)
     StoriesSettingsScreen(
         state = state,

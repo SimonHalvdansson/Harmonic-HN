@@ -405,7 +405,21 @@ internal fun StorySmallPreviewImage(
     animatedVisibilityScope: AnimatedVisibilityScope?,
     sharedContentKey: Any?,
     modifier: Modifier = Modifier,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
+    if (placementAnimation != null) {
+        Box(modifier) {
+            StoryRowMovingContent(placementAnimation, "small-image") {
+                StorySmallPreviewImage(
+                    model, dimAlpha, onPreviewLoadFailed, onPreviewLoadSuccess, tintBaseColorArgb,
+                    paletteTintConfigKey, extractPreviewTint, onPreviewTintExtracted,
+                    capturePreviewSource, itemGeometry, sharedTransitionScope, animatedVisibilityScope,
+                    sharedContentKey,
+                )
+            }
+        }
+        return
+    }
     Box(
         modifier = modifier.testTag("story-small-preview")
             .padding(start = 4.dp, top = 6.dp, bottom = 6.dp)

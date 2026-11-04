@@ -76,6 +76,7 @@ internal fun StoryCategoryLabels(
     bottomSpacing: Dp = 4.dp,
     inspection: StoryCategoryInspection? = null,
     categoryIds: List<String> = inspection?.labelScores?.map { it.categoryId }.orEmpty(),
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
     val colors = storyCategoryColors(tintedSurface)
     var inspector by remember { mutableStateOf<CategoryInspectorSource?>(null) }
@@ -100,7 +101,9 @@ internal fun StoryCategoryLabels(
                                 inspector = CategoryInspectorSource(checkNotNull(visible.inspection), score.categoryId,
                                     colors, geometry)
                             })
-                    } else CategoryLabelText(label, colors, categoryId = categoryIds.getOrNull(index))
+                    } else StoryRowMovingContent(placementAnimation, "category-$label") {
+                        CategoryLabelText(label, colors, categoryId = categoryIds.getOrNull(index))
+                    }
                 }
             }
         }

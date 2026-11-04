@@ -47,6 +47,11 @@ enum class DebugSettingsDialog {
     NOTIFICATIONS,
 }
 
+/** Session-only fixture: never enables inference or changes category preferences. */
+internal object DebugStoryCategoryPreview {
+    var enabled by mutableStateOf(false)
+}
+
 data class DebugEnvironmentUiState(
     val appVersion: String,
     val appBuild: String,
@@ -171,6 +176,14 @@ fun DebugSettingsScreen(
                     icon = Res.drawable.ic_auto_awesome,
                     checked = mockAiAnswers,
                     onCheckedChange = onMockAiAnswersChanged,
+                )
+                SettingsDivider()
+                SwitchSettingRow(
+                    title = "Mock categories in Stories settings",
+                    summary = "Preview tag placement without a model. Resets when the app restarts.",
+                    icon = Res.drawable.ic_label,
+                    checked = DebugStoryCategoryPreview.enabled,
+                    onCheckedChange = { DebugStoryCategoryPreview.enabled = it },
                 )
                 SettingsDivider()
                 DebugOpenSetting(
