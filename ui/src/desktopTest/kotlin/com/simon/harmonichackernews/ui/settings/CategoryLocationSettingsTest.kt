@@ -88,6 +88,10 @@ class CategoryLocationSettingsTest {
                 return layouts.single().lineCount
             }
             val initialLines = titleLineCount()
+            fun previewNode() = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }.single {
+                it.config.getOrNull(SemanticsProperties.TestTag) == "stories-settings-preview"
+            }
+            val initialHeight = previewNode().boundsInRoot.height.toInt()
             options("Metadata").config.getOrNull(SemanticsActions.OnClick)!!.action!!.invoke()
             val heights = mutableSetOf<Int>()
             val positions = mutableSetOf<androidx.compose.ui.geometry.Offset>()
@@ -100,9 +104,7 @@ class CategoryLocationSettingsTest {
                         }
                     }
                 }
-                val preview = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }.single {
-                    it.config.getOrNull(SemanticsProperties.TestTag) == "stories-settings-preview"
-                }
+                val preview = previewNode()
                 heights += preview.boundsInRoot.height.toInt()
                 positions += chipPosition()
                 assertTrue(titleLineCount() <= initialLines + 1, "Moving a thumbnail must not squeeze the title between duplicate images")
@@ -115,9 +117,17 @@ class CategoryLocationSettingsTest {
                     node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains("science.org") } == true
                 }, "Moving metadata must not leave a second fading copy under the title")
             }
-            assertTrue(heights.size >= 3, "Category placement must animate through intermediate preview heights: $heights")
-            assertTrue(positions.size >= 8, "The chips themselves must travel, not only the card height: $positions")
+            assertTrue(positions.size >= 8, "$mode: The chips themselves must travel, not only the card height: $positions")
             frames()
+            val finalHeight = previewNode().boundsInRoot.height.toInt()
+            // Font metrics and wrapping can leave both placements at the same height or only
+            // one pixel apart. Require an intermediate height only when one is representable.
+            val smallerHeight = minOf(initialHeight, finalHeight)
+            val largerHeight = maxOf(initialHeight, finalHeight)
+            if (largerHeight - smallerHeight > 1) {
+                assertTrue(heights.any { it > smallerHeight && it < largerHeight },
+                    "$mode: Category placement must animate between $initialHeight and $finalHeight: $heights")
+            }
             val metadataLocation = chipPosition()
             assertTrue((metadataLocation - titleLocation).getDistance() > 20f)
             assertEquals(CategoryTagLocation.METADATA, app.app.settings.snapshot().story.categoryTagLocation)
