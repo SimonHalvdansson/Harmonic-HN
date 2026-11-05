@@ -33,6 +33,7 @@ data class AiSummarySettingsUiState(
     val geminiNanoSelected: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
     val disabledReason: String? = null,
+    val localUnavailableReason: String? = null,
 )
 
 @Composable
@@ -78,6 +79,15 @@ fun AiSummarySettingsScreen(
 
         item {
             SettingsCategory("Large language model") {
+                state.localUnavailableReason?.let { reason ->
+                    Text(
+                        text = reason,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 14.sp,
+                    )
+                }
                 if (state.localSummarizationSupported) {
                     SegmentedSetting(
                         options = listOf(

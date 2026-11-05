@@ -23,9 +23,9 @@ fun LocalModelDeviceCapabilities.unsupportedReason(
     model: LocalModelDefinition,
 ): LocalModelUnsupportedReason? = when {
     !model.downloadable -> null
-    !supportsDownloadableModels -> LocalModelUnsupportedReason.PLATFORM_VERSION
     model.runtime == LocalModelRuntime.LITERT_LM && !supportsLiteRtModels ->
         liteRtUnsupportedReason
+    !supportsDownloadableModels -> LocalModelUnsupportedReason.PLATFORM_VERSION
     else -> null
 }
 

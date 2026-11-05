@@ -85,7 +85,8 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                 checked = preferences.enabled && downloaded,
                 enabled = supported && downloaded && !removing,
                 summary = when {
-                    !supported -> "Unavailable on this device or in this build"
+                    !supported -> models?.unsupportedReason(model)?.takeIf { it.isNotEmpty() }
+                        ?: "Unavailable on this device or in this build"
                     !downloaded -> "Download embedding model"
                     else -> null
                 },

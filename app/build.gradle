@@ -98,13 +98,10 @@ android {
         }
     }
 
-    // Bundletool requires the base and native feature modules to target the same ABIs.
-    // LiteRT only ships 64-bit libraries; keep 32-bit support in the FOSS variants.
-    // Set filters per build type because defaultConfig filters merge into every variant.
+    // The optional AI module supplies a compatibility library for 32-bit ABIs.
+    // Keep the reader installable even when on-device inference is unavailable.
     buildTypes.configureEach { buildType ->
-        buildType.ndk.abiFilters = buildType.name in ["debugLLM", "debugLLMFast", "playRelease"]
-                ? ["arm64-v8a", "x86_64"]
-                : ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
+        buildType.ndk.abiFilters = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]
     }
 
     sourceSets {

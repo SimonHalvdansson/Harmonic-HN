@@ -17,9 +17,23 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [35])
 class NanoPromptIntegrationTest {
     @Test
+    fun thirtyTwoBitProcessCannotQueryOrUseNanoOrOfferDownloadableFallback() = runBlocking {
+        val status = PlayLocalSummaryStatus(is64BitProcess = { false }) {
+            error("32-bit processes must not query the AI runtime")
+        }
+        status.recordFeatureStatus(false, FeatureStatus.AVAILABLE)
+        assertFalse(status.canAttemptLocalSummarization())
+        assertFalse(status.isNanoFeatureUsable(false))
+        val availability = status.checkLocalSummaryAvailability(false)
+        assertFalse(availability.available)
+        assertFalse(availability.downloadableFallbackRequired)
+        assertEquals("On-device AI is unavailable on 32-bit devices", availability.statusMessage)
+    }
+
+    @Test
     fun readinessTracksPromptAndLoraSeparatelyWithoutHidingTheOtherMode() = runBlocking {
         val requested = mutableListOf<Boolean>()
-        val status = PlayLocalSummaryStatus { lora ->
+        val status = PlayLocalSummaryStatus(is64BitProcess = { true }) { lora ->
             requested += lora
             NanoFeatureSnapshot(if (lora) FeatureStatus.AVAILABLE else FeatureStatus.UNAVAILABLE, "nano-test")
         }
@@ -36,7 +50,7 @@ class NanoPromptIntegrationTest {
     @Test
     fun unavailableFeaturesAndTransientFailuresAreCheckedAgain() = runBlocking {
         var attempt = 0
-        val status = PlayLocalSummaryStatus {
+        val status = PlayLocalSummaryStatus(is64BitProcess = { true }) {
             when (attempt) {
                 0 -> throw IllegalStateException("AICore is initializing")
                 1 -> NanoFeatureSnapshot(FeatureStatus.UNAVAILABLE)
@@ -53,7 +67,7 @@ class NanoPromptIntegrationTest {
 
     @Test
     fun availabilityCancellationIsNotConvertedIntoAnUnavailableFeature() = runBlocking {
-        val status = PlayLocalSummaryStatus { throw CancellationException("Screen closed") }
+        val status = PlayLocalSummaryStatus(is64BitProcess = { true }) { throw CancellationException("Screen closed") }
         try {
             status.checkLocalSummaryAvailability(false)
             fail("Cancellation must propagate")

@@ -16,6 +16,32 @@ import kotlinx.coroutines.test.runCurrent
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalModelServiceTest {
     @Test
+    fun thirtyTwoBitModelsAreBlockedBeforeRuntimeDeliveryEvenOnOlderAndroid() = runTest {
+        for (supportsPlatform in listOf(false, true)) {
+            val service = LocalModelService(
+                TestKeyValueStore(), EmptyStorage, RecordingTransfers(),
+                object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
+                    override suspend fun request(model: LocalModelDefinition): String? =
+                        error("Unsupported models must not request runtime delivery")
+                },
+                LocalModelDeviceCapabilities(supportsPlatform, false),
+                listOf(BuiltInModel, DownloadableModel, LocalModelCatalog.embeddingModel),
+                scope = backgroundScope,
+                storageDispatcher = StandardTestDispatcher(testScheduler),
+            )
+            service.preload()
+            for (model in listOf(DownloadableModel, LocalModelCatalog.embeddingModel)) {
+                assertFalse(service.isSupported(model))
+                assertEquals("On-device AI is unavailable on 32-bit devices", service.unsupportedReason(model))
+                assertEquals("On-device AI is unavailable on 32-bit devices.", service.requestRuntimeAndModelDownload(model.id))
+                assertEquals("On-device AI is unavailable on 32-bit devices.", service.requestModelDownload(model.id))
+                assertFalse(service.presentation(model, true, false).selectable)
+            }
+            service.close()
+        }
+    }
+
+    @Test
     fun failedRefreshRetainsCompleteSnapshotAndWorkerRecoversFromStorageOrRuntimeFailure() = runTest {
         for (failStorage in listOf(true, false)) {
             var fail = false

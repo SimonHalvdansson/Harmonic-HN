@@ -49,6 +49,9 @@ fun AndroidAiSummarySettingsScreen(
         repository = repository,
         modelDefaults = appComposition.aiModelDefaults,
         localSummarizationSupported = availabilityState.supported,
+        localUnavailableReason = if (!android.os.Process.is64Bit())
+            "On-device AI is unavailable on 32-bit devices. You can still use cloud AI with an API key."
+        else null,
         localAvailabilityResolved = availabilityState.availabilityResolved,
         localConfigurationReady = availabilityState.configurationReady,
         localModeAvailable = availabilityState.available,

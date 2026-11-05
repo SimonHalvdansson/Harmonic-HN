@@ -102,7 +102,7 @@ class LocalModelService(
         when (lifecycle.unsupportedReason(model)) {
             LocalModelUnsupportedReason.PLATFORM_VERSION ->
                 "Not supported by this operating-system version"
-            LocalModelUnsupportedReason.PROCESS_ARCHITECTURE -> "Requires a 64-bit process"
+            LocalModelUnsupportedReason.PROCESS_ARCHITECTURE -> "On-device AI is unavailable on 32-bit devices"
             LocalModelUnsupportedReason.RUNTIME_UNAVAILABLE ->
                 "Not supported by this platform's local AI runtime"
             null -> ""

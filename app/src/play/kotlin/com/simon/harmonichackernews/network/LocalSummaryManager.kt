@@ -52,6 +52,7 @@ import kotlinx.coroutines.withContext
 internal data class NanoFeatureSnapshot(val status: Int, val baseModelName: String? = null)
 
 internal class PlayLocalSummaryStatus(
+    private val is64BitProcess: () -> Boolean = android.os.Process::is64Bit,
     private val queryFeature: suspend (useSummarizationLora: Boolean) -> NanoFeatureSnapshot,
 ) {
     private val tag = "PlayLocalSummaryStatus"
@@ -61,9 +62,12 @@ internal class PlayLocalSummaryStatus(
     @Volatile
     private var summarizationFeatureStatus: Int = Int.MIN_VALUE
 
-    fun canAttemptLocalSummarization(): Boolean = true
+    fun canAttemptLocalSummarization(): Boolean = is64BitProcess()
 
     suspend fun checkLocalSummaryAvailability(useSummarizationLora: Boolean): LocalSummaryAvailability {
+        if (!is64BitProcess()) return LocalSummaryAvailability(
+            false, false, "On-device AI is unavailable on 32-bit devices",
+        )
         return withContext(Dispatchers.IO) {
             val requested = query(useSummarizationLora)
             val alternate = query(!useSummarizationLora)
@@ -103,7 +107,7 @@ internal class PlayLocalSummaryStatus(
     }
 
     fun isNanoFeatureUsable(useSummarizationLora: Boolean): Boolean =
-        isLocalFeatureUsable(if (useSummarizationLora) summarizationFeatureStatus else promptFeatureStatus)
+        is64BitProcess() && isLocalFeatureUsable(if (useSummarizationLora) summarizationFeatureStatus else promptFeatureStatus)
 
     fun isLocalSummaryReady(models: LocalModelService, useSummarizationLora: Boolean): Boolean {
         val selected = models.selectedModel
