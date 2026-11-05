@@ -272,7 +272,8 @@ compose.desktop {
 tasks.withType<AbstractJPackageTask>().configureEach {
     if (targetFormat == TargetFormat.Deb) {
         // SWT loads these libraries at runtime, so jpackage's ELF dependency scan cannot see them.
-        freeArgs.addAll("--linux-package-deps", "libgtk-3-0 | libgtk-3-0t64, libwebkit2gtk-4.1-0, libx11-6")
+        // Compose writes freeArgs verbatim to jpackage's @argfile; quote the whole dependency expression.
+        freeArgs.addAll("--linux-package-deps", "\"libgtk-3-0 | libgtk-3-0t64, libwebkit2gtk-4.1-0, libx11-6\"")
     }
 }
 

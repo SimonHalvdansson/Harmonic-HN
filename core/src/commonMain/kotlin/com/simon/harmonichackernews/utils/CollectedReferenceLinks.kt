@@ -9,7 +9,8 @@ import com.fleeksoft.ksoup.select.Selector
 /** Extracts standalone and trailing reference links without any platform URL or HTML APIs. */
 object CollectedReferenceLinks {
     private val referenceMarkerPattern = Regex(
-        "\\s*(?:\\[(\\d{1,3})]\\s*(?::|\\.|-|\\u2013|\\u2014)?|(\\d{1,3})\\s*:)\\s*",
+        "\\s*(?:\\[(\\d{1,3})]\\s*(?::|\\.|-|\\u2013|\\u2014)?|" +
+            "(\\d{1,3})(\\s*:|[.)](?=\\s))|\\[([†‡*§¶]{1,3})]|([†‡*§¶]{1,3}))\\s*",
     )
     private val commonBareDomainTlds = setOf(
         "app", "biz", "blog", "cloud", "com", "dev", "edu", "fm", "gov", "info",
@@ -424,7 +425,10 @@ object CollectedReferenceLinks {
         marker.groups[1]?.value ?: marker.groups[2]?.value
 
     private fun referenceMarkerLabel(marker: MatchResult): String? =
-        marker.groups[1]?.value?.let { "[$it]" } ?: marker.groups[2]?.value?.let { "$it:" }
+        marker.groups[1]?.value?.let { "[$it]" }
+            ?: marker.groups[2]?.value?.let { it + marker.groupValues[3].trim() }
+            ?: marker.groups[4]?.value?.let { "[$it]" }
+            ?: marker.groups[5]?.value
 
     private fun skipInterReferenceSeparators(text: String, start: Int): Int {
         var position = start

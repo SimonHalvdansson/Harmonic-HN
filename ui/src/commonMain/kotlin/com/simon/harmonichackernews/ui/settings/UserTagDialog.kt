@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_close
@@ -86,7 +87,7 @@ fun UserTagDialog(
                         }
                     },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { saveTag() }),
                 )
                 Column {

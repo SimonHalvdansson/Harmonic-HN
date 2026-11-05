@@ -536,18 +536,20 @@ fun StoryRow(
                                         onLayerChanged = { itemGeometry.metaLayer = it }),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                                    if (!style.compact) StoryRowMovingContent(placementAnimation, "metadata") { StoryMeta(
+                                    if (!style.compact) StoryRowMovingContent(placementAnimation, "metadata",
+                                        modifier = Modifier.alignBy(FirstBaseline)) { metadataModifier -> StoryMeta(
                                         placementAnimation = placementAnimation,
                                         model = model, style = renderedStyle, typography = typography, dimAlpha = dimAlpha,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
                                         extractTint = style.tintCard && !previewAvailable && model.faviconTintArgb == null,
                                         onTintExtracted = handleFaviconTintExtracted, animateChanges = animateChanges, wrapContent = true,
-                                        modifier = Modifier,
+                                        modifier = metadataModifier,
                                     ) }
                                     model.categoryLabels.forEachIndexed { index, label ->
-                                        StoryRowMovingContent(placementAnimation, "category-$label") {
+                                        StoryRowMovingContent(placementAnimation, "category-$label",
+                                            modifier = Modifier.alignBy(FirstBaseline)) { categoryModifier ->
                                             CategoryLabelText(label, categoryColors,
-                                                Modifier.animateStoryRowTextSize(placementAnimation, storyCategoryFontSize(style.textSize).value)
+                                                categoryModifier.animateStoryRowTextSize(placementAnimation, storyCategoryFontSize(style.textSize).value)
                                                     .graphicsLayer { alpha = dimAlpha },
                                                 model.categoryIds.getOrNull(index), storyCategoryFontSize(style.textSize))
                                         }
@@ -821,7 +823,7 @@ private fun StoryMainContent(
                     .animateStoryRowPlacement(placementAnimation)
                     .animateStoryRowTextSize(placementAnimation, titleSize - 1f)
                     .storySettingsAlpha(placementAnimation, "index")
-                    .padding(vertical = 10.dp)
+                    .padding(top = 10.dp, bottom = if (categoriesWithMetadata(model, style)) 3.dp else 10.dp)
                     .alignBy(FirstBaseline)
                     .captureStoryPreviewElement(
                         enabled = capturePreviewSource,
@@ -832,6 +834,8 @@ private fun StoryMainContent(
                 color = foreground,
                 fontFamily = typography.family,
                 fontSize = (titleSize - 1f).sp,
+                maxLines = 1,
+                softWrap = false,
                 textAlign = TextAlign.Center,
                 style = storyRowTextStyle,
             )
@@ -842,7 +846,7 @@ private fun StoryMainContent(
                         start = titleStartPadding,
                         top = if (hasSmallPreview) 7.dp else 10.dp,
                         end = 4.dp,
-                        bottom = if (hasSmallPreview) 7.dp else 10.dp,
+                        bottom = if (categoriesWithMetadata(model, style)) 3.dp else if (hasSmallPreview) 7.dp else 10.dp,
                     )
                     .alignBy(FirstBaseline),
             ) {

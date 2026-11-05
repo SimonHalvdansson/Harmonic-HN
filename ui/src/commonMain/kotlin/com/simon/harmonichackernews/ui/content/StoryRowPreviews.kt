@@ -284,6 +284,7 @@ internal fun StoryMediumPreviewRail(
                         exit = pillExit,
                     ) {
                         StoryRowMovingContent(placementAnimation, "points") { StoryMetricPill(
+                            animateSize = placementAnimation == null,
                             icon = Res.drawable.ic_arrow_drop_up,
                             text = compactStoryMetric(model.points),
                             contentDescription = pointsDescription,
@@ -313,6 +314,7 @@ internal fun StoryMediumPreviewRail(
                         exit = pillExit,
                     ) {
                         StoryRowMovingContent(placementAnimation, "comments") { StoryMetricPill(
+                            animateSize = placementAnimation == null,
                             modifier = Modifier.storySettingsAlpha(placementAnimation, "comment-count"),
                             icon = commentIcon,
                             text = model.commentCount
@@ -351,6 +353,7 @@ internal fun StoryMediumPreviewRail(
                     exit = pillExit,
                 ) {
                     StoryRowMovingContent(placementAnimation, "points") { StoryMetricPill(
+                        animateSize = placementAnimation == null,
                         icon = Res.drawable.ic_arrow_drop_up,
                         text = compactStoryMetric(model.points),
                         contentDescription = pointsDescription,
@@ -379,6 +382,7 @@ internal fun StoryMediumPreviewRail(
                     exit = pillExit,
                 ) {
                     StoryRowMovingContent(placementAnimation, "comments") { StoryMetricPill(
+                        animateSize = placementAnimation == null,
                         modifier = Modifier.storySettingsAlpha(placementAnimation, "comment-count"),
                         icon = commentIcon,
                         text = model.commentCount

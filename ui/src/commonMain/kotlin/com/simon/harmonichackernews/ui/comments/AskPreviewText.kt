@@ -27,6 +27,16 @@ internal fun AskPreviewText(
     lineHeight: TextUnit,
     modifier: Modifier = Modifier,
     content: @Composable (maxLines: Int) -> Unit,
+) = PreviewTextExpansion(expanded, lineHeight, modifier, content = content)
+
+/** Retains outgoing lines during collapse and shares one height animation with its parent. */
+@Composable
+internal fun PreviewTextExpansion(
+    expanded: Boolean,
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    collapsedMaxLines: Int = 3,
+    content: @Composable (maxLines: Int) -> Unit,
 ) {
     val transition = updateTransition(expanded, label = "Ask preview")
     val expansion by transition.animateFloat(
@@ -61,7 +71,7 @@ internal fun AskPreviewText(
                             }
                         }
                     },
-            ) { content(3) }
+            ) { content(collapsedMaxLines) }
             Box(
                 Modifier.then(if (!expanded) Modifier.clearAndSetSemantics {} else Modifier)
                     .drawWithContent {

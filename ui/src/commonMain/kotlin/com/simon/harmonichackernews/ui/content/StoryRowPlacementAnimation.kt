@@ -43,19 +43,19 @@ class StoryRowPlacementAnimation internal constructor(
     internal val scope: LookaheadScope,
     internal val visibility: StorySettingsVisibility? = null,
 ) {
-    private val slots = mutableMapOf<String, @Composable (@Composable () -> Unit) -> Unit>()
+    private val slots = mutableMapOf<String, @Composable (Modifier, @Composable () -> Unit) -> Unit>()
 
     @Composable
-    internal fun Content(key: String, animateSize: Boolean, content: @Composable () -> Unit) {
+    internal fun Content(key: String, animateSize: Boolean, modifier: Modifier, content: @Composable () -> Unit) {
         val slot = slots.getOrPut(key) {
-            movableContentOf { render: @Composable () -> Unit ->
+            movableContentOf { outerModifier: Modifier, render: @Composable () -> Unit ->
                 val motion = Modifier.animateStoryRowPlacement(this, animateSize, centered = key == "comments")
-                Box(motion.testTag("story-motion-$key")
+                Box(outerModifier.then(motion).testTag("story-motion-$key")
                     .storySettingsAlpha(this, if (key.startsWith("category-")) "categories" else key),
                     propagateMinConstraints = true) { render() }
             }
         }
-        slot(content)
+        slot(modifier, content)
     }
 }
 
@@ -110,7 +110,8 @@ internal fun StoryRowMovingContent(
     animation: StoryRowPlacementAnimation?,
     key: String,
     animateSize: Boolean = false,
-    content: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (Modifier) -> Unit,
 ) {
-    if (animation == null) content() else animation.Content(key, animateSize, content)
+    if (animation == null) content(modifier) else animation.Content(key, animateSize, modifier) { content(Modifier) }
 }

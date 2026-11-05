@@ -2,6 +2,7 @@
 
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Animatable
@@ -98,6 +99,7 @@ internal fun StoryMetricPill(
     iconTextSpacing: Dp = 2.dp,
     /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
     highlighted: Boolean = false,
+    animateSize: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -126,6 +128,9 @@ internal fun StoryMetricPill(
         modifier = modifier
             .graphicsLayer(alpha = pillAlpha)
             .then(backgroundModifier)
+            .then(if (animateSize) Modifier.animateContentSize(
+                contentTween(), alignment = Alignment.CenterEnd,
+            ) else Modifier)
             .height(if (hazeState != null) 22.dp else StoryMetricPillHeight)
             .padding(
                 start = if (hazeState != null) (startPadding - 1.dp).coerceAtLeast(0.dp) else startPadding,

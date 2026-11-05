@@ -7,6 +7,38 @@ import kotlin.test.assertTrue
 
 class CollectedReferenceLinksTest {
     @Test
+    fun dottedAndSymbolReferencesKeepTheirMarkersAndInlineProse() {
+        val html = "Mars has a basin[1] opposite volcanoes[2]." +
+            "<p>1. <a href='https://trek.nasa.gov/mars/?x=72&amp;y=-42'>Mars basin</a>" +
+            "<p>2. <a href='https://trek.nasa.gov/mars/?x=-116'>Volcanoes</a>" +
+            "<p>The older system (<i>etc</i>†) was replaced." +
+            "<p>† <a href='https://example.com/history'>History</a>"
+        val parsed = CollectedReferenceLinks.parse(html)
+        assertEquals(listOf("1.", "2.", "†"), parsed.links.map { it.markerLabel })
+        assertEquals(listOf("1", "2", null), parsed.links.map { it.number })
+        assertEquals("https://trek.nasa.gov/mars/?x=72&y=-42", parsed.links.first().url)
+        assertTrue("basin[1]" in parsed.bodyHtml)
+        assertTrue("<i>etc</i>†" in parsed.bodyHtml)
+        assertEquals(listOf(false, true, true, false, true), parsed.contentBlocks.map { it.isLink() })
+    }
+
+    @Test
+    fun referenceMarkerVariantsDoNotConsumeExplanatoryFootnotesOrOrdinaryLists() {
+        for (marker in listOf("1.", "2)", "†", "‡", "*", "**", "§", "¶", "[†]")) {
+            for (link in listOf("https://example.com/source", "<a href='https://example.com/source'>Source</a>")) {
+                val result = CollectedReferenceLinks.parse("<p>$marker $link</p>")
+                assertEquals(marker, result.links.single().markerLabel)
+                assertEquals("https://example.com/source", result.links.single().url)
+            }
+            for (prose in listOf("An explanatory footnote.", "See <a href='https://example.com'>this</a> for context.")) {
+                val html = "<p>$marker $prose</p>"
+                assertFalse(CollectedReferenceLinks.parse(html).hasLinks(), html)
+            }
+        }
+        assertFalse(CollectedReferenceLinks.parse("<p>1.5 is the version; see <a href='https://example.com'>details</a>.</p>").hasLinks())
+    }
+
+    @Test
     fun longFailedDomainCandidatesKeepTheirText() {
         for (html in listOf("a".repeat(32 * 1024) + ".", "a.".repeat(16 * 1024) + "1")) {
             val result = CollectedReferenceLinks.parse(html)

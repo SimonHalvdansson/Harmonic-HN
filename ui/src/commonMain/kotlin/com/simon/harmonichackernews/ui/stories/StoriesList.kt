@@ -14,7 +14,6 @@ import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -462,22 +461,6 @@ internal fun StoriesList(
                                         (if (suppressed) 0f else pagingAlpha.floatValue) * revealAlpha
                                     }
                                 }
-                            val returningPreviewSource =
-                                controller.visibleStoryPreviewId == story.id &&
-                                    controller.storyPreviewDismissRequest != 0
-                            val sourceAccessoryAlpha by animateFloatAsState(
-                                targetValue = if (returningPreviewSource) 0f else 1f,
-                                animationSpec = if (returningPreviewSource) {
-                                    snap()
-                                } else {
-                                    tween(
-                                        durationMillis = 180,
-                                        delayMillis = 40,
-                                        easing = StoriesEasing,
-                                    )
-                                },
-                                label = "story preview source accessories",
-                            )
                             SwipeToHideStory(
                                 enabled = controller.canHidePosts && !searchMode && !story.isFrontpageLink,
                                 onHide = { controller.listener.onHidePost(story) },
@@ -525,7 +508,6 @@ internal fun StoriesList(
                                     },
                                     capturePreviewSourceGeometry =
                                         controller.visibleStoryPreviewId == story.id,
-                                    sourceAccessoryAlpha = sourceAccessoryAlpha,
                                     onPreviewLoadSuccess = {
                                         model.previewImageUrl?.let { imageUrl ->
                                             controller.listener.onStoryPreviewImageLoaded(

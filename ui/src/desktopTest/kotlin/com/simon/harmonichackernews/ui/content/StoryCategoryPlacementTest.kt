@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
@@ -13,6 +17,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LookaheadScope
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.settings.*
@@ -25,6 +30,59 @@ import org.jetbrains.skia.EncodedImageFormat
 import kotlin.test.*
 
 class StoryCategoryPlacementTest {
+    @Test fun inlineMetadataCategoriesKeepTheirSizeAndShareTheTextBaselineWithoutExtraSpacing() = SwingUtilities.invokeAndWait {
+        val app = DesktopHarmonicAppBootstrap.inMemory("InlineCategoryHeight")
+        try {
+            for (mode in listOf(StoryPreviewMode.OFF, StoryPreviewMode.SMALL, StoryPreviewMode.MEDIUM))
+                for (settingsPreview in listOf(false, true)) {
+                    var style by mutableStateOf(StoryDisplaySettings.from(app.app.userSettings.story).copy(
+                        previewImageMode = mode, categoryTagLocation = CategoryTagLocation.TITLE,
+                        showPreviewText = false,
+                    ).toStoryRowStyle(StoryRowStyleContext(53, 18, false)))
+                    val model = SettingsStoryPreviewModel.copy(title = "A useful tool",
+                        categoryLabels = listOf("AI"), categoryIds = listOf("ai"))
+                    var capture: StoryPreviewSourceGeometry? = null
+                    val scene = ImageComposeScene(800, 400) {
+                        MaterialTheme {
+                            LookaheadScope {
+                                val animation = remember { StoryRowPlacementAnimation(this) }
+                                StoryRow(model, style, listItem = true, animateChanges = false,
+                                    placementAnimation = animation.takeIf { settingsPreview },
+                                    capturePreviewSourceGeometry = true, onPreviewSourceGeometryChanged = { capture = it })
+                            }
+                        }
+                    }
+                    try {
+                        fun textNode(text: String) = nodes(scene).single {
+                            it.config.getOrNull(SemanticsProperties.Text)?.singleOrNull()?.text == text
+                        }
+                        fun textLayout(node: SemanticsNode): TextLayoutResult {
+                            val results = mutableListOf<TextLayoutResult>()
+                            node.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(results)
+                            return results.single()
+                        }
+                        repeat(36) { scene.render(it * 16_666_667L).close() }
+                        val originalTag = textLayout(textNode("AI"))
+                        style = style.copy(categoryTagLocation = CategoryTagLocation.METADATA)
+                        repeat(36) { scene.render((it + 36) * 16_666_667L).close() }
+                        val tagged = assertNotNull(capture)
+                        val tag = textNode("AI")
+                        val tagLayout = textLayout(tag)
+                        val meta = nodes(scene).single {
+                            it.config.getOrNull(SemanticsProperties.Text)?.singleOrNull()?.text?.contains("science.org") == true
+                        }
+                        assertEquals(originalTag.size, tagLayout.size, "Tag text must retain its regular size")
+                        assertEquals(originalTag.layoutInput.style, tagLayout.layoutInput.style)
+                        assertEquals(meta.boundsInRoot.top + textLayout(meta).firstBaseline,
+                            tag.boundsInRoot.top + tagLayout.firstBaseline, 1f,
+                            "$mode settings=$settingsPreview: category and metadata text must share a baseline")
+                        assertTrue(assertNotNull(tagged.meta).top - assertNotNull(tagged.title).bottom <= 3f,
+                            "Inline metadata must not retain the title block's bottom margin")
+                    } finally { scene.close() }
+                }
+        } finally { app.close() }
+    }
+
     @Test fun previewCaptureIncludesEveryCategoryInBothPlacementsAndCompactRows() = SwingUtilities.invokeAndWait {
         val app = DesktopHarmonicAppBootstrap.inMemory("CategoryPreviewCapture")
         try {

@@ -28,8 +28,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.animation.animateContentSize
-import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -330,22 +328,24 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 modifier = Modifier.padding(vertical = 4.dp),
             )
         } else if (info.type.hasMarkdownDescription()) {
-            SummaryMarkdownText(
-                markdown = info.description.orEmpty(),
-                baseUrl = info.url,
-                onOpenLink = platform.openLink,
-                modifier = Modifier.animateContentSize(contentTween()).padding(top = 4.dp, bottom = 4.dp),
-                color = MaterialTheme.colorScheme.onSurface,
-                linkColor = MaterialTheme.colorScheme.primary,
-                fontFamily = LocalPreviewFontFamily.current,
-                fontSize = 14.sp,
-                lineHeight = 17.sp,
-                maxLines = if (expanded) Int.MAX_VALUE else 12,
-                overflow = TextOverflow.Ellipsis,
-                onOverflowChanged = { if (!expanded) truncated = it },
-            )
+            PreviewTextExpansion(expanded, lineHeight = 17.sp, collapsedMaxLines = 12,
+                modifier = Modifier.padding(vertical = 4.dp)) { maxLines ->
+                SummaryMarkdownText(
+                    markdown = info.description.orEmpty(),
+                    baseUrl = info.url,
+                    onOpenLink = platform.openLink,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    linkColor = MaterialTheme.colorScheme.primary,
+                    fontFamily = LocalPreviewFontFamily.current,
+                    fontSize = 14.sp,
+                    lineHeight = 17.sp,
+                    maxLines = maxLines,
+                    overflow = TextOverflow.Ellipsis,
+                    onOverflowChanged = { if (maxLines == 12) truncated = it },
+                )
+            }
             if (expanded || truncated) {
-                TextButton(onClick = { expanded = !expanded }) {
+                TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.End)) {
                     Icon(painterResource(if (expanded) Res.drawable.ic_remove else Res.drawable.ic_add),
                         contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))

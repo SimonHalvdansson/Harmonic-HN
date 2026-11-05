@@ -46,13 +46,19 @@ class UserTagRenderingTest {
                 repeat(5) { scene.render(it * 16_666_667L).close() }
                 scene.render(100_000_000L).use { image ->
                     val pixels = image.toComposeImageBitmap().toPixelMap()
+                    val ink = floatArrayOf(accent.red, accent.green, accent.blue)
+                    val paper = floatArrayOf(scheme.surface.red, scheme.surface.green, scheme.surface.blue)
+                    val channel = (0..2).maxBy { abs(ink[it] - paper[it]) }
                     var accentPixels = 0
                     for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
                         val color = pixels[x, y]
-                        if (abs(color.red - accent.red) < .04f &&
-                            abs(color.green - accent.green) < .04f &&
-                            abs(color.blue - accent.blue) < .04f
-                        ) accentPixels++
+                        // Thin Linux glyphs need not contain fully opaque pixels. Check their
+                        // coverage against the expected ink/background blend instead.
+                        val actual = floatArrayOf(color.red, color.green, color.blue)
+                        val coverage = (actual[channel] - paper[channel]) / (ink[channel] - paper[channel])
+                        if (coverage in .5f..1.05f && (0..2).all {
+                            abs(actual[it] - (paper[it] + (ink[it] - paper[it]) * coverage)) < .04f
+                        }) accentPixels++
                     }
                     assertTrue(accentPixels > 12, "$choice must color the actual tag text (dark=$dark)")
                 }

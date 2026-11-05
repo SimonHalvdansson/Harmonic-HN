@@ -516,6 +516,7 @@ fun StoryPreviewOverlay(
     }
     val sharedTransition = StoryPreviewSharedTransitionState(
         progress = { transformProgress.value },
+        closing = dismissRequest != 0,
         active = overlayActive,
         hideTargetContent = hideTargetContent,
         drawOverlayShadows = drawOverlayShadows,

@@ -323,7 +323,7 @@ private fun HeaderReferenceRow(
     )
     ReferenceLinkRow(
         topPadding = topPadding,
-        marker = if (link.hasNumber()) link.markerLabel.orEmpty() else "",
+        marker = link.markerLabel.orEmpty(),
         label = rememberReferenceLinkLabel(link, settings.expandedReferenceLinks),
         typography = typography,
         expandedUrl = link.url.orEmpty().takeIf { settings.expandedReferenceLinks },

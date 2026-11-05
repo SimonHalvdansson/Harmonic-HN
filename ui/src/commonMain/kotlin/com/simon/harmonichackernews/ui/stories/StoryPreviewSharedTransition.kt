@@ -86,6 +86,7 @@ internal enum class StoryPreviewSharedElement {
 
 internal data class StoryPreviewSharedTransitionState(
     val progress: () -> Float,
+    val closing: Boolean,
     val active: Boolean,
     val hideTargetContent: Boolean,
     val drawOverlayShadows: Boolean,
@@ -376,7 +377,7 @@ private fun DrawScope.drawTransitionContent(
     }
 
     fun drawSourceAccessory(bounds: Rect?, snapshot: ImageBitmap?) {
-        val alpha = sourceAccessoryAlpha(progress)
+        val alpha = storyPreviewAccessoryAlpha(progress, transition.closing)
         if (bounds == null || snapshot == null || alpha <= 0.001f) return
         val destination = moveRectBetweenContainers(bounds, sourceContainer, container)
         clipPath(containerClip) {
@@ -392,15 +393,16 @@ private fun DrawScope.drawTransitionContent(
         source.index,
         transition.sourceSnapshot(StoryPreviewSourceElement.Index),
     )
-    drawSourceAccessory(
-        source.comments,
-        transition.sourceSnapshot(StoryPreviewSourceElement.Comments),
-    )
     drawElement(
         StoryPreviewSharedElement.Image,
         source.image,
         transition.sourceSnapshot(StoryPreviewSourceElement.Image),
         image = true,
+    )
+    // Medium-preview pills sit on the image; keep that stacking order throughout the return.
+    drawSourceAccessory(
+        source.comments,
+        transition.sourceSnapshot(StoryPreviewSourceElement.Comments),
     )
     drawElement(
         StoryPreviewSharedElement.Title,
@@ -510,9 +512,9 @@ private fun Rect.localTo(offset: Offset): Rect = translate(-offset.x, -offset.y)
 private fun supplementaryAlpha(progress: Float): Float =
     ((progress - 0.42f) / 0.43f).coerceIn(0f, 1f)
 
-/** Fades out in the first 60% when opening and fades in in the final 60% when closing. */
-private fun sourceAccessoryAlpha(progress: Float): Float =
-    (1f - progress / 0.6f).coerceIn(0f, 1f)
+/** Returning pills start appearing as soon as the dialog starts moving back. */
+internal fun storyPreviewAccessoryAlpha(progress: Float, closing: Boolean): Float =
+    (if (closing) (1f - progress) / 0.8f else 1f - progress / 0.6f).coerceIn(0f, 1f)
 
 private fun lerp(start: Float, end: Float, progress: Float): Float =
     start + (end - start) * progress

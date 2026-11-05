@@ -53,6 +53,7 @@ class RichLinkPreviewExpansionTest {
         try {
             frames(35)
             val collapsed = toggle("Show more").top
+            assertTrue(toggle("Show more").center.x > 280f, "Expansion control belongs on the right")
             tap("Show more")
             frames(6)
             val expanding = toggle("Show less").top
