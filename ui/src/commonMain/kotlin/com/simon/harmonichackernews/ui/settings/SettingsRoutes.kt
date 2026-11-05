@@ -447,6 +447,8 @@ fun StoriesSettingsRoute(
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit = {},
+    categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
     faviconDialog: @Composable (
         selected: String,
         presenter: StoriesSettingsPresenter,
@@ -461,12 +463,14 @@ fun StoriesSettingsRoute(
     val story = settings.story
     val categories = categorySettings?.updates?.collectAsStateWithLifecycle(initialValue = categorySettings.snapshot())?.value
     val mockCategories = DebugStoryCategoryPreview.enabled
-    val enabled = categories?.enabled == true || mockCategories
+    val enabled = if (mockCategories) DebugStoryCategoryPreview.showTags else categories?.enabled == true
     val previewCategories = if (categories?.enabled == true) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
     val state = presenter.state(settings, previewModel.copy(
-        categoryLabels = if (mockCategories) listOf("AI", "Programming") else previewCategories.map { categories!!.name(it) },
+        categoryLabels = if (mockCategories) { if (enabled) listOf("AI", "Programming") else emptyList() } else previewCategories.map { categories!!.name(it) },
         categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }), faviconIcon)
-        .copy(categorizationEnabled = enabled)
+        .copy(categorizationEnabled = enabled,
+            canEnableCategorization = mockCategories || categoryAvailability.canEnable,
+            categorizationUnavailableReason = if (mockCategories) null else categoryAvailability.reason)
     StoriesSettingsScreen(
         state = state,
         showNavigation = showNavigation,
@@ -477,6 +481,11 @@ fun StoriesSettingsRoute(
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
+        onCategorizationEnabledChanged = { value ->
+            if (mockCategories) DebugStoryCategoryPreview.showTags = value
+            else if (!value || categoryAvailability.canEnable) categorySettings?.setEnabled(value)
+        },
         onStringChanged = presenter::setString,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onResetLayout = {

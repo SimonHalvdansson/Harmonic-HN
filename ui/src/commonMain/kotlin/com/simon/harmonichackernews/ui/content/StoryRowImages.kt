@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -43,7 +44,23 @@ internal fun StoryPreviewImage(
     paletteTintConfigKey: String,
     extractTint: Boolean,
     onTintExtracted: (Int) -> Unit,
+    placementAnimation: StoryRowPlacementAnimation? = null,
+    cornerRadius: Dp = 0.dp,
+    endCornerRadius: Dp = cornerRadius,
 ) {
+    if (placementAnimation != null) {
+        Box(modifier) {
+            StoryRowMovingContent(placementAnimation, "preview-image", animateSize = true) {
+                val radius by animateDpAsState(cornerRadius,
+                    tween(StorySettingsMotionDurationMillis, easing = ContentMotionEasing))
+                val endRadius by animateDpAsState(endCornerRadius,
+                    tween(StorySettingsMotionDurationMillis, easing = ContentMotionEasing))
+                StoryPreviewImage(model, Modifier.fillMaxSize().clip(RoundedCornerShape(radius, endRadius, endRadius, radius)),
+                    onLoadFailed, onLoadSuccess, tintBaseColorArgb, paletteTintConfigKey, extractTint, onTintExtracted)
+            }
+        }
+        return
+    }
     if (model.previewImageUrl != null) {
         var loaded by remember(model.previewImageUrl) { mutableStateOf(false) }
         var loadedImage by remember(model.previewImageUrl) { mutableStateOf<coil3.Image?>(null) }
@@ -218,6 +235,7 @@ internal fun StoryLargePreviewImage(
     itemGeometry: StoryRowGeometry,
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
     val imageInset = if (animate) {
         val animatedInset by animateDpAsState(
@@ -257,7 +275,7 @@ internal fun StoryLargePreviewImage(
                 onLinkLongClick?.invoke()
             }
             .padding(start = imageInset, top = imageInset, end = imageInset)
-            .clip(RoundedCornerShape(imageRadius))
+            .then(if (placementAnimation == null) Modifier.clip(RoundedCornerShape(imageRadius)) else Modifier)
             .captureStoryPreviewElement(
                 enabled = captureSourceContent,
                 onPositioned = { itemGeometry.largeImageCoordinates = it },
@@ -270,5 +288,7 @@ internal fun StoryLargePreviewImage(
         paletteTintConfigKey = style.paletteTintConfigKey,
         extractTint = style.tintCard && model.previewImageTintArgb == null,
         onTintExtracted = presentation.onPreviewTintExtracted,
+        placementAnimation = placementAnimation,
+        cornerRadius = imageRadius,
     )
 }

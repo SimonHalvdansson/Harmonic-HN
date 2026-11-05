@@ -5,7 +5,6 @@ package com.simon.harmonichackernews.ui.content
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.animateBounds
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.ExitTransition
@@ -238,7 +237,8 @@ fun StoryRow(
         model = model,
         style = style,
         listItem = listItem,
-        animate = animateChanges,
+        animate = animateChanges || placementAnimation != null,
+        animatePreviewPlacement = animateChanges && placementAnimation == null,
         pageBackground = pageBackground,
         onPreviewLoadSuccess = onPreviewLoadSuccess,
         onPreviewLoadFailed = onPreviewLoadFailed,
@@ -318,10 +318,10 @@ fun StoryRow(
                     .fillMaxWidth()
                     .then(geometryModifier)
                     .then(cardDecorationModifier)
-                    // Settings placement moves children at their final sizes; only its card
-                    // resizes. Feed rows retain their existing content-arrival animations.
+                    // Settings resolves the destination layout once, then moves its content
+                    // and resizes this surface together. Feed rows keep content-arrival motion.
                     .then(if (placementAnimation != null) Modifier.animateContentSize(
-                        tween(StoryCategoryPlacementDurationMillis, easing = ContentMotionEasing)) else Modifier),
+                        tween(StorySettingsMotionDurationMillis, easing = ContentMotionEasing)) else Modifier),
             ) {
                 StoryVisibility(
                     visible = renderedPreviewMode == StoryPreviewMode.LARGE && hasPreview,
@@ -330,6 +330,7 @@ fun StoryRow(
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
                     StoryLargePreviewImage(
+                        placementAnimation = placementAnimation,
                         model = model,
                         style = style,
                         presentation = presentation,
@@ -394,6 +395,7 @@ fun StoryRow(
                                         exit = fadeOut(contentTween()),
                                     ) {
                                         StoryMediumPreviewRail(
+                                            placementAnimation = placementAnimation,
                                             model = model,
                                             style = renderedStyle,
                                             typography = typography,
@@ -425,6 +427,7 @@ fun StoryRow(
                                         exit = fadeOut(contentTween()),
                                     ) {
                                         StoryCommentRail(
+                                            placementAnimation = placementAnimation,
                                             model = model,
                                             style = renderedStyle,
                                             typography = typography,
@@ -450,6 +453,7 @@ fun StoryRow(
                         } else if (mediumPreview) {
                             {
                                 StoryMediumPreviewRail(
+                                    placementAnimation = placementAnimation,
                                     model = model,
                                     style = renderedStyle,
                                     typography = typography,
@@ -476,6 +480,7 @@ fun StoryRow(
                         } else {
                             {
                                 StoryCommentRail(
+                                    placementAnimation = placementAnimation,
                                     model = model,
                                     style = renderedStyle,
                                     typography = typography,
@@ -496,7 +501,6 @@ fun StoryRow(
                             }
                         }
                         StoryContentRow(
-                            placementAnimation = placementAnimation,
                             onLinkClick = onLinkClick,
                             onLinkLongClick = trackedLinkLongClick,
                             commentsOnLeft = style.commentsOnLeft && !mediumPreview,
@@ -533,6 +537,7 @@ fun StoryRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                                     if (!style.compact) StoryRowMovingContent(placementAnimation, "metadata") { StoryMeta(
+                                        placementAnimation = placementAnimation,
                                         model = model, style = renderedStyle, typography = typography, dimAlpha = dimAlpha,
                                         tintBaseColorArgb = tintBaseColorArgb, paletteTintConfigKey = style.paletteTintConfigKey,
                                         extractTint = style.tintCard && !previewAvailable && model.faviconTintArgb == null,
@@ -541,7 +546,10 @@ fun StoryRow(
                                     ) }
                                     model.categoryLabels.forEachIndexed { index, label ->
                                         StoryRowMovingContent(placementAnimation, "category-$label") {
-                                            CategoryLabelText(label, categoryColors, Modifier.graphicsLayer { alpha = dimAlpha }, model.categoryIds.getOrNull(index))
+                                            CategoryLabelText(label, categoryColors,
+                                                Modifier.animateStoryRowTextSize(placementAnimation, storyCategoryFontSize(style.textSize).value)
+                                                    .graphicsLayer { alpha = dimAlpha },
+                                                model.categoryIds.getOrNull(index), storyCategoryFontSize(style.textSize))
                                         }
                                     }
                                 }
@@ -600,7 +608,6 @@ fun StoryRow(
 /** Measures the metric rail at its requested or intrinsic width, then matches it to the content height. */
 @Composable
 private fun StoryContentRow(
-    placementAnimation: StoryRowPlacementAnimation?,
     onLinkClick: (() -> Unit)?,
     onLinkLongClick: (() -> Unit)?,
     commentsOnLeft: Boolean,
@@ -649,11 +656,7 @@ private fun StoryContentRow(
         modifier = Modifier.fillMaxWidth().then(linkModifier),
         content = {
             content()
-            if (placementAnimation == null) comments() else {
-                Box(Modifier.animateBounds(placementAnimation.scope,
-                    boundsTransform = { _, _ -> tween(StoryCategoryPlacementDurationMillis, easing = ContentMotionEasing) }),
-                    propagateMinConstraints = true) { comments() }
-            }
+            comments()
             if (metadata != null) Box { metadata() }
             if (smallPreview != null) Box { smallPreview() }
             if (metadata != null) Box(Modifier.clipStoryLinkFeedback(linkFeedback).indication(linkInteractions, ripple()))
@@ -816,6 +819,8 @@ private fun StoryMainContent(
                 modifier = Modifier
                     .width(indexWidth)
                     .animateStoryRowPlacement(placementAnimation)
+                    .animateStoryRowTextSize(placementAnimation, titleSize - 1f)
+                    .storySettingsAlpha(placementAnimation, "index")
                     .padding(vertical = 10.dp)
                     .alignBy(FirstBaseline)
                     .captureStoryPreviewElement(
@@ -849,7 +854,8 @@ private fun StoryMainContent(
                 )) {
                     StoryTitleText(
                         text = model.title,
-                        modifier = Modifier.animateStoryRowPlacement(placementAnimation),
+                        modifier = Modifier.animateStoryRowPlacement(placementAnimation)
+                            .animateStoryRowTextSize(placementAnimation, titleSize),
                         badge = model.titleBadge,
                         color = foreground,
                         fontFamily = typography.family,
@@ -859,7 +865,7 @@ private fun StoryMainContent(
                     )
                     if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
                         inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds,
-                        placementAnimation = placementAnimation)
+                        placementAnimation = placementAnimation, fontSize = storyCategoryFontSize(style.textSize))
                 }
                 StoryVisibility(
                     visible = style.showPreviewText && model.previewText.isNotBlank(),
@@ -870,6 +876,9 @@ private fun StoryMainContent(
                     Text(
                         text = model.previewText,
                         modifier = Modifier
+                            .animateStoryRowPlacement(placementAnimation)
+                            .animateStoryRowTextSize(placementAnimation, summarySize)
+                            .storySettingsAlpha(placementAnimation, "summary")
                             .padding(top = 3.dp)
                             .captureStoryPreviewElement(
                                 enabled = capturePreviewSource,
@@ -891,6 +900,7 @@ private fun StoryMainContent(
                     exit = fadeOut(contentTween()) + shrinkVertically(contentTween()),
                 ) {
                     StoryRowMovingContent(placementAnimation, "metadata") { StoryMeta(
+                        placementAnimation = placementAnimation,
                         model = model,
                         style = style,
                         typography = typography,

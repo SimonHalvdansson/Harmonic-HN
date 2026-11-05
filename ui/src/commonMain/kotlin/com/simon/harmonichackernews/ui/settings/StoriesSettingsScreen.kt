@@ -51,6 +51,8 @@ data class StoriesSettingsUiState(
     val swipeToHide: Boolean = false,
     val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
     val categorizationEnabled: Boolean = false,
+    val canEnableCategorization: Boolean = true,
+    val categorizationUnavailableReason: String? = null,
 )
 
 enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
@@ -88,6 +90,8 @@ fun StoriesSettingsScreen(
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit = {},
+    onCategorizationEnabledChanged: (Boolean) -> Unit = {},
     contentVersion: Int = 0,
 ) {
     // Palette settings remain reachable even when story tint is disabled.
@@ -99,25 +103,19 @@ fun StoriesSettingsScreen(
         contentVersion = contentVersion,
         pinnedContent = {
             LookaheadScope {
-                val placementAnimation = remember(this) { StoryRowPlacementAnimation(this) }
+                val visibility = com.simon.harmonichackernews.ui.content.rememberStorySettingsVisibility(
+                    state.previewModel, state.toPreviewStoryRowStyle())
+                val placementAnimation = remember(this) { StoryRowPlacementAnimation(this, visibility) }
                 Box(Modifier.fillMaxWidth().testTag("stories-settings-preview")) {
-                    StoryRow(model = state.previewModel, style = state.toPreviewStoryRowStyle(),
-                        placementAnimation = placementAnimation)
+                    // Let lookahead own layout motion; animating the destination dimensions
+                    // as well would give text, tags, and images moving targets and extra lag.
+                    StoryRow(model = visibility.rendered.model, style = visibility.rendered.style,
+                        placementAnimation = placementAnimation, animateChanges = false)
                 }
             }
         },
     ) {
         settingsCategory("Layout") {
-            row {
-                SegmentedSetting(
-                    title = "Category tag location",
-                    summary = if (state.categorizationEnabled) null else "Enable article categorization to choose a location.",
-                    options = com.simon.harmonichackernews.settings.CategoryTagLocation.entries.map { it to it.label },
-                    selected = state.categoryTagLocation,
-                    enabled = state.categorizationEnabled,
-                    onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
-                )
-            }
             row {
                 SegmentedSetting(
                     title = "Preview image",
@@ -175,6 +173,26 @@ fun StoriesSettingsScreen(
                     checked = state.tint,
                     onClick = onPaletteTintRequested,
                     onCheckedChange = { onBooleanChanged(StoriesBooleanSetting.Tint, it) },
+                )
+            }
+            row {
+                NavigationSwitchSettingRow(
+                    title = "Article category tags",
+                    summary = state.categorizationUnavailableReason,
+                    icon = Res.drawable.ic_label,
+                    checked = state.categorizationEnabled,
+                    switchEnabled = state.canEnableCategorization || state.categorizationEnabled,
+                    onClick = onArticleCategoriesRequested,
+                    onCheckedChange = onCategorizationEnabledChanged,
+                )
+            }
+            row {
+                SegmentedSetting(
+                    title = "Category tag location",
+                    options = com.simon.harmonichackernews.settings.CategoryTagLocation.entries.map { it to it.label },
+                    selected = state.categoryTagLocation,
+                    enabled = state.categorizationEnabled,
+                    onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
                 )
             }
             row {

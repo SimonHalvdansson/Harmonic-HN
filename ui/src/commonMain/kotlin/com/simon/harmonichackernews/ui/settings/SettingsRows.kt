@@ -644,6 +644,7 @@ fun NavigationSwitchSettingRow(
     enabled: Boolean = true,
     onClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit,
+    switchEnabled: Boolean = enabled,
 ) {
     SettingRow(
         title = title,
@@ -667,7 +668,7 @@ fun NavigationSwitchSettingRow(
             HarmonicSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                enabled = enabled,
+                enabled = switchEnabled,
                 modifier = Modifier.semantics { contentDescription = title },
             )
         },

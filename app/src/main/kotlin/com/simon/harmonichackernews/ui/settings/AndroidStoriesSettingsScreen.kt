@@ -12,6 +12,7 @@ fun AndroidStoriesSettingsScreen(
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit,
 ) {
     val context = LocalContext.current
     val repository = LocalHarmonicUiDependencies.current.settings
@@ -25,6 +26,8 @@ fun AndroidStoriesSettingsScreen(
         onBack = onBack,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
+        categoryAvailability = storyCategoryAvailability(),
         onPlatformEffect = { effect ->
             when (effect) {
                 SettingsPlatformEffect.RefreshStoryWidgets -> refreshStoryWidgets(context)

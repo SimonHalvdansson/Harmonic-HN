@@ -1,6 +1,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -26,6 +29,8 @@ class CategoryLocationSettingsTest {
     private fun verifyPlacement(mode: StoryPreviewMode) = SwingUtilities.invokeAndWait {
         val app = DesktopHarmonicAppBootstrap.inMemory("CategoryLocationSettingsTest")
         StoriesSettingsPresenter(app.app.settings).setPreviewImageMode(mode)
+        var availability by mutableStateOf(StoryCategoryAvailability(false, "Download to enable"))
+        var categoryNavigationCount = 0
         val scene = ImageComposeScene(420, 1000) {
             val palette = HarmonicThemeCatalog.scheme("dynamic", false)
             HarmonicTheme(palette.colorScheme, false) {
@@ -33,7 +38,9 @@ class CategoryLocationSettingsTest {
                     StoriesSettingsRoute(repository = app.app.settings, categorySettings = app.app.articleCategorySettings,
                         previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
                         showNavigation = true, onBack = {}, onPlatformEffect = {}, onManageFrontpages = {},
-                        onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> })
+                        onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> },
+                        categoryAvailability = availability,
+                        onArticleCategoriesRequested = { categoryNavigationCount++ })
                 }
             }
         }
@@ -45,11 +52,28 @@ class CategoryLocationSettingsTest {
                 child.config.getOrNull(SemanticsProperties.Text)?.any { it.text == label } == true
             }
         }.single()
+        fun categorySwitch() = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }.single { n ->
+            n.config.getOrNull(SemanticsProperties.ToggleableState) != null && walk(n).any {
+                it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains("Article category tags") == true
+            }
+        }
         try {
             frames()
             assertNotNull(options("Under title").config.getOrNull(SemanticsProperties.Disabled))
-            app.app.articleCategorySettings.setEnabled(true)
+            assertNotNull(categorySwitch().config.getOrNull(SemanticsProperties.Disabled))
+            val navigationRow = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }.single { n ->
+                n.config.getOrNull(SemanticsActions.OnClick) != null && walk(n).any {
+                    it.config.getOrNull(SemanticsProperties.Text)?.any { it.text == "Article category tags" } == true
+                }
+            }
+            assertNull(navigationRow.config.getOrNull(SemanticsProperties.Disabled))
+            navigationRow.config[SemanticsActions.OnClick].action!!.invoke()
+            assertEquals(1, categoryNavigationCount, "Model setup must remain reachable while the switch is disabled")
+            availability = StoryCategoryAvailability()
             frames()
+            categorySwitch().config[SemanticsActions.OnClick].action!!.invoke()
+            frames()
+            assertTrue(app.app.articleCategorySettings.snapshot().enabled)
             assertNull(options("Metadata").config.getOrNull(SemanticsProperties.Disabled))
             fun chipPosition() = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }.single { node ->
                 node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == "Programming" } == true
@@ -113,13 +137,16 @@ class CategoryLocationSettingsTest {
             repeat(6) { scene.render(time.also { time += 16_666_667L }).close() }
             val interruptedPosition = chipPosition()
             options("Under title").config.getOrNull(SemanticsActions.OnClick)!!.action!!.invoke()
-            scene.render(time.also { time += 16_666_667L }).close()
-            assertTrue((chipPosition() - interruptedPosition).getDistance() < 20f, "A rapid reversal must not teleport the chip")
+            // Recompose at the same animation time: normal travel during the next frame can be
+            // more than 20px on the long metadata path, so it isn't a discontinuity check.
+            scene.render(time - 16_666_667L).close()
+            assertTrue((chipPosition() - interruptedPosition).getDistance() < 2f,
+                "$mode: A rapid reversal must not teleport the chip: $interruptedPosition -> ${chipPosition()}")
             frames()
             assertEquals(titleLocation, chipPosition())
             options("Metadata").config.getOrNull(SemanticsActions.OnClick)!!.action!!.invoke()
             frames()
-            app.app.articleCategorySettings.setEnabled(false)
+            categorySwitch().config[SemanticsActions.OnClick].action!!.invoke()
             frames()
             assertNotNull(options("Metadata").config.getOrNull(SemanticsProperties.Disabled))
             assertEquals(CategoryTagLocation.METADATA, app.app.settings.snapshot().story.categoryTagLocation)
@@ -127,6 +154,9 @@ class CategoryLocationSettingsTest {
             frames()
             assertNull(options("Under title").config.getOrNull(SemanticsProperties.Disabled))
             assertFalse(app.app.articleCategorySettings.snapshot().enabled, "Mock preview must not enable live inference")
-        } finally { DebugStoryCategoryPreview.enabled = false; scene.close(); app.close() }
+            categorySwitch().config[SemanticsActions.OnClick].action!!.invoke()
+            frames()
+            assertNotNull(options("Under title").config.getOrNull(SemanticsProperties.Disabled))
+        } finally { DebugStoryCategoryPreview.enabled = false; DebugStoryCategoryPreview.showTags = true; scene.close(); app.close() }
     }
 }

@@ -98,6 +98,7 @@ internal fun StoryMetricPill(
     iconTextSpacing: Dp = 2.dp,
     /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
     highlighted: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val container = colors.surfaceContainerHighest
@@ -122,7 +123,7 @@ internal fun StoryMetricPill(
         Modifier.storyImageMetricBackground(hazeState)
     }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .graphicsLayer(alpha = pillAlpha)
             .then(backgroundModifier)
             .height(if (hazeState != null) 22.dp else StoryMetricPillHeight)
@@ -199,6 +200,7 @@ internal fun StoryMeta(
     animateChanges: Boolean,
     modifier: Modifier,
     wrapContent: Boolean = false,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
     val showMetaPoints = style.showPoints &&
         style.previewImageMode != StoryPreviewMode.MEDIUM
@@ -209,7 +211,7 @@ internal fun StoryMeta(
         }
         ?.removePrefix(model.domainWithoutTopLevel)
         .orEmpty()
-    if (!animateChanges) {
+    if (!animateChanges && placementAnimation == null) {
         val metaText = remember(
             model.points,
             model.domainWithoutTopLevel,
@@ -246,16 +248,19 @@ internal fun StoryMeta(
             metaText = metaText,
             wrapContent = wrapContent,
             metaSize = typography.storyMetaSize,
+            placementAnimation = placementAnimation,
             animateChanges = animateChanges,
             modifier = modifier,
         )
         return
     }
-    val metaSize by animateFloatAsState(
+    val animatedMetaSize by animateFloatAsState(
         targetValue = typography.storyMetaSize,
         animationSpec = contentTween(),
         label = "story meta size",
     )
+    val metaSize = if (placementAnimation == null) animatedMetaSize else typography.storyMetaSize
+    val animateMetadata = animateChanges || placementAnimation?.visibility?.metadataAnimating == true
     val pointsVisibilityProgress = remember(model.points) {
         Animatable(if (showMetaPoints) 1f else 0f)
     }
@@ -268,8 +273,8 @@ internal fun StoryMeta(
     var renderPoints by remember(model.points) {
         mutableStateOf(showMetaPoints)
     }
-    LaunchedEffect(showMetaPoints, animateChanges) {
-        if (!animateChanges) {
+    LaunchedEffect(showMetaPoints, animateMetadata) {
+        if (!animateMetadata) {
             pointsVisibilityProgress.snapTo(if (showMetaPoints) 1f else 0f)
             renderPoints = showMetaPoints
         } else if (showMetaPoints) {
@@ -280,8 +285,8 @@ internal fun StoryMeta(
             renderPoints = false
         }
     }
-    LaunchedEffect(style.compactPoints, animateChanges) {
-        if (!animateChanges) {
+    LaunchedEffect(style.compactPoints, animateMetadata) {
+        if (!animateMetadata) {
             plusProgress.snapTo(if (style.compactPoints) 1f else 0f)
             pointsWordProgress.snapTo(if (style.compactPoints) 0f else 1f)
         } else if (style.compactPoints) {
@@ -299,8 +304,8 @@ internal fun StoryMeta(
     var renderTopLevelDomain by remember(domainSuffix) {
         mutableStateOf(targetIncludesTopLevelDomain)
     }
-    LaunchedEffect(targetIncludesTopLevelDomain, animateChanges) {
-        if (!animateChanges) {
+    LaunchedEffect(targetIncludesTopLevelDomain, animateMetadata) {
+        if (!animateMetadata) {
             topLevelDomainProgress.snapTo(if (targetIncludesTopLevelDomain) 1f else 0f)
             renderTopLevelDomain = targetIncludesTopLevelDomain
         } else if (targetIncludesTopLevelDomain) {
@@ -314,9 +319,9 @@ internal fun StoryMeta(
         }
     }
     val metaText = buildAnnotatedString {
-        if (renderPoints) {
-            val pointsVisibility = pointsVisibilityProgress.value
-            val plusVisibility = pointsVisibility * plusProgress.value
+        if (if (animateMetadata) renderPoints else showMetaPoints) {
+            val pointsVisibility = if (animateMetadata) pointsVisibilityProgress.value else 1f
+            val plusVisibility = pointsVisibility * if (animateMetadata) plusProgress.value else if (style.compactPoints) 1f else 0f
             append("+")
             addStyle(
                 SpanStyle(
@@ -340,7 +345,7 @@ internal fun StoryMeta(
                 start = pointsNumberStart,
                 end = length,
             )
-            val pointsWordVisibility = pointsVisibility * pointsWordProgress.value
+            val pointsWordVisibility = pointsVisibility * if (animateMetadata) pointsWordProgress.value else if (style.compactPoints) 0f else 1f
             val pointsWordStart = length
             append(" points")
             addStyle(
@@ -367,16 +372,16 @@ internal fun StoryMeta(
             )
         }
         append(model.domainWithoutTopLevel)
-        if (renderTopLevelDomain) {
+        if (if (animateMetadata) renderTopLevelDomain else targetIncludesTopLevelDomain) {
             val suffixStart = length
             append(domainSuffix)
             addStyle(
                 SpanStyle(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = topLevelDomainProgress.value,
+                        alpha = if (animateMetadata) topLevelDomainProgress.value else 1f,
                     ),
                     textGeometricTransform = TextGeometricTransform(
-                        scaleX = topLevelDomainProgress.value.coerceAtLeast(0.001f),
+                        scaleX = if (animateMetadata) topLevelDomainProgress.value.coerceAtLeast(0.001f) else 1f,
                     ),
                 ),
                 start = suffixStart,
@@ -397,6 +402,7 @@ internal fun StoryMeta(
         metaText = metaText,
         wrapContent = wrapContent,
         metaSize = metaSize,
+        placementAnimation = placementAnimation,
         animateChanges = animateChanges,
         modifier = modifier,
     )
@@ -415,13 +421,14 @@ private fun StoryMetaRow(
     metaText: AnnotatedString,
     wrapContent: Boolean,
     metaSize: Float,
+    placementAnimation: StoryRowPlacementAnimation?,
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
     Row(modifier = if (wrapContent) modifier else modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         StoryVisibility(
             visible = style.showFavicon,
-            animate = animateChanges,
+            animate = animateChanges || placementAnimation != null,
             enter = fadeIn(contentTween()) + expandHorizontally(
                 animationSpec = contentTween(),
                 expandFrom = Alignment.Start,
@@ -442,7 +449,8 @@ private fun StoryMetaRow(
         }
         Text(
             text = metaText,
-            modifier = if (wrapContent) Modifier else Modifier.weight(1f),
+            modifier = (if (wrapContent) Modifier else Modifier.weight(1f))
+                .animateStoryRowTextSize(placementAnimation, metaSize),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = typography.storyMetaFamily,
             fontSize = metaSize.sp,
@@ -461,6 +469,7 @@ internal fun StoryCommentRail(
     onLongClick: (() -> Unit)?,
     animateChanges: Boolean,
     modifier: Modifier = Modifier,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
     val foreground = readStateForeground(
         MaterialTheme.colorScheme.onSurface,
@@ -496,35 +505,41 @@ internal fun StoryCommentRail(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            painter = painterResource(
-                when {
-                    style.commented -> Res.drawable.ic_comment_filled
-                    style.useHotnessIcon -> Res.drawable.ic_whatshot
-                    else -> Res.drawable.ic_comment
-                },
-            ),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = if (style.commented) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }.copy(alpha = dimAlpha),
-        )
-        StoryVisibility(
-            visible = style.showCommentCount && !style.compact,
-            animate = animateChanges,
-        ) {
-            Text(
-                text = model.commentCount.toString(),
-                color = foreground,
-                fontFamily = typography.family,
-                fontWeight = FontWeight.Bold,
-                fontSize = countSize.sp,
-                textAlign = TextAlign.Center,
-                style = storyRowTextStyle,
-            )
+        StoryRowMovingContent(placementAnimation, "comments") {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    painter = painterResource(
+                        when {
+                            style.commented -> Res.drawable.ic_comment_filled
+                            style.useHotnessIcon -> Res.drawable.ic_whatshot
+                            else -> Res.drawable.ic_comment
+                        },
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = if (style.commented) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }.copy(alpha = dimAlpha),
+                )
+                StoryVisibility(
+                    visible = style.showCommentCount && !style.compact,
+                    animate = animateChanges,
+                ) {
+                    Text(
+                        text = model.commentCount.toString(),
+                        modifier = Modifier.animateStoryRowTextSize(placementAnimation, countSize)
+                            .storySettingsAlpha(placementAnimation, "comment-count"),
+                        color = foreground,
+                        fontFamily = typography.family,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = countSize.sp,
+                        textAlign = TextAlign.Center,
+                        style = storyRowTextStyle,
+                    )
+                }
+            }
         }
     }
 }

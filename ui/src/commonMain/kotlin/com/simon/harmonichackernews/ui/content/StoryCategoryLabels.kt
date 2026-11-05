@@ -1,5 +1,8 @@
 package com.simon.harmonichackernews.ui.content
 
+import androidx.compose.ui.unit.TextUnit
+import com.simon.harmonichackernews.settings.TextPreferences
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,6 +80,7 @@ internal fun StoryCategoryLabels(
     inspection: StoryCategoryInspection? = null,
     categoryIds: List<String> = inspection?.labelScores?.map { it.categoryId }.orEmpty(),
     placementAnimation: StoryRowPlacementAnimation? = null,
+    fontSize: TextUnit = 11.sp,
 ) {
     val colors = storyCategoryColors(tintedSurface)
     var inspector by remember { mutableStateOf<CategoryInspectorSource?>(null) }
@@ -95,6 +99,7 @@ internal fun StoryCategoryLabels(
                     if (score != null) {
                         val geometry = geometries.getOrPut(score.categoryId) { CategoryChipGeometry() }
                         InspectableCategoryChip(label, score.categoryId, (score.similarity * 100).roundToInt(), colors,
+                            fontSize = fontSize,
                             covered = sourceCovered && inspector?.categoryId == score.categoryId,
                             geometry = geometry,
                             onOpen = { _, _ ->
@@ -102,7 +107,9 @@ internal fun StoryCategoryLabels(
                                     colors, geometry)
                             })
                     } else StoryRowMovingContent(placementAnimation, "category-$label") {
-                        CategoryLabelText(label, colors, categoryId = categoryIds.getOrNull(index))
+                        CategoryLabelText(label, colors,
+                            modifier = Modifier.animateStoryRowTextSize(placementAnimation, fontSize.value),
+                            categoryId = categoryIds.getOrNull(index), fontSize = fontSize)
                     }
                 }
             }
@@ -139,13 +146,13 @@ internal fun storyCategoryColors(tintedSurface: (() -> Color)?): StoryCategoryCo
 }
 
 @Composable
-internal fun CategoryLabelText(label: String, colors: StoryCategoryColors, modifier: Modifier = Modifier, categoryId: String? = null) {
+internal fun CategoryLabelText(label: String, colors: StoryCategoryColors, modifier: Modifier = Modifier, categoryId: String? = null, fontSize: TextUnit = 11.sp) {
     Row(modifier.background(colors.container, RoundedCornerShape(5.dp))
         .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(painterResource(categorySymbol(categoryId)), null, Modifier.size(12.dp), tint = colors.foreground)
+        Icon(painterResource(categorySymbol(categoryId)), null, Modifier.size((12f * fontSize.value / 11f).dp), tint = colors.foreground)
         Text(text = label, color = colors.foreground, fontFamily = ProductSansFontFamily,
-            style = MaterialTheme.typography.labelSmall, fontSize = 11.sp)
+            style = MaterialTheme.typography.labelSmall, fontSize = fontSize)
     }
 }
 
@@ -158,6 +165,7 @@ internal fun InspectableCategoryChip(
     covered: Boolean,
     geometry: CategoryChipGeometry = remember { CategoryChipGeometry() },
     onOpen: (Rect?, GraphicsLayer?) -> Unit,
+    fontSize: TextUnit = 11.sp,
 ) {
     var captureRequested by remember { mutableStateOf(false) }
     var pendingOpen by remember { mutableStateOf(false) }
@@ -189,6 +197,9 @@ internal fun InspectableCategoryChip(
         contentAlignment = Alignment.CenterStart,
     ) {
         CategoryLabelText(label, colors,
-            Modifier.onGloballyPositioned { geometry.bounds = it.boundsInWindow() }.then(capture).clearAndSetSemantics { }, categoryId)
+            Modifier.onGloballyPositioned { geometry.bounds = it.boundsInWindow() }.then(capture).clearAndSetSemantics { }, categoryId, fontSize)
     }
 }
+
+internal fun storyCategoryFontSize(storyTextSize: Float): TextUnit =
+    (11f * storyTextSize / TextPreferences.DEFAULT_STORY_TEXT_SIZE).sp

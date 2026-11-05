@@ -95,6 +95,7 @@ fun PortableSettingsDetail(
             onBack = onBack,
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
+            onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
         )
         SettingsSection.Frontpages -> {
             val accountState by app.platform.accounts.accountState.collectAsStateWithLifecycle()
@@ -311,6 +312,7 @@ private fun PortableStoriesSettings(
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit,
 ) {
     val story = app.settings.snapshot().story
     StoriesSettingsRoute(
@@ -322,6 +324,8 @@ private fun PortableStoriesSettings(
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
+        categoryAvailability = storyCategoryAvailability(),
         showNavigation = showNavigation,
         onBack = onBack,
         onPlatformEffect = { effect ->

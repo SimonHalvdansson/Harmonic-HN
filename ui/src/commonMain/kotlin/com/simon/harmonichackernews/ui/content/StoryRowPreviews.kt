@@ -3,6 +3,8 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -33,7 +35,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.Res
@@ -102,7 +103,11 @@ internal fun StoryMediumPreviewRail(
     animatedVisibilityScope: AnimatedVisibilityScope?,
     sharedContentKey: Any?,
     modifier: Modifier = Modifier,
+    placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
+    val nativePillMotion = placementAnimation == null || placementAnimation.visibility?.metadataAnimating == true
+    val pillEnter = if (nativePillMotion) fadeIn(contentTween()) + expandHorizontally(contentTween()) else EnterTransition.None
+    val pillExit = if (nativePillMotion) fadeOut(contentTween()) + shrinkHorizontally(contentTween()) else ExitTransition.None
     val hazeState = if (hasPreview) rememberHazeState() else null
     val showPoints = style.showPoints && !style.compact
     val showCommentPill = style.showCommentCount && !style.compact
@@ -205,14 +210,14 @@ internal fun StoryMediumPreviewRail(
                     .testTag("story-medium-preview-image")
                     .fillMaxWidth()
                     .height(imageHeight)
-                    .clip(
+                    .then(if (placementAnimation == null) Modifier.clip(
                         RoundedCornerShape(
                             topStart = imageStartRadius,
                             topEnd = imageEndRadius,
                             bottomEnd = imageEndRadius,
                             bottomStart = imageStartRadius,
                         ),
-                    )
+                    ) else Modifier)
                     .combinedClickable(
                         enabled = onClick != null,
                         onClickLabel = "Open comments",
@@ -222,6 +227,9 @@ internal fun StoryMediumPreviewRail(
             ) {
                 StoryPreviewImage(
                     model = model,
+                    placementAnimation = placementAnimation,
+                    cornerRadius = imageStartRadius,
+                    endCornerRadius = imageEndRadius,
                     modifier = Modifier
                         .sharedStoryPreviewImage(
                             sharedTransitionScope = sharedTransitionScope,
@@ -229,14 +237,14 @@ internal fun StoryMediumPreviewRail(
                             sharedContentKey = sharedContentKey,
                         )
                         .fillMaxSize()
-                        .clip(
+                        .then(if (placementAnimation == null) Modifier.clip(
                             RoundedCornerShape(
                                 topStart = imageStartRadius,
                                 topEnd = imageEndRadius,
                                 bottomEnd = imageEndRadius,
                                 bottomStart = imageStartRadius,
                             ),
-                        )
+                        ) else Modifier)
                         .hazeSource(hazeState)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
@@ -258,6 +266,7 @@ internal fun StoryMediumPreviewRail(
                         // Keep the outgoing pills intact while the image rail narrows.
                         // Their short fade completes before the image reaches small size.
                         .wrapContentWidth(Alignment.End, unbounded = true)
+                        .storySettingsAlpha(placementAnimation, "preview-image")
                         .renderOverSharedStoryPreviewImage(sharedTransitionScope)
                         .captureStoryPreviewElement(
                             enabled = capturePreviewSource,
@@ -270,11 +279,11 @@ internal fun StoryMediumPreviewRail(
                 ) {
                     StoryVisibility(
                         visible = showPoints,
-                        animate = animateChanges,
-                        enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-                        exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                        animate = animateChanges || placementAnimation != null,
+                        enter = pillEnter,
+                        exit = pillExit,
                     ) {
-                        StoryMetricPill(
+                        StoryRowMovingContent(placementAnimation, "points") { StoryMetricPill(
                             icon = Res.drawable.ic_arrow_drop_up,
                             text = compactStoryMetric(model.points),
                             contentDescription = pointsDescription,
@@ -287,23 +296,24 @@ internal fun StoryMediumPreviewRail(
                             startPadding = 2.dp,
                             endPadding = 10.dp,
                             iconTextSpacing = 0.dp,
-                        )
+                        ) }
                     }
                     StoryVisibility(
                         visible = showPoints && showCommentPill,
-                        animate = animateChanges,
-                        enter = expandHorizontally(contentTween()),
-                        exit = shrinkHorizontally(contentTween()),
+                        animate = animateChanges || placementAnimation != null,
+                        enter = if (nativePillMotion) expandHorizontally(contentTween()) else EnterTransition.None,
+                        exit = if (nativePillMotion) shrinkHorizontally(contentTween()) else ExitTransition.None,
                     ) {
                         Box(Modifier.width(4.dp))
                     }
                     StoryVisibility(
                         visible = showCommentPill,
-                        animate = animateChanges,
-                        enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-                        exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                        animate = animateChanges || placementAnimation != null,
+                        enter = pillEnter,
+                        exit = pillExit,
                     ) {
-                        StoryMetricPill(
+                        StoryRowMovingContent(placementAnimation, "comments") { StoryMetricPill(
+                            modifier = Modifier.storySettingsAlpha(placementAnimation, "comment-count"),
                             icon = commentIcon,
                             text = model.commentCount
                                 .takeIf { showCommentText }
@@ -318,7 +328,7 @@ internal fun StoryMediumPreviewRail(
                             hazeState = hazeState,
                             iconSize = 12.dp,
                             highlighted = style.commented,
-                        )
+                        ) }
                     }
                 }
             }
@@ -336,11 +346,11 @@ internal fun StoryMediumPreviewRail(
             ) {
                 StoryVisibility(
                     visible = showPoints,
-                    animate = animateChanges,
-                    enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-                    exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                    animate = animateChanges || placementAnimation != null,
+                    enter = pillEnter,
+                    exit = pillExit,
                 ) {
-                    StoryMetricPill(
+                    StoryRowMovingContent(placementAnimation, "points") { StoryMetricPill(
                         icon = Res.drawable.ic_arrow_drop_up,
                         text = compactStoryMetric(model.points),
                         contentDescription = pointsDescription,
@@ -352,23 +362,24 @@ internal fun StoryMediumPreviewRail(
                         startPadding = 2.dp,
                         endPadding = 10.dp,
                         iconTextSpacing = 0.dp,
-                    )
+                    ) }
                 }
                 StoryVisibility(
                     visible = showPoints && showCommentPill,
-                    animate = animateChanges,
-                    enter = expandHorizontally(contentTween()),
-                    exit = shrinkHorizontally(contentTween()),
+                    animate = animateChanges || placementAnimation != null,
+                    enter = if (nativePillMotion) expandHorizontally(contentTween()) else EnterTransition.None,
+                    exit = if (nativePillMotion) shrinkHorizontally(contentTween()) else ExitTransition.None,
                 ) {
                     Box(Modifier.width(4.dp))
                 }
                 StoryVisibility(
                     visible = showCommentPill,
-                    animate = animateChanges,
-                    enter = fadeIn(contentTween()) + expandHorizontally(contentTween()),
-                    exit = fadeOut(contentTween()) + shrinkHorizontally(contentTween()),
+                    animate = animateChanges || placementAnimation != null,
+                    enter = pillEnter,
+                    exit = pillExit,
                 ) {
-                    StoryMetricPill(
+                    StoryRowMovingContent(placementAnimation, "comments") { StoryMetricPill(
+                        modifier = Modifier.storySettingsAlpha(placementAnimation, "comment-count"),
                         icon = commentIcon,
                         text = model.commentCount
                             .takeIf { showCommentText }
@@ -382,7 +393,7 @@ internal fun StoryMediumPreviewRail(
                         dimAlpha = dimAlpha,
                         iconSize = 12.dp,
                         highlighted = style.commented,
-                    )
+                    ) }
                 }
             }
         }
@@ -407,19 +418,6 @@ internal fun StorySmallPreviewImage(
     modifier: Modifier = Modifier,
     placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
-    if (placementAnimation != null) {
-        Box(modifier) {
-            StoryRowMovingContent(placementAnimation, "small-image") {
-                StorySmallPreviewImage(
-                    model, dimAlpha, onPreviewLoadFailed, onPreviewLoadSuccess, tintBaseColorArgb,
-                    paletteTintConfigKey, extractPreviewTint, onPreviewTintExtracted,
-                    capturePreviewSource, itemGeometry, sharedTransitionScope, animatedVisibilityScope,
-                    sharedContentKey,
-                )
-            }
-        }
-        return
-    }
     Box(
         modifier = modifier.testTag("story-small-preview")
             .padding(start = 4.dp, top = 6.dp, bottom = 6.dp)
@@ -427,6 +425,8 @@ internal fun StorySmallPreviewImage(
     ) {
         StoryPreviewImage(
             model = model,
+            placementAnimation = placementAnimation,
+            cornerRadius = 6.dp,
             modifier = Modifier
                 .sharedStoryPreviewImage(
                     sharedTransitionScope = sharedTransitionScope,
@@ -434,7 +434,7 @@ internal fun StorySmallPreviewImage(
                     sharedContentKey = sharedContentKey,
                 )
                 .fillMaxSize()
-                .clip(RoundedCornerShape(6.dp))
+                .then(if (placementAnimation == null) Modifier.clip(RoundedCornerShape(6.dp)) else Modifier)
                 .captureStoryPreviewElement(
                     enabled = capturePreviewSource,
                     onPositioned = { itemGeometry.smallImageCoordinates = it },

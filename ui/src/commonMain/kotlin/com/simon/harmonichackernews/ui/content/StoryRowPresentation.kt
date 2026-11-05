@@ -58,6 +58,7 @@ internal fun rememberStoryRowPresentation(
     onPreviewLoadFailed: (() -> Unit)?,
     onPreviewTintExtracted: ((Int) -> Unit)?,
     onFaviconTintExtracted: ((Int) -> Unit)?,
+    animatePreviewPlacement: Boolean = animate,
 ): StoryRowPresentation {
     val colors = MaterialTheme.colorScheme
     val dimAlpha = if (animate) {
@@ -97,7 +98,7 @@ internal fun rememberStoryRowPresentation(
     }
     val hasPreview = !previewFailed &&
         (model.previewImageUrl != null || model.previewImageFallback != null || model.previewImageBitmap != null)
-    val animatePreviewMode = animate && hasPreview && !listItem
+    val animatePreviewMode = animatePreviewPlacement && hasPreview && !listItem
     var animatedPreviewMode by remember(animatePreviewMode) { mutableStateOf(style.previewImageMode) }
     val renderedPreviewMode = if (animatePreviewMode) animatedPreviewMode else style.previewImageMode
     val renderedStyle = if (renderedPreviewMode == style.previewImageMode) {

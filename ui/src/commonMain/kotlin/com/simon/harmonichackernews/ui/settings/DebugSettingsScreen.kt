@@ -50,6 +50,7 @@ enum class DebugSettingsDialog {
 /** Session-only fixture: never enables inference or changes category preferences. */
 internal object DebugStoryCategoryPreview {
     var enabled by mutableStateOf(false)
+    var showTags by mutableStateOf(true)
 }
 
 data class DebugEnvironmentUiState(
@@ -183,7 +184,7 @@ fun DebugSettingsScreen(
                     summary = "Preview tag placement without a model. Resets when the app restarts.",
                     icon = Res.drawable.ic_label,
                     checked = DebugStoryCategoryPreview.enabled,
-                    onCheckedChange = { DebugStoryCategoryPreview.enabled = it },
+                    onCheckedChange = { DebugStoryCategoryPreview.enabled = it; DebugStoryCategoryPreview.showTags = true },
                 )
                 SettingsDivider()
                 DebugOpenSetting(

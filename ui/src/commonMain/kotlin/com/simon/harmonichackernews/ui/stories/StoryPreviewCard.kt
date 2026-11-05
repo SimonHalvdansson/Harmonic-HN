@@ -92,6 +92,7 @@ import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.content.StoryAuthorTag
 import com.simon.harmonichackernews.ui.content.StoryCategoryLabels
 import com.simon.harmonichackernews.ui.content.CategoryLabelText
+import com.simon.harmonichackernews.ui.content.storyCategoryFontSize
 import com.simon.harmonichackernews.ui.content.storyCategoryColors
 import com.simon.harmonichackernews.ui.content.rememberArticleCategoryPresentation
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -246,6 +247,7 @@ fun StoryPreviewCard(
             topSpacing = 6.dp,
             bottomSpacing = 0.dp,
             categoryIds = categories.inspection?.labelScores?.map { it.categoryId }.orEmpty(),
+            fontSize = storyCategoryFontSize(settings.storyTextSize),
         )
     }
 
@@ -389,7 +391,7 @@ fun StoryPreviewCard(
                             if (settings.categoryTagLocation == CategoryTagLocation.METADATA) {
                                 val colors = storyCategoryColors(if (settings.tintCardsFromImages) ({ cardColor }) else null)
                                 categories.labels.forEachIndexed { index, label ->
-                                    CategoryLabelText(label, colors,
+                                    CategoryLabelText(label, colors, fontSize = storyCategoryFontSize(settings.storyTextSize),
                                         categoryId = categories.inspection?.labelScores?.getOrNull(index)?.categoryId)
                                 }
                             }
