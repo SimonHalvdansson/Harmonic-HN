@@ -8,6 +8,7 @@ For Version 3.2, Harmonic has been rewritten from the ground up as a Compose Mul
 - Redesigned widget
 - Improved layout on foldables and tablets
 - New theme engine
+- Optional automatic categorization of posts
 - Much, much more, this release is more than 1000 commits all in all
 
 Thanks to Lorenzo Antonelli, Vishvendra Singh, chaosmanage, Cuento3yLlevo2, and Oliver Leung for contributing features and fixes to this release!

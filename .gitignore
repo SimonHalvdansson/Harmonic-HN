@@ -33,3 +33,4 @@ deploymentTargetDropDown.xml
 /app/release/
 /docs/reports/
 /docs/performance/*.json
+/app/playRelease
