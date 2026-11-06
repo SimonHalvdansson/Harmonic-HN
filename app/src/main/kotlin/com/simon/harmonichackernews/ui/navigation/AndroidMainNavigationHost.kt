@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.DisposableEffect
@@ -32,7 +31,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.PlatformTextStyle
@@ -159,23 +160,23 @@ private fun MainNavigation(
     val uiDependencies = LocalHarmonicUiDependencies.current
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val context = activity
-    val supportsTwoPane = context.resources.configuration.smallestScreenWidthDp >= 600
+    val supportsTwoPane = LocalConfiguration.current.smallestScreenWidthDp >= 600
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
     val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
     val density = LocalDensity.current
+    val windowWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
     val tabletPaneSpacer = with(density) {
         context.resources.getDimensionPixelSize(R.dimen.margin_between_panes).toDp()
     }
     val tabletStoriesWeight = context.resources.getInteger(R.integer.stories_pane_weight)
-    val directive = remember(adaptiveInfo, supportsTwoPane, isFoldable, tabletPaneSpacer) {
-        val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
-        adaptiveDirective.copy(
-            maxHorizontalPartitions = if (supportsTwoPane) {
-                adaptiveDirective.maxHorizontalPartitions
-            } else {
-                1
-            },
+    val directive = remember(adaptiveInfo, windowWidth, supportsTwoPane, isFoldable, tabletPaneSpacer) {
+        calculateHarmonicPaneScaffoldDirective(
+            adaptiveInfo = adaptiveInfo,
+            windowWidth = windowWidth,
+            supportsTwoPane = supportsTwoPane,
+            isFoldable = isFoldable,
+        ).copy(
             horizontalPartitionSpacerSize = if (isFoldable) 12.dp else tabletPaneSpacer,
         )
     }

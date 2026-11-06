@@ -4,7 +4,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -13,11 +12,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.about.AndroidAboutScreen
 import com.simon.harmonichackernews.ui.licenses.AndroidLicensesScreen
 import com.simon.harmonichackernews.ui.navigation.animatedExtraPanePadding
+import com.simon.harmonichackernews.ui.navigation.calculateHarmonicPaneScaffoldDirective
 import com.simon.harmonichackernews.ui.navigation.StatusBarProtection
 
 /** Android adapter for window facts, predictive back, and native settings effects. */
@@ -41,14 +43,14 @@ fun SettingsShell(
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
     val isFoldable = adaptiveInfo.windowPosture.hingeList.isNotEmpty() || hasHingeAngleSensor
-    val directive = remember(adaptiveInfo, supportsTwoPane, isFoldable) {
-        val adaptiveDirective = calculatePaneScaffoldDirective(adaptiveInfo)
-        adaptiveDirective.copy(
-            maxHorizontalPartitions = if (supportsTwoPane) {
-                adaptiveDirective.maxHorizontalPartitions
-            } else {
-                1
-            },
+    val windowWidth = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val directive = remember(adaptiveInfo, windowWidth, supportsTwoPane, isFoldable) {
+        calculateHarmonicPaneScaffoldDirective(
+            adaptiveInfo = adaptiveInfo,
+            windowWidth = windowWidth,
+            supportsTwoPane = supportsTwoPane,
+            isFoldable = isFoldable,
+        ).copy(
             horizontalPartitionSpacerSize = if (isFoldable) 12.dp else 16.dp,
         )
     }
