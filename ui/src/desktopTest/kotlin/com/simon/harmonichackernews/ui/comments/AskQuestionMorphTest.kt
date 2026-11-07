@@ -93,7 +93,7 @@ class AskQuestionMorphTest {
                             val bubble = it.boundsInRoot
                             if (bubble.height > 1f && bubble.width > 1f) bounds += bubble
                             // The first turn stays in place while the follow-up also scrolls the transcript.
-                            if (motionScale == 1f && index == 0 && tick >= 12) scene.render(scheduler.currentTime * 1_000_000).use { image ->
+                            if (motionScale == 1f && index == 0 && tick >= 18) scene.render(scheduler.currentTime * 1_000_000).use { image ->
                                 val pixel = image.toComposeImageBitmap().toPixelMap()[
                                     bubble.center.x.toInt().coerceIn(0, 399),
                                     (bubble.top + 4).toInt().coerceIn(0, 999),
@@ -105,6 +105,10 @@ class AskQuestionMorphTest {
                 }
                 assertTrue(bounds.distinct().size >= 8, "Sent question must move through intermediate bounds: $bounds")
                 assertTrue(bounds.first().top < start.bottom + 5f, "The bubble should begin at the selected suggestion")
+                if (index == 0) bounds.drop((12 * motionScale).toInt()).zipWithNext().forEach { (before, after) ->
+                    assertTrue(kotlin.math.abs(after.top - before.top) < 8f,
+                        "Removing the starter questions must not drop an outer gap: $before -> $after")
+                }
                 if (motionScale > 1f) bounds.drop(20).zipWithNext().forEach { (before, after) ->
                     assertTrue(kotlin.math.abs(after.top - before.top) < 35f,
                         "Fast replies must not snap the moving question: $before -> $after")

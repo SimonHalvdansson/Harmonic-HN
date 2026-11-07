@@ -32,7 +32,7 @@ class StoryLinkPreviewSession(
         val current = story ?: return false
         return network.load(
             url = current.url,
-            preferences = LinkPreviewPreferences(readingPreferences.enabledLinkPreviews),
+            preferences = LinkPreviewPreferences(readingPreferences.activeLinkPreviews),
             alreadyLoaded = current.hasLoadedLinkPreview(),
         )
     }
@@ -102,7 +102,7 @@ class StoryLinkPreviewSession(
     }
 
     private fun nitterPreferences() = NitterLinkPreviewPreferences(
-        previewEnabled = LinkPreviewType.TWITTER_X in readingPreferences.enabledLinkPreviews,
+        previewEnabled = LinkPreviewType.TWITTER_X in readingPreferences.activeLinkPreviews,
         redirectEnabled = readingPreferences.redirectNitter,
         instanceUrl = readingPreferences.nitterInstanceUrl,
     )

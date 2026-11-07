@@ -9,6 +9,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -34,11 +36,15 @@ internal const val AskQuestionMorphDuration = 500
 internal class AskQuestionMorph(val question: String, val turnIndex: Int, val outgoingQuestions: List<String>) {
     val progress = Animatable(0f)
     var inFlight by mutableStateOf(true)
+    val motionProgress: Float get() = AskEasing.transform(progress.value)
+    // Hold the suggestion's colors for the first 160 ms, then finish within the same 500 ms.
+    val colorProgress: Float get() = FastOutSlowInEasing.transform(
+        ((progress.value - 0.32f) / 0.68f).coerceIn(0f, 1f))
 
     suspend fun animate() {
         // Start alongside the shared bounds after the new turn enters composition.
         withFrameNanos { }
-        progress.animateTo(1f, tween(AskQuestionMorphDuration, easing = AskEasing))
+        progress.animateTo(1f, tween(AskQuestionMorphDuration, easing = LinearEasing))
     }
 }
 
@@ -80,8 +86,8 @@ internal fun Modifier.askQuestionSurface(
         val stroke = Stroke(1.dp.toPx())
         onDrawBehind {
             if (!visible()) return@onDrawBehind
-            val p = morph?.progress?.value ?: if (sent) 1f else 0f
-            val radius = (16f + 2f * p).dp.toPx()
+            val p = morph?.colorProgress ?: if (sent) 1f else 0f
+            val radius = (16f + 2f * (morph?.motionProgress ?: p)).dp.toPx()
             drawRoundRect(lerp(backdrop, bubble, p), cornerRadius = CornerRadius(radius))
             if (p < 1f) drawRoundRect(outline.copy(alpha = outline.alpha * (1f - p)),
                 cornerRadius = CornerRadius(radius), style = stroke)
@@ -91,7 +97,7 @@ internal fun Modifier.askQuestionSurface(
 
 internal fun Modifier.askQuestionIcon(morph: AskQuestionMorph?): Modifier =
     if (morph == null) this else graphicsLayer {
-        alpha = (1f - morph.progress.value * 2f).coerceIn(0f, 1f)
+        alpha = (1f - morph.motionProgress * 2f).coerceIn(0f, 1f)
     }
 
 @Composable
@@ -108,5 +114,5 @@ internal fun AskQuestionText(
     val targetColor = askUserBubbleColors(MaterialTheme.colorScheme).second
     BasicText(question, modifier,
         style = LocalTextStyle.current.copy(fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight),
-        color = ColorProducer { lerp(sourceColor, targetColor, morph?.progress?.value ?: if (sent) 1f else 0f) })
+        color = ColorProducer { lerp(sourceColor, targetColor, morph?.colorProgress ?: if (sent) 1f else 0f) })
 }

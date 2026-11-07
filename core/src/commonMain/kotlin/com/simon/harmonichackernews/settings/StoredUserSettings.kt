@@ -59,6 +59,7 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_HEADER_TINT_SOURCE = "pref_comments_header_tint_source"
     const val COMMENTS_HEADER_DOMAIN = "pref_comments_header_domain"
+    const val COMMENTS_HEADER_CATEGORIES = "pref_comments_header_categories"
     const val COMMENTS_HEADER_FAVICON = "pref_comments_header_favicon"
     const val COMMENTS_HEADER_LAYOUT = "pref_comments_header_layout"
     const val COMMENTS_HEADER_EDGE = "pref_comments_header_edge"
@@ -102,6 +103,7 @@ object UserPreferenceKeys {
     const val PRELOAD_WEBVIEW = "pref_preload_webview"
     const val PRELOAD_WEBVIEW_MINIMUM_BATTERY = "pref_preload_webview_minimum_battery"
     const val WEBVIEW_MATCH_THEME = "pref_webview_match_theme"
+    const val LINK_PREVIEWS_ENABLED = "pref_link_previews_enabled"
     const val READER_MODE_ENABLED = "pref_webview_reader_mode_enabled"
     const val READER_MODE_DEFAULT = "pref_webview_reader_mode_default"
     const val WEBVIEW_ADBLOCK = "pref_webview_adblock"
@@ -208,6 +210,7 @@ class StoredUserSettings(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 showFavicons = boolean(UserPreferenceKeys.COMMENTS_HEADER_FAVICON, true),
                 showHeaderDomain = boolean(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN, true),
+                showHeaderCategories = boolean(UserPreferenceKeys.COMMENTS_HEADER_CATEGORIES, true),
                 headerButtons = CommentsHeaderButtons(CommentsHeaderButton.entries
                     .filter { it.configurable && store.contains(it.storageKey) }
                     .associateWith { boolean(it.storageKey, false) }),
@@ -334,6 +337,7 @@ class StoredUserSettings(
                 archiveRedirectDomains = ArchiveRedirectPolicy.parseDomains(
                     string(UserPreferenceKeys.ARCHIVE_REDIRECT_DOMAINS, ""),
                 ),
+                linkPreviewsEnabled = boolean(UserPreferenceKeys.LINK_PREVIEWS_ENABLED, true),
                 enabledLinkPreviews = LinkPreviewType.entries.filterTo(linkedSetOf()) { type ->
                     boolean(type.preferenceKey, type.defaultEnabled)
                 },

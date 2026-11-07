@@ -35,6 +35,7 @@ import com.simon.harmonichackernews.format.ChangelogBlock
 import com.simon.harmonichackernews.format.parseChangelogMarkdown
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +64,7 @@ fun SettingsChangelogDialog(
         text = {
             ChangelogMarkdown(
                 markdown = markdown,
-                modifier = Modifier.fillMaxWidth().verticalScroll(scrollState),
+                modifier = Modifier.fillMaxWidth().fadingScrollEdges(scrollState).verticalScroll(scrollState),
             )
         },
         scrollableContent = true,

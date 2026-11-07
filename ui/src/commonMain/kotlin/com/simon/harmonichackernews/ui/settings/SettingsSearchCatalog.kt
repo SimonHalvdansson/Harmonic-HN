@@ -168,6 +168,7 @@ internal fun settingsSearchCatalog(
         "Preview image" to "header photo cover picture",
         "Post details" to "metadata title author points time score",
         "Domain" to "website url host",
+        "Article category tags" to "categorization labels post header",
         "Thumbnail" to "favicon website logo icon")
     group(SettingsSection.HeaderDisplay, "Appearance",
         "Background tint" to "header palette color colour",

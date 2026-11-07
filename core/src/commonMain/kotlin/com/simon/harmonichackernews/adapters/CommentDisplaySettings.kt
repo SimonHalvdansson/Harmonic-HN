@@ -59,6 +59,7 @@ data class CommentDisplaySettings(
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
     val showHeaderDomain: Boolean = true,
+    val showHeaderCategories: Boolean = true,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val canAsk: Boolean = canProvideSummary,
 ) {
@@ -90,6 +91,7 @@ data class CommentDisplaySettings(
             userAvatarOptions = preferences.userAvatarOptions,
             showFavicons = preferences.showFavicons,
             showHeaderDomain = preferences.showHeaderDomain,
+            showHeaderCategories = preferences.showHeaderCategories,
             headerButtons = preferences.headerButtons,
             showHeaderPreviewImage = preferences.showHeaderPreviewImage,
             tintHeader = preferences.tintHeader,

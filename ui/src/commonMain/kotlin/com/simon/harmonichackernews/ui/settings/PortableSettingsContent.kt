@@ -237,6 +237,7 @@ private fun PortableWebLinksSettings(
     if (dialog == WebLinksSettingsDialog.LinkPreviews) {
         LinkPreviewsSettingsDialog(
             enabledTypes = reading.enabledLinkPreviews,
+            previewsEnabled = reading.linkPreviewsEnabled,
             onEnabledChanged = presenter::setLinkPreview,
             onDismiss = { dialog = null },
         )

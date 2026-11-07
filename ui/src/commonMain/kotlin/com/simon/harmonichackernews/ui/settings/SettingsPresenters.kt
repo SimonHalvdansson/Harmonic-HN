@@ -222,6 +222,7 @@ class WebLinksSettingsPresenter(
             nitterInstanceUrl = reading.nitterInstanceUrl,
             archiveDomainCount = reading.archiveRedirectDomains.size,
             enabledLinkPreviews = reading.enabledLinkPreviews,
+            linkPreviewsEnabled = reading.linkPreviewsEnabled,
         )
     }
 

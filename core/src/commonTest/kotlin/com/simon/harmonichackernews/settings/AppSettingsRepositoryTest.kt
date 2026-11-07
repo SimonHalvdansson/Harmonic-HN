@@ -16,6 +16,27 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 class AppSettingsRepositoryTest {
+    @Test fun headerCategoriesDefaultOnAndPersistIndependentlyOfGlobalCategorization() {
+        val store = InMemoryKeyValueStore()
+        val categories = com.simon.harmonichackernews.categorization.ArticleCategorySettings(store, store.changes)
+        fun restored() = AppSettingsRepository(store, store.changes).snapshot().comments
+        fun display() = CommentDisplaySettings.from(restored(), false, false, false, false)
+        val repository = AppSettingsRepository(store, store.changes)
+        assertTrue(restored().showHeaderCategories)
+        assertTrue(display().showHeaderCategories)
+        assertFalse(categories.snapshot().enabled)
+        categories.setEnabled(true)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_CATEGORIES, false)
+        assertTrue(categories.snapshot().enabled)
+        assertFalse(restored().showHeaderCategories)
+        assertFalse(display().showHeaderCategories)
+        categories.setEnabled(false)
+        categories.setEnabled(true)
+        assertFalse(restored().showHeaderCategories)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_CATEGORIES, true)
+        assertTrue(display().showHeaderCategories)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun scopedObserversShareSnapshotsAndResumeWithFreshSettings() = runTest {
@@ -245,6 +266,24 @@ class AppSettingsRepositoryTest {
 
         assertTrue(snapshots.first().story.showPoints)
         assertFalse(snapshots.last().story.showPoints)
+    }
+
+    @Test
+    fun linkPreviewMasterSwitchPreservesProviderChoicesAcrossRestarts() {
+        val store = TestKeyValueStore()
+        fun restored() = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        val repository = restored()
+        repository.setLinkPreviewEnabled(LinkPreviewType.GITHUB_REPOSITORY, false)
+        repository.setLinkPreviewEnabled(LinkPreviewType.WIKIPEDIA, true)
+        val selected = repository.snapshot().reading.enabledLinkPreviews
+        assertEquals(selected, repository.snapshot().reading.activeLinkPreviews)
+        repository.setReadingBoolean(ReadingBooleanPreference.LINK_PREVIEWS_ENABLED, false)
+        val disabled = restored().snapshot().reading
+        assertFalse(disabled.linkPreviewsEnabled)
+        assertTrue(disabled.activeLinkPreviews.isEmpty())
+        assertEquals(selected, disabled.enabledLinkPreviews)
+        restored().setReadingBoolean(ReadingBooleanPreference.LINK_PREVIEWS_ENABLED, true)
+        assertEquals(selected, restored().snapshot().reading.activeLinkPreviews)
     }
 
     @Test

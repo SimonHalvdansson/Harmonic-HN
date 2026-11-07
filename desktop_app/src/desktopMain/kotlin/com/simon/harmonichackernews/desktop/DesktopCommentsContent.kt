@@ -451,6 +451,7 @@ private fun DesktopCommentsHeader(
         lastRefreshedText = presentation.lastRefreshedText,
         textStyle = TextStyle.Default,
         previewPlatform = previewPlatform,
+        linkPreviewsEnabled = app.userSettings.reading.linkPreviewsEnabled,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             presentation.tint.previewImageAvailable,
         headerPreviewImage = { imageModifier, _, onTintLoaded ->

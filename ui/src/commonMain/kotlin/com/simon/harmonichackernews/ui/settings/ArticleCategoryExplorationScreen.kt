@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -17,6 +16,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -119,35 +119,41 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
                         Modifier.fillMaxSize(), onSelect = onSelect)
                 }
             }
-            // Only an explicit example selection changes this height. Loading data does not move the legend.
-            Column(Modifier.fillMaxWidth().animateContentSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            // Reserve a two-line headline and three match rows so the controls never move.
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
                 val point = data?.points?.firstOrNull { it.id == selected }
                 if (point != null) {
                     Text(point.title, fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
-                    CategoryExampleMatches(point, colors)
-                } else Text("Tap a dot to compare its closest categories.",
-                    fontFamily = ProductSansFontFamily, fontSize = 12.sp,
-                    lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
+                    CategoryExampleMatches(point, colors, reserveSpace = true)
+                } else {
+                    Text("Tap a dot to compare its closest categories.",
+                        fontFamily = ProductSansFontFamily, fontSize = 14.sp, minLines = 2,
+                        lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CategoryExampleMatches(null, colors, reserveSpace = true)
+                }
                 // Native canvas points have no individual focus targets. These controls make
                 // the same comparisons available to keyboard and screen-reader users.
                 val examples = data?.points.orEmpty()
                 val index = examples.indexOfFirst { it.id == selected }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(enabled = examples.isNotEmpty(), onClick = {
-                        onSelect(examples[if (index <= 0) examples.lastIndex else index - 1].id)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Previous example")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        TextButton(enabled = examples.isNotEmpty(), onClick = {
+                            onSelect(examples[if (index <= 0) examples.lastIndex else index - 1].id)
+                        }, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Previous example", Modifier.weight(1f, fill = false))
+                        }
                     }
-                    TextButton(enabled = examples.isNotEmpty(), onClick = {
-                        onSelect(examples[if (index < 0 || index == examples.lastIndex) 0 else index + 1].id)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("Next example")
-                        Spacer(Modifier.width(8.dp))
-                        Icon(painterResource(Res.drawable.ic_arrow_forward), null, Modifier.size(18.dp))
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                        TextButton(enabled = examples.isNotEmpty(), onClick = {
+                            onSelect(examples[if (index < 0 || index == examples.lastIndex) 0 else index + 1].id)
+                        }, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Next example", Modifier.weight(1f, fill = false))
+                            Spacer(Modifier.width(8.dp))
+                            Icon(painterResource(Res.drawable.ic_arrow_forward), null, Modifier.size(18.dp))
+                        }
                     }
                 }
             }
@@ -172,40 +178,50 @@ internal fun categoryMapPalette(background: Color): List<Color> {
 
 
 @Composable
-internal fun CategoryExampleMatches(point: CategoryMapPoint, colors: List<Color>) {
+internal fun CategoryExampleMatches(point: CategoryMapPoint?, colors: List<Color>, reserveSpace: Boolean = false) {
     val categories = remember { ArticleCategories.defaults.associateBy { it.id } }
     val indices = remember { ArticleCategories.defaults.mapIndexed { i, category -> category.id to i }.toMap() }
     val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
-    val matches = point.matches.filter { it.similarity >= ArticleCategories.MIN_CUTOFF }.take(3)
-    if (matches.isEmpty()) {
+    val matches = point?.matches.orEmpty().filter { it.similarity >= ArticleCategories.MIN_CUTOFF }.take(3)
+    if (matches.isEmpty() && !reserveSpace) {
         Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above", Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        matches.forEach { match ->
-            val score = (match.similarity * 1000).roundToInt() / 10f
-            val fill = animateFloatAsState(((match.similarity - ArticleCategories.MIN_CUTOFF) /
-                (1f - ArticleCategories.MIN_CUTOFF)).coerceIn(0f, 1f), tween(250), label = "example similarity")
-            val color = colors[indices.getValue(match.category)]
-            Column(Modifier.fillMaxWidth().clearAndSetSemantics {
-                contentDescription = "${categories.getValue(match.category).name}, similarity $score out of 100"
-            }) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(categories.getValue(match.category).name, Modifier.weight(1f),
-                        fontFamily = ProductSansFontFamily, fontSize = 12.sp)
-                    Text("$score", fontFamily = ProductSansFontFamily, fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Canvas(Modifier.fillMaxWidth().padding(top = 4.dp).height(5.dp)) {
-                    drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
-                    drawRoundRect(color, size = Size(size.width * fill.value, size.height), cornerRadius = CornerRadius(size.height / 2))
+    Box(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            repeat(if (reserveSpace) 3 else matches.size) { index ->
+                val match = matches.getOrNull(index)
+                val score = ((match?.similarity ?: 0f) * 1000).roundToInt() / 10f
+                val fill = animateFloatAsState((((match?.similarity ?: 0f) - ArticleCategories.MIN_CUTOFF) /
+                    (1f - ArticleCategories.MIN_CUTOFF)).coerceIn(0f, 1f), tween(250), label = "example similarity")
+                val color = match?.let { colors[indices.getValue(it.category)] } ?: Color.Transparent
+                Column(Modifier.fillMaxWidth().graphicsLayer { alpha = if (match == null) 0f else 1f }.clearAndSetSemantics {
+                    if (match != null) contentDescription = "${categories.getValue(match.category).name}, similarity $score out of 100"
+                }) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(match?.let { categories.getValue(it.category).name }.orEmpty(), Modifier.weight(1f),
+                            fontFamily = ProductSansFontFamily, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("$score", fontFamily = ProductSansFontFamily, fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Canvas(Modifier.fillMaxWidth().padding(top = 4.dp).height(5.dp)) {
+                        drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
+                        drawRoundRect(color, size = Size(size.width * fill.value, size.height), cornerRadius = CornerRadius(size.height / 2))
+                    }
                 }
             }
+            Row(Modifier.fillMaxWidth().graphicsLayer { alpha = if (matches.isEmpty()) 0f else 1f }
+                .then(if (matches.isEmpty()) Modifier.clearAndSetSemantics { } else Modifier),
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${(ArticleCategories.MIN_CUTOFF * 100).toInt()}", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("100", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${(ArticleCategories.MIN_CUTOFF * 100).toInt()}", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("100", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (point != null && matches.isEmpty()) {
+            Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above",
+                Modifier.align(Alignment.Center), fontFamily = ProductSansFontFamily,
+                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

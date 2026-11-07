@@ -6,15 +6,21 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import com.simon.harmonichackernews.HarmonicApplication
+import com.simon.harmonichackernews.app.AppMetadata
+import com.simon.harmonichackernews.app.HarmonicAppComposition
+import com.simon.harmonichackernews.app.HarmonicHostConfiguration
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.*
 import com.simon.harmonichackernews.ui.settings.HeaderPreviewSample
 import com.simon.harmonichackernews.ui.settings.HeaderPreviewSampleSelector
+import com.simon.harmonichackernews.ui.settings.HeaderDisplaySettingsRoute
 import com.simon.harmonichackernews.ui.settings.HeaderDisplayPreview
 import com.simon.harmonichackernews.ui.settings.SettingsPage
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -32,6 +38,42 @@ class HeaderDisplayPreviewTest {
         false, false, loggedIn, false,
     ).copy(headerMetaInfo = com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.BUTTONS, headerLayout = CommentsHeaderLayout.BALANCED,
         headerEdge = CommentsHeaderEdge.ROUNDED)
+
+    @Test fun headerCategorySwitchFollowsGlobalAvailabilityAndControlsThePreview() {
+        val store = InMemoryKeyValueStore()
+        val production = (compose.activity.application as HarmonicApplication).composition
+        val host = HarmonicHostConfiguration.inMemory(
+            metadata = AppMetadata(debug = true), currentMinutesFromMidnight = { 0 },
+            systemDark = { false }, settingsStore = store, settingsChanges = store.changes,
+        )
+        val app = HarmonicAppComposition(production.network, production.platform, host)
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    val palette = HarmonicThemeCatalog.resolve("material_light", false)
+                    HarmonicTheme(palette.colorScheme, palette.dark) {
+                        HeaderDisplaySettingsRoute(app.settings, onBack = {})
+                    }
+                }
+            }
+            val toggle = compose.onNodeWithText("Article category tags")
+            toggle.performScrollTo().assertIsOn().assertIsNotEnabled()
+            compose.onNodeWithText("Turn on Article categories").assertExists()
+            compose.runOnIdle { app.articleCategorySettings.setEnabled(true) }
+            compose.waitForIdle()
+            toggle.assertIsEnabled().assertIsOn()
+            compose.onNodeWithText("Science", useUnmergedTree = true).assertExists()
+            toggle.performClick().assertIsOff()
+            compose.onNodeWithText("Science", useUnmergedTree = true).assertDoesNotExist()
+            compose.runOnIdle { app.articleCategorySettings.setEnabled(false) }
+            toggle.assertIsNotEnabled().assertIsOff()
+            compose.runOnIdle { app.articleCategorySettings.setEnabled(true) }
+            toggle.assertIsEnabled().assertIsOff()
+            toggle.performClick().assertIsOn()
+            compose.onNodeWithText("Science", useUnmergedTree = true).assertExists()
+        } finally { scene.close() }
+    }
 
     @Test fun hiddenButtonsStayActionableInOverflowIncludingShare() {
         val preferences = settings(true).copy(headerButtons = CommentsHeaderButtons(mapOf(

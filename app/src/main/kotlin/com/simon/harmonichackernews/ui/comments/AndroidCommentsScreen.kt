@@ -337,6 +337,7 @@ private fun AndroidCommentsHeader(
         lastRefreshedText = headerPresentation.lastRefreshedText,
         textStyle = legacyTextStyle,
         previewPlatform = previewPlatform,
+        linkPreviewsEnabled = dependencies.userSettings.reading.linkPreviewsEnabled,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             tintPresentation.previewImageAvailable,
         // The left pane stays fully tinted; the incoming sheet uses the normal reveal fade.

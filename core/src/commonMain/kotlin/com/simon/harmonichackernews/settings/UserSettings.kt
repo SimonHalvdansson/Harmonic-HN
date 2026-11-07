@@ -118,6 +118,7 @@ data class CommentPreferences(
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
     val showHeaderDomain: Boolean = true,
+    val showHeaderCategories: Boolean = true,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
 ) {
     val cardStyle: Boolean
@@ -146,7 +147,11 @@ data class ReadingPreferences(
     val enabledLinkPreviews: Set<LinkPreviewType>,
     val nitterInstanceUrl: String = NitterInstance.DEFAULT_URL,
     val readerModeLineHeight: ReaderLineHeight = ReaderLineHeight.STANDARD,
+    val linkPreviewsEnabled: Boolean = true,
 ) {
+    val activeLinkPreviews: Set<LinkPreviewType>
+        get() = if (linkPreviewsEnabled) enabledLinkPreviews else emptySet()
+
     val commentsProvider: CommentsProvider
         get() = if (useAlgoliaApi) CommentsProvider.ALGOLIA else CommentsProvider.OFFICIAL
 }

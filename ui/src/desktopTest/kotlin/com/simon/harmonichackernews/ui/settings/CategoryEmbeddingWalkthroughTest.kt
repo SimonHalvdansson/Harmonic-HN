@@ -95,11 +95,15 @@ class CategoryEmbeddingWalkthroughTest {
             try {
                 repeat(10) { frame() }
                 verifyPage(0)
+                val previousBounds = button("Previous").boundsInRoot
+                val nextBounds = button("Next").boundsInRoot
                 click("Previous")
                 verifyPage(0)
                 for (index in 1..3) {
                     click("Next")
                     verifyPage(index)
+                    assertEquals(previousBounds, button("Previous").boundsInRoot, "Previous must stay fixed across all steps")
+                    assertEquals(nextBounds, button("Next").boundsInRoot, "Next must stay fixed across all steps")
                     if (index == 1) assertTrue(nodes().any { "Remove the average" in texts(it) })
                 }
                 click("Next")

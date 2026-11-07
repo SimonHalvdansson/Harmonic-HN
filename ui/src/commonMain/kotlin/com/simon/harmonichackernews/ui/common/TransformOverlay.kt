@@ -244,6 +244,7 @@ fun TransformOverlay(
         )
         ?.scaledAboutCenter(verticalSwipeScale)
         ?.translate(0f, verticalSwipeVisualOffset)
+    val contentAtRest = progress == 1f && predictiveVisualProgress == 0f && verticalSwipeVisualOffset == 0f
     val sourceRadiusPx = with(density) { sourceCornerRadius.toPx() }
     val targetRadiusPx = with(density) { targetCornerRadius.toPx() }
     val containerRadiusPx = sourceRadiusPx + (targetRadiusPx - sourceRadiusPx) * progress
@@ -475,7 +476,9 @@ fun TransformOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .drawWithContent {
-                    val bounds = visualContainer
+                    // A zooming image can resize during this layout pass. Read its latest bounds
+                    // in the draw phase so the clip does not trail the content by a frame.
+                    val bounds = if (contentAtRest) targetBounds else visualContainer
                     if (bounds == null || bounds.width <= 0f || bounds.height <= 0f) {
                         return@drawWithContent
                     }

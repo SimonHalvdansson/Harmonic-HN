@@ -47,6 +47,43 @@ class CategoryExplorationLayoutTest {
     }
 
     @Test
+    fun exampleControlsStayFixedForShortLongAndUnmatchedHeadlines() = SwingUtilities.invokeAndWait {
+        val points = listOf(
+            CategoryMapPoint(0, "Short headline", "space", emptyList()),
+            CategoryMapPoint(1, "A much longer headline that needs two lines to describe the latest discoveries in space", "space",
+                listOf(CategoryMapMatch("space", 0.42f), CategoryMapMatch("science", 0.34f), CategoryMapMatch("ai", 0.2f))),
+            CategoryMapPoint(2, "One match", "space", listOf(CategoryMapMatch("space", 0.42f))),
+        )
+        val data = CategoryExplorationData(4, ArticleEmbeddingInput.VERSION, ArticleCategories.REPRESENTATION_VERSION,
+            "title_only", points, listOf(CategoryProjection("umap", points.map { listOf(0.5f, 0.5f) })))
+        val selected = mutableStateOf<Int?>(null)
+        val scene = ImageComposeScene(360, 1100, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                CategoryExplorationPanel(data, false, "umap", List(ArticleCategories.defaults.size) { Color.Blue },
+                    null, selected.value, {}, { selected.value = it }, {})
+            }
+        }
+        var time = 0L
+        fun settle() { repeat(40) { time += 16_000_000L; scene.render(time).close() } }
+        fun button(label: String) = nodes(scene).first {
+            it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == label }
+        }.boundsInRoot
+        try {
+            settle()
+            val previous = button("Previous example")
+            val next = button("Next example")
+            assertTrue(next.left > previous.right, "Next belongs at the right edge of the controls")
+            points.forEach {
+                selected.value = it.id
+                settle()
+                assertEquals(previous, button("Previous example"))
+                assertEquals(next, button("Next example"))
+            }
+        } finally { scene.close() }
+    }
+
+    @Test
     fun exampleChartIncludesTheMinimumAndHidesEveryCategoryBelowIt() = SwingUtilities.invokeAndWait {
         val point = mutableStateOf(CategoryMapPoint(1, "Example", "ai", listOf(
             CategoryMapMatch("ai", 0.15f), CategoryMapMatch("space", 0.10f), CategoryMapMatch("cars", 0.099f))))

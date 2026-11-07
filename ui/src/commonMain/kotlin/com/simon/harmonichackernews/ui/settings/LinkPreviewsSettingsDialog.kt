@@ -39,6 +39,7 @@ fun LinkPreviewsSettingsDialog(
     enabledTypes: Set<LinkPreviewType>,
     onEnabledChanged: (LinkPreviewType, Boolean) -> Unit,
     onDismiss: () -> Unit,
+    previewsEnabled: Boolean = true,
 ) {
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
@@ -47,7 +48,8 @@ fun LinkPreviewsSettingsDialog(
             Column {
                 SettingsDialogTitle("Link previews")
                 Text(
-                    text = "Choose which links get a source-aware preview above the comments.",
+                    text = if (previewsEnabled) "Choose which links get a source-aware preview above the comments."
+                        else "Link previews are off. Your selections are saved for when you turn them back on.",
                     modifier = Modifier.padding(top = 6.dp, end = 16.dp, bottom = 10.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = ProductSansFontFamily,

@@ -30,12 +30,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -92,6 +92,8 @@ import com.simon.harmonichackernews.settings.CommentsHeaderTint
 import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.simon.harmonichackernews.ui.comments.CommentsHeader
+import com.simon.harmonichackernews.ui.comments.LocalCommentStoryCategories
+import com.simon.harmonichackernews.ui.content.ArticleCategoryLabelPresentation
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
@@ -100,7 +102,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.commentsHazeSource
 import com.simon.harmonichackernews.ui.comments.headerPreviewImageGestures
 import com.simon.harmonichackernews.ui.comments.ZoomableImageViewport
-import com.simon.harmonichackernews.ui.comments.previewImageViewport
 import com.simon.harmonichackernews.ui.common.TransformOverlay
 import com.simon.harmonichackernews.ui.common.platformDialogProperties
 import com.simon.harmonichackernews.ui.common.PlatformDialogBackgroundDimAmount
@@ -131,6 +132,9 @@ fun HeaderDisplaySettingsRoute(
     val account by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val aiSettings by dependencies.aiSummarySettings.updates.collectAsStateWithLifecycle(
         initialValue = dependencies.aiSummarySettings.snapshot(),
+    )
+    val categoryPreferences by dependencies.articleCategorySettings.updates.collectAsStateWithLifecycle(
+        initialValue = dependencies.articleCategorySettings.snapshot(),
     )
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
@@ -179,7 +183,7 @@ fun HeaderDisplaySettingsRoute(
         showNavigation = true,
         showTopAppBar = false,
         onBack = onBack,
-        contentVersion = settings.hashCode() + sampleIndex,
+        contentVersion = settings.hashCode() + sampleIndex + categoryPreferences.hashCode(),
         pinnedContentBackground = Color.Transparent,
         extraBottomPadding = 72.dp,
         listState = listState,
@@ -216,11 +220,17 @@ fun HeaderDisplaySettingsRoute(
             }
         },
         pinnedContent = {
-            HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
-                onHeaderColorChanged = { headerColor = it },
-                onButtonsOverflowChanged = { overflowButtons = it },
-                showBackButton = !platformStyle.backButtonRequired,
-                backdropState = previewHazeState.takeIf { fixedBackButton })
+            val labels = if (!categoryPreferences.enabled) emptyList() else when (sample) {
+                HeaderPreviewSample.TEXT_POST, HeaderPreviewSample.LINK_PREVIEW -> listOf("Programming")
+                else -> listOf("Science", "Math")
+            }
+            CompositionLocalProvider(LocalCommentStoryCategories provides ArticleCategoryLabelPresentation(labels)) {
+                HeaderDisplayPreview(displaySettings, settings.general.bookmarksEnabled, onBack, sample,
+                    onHeaderColorChanged = { headerColor = it },
+                    onButtonsOverflowChanged = { overflowButtons = it },
+                    showBackButton = !platformStyle.backButtonRequired,
+                    backdropState = previewHazeState.takeIf { fixedBackButton })
+            }
         },
     ) {
         item {
@@ -258,6 +268,15 @@ fun HeaderDisplaySettingsRoute(
                         icon = Res.drawable.ic_public,
                         checked = settings.comments.showFavicons,
                         onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_FAVICON, it) },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Article category tags",
+                        icon = Res.drawable.ic_label,
+                        enabled = categoryPreferences.enabled,
+                        summary = if (!categoryPreferences.enabled) "Turn on Article categories" else null,
+                        checked = settings.comments.showHeaderCategories,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_CATEGORIES, it) },
                     )
                     if (!platformStyle.backButtonRequired) {
                         SettingsDivider()
@@ -618,6 +637,7 @@ private fun HeaderDisplayPreviewContent(
         onButtonsOverflowChanged = onButtonsOverflowChanged,
         includeStatusBarSpacer = true,
         headerPreviewImageDisplayed = imageDisplayed,
+        headerImageInspected = inspectedImage != null,
         faviconPreview = when (sample) {
             HeaderPreviewSample.TEXT_POST -> null
             HeaderPreviewSample.LINK_PREVIEW -> tintedPainterResource(
@@ -660,7 +680,7 @@ private fun HeaderDisplayPreviewContent(
             ) {
                 val ratio = image.intrinsicSize.width / image.intrinsicSize.height
                 ZoomableImageViewport(ratio, dismiss,
-                    Modifier.fillMaxWidth().heightIn(max = 720.dp).previewImageViewport(ratio)) { modifier ->
+                    Modifier.fillMaxWidth()) { modifier ->
                     Image(image, "Inspect story image", modifier, contentScale = ContentScale.Fit)
                 }
             }

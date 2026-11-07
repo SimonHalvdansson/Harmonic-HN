@@ -7,6 +7,22 @@ import kotlin.math.min
 
 internal const val PreviewImageMaxZoom = 5f
 
+/** Keep the fitted image fixed while zoom reveals more of it vertically, up to the safe area. */
+internal data class PreviewImageGeometry(val available: Size, val aspectRatio: Float) {
+    val baseViewport = Size(available.width, min(available.width / aspectRatio, available.height))
+    val image = fittedPreviewImageSize(baseViewport, aspectRatio)
+
+    fun viewport(scale: Float): Size = Size(
+        baseViewport.width,
+        (image.height * scale.coerceIn(1f, PreviewImageMaxZoom))
+            .coerceIn(baseViewport.height, available.height),
+    )
+
+    fun zoomBy(transform: PreviewImageTransform, zoom: Float, centroid: Offset, pan: Offset) =
+        transform.zoomBy(zoom, centroid, pan, viewport(transform.scale), image,
+            targetViewport = viewport(transform.scale * zoom))
+}
+
 internal data class PreviewImageTransform(
     val scale: Float = 1f,
     val offset: Offset = Offset.Zero,
@@ -24,13 +40,20 @@ internal data class PreviewImageTransform(
         )
     }
 
-    fun zoomBy(zoom: Float, centroid: Offset, pan: Offset, viewport: Size, image: Size): PreviewImageTransform {
+    fun zoomBy(
+        zoom: Float,
+        centroid: Offset,
+        pan: Offset,
+        viewport: Size,
+        image: Size,
+        targetViewport: Size = viewport,
+    ): PreviewImageTransform {
         val nextScale = (scale * zoom).coerceIn(1f, PreviewImageMaxZoom)
         val focus = centroid - Offset(viewport.width / 2f, viewport.height / 2f)
         return PreviewImageTransform(
             nextScale,
             focus - (focus - offset) * (nextScale / scale) + pan,
-        ).bounded(viewport, image)
+        ).bounded(targetViewport, image)
     }
 
     fun imageBounds(viewport: Size, image: Size): Rect {

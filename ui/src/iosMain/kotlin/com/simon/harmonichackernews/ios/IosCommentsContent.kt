@@ -611,6 +611,7 @@ private fun IosCommentsHeader(
         horizontalContentInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         sheetActionsInHeader = sheetActionsInHeader,
         onBrowserBack = onBrowserBack,
+        linkPreviewsEnabled = app.userSettings.reading.linkPreviewsEnabled,
         headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
             presentation.tint.previewImageAvailable,
         headerPreviewImage = { imageModifier, _, onTintLoaded ->

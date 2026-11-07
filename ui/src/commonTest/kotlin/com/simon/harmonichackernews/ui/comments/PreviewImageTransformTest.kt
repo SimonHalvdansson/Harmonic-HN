@@ -10,6 +10,32 @@ import kotlin.test.assertTrue
 class PreviewImageTransformTest {
     private val viewport = Size(400f, 300f)
 
+    @Test fun landscapeDialogGrowsWithZoomUntilItReachesTheAvailableHeight() {
+        val geometry = PreviewImageGeometry(Size(400f, 800f), 2f)
+        assertEquals(Size(400f, 200f), geometry.baseViewport)
+        assertEquals(Size(400f, 300f), geometry.viewport(1.5f))
+        assertEquals(Size(400f, 600f), geometry.viewport(3f))
+        assertEquals(Size(400f, 800f), geometry.viewport(5f))
+        assertEquals(Size(400f, 200f), geometry.image, "Growing the viewport must not refit the image")
+    }
+
+    @Test fun portraitRemainsWithinTheSafeAreaAndPanoramaUsesOnlyTheHeightItNeeds() {
+        val portrait = PreviewImageGeometry(Size(400f, 800f), 0.25f)
+        assertEquals(Size(400f, 800f), portrait.viewport(1f))
+        assertEquals(portrait.viewport(1f), portrait.viewport(5f))
+        assertEquals(Size(200f, 800f), portrait.image)
+        assertEquals(Size(400f, 200f), PreviewImageGeometry(Size(400f, 800f), 10f).viewport(5f))
+    }
+
+    @Test fun growingViewportCentersTheImageUntilVerticalPanningIsNeededAndResetRemovesPan() {
+        val geometry = PreviewImageGeometry(Size(400f, 800f), 2f)
+        val zoomed = geometry.zoomBy(PreviewImageTransform(), 3f, Offset(260f, 120f), Offset(0f, 100f))
+        assertEquals(Offset(-120f, 0f), zoomed.offset)
+        val capped = geometry.zoomBy(zoomed, 2f, Offset(200f, 300f), Offset(10000f, 10000f))
+        assertEquals(Offset(800f, 100f), capped.offset)
+        assertEquals(PreviewImageTransform(), geometry.zoomBy(capped, 0.1f, Offset.Zero, Offset.Zero))
+    }
+
     @Test fun zoomKeepsTheTouchedImagePointUnderTheFinger() {
         val focus = Offset(260f, 170f)
         val pan = Offset(12f, -8f)

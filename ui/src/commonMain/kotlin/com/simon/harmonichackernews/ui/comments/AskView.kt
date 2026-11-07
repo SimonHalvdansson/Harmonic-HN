@@ -229,7 +229,7 @@ internal fun AskSurface(
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
                     item(key = "subject", contentType = "ask-subject") {
-                        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        Column {
                             val linkColor = MaterialTheme.colorScheme.primary
                             val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
                                 htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
@@ -300,12 +300,13 @@ internal fun AskSurface(
                                         "Answers use a shortened article and the AI summary."
                                     else -> "Answers use the article text and AI summary."
                                 }
-                                Text(contextNotice,
+                                Text(contextNotice, modifier = Modifier.padding(top = 20.dp),
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontSize = 13.sp, lineHeight = 18.sp)
                             }
                             if (state.omittedTurns > 0) {
                                 Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
+                                    modifier = Modifier.padding(top = 20.dp),
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontSize = 13.sp, lineHeight = 18.sp)
                             }
@@ -316,7 +317,9 @@ internal fun AskSurface(
                                 val questionVisibility = this
                                 var fixedQuestionsRevealed by remember { mutableStateOf(false) }
                                 val show = suggestionsVisible && controller.askOpen
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                // Include the gap in the shrinking content. An outer spacedBy gap
+                                // disappears in one frame when AnimatedVisibility removes its child.
+                                Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("What would you like to understand?",
                                         modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                                         color = MaterialTheme.colorScheme.onSurface,

@@ -36,6 +36,7 @@ data class WebLinksSettingsUiState(
     val nitterInstanceUrl: String,
     val archiveDomainCount: Int,
     val enabledLinkPreviews: Set<LinkPreviewType>,
+    val linkPreviewsEnabled: Boolean = true,
 )
 
 /** Hide controls for browser facilities the current host does not implement. */
@@ -53,6 +54,7 @@ enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPrefere
     MatchWebViewTheme(ReadingBooleanPreference.MATCH_WEB_VIEW_THEME),
     BlockWebViewAds(ReadingBooleanPreference.BLOCK_ADS),
     ReaderModeEnabled(ReadingBooleanPreference.READER_MODE_ENABLED),
+    LinkPreviewsEnabled(ReadingBooleanPreference.LINK_PREVIEWS_ENABLED),
     ReaderModeDefault(ReadingBooleanPreference.READER_MODE_DEFAULT),
     ExternalBrowser(ReadingBooleanPreference.EXTERNAL_BROWSER),
     RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
@@ -181,9 +183,11 @@ fun WebLinksSettingsScreen(
                     onClick = { onDialogRequested(WebLinksSettingsDialog.ArchiveDomains) },
                 )
                 SettingsDivider()
-                SettingRow(
+                NavigationSwitchSettingRow(
                     title = "Link previews",
-                    summary = "${state.enabledLinkPreviews.size} of ${LinkPreviewType.entries.size} enabled",
+                    summary = if (state.linkPreviewsEnabled) "${state.enabledLinkPreviews.size} of ${LinkPreviewType.entries.size} enabled" else "Off",
+                    checked = state.linkPreviewsEnabled,
+                    onCheckedChange = { onBooleanChanged(WebLinksBooleanSetting.LinkPreviewsEnabled, it) },
                     icon = Res.drawable.ic_preview,
                     onClick = { onDialogRequested(WebLinksSettingsDialog.LinkPreviews) },
                 )

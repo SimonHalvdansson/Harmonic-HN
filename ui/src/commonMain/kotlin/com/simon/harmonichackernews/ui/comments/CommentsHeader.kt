@@ -139,6 +139,8 @@ fun CommentsHeader(
     includeStatusBarSpacer: Boolean = true,
     sheetActionsInHeader: Boolean = true,
     headerPreviewImageDisplayed: Boolean = false,
+    headerImageInspected: Boolean = controller.isLinkPreviewImageShowing(),
+    linkPreviewsEnabled: Boolean = true,
     onBrowserBack: (() -> Unit)? = null,
     headerTintProgress: (() -> Float?)? = null,
     faviconPreview: Painter? = null,
@@ -418,7 +420,8 @@ fun CommentsHeader(
                                                     fontSize = (headerTypography.commentsHeaderTitleSize * if (sideImage) 0.85f else 1f).sp,
                                                     style = textStyle,
                                                 )
-                                                com.simon.harmonichackernews.ui.content.StoryCategoryLabels(categories.labels, 1f,
+                                                com.simon.harmonichackernews.ui.content.StoryCategoryLabels(
+                                                    if (settings.showHeaderCategories) categories.labels else emptyList(), 1f,
                                                     tintedSurface = visibleHeaderBackground.takeIf { settings.tintHeader },
                                                     topSpacing = 3.dp, bottomSpacing = 4.dp, inspection = categories.inspection)
                                             }
@@ -455,9 +458,18 @@ fun CommentsHeader(
                                                         background,
                                                     ) { loadedTint = it }
                                                 }
+                                                val metricsAlpha by animateFloatAsState(
+                                                    if (headerImageInspected) 0f else 1f,
+                                                    tween(120), label = "header image metrics handoff",
+                                                )
                                                 HeaderImageMetrics(
                                                     controller, visualSettings, imageHazeState, textStyle,
                                                     Modifier.align(Alignment.BottomEnd)
+                                                        .graphicsLayer {
+                                                            // The overlay takes over the image at its source bounds.
+                                                            // Never leave floating badges over the vacated thumbnail.
+                                                            alpha = if (controller.headerPreviewSuppressed) 0f else metricsAlpha
+                                                        }
                                                         .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
                                                         .animateEnterExit(
                                                             enter = fadeIn(tween(80, delayMillis = 220)),
@@ -550,7 +562,7 @@ fun CommentsHeader(
                                     },
                                 )
                                 HeaderColorContent(visibleHeaderBackground) { background ->
-                                    LinkPreviewContent(story, contentVersion, settings, background)
+                                    LinkPreviewContent(story, contentVersion, settings, background, enabled = linkPreviewsEnabled)
                                 }
                             }
                             PollOptions(

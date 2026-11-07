@@ -85,12 +85,13 @@ fun LinkPreviewContent(
     contentVersion: Int,
     settings: CommentDisplaySettings,
     background: Color = MaterialTheme.colorScheme.surface,
+    enabled: Boolean = true,
 ) {
     val fontFamily = rememberContentTypography(settings.font).family
     CompositionLocalProvider(LocalPreviewFontFamily provides fontFamily) {
         val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
         AnimatedVisibility(
-            visible = previewType != null || story.linkPreviewLoading,
+            visible = enabled && (previewType != null || story.linkPreviewLoading),
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
         ) {
