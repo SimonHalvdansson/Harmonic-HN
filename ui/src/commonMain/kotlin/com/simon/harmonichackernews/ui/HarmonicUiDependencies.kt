@@ -106,6 +106,7 @@ fun ProvideHarmonicUiDependencies(
     dependencies: HarmonicUiDependencies,
     content: @Composable () -> Unit,
 ) {
+    LaunchedEffect(dependencies.articleCategories) { dependencies.articleCategories.start() }
     LaunchedEffect(dependencies.webContent) {
         dependencies.installBundledResources()
     }

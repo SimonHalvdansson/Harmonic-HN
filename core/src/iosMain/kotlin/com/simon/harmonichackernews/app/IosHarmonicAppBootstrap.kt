@@ -96,11 +96,13 @@ class IosHarmonicAppBootstrap(
             showCommentsUpButtonByDefault = true,
             defaultSurfaceEffectMode = SurfaceEffectMode.Glass,
             storyCacheRepository = persistentStorage.storyCacheRepository,
+            articleEmbeddingCache = persistentStorage.articleEmbeddingCache,
             // WKWebView cannot consume the stored snapshot format yet.
             articleSnapshotStore = null,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels ?: localAi?.models,
             articleEmbeddingEngine = articleEmbeddingEngine,
+            nativeArticleEmbeddingEngine = com.simon.harmonichackernews.platform.IosSystemArticleEmbeddingEngine(),
         ),
     )
 

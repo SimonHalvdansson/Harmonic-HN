@@ -139,7 +139,9 @@ class DesktopHarmonicAppBootstrap(
                 preloadCommentsFromStoriesByDefault = true,
                 localModels = localAi.models,
                 articleEmbeddingEngine = localAi.articleEmbeddings,
+                nativeArticleEmbeddingEngine = com.simon.harmonichackernews.categorization.DesktopSystemArticleEmbeddingEngine(paths.cacheDirectory),
                 storyCacheRepository = persistentStorage.storyCacheRepository,
+                articleEmbeddingCache = persistentStorage.articleEmbeddingCache,
                 articleSnapshotStore = persistentStorage.articleSnapshotStore.takeIf {
                     DesktopOperatingSystem.isMac || DesktopOperatingSystem.isWindows
                 },

@@ -143,6 +143,18 @@ val buildMacFoundationModels = if (isMacDesktopBuild) {
     }
 } else null
 
+val macEmbeddingsOutput = layout.buildDirectory.file("macEmbeddings/harmonic-embeddings")
+val buildMacEmbeddings = if (isMacDesktopBuild) tasks.register<Exec>("buildMacEmbeddings") {
+    val source = layout.projectDirectory.file("native/macos/HarmonicEmbeddings.swift")
+    val output = macEmbeddingsOutput.get().asFile
+    inputs.file(source)
+    outputs.file(output)
+    doFirst { output.parentFile.mkdirs() }
+    commandLine("/usr/bin/xcrun", "swiftc", "-O", "-parse-as-library",
+        "-target", "${if (System.getProperty("os.arch") in listOf("aarch64", "arm64")) "arm64" else "x86_64"}-apple-macosx11.0",
+        source.asFile.absolutePath, "-o", output.absolutePath)
+} else null
+
 tasks.named<ProcessResources>("desktopProcessResources") {
     from(generateDesktopMetadata)
     from(rootProject.file("metadata/en-US/images/icon.png")) {
@@ -163,6 +175,8 @@ val desktopNativeJar = tasks.register<Jar>("desktopNativeJar") {
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     dependsOn(stageMacWebView)
     buildMacFoundationModels?.let { dependsOn(it) }
+    buildMacEmbeddings?.let { dependsOn(it) }
+    if (isMacDesktopBuild) from(macEmbeddingsOutput) { into("native") }
     if (isMacDesktopBuild) from(macFoundationModelsOutput) { into("native") }
     from(macWebViewResources)
 }

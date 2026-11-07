@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.categorization
 
 import com.simon.harmonichackernews.platform.ArticleEmbeddingEngine
+import com.simon.harmonichackernews.platform.NativeArticleEmbeddingEngine
+import com.simon.harmonichackernews.platform.NativeEmbeddingModel
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
 import com.simon.harmonichackernews.summary.*
 import kotlinx.coroutines.flow.emptyFlow
@@ -466,8 +468,89 @@ class ArticleCategoryRuntimeTest {
         assertNull(fixture.runtime.cachedScores(ArticleCategoryRuntime.MAX_CACHED_STORIES, "Story", null))
     }
 
+    @Test
+    fun nativeTakesPriorityAndFallbackRegeneratesNativeCustomExamples() = runTest {
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply {
+            setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() }
+            loadDefaults()
+        }
+        val category = training.create("Custom")
+        training.addExamples(category, listOf(EmbeddedTrainingStory(ArticleTrainingStory(99, "Native example"),
+            listOf(1f, 0f, 0f), embeddingSignature = "system-1")))
+        var available = true
+        val native = object : NativeArticleEmbeddingEngine {
+            override suspend fun model() = if (available) NativeEmbeddingModel("system-1", "System", 3) else null
+            override suspend fun embed(text: String) = floatArrayOf(1f, 0.3f, 0.2f)
+        }
+        val fixture = fixture(training = training, nativeEngine = native)
+        fixture.engine.vector = ArticleCategoryTrainingTest.unit(0)
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start(); runCurrent()
+        assertEquals(0, fixture.engine.loads, "An installed Gemma model must stay unloaded when the system model is available")
+        assertEquals(ArticleCategoryStatus.READY, fixture.runtime.state.value.status)
+        fixture.settings.setMaxInputTokens(1024); runCurrent()
+        assertEquals(0, fixture.engine.loads)
+        fixture.runtime.scoresForStory(123, "Story", null, null)
+        available = false
+        fixture.runtime.setForeground(false); runCurrent()
+        fixture.runtime.setForeground(true); runCurrent()
+        assertFalse(fixture.runtime.usingNative)
+        assertEquals(listOf(1024), fixture.engine.loadedTokenLimits)
+        val saved = training.state.value.added.getValue(category).single()
+        assertNull(saved.embeddingSignature)
+        assertEquals(768, saved.embedding.size)
+        assertTrue(fixture.runtime.scoresForStory(123, "Story", null, null).isNotEmpty())
+        available = true
+        fixture.runtime.retry(); runCurrent()
+        assertTrue(fixture.runtime.usingNative)
+        assertEquals(1, fixture.engine.closes)
+        assertEquals(ArticleCategoryStatus.READY, fixture.runtime.state.value.status)
+    }
+
+    @Test
+    fun explicitGemmaSelectionKeepsNativeCacheAndUsesOnlyGemmaCenters() = runTest {
+        val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply {
+            setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() }
+            loadDefaults()
+        }
+        var nativeCalls = 0
+        val native = object : NativeArticleEmbeddingEngine {
+            override suspend fun model() = NativeEmbeddingModel("system-1", "System", 3)
+            override suspend fun embed(text: String): FloatArray { nativeCalls++; return floatArrayOf(1f, 0.3f, 0.2f) }
+        }
+        val fixture = fixture(training = training, nativeEngine = native)
+        fixture.engine.vector = ArticleCategoryTrainingTest.unit(0)
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start(); runCurrent()
+        fixture.runtime.scoresForStory(42, "A story", null, null)
+        val calls = nativeCalls
+        assertTrue(training.nativeSpace != null)
+        fixture.settings.setPreferSystemEmbeddings(false)
+        assertNull(fixture.runtime.cachedScores(42, "A story", null), "Provider changes immediately invalidate scores")
+        runCurrent()
+        assertFalse(fixture.runtime.usingNative)
+        assertNull(training.nativeSpace)
+        assertEquals(1, fixture.engine.loads)
+        assertTrue(fixture.runtime.scoresForStory(42, "A story", null, null).isNotEmpty())
+        assertEquals(calls, nativeCalls)
+        fixture.runtime.resumeNativePreparation(); runCurrent()
+        assertEquals(calls, nativeCalls, "Manual resume cannot start system inference while Gemma is selected")
+        fixture.runtime.setForeground(false); runCurrent()
+        fixture.runtime.setForeground(true); runCurrent()
+        assertNull(training.nativeSpace, "Discovering an available native model must not replace Gemma centers")
+        fixture.settings.setPreferSystemEmbeddings(true); runCurrent()
+        assertTrue(fixture.runtime.usingNative)
+        assertTrue(training.nativeSpace != null)
+        assertEquals(2, fixture.engine.closes)
+        assertTrue(fixture.runtime.scoresForStory(42, "A story", null, null).isNotEmpty())
+        assertEquals(calls, nativeCalls, "Switching back must reuse native training and article vectors")
+    }
+
     private fun TestScope.fixture(training: ArticleCategoryTraining? = null, memoryAvailable: () -> Boolean = { true },
-        prototypes: (Boolean) -> Map<String, FloatArray> = { mapOf("ai" to floatArrayOf(1f, 0f)) }): Fixture {
+        prototypes: (Boolean) -> Map<String, FloatArray> = { mapOf("ai" to floatArrayOf(1f, 0f)) },
+        nativeEngine: NativeArticleEmbeddingEngine? = null): Fixture {
         val settings = ArticleCategorySettings(InMemoryKeyValueStore(), emptyFlow())
         val engine = FakeEngine()
         val storage = object : LocalModelStorage {
@@ -504,6 +587,7 @@ class ArticleCategoryRuntimeTest {
         )
         return Fixture(settings, models, engine, ArticleCategoryRuntime(settings, models, engine, backgroundScope, prototypes = prototypes,
             training = training, isHistoryStory = { it == 99 }, memoryAvailable = memoryAvailable,
+            nativeEngine = nativeEngine, nativeCache = InMemoryArticleEmbeddingCache(),
             scoringDispatcher = StandardTestDispatcher(testScheduler), embeddingOrigin = { FloatArray(2) }))
     }
 

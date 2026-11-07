@@ -196,6 +196,16 @@ fun main() {
                         )
                     }
                     // Set the native properties before the window's first visible frame.
+                    DisposableEffect(window, bootstrap.app.articleCategories) {
+                        val runtime = bootstrap.app.articleCategories
+                        val listener = object : WindowAdapter() {
+                            override fun windowGainedFocus(event: WindowEvent) { runtime.setForeground(true) }
+                            override fun windowLostFocus(event: WindowEvent) { runtime.setForeground(false) }
+                        }
+                        runtime.setForeground(window.isFocused)
+                        window.addWindowFocusListener(listener)
+                        onDispose { window.removeWindowFocusListener(listener); runtime.setForeground(false) }
+                    }
                     DisposableEffect(window) {
                         val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
                         onDispose { releaseTitleBar() }

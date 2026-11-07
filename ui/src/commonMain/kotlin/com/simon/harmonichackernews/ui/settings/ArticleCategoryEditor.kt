@@ -37,7 +37,8 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
     val training = app.articleCategoryTraining
     val configuration by training.state.collectAsStateWithLifecycle()
     val manager = app.localModels?.cachedState?.collectAsStateWithLifecycle()?.value
-    val canTrain = app.articleCategories.modelReady && manager != null
+    val runtime by app.articleCategories.state.collectAsStateWithLifecycle()
+    val canTrain = app.articleCategories.modelReady
     val scope = rememberCoroutineScope()
     var examples by remember(category.id) { mutableStateOf<List<ArticleTrainingStory>?>(null) }
     var similarities by remember(category.id) { mutableStateOf<Map<Int, Float>>(emptyMap()) }
@@ -49,7 +50,7 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
     var error by remember { mutableStateOf<String?>(null) }
     val builtIn = ArticleCategories.defaults.any { it.id == category.id }
 
-    LaunchedEffect(category.id, configuration) {
+    LaunchedEffect(category.id, configuration, runtime.trainingVersion) {
         try {
             similarities = training.exampleSimilarities(category.id)
             examples = training.examples(category.id)

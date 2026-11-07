@@ -112,6 +112,8 @@ class HarmonicAppComposition(
         training = articleCategoryTraining,
         isHistoryStory = { it in platform.history.historyState.value.ids },
         memoryAvailable = host.localAiMemoryAvailable,
+        nativeEngine = host.nativeArticleEmbeddingEngine,
+        nativeCache = host.articleEmbeddingCache,
     )
     val contentFilters = ContentFilterRepository(host.settingsStore)
     // User tags share the persistent content store with bookmarks, including Android 3.1 data.

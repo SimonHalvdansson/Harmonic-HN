@@ -114,6 +114,7 @@ haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
+mlkit-genai-embedding = "com.google.mlkit:genai-embedding:1.0.0-alpha1"
 mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta5"
 mlkit-genai-schema-compiler = "com.google.mlkit:genai-schema-compiler:1.0.0-alpha2"
 litertlm = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }

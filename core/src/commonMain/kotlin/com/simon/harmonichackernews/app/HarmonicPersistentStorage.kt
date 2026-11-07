@@ -25,6 +25,7 @@ data class HarmonicPersistentStorage(
     val storyCacheRepository: StoryCacheRepository,
     val articleSnapshotStore: DownloadStore,
     val pdfDownloadStore: DownloadStore,
+    val articleEmbeddingCache: com.simon.harmonichackernews.categorization.ArticleEmbeddingCache,
 )
 
 /**
@@ -50,6 +51,7 @@ object HarmonicPersistentStorageFactory {
         )
         return HarmonicPersistentStorage(
             storyCacheRepository = storyCache,
+            articleEmbeddingCache = com.simon.harmonichackernews.categorization.FileArticleEmbeddingCache(Path(roots.files, "article_embeddings")),
             articleSnapshotStore = FileDownloadStore(
                 root = Path(roots.files, StoryCacheKeys.ARTICLE_NAMESPACE),
                 fileNameForKey = { storyId -> StoryCacheKeys.articleFile(storyId.toInt()) },

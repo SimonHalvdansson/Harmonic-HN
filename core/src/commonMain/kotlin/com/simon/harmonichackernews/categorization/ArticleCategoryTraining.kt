@@ -27,6 +27,7 @@ data class EmbeddedTrainingStory(
     val story: ArticleTrainingStory,
     val embedding: List<Float>,
     val titleEmbedding: List<Float> = embedding,
+    val embeddingSignature: String? = null,
 )
 
 @Serializable
@@ -52,6 +53,10 @@ class ArticleCategoryTraining(
         if (titleOnly) ArticleCategoryPrototypes.titleOrigin else ArticleCategoryPrototypes.origin
     },
 ) {
+    internal var nativeSpace: NativeCategorySpace? = null
+        private set
+    internal fun setNativeSpace(space: NativeCategorySpace?) { nativeSpace = space }
+
     private val json = Json { ignoreUnknownKeys = true }
     private val mutableState = MutableStateFlow(
         runCatching { store.getString(STORAGE_KEY)?.let { json.decodeFromString<ArticleTrainingConfiguration>(it) } }
@@ -148,10 +153,11 @@ class ArticleCategoryTraining(
         loadDefaults()
         require(categories.any { it.id == categoryId })
         require(examples.all { it.story.id > 0 && it.story.title.isNotBlank() &&
-            it.embedding.size == ArticleCategories.DIMENSIONS && it.titleEmbedding.size == ArticleCategories.DIMENSIONS })
+            it.embedding.isNotEmpty() && it.embedding.size == it.titleEmbedding.size &&
+            (it.embeddingSignature != null || it.embedding.size == ArticleCategories.DIMENSIONS) })
         val normalized = examples.map { it.copy(embedding = ArticleCategories.normalize(it.embedding.toFloatArray()).toList(),
             titleEmbedding = ArticleCategories.normalize(it.titleEmbedding.toFloatArray()).toList()) }
-        val merged = (state.value.added[categoryId].orEmpty() + normalized).distinctBy { it.story.id }
+        val merged = (normalized + state.value.added[categoryId].orEmpty()).distinctBy { it.story.id }
         require(merged.size <= MAX_USER_EXAMPLES) { "Use up to $MAX_USER_EXAMPLES history stories per category" }
         update(state.value.copy(
             excluded = state.value.excluded + (categoryId to (state.value.excluded[categoryId].orEmpty() - examples.map { it.story.id }.toSet())),
@@ -160,11 +166,16 @@ class ArticleCategoryTraining(
     }
 
     suspend fun centers(titleOnly: Boolean = false): Map<String, FloatArray> {
+        nativeSpace?.let { return if (titleOnly) it.titleCenters else it.centers }
         val config = state.value
         return centers(config, titleOnly)
     }
 
-    fun project(embedding: FloatArray, titleOnly: Boolean = false): FloatArray = ArticleCategories.project(embedding, embeddingOrigin(titleOnly))
+    fun project(embedding: FloatArray, titleOnly: Boolean = false): FloatArray {
+        val origin = nativeSpace?.let { if (titleOnly) it.titleOrigin else it.origin } ?: embeddingOrigin(titleOnly)
+        return if (nativeSpace != null) runCatching { ArticleCategories.project(embedding, origin) }.getOrElse { ArticleCategories.normalize(embedding) }
+        else ArticleCategories.project(embedding, origin)
+    }
 
     private suspend fun centers(config: ArticleTrainingConfiguration, titleOnly: Boolean): Map<String, FloatArray> {
         (if (titleOnly) cachedTitleCenters else cachedCenters)?.takeIf { it.first == config }?.let { return it.second }
@@ -174,7 +185,7 @@ class ArticleCategoryTraining(
         loadDefaults()
         return withContext(Dispatchers.Default) {
             (ArticleCategories.defaults + config.customCategories).mapNotNull { category ->
-                val additions = config.added[category.id].orEmpty().associate {
+                val additions = config.added[category.id].orEmpty().filter { it.embeddingSignature == null }.associate {
                     it.story.id to (if (titleOnly) it.titleEmbedding else it.embedding).toFloatArray()
                 }
                 val allExamples = examples(category.id, config)
@@ -182,7 +193,7 @@ class ArticleCategoryTraining(
                 // A custom category with only headline examples remains usable until richer ones are added.
                 val references = contextual.ifEmpty { allExamples }
                 val defaults = if (titleOnly) defaultTitleVectors else defaultVectors
-                val vectors = references.mapNotNull { additions[it.id] ?: defaults[it.id] }.map { project(it, titleOnly) }
+                val vectors = references.mapNotNull { additions[it.id] ?: defaults[it.id] }.map { ArticleCategories.project(it, embeddingOrigin(titleOnly)) }
                 if (vectors.isEmpty()) null else {
                     val sum = FloatArray(ArticleCategories.DIMENSIONS)
                     vectors.forEach { vector -> sum.indices.forEach { sum[it] += vector[it] } }
@@ -197,11 +208,21 @@ class ArticleCategoryTraining(
     /** Uses stored vectors, so example scores also work with the model removed. */
     suspend fun exampleSimilarities(categoryId: String): Map<Int, Float> {
         loadDefaults()
+        nativeSpace?.let { space ->
+            return examples(categoryId).mapNotNull { story ->
+                val titleOnly = !hasPreview(story)
+                val vector = space.vectors[NativeArticleCategories.input(story.title, if (titleOnly) null else story.description)] ?: return@mapNotNull null
+                val center = (if (titleOnly) space.titleCenters else space.centers)[categoryId] ?: return@mapNotNull null
+                val projected = runCatching { ArticleCategories.project(vector, if (titleOnly) space.titleOrigin else space.origin) }
+                    .getOrElse { ArticleCategories.normalize(vector) }
+                story.id to ArticleCategories.scores(projected, mapOf(categoryId to center)).single().similarity
+            }.toMap()
+        }
         return withContext(Dispatchers.Default) {
             val config = state.value
             val previewCenter = centers(config, false)[categoryId]
             val titleCenter = centers(config, true)[categoryId]
-            val additions = config.added[categoryId].orEmpty().associateBy { it.story.id }
+            val additions = config.added[categoryId].orEmpty().filter { it.embeddingSignature == null }.associateBy { it.story.id }
             examples(categoryId, config).mapNotNull { story ->
                 val titleOnly = !hasPreview(story)
                 val center = (if (titleOnly) titleCenter else previewCenter) ?: return@mapNotNull null
@@ -209,7 +230,7 @@ class ArticleCategoryTraining(
                 val vector = if (titleOnly) added?.titleEmbedding?.toFloatArray() ?: defaultTitleVectors[story.id]
                     else added?.embedding?.toFloatArray() ?: defaultVectors[story.id]
                 vector ?: return@mapNotNull null
-                story.id to ArticleCategories.scores(project(vector, titleOnly), mapOf(categoryId to center)).single().similarity
+                story.id to ArticleCategories.scores(ArticleCategories.project(vector, embeddingOrigin(titleOnly)), mapOf(categoryId to center)).single().similarity
             }.toMap()
         }
     }

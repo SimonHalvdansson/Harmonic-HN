@@ -18,6 +18,7 @@ data class ArticleCategoryPreferences(
     val categories: List<ArticleCategory> = ArticleCategories.defaults,
     val maxLabels: Int = 3,
     val maxInputTokens: Int = ArticleEmbeddingInput.DEFAULT_MAX_INPUT_TOKENS,
+    val preferSystemEmbeddings: Boolean = true,
 ) {
     fun name(category: ArticleCategory): String = names[category.id] ?: category.name
 }
@@ -37,6 +38,7 @@ class ArticleCategorySettings(
         val valid = categories.map { it.id }.toSet()
         return ArticleCategoryPreferences(
             enabled = store.getBoolean(ENABLED, false),
+            preferSystemEmbeddings = store.getBoolean(PREFER_SYSTEM_EMBEDDINGS, true),
             cutoff = sanitizeCutoff(store.getFloat(CUTOFF, ArticleCategories.DEFAULT_CUTOFF)),
             selected = if (store.contains(SELECTED)) store.getStringSet(SELECTED).intersect(valid) else valid,
             names = categories.mapNotNull { category ->
@@ -50,6 +52,7 @@ class ArticleCategorySettings(
         )
     }
 
+    fun setPreferSystemEmbeddings(prefer: Boolean) = write { putBoolean(PREFER_SYSTEM_EMBEDDINGS, prefer) }
     fun setEnabled(enabled: Boolean) = write { putBoolean(ENABLED, enabled) }
     fun setCutoff(cutoff: Float) = write { putFloat(CUTOFF, sanitizeCutoff(cutoff)) }
     fun setMaxLabels(max: Int) = write { putInt(MAX_LABELS, max.coerceIn(1, 3)) }
@@ -74,6 +77,7 @@ class ArticleCategorySettings(
         if (value.isFinite()) value.coerceIn(ArticleCategories.MIN_CUTOFF, ArticleCategories.MAX_CUTOFF) else ArticleCategories.DEFAULT_CUTOFF
 
     companion object {
+        const val PREFER_SYSTEM_EMBEDDINGS = "pref_article_categories_prefer_system_embeddings"
         const val ENABLED = "pref_article_categories_enabled"
         const val CUTOFF = "pref_article_categories_cutoff"
         const val SELECTED = "pref_article_categories_selected"

@@ -43,11 +43,15 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
     val models = app.localModels
     val manager = models?.cachedState?.collectAsStateWithLifecycle()?.value
     val model = LocalModelCatalog.embeddingModel
-    val supported = app.articleCategories.supported && models?.isSupported(model) == true
+    val native = runtime.native
+    val usingNative = preferences.preferSystemEmbeddings && native.model != null
+    val gemmaSupported = models?.isIncluded == true && models.isSupported(model)
+    val supported = usingNative || gemmaSupported
     val transfer = manager?.statuses?.get(model.id)
     val delivery = manager?.runtimeStatuses?.get(model.runtime)
     val installingRuntime = delivery?.active == true && delivery.pendingModelId == model.id
     val downloaded = transfer?.state == LocalModelTransferState.DOWNLOADED
+    val ready = usingNative || downloaded
     val transferring = transfer?.state in setOf(LocalModelTransferState.DOWNLOADING, LocalModelTransferState.WAITING) || installingRuntime
     val received = if (installingRuntime) delivery?.downloadedBytes ?: 0L else transfer?.receivedBytes ?: 0L
     val total = if (installingRuntime) delivery?.totalBytes ?: 0L else model.sizeBytes
@@ -82,32 +86,31 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
         item {
             SettingsMainToggle(
                 title = "Categorize stories",
-                checked = preferences.enabled && downloaded,
-                enabled = supported && downloaded && !removing,
+                checked = preferences.enabled && ready,
+                enabled = (!preferences.preferSystemEmbeddings || native.checked) && supported && ready && !removing,
                 summary = when {
+                    !native.checked && preferences.preferSystemEmbeddings -> "Checking model…"
                     !supported -> models?.unsupportedReason(model)?.takeIf { it.isNotEmpty() }
                         ?: "Unavailable on this device or in this build"
-                    !downloaded -> "Download embedding model"
+                    !ready -> "Download embedding model"
                     else -> null
                 },
-                onCheckedChange = { if (downloaded) repository.setEnabled(it) },
+                onCheckedChange = { if (ready) repository.setEnabled(it) },
             )
         }
         item(key = "category-introduction") { ArticleCategoryIntroduction(onHowItWorks) }
         item(key = "embedding-model") {
-            SettingsCategory("Model", titleTopPadding = 8.dp) {
+            ArticleEmbeddingProviderSettings(native, preferences.preferSystemEmbeddings, fallbackAvailable = gemmaSupported,
+                onPreferSystem = repository::setPreferSystemEmbeddings, onResume = app.articleCategories::resumeNativePreparation) {
               Column(Modifier.fillMaxWidth().themeBackground { cardBackground }) {
-                SettingRow(
-                    title = "EmbeddingGemma 2",
+                EmbeddingGemmaModelDetails(
                     summary = when {
                         removing -> "Removing…"
                         installingRuntime -> "Installing runtime…"
                         downloadActive -> "${received / 1_000_000} / ${(model.sizeBytes + 999_999) / 1_000_000} MB"
-                        else -> "165 MB"
+                        else -> "LiteRT-LM · 165 MB"
                     },
-                    icon = Res.drawable.model_logo_google,
-                    onClick = null,
-                    trailing = {
+                    action = {
                         AnimatedContent(
                             targetState = when { downloaded -> "downloaded"; downloadActive -> "downloading"; else -> "available" },
                             transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
@@ -126,7 +129,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                             "downloaded" -> IconButton(onClick = { confirmRemoval = true }, enabled = !removing) {
                                 Icon(painterResource(Res.drawable.ic_delete), "Remove embedding model")
                             }
-                            else -> IconButton(enabled = supported, onClick = {
+                            else -> IconButton(enabled = gemmaSupported, onClick = {
                                 requestingDownload = true
                                 scope.launch {
                                     try {
@@ -144,11 +147,6 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                         } }
                     },
                 )
-                FlowRow(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LocalModelTag("Persistent background", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-                    LocalModelTag("191 MB RAM", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-                }
                 EmbeddingModelProgress(downloadActive, received, total)
                 if (runtime.status == ArticleCategoryStatus.FAILED) SettingRow(
                     title = "Couldn't load model", summary = "Tap to retry", icon = Res.drawable.ic_info,
@@ -161,6 +159,27 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
                 val error = message ?: transfer?.error?.takeIf(String::isNotBlank) ?: delivery?.error?.takeIf(String::isNotBlank)
                 if (error != null) CategorySettingsInfo(error, error = true)
               }
+            }
+        }
+        if (usingNative && downloaded) item {
+            SettingsCategory("Downloaded model") {
+                SettingRow(title = "EmbeddingGemma 2", summary = "165 MB · Not in use", icon = Res.drawable.model_logo_google,
+                    onClick = null, trailing = { IconButton(onClick = { confirmRemoval = true }, enabled = !removing) {
+                        Icon(painterResource(Res.drawable.ic_delete), "Remove embedding model")
+                    } })
+            }
+        }
+        item {
+            SettingsCategory("Configuration") {
+                ArticleEmbeddingTokenSetting(native, preferences.preferSystemEmbeddings, preferences.maxInputTokens, repository::setMaxInputTokens)
+                SettingsDivider()
+                CategorySimilaritySetting(value = displayedCutoff,
+                    onValueChange = { resettingCutoff = false; repository.setCutoff((it * 100).roundToInt() / 100f) },
+                    onReset = { resettingCutoff = true; repository.setCutoff(ArticleCategories.DEFAULT_CUTOFF) },
+                    resetEnabled = preferences.cutoff != ArticleCategories.DEFAULT_CUTOFF)
+                SettingsDivider()
+                SegmentedSetting(title = "Maximum labels per story", options = listOf(1 to "1", 2 to "2", 3 to "3"),
+                    selected = preferences.maxLabels, onSelected = repository::setMaxLabels)
             }
         }
         settingsCategory("Categories") {
@@ -179,22 +198,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
             row("create-category") { SettingRow(title = "New category", icon = Res.drawable.ic_add,
                 enabled = app.articleCategories.modelReady && !removing, onClick = { creating = true }) }
         }
-        item {
-            SettingsCategory("Configuration") {
-                SegmentedSetting(title = "Input token limit",
-                    summary = "Maximum tokens from the title and preview. Longer inputs use more time and memory. Default: 256.",
-                    options = ArticleEmbeddingInput.TOKEN_LIMITS.map { it to it.toString() },
-                    selected = preferences.maxInputTokens, onSelected = repository::setMaxInputTokens)
-                SettingsDivider()
-                CategorySimilaritySetting(value = displayedCutoff,
-                    onValueChange = { resettingCutoff = false; repository.setCutoff((it * 100).roundToInt() / 100f) },
-                    onReset = { resettingCutoff = true; repository.setCutoff(ArticleCategories.DEFAULT_CUTOFF) },
-                    resetEnabled = preferences.cutoff != ArticleCategories.DEFAULT_CUTOFF)
-                SettingsDivider()
-                SegmentedSetting(title = "Maximum labels per story", options = listOf(1 to "1", 2 to "2", 3 to "3"),
-                    selected = preferences.maxLabels, onSelected = repository::setMaxLabels)
-            }
-        }
+
     }
     preferences.categories.firstOrNull { it.id == editing }?.let { category ->
         ArticleCategoryEditor(category, preferences.name(category), onDismiss = { editing = null })
@@ -208,7 +212,8 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
     if (confirmRemoval) MessageActionDialog(
         onDismiss = { confirmRemoval = false },
         title = "Remove embedding model?",
-        message = "This frees 165 MB and turns categorization off. Your categories and examples stay on this device.",
+        message = if (usingNative) "This frees 165 MB. Categorization continues with system embeddings. Your categories and examples stay on this device."
+            else "This frees 165 MB and turns categorization off. Your categories and examples stay on this device.",
         positiveLabel = "Remove",
         negativeLabel = "Cancel",
         onPositive = {
@@ -245,7 +250,7 @@ internal fun EmbeddingModelProgress(visible: Boolean, received: Long, total: Lon
 @Composable
 internal fun CategorySettingsInfo(text: String, error: Boolean = false) {
     Text(text, modifier = Modifier.fillMaxWidth().themeBackground { cardBackground }.padding(horizontal = 24.dp, vertical = 12.dp),
-        fontFamily = com.simon.harmonichackernews.ui.theme.ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+        fontFamily = com.simon.harmonichackernews.ui.theme.ProductSansFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

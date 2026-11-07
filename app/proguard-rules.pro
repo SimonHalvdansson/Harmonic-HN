@@ -44,3 +44,8 @@
 # ML Kit deserializes this structured suggestion result in Play builds.
 -keep class com.simon.harmonichackernews.network.NanoQuestionSuggestions { *; }
 -keep class com.simon.harmonichackernews.network.NanoQuestionSuggestions_GeneratedProvider { *; }
+
+# Optional Play-only system embedding adapter, discovered by the common Android host.
+-keep class com.simon.harmonichackernews.AndroidSystemArticleEmbeddingEngine {
+    public <init>();
+}
