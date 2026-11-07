@@ -18,6 +18,19 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class AiModelDefaultsUseCaseTest {
     @Test
+    fun localOnlyHostDoesNotContactCloudModelCatalogs() = runTest {
+        val settings = AiSummarySettingsRepository(
+            TestKeyValueStore(), TestCredentialStore(), emptyFlow(), cloudAiSupported = false,
+        )
+        val catalog = DeferredCatalog().also { it.result.complete(emptyList()) }
+        val defaults = AiModelDefaultsUseCase(settings, catalog)
+
+        assertFalse(defaults.ensureInitialDefault())
+        assertFalse(defaults.ensureProviderDefault(AiSummaryProviders.OPENAI))
+        assertTrue(catalog.requests.isEmpty())
+    }
+
+    @Test
     fun slowNewProviderLookupSelectsItsDefaultAfterTheUrlWasSaved() = runTest {
         val settings = settings()
         settings.setModel("openai/previous")

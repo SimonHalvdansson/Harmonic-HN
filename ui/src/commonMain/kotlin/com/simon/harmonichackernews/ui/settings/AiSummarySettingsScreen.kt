@@ -34,6 +34,7 @@ data class AiSummarySettingsUiState(
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
     val disabledReason: String? = null,
     val localUnavailableReason: String? = null,
+    val cloudAiSupported: Boolean = true,
 )
 
 @Composable
@@ -88,7 +89,9 @@ fun AiSummarySettingsScreen(
                         fontSize = 14.sp,
                     )
                 }
-                if (state.localSummarizationSupported) {
+                if (!state.cloudAiSupported) {
+                    localModelsContent()
+                } else if (state.localSummarizationSupported) {
                     SegmentedSetting(
                         options = listOf(
                             AiSummaryMode.LOCAL.storedValue to "Local",

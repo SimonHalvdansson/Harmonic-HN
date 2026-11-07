@@ -101,6 +101,7 @@ class IosHarmonicAppBootstrap(
             articleSnapshotStore = null,
             pdfDownloadStore = persistentStorage.pdfDownloadStore,
             localModels = runtime.localModels ?: localAi?.models,
+            cloudAiSupported = false,
             articleEmbeddingEngine = articleEmbeddingEngine,
             nativeArticleEmbeddingEngine = com.simon.harmonichackernews.platform.IosSystemArticleEmbeddingEngine(),
         ),

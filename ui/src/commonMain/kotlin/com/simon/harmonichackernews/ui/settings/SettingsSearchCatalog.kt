@@ -17,6 +17,7 @@ internal data class SettingsSearchAvailability(
     val loggedIn: Boolean = false,
     val debug: Boolean = false,
     val cloudAi: Boolean = true,
+    val cloudAiSupported: Boolean = true,
     val geminiNano: Boolean = false,
     val nighttimeScheme: Boolean = false,
     val localAi: Boolean = false,
@@ -71,7 +72,9 @@ internal fun settingsSearchCatalog(
     if (capabilities.webLinks.readerMode) page(SettingsSection.ReaderMode, "reading readability distraction free article font")
     page(SettingsSection.Frontpages, "feeds categories tabs subscriptions unslop hide ai")
     page(SettingsSection.FiltersTags, "block mute exclude keywords users domains tags")
-    page(SettingsSection.AiSummary, "artificial intelligence llm ask chat summarize summarise gemini nano gemma qwen llama phi ollama openai anthropic local offline cloud download models")
+    page(SettingsSection.AiSummary,
+        "artificial intelligence llm ask chat summarize summarise gemini nano gemma qwen llama phi local offline download models" +
+            if (availability.cloudAiSupported) " ollama openai anthropic cloud" else "")
     page(SettingsSection.ArticleCategories, "embeddinggemma embeddings categorize categorization categories labels topics similarity sensitivity cutoff experimental")
     page(SettingsSection.CategoryExploration, "how categories work embeddings cosine similarity map umap tsne pca examples")
     group(SettingsSection.AiSummary, "", "Article categories" to "tag stories embeddings embeddinggemma labels topics")
@@ -204,7 +207,7 @@ internal fun settingsSearchCatalog(
         "Hide AI posts" to "artificial intelligence unslop news filter")
     group(SettingsSection.AiSummary, "",
         "Enable AI features" to "ask summarize summarise artificial intelligence toggle")
-    if (availability.cloudAi) group(SettingsSection.AiSummary, "Large language model",
+    if (availability.cloudAiSupported && availability.cloudAi) group(SettingsSection.AiSummary, "Large language model",
         "Base URL" to "api endpoint server openai compatible cloud provider",
         "API Key" to "token credential secret authentication cloud openai",
         "Model" to "name cloud llm gpt gemini claude")

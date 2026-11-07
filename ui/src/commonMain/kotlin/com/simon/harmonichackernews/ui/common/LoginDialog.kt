@@ -112,7 +112,7 @@ fun LoginDialog(
     onDismiss: () -> Unit,
     workflow: LoginWorkflow,
     onLoginSucceeded: () -> Unit,
-    onCreateAccount: () -> Unit,
+    onCreateAccount: (() -> Unit)?,
     captchaDialog: @Composable (
         challenge: HackerNewsCaptchaChallenge,
         onDismiss: () -> Unit,
@@ -269,24 +269,26 @@ fun LoginDialog(
                         lineHeight = 16.sp,
                     )
                 }
-                Text(
-                    text = stringResource(Res.string.login_dialog_create_account_explanation),
-                    modifier = Modifier.padding(
-                        top = HarmonicDimens.login_dialog_info_spacing,
-                        bottom = HarmonicDimens.login_dialog_small_spacing,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp,
-                )
-                OutlinedButton(enabled = canInteract, onClick = { keyboardAction.request(onCreateAccount) }) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_open_in_browser),
-                        contentDescription = null,
+                if (onCreateAccount != null) {
+                    Text(
+                        text = stringResource(Res.string.login_dialog_create_account_explanation),
+                        modifier = Modifier.padding(
+                            top = HarmonicDimens.login_dialog_info_spacing,
+                            bottom = HarmonicDimens.login_dialog_small_spacing,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontFamily = ProductSansFontFamily,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(Res.string.login_dialog_create_account))
+                    OutlinedButton(enabled = canInteract, onClick = { keyboardAction.request(onCreateAccount) }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_open_in_browser),
+                            contentDescription = null,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(Res.string.login_dialog_create_account))
+                    }
                 }
                 val status = when {
                     loading -> LoginStatus.Loading

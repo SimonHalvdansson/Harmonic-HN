@@ -15,6 +15,7 @@ class AiModelDefaultsUseCase(
     },
 ) {
     suspend fun ensureInitialDefault(): Boolean = runCatching {
+        if (!settings.cloudAiSupported) return false
         if (settings.hasModelSelection()) return false
         if (AiSummaryProviders.getProviderForBaseUrl(settings.snapshot().baseUrl)?.id !=
             AiSummaryProviders.PROVIDER_OPENROUTER
@@ -39,6 +40,7 @@ class AiModelDefaultsUseCase(
 
     suspend fun ensureProviderDefault(provider: AiSummaryProviders.Provider): Boolean =
         runCatching {
+            if (!settings.cloudAiSupported) return false
             val models = catalog.fetchModels(provider, AiModelCatalogSort.PRICE_LOW_TO_HIGH)
             val currentProvider = AiSummaryProviders.getProviderForBaseUrl(
                 settings.snapshot().baseUrl,

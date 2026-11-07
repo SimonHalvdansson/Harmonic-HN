@@ -7,12 +7,53 @@ import com.simon.harmonichackernews.platform.CredentialStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 
 class AiSummarySettingsRepositoryTest {
+    @Test
+    fun localOnlyHostIgnoresSavedCloudConfigurationAndCannotFallBackToCloud() = runTest {
+        val store = TestKeyValueStore(mapOf(
+            AiSummaryPreferenceKeys.MODE to AiSummaryMode.CLOUD.storedValue,
+            AiSummaryPreferenceKeys.MODEL to "saved-cloud-model",
+            AiSummaryPreferenceKeys.ENABLED to true,
+        ))
+        val credentials = TestCredentialStore(mapOf(CredentialIds.AI_SUMMARY_API_KEY to "saved-key"))
+        val repository = AiSummarySettingsRepository(
+            store, credentials, emptyFlow(), cloudAiSupported = false,
+        )
+
+        val settings = repository.awaitSnapshot()
+        assertEquals(AiSummaryMode.LOCAL, settings.mode)
+        assertEquals("", settings.apiKey)
+        assertTrue(settings.credentialsLoaded)
+        assertFalse(settings.enabled(localConfigurationReady = false))
+        assertTrue(settings.enabled(localConfigurationReady = true))
+        repository.forceCloudMode()
+        repository.setMode(AiSummaryMode.CLOUD)
+        assertEquals(AiSummaryMode.LOCAL, repository.snapshot().mode)
+        assertFailsWith<IllegalStateException> { repository.cloudConfig() }
+
+        // Applying a host restriction must not erase saved configuration or an explicit opt-out.
+        assertEquals("saved-key", credentials.read(CredentialIds.AI_SUMMARY_API_KEY))
+        assertEquals("saved-cloud-model", store.getString(AiSummaryPreferenceKeys.MODEL))
+        repository.setEnabled(false)
+        assertFalse(repository.snapshot().enabled(localConfigurationReady = true))
+    }
+
+    @Test
+    fun localOnlyHostUsesLocalModeBeforeAnySettingsHaveBeenSaved() {
+        val repository = AiSummarySettingsRepository(
+            TestKeyValueStore(), TestCredentialStore(), emptyFlow(), cloudAiSupported = false,
+        )
+        assertEquals(AiSummaryMode.LOCAL, repository.snapshot().mode)
+        assertFalse(repository.snapshot().enabled(localConfigurationReady = false))
+        assertTrue(repository.snapshot().enabled(localConfigurationReady = true))
+    }
+
     @Test
     fun defaultsAndValidationArePortable() {
         val repository = AiSummarySettingsRepository(

@@ -33,6 +33,7 @@ fun BoxScope.PortableAppForeground(
     navigation: MainNavigationSnapshot,
     storiesController: StoriesScreenController?,
     captchaDialog: @Composable (HackerNewsCaptchaChallenge, () -> Unit, (String) -> Unit) -> Unit,
+    showAccountCreation: Boolean = true,
 ) {
     if (navigation.changelogDialogVisible) {
         SettingsChangelogDialog(
@@ -60,9 +61,9 @@ fun BoxScope.PortableAppForeground(
                 scene.navigation.dismissLoginDialog()
                 scene.userMessages.show("Logged in to Hacker News")
             },
-            onCreateAccount = {
-                scene.links.open("https://news.ycombinator.com/login?goto=news")
-            },
+            onCreateAccount = if (showAccountCreation) {
+                { scene.links.open("https://news.ycombinator.com/login?goto=news") }
+            } else null,
             captchaDialog = captchaDialog,
         )
     }

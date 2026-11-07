@@ -20,6 +20,7 @@ internal fun BoxScope.IosAppForeground(
         scene = scene,
         navigation = navigation,
         storiesController = storiesController,
+        showAccountCreation = false,
         captchaDialog = { challenge, cancel, respond ->
             IosCaptchaDialog(challenge, cancel, respond)
         },

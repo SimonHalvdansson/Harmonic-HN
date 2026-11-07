@@ -172,6 +172,7 @@ fun AiSummarySettingsRoute(
 
     AiSummarySettingsScreen(
         state = AiSummarySettingsUiState(
+            cloudAiSupported = repository.cloudAiSupported,
             enabled = enabled,
             configurationComplete = configurationComplete,
             localSummarizationSupported = localSummarizationSupported,
@@ -218,7 +219,9 @@ fun AiSummarySettingsRoute(
         localModelsContent = localModelsContent,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
     )
-    dialog?.let { dialogContent(it) { dialog = null } }
+    dialog?.takeIf {
+        repository.cloudAiSupported || it == AiSummarySettingsDialog.SystemPrompt
+    }?.let { dialogContent(it) { dialog = null } }
 }
 
 @Composable

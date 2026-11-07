@@ -39,6 +39,7 @@ class HarmonicHostConfiguration(
     val widgetConfigurationStore: KeyValueStore = InMemoryKeyValueStore(),
     val widgetRuntimeStore: KeyValueStore = InMemoryKeyValueStore(),
     val localModels: LocalModelService? = null,
+    val cloudAiSupported: Boolean = true,
     val articleEmbeddingEngine: com.simon.harmonichackernews.platform.ArticleEmbeddingEngine? = null,
     val nativeArticleEmbeddingEngine: com.simon.harmonichackernews.platform.NativeArticleEmbeddingEngine? = null,
     val articleEmbeddingCache: com.simon.harmonichackernews.categorization.ArticleEmbeddingCache = com.simon.harmonichackernews.categorization.InMemoryArticleEmbeddingCache(),

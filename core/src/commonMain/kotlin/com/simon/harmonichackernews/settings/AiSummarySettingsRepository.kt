@@ -94,9 +94,10 @@ class AiSummarySettingsRepository(
     private val credentials: CredentialStore,
     changes: Flow<Unit>,
     private val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    val cloudAiSupported: Boolean = true,
 ) {
     private val credentialMutex = Mutex()
-    private val apiKeyState = MutableStateFlow<String?>(null)
+    private val apiKeyState = MutableStateFlow<String?>(if (cloudAiSupported) null else "")
 
     fun snapshot(): AiSummarySettingsSnapshot = AiSummarySettingsSnapshot(
         explicitlyEnabled = if (store.contains(AiSummaryPreferenceKeys.ENABLED)) {
@@ -104,7 +105,12 @@ class AiSummarySettingsRepository(
         } else {
             null
         },
-        mode = AiSummaryMode.fromStored(store.getString(AiSummaryPreferenceKeys.MODE)),
+        // Host restrictions also apply to restored settings, before any UI is opened.
+        mode = if (cloudAiSupported) {
+            AiSummaryMode.fromStored(store.getString(AiSummaryPreferenceKeys.MODE))
+        } else {
+            AiSummaryMode.LOCAL
+        },
         baseUrl = store.getString(
             AiSummaryPreferenceKeys.BASE_URL,
             AiSummaryProviders.defaultBaseUrl,
@@ -153,6 +159,7 @@ class AiSummarySettingsRepository(
     }
 
     fun setMode(value: AiSummaryMode) {
+        if (value == AiSummaryMode.CLOUD && !cloudAiSupported) return
         store.putString(AiSummaryPreferenceKeys.MODE, value.storedValue)
     }
 
@@ -271,8 +278,10 @@ class AiSummarySettingsRepository(
         }
     }
 
-    suspend fun cloudConfig(): CloudSummaryConfig = awaitSnapshot().let { current ->
-        CloudSummaryConfig(
+    suspend fun cloudConfig(): CloudSummaryConfig {
+        check(cloudAiSupported) { "Cloud AI is unavailable on this platform" }
+        val current = awaitSnapshot()
+        return CloudSummaryConfig(
             baseUrl = current.baseUrl,
             apiKey = current.apiKey,
             model = current.model,

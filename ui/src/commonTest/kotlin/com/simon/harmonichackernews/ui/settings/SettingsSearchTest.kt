@@ -47,6 +47,17 @@ class SettingsSearchTest {
         assertFalse(entries().any { it.screenRoute == "notifications" })
     }
 
+    @Test fun localOnlyHostDoesNotAdvertiseCloudSettingsOrProviders() {
+        val entries = entries(SettingsSearchAvailability(cloudAiSupported = false, localAi = true))
+        val aiEntries = entries.filter { it.screenRoute == SettingsSection.AiSummary.route }
+        assertFalse(aiEntries.any { it.title in setOf("Base URL", "API Key", "Model") })
+        assertTrue(aiEntries.any { it.title == "Downloadable models" })
+        val index = SettingsSearchIndex(aiEntries)
+        for (query in listOf("cloud", "openai", "anthropic", "ollama")) {
+            assertTrue(index.search(query).isEmpty(), query)
+        }
+    }
+
     @Test fun resultAndNestedDetailReturnToTheSameSearchBeforeClosing() {
         for (twoPane in listOf(false, true)) {
             val navigation = SettingsNavigationStore(twoPane = twoPane)
