@@ -178,16 +178,18 @@ private final class IosConnectivityService: ConnectivityService {
     private var unmetered = true
 
     var onlineChanges: any Flow { connectivityState.onlineChanges }
+    var unmeteredChanges: any Flow { connectivityState.unmeteredChanges }
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
             let pathOnline = path.status == .satisfied
+            let pathUnmetered = pathOnline && !path.isExpensive && !path.isConstrained
             lock.lock()
             online = pathOnline
-            unmetered = online && !path.isExpensive && !path.isConstrained
+            unmetered = pathUnmetered
             lock.unlock()
-            connectivityState.updateOnline(online: pathOnline)
+            connectivityState.update(online: pathOnline, unmetered: pathUnmetered)
         }
         monitor.start(queue: queue)
     }

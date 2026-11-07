@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000012 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* PrivacyInfo.xcprivacy */; };
 		A10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* AppDelegate.swift */; };
 		A10000000000000000000002 /* IosNativeServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* IosNativeServices.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Assets.xcassets */; };
@@ -33,6 +34,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A20000000000000000000012 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A20000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* IosNativeServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosNativeServices.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 				A20000000000000000000006 /* IosAccountStorage.swift */,
 				A20000000000000000000004 /* Assets.xcassets */,
 				A20000000000000000000003 /* Info.plist */,
+				A20000000000000000000012 /* PrivacyInfo.xcprivacy */,
 			);
 			path = HarmonicIos;
 			sourceTree = "<group>";
@@ -132,6 +135,7 @@
 				A30000000000000000000001 /* Frameworks */,
 				A70000000000000000000001 /* Sources */,
 				A80000000000000000000001 /* Resources */,
+				A60000000000000000000003 /* Embed LiteRT Privacy Manifest */,
 			);
 			buildRules = (
 			);
@@ -226,12 +230,31 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* Assets.xcassets in Resources */,
+				A10000000000000000000012 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A60000000000000000000003 /* Embed LiteRT Privacy Manifest */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = (
+				"$(SRCROOT)/scripts/embed-litert-privacy.sh",
+				"$(SRCROOT)/LiteRTLM/PrivacyInfo.xcprivacy",
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/CLiteRTLM.framework/CLiteRTLM",
+			);
+			name = "Embed LiteRT Privacy Manifest";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/CLiteRTLM.framework/PrivacyInfo.xcprivacy",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "/bin/zsh \"$SRCROOT/scripts/embed-litert-privacy.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		A60000000000000000000002 /* Generate App Metadata */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

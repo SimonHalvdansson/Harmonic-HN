@@ -2,6 +2,31 @@ import XCTest
 import HarmonicKit
 @testable import HarmonicIos
 
+final class IosReleasePackagingTests: XCTestCase {
+    func testRequiredReasonManifestsAreInTheAppAndEmbeddedRuntime() throws {
+        func reasons(at url: URL) throws -> [String: [String]] {
+            let plist = try XCTUnwrap(PropertyListSerialization.propertyList(
+                from: Data(contentsOf: url), format: nil
+            ) as? [String: Any])
+            let entries = try XCTUnwrap(plist["NSPrivacyAccessedAPITypes"] as? [[String: Any]])
+            return try Dictionary(uniqueKeysWithValues: entries.map {
+                (try XCTUnwrap($0["NSPrivacyAccessedAPIType"] as? String),
+                 try XCTUnwrap($0["NSPrivacyAccessedAPITypeReasons"] as? [String]))
+            })
+        }
+        let appManifest = try XCTUnwrap(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
+        let appReasons = try reasons(at: appManifest)
+        XCTAssertEqual(appReasons["NSPrivacyAccessedAPICategoryDiskSpace"], ["E174.1"])
+        XCTAssertEqual(appReasons["NSPrivacyAccessedAPICategoryFileTimestamp"], ["C617.1"])
+        XCTAssertEqual(appReasons["NSPrivacyAccessedAPICategorySystemBootTime"], ["35F9.1"])
+
+        let frameworks = try XCTUnwrap(Bundle.main.privateFrameworksURL)
+        let runtimeReasons = try reasons(at: frameworks.appendingPathComponent("CLiteRTLM.framework/PrivacyInfo.xcprivacy"))
+        XCTAssertEqual(runtimeReasons["NSPrivacyAccessedAPICategoryFileTimestamp"], ["C617.1"])
+        XCTAssertEqual(runtimeReasons["NSPrivacyAccessedAPICategorySystemBootTime"], ["35F9.1"])
+    }
+}
+
 final class IosArticleTransportTests: XCTestCase {
     func testReportedHttpArticleCanBeFetchedForExtraction() async throws {
         let url = try XCTUnwrap(URL(string: "http://oldvcr.blogspot.com/2026/10/macos-extensions-pack-for-apple-network.html"))
@@ -39,6 +64,29 @@ final class IosLocalAiTests: XCTestCase {
 
     private var gemma: LocalModelDefinition {
         environment.models.catalog.first { $0.runtime == .litertLm }!
+    }
+
+    func testNewModelDirectoryIsExcludedFromBackupWithoutExcludingUserData() throws {
+        createEnvironment(bridge: StubLiteRtBridge())
+        let models = directory.appendingPathComponent("models")
+        XCTAssertEqual(try models.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertNotEqual(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+    }
+
+    func testExistingDownloadsArePreservedAndExcludedWhenReopeningStorage() throws {
+        var models = directory.appendingPathComponent("models")
+        try FileManager.default.createDirectory(at: models, withIntermediateDirectories: true)
+        let partial = models.appendingPathComponent("existing.download")
+        let contents = Data("partial model download".utf8)
+        try contents.write(to: partial)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = false
+        try models.setResourceValues(values)
+
+        createEnvironment(bridge: StubLiteRtBridge())
+        XCTAssertEqual(try models.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        XCTAssertEqual(try Data(contentsOf: partial), contents)
+        XCTAssertNotEqual(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
     }
 
     private func prepareModel(real: Bool) throws {

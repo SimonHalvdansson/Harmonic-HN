@@ -32,6 +32,8 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSystemFreeSize
 import platform.Foundation.NSNumber
 import platform.Foundation.NSProcessInfo
+import platform.Foundation.NSURL
+import platform.Foundation.NSURLIsExcludedFromBackupKey
 import kotlin.time.TimeSource
 
 /** iOS owns the native runtime and foreground, resumable model transfers. */
@@ -65,6 +67,12 @@ class IosLocalAiEnvironment private constructor(
             val root = Path(modelsDirectory)
             val cache = Path(cacheDirectory)
             SystemFileSystem.createDirectories(root)
+            // Reapply on every launch, including directories containing existing downloads.
+            // Shared storage keeps this root when models are cleared, so future downloads
+            // and resumable partials inherit the exclusion without excluding user settings.
+            check(NSURL.fileURLWithPath(modelsDirectory, isDirectory = true).setResourceValue(
+                NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null,
+            )) { "Could not exclude downloaded local models from iCloud backup" }
             SystemFileSystem.createDirectories(cache)
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
             val client = createHarmonicHttpClient(Darwin.create(), userAgent)
