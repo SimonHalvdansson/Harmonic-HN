@@ -18,11 +18,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -301,7 +304,13 @@ private fun WidgetConfigurationPreview(configuration: WidgetConfiguration, palet
     Column(
         Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
             .fillMaxWidth().height(240.dp)
-            .shadow(12.dp, shape, clip = false)
+            // Keep the preview's shadow attached to the card while the landscape page scrolls.
+            // Native elevation shadows depend on the layer's position relative to the window light.
+            .dropShadow(shape, Shadow(
+                radius = 12.dp,
+                color = Color.Black.copy(alpha = .22f),
+                offset = DpOffset(0.dp, 4.dp),
+            ))
             .border(1.dp, colors.outlineVariant.copy(alpha = .65f), shape)
             .clip(shape).background(colors.pageBackground),
     ) {

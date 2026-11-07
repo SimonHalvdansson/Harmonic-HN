@@ -1196,6 +1196,48 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
     }
 
+    func testHomeSwipeFromBrowserPreservesSheetAndNormalDragging() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        openLinkPostFromDebugSettings()
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        waitForCommentsBeforeDraggingSheet()
+
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            articleHeader.tapCenter()
+            let showComments = app.labeledButton("Show comments")
+            XCTAssertTrue(showComments.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 10))
+            let handle = app.otherElements["comments-sheet-handle"]
+            XCTAssertTrue(handle.waitForExistence(timeout: 5))
+            let collapsedY = handle.frame.minY
+            keepScreenshot("Browser before Home swipe \(orientation.rawValue)")
+
+            let window = app.windows.firstMatch
+            let origin = window.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: window.frame.width / 2, dy: window.frame.height - 1)).press(
+                forDuration: 0.01,
+                thenDragTo: origin.withOffset(CGVector(dx: window.frame.width / 2, dy: window.frame.height * 0.25)),
+                withVelocity: .fast, thenHoldForDuration: 0
+            )
+            XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10), "The first swipe must go Home")
+            app.activate()
+            XCTAssertTrue(showComments.waitForExistence(timeout: 10))
+            XCTAssertEqual(handle.frame.minY, collapsedY, accuracy: 1)
+            keepScreenshot("Browser restored after Home swipe \(orientation.rawValue)")
+
+            // A drag beginning on the actual handle must still expand the sheet.
+            handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+                forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)),
+                withVelocity: .slow, thenHoldForDuration: 0.1
+            )
+            XCTAssertTrue(articleHeader.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.labeledButton("User").isHittable)
+        }
+    }
+
     func testStoriesMenuWelcomeHintPlacement() {
         let title = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Make it yours")).firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 10))

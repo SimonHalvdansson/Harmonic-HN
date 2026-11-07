@@ -19,6 +19,7 @@
 		A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IosArticleEmbeddingService.swift */; };
 		A10000000000000000000010 /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = AC0000000000000000000002 /* LiteRTLM */; };
 		C10000000000000000000001 /* IosLocalAiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* IosLocalAiTests.swift */; };
+		C10000000000000000000003 /* IosSystemGestureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000003 /* IosSystemGestureTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,7 @@
 		A20000000000000000000011 /* IosArticleEmbeddingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosArticleEmbeddingService.swift; sourceTree = "<group>"; };
 		C20000000000000000000001 /* IosLocalAiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLocalAiTests.swift; sourceTree = "<group>"; };
 		C20000000000000000000002 /* HarmonicIosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HarmonicIosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C20000000000000000000003 /* IosSystemGestureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosSystemGestureTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,7 +121,7 @@
 
 		C40000000000000000000001 /* HarmonicIosTests */ = {
 			isa = PBXGroup;
-			children = (C20000000000000000000001 /* IosLocalAiTests.swift */);
+			children = (C20000000000000000000001 /* IosLocalAiTests.swift */, C20000000000000000000003 /* IosSystemGestureTests.swift */);
 			path = HarmonicIosTests;
 			sourceTree = "<group>";
 		};
@@ -321,7 +323,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C70000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001); runOnlyForDeploymentPostprocessing = 0; };
+		C70000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

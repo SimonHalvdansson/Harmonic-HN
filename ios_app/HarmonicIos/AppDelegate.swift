@@ -209,6 +209,10 @@ final class HarmonicRootViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func loadView() {
+        view = HarmonicRootView()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -276,6 +280,23 @@ final class HarmonicRootViewController: UIViewController {
         })
     }
 
+}
+
+/// Draw edge to edge, but leave touches starting at the Home indicator with UIKit.
+final class HarmonicRootView: UIView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let target = super.hitTest(point, with: event)
+        guard target != nil, let window, window.safeAreaInsets.bottom > 0 else { return target }
+        let windowPoint = convert(point, to: window)
+        if windowPoint.y >= window.bounds.maxY - window.safeAreaInsets.bottom {
+            // Compose's recognizer can deliver a few drag pixels before UIKit cancels it
+            // for Home/app switching. Keep this touch outside the Compose subtree from
+            // touch-down; UIKit retains its normal system-gesture priority. Touches that
+            // start above this area still belong to their original view for the whole drag.
+            return self
+        }
+        return target
+    }
 }
 
 /// A transparent geometry probe; it does not clip or alter the Compose view itself.
