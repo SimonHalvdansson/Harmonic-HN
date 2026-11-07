@@ -84,7 +84,12 @@ internal fun DesktopSettingsDetail(
             "${System.getProperty("os.name")} ${System.getProperty("os.version")}",
         debugNotificationsMessage =
             "Reply notifications and Android notification fixtures do not apply to desktop.",
-        aiSettings = { DesktopAiSettings(app, scene, singlePane, onBack) },
+        aiSettings = {
+            DesktopAiSettings(
+                app, scene, singlePane, onBack,
+                onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
+            )
+        },
         dataSettings = { DesktopDataSettings(app, scene, singlePane, onBack) },
         readerPreview = { reading, visible -> DesktopReaderModePreview(reading, visible) },
         webLinksCapabilities = desktopWebLinksSettingsCapabilities(),
@@ -107,6 +112,7 @@ private fun DesktopAiSettings(
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit,
 ) {
     var refresh by remember { mutableIntStateOf(0) }
     val localModels = checkNotNull(app.localModels) {
@@ -137,6 +143,7 @@ private fun DesktopAiSettings(
         showNavigation = showNavigation,
         contentVersion = refresh + localModelState.hashCode() + availabilityState.revision,
         onBack = onBack,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
         onLocalModeUnavailable = {
             scene.userMessages.show(
                 availabilityState.failure
@@ -155,7 +162,6 @@ private fun DesktopAiSettings(
                     nanoAvailabilityResolved = availabilityState.availabilityResolved,
                     nanoAvailable = availabilityState.nanoAvailable,
                     nanoBaseModelName = "System managed",
-                    models = localModels.catalog,
                     managedModelStatus = availabilityState.statusMessage,
                     onChanged = { refresh++ },
                     onMessage = showMessage,

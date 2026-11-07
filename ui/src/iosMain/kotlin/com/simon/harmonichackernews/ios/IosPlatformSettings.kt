@@ -67,7 +67,12 @@ internal fun IosSettingsDetail(
             UIDevice.currentDevice.systemVersion,
         debugNotificationsMessage =
             "Reply notifications and Android notification fixtures do not apply to iOS.",
-        aiSettings = { IosAiSettings(app, scene, singlePane, onBack) },
+        aiSettings = {
+            IosAiSettings(
+                app, scene, singlePane, onBack,
+                onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
+            )
+        },
         dataSettings = { IosDataSettings(app, scene, singlePane, onBack) },
         readerPreview = { reading, _ -> IosReaderModePreview(reading) },
     )
@@ -79,6 +84,7 @@ private fun IosAiSettings(
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onArticleCategoriesRequested: () -> Unit,
 ) {
     var refresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -89,7 +95,7 @@ private fun IosAiSettings(
     val localModels = app.localModels
     val managerState = localModels?.cachedState?.collectAsState()?.value
 
-    LaunchedEffect(settingsRuntime, refresh) {
+    LaunchedEffect(settingsRuntime, managerState, refresh) {
         settingsRuntime.resolve()
     }
     DisposableEffect(settingsRuntime) {
@@ -103,9 +109,11 @@ private fun IosAiSettings(
         localAvailabilityResolved = availabilityState.availabilityResolved,
         localConfigurationReady = availabilityState.configurationReady,
         localModeAvailable = availabilityState.available,
+        selectedLocalModelId = managerState?.selectedModelId,
         showNavigation = showNavigation,
-        contentVersion = refresh,
+        contentVersion = refresh + managerState.hashCode() + availabilityState.revision,
         onBack = onBack,
+        onArticleCategoriesRequested = onArticleCategoriesRequested,
         onLocalModeUnavailable = {
             scene.userMessages.show(
                 availabilityState.failure

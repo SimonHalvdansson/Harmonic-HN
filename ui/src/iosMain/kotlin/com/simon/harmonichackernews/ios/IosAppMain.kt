@@ -169,6 +169,7 @@ class IosHarmonicApplication(
     fun setForeground(active: Boolean) {
         if (closed) return
         foreground = active
+        bootstrap.app.articleCategories.setForeground(active)
         if (active) refreshAppearance()
     }
 
