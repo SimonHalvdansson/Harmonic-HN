@@ -70,7 +70,7 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             debug: debugBuild,
             debugSettingsEnabled: debugBuild,
             projectUrl: "https://github.com/SimonHalvdansson/Harmonic-HN",
-            privacyUrl: "https://github.com/SimonHalvdansson/Harmonic-HN/blob/main/PRIVACY.md"
+            privacyUrl: "https://simonhalvdansson.github.io/harmonic_privacy.html"
         )
         let fileManager = FileManager.default
         var filesDirectory = fileManager.urls(
