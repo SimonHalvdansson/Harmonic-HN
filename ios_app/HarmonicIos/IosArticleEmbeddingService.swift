@@ -13,7 +13,7 @@ final class IosArticleEmbeddingService: IosArticleEmbeddingBridge {
         }
     }
 
-    func load(modelPath: String, cacheDirectory: String, callback: IosArticleEmbeddingCallback) {
+    func load(modelPath: String, cacheDirectory: String, maxInputTokens: Int32, callback: IosArticleEmbeddingCallback) {
         perform(callback) {
             self.releaseEngine()
             guard FileManager.default.fileExists(atPath: modelPath) else {
@@ -27,7 +27,7 @@ final class IosArticleEmbeddingService: IosArticleEmbeddingBridge {
             }
             defer { litert_lm_embedding_engine_settings_delete(settings) }
             try self.check(litert_lm_embedding_engine_settings_set_num_threads(settings, 1))
-            try self.check(litert_lm_embedding_engine_settings_set_max_input_length(settings, 256))
+            try self.check(litert_lm_embedding_engine_settings_set_max_input_length(settings, maxInputTokens))
             try self.check(litert_lm_embedding_engine_settings_set_cache_dir(settings, cacheDirectory))
             self.engine = try self.createHandle { litert_lm_embedding_engine_create(settings, $0) }
             return nil

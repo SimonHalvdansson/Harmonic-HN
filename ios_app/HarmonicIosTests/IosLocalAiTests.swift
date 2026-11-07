@@ -265,7 +265,7 @@ final class IosArticleEmbeddingTests: XCTestCase {
 
     private func load(_ path: String) throws {
         let loaded = NativeEmbeddingCallback(expectation: expectation(description: "Embedding model loaded"))
-        service.load(modelPath: path, cacheDirectory: directory.path, callback: loaded)
+        service.load(modelPath: path, cacheDirectory: directory.path, maxInputTokens: 256, callback: loaded)
         wait(for: [loaded.finished], timeout: 120)
         if let error = loaded.error { throw NSError(domain: "EmbeddingTest", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
     }

@@ -12,7 +12,7 @@ class IosArticleEmbeddingEngineTest {
     fun nativeBridgeReceivesModelInputAndReleasesEngine() = runTest {
         val bridge = StubBridge()
         val engine = IosArticleEmbeddingEngine(bridge, "/cache/local_ai")
-        engine.load("/files/model.litertlm")
+        engine.load("/files/model.litertlm", 1024)
         val text = ArticleCategories.input("A new compiler", "A programming language compiler.")
         val embedding = engine.embed(text)
         assertEquals(ArticleCategories.DIMENSIONS, embedding.size)
@@ -20,6 +20,7 @@ class IosArticleEmbeddingEngineTest {
         assertEquals(text, bridge.input)
         assertEquals("/files/model.litertlm", bridge.modelPath)
         assertEquals("/cache/local_ai", bridge.cacheDirectory)
+        assertEquals(1024, bridge.maxInputTokens)
         engine.close()
         assertContentEquals(listOf("load", "embed", "close"), bridge.operations)
     }
@@ -40,12 +41,14 @@ class IosArticleEmbeddingEngineTest {
         var error: String? = null
         var modelPath = ""
         var cacheDirectory = ""
+        var maxInputTokens = 0
         var input = ""
         val operations = mutableListOf<String>()
 
-        override fun load(modelPath: String, cacheDirectory: String, callback: IosArticleEmbeddingCallback) {
+        override fun load(modelPath: String, cacheDirectory: String, maxInputTokens: Int, callback: IosArticleEmbeddingCallback) {
             this.modelPath = modelPath
             this.cacheDirectory = cacheDirectory
+            this.maxInputTokens = maxInputTokens
             operations += "load"
             callback.complete(null, error)
         }

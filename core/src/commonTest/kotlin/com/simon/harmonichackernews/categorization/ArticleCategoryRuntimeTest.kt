@@ -23,6 +23,58 @@ import kotlin.test.fail
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ArticleCategoryRuntimeTest {
     @Test
+    fun changingTokenLimitReloadsEngineAndInvalidatesBothCaches() = runTest {
+        val fixture = fixture()
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start()
+        runCurrent()
+        assertEquals(listOf(256), fixture.engine.loadedTokenLimits)
+        fixture.runtime.scoresForStory(42, "Story", null, null)
+        fixture.settings.setMaxInputTokens(1024)
+        assertNull(fixture.runtime.cachedScores(42, "Story", null))
+        runCurrent()
+        assertEquals(listOf(256, 1024), fixture.engine.loadedTokenLimits)
+        assertEquals(1, fixture.engine.closes)
+        fixture.runtime.scoresForStory(42, "Story", null, null)
+        assertEquals(2, fixture.engine.embeddings)
+        fixture.settings.setMaxInputTokens(1024)
+        runCurrent()
+        assertEquals(2, fixture.engine.loads, "Selecting the same limit must not reload")
+        fixture.settings.setEnabled(false)
+        runCurrent()
+        fixture.settings.setMaxInputTokens(128)
+        runCurrent()
+        assertEquals(2, fixture.engine.loads, "Changing the limit while off must not load the model")
+        fixture.settings.setEnabled(true)
+        runCurrent()
+        assertEquals(listOf(256, 1024, 128), fixture.engine.loadedTokenLimits)
+    }
+
+    @Test
+    fun changingTokenLimitDuringInferenceDoesNotPublishOldScores() = runTest {
+        val fixture = fixture()
+        fixture.models.preload()
+        fixture.settings.setEnabled(true)
+        fixture.runtime.start()
+        runCurrent()
+        val release = CompletableDeferred<Unit>()
+        fixture.engine.beforeEmbed = { release.await() }
+        val row = launch { assertTrue(fixture.runtime.scoresForStory(42, "Story", null, null).isEmpty()) }
+        runCurrent()
+        fixture.settings.setMaxInputTokens(512)
+        runCurrent()
+        release.complete(Unit)
+        row.join()
+        runCurrent()
+        assertNull(fixture.runtime.cachedScores(42, "Story", null))
+        assertEquals(listOf(256, 512), fixture.engine.loadedTokenLimits)
+        fixture.runtime.scoresForStory(42, "Story", null, null)
+        assertEquals(2, fixture.engine.embeddings)
+        assertEquals(ArticleCategoryStatus.READY, fixture.runtime.state.value.status)
+    }
+
+    @Test
     fun cancelledHistoryPreviewReleasesTheModelWithoutWritingExamples() = runTest {
         val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { ArticleCategoryTrainingTest.seedBytes() } }
         training.removeExample("ai", 2)
@@ -457,13 +509,15 @@ class ArticleCategoryRuntimeTest {
 
     private class FakeEngine : ArticleEmbeddingEngine {
         var loads = 0
+        val loadedTokenLimits = mutableListOf<Int>()
         var embeddings = 0
         var closes = 0
         var failLoad = false
         var vector = floatArrayOf(1f, 0f)
         var beforeEmbed: suspend () -> Unit = {}
-        override suspend fun load(modelPath: String) {
+        override suspend fun load(modelPath: String, maxInputTokens: Int) {
             loads++
+            loadedTokenLimits += maxInputTokens
             if (failLoad) error("Failed to initialize")
         }
         override suspend fun embed(text: String): FloatArray {

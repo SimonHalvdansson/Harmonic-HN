@@ -25,14 +25,14 @@ internal class DesktopArticleEmbeddingEngine(
     private val disposed = AtomicBoolean(false)
     private var engine: EmbeddingEngine? = null
 
-    override suspend fun load(modelPath: String) = withContext(dispatcher) {
+    override suspend fun load(modelPath: String, maxInputTokens: Int) = withContext(dispatcher) {
         check(!disposed.get()) { "Embedding runtime is closed" }
         release()
         nativeOperation {
             val candidate = EmbeddingEngine(EmbeddingEngineConfig(
                 modelPath = modelPath,
                 backend = Backend.CPU(threadCount = 1),
-                maxInputLength = 256,
+                maxInputLength = maxInputTokens,
                 cacheDir = cacheDirectory,
             ))
             candidate.initialize()

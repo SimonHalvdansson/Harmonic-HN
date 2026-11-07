@@ -181,6 +181,11 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
         }
         item {
             SettingsCategory("Configuration") {
+                SegmentedSetting(title = "Input token limit",
+                    summary = "Maximum tokens from the title and preview. Longer inputs use more time and memory. Default: 256.",
+                    options = ArticleEmbeddingInput.TOKEN_LIMITS.map { it to it.toString() },
+                    selected = preferences.maxInputTokens, onSelected = repository::setMaxInputTokens)
+                SettingsDivider()
                 CategorySimilaritySetting(value = displayedCutoff,
                     onValueChange = { resettingCutoff = false; repository.setCutoff((it * 100).roundToInt() / 100f) },
                     onReset = { resettingCutoff = true; repository.setCutoff(ArticleCategories.DEFAULT_CUTOFF) },

@@ -11,7 +11,7 @@ interface IosArticleEmbeddingCallback {
 }
 
 interface IosArticleEmbeddingBridge {
-    fun load(modelPath: String, cacheDirectory: String, callback: IosArticleEmbeddingCallback)
+    fun load(modelPath: String, cacheDirectory: String, maxInputTokens: Int, callback: IosArticleEmbeddingCallback)
     fun embed(text: String, callback: IosArticleEmbeddingCallback)
     fun close(callback: IosArticleEmbeddingCallback)
 }
@@ -22,8 +22,8 @@ class IosArticleEmbeddingEngine(
 ) : ArticleEmbeddingEngine {
     private val mutex = Mutex()
 
-    override suspend fun load(modelPath: String) = mutex.withLock {
-        operation { bridge.load(modelPath, cacheDirectory, it) }
+    override suspend fun load(modelPath: String, maxInputTokens: Int) = mutex.withLock {
+        operation { bridge.load(modelPath, cacheDirectory, maxInputTokens, it) }
         Unit
     }
 

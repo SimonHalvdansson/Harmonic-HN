@@ -75,7 +75,8 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.ArticleCategories, "embeddinggemma embeddings categorize categorization categories labels topics similarity sensitivity cutoff experimental")
     page(SettingsSection.CategoryExploration, "how categories work embeddings cosine similarity map umap tsne pca examples")
     group(SettingsSection.AiSummary, "", "Article categories" to "tag stories embeddings embeddinggemma labels topics")
-    group(SettingsSection.ArticleCategories, "", "Categorize stories" to "enable embeddings", "Similarity cutoff" to "sensitivity threshold")
+    group(SettingsSection.ArticleCategories, "", "Categorize stories" to "enable embeddings", "Similarity cutoff" to "sensitivity threshold",
+        "Input token limit" to "embeddings context length maximum 128 256 512 1024")
     page(SettingsSection.Data, "storage cache backup restore export import bookmarks history")
     page(SettingsSection.About, "version github privacy changelog updates")
     page(SettingsSection.Licenses, "open source libraries copyright dependencies")

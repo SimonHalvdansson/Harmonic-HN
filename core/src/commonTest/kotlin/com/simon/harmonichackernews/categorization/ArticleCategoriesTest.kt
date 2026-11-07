@@ -111,4 +111,19 @@ class ArticleCategoriesTest {
         store.putFloat(ArticleCategorySettings.CUTOFF, 0.84f)
         assertEquals(ArticleCategories.MAX_CUTOFF, ArticleCategorySettings(store, emptyFlow()).snapshot().cutoff)
     }
+
+    @Test
+    fun inputTokenLimitDefaultsTo256AndPersistsOnlySupportedChoices() {
+        val store = InMemoryKeyValueStore()
+        val settings = ArticleCategorySettings(store, emptyFlow())
+        assertEquals(256, settings.snapshot().maxInputTokens)
+        for (limit in listOf(128, 256, 512, 1024)) {
+            settings.setMaxInputTokens(limit)
+            assertEquals(limit, ArticleCategorySettings(store, emptyFlow()).snapshot().maxInputTokens)
+        }
+        assertFailsWith<IllegalArgumentException> { settings.setMaxInputTokens(2048) }
+        assertEquals(1024, settings.snapshot().maxInputTokens)
+        store.putInt(ArticleCategorySettings.MAX_INPUT_TOKENS, -1)
+        assertEquals(256, settings.snapshot().maxInputTokens)
+    }
 }

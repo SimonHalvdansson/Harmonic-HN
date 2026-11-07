@@ -13,13 +13,13 @@ import com.simon.harmonichackernews.categorization.ArticleCategories
 class LiteRtArticleEmbeddingBackend : AndroidArticleEmbeddingBackend {
     private var engine: EmbeddingEngine? = null
 
-    override fun load(context: Context, modelPath: String) {
+    override fun load(context: Context, modelPath: String, maxInputTokens: Int) {
         close()
         val candidate = EmbeddingEngine(EmbeddingEngineConfig(
             modelPath = modelPath,
             // One CPU thread leaves the GPU and other cores available for scrolling.
             backend = Backend.CPU(threadCount = 1),
-            maxInputLength = 256,
+            maxInputLength = maxInputTokens,
             // Use the shared model cache location so FileLocalModelStorage can remove the
             // model's compiled/weight caches together with its downloaded weights.
             cacheDir = context.cacheDir.absolutePath,

@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 
 /** Implemented in the optional local-AI feature; no LiteRT linkage in the base application. */
 interface AndroidArticleEmbeddingBackend {
-    fun load(context: Context, modelPath: String)
+    fun load(context: Context, modelPath: String, maxInputTokens: Int)
     fun embed(text: String): FloatArray
     fun close()
 }
@@ -23,13 +23,13 @@ class AndroidArticleEmbeddingEngine(context: Context) : ArticleEmbeddingEngine {
     }.asCoroutineDispatcher()
     private var backend: AndroidArticleEmbeddingBackend? = null
 
-    override suspend fun load(modelPath: String) = withContext(dispatcher) {
+    override suspend fun load(modelPath: String, maxInputTokens: Int) = withContext(dispatcher) {
         backend?.close()
         backend = null
         nativeOperation {
             val candidate = Class.forName("com.simon.harmonichackernews.localai.litert.LiteRtArticleEmbeddingBackend")
                 .getDeclaredConstructor().newInstance() as AndroidArticleEmbeddingBackend
-            candidate.load(context, modelPath)
+            candidate.load(context, modelPath, maxInputTokens)
             backend = candidate
         }
     }

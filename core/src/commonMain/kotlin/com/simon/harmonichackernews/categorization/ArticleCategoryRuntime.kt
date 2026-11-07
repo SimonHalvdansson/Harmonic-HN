@@ -56,9 +56,11 @@ class ArticleCategoryRuntime(
         val input: String,
         val hasDescription: Boolean,
         val configuration: ArticleTrainingConfiguration?,
+        val maxInputTokens: Int,
         val scores: List<ArticleCategoryScore>,
     ) {
-        fun matches(configuration: ArticleTrainingConfiguration?) = this.configuration === configuration
+        fun matches(configuration: ArticleTrainingConfiguration?, maxInputTokens: Int) =
+            this.configuration === configuration && this.maxInputTokens == maxInputTokens
         fun covers(input: String, hasDescription: Boolean) = this.input == input || (this.hasDescription && !hasDescription)
         fun result() = ArticleCategoryResult(scores,
             if (hasDescription) ArticleCategoryInputSource.PREVIEW_TEXT else ArticleCategoryInputSource.TITLE_ONLY)
@@ -77,12 +79,12 @@ class ArticleCategoryRuntime(
         cachedStory(storyId, title, url)?.result()
 
     fun observeResult(storyId: Int, title: String, url: String?): Flow<ArticleCategoryResult?> =
-        combine(storyScores, training?.state ?: flowOf<ArticleTrainingConfiguration?>(null)) { entries, configuration ->
-            entries[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(configuration) }?.result()
+        combine(storyScores, training?.state ?: flowOf<ArticleTrainingConfiguration?>(null), settings.updates) { entries, configuration, preferences ->
+            entries[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(configuration, preferences.maxInputTokens) }?.result()
         }.distinctUntilChanged()
 
     private fun cachedStory(storyId: Int, title: String, url: String?): StoryScores? =
-        storyScores.value[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(training?.state?.value) }
+        storyScores.value[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(training?.state?.value, settings.snapshot().maxInputTokens) }
     private val mutableState = MutableStateFlow(ArticleCategoryRuntimeState())
     val state = mutableState.asStateFlow()
     val supported: Boolean get() = engine != null && models?.isIncluded == true
@@ -92,6 +94,8 @@ class ArticleCategoryRuntime(
     } == true
     private var job: Job? = null
     private var loaded = false
+    private var loadedInputTokens: Int? = null
+    private var cacheInputTokens: Int? = null
     private val retries = MutableStateFlow(0)
     private data class Resources(val foreground: Boolean = true, val paused: Boolean = false)
     private val resources = MutableStateFlow(Resources())
@@ -131,15 +135,17 @@ class ArticleCategoryRuntime(
             combine(settings.updates, service.cachedState, retries,
                 training?.state ?: flowOf(ArticleTrainingConfiguration()), resources) { preferences, manager, retry, configuration, resourceState ->
                 val available = modelReady && manager.statuses[LocalModelCatalog.MODEL_EMBEDDING_GEMMA_2]?.state == LocalModelTransferState.DOWNLOADED
-                (Triple(preferences.enabled, available, retry) to configuration) to resourceState
+                (Triple(preferences.enabled to preferences.maxInputTokens, available, retry) to configuration) to resourceState
             }.distinctUntilChanged().collect { (configuration, resourceState) ->
                 val currentTraining = training?.state?.value
+                val maxInputTokens = settings.snapshot().maxInputTokens
                 storyScores.update { entries ->
-                    if (entries.values.any { !it.matches(currentTraining) }) entries.filterValues { it.matches(currentTraining) }
+                    if (entries.values.any { !it.matches(currentTraining, maxInputTokens) }) entries.filterValues { it.matches(currentTraining, maxInputTokens) }
                     else entries
                 }
                 val lifecycle = configuration.first
-                val (enabled, available) = lifecycle
+                val (enabledAndLimit, available) = lifecycle
+                val enabled = enabledAndLimit.first
                 val paused = !resourceState.foreground || resourceState.paused || !memoryAvailable()
                 if (!enabled || !available || paused) publish(when {
                     !enabled -> ArticleCategoryStatus.OFF
@@ -190,6 +196,8 @@ class ArticleCategoryRuntime(
             if (!loaded || !settings.snapshot().enabled || state.value.status != ArticleCategoryStatus.READY) return@withLock emptyList()
             if (storyId != null) cachedStory(storyId, title, url)?.takeIf { it.covers(input, hasDescription) }?.let { return@withLock it.scores }
             try {
+                ensureLoaded()
+                val maxInputTokens = checkNotNull(loadedInputTokens)
                 // Once native inference starts it cannot be interrupted. Keep its completed result
                 // even if the row scrolls away, rather than repeating the same work on its return.
                 withContext(NonCancellable + scoringDispatcher) {
@@ -198,12 +206,12 @@ class ArticleCategoryRuntime(
                     if (resources.value.paused || !resources.value.foreground || !settings.snapshot().enabled) return@withContext emptyList()
                     val titleOnly = !hasDescription
                     val scores = ArticleCategories.scores(project(embedding, titleOnly), training?.centers(titleOnly) ?: prototypes(titleOnly))
-                    if (configuration !== training?.state?.value) return@withContext emptyList()
+                    if (configuration !== training?.state?.value || maxInputTokens != settings.snapshot().maxInputTokens) return@withContext emptyList()
                     if (storyId != null) storyScores.update { entries ->
-                        LinkedHashMap(entries.filterValues { it.matches(configuration) }).apply {
+                        LinkedHashMap(entries.filterValues { it.matches(configuration, maxInputTokens) }).apply {
                             val key = StoryKey(storyId, title, url.orEmpty())
                             remove(key)
-                            put(key, StoryScores(input, hasDescription, configuration, scores))
+                            put(key, StoryScores(input, hasDescription, configuration, maxInputTokens, scores))
                             while (size > MAX_CACHED_STORIES) remove(keys.first())
                         }
                     }
@@ -228,9 +236,11 @@ class ArticleCategoryRuntime(
         val keepLoaded = settings.snapshot().enabled
         try {
             ensureLoaded()
+            val maxInputTokens = checkNotNull(loadedInputTokens)
             val examples = stories.distinctBy { it.id }.mapIndexed { index, story ->
                 currentCoroutineContext().ensureActive()
                 check(resources.value.foreground && !resources.value.paused) { "Adding examples stopped to free memory. Try again later." }
+                check(settings.snapshot().maxInputTokens == maxInputTokens) { "Input token limit changed. Try adding the stories again." }
                 onProgress(index, stories.size)
                 val headline = cachedEmbedding(ArticleCategories.input(story.title, null))
                 val preview = cachedEmbedding(ArticleCategories.input(story.title, story.description))
@@ -239,6 +249,7 @@ class ArticleCategoryRuntime(
             currentCoroutineContext().ensureActive()
             check(resources.value.foreground && !resources.value.paused) { "Adding examples stopped to free memory. Try again later." }
             require(stories.all { isHistoryStory(it.id) }) { "A selected story is no longer in your history" }
+            check(settings.snapshot().maxInputTokens == maxInputTokens) { "Input token limit changed. Try adding the stories again." }
             withContext(Dispatchers.Default) { repository.addExamples(categoryId, examples) }
             onProgress(stories.size, stories.size)
         } finally {
@@ -260,6 +271,7 @@ class ArticleCategoryRuntime(
         val keepLoaded = settings.snapshot().enabled
         try {
             ensureLoaded()
+            val maxInputTokens = checkNotNull(loadedInputTokens)
             stories.distinctBy { it.id }.forEach { story ->
                 currentCoroutineContext().ensureActive()
                 check(resources.value.foreground && !resources.value.paused) { "Similarities paused to free memory." }
@@ -273,6 +285,7 @@ class ArticleCategoryRuntime(
                 }
                 currentCoroutineContext().ensureActive()
                 check(resources.value.foreground && !resources.value.paused) { "Similarities paused to free memory." }
+                if (settings.snapshot().maxInputTokens != maxInputTokens) return@withLock
                 onResult(story.id, score)
             }
         } finally {
@@ -295,20 +308,28 @@ class ArticleCategoryRuntime(
     }
 
     private suspend fun ensureLoaded() {
-        if (loaded) return
+        val maxInputTokens = settings.snapshot().maxInputTokens
+        if (loaded && loadedInputTokens == maxInputTokens) return
+        release()
+        if (cacheInputTokens != maxInputTokens) {
+            cache.clear()
+            cacheInputTokens = maxInputTokens
+        }
         check(memoryAvailable()) { "Not enough available memory for local AI" }
         publish(ArticleCategoryStatus.LOADING)
         // Native initialization cannot be interrupted. Record ownership even when the caller is
         // cancelled, so training's finally block can release the engine after initialization.
         withContext(kotlinx.coroutines.NonCancellable) {
-            checkNotNull(engine).load(checkNotNull(models).installedPath(LocalModelCatalog.embeddingModel))
+            checkNotNull(engine).load(checkNotNull(models).installedPath(LocalModelCatalog.embeddingModel), maxInputTokens)
             loaded = true
+            loadedInputTokens = maxInputTokens
         }
     }
 
     private suspend fun release() {
         if (!loaded) return
         loaded = false
+        loadedInputTokens = null
         engine?.close()
     }
 
@@ -317,7 +338,7 @@ class ArticleCategoryRuntime(
 
     private suspend fun cachedEmbedding(input: String): FloatArray {
         cache.remove(input)?.let { cache[input] = it; return it }
-        val embedding = checkNotNull(engine).embed(input)
+        val embedding = ArticleEmbeddingInput.embedWithinLimit(input, checkNotNull(loadedInputTokens), checkNotNull(engine)::embed)
         currentCoroutineContext().ensureActive()
         cache[input] = embedding
         while (cache.size > 512) cache.remove(cache.keys.first())

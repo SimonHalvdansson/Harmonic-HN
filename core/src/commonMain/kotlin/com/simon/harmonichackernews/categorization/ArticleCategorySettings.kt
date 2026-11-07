@@ -17,6 +17,7 @@ data class ArticleCategoryPreferences(
     val names: Map<String, String> = emptyMap(),
     val categories: List<ArticleCategory> = ArticleCategories.defaults,
     val maxLabels: Int = 3,
+    val maxInputTokens: Int = ArticleEmbeddingInput.DEFAULT_MAX_INPUT_TOKENS,
 ) {
     fun name(category: ArticleCategory): String = names[category.id] ?: category.name
 }
@@ -44,12 +45,18 @@ class ArticleCategorySettings(
             }.toMap(),
             categories = categories,
             maxLabels = store.getInt(MAX_LABELS, 3).coerceIn(1, 3),
+            maxInputTokens = store.getInt(MAX_INPUT_TOKENS, ArticleEmbeddingInput.DEFAULT_MAX_INPUT_TOKENS)
+                .takeIf { it in ArticleEmbeddingInput.TOKEN_LIMITS } ?: ArticleEmbeddingInput.DEFAULT_MAX_INPUT_TOKENS,
         )
     }
 
     fun setEnabled(enabled: Boolean) = write { putBoolean(ENABLED, enabled) }
     fun setCutoff(cutoff: Float) = write { putFloat(CUTOFF, sanitizeCutoff(cutoff)) }
     fun setMaxLabels(max: Int) = write { putInt(MAX_LABELS, max.coerceIn(1, 3)) }
+    fun setMaxInputTokens(max: Int) {
+        require(max in ArticleEmbeddingInput.TOKEN_LIMITS)
+        write { putInt(MAX_INPUT_TOKENS, max) }
+    }
     fun setSelected(id: String, selected: Boolean) {
         require(catalog().any { it.id == id })
         val ids = snapshot().selected
@@ -72,5 +79,6 @@ class ArticleCategorySettings(
         const val SELECTED = "pref_article_categories_selected"
         const val NAME_PREFIX = "pref_article_category_name_"
         const val MAX_LABELS = "pref_article_categories_max_labels"
+        const val MAX_INPUT_TOKENS = "pref_article_categories_max_input_tokens"
     }
 }
