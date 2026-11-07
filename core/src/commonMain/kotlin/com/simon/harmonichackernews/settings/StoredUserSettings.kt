@@ -82,6 +82,8 @@ object UserPreferenceKeys {
     const val SCROLL_NAVIGATION = "pref_scroll_navigation"
     const val TOP_LEVEL_THREAD_INDICATORS = "pref_top_level_thread_indicators"
     const val COMMENTS_SWAP_LONG = "pref_comments_swap_long"
+    // Keep the released, negatively named key so both legacy choices survive upgrades.
+    const val COMMENTS_DISABLE_SWIPE_BACK = "pref_comments_disable_swipeback"
     const val COMMENT_DIVIDERS = "pref_comment_dividers"
     const val MARK_NEW_COMMENTS = "pref_mark_new_comments"
     const val HIGHLIGHT_COMMENT_META = "pref_highlight_comment_meta"
@@ -259,6 +261,7 @@ class StoredUserSettings(
                     string(UserPreferenceKeys.FAVICON_PROVIDER, FaviconPreferences.GOOGLE),
                 ),
                 swapLongPressTap = boolean(UserPreferenceKeys.COMMENTS_SWAP_LONG, false),
+                swipeBack = !boolean(UserPreferenceKeys.COMMENTS_DISABLE_SWIPE_BACK, true),
                 displayStyle = DisplayStyle.fromStored(
                     string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD),
                 ),

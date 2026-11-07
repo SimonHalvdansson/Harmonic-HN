@@ -158,6 +158,9 @@ private fun MainNavigation(
     }
     val appearance = controller.scene.app.appearance
     val uiDependencies = LocalHarmonicUiDependencies.current
+    val settings by uiDependencies.settings.updates.collectAsStateWithLifecycle(
+        initialValue = uiDependencies.settings.snapshot(),
+    )
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val context = activity
     val supportsTwoPane = LocalConfiguration.current.smallestScreenWidthDp >= 600
@@ -423,6 +426,17 @@ private fun MainNavigation(
     )
     HarmonicAppRoot(
         plan = scenePlan,
+        commentsSwipeBackEnabled = settings.comments.swipeBack,
+        canStartCommentsSwipeBack = {
+            controller.getCommentsCoordinator()?.canSwipeBackFromComments() == true
+        },
+        onCommentsSwipeBack = {
+            // A link or system Back can change the store before the next composition.
+            if (controller.navigationState.state.value.storyRequest?.serial == navigationSnapshot.storyRequest?.serial &&
+                controller.navigationState.state.value.currentDestination == MainDestination.STORY) {
+                popMainBackStack()
+            }
+        },
         preview = preview,
         completedPredictiveBack = setOfNotNull(
             completedStoryKey,

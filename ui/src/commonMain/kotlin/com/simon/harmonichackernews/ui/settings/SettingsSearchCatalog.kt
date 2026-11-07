@@ -10,6 +10,7 @@ data class SettingsSearchCapabilities(
     val volumeNavigation: Boolean = true,
     val transparentStatusBar: Boolean = true,
     val twoPane: Boolean = false,
+    val commentsSwipeBack: Boolean = false,
 )
 
 internal data class SettingsSearchAvailability(
@@ -154,6 +155,8 @@ internal fun settingsSearchCatalog(
         "Animate comment expand/collapse" to "motion animations transitions reduce motion")
     if (capabilities.volumeNavigation) group(SettingsSection.Comments, "Navigation",
         "Volume buttons for navigation" to "volume keys rocker hardware up down jump threads")
+    if (capabilities.commentsSwipeBack) group(SettingsSection.Comments, "Navigation",
+        "Swipe back from comments" to "gesture right return previous screen disable swipeback")
     group(SettingsSection.ThreadDepth, "Indicator shape",
         "Thickness" to "width thread lines thin thick",
         "Rounded corners" to "round radius thread lines")

@@ -161,6 +161,7 @@ class CommentsSettingsPresenter(
                 comments.preloadCommentsMinimumBattery,
             ),
             swapTap = comments.swapLongPressTap,
+            swipeBack = comments.swipeBack,
             sorting = comments.sorting,
             provider = settings.reading.commentsProvider,
             showNavigationButtons = comments.showNavigationButtons,

@@ -21,6 +21,35 @@ import org.junit.runner.RunWith
 /** Real SharedPreferences XML -> DataStore files, isolated from the installed app's data. */
 @RunWith(AndroidJUnit4::class)
 class AndroidPreferenceMigrationTest {
+    @Test fun commentsSwipeBackSurvivesLegacyXmlAndDataStoreReopening() = runBlocking {
+        for (disabled in listOf(null, false, true)) {
+            val context = isolatedContext()
+            val name = context.packageName + "_preferences"
+            val key = "pref_comments_disable_swipeback"
+            val legacy = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+            disabled?.let { assertTrue(legacy.edit().putBoolean(key, it).commit()) }
+            try {
+                useStore(context, name) { store ->
+                    assertEquals(disabled == false, StoredUserSettings(store, store.changes).comments.swipeBack)
+                    assertEquals(disabled != null, store.contains(key))
+                }
+                useStore(context, name) { store ->
+                    val repository = AppSettingsRepository(store, store.changes)
+                    assertEquals(disabled == false, repository.snapshot().comments.swipeBack)
+                    repository.setCommentBoolean(CommentBooleanPreference.SWIPE_BACK, true)
+                }
+                useStore(context, name) { store ->
+                    assertTrue(StoredUserSettings(store, store.changes).comments.swipeBack)
+                    AppSettingsRepository(store, store.changes)
+                        .setCommentBoolean(CommentBooleanPreference.SWIPE_BACK, false)
+                }
+                useStore(context, name) { store ->
+                    assertFalse(StoredUserSettings(store, store.changes).comments.swipeBack)
+                }
+            } finally { context.filesDir.deleteRecursively(); context.cleanup() }
+        }
+    }
+
     @Test
     fun namedHandlesAreLazyAndAwaitingLoadsTheSharedSnapshot() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

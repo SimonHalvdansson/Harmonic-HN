@@ -89,6 +89,8 @@ class StoredSettingsMutator(
             setCommentsHeaderMetaInfo(if (value) CommentsHeaderMetaInfo.BUTTONS else CommentsHeaderMetaInfo.SMALL)
         } else if (preference == CommentBooleanPreference.HEADER_TINT) {
             setCommentsHeaderTint(if (value) CommentsHeaderTint.IMAGE else CommentsHeaderTint.OFF)
+        } else if (preference == CommentBooleanPreference.SWIPE_BACK) {
+            store.putBoolean(preference.storageKey, !value)
         } else store.putBoolean(preference.storageKey, value)
     }
 

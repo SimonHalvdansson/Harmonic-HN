@@ -784,6 +784,10 @@ class AndroidCommentsCoordinator(
     internal fun canNavigateCommentsWithVolumeButtons(): Boolean =
         isActive && hostActive && (isBottomSheetFullyExpanded || composeController?.sideBySideActive == true)
 
+    internal fun canSwipeBackFromComments(): Boolean =
+        isActive && hostActive && isBottomSheetFullyExpanded &&
+            composeController?.isWebsiteVisible() == false && !handlesBackInternally()
+
     fun switchStoryViewIfMatching(storyId: Int, showWebsite: Boolean): Boolean {
         if (!isActive || !commentsStore.canSwitchStoryView(storyId) || webViewController == null) {
             return false

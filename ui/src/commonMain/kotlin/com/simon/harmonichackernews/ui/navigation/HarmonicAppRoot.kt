@@ -12,6 +12,8 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.simon.harmonichackernews.navigation.MainDestination
 import com.simon.harmonichackernews.navigation.MainEditorRequest
@@ -40,7 +42,18 @@ fun HarmonicAppRoot(
     preview: MainNavigationBackPreview? = null,
     completedPredictiveBack: Set<MainNavigationSurfaceKey> = emptySet(),
     linkPreview: (@Composable () -> Unit)? = null,
+    commentsSwipeBackEnabled: Boolean = false,
+    canStartCommentsSwipeBack: () -> Boolean = { true },
+    onCommentsSwipeBack: () -> Unit = {},
 ) {
+    val swipeEnabled = commentsSwipeBackEnabled && !plan.isTwoPane &&
+        plan.current.key.destination == MainDestination.STORY && preview == null
+    val swipe = rememberCommentsSwipeBackState(plan.current.key, swipeEnabled)
+    var completedSwipe by remember { mutableStateOf<MainNavigationSurfaceKey?>(null) }
+    val swipePreview = rememberMainNavigationBackPreview(
+        plan, swipe.takeIf { it.active }, swipe.enterModifier, swipe.exitModifier,
+    )
+    val activePreview = preview ?: swipePreview
     val scopes = rememberNavigationEntryScopes(plan.surfaces.flatMap { surface ->
         listOfNotNull(surface.key, surface.detail?.let {
             MainNavigationSurfaceKey(MainDestination.STORY, it.serial)
@@ -83,20 +96,28 @@ fun HarmonicAppRoot(
         }
     }
     val root = plan.surfaces.first()
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().commentsSwipeBack(swipe, swipeEnabled, canStartCommentsSwipeBack) {
+        completedSwipe = plan.current.key
+        onCommentsSwipeBack()
+    }) {
         key(root.key) {
             ActivityNavigationStack(
                 entries = plan.surfaces.drop(1),
                 entryKey = { it.key },
-                completedExitKeys = completedPredictiveBack,
-                preview = preview?.let {
+                completedExitKeys = completedPredictiveBack + setOfNotNull(completedSwipe),
+                preview = activePreview?.let {
                     ActivityBackPreview(it.source, it.parent.takeUnless { parent -> parent == root.key },
                         it.enterModifier, it.exitModifier)
                 },
                 fadeOnly = { it.entry == MainNavigationEntry.Immersive },
                 hideCoveredRoot = true,
                 reflowKey = plan.isTwoPane,
-                root = { render(root) },
+                root = {
+                    // An intercepted external link is a task root with no in-app predecessor.
+                    Box(Modifier.fillMaxSize().then(
+                        if (swipe.active && plan.surfaces.size == 1) swipe.exitModifier else Modifier,
+                    )) { render(root) }
+                },
                 content = render,
             )
         }

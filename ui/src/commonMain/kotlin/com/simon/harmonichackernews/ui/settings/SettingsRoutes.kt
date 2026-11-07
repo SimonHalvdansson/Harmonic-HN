@@ -535,6 +535,8 @@ fun CommentsSettingsRoute(
     onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     volumeNavigationSupported: Boolean = true,
+    swipeBackSupported: Boolean = false,
+    twoPane: Boolean = false,
 ) {
     var dialog by rememberSaveable { mutableStateOf<CommentsSettingsDialog?>(null) }
     val presenter = remember(repository) { CommentsSettingsPresenter(repository) }
@@ -543,6 +545,8 @@ fun CommentsSettingsRoute(
     CommentsSettingsScreen(
         state = state,
         volumeNavigationSupported = volumeNavigationSupported,
+        swipeBackSupported = swipeBackSupported,
+        twoPane = twoPane,
         showNavigation = showNavigation,
         onBack = onBack,
         onDisplayStyleChanged = presenter::setDisplayStyle,

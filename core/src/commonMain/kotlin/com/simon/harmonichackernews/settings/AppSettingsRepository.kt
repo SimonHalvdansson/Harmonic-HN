@@ -58,6 +58,7 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     HIDE_DEAD_COMMENTS(UserPreferenceKeys.HIDE_DEAD_COMMENTS),
     HIDE_FLAGGED_COMMENTS(UserPreferenceKeys.HIDE_FLAGGED_COMMENTS),
     SWAP_LONG_PRESS_TAP(UserPreferenceKeys.COMMENTS_SWAP_LONG),
+    SWIPE_BACK(UserPreferenceKeys.COMMENTS_DISABLE_SWIPE_BACK),
     SHOW_NAVIGATION_BUTTONS(UserPreferenceKeys.SCROLL_NAVIGATION),
     SMOOTH_SCROLL(UserPreferenceKeys.COMMENTS_SMOOTH_SCROLL),
 }

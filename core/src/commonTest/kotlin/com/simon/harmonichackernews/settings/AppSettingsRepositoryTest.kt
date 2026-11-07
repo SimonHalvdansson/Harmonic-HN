@@ -16,6 +16,22 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 class AppSettingsRepositoryTest {
+    @Test fun commentsSwipeBackPreservesReleasedChoicesAndDefaultsOff() {
+        for (legacyDisabled in listOf(null, false, true)) {
+            val store = InMemoryKeyValueStore()
+            val key = "pref_comments_disable_swipeback"
+            legacyDisabled?.let { store.putBoolean(key, it) }
+            fun restored() = AppSettingsRepository(store, store.changes)
+            assertEquals(legacyDisabled == false, restored().snapshot().comments.swipeBack)
+            assertEquals(legacyDisabled != null, store.contains(key), "Reading must not rewrite the saved choice")
+            for (enabled in listOf(true, false, true)) {
+                restored().setCommentBoolean(CommentBooleanPreference.SWIPE_BACK, enabled)
+                assertEquals(!enabled, store.getBoolean(key, enabled))
+                assertEquals(enabled, restored().snapshot().comments.swipeBack)
+            }
+        }
+    }
+
     @Test fun headerCategoriesDefaultOnAndPersistIndependentlyOfGlobalCategorization() {
         val store = InMemoryKeyValueStore()
         val categories = com.simon.harmonichackernews.categorization.ArticleCategorySettings(store, store.changes)

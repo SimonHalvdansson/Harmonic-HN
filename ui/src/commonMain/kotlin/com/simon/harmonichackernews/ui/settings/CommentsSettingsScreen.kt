@@ -69,6 +69,7 @@ data class CommentsSettingsUiState(
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
+    val swipeBack: Boolean = false,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -91,6 +92,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     HideDeadComments(CommentBooleanPreference.HIDE_DEAD_COMMENTS),
     HideFlaggedComments(CommentBooleanPreference.HIDE_FLAGGED_COMMENTS),
     SwapTap(CommentBooleanPreference.SWAP_LONG_PRESS_TAP),
+    SwipeBack(CommentBooleanPreference.SWIPE_BACK),
     NavigationButtons(CommentBooleanPreference.SHOW_NAVIGATION_BUTTONS),
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
@@ -114,6 +116,8 @@ fun CommentsSettingsScreen(
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
     volumeNavigationSupported: Boolean = true,
+    swipeBackSupported: Boolean = false,
+    twoPane: Boolean = false,
     focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
 ) {
     val listState = rememberSettingsListState()
@@ -258,6 +262,17 @@ fun CommentsSettingsScreen(
             }
         }
         settingsCategory("Navigation") {
+            if (swipeBackSupported) row {
+                BooleanRow(
+                    "Swipe back from comments",
+                    Res.drawable.ic_arrow_back,
+                    state.swipeBack,
+                    CommentsBooleanSetting.SwipeBack,
+                    onBooleanChanged,
+                    summary = if (twoPane) "Unavailable in two-pane layouts" else "Swipe right to return to the previous screen",
+                    enabled = !twoPane,
+                )
+            }
             row {
                 BooleanRow(
                     "Show navigation buttons",

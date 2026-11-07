@@ -64,6 +64,7 @@ fun SettingsShell(
         navigation = navigation,
         directive = directive,
         supportsTwoPane = supportsTwoPane,
+        searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,
@@ -125,6 +126,7 @@ fun SettingsShell(
                     hasAccount = settingsAccountState.accountOrNull != null,
                 )
                 SettingsSection.Comments -> AndroidCommentsSettingsScreen(
+                    twoPane = isTwoPane,
                     showNavigation = singlePane,
                     onBack = onBack,
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
