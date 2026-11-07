@@ -262,8 +262,10 @@ jobs:
     name: iOS KMP and Xcode verification
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-15
+    # FoundationModels integration uses iOS 27 SDK APIs.
+    runs-on: xcode-27
     env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       # Inherited by both Gradle and the Gradle invocation inside xcodebuild.
       ORG_GRADLE_PROJECT_harmonicAndroidHostEnabled: 'false'
     steps:
@@ -285,6 +287,7 @@ jobs:
           test -n "$kotlin"
           xcode_version=$(xcodebuild -version)
           test -n "$xcode_version"
+          printf '%s\n' "$xcode_version"
           echo "kotlin=$kotlin" >> "$GITHUB_OUTPUT"
           echo "xcode=$(printf '%s' "$xcode_version" | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
       - name: Cache Kotlin Native toolchain and dependencies

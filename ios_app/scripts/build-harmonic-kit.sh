@@ -16,7 +16,12 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 readonly repository_root="$SRCROOT/.."
 cd "$repository_root"
-./gradlew :ui:embedAndSignAppleFrameworkForXcode
+gradle_arguments=(:ui:embedAndSignAppleFrameworkForXcode)
+if [[ "${CONFIGURATION:-}" == "Release" ]]; then
+    # Kotlin/Native release optimization exhausts the shared 6 GiB heap.
+    gradle_arguments+=("-Dorg.gradle.jvmargs=${HARMONIC_IOS_RELEASE_JVM_ARGS:--Xms1024m -Xmx12288m}")
+fi
+./gradlew "${gradle_arguments[@]}"
 
 readonly framework_output="${SCRIPT_OUTPUT_FILE_0:?Xcode must declare the HarmonicKit framework output}"
 if [[ ! -f "$framework_output" ]]; then

@@ -6,6 +6,10 @@ Kotlin/Compose framework. The build phase uses an existing `JAVA_HOME`, Android 
 runtime, or the macOS Java 21 resolver in that order. Its generated dependency file lets Xcode skip
 the Gradle phase until KMP sources, resources, or build inputs change.
 
+Xcode Release builds allow Gradle a 12 GiB heap for Kotlin/Native optimization. Debug builds use
+the shared settings in `gradle.properties`. Set `HARMONIC_IOS_RELEASE_JVM_ARGS` in the build
+environment to override the Release JVM arguments (default: `-Xms1024m -Xmx12288m`).
+
 The app's version and build number come from `harmonic.versionName` and
 `harmonic.versionCode` in the root `gradle.properties`, shared with Android and desktop.
 The Generate App Metadata build phase adds them to a generated copy of `HarmonicIos/Info.plist`
