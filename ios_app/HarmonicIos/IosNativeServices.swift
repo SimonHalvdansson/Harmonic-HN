@@ -36,6 +36,12 @@ final class IosNativeServices {
 }
 
 final class IosFoundationModelsSummaryBridge: IosNativeSummaryBridge {
+    private let generate: (String, String) async throws -> String
+
+    init(generate: @escaping (String, String) async throws -> String = IosFoundationModelsSummaryBridge.generateSummary) {
+        self.generate = generate
+    }
+
     func canAttempt() -> Bool {
 #if canImport(FoundationModels)
         if #available(iOS 26.0, *) { return true }
@@ -72,48 +78,70 @@ final class IosFoundationModelsSummaryBridge: IosNativeSummaryBridge {
         text: String,
         instruction: String,
         callback: IosNativeSummaryCallback
-    ) {
+    ) -> IosNativeSummaryTask {
+        let task = Task {
+            do {
+                try Task.checkCancellation()
+                let summary = try await generate(text, instruction)
+                try Task.checkCancellation()
+                callback.complete(summary: summary, errorMessage: nil)
+            } catch {
+                callback.complete(summary: nil, errorMessage: error.localizedDescription)
+            }
+        }
+        return FoundationModelsSummaryTask(task: task)
+    }
+
+    private static func generateSummary(text: String, instruction: String) async throws -> String {
 #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
-            Task {
-                do {
-                    let model = SystemLanguageModel.default
-                    let session = LanguageModelSession(model: model, instructions: instruction)
-                    if #available(iOS 26.4, *) {
-                        let instructionTokens = try await model.tokenCount(for: Instructions(instruction))
-                        let inputTokens = try await model.tokenCount(for: Prompt(text))
-                        guard instructionTokens + inputTokens + Int(AppleSummaryPromptBudget.shared.CONTEXT_HEADROOM_TOKENS) <= model.contextSize else {
-                            callback.complete(summary: nil, errorMessage: AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE)
-                            return
-                        }
+            do {
+                let model = SystemLanguageModel.default
+                let session = LanguageModelSession(model: model, instructions: instruction)
+                if #available(iOS 26.4, *) {
+                    let instructionTokens = try await model.tokenCount(for: Instructions(instruction))
+                    let inputTokens = try await model.tokenCount(for: Prompt(text))
+                    guard instructionTokens + inputTokens + Int(AppleSummaryPromptBudget.shared.CONTEXT_HEADROOM_TOKENS) <= model.contextSize else {
+                        throw FoundationModelsSummaryError(AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE)
                     }
-                    let response = try await session.respond(
-                        to: text,
-                        options: GenerationOptions(maximumResponseTokens: Int(AppleSummaryPromptBudget.shared.MAX_OUTPUT_TOKENS))
-                    )
-                    callback.complete(summary: response.content, errorMessage: nil)
-                } catch {
-                    let contextExceeded: Bool
-                    if #available(iOS 27.0, *), case LanguageModelError.contextSizeExceeded = error {
-                        contextExceeded = true
-                    } else if case LanguageModelSession.GenerationError.exceededContextWindowSize = error {
-                        contextExceeded = true
-                    } else {
-                        contextExceeded = false
-                    }
-                    callback.complete(
-                        summary: nil,
-                        errorMessage: contextExceeded ? AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE : error.localizedDescription
-                    )
                 }
+                try Task.checkCancellation()
+                return try await session.respond(
+                    to: text,
+                    options: GenerationOptions(maximumResponseTokens: Int(AppleSummaryPromptBudget.shared.MAX_OUTPUT_TOKENS))
+                ).content
+            } catch {
+                let contextExceeded: Bool
+                if #available(iOS 27.0, *), case LanguageModelError.contextSizeExceeded = error {
+                    contextExceeded = true
+                } else if case LanguageModelSession.GenerationError.exceededContextWindowSize = error {
+                    contextExceeded = true
+                } else {
+                    contextExceeded = false
+                }
+                if contextExceeded {
+                    throw FoundationModelsSummaryError(AppleSummaryPromptBudget.shared.CONTEXT_LIMIT_MESSAGE)
+                }
+                throw error
             }
-            return
         }
 #endif
-        callback.complete(
-            summary: nil,
-            errorMessage: "Apple Intelligence summaries require iOS 26 or newer"
-        )
+        throw FoundationModelsSummaryError("Apple Intelligence summaries require iOS 26 or newer")
+    }
+}
+
+private struct FoundationModelsSummaryError: LocalizedError {
+    let errorDescription: String?
+    init(_ message: String) { errorDescription = message }
+}
+
+private final class FoundationModelsSummaryTask: IosNativeSummaryTask {
+    private let task: Task<Void, Never>
+
+    init(task: Task<Void, Never>) { self.task = task }
+
+    func cancel() {
+        task.cancel()
     }
 }
 

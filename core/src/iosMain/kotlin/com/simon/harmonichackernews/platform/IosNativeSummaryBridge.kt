@@ -10,6 +10,10 @@ interface IosNativeSummaryCallback {
     fun complete(summary: String?, errorMessage: String?)
 }
 
+interface IosNativeSummaryTask {
+    fun cancel()
+}
+
 /** Small Swift-facing bridge for a system-managed on-device language model. */
 interface IosNativeSummaryBridge {
     fun canAttempt(): Boolean
@@ -19,7 +23,7 @@ interface IosNativeSummaryBridge {
         text: String,
         instruction: String,
         callback: IosNativeSummaryCallback,
-    )
+    ): IosNativeSummaryTask
 }
 
 /** Adapts Apple's asynchronous native model API to Harmonic's shared summary contract. */
@@ -54,7 +58,7 @@ class IosNativeLocalSummaryEngine(
 
     private suspend fun generateAttempt(content: String, request: SummaryRequest): SummaryResult =
         suspendCancellableCoroutine { continuation ->
-            bridge.summarize(
+            val task = bridge.summarize(
                 text = content,
                 instruction = request.prompt
                     ?.takeIf(String::isNotBlank)
@@ -85,5 +89,7 @@ class IosNativeLocalSummaryEngine(
                     }
                 },
             )
+            // Also cancels if the coroutine was cancelled while the native task was starting.
+            continuation.invokeOnCancellation { task.cancel() }
         }
 }

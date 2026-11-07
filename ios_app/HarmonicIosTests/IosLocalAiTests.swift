@@ -328,13 +328,64 @@ private final class NativeEmbeddingCallback: IosArticleEmbeddingCallback {
     }
 }
 
-private final class UnavailableAppleModel: IosNativeSummaryBridge {
+final class IosFoundationModelsCancellationTests: XCTestCase {
+    func testCancellationStopsGenerationAndAllowsAnotherRequest() async {
+        let started = expectation(description: "Native generation started")
+        let cancelled = expectation(description: "Native generation cancelled")
+        let bridge = IosFoundationModelsSummaryBridge { text, _ in
+            if text == "first" {
+                started.fulfill()
+                do {
+                    try await Task.sleep(for: .seconds(60))
+                    XCTFail("Cancelled generation continued running")
+                } catch {
+                    XCTAssertTrue(error is CancellationError)
+                    cancelled.fulfill()
+                    throw error
+                }
+            }
+            return "New summary"
+        }
+        let first = AppleSummaryCallback(finished: expectation(description: "Cancelled request completed"))
+        let task = bridge.summarize(text: "first", instruction: "Summarize", callback: first)
+        await fulfillment(of: [started], timeout: 5)
+        task.cancel()
+        await fulfillment(of: [cancelled, first.finished], timeout: 5)
+        XCTAssertNil(first.summary)
+        XCTAssertNotNil(first.error)
+
+        let next = AppleSummaryCallback(finished: expectation(description: "Next request completed"))
+        let nextTask = bridge.summarize(text: "next", instruction: "Summarize", callback: next)
+        await fulfillment(of: [next.finished], timeout: 5)
+        XCTAssertEqual(next.summary, "New summary")
+        XCTAssertNil(next.error)
+        withExtendedLifetime(nextTask) {}
+    }
+}
+
+private final class AppleSummaryCallback: IosNativeSummaryCallback {
+    let finished: XCTestExpectation
+    var summary: String?
+    var error: String?
+
+    init(finished: XCTestExpectation) { self.finished = finished }
+
+    func complete(summary: String?, errorMessage: String?) {
+        self.summary = summary
+        error = errorMessage
+        finished.fulfill()
+    }
+}
+
+private final class UnavailableAppleModel: IosNativeSummaryBridge, IosNativeSummaryTask {
     func canAttempt() -> Bool { true }
     func isAvailable() -> Bool { false }
     func availabilityMessage() -> String? { "Apple Intelligence unavailable in test" }
-    func summarize(text: String, instruction: String, callback: IosNativeSummaryCallback) {
+    func summarize(text: String, instruction: String, callback: IosNativeSummaryCallback) -> IosNativeSummaryTask {
         callback.complete(summary: nil, errorMessage: availabilityMessage())
+        return self
     }
+    func cancel() {}
 }
 
 private final class StubLiteRtBridge: IosLiteRtSummaryBridge, IosLiteRtSummaryTask {
