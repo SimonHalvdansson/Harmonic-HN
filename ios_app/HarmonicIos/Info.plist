@@ -16,10 +16,7 @@
     <string>$(PRODUCT_NAME)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$(MARKETING_VERSION)</string>
-    <key>CFBundleVersion</key>
-    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <!-- The Generate App Metadata build phase adds version values from gradle.properties. -->
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>LSRequiresIPhoneOS</key>

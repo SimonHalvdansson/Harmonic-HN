@@ -127,6 +127,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A90000000000000000000002 /* Build configuration list for PBXNativeTarget "HarmonicIos" */;
 			buildPhases = (
+				A60000000000000000000002 /* Generate App Metadata */,
 				A60000000000000000000001 /* Build HarmonicKit */,
 				A30000000000000000000001 /* Frameworks */,
 				A70000000000000000000001 /* Sources */,
@@ -231,6 +232,25 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A60000000000000000000002 /* Generate App Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../gradle.properties",
+				"$(SRCROOT)/HarmonicIos/Info.plist",
+				"$(SRCROOT)/scripts/generate-app-metadata.sh",
+			);
+			name = "Generate App Metadata";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/HarmonicInfo.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "/bin/zsh \"$SRCROOT/scripts/generate-app-metadata.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		A60000000000000000000001 /* Build HarmonicKit */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -340,7 +360,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
@@ -349,13 +368,12 @@
 					"$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = HarmonicIos/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/HarmonicInfo.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
@@ -377,7 +395,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
@@ -386,13 +403,12 @@
 					"$(SRCROOT)/../ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = HarmonicIos/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/HarmonicInfo.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",

@@ -6,6 +6,11 @@ Kotlin/Compose framework. The build phase uses an existing `JAVA_HOME`, Android 
 runtime, or the macOS Java 21 resolver in that order. Its generated dependency file lets Xcode skip
 the Gradle phase until KMP sources, resources, or build inputs change.
 
+The app's version and build number come from `harmonic.versionName` and
+`harmonic.versionCode` in the root `gradle.properties`, shared with Android and desktop.
+The Generate App Metadata build phase adds them to a generated copy of `HarmonicIos/Info.plist`
+before Xcode processes and signs the app, for both Debug and Release builds.
+
 The native shell owns Keychain credentials, the atomic Hacker News account record, system URL
 routing, sharing, clipboard access, connectivity, locale-aware time formatting, the app icon, and
 status-bar appearance. The comments scene embeds `WKWebView` with Compose UIKit interop so its
