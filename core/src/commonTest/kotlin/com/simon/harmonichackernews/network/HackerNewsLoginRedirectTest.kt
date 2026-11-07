@@ -34,11 +34,18 @@ class HackerNewsLoginRedirectTest {
                         ),
                     )
                 }
-                else -> {
+                2 -> {
                     assertEquals(HttpMethod.Get, request.method)
                     assertEquals("/submit", request.url.encodedPath)
                     assertTrue(request.headers[HttpHeaders.Cookie].orEmpty().contains("user=session-token"))
-                    respond("<html><span class='pagetop'><a id='me' href='user?id=Tester'>Tester</a></span><input name=\"fnid\" value=\"token\"></html>")
+                    respond("<html><span class='pagetop'><b>Submit</b></span><form><input name=\"fnid\" value=\"token\"></form></html>")
+                }
+                else -> {
+                    assertEquals(3, requestCount)
+                    assertEquals(HttpMethod.Get, request.method)
+                    assertEquals("/news", request.url.encodedPath)
+                    assertTrue(request.headers[HttpHeaders.Cookie].orEmpty().contains("user=session-token"))
+                    respond("<html><span class='pagetop'><a id='me' href='user?id=Tester'>Tester</a></span></html>")
                 }
             }
         }) {
@@ -54,7 +61,7 @@ class HackerNewsLoginRedirectTest {
                 repository.login(HackerNewsAccount("tester", "secret")),
             )
             assertEquals("Tester", result.authenticatedUsername)
-            assertEquals(2, requestCount)
+            assertEquals(3, requestCount)
         } finally {
             transport.close()
         }

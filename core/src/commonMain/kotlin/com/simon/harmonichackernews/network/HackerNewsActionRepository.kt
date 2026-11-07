@@ -437,12 +437,21 @@ private class CallerContextHackerNewsActionRepository(
         LOGIN_PARAM_GOTO to SUBMIT_PATH,
     )
 
-    private fun authenticatedLoginResult(body: String): HackerNewsActionResult =
-        HackerNewsActionParser.authenticatedUsername(body)?.let {
+    private suspend fun authenticatedLoginResult(body: String): HackerNewsActionResult {
+        // HN's submit page has a minimal header without the signed-in account link.
+        // Confirm the exact identity on the news page with the same session cookies.
+        val username = HackerNewsActionParser.authenticatedUsername(body) ?: when (
+            val page = loadPage(cookieClient, get(HackerNewsLinks.absolutePath("news")), useCookies = true)
+        ) {
+            is PageResult.Success -> HackerNewsActionParser.authenticatedUsername(page.body)
+            is PageResult.Result -> return page.value
+        }
+        return username?.let {
             HackerNewsActionResult.Success(authenticatedUsername = it)
         } ?: HackerNewsActionResult.Failure(
             "Login not confirmed", "HN did not identify the signed-in user.",
         )
+    }
 
     private suspend fun loadLoginPage(request: HttpRequest): PageResult =
         when (val page = loadLoginResponse(request)) {

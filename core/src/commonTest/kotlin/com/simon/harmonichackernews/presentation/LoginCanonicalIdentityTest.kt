@@ -31,7 +31,9 @@ class LoginCanonicalIdentityTest {
     @Test
     fun loginPersistsTheExactAuthenticatedHeaderIdentityAndOriginalPassword() = runTest {
         val accounts = MemoryAccounts()
-        val transport = HttpClient(MockEngine { respond(authenticatedPage("Canonical")) })
+        val transport = HttpClient(MockEngine { request ->
+            respond(if (request.url.encodedPath == "/news") authenticatedPage("Canonical") else submitPage())
+        })
         try {
             val result = assertIs<HackerNewsActionResult.Success>(
                 workflow(transport, accounts).login(" canonical ", " secret "),
@@ -47,7 +49,11 @@ class LoginCanonicalIdentityTest {
         var requests = 0
         val transport = HttpClient(MockEngine {
             requests++
-            respond(if (requests == 1) loginChallenge() else authenticatedPage("Canonical"))
+            respond(when (requests) {
+                1 -> loginChallenge()
+                2 -> submitPage()
+                else -> authenticatedPage("Canonical")
+            })
         })
         try {
             val workflow = workflow(transport, accounts)
@@ -58,14 +64,16 @@ class LoginCanonicalIdentityTest {
             )
             assertEquals("Canonical", result.authenticatedUsername)
             assertEquals(HackerNewsAccount("Canonical", "secret"), accounts.currentAccount)
-            assertEquals(2, requests)
+            assertEquals(3, requests)
         } finally { transport.close() }
     }
 
     @Test
     fun aDifferentAuthenticatedAccountFailsAndRemovesTheProvisionalLogin() = runTest {
         val accounts = MemoryAccounts()
-        val transport = HttpClient(MockEngine { respond(authenticatedPage("SomeoneElse")) })
+        val transport = HttpClient(MockEngine { request ->
+            respond(if (request.url.encodedPath == "/news") authenticatedPage("SomeoneElse") else submitPage())
+        })
         try {
             val result = assertIs<HackerNewsActionResult.Failure>(
                 workflow(transport, accounts).login("canonical", "secret"),
@@ -76,15 +84,40 @@ class LoginCanonicalIdentityTest {
     }
 
     @Test
-    fun aSubmitFormWithoutTheAuthenticatedHeaderCannotConfirmLogin() = runTest {
+    fun aSubmitFormWithoutAnAuthenticatedNewsPageCannotConfirmLogin() = runTest {
         val accounts = MemoryAccounts()
-        val transport = HttpClient(MockEngine { respond("<input name='fnid' value='fixture'>") })
+        var requests = 0
+        val transport = HttpClient(MockEngine { request ->
+            requests++
+            respond(if (request.url.encodedPath == "/news") {
+                "<span class='pagetop'><a href='login?goto=news'>login</a></span>"
+            } else submitPage())
+        })
         try {
             val result = assertIs<HackerNewsActionResult.Failure>(
                 workflow(transport, accounts).login("canonical", "secret"),
             )
             assertEquals("Login not confirmed", result.summary)
             assertNull(accounts.currentAccount)
+            assertEquals(2, requests)
+        } finally { transport.close() }
+    }
+
+    @Test
+    fun invalidCredentialsFailWithoutLoadingTheIdentityPage() = runTest {
+        val accounts = MemoryAccounts()
+        var requests = 0
+        val transport = HttpClient(MockEngine {
+            requests++
+            respond("<html><body>Bad login.</body></html>")
+        })
+        try {
+            val result = assertIs<HackerNewsActionResult.Failure>(
+                workflow(transport, accounts).login("canonical", "wrong-secret"),
+            )
+            assertEquals("Bad login", result.summary)
+            assertNull(accounts.currentAccount)
+            assertEquals(1, requests)
         } finally { transport.close() }
     }
 
@@ -119,6 +152,11 @@ class LoginCanonicalIdentityTest {
         }, accounts)
         return LoginWorkflow(accounts, service)
     }
+
+    private fun submitPage() = """
+        <html><body><span class="pagetop"><b>Submit</b></span>
+        <form><input name="fnid" value="fixture"></form></body></html>
+    """.trimIndent()
 
     private fun authenticatedPage(username: String) = """
         <html><body><span class="pagetop">
