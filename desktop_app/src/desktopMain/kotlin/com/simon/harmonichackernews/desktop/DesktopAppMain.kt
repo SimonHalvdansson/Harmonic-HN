@@ -124,6 +124,7 @@ fun main() {
     System.setProperty("apple.awt.application.name", "Harmonic")
     val desktopAppIcon = desktopAppIconImage
     installTaskbarIcon(desktopAppIcon)
+    val connectivity = if (trainingRun) null else DesktopConnectivityService()
     val bootstrap = try {
         val metadata = DesktopRuntimeMetadata.load()
         if (trainingRun) {
@@ -132,8 +133,10 @@ fun main() {
         } else DesktopHarmonicAppBootstrap.production(
             userAgent = "Harmonic-HN-Desktop/${metadata.versionName}",
             metadata = metadata,
+            connectivity = checkNotNull(connectivity),
         )
     } catch (error: Exception) {
+        connectivity?.close()
         if (trainingRun) throw error
         showDesktopStartupFailure(desktopAppIcon, error)
         return
@@ -263,6 +266,7 @@ fun main() {
     } finally {
         sceneOwner.close()
         bootstrap.close()
+        connectivity?.close()
     }
 }
 
@@ -562,6 +566,8 @@ private fun DesktopStoriesContent(
     val scope = rememberCoroutineScope()
     val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
     val latestAppSettings by rememberUpdatedState(appSettings)
+    val unmetered by app.platform.connectivity.unmeteredChanges.collectAsState(false)
+    val online by app.platform.connectivity.onlineChanges.collectAsState(true)
     val preloadCoordinator = remember(app, scope) {
         CommentsPreloadCoordinator(
             preloads = app.commentsPreloads,
@@ -650,6 +656,8 @@ private fun DesktopStoriesContent(
         appSettings.comments.preloadCommentsMode,
         appSettings.comments.preloadCommentsMinimumBattery,
         appSettings.reading.useAlgoliaApi,
+        unmetered,
+        online,
     ) {
         preloadCoordinator.setEnabled(
             appSettings.comments.preloadCommentsFromStories,

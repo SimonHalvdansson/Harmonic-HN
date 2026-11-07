@@ -93,6 +93,7 @@ val buildMacWebView = if (isMacDesktopBuild) {
             macWebViewSource.asFile.absolutePath,
             "-framework", "AppKit",
             "-framework", "WebKit",
+            "-framework", "Network",
             "-o", outputFile.absolutePath,
         )
     }

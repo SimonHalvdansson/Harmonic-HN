@@ -103,6 +103,7 @@ fun PortableSettingsDetail(
         }
         SettingsSection.Comments -> CommentsSettingsRoute(
             repository = app.settings,
+            volumeNavigationSupported = false,
             showNavigation = singlePane,
             onBack = onBack,
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },

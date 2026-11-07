@@ -1,8 +1,50 @@
 #import <AppKit/AppKit.h>
 #import <WebKit/WebKit.h>
+#import <Network/Network.h>
 #import <dispatch/dispatch.h>
 #import <limits.h>
 #import <string.h>
+
+@interface HarmonicNetworkMonitor : NSObject
+@property(nonatomic, strong) nw_path_monitor_t monitor;
+@property(atomic, assign) BOOL online;
+@property(atomic, assign) BOOL unmetered;
+@end
+@implementation HarmonicNetworkMonitor
+@end
+
+__attribute__((visibility("default")))
+void *harmonic_network_monitor_create(void) {
+    HarmonicNetworkMonitor *owner = [HarmonicNetworkMonitor new];
+    owner.monitor = nw_path_monitor_create();
+    __weak HarmonicNetworkMonitor *weakOwner = owner;
+    nw_path_monitor_set_update_handler(owner.monitor, ^(nw_path_t path) {
+        HarmonicNetworkMonitor *current = weakOwner;
+        current.online = nw_path_get_status(path) == nw_path_status_satisfied;
+        current.unmetered = current.online &&
+            !nw_path_is_expensive(path) && !nw_path_is_constrained(path);
+    });
+    nw_path_monitor_set_queue(owner.monitor, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0));
+    nw_path_monitor_start(owner.monitor);
+    return (__bridge_retained void *)owner;
+}
+
+__attribute__((visibility("default")))
+int harmonic_network_monitor_online(void *pointer) {
+    return pointer != NULL && ((__bridge HarmonicNetworkMonitor *)pointer).online ? 1 : 0;
+}
+
+__attribute__((visibility("default")))
+int harmonic_network_monitor_unmetered(void *pointer) {
+    return pointer != NULL && ((__bridge HarmonicNetworkMonitor *)pointer).unmetered ? 1 : 0;
+}
+
+__attribute__((visibility("default")))
+void harmonic_network_monitor_destroy(void *pointer) {
+    if (pointer == NULL) return;
+    HarmonicNetworkMonitor *owner = (__bridge_transfer HarmonicNetworkMonitor *)pointer;
+    nw_path_monitor_cancel(owner.monitor);
+}
 
 // WebKit owns the cursor while the pointer is inside its native surface. Hand it back when
 // crossing into Compose, whose AWT cursor may otherwise still believe it is already the arrow.

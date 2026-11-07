@@ -325,6 +325,10 @@ internal class MacWkWebViewCanvas(
 }
 
 internal interface MacWebViewApi : Library {
+    fun harmonic_network_monitor_create(): Pointer?
+    fun harmonic_network_monitor_online(monitor: Pointer): Int
+    fun harmonic_network_monitor_unmetered(monitor: Pointer): Int
+    fun harmonic_network_monitor_destroy(monitor: Pointer)
     fun harmonic_webview_retain_view(parentView: Pointer)
     fun harmonic_webview_release_view(parentView: Pointer)
     fun harmonic_webview_create(
@@ -408,7 +412,7 @@ private fun macAwtContentView(window: java.awt.Window): Pointer {
     return Pointer(pointer)
 }
 
-private object MacWebViewLibrary {
+internal object MacWebViewLibrary {
     val api: MacWebViewApi by lazy {
         check(System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
             "The native WKWebView bridge can only be loaded on macOS"

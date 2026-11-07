@@ -34,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,6 +90,11 @@ import com.simon.harmonichackernews.ui.reader.ReaderModeResources
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import com.simon.harmonichackernews.presentation.WebContentPagePolicy
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 import com.simon.harmonichackernews.presentation.WebContentPageText
@@ -118,7 +124,18 @@ internal interface DesktopBrowserHost {
 
 internal class DesktopCommentsWebViewSession(
     initialUrl: String,
+    navigation: DesktopArticleNavigation = DesktopArticleNavigation(),
+    private val scope: CoroutineScope? = null,
+    private val isOnline: () -> Boolean = { true },
+    private val loadCachedArticle: suspend (String) -> DesktopCachedArticle? = { null },
 ) {
+    @Volatile var navigation = navigation
+    var onNavigationStarted: (String) -> Unit = {}
+    var onPageFinished: (String) -> Unit = {}
+    var onLoadFailed: () -> Unit = {}
+    private var cacheJob: Job? = null
+    private var cacheAttempted = false
+    private var cachedSourceUrl: String? = null
     private var browserHost by mutableStateOf<DesktopBrowserHost?>(null)
     var backgroundLoadRequested by mutableStateOf(false)
         private set
@@ -174,12 +191,65 @@ internal class DesktopCommentsWebViewSession(
 
     fun attach(browserHost: DesktopBrowserHost) {
         this.browserHost = browserHost
+        load(currentPageUrl)
+    }
+
+    fun load(url: String) {
+        val host = browserHost ?: return
+        cacheJob?.cancel()
+        cacheJob = null
+        cacheAttempted = false
+        cachedSourceUrl = null
+        documentGeneration++
+        currentPageUrl = navigation.resolve(url)
+        isLoading = true
+        loadError = null
         reader?.navigationStarted(currentPageUrl)
-        browserHost.loadUrl(currentPageUrl)
+        onNavigationStarted(currentPageUrl)
+        val target = currentPageUrl
+        if (!isOnline() && tryCachedArticle(host, target) { host.loadUrl(target) }) return
+        host.loadUrl(target)
+    }
+
+    /** Native policy callbacks must not touch Compose state or call synchronously back into WebKit. */
+    fun allowNavigation(host: DesktopBrowserHost, url: String?, mainFrame: Boolean): Boolean {
+        if (!mainFrame || url == null) return true
+        val target = navigation.resolve(url)
+        if (target == url) return true
+        EventQueue.invokeLater { if (browserHost === host) load(target) }
+        return false
+    }
+
+    private fun tryCachedArticle(host: DesktopBrowserHost, url: String, onMissing: () -> Unit = {}): Boolean {
+        val worker = scope ?: return false
+        if (cacheAttempted) return false
+        cacheAttempted = true
+        val generation = documentGeneration
+        cacheJob = worker.launch {
+            val cached = try { loadCachedArticle(url) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { null }
+            if (browserHost !== host || documentGeneration != generation) return@launch
+            if (cached == null) {
+                onMissing()
+            } else {
+                documentGeneration++
+                cachedSourceUrl = cached.sourceUrl
+                currentPageUrl = cached.sourceUrl
+                isLoading = true
+                loadError = null
+                reader?.navigationStarted(cached.sourceUrl)
+                // Keep downloaded HTML at an opaque origin; <base> only resolves its resources.
+                host.loadHtml(WebContentPagePolicy.cachedArticleHtml(cached.html, cached.sourceUrl))
+            }
+        }
+        return true
     }
 
     fun detach(browserHost: DesktopBrowserHost) {
         if (this.browserHost === browserHost) {
+            cacheJob?.cancel()
+            cacheJob = null
             this.browserHost = null
             documentGeneration++
             reader?.navigationStarted(null)
@@ -191,7 +261,8 @@ internal class DesktopCommentsWebViewSession(
         snapshot: DesktopBrowserSnapshot,
     ) {
         if (this.browserHost !== browserHost) return
-        val navigatedUrl = snapshot.url.takeUnless(::isTransientBrowserUrl)
+        val navigatedUrl = WebContentPagePolicy.cachedArticleDisplayUrl(snapshot.url, cachedSourceUrl)
+            ?.takeUnless(::isTransientBrowserUrl)
         if (snapshot.loadError != null) {
             if (loadError != snapshot.loadError || currentPageUrl != navigatedUrl) {
                 documentGeneration++
@@ -202,6 +273,8 @@ internal class DesktopCommentsWebViewSession(
             isLoading = false
             canGoBack = snapshot.canGoBack
             canGoForward = snapshot.canGoForward
+            onLoadFailed()
+            tryCachedArticle(browserHost, currentPageUrl)
             return
         }
         loadError = null
@@ -209,8 +282,13 @@ internal class DesktopCommentsWebViewSession(
             (navigatedUrl != null && navigatedUrl != currentPageUrl)
         val finished = !snapshot.isLoading && (isLoading || started)
         if (started) {
+            if (navigatedUrl != null && navigatedUrl != cachedSourceUrl) {
+                cachedSourceUrl = null
+                cacheAttempted = false
+            }
             documentGeneration++
             reader?.navigationStarted(navigatedUrl)
+            navigatedUrl?.let(onNavigationStarted)
         }
         navigatedUrl?.let { currentPageUrl = it }
         snapshot.title
@@ -220,7 +298,10 @@ internal class DesktopCommentsWebViewSession(
         isLoading = snapshot.isLoading || (!hasLoadedContent && navigatedUrl == null)
         canGoBack = snapshot.canGoBack
         canGoForward = snapshot.canGoForward
-        if (finished && navigatedUrl != null) reader?.pageFinished(navigatedUrl)
+        if (finished && navigatedUrl != null) {
+            reader?.pageFinished(navigatedUrl)
+            onPageFinished(navigatedUrl)
+        }
     }
 
     fun currentUrl(): String = currentPageUrl
@@ -230,8 +311,14 @@ internal class DesktopCommentsWebViewSession(
     fun navigateForward() = browserHost?.navigateForward() ?: Unit
 
     fun reload() {
+        if (cachedSourceUrl != null || !isOnline()) {
+            load(currentPageUrl)
+            return
+        }
+        cacheAttempted = false
         documentGeneration++
         reader?.navigationStarted(currentPageUrl)
+        onNavigationStarted(currentPageUrl)
         isLoading = true
         loadError = null
         browserHost?.reload(currentPageUrl)
@@ -261,17 +348,23 @@ internal fun DesktopCommentsWebViewScaffold(
     reading: ReadingPreferences,
     onReaderMessage: (String) -> Unit,
     onOpenExternal: (String) -> Unit,
+    isOnline: () -> Boolean,
+    loadCachedArticle: suspend (String) -> DesktopCachedArticle?,
     comments: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val readerMessage by rememberUpdatedState(onReaderMessage)
+    val cachedArticleLoader by rememberUpdatedState(loadCachedArticle)
+    val online by rememberUpdatedState(isOnline)
+    val navigation = DesktopArticleNavigation(reading.archiveRedirectDomains.toList(), reading.redirectNitter, reading.nitterInstanceUrl)
     val session = remember(initialUrl) {
-        DesktopCommentsWebViewSession(initialUrl).also { browser ->
+        DesktopCommentsWebViewSession(initialUrl, navigation, scope, { online() }, { cachedArticleLoader(it) }).also { browser ->
             browser.reader = NativeReaderModeSession(
                 scope, browser::evaluateResult, script = ReaderModeResources::script, onMessage = { readerMessage(it) },
             )
         }
     }
+    SideEffect { session.navigation = navigation }
     val colors = MaterialTheme.colorScheme
     LaunchedEffect(session, reading, colors, dark) {
         session.reader?.configure(reading) {
@@ -377,12 +470,16 @@ private fun SwtEdgeBrowserSurface(
 ) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val browserCanvas = remember(session) {
-        SwtEdgeBrowserCanvas(
+        lateinit var canvas: SwtEdgeBrowserCanvas
+        canvas = SwtEdgeBrowserCanvas(
             onStateChanged = session::updateFromBrowser,
             onError = { error ->
                 errorMessage = error.message ?: "Microsoft Edge WebView2 could not be started"
             },
+            navigationPolicy = { url, mainFrame -> session.allowNavigation(canvas, url, mainFrame) },
+            blockNewWindows = false,
         )
+        canvas
     }
 
     DisposableEffect(browserCanvas, session) {
@@ -425,12 +522,15 @@ private fun MacWkWebViewSurface(
 ) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val browserCanvas = remember(session) {
-        MacWkWebViewCanvas(
+        lateinit var canvas: MacWkWebViewCanvas
+        canvas = MacWkWebViewCanvas(
             onStateChanged = session::updateFromBrowser,
             onError = { error ->
                 errorMessage = error.message ?: "The macOS WebView could not be started"
             },
+            navigationPolicy = { url, mainFrame -> session.allowNavigation(canvas, url, mainFrame) },
         )
+        canvas
     }
 
     DisposableEffect(browserCanvas, session) {
@@ -576,6 +676,7 @@ internal class SwtEdgeBrowserCanvas(
     private val browserStyle: Int = SWT.EDGE,
     private val navigationPolicy: ((String?, Boolean) -> Boolean)? = null,
     private val onEscape: (() -> Unit)? = null,
+    private val blockNewWindows: Boolean = navigationPolicy != null,
 ) : Canvas(), DesktopBrowserHost {
     private val started = AtomicBoolean(false)
     private val disposed = AtomicBoolean(false)
@@ -724,7 +825,7 @@ internal class SwtEdgeBrowserCanvas(
                 }
             },
         )
-        if (navigationPolicy != null) {
+        if (blockNewWindows) {
             // CAPTCHA privacy/help links must not spawn an unrestricted browser window.
             localBrowser.addOpenWindowListener { it.required = true }
             localBrowser.addCloseWindowListener { /* The enclosing dialog owns its lifetime. */ }

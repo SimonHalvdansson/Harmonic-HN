@@ -41,6 +41,9 @@ import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
 import com.simon.harmonichackernews.navigation.MainStoryRequest
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.StoryLinkPreviewSession
+import com.simon.harmonichackernews.network.WebPageExtractor
+import com.simon.harmonichackernews.network.NitterPreview
+import com.simon.harmonichackernews.data.NitterInfo
 import com.simon.harmonichackernews.platform.ExternalLinkRequest
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.presentation.CommentsPlatformEffect
@@ -72,6 +75,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private class DesktopCommentsHost(
     val binding: CommentsFeatureBinding,
@@ -125,7 +130,7 @@ internal fun DesktopCommentsContent(
     }
     val featureState by host.store.state.collectAsState()
     val reading = featureState.settings?.reading
-    LaunchedEffect(host, reading, featureState.story?.url) {
+    LaunchedEffect(host, reading, featureState.story?.url, host.webViewSession) {
         if (reading == null) return@LaunchedEffect
         coroutineScope {
             val session = app.createStoryLinkPreviewSession(
@@ -135,11 +140,26 @@ internal fun DesktopCommentsContent(
                 onPreviewChanged = host.store::refreshStoryPresentation,
             )
             host.previews = session
+            val browser = host.webViewSession
+            val extractor = object : WebPageExtractor<NitterInfo> {
+                override val currentUrl get() = browser?.currentUrl()
+                override suspend fun extract(): NitterInfo? = browser?.evaluateResult(NitterPreview.extractionScript)
+                    ?.let { runCatching { NitterPreview.parseJavascriptResult(it) }.getOrNull() }
+            }
+            browser?.onNavigationStarted = { session.prepareLoad(it, extractor) }
+            browser?.onPageFinished = { session.onPageFinished(it, extractor) }
+            browser?.onLoadFailed = session::offlineFallback
             try {
                 session.loadNetworkPreviews()
+                if (browser?.hasLoadedContent == true && !browser.isLoading && browser.loadError == null) {
+                    session.onPageFinished(browser.currentUrl(), extractor)
+                }
                 awaitCancellation()
             } finally {
                 session.dispose()
+                browser?.onNavigationStarted = {}
+                browser?.onPageFinished = {}
+                browser?.onLoadFailed = {}
                 if (host.previews === session) host.previews = null
             }
         }
@@ -302,6 +322,24 @@ internal fun DesktopCommentsContent(
                 reading = featureState.settings?.reading ?: app.userSettings.reading,
                 onReaderMessage = { scene.userMessages.show(it) },
                 onOpenExternal = { scene.links.open(it, preferInApp = false) },
+                isOnline = app.platform.connectivity::isOnline,
+                loadCachedArticle = { requestedUrl ->
+                    val story = host.controller.story
+                    withContext(Dispatchers.IO) {
+                        val sourceUrl = app.storyCache.articleUrl(story.id)
+                        val navigation = DesktopArticleNavigation(
+                            reading?.archiveRedirectDomains.orEmpty().toList(),
+                            reading?.redirectNitter == true,
+                            reading?.nitterInstanceUrl ?: com.simon.harmonichackernews.network.NitterInstance.DEFAULT_URL,
+                        )
+                        // A linked page's failure must never display the original story's snapshot.
+                        val allowed = listOfNotNull(story.url, sourceUrl, storyUrl, story.url?.let(navigation::resolve))
+                        if (requestedUrl.substringBefore('#') !in allowed.map { it.substringBefore('#') }) null
+                        else app.storyCache.loadArticle(story.id)?.let { html ->
+                            DesktopCachedArticle(sourceUrl ?: story.url ?: requestedUrl, html)
+                        }
+                    }
+                },
                 comments = comments,
             )
         } else {

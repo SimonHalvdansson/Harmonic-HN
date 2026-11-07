@@ -15,9 +15,18 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 
-internal data object DesktopConnectivity : ConnectivityService {
+data object DesktopConnectivity : ConnectivityService {
+    override val onlineChanges: Flow<Boolean> = observeDesktopConnectivity(::isOnline)
+        .flowOn(Dispatchers.IO)
+        .shareIn(CoroutineScope(SupervisorJob() + Dispatchers.IO), SharingStarted.WhileSubscribed(5_000), replay = 1)
+
     override fun isOnline(): Boolean = if (DesktopOperatingSystem.isWindows) {
         runCatching {
             WindowsInternetStatus.INSTANCE.InternetGetConnectedState(IntByReference(), 0)
@@ -28,7 +37,7 @@ internal data object DesktopConnectivity : ConnectivityService {
 
     /**
      * The desktop host has no portable connection-cost API. Do not claim that a connection is
-     * unmetered unless the host can prove it; none of the current desktop features consume this.
+     * unmetered unless the host supplies a native connection-cost detector.
      */
     override fun isUnmetered(): Boolean = false
 
@@ -38,6 +47,14 @@ internal data object DesktopConnectivity : ConnectivityService {
         } == true
     }.getOrDefault(false)
 }
+
+/** Poll only while a screen is observing, without querying native network state on the UI thread. */
+internal fun observeDesktopConnectivity(readOnline: () -> Boolean): Flow<Boolean> = flow {
+    while (currentCoroutineContext().isActive) {
+        emit(readOnline())
+        delay(1_000)
+    }
+}.distinctUntilChanged()
 
 private interface WindowsInternetStatus : StdCallLibrary {
     fun InternetGetConnectedState(flags: IntByReference, reserved: Int): Boolean

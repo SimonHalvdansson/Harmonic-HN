@@ -82,8 +82,9 @@ class DesktopHarmonicAppBootstrap(
             userAgent: String,
             metadata: AppMetadata,
             paths: DesktopAppPaths = DesktopAppPaths.default(),
+            connectivity: ConnectivityService = DesktopConnectivity,
         ): DesktopHarmonicAppBootstrap = production(
-            userAgent, metadata, paths, desktopCredentialStore(),
+            userAgent, metadata, paths, desktopCredentialStore(), connectivity,
         )
 
         internal fun production(
@@ -91,6 +92,7 @@ class DesktopHarmonicAppBootstrap(
             metadata: AppMetadata,
             paths: DesktopAppPaths,
             credentials: CredentialStore,
+            connectivity: ConnectivityService = DesktopConnectivity,
         ): DesktopHarmonicAppBootstrap {
             Files.createDirectories(paths.configDirectory)
             Files.createDirectories(paths.filesDirectory)
@@ -138,7 +140,9 @@ class DesktopHarmonicAppBootstrap(
                 localModels = localAi.models,
                 articleEmbeddingEngine = localAi.articleEmbeddings,
                 storyCacheRepository = persistentStorage.storyCacheRepository,
-                articleSnapshotStore = persistentStorage.articleSnapshotStore,
+                articleSnapshotStore = persistentStorage.articleSnapshotStore.takeIf {
+                    DesktopOperatingSystem.isMac || DesktopOperatingSystem.isWindows
+                },
                 pdfDownloadStore = persistentStorage.pdfDownloadStore,
             )
             return try {
@@ -154,7 +158,7 @@ class DesktopHarmonicAppBootstrap(
                         externalLinks = DesktopExternalLinkOpener,
                         sharing = DesktopShareService,
                         clipboard = DesktopClipboardService,
-                        connectivity = DesktopConnectivity,
+                        connectivity = connectivity,
                         timeFormatting = DesktopTimeFormatter(),
                         localSummary = localAi.summary,
                     ),

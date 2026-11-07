@@ -113,6 +113,7 @@ fun CommentsSettingsScreen(
     onUserAvatarsEnabledChanged: (Boolean) -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
+    volumeNavigationSupported: Boolean = true,
     focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
 ) {
     val listState = rememberSettingsListState()
@@ -267,7 +268,7 @@ fun CommentsSettingsScreen(
                     summary = "Navigate between top level comments",
                 )
             }
-            row {
+            if (volumeNavigationSupported) row {
                 DialogRow(
                     "Volume buttons for navigation",
                     state.volumeNavigation.label,
