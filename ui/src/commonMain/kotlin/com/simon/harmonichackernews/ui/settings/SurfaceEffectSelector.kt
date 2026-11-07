@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -76,11 +77,12 @@ private fun SurfaceEffectIcon(mode: SurfaceEffectMode, selected: Boolean) {
         else itemBackgroundColor()
     val outline = MaterialTheme.colorScheme.outlineVariant
     val sample = SurfaceEffectPreferences(mode = mode)
+    val blurStyle = remember(backdrop) { HazeBlurStyle { backgroundColor(backdrop) } }
     CompositionLocalProvider(
         LocalHazePreferences provides sample,
         // The blur kernel extends beyond this tiny source. Fill that sampled area like
         // an opaque page, so transparent edges cannot reveal the sharp original bars.
-        LocalHazeBlurStyle provides HazeBlurStyle { backgroundColor(backdrop) },
+        LocalHazeBlurStyle provides blurStyle,
     ) {
         HazeHost {
             val hazeState = currentSharedHazeState()

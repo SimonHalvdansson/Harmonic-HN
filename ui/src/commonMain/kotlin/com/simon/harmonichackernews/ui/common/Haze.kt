@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,8 +19,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeSourceSelection
-import dev.chrisbanes.haze.ExperimentalHazeApi
-import dev.chrisbanes.haze.glass.GlassDefaults
 import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.GlassOptics
 import dev.chrisbanes.haze.glass.OpticalSizePoint
@@ -111,7 +111,6 @@ internal fun Modifier.sharedHazeSource(
 }
 
 @Composable
-@OptIn(ExperimentalHazeApi::class)
 internal fun Modifier.sharedHazeBackground(
     hazeState: HazeState?,
     surfaceColor: Color,
@@ -169,7 +168,7 @@ internal fun Modifier.sharedHazeBackground(
                 // Haze 2's Regular optics mix sharp content into compact surfaces (depth < 1).
                 // Keep full diffusion with lighter compact-surface blur and Regular refraction.
                 if (glass[GlassSwitch.AdaptiveOptics]) {
-                    optics(GlassDefaults.optics.copy(
+                    optics(GlassOptics.regular.copy(
                         depth = OpticalSizeValue.Fixed(1f),
                         blurRadius = OpticalSizeValue.Responsive(
                             OpticalSizePoint(64.dp, 12.dp),
@@ -193,15 +192,19 @@ internal fun Modifier.sharedHazeBackground(
         val frostedColor = if (glassAppearance == HazeGlassAppearance.Dialog) {
             surfaceColor.copy(alpha = surfaceColor.alpha * 0.78f)
         } else surfaceColor
-        Modifier.hazeBlur(
-            input = HazeInput.Sources(hazeState, selection = sourceSelection),
-            style = HazeBlurStyle {
-                alpha(effectAlpha)
+        val currentEffectAlpha = rememberUpdatedState(effectAlpha)
+        val blurStyle = remember(blurRadius, frostedColor) {
+            HazeBlurStyle {
+                alpha(currentEffectAlpha.value)
                 blurRadius(blurRadius)
                 colorEffects(listOf(HazeColorEffect.tint(frostedColor)))
                 noiseFactor(0f)
                 fallbackColorEffect(HazeColorEffect.tint(frostedColor))
-            },
+            }
+        }
+        Modifier.hazeBlur(
+            input = HazeInput.Sources(hazeState, selection = sourceSelection),
+            style = blurStyle,
         )
     })
 }

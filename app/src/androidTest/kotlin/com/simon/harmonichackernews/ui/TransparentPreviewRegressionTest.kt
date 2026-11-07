@@ -45,6 +45,7 @@ class TransparentPreviewRegressionTest {
                     StoryPreviewTransitionOverlay(
                         StoryPreviewSharedTransitionState(
                             progress = { progress.floatValue }, active = true, hideTargetContent = true,
+                            closing = false,
                             drawOverlayShadows = false,
                             source = StoryPreviewSourceGeometry(container = bounds, image = bounds),
                             sourceSnapshot = { if (it == StoryPreviewSourceElement.Image) source else null },
