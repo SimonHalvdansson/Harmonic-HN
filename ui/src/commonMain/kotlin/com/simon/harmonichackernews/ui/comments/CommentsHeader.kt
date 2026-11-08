@@ -474,7 +474,7 @@ fun CommentsHeader(
                                                         }
                                                         .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
                                                         .animateEnterExit(
-                                                            enter = fadeIn(tween(80, delayMillis = 220)),
+                                                            enter = fadeIn(tween(140, delayMillis = 160)),
                                                             exit = fadeOut(tween(80)),
                                                         ),
                                                 )
