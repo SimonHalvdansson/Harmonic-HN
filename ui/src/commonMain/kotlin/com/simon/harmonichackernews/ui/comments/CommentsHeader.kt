@@ -477,6 +477,7 @@ fun CommentsHeader(
                                                             enter = fadeIn(tween(140, delayMillis = 160)),
                                                             exit = fadeOut(tween(80)),
                                                         ),
+                                                    animateSettingsPreview = animateSettingsPreview,
                                                 )
                                             }
                                         }
@@ -489,6 +490,7 @@ fun CommentsHeader(
                                                     HeaderStackedMetrics(
                                                         controller, visualSettings, textStyle, background,
                                                         visual.metaInfo == CommentsHeaderMetaInfo.ON_IMAGE && !visual.imageVisible,
+                                                        animateSettingsPreview = animateSettingsPreview,
                                                     )
                                                 }
                                             }
@@ -641,6 +643,7 @@ fun CommentsHeader(
                                             voteLoading = controller.storyVoteLoading,
                                             commented = controller.storyCommented,
                                             headerColor = background,
+                                            animateSettingsPreview = animateSettingsPreview,
                                         )
                                     }
                                 }

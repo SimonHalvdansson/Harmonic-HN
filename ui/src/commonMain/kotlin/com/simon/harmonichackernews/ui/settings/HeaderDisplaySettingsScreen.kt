@@ -271,6 +271,13 @@ fun HeaderDisplaySettingsRoute(
                     )
                     SettingsDivider()
                     SwitchSettingRow(
+                        title = "Points",
+                        icon = Res.drawable.ic_thumb_up,
+                        checked = settings.comments.showHeaderPoints,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_POINTS, it) },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
                         title = "Article category tags",
                         icon = Res.drawable.ic_label,
                         enabled = categoryPreferences.enabled,

@@ -175,7 +175,8 @@ internal fun settingsSearchCatalog(
         "Post details" to "metadata title author points time score",
         "Domain" to "website url host",
         "Article category tags" to "categorization labels post header",
-        "Thumbnail" to "favicon website logo icon")
+        "Thumbnail" to "favicon website logo icon",
+        "Points" to "score votes post header indicator")
     group(SettingsSection.HeaderDisplay, "Appearance",
         "Background tint" to "header palette color colour",
         "Bottom edge" to "header shape rounded corners")

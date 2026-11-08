@@ -118,6 +118,7 @@ data class CommentPreferences(
     val headerMetaInfo: CommentsHeaderMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE,
     val headerTint: CommentsHeaderTint = CommentsHeaderTint.IMAGE,
     val showHeaderDomain: Boolean = true,
+    val showHeaderPoints: Boolean = true,
     val showHeaderCategories: Boolean = true,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val swipeBack: Boolean = false,

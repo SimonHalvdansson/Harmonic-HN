@@ -9,6 +9,26 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CommentsHeaderPreferencesTest {
+    @Test fun headerPointsDefaultOnAndSurviveRecreationAndBackupIndependentlyOfStories() {
+        val source = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(source, emptyFlow())
+        assertTrue(repository.snapshot().comments.showHeaderPoints)
+        repository.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, false)
+        assertTrue(repository.snapshot().comments.showHeaderPoints)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_POINTS, false)
+        repository.setStoryBoolean(StoryBooleanPreference.SHOW_POINTS, true)
+        val restored = AppSettingsRepository(source, emptyFlow()).snapshot()
+        assertFalse(CommentDisplaySettings.from(restored.comments, false, false, true, false).showHeaderPoints)
+        assertTrue(restored.story.showPoints)
+
+        val destination = InMemoryKeyValueStore()
+        val transfer = SettingsTransfer(destination, InMemoryKeyValueStore())
+        assertIs<SettingsImportResult.Imported>(transfer.import(SettingsTransfer(source, InMemoryKeyValueStore()).export()))
+        assertFalse(AppSettingsRepository(destination, emptyFlow()).snapshot().comments.showHeaderPoints)
+        transfer.import("""{"format":"harmonic-settings","version":1,"settings":{"pref_comments_header_points":null}}""")
+        assertTrue(AppSettingsRepository(destination, emptyFlow()).snapshot().comments.showHeaderPoints)
+    }
+
     @Test fun headerTintAndFaviconAreIndependentAndSurviveBackup() {
         val source = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(source, emptyFlow())

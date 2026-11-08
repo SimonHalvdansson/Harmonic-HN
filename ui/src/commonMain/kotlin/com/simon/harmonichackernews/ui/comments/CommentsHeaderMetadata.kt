@@ -70,6 +70,7 @@ fun CommentsHeaderMetadata(
     commented: Boolean = false,
     headerColor: Color = MaterialTheme.colorScheme.surface,
     storyPosterTagColor: UserTagColor = UserTagColor.Theme,
+    animateSettingsPreview: Boolean = false,
 ) {
     val commentIcon = if (commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment
     if (!story.loaded || settings.headerMetaInfo == com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.ON_IMAGE) return
@@ -104,6 +105,8 @@ fun CommentsHeaderMetadata(
                 HeaderDetailButton(
                     icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
                     label = if (story.isComment) "" else story.score.toString(),
+                    showLabel = settings.showHeaderPoints,
+                    animateLabelVisibility = animateSettingsPreview,
                     description = if (upvoted) "Remove vote" else "Upvote",
                     typography = typography, textStyle = textStyle,
                     headerColor = headerColor,
@@ -136,14 +139,15 @@ fun CommentsHeaderMetadata(
             modifier = Modifier
                 .weight(1f)
                 .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (animateSettingsPreview) 0.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (!story.isComment) {
-                HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography, textStyle)
+            val spacing = if (animateSettingsPreview) Modifier.padding(end = 10.dp) else Modifier
+            HeaderSettingsVisibility(!story.isComment && settings.showHeaderPoints, animateSettingsPreview) { modifier ->
+                HeaderMetaItem(Res.drawable.ic_thumb_up, story.score.toString(), typography, textStyle, modifier.then(spacing))
             }
-            HeaderMetaItem(commentIcon, story.descendants.toString(), typography, textStyle, highlighted = commented)
-            HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle)
+            HeaderMetaItem(commentIcon, story.descendants.toString(), typography, textStyle, spacing, highlighted = commented)
+            HeaderMetaItem(Res.drawable.ic_schedule, relativeTimeOnResume(story.createdAtEpochSeconds), typography, textStyle, spacing)
             HeaderMetaItem(Res.drawable.ic_account_circle, posterLabel, typography, textStyle,
                 annotatedLabel = annotatedPosterLabel)
 
@@ -176,6 +180,8 @@ private fun HeaderDetailButton(
     highlighted: Boolean = false,
     onClick: () -> Unit,
     annotatedLabel: AnnotatedString? = null,
+    showLabel: Boolean = true,
+    animateLabelVisibility: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val background by animateColorAsState(
@@ -208,8 +214,11 @@ private fun HeaderDetailButton(
                         tint = if (highlighted) colors.primary else LocalContentColor.current,
                     )
                 }
-                if (label.isNotEmpty()) {
-                    Text(annotatedLabel ?: AnnotatedString(label), Modifier.padding(start = 6.dp).weight(1f, fill = false),
+                HeaderSettingsVisibility(label.isNotEmpty() && showLabel, animateLabelVisibility,
+                    // Fade the full score while its slot resizes to move the vote icon smoothly.
+                    clip = false,
+                    modifier = Modifier.weight(1f, fill = false)) { labelModifier ->
+                    Text(annotatedLabel ?: AnnotatedString(label), labelModifier.padding(start = 6.dp),
                         fontFamily = typography.family, fontSize = typography.commentsHeaderMetaSize.sp,
                         fontWeight = FontWeight.Medium, style = textStyle,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
