@@ -7,6 +7,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 fun AndroidCommentsSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
@@ -18,6 +19,7 @@ fun AndroidCommentsSettingsScreen(
         twoPane = twoPane,
         showNavigation = showNavigation,
         onBack = onBack,
+        onSpacingRequested = onSpacingRequested,
         onThreadDepthRequested = onThreadDepthRequested,
         onQuoteHighlightingRequested = onQuoteHighlightingRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,

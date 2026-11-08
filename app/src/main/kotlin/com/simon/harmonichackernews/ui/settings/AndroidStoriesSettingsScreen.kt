@@ -10,6 +10,7 @@ import com.simon.harmonichackernews.widget.refreshStoryWidgets
 fun AndroidStoriesSettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
@@ -24,6 +25,7 @@ fun AndroidStoriesSettingsScreen(
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,
         onBack = onBack,
+        onSpacingRequested = onSpacingRequested,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,

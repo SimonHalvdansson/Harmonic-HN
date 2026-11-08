@@ -72,6 +72,7 @@ data class CommentsSettingsUiState(
     val markNewComments: Boolean = true,
     val swipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
+    val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -107,6 +108,7 @@ fun CommentsSettingsScreen(
     state: CommentsSettingsUiState,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onDisplayStyleChanged: (DisplayStyle) -> Unit,
     onTextSizeOffsetChanged: (Int) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
@@ -210,7 +212,12 @@ fun CommentsSettingsScreen(
                 )
             }
             row {
-                BooleanRow("Dividers", Res.drawable.ic_horizontal_rule, state.showDividers, CommentsBooleanSetting.Dividers, onBooleanChanged)
+                SettingRow(
+                    title = "Spacing",
+                    summary = "Vertical spacing and dividers",
+                    icon = Res.drawable.ic_format_line_spacing,
+                    onClick = onSpacingRequested,
+                )
             }
             row {
                 BooleanRow(

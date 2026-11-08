@@ -23,6 +23,9 @@ object UserPreferenceKeys {
     const val STORY_PREVIEW_IMAGE_MODE = "pref_story_preview_image_mode"
     const val STORY_PREVIEW_IMAGE_BORDERLESS = "pref_story_preview_image_borderless"
     const val SHOW_STORY_SUMMARY = "pref_show_story_summary"
+    const val STORY_SPACING = "pref_story_spacing"
+    const val COMMENT_SPACING = "pref_comment_spacing"
+    const val STORY_DIVIDERS = "pref_story_dividers"
     const val STORY_TEXT_SIZE = "pref_story_text_size"
     const val COMMENT_TEXT_SIZE = "pref_comment_text_size"
     const val SHOW_INDEX = "pref_show_index"
@@ -157,6 +160,8 @@ class StoredUserSettings(
                 borderlessLargePreviewImage =
                     boolean(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS, false),
                 showPreviewText = boolean(UserPreferenceKeys.SHOW_STORY_SUMMARY, false),
+                spacing = RowSpacingPreferences.sanitize(integer(UserPreferenceKeys.STORY_SPACING, RowSpacingPreferences.DEFAULT)),
+                showDividers = boolean(UserPreferenceKeys.STORY_DIVIDERS, false),
                 storyTextSize = storyTextSize(),
                 commentTextSize = commentTextSize(),
                 showIndex = boolean(UserPreferenceKeys.SHOW_INDEX, true),
@@ -271,6 +276,7 @@ class StoredUserSettings(
                 displayStyle = DisplayStyle.fromStored(
                     string(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, STANDARD),
                 ),
+                spacing = RowSpacingPreferences.sanitize(integer(UserPreferenceKeys.COMMENT_SPACING, RowSpacingPreferences.DEFAULT)),
                 showDividers = boolean(UserPreferenceKeys.COMMENT_DIVIDERS, false),
                 markNewComments = boolean(UserPreferenceKeys.MARK_NEW_COMMENTS, true),
                 highlightMetadata = boolean(UserPreferenceKeys.HIGHLIGHT_COMMENT_META, false),

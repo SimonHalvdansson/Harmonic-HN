@@ -43,7 +43,7 @@ class StoryCategoryLocationTest {
                 StoriesSettingsRoute(
                     repository = settings, categorySettings = categories,
                     previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
-                    showNavigation = true, onBack = {}, onPlatformEffect = {},
+                    showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {},
                     onManageFrontpages = {}, onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> },
                 )
             }

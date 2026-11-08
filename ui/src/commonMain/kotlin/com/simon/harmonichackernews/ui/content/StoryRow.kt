@@ -49,6 +49,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -162,6 +164,8 @@ data class StoryRowStyle(
     val commented: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,
     val mediumPreviewImageHeight: Dp = 88.dp,
+    val spacingScale: Float = 1f,
+    val showDivider: Boolean = false,
     val transparentNonCardBackground: Boolean = false,
     val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
 ) {
@@ -219,6 +223,14 @@ fun StoryRow(
     )
     // List rows retain content-arrival motion; the settings previews own style transitions.
     val animate = animateChanges && !listItem
+    val spacingScale = if (animateChanges) {
+        val animated by animateFloatAsState(style.spacingScale, contentTween(), label = "story spacing")
+        animated
+    } else style.spacingScale
+    val dividerAlpha = if (animateChanges) {
+        val animated by animateFloatAsState(if (style.showDivider) 1f else 0f, contentTween(), label = "story divider")
+        animated
+    } else if (style.showDivider) 1f else 0f
     val renderedCardPadding = cardPadding ?: run {
         val targetHorizontalPadding = if (style.hasBackground || style.tintCard) 12.dp else 8.dp
         val horizontalPadding = if (animate) {
@@ -231,7 +243,7 @@ fun StoryRow(
         } else {
             targetHorizontalPadding
         }
-        PaddingValues(horizontal = horizontalPadding, vertical = 4.dp)
+        PaddingValues(horizontal = horizontalPadding, vertical = 4.dp * spacingScale)
     }
     val presentation = rememberStoryRowPresentation(
         model = model,
@@ -248,7 +260,7 @@ fun StoryRow(
     val dimAlpha = presentation.dimAlpha
     val cardProgress = presentation.cardProgress
     val outlineAlpha = presentation.outlineAlpha
-    val renderedStyle = presentation.renderedStyle
+    val renderedStyle = presentation.renderedStyle.copy(spacingScale = spacingScale)
     val renderedPreviewMode = renderedStyle.previewImageMode
     val mediumPreview = renderedPreviewMode == StoryPreviewMode.MEDIUM
     val hasPreview = presentation.hasPreview
@@ -307,6 +319,16 @@ fun StoryRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .drawBehind {
+                if (dividerAlpha > 0f) {
+                    val inset = 16.dp.toPx()
+                    drawRect(
+                        colors.outlineVariant.copy(alpha = dividerAlpha),
+                        Offset(inset, size.height - 1.dp.toPx()),
+                        Size((size.width - inset * 2).coerceAtLeast(0f), 1.dp.toPx()),
+                    )
+                }
+            }
             .padding(
                 horizontal = if (listItem) 0.dp else 8.dp,
                 vertical = if (listItem) 0.dp else 10.dp,
@@ -528,7 +550,7 @@ fun StoryRow(
                             metadata = if (categoriesWithMetadata(model, style)) ({
                             Column(Modifier.fillMaxWidth()
                                 .testTag("story-details")
-                                .padding(start = if (style.showIndex) 43.dp else 16.dp, end = 9.dp, bottom = 10.dp)) {
+                                .padding(start = if (style.showIndex) 43.dp else 16.dp, end = 9.dp, bottom = 10.dp * spacingScale)) {
                                 val categoryColors = storyCategoryColors(if (style.tintCard) ({ background.value }) else null)
                                 FlowRow(Modifier.fillMaxWidth()
                                     .captureStoryPreviewElement(enabled = captureSourceContent,
@@ -823,7 +845,7 @@ private fun StoryMainContent(
                     .animateStoryRowPlacement(placementAnimation)
                     .animateStoryRowTextSize(placementAnimation, titleSize - 1f)
                     .storySettingsAlpha(placementAnimation, "index")
-                    .padding(top = 10.dp, bottom = if (categoriesWithMetadata(model, style)) 3.dp else 10.dp)
+                    .padding(top = 10.dp * style.spacingScale, bottom = (if (categoriesWithMetadata(model, style)) 3.dp else 10.dp) * style.spacingScale)
                     .alignBy(FirstBaseline)
                     .captureStoryPreviewElement(
                         enabled = capturePreviewSource,
@@ -844,9 +866,9 @@ private fun StoryMainContent(
                     .weight(1f)
                     .padding(
                         start = titleStartPadding,
-                        top = if (hasSmallPreview) 7.dp else 10.dp,
+                        top = (if (hasSmallPreview) 7.dp else 10.dp) * style.spacingScale,
                         end = 4.dp,
-                        bottom = if (categoriesWithMetadata(model, style)) 3.dp else if (hasSmallPreview) 7.dp else 10.dp,
+                        bottom = (if (categoriesWithMetadata(model, style)) 3.dp else if (hasSmallPreview) 7.dp else 10.dp) * style.spacingScale,
                     )
                     .alignBy(FirstBaseline),
             ) {

@@ -37,7 +37,7 @@ class CategoryLocationSettingsTest {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app.app, app.scene)) {
                     StoriesSettingsRoute(repository = app.app.settings, categorySettings = app.app.articleCategorySettings,
                         previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
-                        showNavigation = true, onBack = {}, onPlatformEffect = {}, onManageFrontpages = {},
+                        showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {}, onManageFrontpages = {},
                         onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> },
                         categoryAvailability = availability,
                         onArticleCategoriesRequested = { categoryNavigationCount++ })

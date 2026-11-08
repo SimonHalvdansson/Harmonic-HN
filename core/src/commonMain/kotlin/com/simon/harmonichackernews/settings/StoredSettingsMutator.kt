@@ -38,6 +38,14 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, value.storedValue)
     }
 
+    fun setStorySpacing(value: Int) {
+        store.putInt(UserPreferenceKeys.STORY_SPACING, RowSpacingPreferences.sanitize(value))
+    }
+
+    fun setCommentSpacing(value: Int) {
+        store.putInt(UserPreferenceKeys.COMMENT_SPACING, RowSpacingPreferences.sanitize(value))
+    }
+
     fun setStoryTextSize(value: Float) {
         store.putString(
             UserPreferenceKeys.STORY_TEXT_SIZE,
@@ -473,6 +481,8 @@ class StoredSettingsMutator(
 
     private companion object {
         val storyLayoutPreferenceKeys = setOf(
+            UserPreferenceKeys.STORY_SPACING,
+            UserPreferenceKeys.STORY_DIVIDERS,
             UserPreferenceKeys.CATEGORY_TAG_LOCATION,
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE,
             UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS,

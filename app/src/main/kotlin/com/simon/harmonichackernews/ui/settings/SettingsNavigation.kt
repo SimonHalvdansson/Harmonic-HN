@@ -116,6 +116,7 @@ fun SettingsShell(
                 SettingsSection.Stories -> AndroidStoriesSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onSpacingRequested = { onNavigate(SettingsSection.StoriesSpacing, true) },
                     onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
                     onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
                     onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
@@ -129,11 +130,14 @@ fun SettingsShell(
                     twoPane = isTwoPane,
                     showNavigation = singlePane,
                     onBack = onBack,
+                    onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
                     onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
                     onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
+                SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(dependencies.settings, dependencies.articleCategorySettings, onBack)
+                SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(
                     dependencies.settings, onBack,
                     statusBarProtection = { color, height -> StatusBarProtection(color, height) },

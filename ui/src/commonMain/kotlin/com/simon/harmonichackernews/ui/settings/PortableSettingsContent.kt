@@ -93,6 +93,7 @@ fun PortableSettingsDetail(
             app = app,
             showNavigation = singlePane,
             onBack = onBack,
+            onSpacingRequested = { onNavigate(SettingsSection.StoriesSpacing, true) },
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
             onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
@@ -106,10 +107,13 @@ fun PortableSettingsDetail(
             volumeNavigationSupported = false,
             showNavigation = singlePane,
             onBack = onBack,
+            onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
             onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
+        SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(app.settings, app.articleCategorySettings, onBack)
+        SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(app.settings, onBack)
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
@@ -315,6 +319,7 @@ private fun PortableStoriesSettings(
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
+    onSpacingRequested: () -> Unit,
 ) {
     val story = app.settings.snapshot().story
     StoriesSettingsRoute(
@@ -327,6 +332,7 @@ private fun PortableStoriesSettings(
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
+        onSpacingRequested = onSpacingRequested,
         categoryAvailability = storyCategoryAvailability(),
         showNavigation = showNavigation,
         onBack = onBack,

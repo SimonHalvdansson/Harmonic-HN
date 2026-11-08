@@ -176,9 +176,9 @@ internal fun StoryMediumPreviewRail(
     val railPadding = when {
         hasPreview -> PaddingValues(
             start = 4.dp,
-            top = imageVerticalInset,
+            top = imageVerticalInset * style.spacingScale,
             end = imageEndInset,
-            bottom = imageVerticalInset,
+            bottom = imageVerticalInset * style.spacingScale,
         )
         showPoints || showCommentPill ->
             PaddingValues(start = 4.dp, top = 4.dp, end = 12.dp, bottom = 4.dp)

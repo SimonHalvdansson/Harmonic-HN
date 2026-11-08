@@ -33,12 +33,12 @@ internal fun settingsSearchCatalog(
     fun path(section: SettingsSection): List<String> = when (section) {
         SettingsSection.Theme, SettingsSection.Font, SettingsSection.PaletteTint,
         SettingsSection.StoriesHeader -> listOf(labels.getValue(SettingsSection.Appearance))
-        SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting,
+        SettingsSection.CommentsSpacing, SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting,
         SettingsSection.UserAvatars -> listOf(labels.getValue(SettingsSection.Comments))
         SettingsSection.ReaderMode -> listOf(labels.getValue(SettingsSection.WebLinks))
         SettingsSection.ArticleCategories -> listOf(labels.getValue(SettingsSection.AiSummary))
         SettingsSection.CategoryExploration -> listOf(labels.getValue(SettingsSection.AiSummary), labels.getValue(SettingsSection.ArticleCategories))
-        SettingsSection.Frontpages -> listOf(labels.getValue(SettingsSection.Stories))
+        SettingsSection.StoriesSpacing, SettingsSection.Frontpages -> listOf(labels.getValue(SettingsSection.Stories))
         SettingsSection.Licenses -> listOf(labels.getValue(SettingsSection.About))
         SettingsSection.Glass, SettingsSection.DebugLinkPreviews -> listOf(labels.getValue(SettingsSection.Debug))
         else -> emptyList()
@@ -64,6 +64,13 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.StoriesHeader, "frontpage selector tabs dropdown compact")
     page(SettingsSection.Stories, "posts frontpage feed articles")
     page(SettingsSection.Comments, "discussion threads replies")
+    page(SettingsSection.StoriesSpacing, "stories whitespace padding margins density compact dividers")
+    page(SettingsSection.CommentsSpacing, "comments whitespace padding margins density compact dividers")
+    for (section in listOf(SettingsSection.StoriesSpacing, SettingsSection.CommentsSpacing)) {
+        group(section, "Layout",
+            "Vertical spacing" to "whitespace padding margins density compact space",
+            "Dividers" to "separators horizontal lines")
+    }
     page(SettingsSection.HeaderDisplay, "comments header toolbar post details buttons")
     page(SettingsSection.ThreadDepth, "indent indentation nesting rainbow lines")
     page(SettingsSection.QuoteHighlighting, "blockquote quotations quoted text")
@@ -138,7 +145,6 @@ internal fun settingsSearchCatalog(
         "Text size" to "font bigger smaller accessibility zoom",
         "Collect links" to "reference links collect references urls expand collapse",
         "Emphasize username and time" to "highlight metadata author date bold",
-        "Dividers" to "separators horizontal lines",
         "Mark new comments" to "unread new replies highlight dot")
     group(SettingsSection.Comments, "Interactions",
         "Hide text of collapsed comments" to "collapse parent minimize minimize hide",

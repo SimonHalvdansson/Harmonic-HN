@@ -32,7 +32,7 @@ class CommentsSettingsCapabilityTest {
                                 debugNotificationsMessage = "test", aiSettings = {}, dataSettings = {},
                                 readerPreview = { _, _ -> },
                             ) else CommentsSettingsRoute(
-                                repository = bootstrap.app.settings, showNavigation = true, onBack = {},
+                                repository = bootstrap.app.settings, showNavigation = true, onBack = {}, onSpacingRequested = {},
                                 onThreadDepthRequested = {}, onQuoteHighlightingRequested = {}, onUserAvatarsRequested = {},
                             )
                         }

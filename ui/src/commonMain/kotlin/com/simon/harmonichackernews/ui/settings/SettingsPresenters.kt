@@ -40,6 +40,8 @@ class StoriesSettingsPresenter(
         val story = settings.story
         return StoriesSettingsUiState(
             previewModel = previewModel,
+            spacing = story.spacing,
+            showDividers = story.showDividers,
             categoryTagLocation = story.categoryTagLocation,
             previewImageMode = story.previewImageMode,
             borderlessLargeImage = story.borderlessLargePreviewImage,
@@ -121,6 +123,7 @@ class CommentsSettingsPresenter(
     fun state(settings: AppSettings = repository.snapshot()): CommentsSettingsUiState {
         val comments = settings.comments
         return CommentsSettingsUiState(
+            spacing = comments.spacing,
             displayStyle = comments.displayStyle,
             textSize = comments.textSize,
             textSizeOffset = TextPreferences.commentTextSizeOffset(comments.textSize),

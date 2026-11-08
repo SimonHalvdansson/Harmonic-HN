@@ -61,6 +61,8 @@ data class StoryPreferences(
     val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
     val headerPillElevation: Boolean = true,
     val categoryTagLocation: CategoryTagLocation = CategoryTagLocation.TITLE,
+    val spacing: Int = RowSpacingPreferences.DEFAULT,
+    val showDividers: Boolean = false,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -124,6 +126,7 @@ data class CommentPreferences(
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val swipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
+    val spacing: Int = RowSpacingPreferences.DEFAULT,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED

@@ -178,6 +178,8 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             put(UserPreferenceKeys.COMMENTS_HEADER_EDGE, choice(CommentsHeaderEdge.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, choice(ReaderLineHeight.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_FONT, choice(AppFont.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.STORY_SPACING, intRule(RowSpacingPreferences.MIN..RowSpacingPreferences.MAX))
+            put(UserPreferenceKeys.COMMENT_SPACING, intRule(RowSpacingPreferences.MIN..RowSpacingPreferences.MAX))
             put(UserPreferenceKeys.STORY_TEXT_SIZE, numberString(TextPreferences.MIN_STORY_TEXT_SIZE..TextPreferences.MAX_STORY_TEXT_SIZE))
             put(UserPreferenceKeys.COMMENT_TEXT_SIZE, numberString(TextPreferences.MIN_COMMENT_TEXT_SIZE..TextPreferences.MAX_COMMENT_TEXT_SIZE))
             put(UserPreferenceKeys.READER_MODE_FONT_SIZE, intRule(TextPreferences.MIN_READER_MODE_FONT_SIZE..TextPreferences.MAX_READER_MODE_FONT_SIZE))

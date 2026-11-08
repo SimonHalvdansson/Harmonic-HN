@@ -65,6 +65,7 @@ data class CommentDisplaySettings(
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val canAsk: Boolean = canProvideSummary,
     val peekStoryHeader: Boolean = true,
+    val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
 ) {
     val combineHeaderActions: Boolean get() = headerMetaInfo == CommentsHeaderMetaInfo.BUTTONS
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -121,6 +122,7 @@ data class CommentDisplaySettings(
             isTablet = isTablet,
             faviconProvider = preferences.faviconProvider,
             swapLongPressTap = preferences.swapLongPressTap,
+            spacing = preferences.spacing,
             displayStyle = preferences.displayStyle,
             showDividers = preferences.showDividers,
             markNewComments = preferences.markNewComments,

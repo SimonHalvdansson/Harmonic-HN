@@ -17,6 +17,8 @@ internal data class StoryRowStyleContext(
 internal fun StoryDisplaySettings.toStoryRowStyle(
     context: StoryRowStyleContext,
 ): StoryRowStyle = StoryRowStyle(
+    spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
+    showDivider = showDividers,
     previewImageMode = previewImageMode,
     categoryTagLocation = categoryTagLocation,
     borderlessLargeImage = borderlessLargePreviewImage,
@@ -48,6 +50,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     context: CommentRowStyleContext,
 ): CommentRowStyle = when (context) {
     is CommentRowStyleContext.Thread -> CommentRowStyle(
+        spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
@@ -70,6 +73,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
         animateChanges = context.animateChanges,
     )
     CommentRowStyleContext.Search -> CommentRowStyle(
+        spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,

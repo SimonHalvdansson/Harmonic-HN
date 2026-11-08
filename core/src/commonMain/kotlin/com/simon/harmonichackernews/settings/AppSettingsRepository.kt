@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.shareIn
 
 /** Typed story toggles accepted by [StoredSettingsMutator]. */
 enum class StoryBooleanPreference(internal val storageKey: String) {
+    SHOW_DIVIDERS(UserPreferenceKeys.STORY_DIVIDERS),
     HEADER_PILL_ELEVATION(UserPreferenceKeys.STORIES_HEADER_PILL_ELEVATION),
     BORDERLESS_LARGE_IMAGE(UserPreferenceKeys.STORY_PREVIEW_IMAGE_BORDERLESS),
     TINT_CARD_USING_PREVIEW(UserPreferenceKeys.TINT_CARD_USING_PREVIEW),
@@ -159,6 +160,10 @@ class AppSettingsRepository(
         mutator.setStoryString(preference, value)
 
     fun setStoryPreviewMode(value: StoryPreviewMode) = mutator.setStoryPreviewMode(value)
+
+    fun setStorySpacing(value: Int) = mutator.setStorySpacing(value)
+
+    fun setCommentSpacing(value: Int) = mutator.setCommentSpacing(value)
 
     fun setStoryTextSize(value: Float) = mutator.setStoryTextSize(value)
     fun setHotness(value: Int) = mutator.setHotness(value)

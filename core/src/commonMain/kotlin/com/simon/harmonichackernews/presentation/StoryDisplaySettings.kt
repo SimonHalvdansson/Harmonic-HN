@@ -32,6 +32,8 @@ data class StoryDisplaySettings(
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
     val headerPillElevation: Boolean = true,
+    val showDividers: Boolean = false,
+    val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
     val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
 ) {
     val outline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
@@ -73,6 +75,8 @@ data class StoryDisplaySettings(
             headerPillElevation = preferences.headerPillElevation,
             categoryTagLocation = preferences.categoryTagLocation,
             commentsButtonOnLeft = preferences.commentsButtonOnLeft,
+            showDividers = preferences.showDividers,
+            spacing = preferences.spacing,
             displayStyle = preferences.displayStyle,
             tintCardsFromImages = preferences.tintCardsFromImages,
             paletteTintMode = preferences.paletteTintConfigKey,

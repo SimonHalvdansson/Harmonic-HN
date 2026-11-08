@@ -137,6 +137,7 @@ data class CommentRowStyle(
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
+    val spacingScale: Float = 1f,
 ) {
     val showOutline: Boolean get() = displayStyle == DisplayStyle.OUTLINED
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -235,10 +236,11 @@ fun CommentRow(
         animateChanges = style.animateChanges,
         label = "comment preview indicator color",
     )
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val dividerAlpha = animatedCommentValue(if (style.showDivider) 1f else 0f, style.animateChanges, "comment preview divider")
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = dividerAlpha)
     CommentSurface(
         modifier = modifier.fillMaxWidth().drawBehind {
-            if (style.showDivider) {
+            if (dividerAlpha > 0f) {
                 // Keep the divider in the preview's bottom gap, outside the comment surface.
                 val thickness = 1.dp.toPx()
                 val inset = 16.dp.toPx()
@@ -422,7 +424,16 @@ fun CommentRow(
     }
 
     // Equal space on either side of the row boundary centers its divider between surfaces.
-    val top = if (style.hasBackground) 0.dp else 8.dp
+    val top = animatedCommentValue(
+        if (style.hasBackground) 0.dp else 8.dp * style.spacingScale,
+        animateChanges = style.animateChanges,
+        label = "comment row spacing",
+    )
+    val cardGap = animatedCommentValue(
+        if (style.hasBackground) 4.dp * style.spacingScale else 0.dp,
+        animateChanges = style.animateChanges,
+        label = "comment rail gap",
+    )
     val bottom = top
     val indicatorGeometry = animatedCommentIndicatorGeometry(style, showIndicator)
     val continuousProgress = indicatorGeometry.continuous
@@ -430,11 +441,12 @@ fun CommentRow(
     val railColors = if (continuousProgress > 0f) (firstRailDepth..effectiveDepth).map { depth ->
         commentDepthColor(style.depthIndicatorMode, depth - firstRailDepth, "")
     } else emptyList()
-    val dividerColor = colors.outlineVariant
+    val dividerAlpha = animatedCommentValue(if (style.showDivider) 1f else 0f, style.animateChanges, "comment divider")
+    val dividerColor = colors.outlineVariant.copy(alpha = dividerAlpha)
     val decorations = Modifier.drawWithCache {
         // Match the row layout's pixel rounding, including devices with fractional density.
         val railWidth = indicatorGeometry.width.roundToPx().toFloat()
-        val inset = (if (style.hasBackground) 4.dp else top).roundToPx().toFloat()
+        val inset = (if (style.hasBackground) cardGap else top).roundToPx().toFloat()
         fun railStart(depth: Int): Float = min(
             16.dp.roundToPx() + 12.dp.roundToPx() * depth,
             (size.width * 0.6f).roundToInt(),
@@ -466,7 +478,7 @@ fun CommentRow(
         }
         onDrawBehind {
             railSegments.forEach { (path, color) -> drawPath(path, color) }
-            if (style.showDivider) {
+            if (dividerAlpha > 0f) {
                 val x = railStart(effectiveDepth) + (railWidth + 8.dp.toPx()) * continuousProgress
                 drawRect(dividerColor, Offset(x, size.height - 0.5.dp.toPx()), Size((size.width - x - 16.dp.toPx()).coerceAtLeast(0f), 1.dp.toPx()))
             }
@@ -974,6 +986,11 @@ private fun CommentSurface(
         animateChanges = style.animateChanges,
         label = "comment card padding",
     )
+    val verticalShadowPadding = animatedCommentValue(
+        if (style.hasBackground) 4.dp * style.spacingScale else 0.dp,
+        animateChanges = style.animateChanges,
+        label = "comment vertical card padding",
+    )
     val cardProgress = animatedCommentValue(
         if (style.cardStyle) 1f else 0f,
         animateChanges = style.animateChanges,
@@ -1013,7 +1030,7 @@ private fun CommentSurface(
         label = "comment content end padding",
     )
     val contentVerticalPadding = animatedCommentValue(
-        if (style.hasBackground) 7.dp else 5.dp,
+        (if (style.hasBackground) 7.dp else 5.dp) * style.spacingScale,
         animateChanges = style.animateChanges,
         label = "comment content vertical padding",
     )
@@ -1041,7 +1058,7 @@ private fun CommentSurface(
     }
     Column(modifier) {
         Box(
-            Modifier.fillMaxWidth().padding(shadowPadding),
+            Modifier.fillMaxWidth().padding(horizontal = shadowPadding, vertical = verticalShadowPadding),
         ) {
             val indicatorCaptureModifier = if (itemGeometry != null && captureSource && detachedProgress > 0f) {
                 Modifier.captureCommentActionSourceContent { itemGeometry.indicatorLayer = it }

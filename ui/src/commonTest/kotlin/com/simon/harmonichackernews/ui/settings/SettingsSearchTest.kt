@@ -13,6 +13,25 @@ class SettingsSearchTest {
         settingsSearchCatalog(labels, availability)
     private fun target(title: String): SettingsSearchEntry = entries().first { it.title == title }
 
+    @Test fun spacingAndDividersNavigateToTheirOwnPages() {
+        val entries = entries()
+        val dividerTargets = entries.filter { it.title == "Dividers" }
+        assertEquals(setOf("stories_spacing", "comments_spacing"), dividerTargets.map { it.screenRoute }.toSet())
+        for ((section, parent) in listOf(
+            SettingsSection.StoriesSpacing to SettingsSection.Stories,
+            SettingsSection.CommentsSpacing to SettingsSection.Comments,
+        )) {
+            assertTrue(entries.single { it.id == section.route }.path.contains(labels.getValue(parent)))
+            for (twoPane in listOf(false, true)) {
+                val navigation = SettingsNavigationStore(twoPane = twoPane)
+                navigation.navigateTo(parent)
+                navigation.navigateTo(section, preserveCurrentDetail = true)
+                assertTrue(navigation.navigateBack())
+                assertEquals(parent, navigation.state.value.selectedSection)
+            }
+        }
+    }
+
     @Test fun everyEntryHasAUniqueIdAndNavigableDestination() {
         val entries = entries(SettingsSearchAvailability(loggedIn = true, debug = true, geminiNano = true))
         assertEquals(entries.size, entries.map { it.id }.toSet().size)

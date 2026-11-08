@@ -204,13 +204,15 @@ fun SettingsListScreen(
                                 (selectedSection == SettingsSection.DebugLinkPreviews ||
                                     selectedSection == SettingsSection.Glass) ||
                                 entry.section == SettingsSection.Comments &&
-                                (selectedSection == SettingsSection.ThreadDepth ||
+                                (selectedSection == SettingsSection.CommentsSpacing ||
+                                    selectedSection == SettingsSection.ThreadDepth ||
                                     selectedSection == SettingsSection.QuoteHighlighting ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||
                                 entry.section == SettingsSection.Stories &&
-                                selectedSection == SettingsSection.Frontpages ||
+                                (selectedSection == SettingsSection.Frontpages ||
+                                    selectedSection == SettingsSection.StoriesSpacing) ||
                                 entry.section == SettingsSection.About &&
                                 selectedSection == SettingsSection.Licenses
                             SettingsNavigationRow(

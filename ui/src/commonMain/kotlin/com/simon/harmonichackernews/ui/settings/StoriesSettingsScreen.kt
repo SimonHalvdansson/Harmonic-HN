@@ -49,6 +49,8 @@ data class StoriesSettingsUiState(
     val faviconProvider: String,
     val faviconIcon: Painter,
     val swipeToHide: Boolean = false,
+    val showDividers: Boolean = false,
+    val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
     val categoryTagLocation: com.simon.harmonichackernews.settings.CategoryTagLocation = com.simon.harmonichackernews.settings.CategoryTagLocation.TITLE,
     val categorizationEnabled: Boolean = false,
     val canEnableCategorization: Boolean = true,
@@ -82,6 +84,7 @@ fun StoriesSettingsScreen(
     state: StoriesSettingsUiState,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onBooleanChanged: (StoriesBooleanSetting, Boolean) -> Unit,
     onPreviewImageModeChanged: (StoryPreviewMode) -> Unit,
     onStringChanged: (StoriesStringSetting, String) -> Unit,
@@ -104,7 +107,7 @@ fun StoriesSettingsScreen(
         pinnedContent = {
             LookaheadScope {
                 val visibility = com.simon.harmonichackernews.ui.content.rememberStorySettingsVisibility(
-                    state.previewModel, state.toPreviewStoryRowStyle())
+                    state.previewModel, state.toPreviewStoryRowStyle().copy(showDivider = false))
                 val placementAnimation = remember(this) { StoryRowPlacementAnimation(this, visibility) }
                 Box(Modifier.fillMaxWidth().testTag("stories-settings-preview")) {
                     // Let lookahead own layout motion; animating the destination dimensions
@@ -193,6 +196,14 @@ fun StoriesSettingsScreen(
                     selected = state.categoryTagLocation,
                     enabled = state.categorizationEnabled,
                     onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
+                )
+            }
+            row {
+                SettingRow(
+                    title = "Spacing",
+                    summary = "Vertical spacing and dividers",
+                    icon = Res.drawable.ic_format_line_spacing,
+                    onClick = onSpacingRequested,
                 )
             }
             row {

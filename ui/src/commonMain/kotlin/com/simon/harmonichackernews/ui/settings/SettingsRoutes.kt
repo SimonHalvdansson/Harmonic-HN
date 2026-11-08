@@ -449,6 +449,7 @@ fun StoriesSettingsRoute(
     faviconIcon: Painter,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
@@ -480,6 +481,7 @@ fun StoriesSettingsRoute(
         state = state,
         showNavigation = showNavigation,
         onBack = onBack,
+        onSpacingRequested = onSpacingRequested,
         onBooleanChanged = { setting, value ->
             presenter.setBoolean(setting, value).forEach(onPlatformEffect)
         },
@@ -531,6 +533,7 @@ fun CommentsSettingsRoute(
     repository: AppSettingsRepository,
     showNavigation: Boolean,
     onBack: () -> Unit,
+    onSpacingRequested: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
@@ -549,6 +552,7 @@ fun CommentsSettingsRoute(
         twoPane = twoPane,
         showNavigation = showNavigation,
         onBack = onBack,
+        onSpacingRequested = onSpacingRequested,
         onDisplayStyleChanged = presenter::setDisplayStyle,
         onCollectedLinksModeChanged = presenter::setCollectedLinksMode,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,

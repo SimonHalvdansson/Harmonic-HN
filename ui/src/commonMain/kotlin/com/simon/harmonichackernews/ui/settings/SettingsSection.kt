@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.resources.settings_section_user_avatars
 import com.simon.harmonichackernews.resources.settings_section_quote_highlighting
+import com.simon.harmonichackernews.resources.settings_section_spacing
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_search_title
 import com.simon.harmonichackernews.resources.settings_section_about
@@ -40,6 +41,8 @@ enum class SettingsSection(
     Font("font", Res.string.settings_section_font),
     Theme("theme", Res.string.settings_section_theme),
     PaletteTint("palette_tint", Res.string.settings_section_palette_tint),
+    StoriesSpacing("stories_spacing", Res.string.settings_section_spacing),
+    CommentsSpacing("comments_spacing", Res.string.settings_section_spacing),
     Stories("stories", Res.string.settings_section_stories),
     StoriesHeader("stories_header", Res.string.settings_section_stories_header),
     Frontpages("frontpages", Res.string.settings_section_frontpages),

@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.StoryRowStyle
 
 internal fun StoriesSettingsUiState.toPreviewStoryRowStyle(): StoryRowStyle = StoryRowStyle(
+    spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
+    showDivider = showDividers,
     previewImageMode = previewImageMode,
     categoryTagLocation = categoryTagLocation,
     borderlessLargeImage = borderlessLargeImage,
@@ -27,6 +29,7 @@ internal fun StoriesSettingsUiState.toPreviewStoryRowStyle(): StoryRowStyle = St
 
 internal fun CommentsSettingsUiState.toPreviewCommentRowStyle(): CommentRowStyle =
     CommentRowStyle(
+        spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
