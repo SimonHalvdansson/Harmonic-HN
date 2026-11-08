@@ -17,7 +17,7 @@ enum class GlassParameter(
     val range: ClosedFloatingPointRange<Float>,
 ) {
     ButtonTint(0.7f, 0f..1f),
-    DialogTint(0.65f, 0f..1f),
+    DialogTint(0.7f, 0f..1f),
     SubtleTint(0.5f, 0f..1f),
     BackgroundOpacity(1f, 0f..1f),
     MaterialOpacity(1f, 0f..1f),

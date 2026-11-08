@@ -190,7 +190,7 @@ internal fun Modifier.sharedHazeBackground(
         )
     } else {
         val frostedColor = if (glassAppearance == HazeGlassAppearance.Dialog) {
-            surfaceColor.copy(alpha = surfaceColor.alpha * 0.78f)
+            surfaceColor.copy(alpha = surfaceColor.alpha * 0.82f)
         } else surfaceColor
         val currentEffectAlpha = rememberUpdatedState(effectAlpha)
         val blurStyle = remember(blurRadius, frostedColor) {
