@@ -119,13 +119,7 @@ internal object LinkPreviewProviders {
         richProvider(
             LinkPreviewType.REDDIT_POST,
             matches = RedditLinkPreview::isRedditPost,
-            load = { client, url ->
-                client.loadOEmbedPreview(
-                    LinkPreviewType.REDDIT_POST,
-                    "https://www.reddit.com/oembed",
-                    url,
-                )
-            },
+            load = { client, url -> client.loadRedditPreview(url) },
         ),
     )
 

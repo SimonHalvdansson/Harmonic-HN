@@ -359,7 +359,9 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 topPadding = 4.dp,
             )
         }
-        PreviewInfoColumns(
+        if (info.type == LinkPreviewType.REDDIT_POST && info.details.size == 1) {
+            RichPreviewDetail(info.details.single(), info.type)
+        } else PreviewInfoColumns(
             left = {
                 details.left.forEach { detail ->
                     RichPreviewDetail(detail, info.type)
