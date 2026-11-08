@@ -33,6 +33,14 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
     }
 
+    func testBackgroundSessionDeliversAndInstallsFile() throws {
+        let model = try startServer(background: true) { _ in (200, "", Foundation.Data([1, 2, 3, 4])) }
+        transfers!.enqueue(model: model)
+        waitUntil { self.transfers!.work(modelId: model.id)?.state == .finished && !self.transfers!.isActive(modelId: model.id) }
+        XCTAssertEqual(try Foundation.Data(contentsOf: destination(model)), Foundation.Data([1, 2, 3, 4]))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
+    }
+
     func testExistingForegroundPartialUsesRangeAndAppends() throws {
         let model = try startServer { request in
             XCTAssertTrue(request.lowercased().contains("range: bytes=2-"))
@@ -56,6 +64,7 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         let model = try startServer { _ in (403, "", Foundation.Data([1, 2, 3, 4])) }
         transfers!.enqueue(model: model)
         waitUntil { self.transfers!.work(modelId: model.id)?.state == .failed }
+        XCTAssertEqual(transfers!.work(modelId: model.id)?.error, "Model server returned HTTP 403.")
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination(model).path))
     }
 
@@ -102,7 +111,34 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         let model = try startServer { _ in (200, "", Foundation.Data([1, 2])) }
         transfers!.enqueue(model: model)
         waitUntil { self.transfers!.work(modelId: model.id)?.state == .failed }
+        XCTAssertEqual(transfers!.work(modelId: model.id)?.error, "Downloaded model has an unexpected size")
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination(model).path))
+    }
+
+    func testUnusableResumeDataFallsBackToFreshDownload() throws {
+        let model = try startServer { request in
+            XCTAssertFalse(request.lowercased().contains("range:"))
+            return (200, "", Foundation.Data([1, 2, 3, 4]))
+        }
+        try saveResume(model, offset: 0, received: 3, data: Foundation.Data([1]))
+        transfers!.enqueue(model: model)
+        waitUntil { self.transfers!.work(modelId: model.id)?.state == .finished && !self.transfers!.isActive(modelId: model.id) }
+        XCTAssertEqual(try Foundation.Data(contentsOf: destination(model)), Foundation.Data([1, 2, 3, 4]))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
+    }
+
+    func testFreshFallbackRechecksSpaceAfterUnusableResumeData() throws {
+        let model = try startServer(availableBytes: {
+            LocalModelDownloadSpacePolicy.shared.withSafetyBuffer(requiredBytes: 1)
+        }) { _ in
+            XCTFail("The fresh fallback needs more space than the resumed transfer")
+            return (200, "", Foundation.Data([1, 2, 3, 4]))
+        }
+        try saveResume(model, offset: 0, received: 3, data: Foundation.Data([1]))
+        transfers!.enqueue(model: model)
+        waitUntil { self.transfers!.work(modelId: model.id)?.state == .failed && !self.transfers!.isActive(modelId: model.id) }
+        XCTAssertTrue(transfers!.work(modelId: model.id)!.error.contains("free space"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
     }
 
     func testSpaceCheckCreditsSavedOsBytesOnlyWithMatchingResumeData() throws {
@@ -180,14 +216,16 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
     }
 
     private func startServer(delay: TimeInterval = 0, availableBytes: (() -> Int64)? = nil,
+                             background: Bool = false,
                              response: @escaping (String) -> (Int, String, Foundation.Data)) throws -> LocalModelDefinition {
         server = try ModelDownloadTestServer(delay: delay, response: response)
         let model = LocalModelDefinition(id: "test-model", displayName: "Test", parameterSize: "",
             quantization: "", brand: .google, fileName: "model.litertlm", url: server!.url,
             sizeBytes: 4, downloadable: true, runtime: .litertLm, contextTokens: 16,
             supportsSummarization: true)
-        transfers = IosBackgroundModelTransfers(directory: directory, identifier: "test-download",
-            configuration: .ephemeral, catalog: [model], availableBytes: availableBytes)
+        transfers = IosBackgroundModelTransfers(directory: directory,
+            identifier: background ? "com.simon.harmonic.download-test.\(UUID().uuidString)" : "test-download",
+            configuration: background ? nil : .ephemeral, catalog: [model], availableBytes: availableBytes)
         waitUntil { !self.transfers!.isActive(modelId: model.id) }
         return model
     }
@@ -217,27 +255,30 @@ private final class ModelDownloadTestServer {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "harmonic.download-test-server")
     private var connections: [NWConnection] = []
-    let url: String
+    private(set) var url = ""
 
     init(delay: TimeInterval, response: @escaping (String) -> (Int, String, Foundation.Data)) throws {
         listener = try NWListener(using: .tcp, on: .any)
-        let ready = DispatchSemaphore(value: 0)
-        listener.stateUpdateHandler = { state in
-            if case .ready = state { ready.signal() }
-            if case .failed = state { ready.signal() }
-        }
-        listener.start(queue: queue)
-        guard ready.wait(timeout: .now() + 5) == .success, let port = listener.port else {
-            listener.cancel()
-            throw NSError(domain: "DownloadTestServer", code: 1)
-        }
-        url = "http://127.0.0.1:\(port.rawValue)/model"
+        // Network requires the connection handler before start; otherwise the listener
+        // fails and its port can still be the unbound value 0.
         listener.newConnectionHandler = { [weak self] connection in
             guard let self else { connection.cancel(); return }
             self.connections.append(connection)
             connection.start(queue: self.queue)
             self.receive(connection, accumulated: Foundation.Data(), delay: delay, response: response)
         }
+        let ready = DispatchSemaphore(value: 0)
+        listener.stateUpdateHandler = { state in
+            if case .ready = state { ready.signal() }
+            if case .failed = state { ready.signal() }
+        }
+        listener.start(queue: queue)
+        guard ready.wait(timeout: .now() + 5) == .success,
+              case .ready = listener.state, let port = listener.port, port.rawValue != 0 else {
+            listener.cancel()
+            throw NSError(domain: "DownloadTestServer", code: 1)
+        }
+        url = "http://127.0.0.1:\(port.rawValue)/model"
     }
 
     private func receive(_ connection: NWConnection, accumulated: Foundation.Data, delay: TimeInterval,

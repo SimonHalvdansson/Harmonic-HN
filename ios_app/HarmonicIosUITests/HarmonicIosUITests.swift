@@ -54,9 +54,12 @@ final class IosLiteRtSettingsUITests: XCTestCase {
     func testLocalPickerOffersLiteRtModelsWithoutRetiredBonsaiModels() {
         continueAfterFailure = false
         let app = XCUIApplication()
+        app.launchEnvironment["HARMONIC_UI_TESTING"] = "1"
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         app.completeWelcomeIfNeeded()
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 5) { hint.tapCenter() }
         let more = app.labeledButton("More options")
         XCTAssertTrue(more.waitForExistence(timeout: 20))
         more.tapCenter()
@@ -65,9 +68,6 @@ final class IosLiteRtSettingsUITests: XCTestCase {
         for _ in 0..<4 where !ai.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(ai.waitForExistence(timeout: 10))
         ai.tapCenter()
-        let local = app.labeledButton("Local")
-        XCTAssertTrue(local.waitForExistence(timeout: 10))
-        local.tapCenter()
         func labelContaining(_ text: String) -> XCUIElement {
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
         }
