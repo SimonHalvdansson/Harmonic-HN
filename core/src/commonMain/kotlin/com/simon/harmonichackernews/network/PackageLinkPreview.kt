@@ -61,16 +61,21 @@ internal object PackageLinkPreview {
             LinkPreviewInfo(
                 type,
                 json.optString("name", target.name),
-                "npm · ${json.optString("version")}",
+                packageSubtitle("npm", json.nonBlankString("version")),
                 json.nonBlankString("description"),
                 null,
                 url,
                 details(
-                    "Version" to json.nonBlankString("version"),
                     "License" to json.nonBlankString("license"),
                     "Author" to author,
                     "Dependencies" to json.optJSONObject("dependencies")?.length()?.toString(),
                     "Node" to json.optJSONObject("engines")?.nonBlankString("node"),
+                    "Project URL" to (
+                        (json.optJSONObject("repository")?.nonBlankString("url")
+                            ?: json.nonBlankString("repository"))?.removePrefix("git+")
+                            ?.removeSuffix(".git")?.webProjectUrl()
+                            ?: json.nonBlankString("homepage")?.webProjectUrl()
+                    ),
                 ),
             )
         }
@@ -79,19 +84,18 @@ internal object PackageLinkPreview {
             LinkPreviewInfo(
                 type,
                 info.optString("name", target.name),
-                "PyPI · ${info.optString("version")}",
+                packageSubtitle("PyPI", info.nonBlankString("version")),
                 info.nonBlankString("summary"),
                 null,
                 url,
                 details(
-                    "Version" to info.nonBlankString("version"),
                     "License" to (
                         info.nonBlankString("license_expression")
                             ?: info.nonBlankString("license")?.take(48)
                     ),
                     "Author" to info.nonBlankString("author"),
                     "Python" to info.nonBlankString("requires_python"),
-                    "Project URL" to info.nonBlankString("project_url"),
+                    "Project URL" to pypiProjectUrl(info),
                 ),
             )
         }
@@ -100,16 +104,16 @@ internal object PackageLinkPreview {
             LinkPreviewInfo(
                 type,
                 crate.optString("name", target.name),
-                "crates.io · ${crate.optString("newest_version")}",
+                packageSubtitle("crates.io", crate.nonBlankString("newest_version")),
                 crate.nonBlankString("description"),
                 null,
                 url,
                 details(
-                    "Version" to crate.nonBlankString("newest_version"),
                     "Downloads" to crate.optLong("downloads").toString(),
                     "Recent downloads" to crate.optLong("recent_downloads").toString(),
                     "Updated" to crate.nonBlankString("updated_at")?.dateOnly(),
-                    "Repository" to crate.nonBlankString("repository")?.shortHost(),
+                    "Project URL" to (crate.nonBlankString("repository")?.webProjectUrl()
+                        ?: crate.nonBlankString("homepage")?.webProjectUrl()),
                 ),
             )
         }
@@ -154,14 +158,31 @@ internal object PackageLinkPreview {
                     "License" to json.nonBlankString("license"),
                     "Installs (30d)" to analytics?.optLong(target.name)?.toString(),
                     "Dependencies" to json.optJSONArray("dependencies")?.length()?.toString(),
-                    "Homepage" to json.nonBlankString("homepage")?.shortHost(),
+                    "Project URL" to json.nonBlankString("homepage")?.webProjectUrl(),
                 ),
             )
         }
         else -> throw LinkPreviewException("Unsupported package response")
     }
 
-    private fun String.shortHost(): String? = toNetworkUrlOrNull()?.host?.removePrefix("www.")
+    private fun packageSubtitle(provider: String, version: String?): String =
+        listOfNotNull(provider, version).joinToString(" · ")
+
+    private fun String.webProjectUrl(): String? = trim().takeIf { value ->
+        (value.startsWith("https://", ignoreCase = true) || value.startsWith("http://", ignoreCase = true)) &&
+            value.toNetworkUrlOrNull()?.host?.isNotBlank() == true
+    }
+
+    private fun pypiProjectUrl(info: JsonObject): String? {
+        val links = info.optJSONObject("project_urls")
+        // PyPI's project_url is the registry page itself. Use the author's project links instead.
+        val normalizedLinks = links?.keys()?.asSequence()?.associate { key ->
+            key.lowercase().filter(Char::isLetterOrDigit) to links.nonBlankString(key)
+        }.orEmpty()
+        return sequenceOf("homepage", "source", "sourcecode", "repository", "github", "documentation")
+            .mapNotNull { normalizedLinks[it]?.webProjectUrl() }.firstOrNull()
+            ?: info.nonBlankString("home_page")?.webProjectUrl()
+    }
 }
 
 internal suspend fun HttpClient.loadPackagePreview(

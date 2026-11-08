@@ -359,9 +359,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 topPadding = 4.dp,
             )
         }
-        if (info.type == LinkPreviewType.REDDIT_POST && info.details.size == 1) {
-            RichPreviewDetail(info.details.single(), info.type)
-        } else PreviewInfoColumns(
+        if (details.left.isNotEmpty() || details.right.isNotEmpty()) PreviewInfoColumns(
             left = {
                 details.left.forEach { detail ->
                     RichPreviewDetail(detail, info.type)
@@ -373,6 +371,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 }
             },
         )
+        details.fullWidth.forEach { detail -> RichPreviewDetail(detail, info.type) }
     }
 }
 
@@ -388,9 +387,7 @@ private fun LinkPreviewType.hasMarkdownDescription(): Boolean = when (this) {
 @Composable
 private fun RichPreviewDetail(detail: LinkPreviewDetail, type: LinkPreviewType) {
     val platform = LocalCommentsPreviewPlatform.current
-    val projectUrl = detail.value.takeIf {
-        detail.label == "Project URL" && (it.startsWith("https://") || it.startsWith("http://"))
-    }
+    val projectUrl = detail.projectLink()
     PreviewInfoRow(
         icon = when (detail.label.lowercase()) {
             "project url" -> Res.drawable.ic_link
@@ -410,7 +407,7 @@ private fun RichPreviewDetail(detail: LinkPreviewDetail, type: LinkPreviewType) 
             "files", "items", "dependencies" -> Res.drawable.ic_library_books
             else -> Res.drawable.ic_subject
         },
-        text = projectUrl ?: detail.displayText ?: "${detail.label}: ${detail.value}",
+        text = detail.previewText(),
         onClick = projectUrl?.let { url -> { platform.openLink(url) } },
     )
 }
