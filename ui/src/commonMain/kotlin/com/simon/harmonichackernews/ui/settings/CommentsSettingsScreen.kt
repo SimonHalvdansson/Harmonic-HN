@@ -70,6 +70,7 @@ data class CommentsSettingsUiState(
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
     val swipeBack: Boolean = false,
+    val peekStoryHeader: Boolean = true,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -84,6 +85,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     Scrollbar(CommentBooleanPreference.SHOW_SCROLLBAR),
     AnimateChanges(CommentBooleanPreference.ANIMATE_CHANGES),
     ShowUpButton(CommentBooleanPreference.SHOW_UP_BUTTON),
+    PeekStoryHeader(CommentBooleanPreference.PEEK_STORY_HEADER),
     HeaderTint(CommentBooleanPreference.HEADER_TINT),
     HeaderPreviewImage(CommentBooleanPreference.HEADER_PREVIEW_IMAGE),
     CollapseParent(CommentBooleanPreference.COLLAPSE_PARENT),
@@ -262,6 +264,16 @@ fun CommentsSettingsScreen(
             }
         }
         settingsCategory("Navigation") {
+            row {
+                BooleanRow(
+                    "Peek story header",
+                    Res.drawable.ic_arrow_upward,
+                    state.peekStoryHeader,
+                    CommentsBooleanSetting.PeekStoryHeader,
+                    onBooleanChanged,
+                    summary = "Show the story title when scrolling up",
+                )
+            }
             if (swipeBackSupported) row {
                 BooleanRow(
                     "Swipe back from comments",

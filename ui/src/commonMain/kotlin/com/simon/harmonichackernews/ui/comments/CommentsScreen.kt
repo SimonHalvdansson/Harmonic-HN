@@ -54,6 +54,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicPullToRefreshIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -67,6 +68,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -253,6 +256,9 @@ fun CommentsScreen(
     )
     val density = LocalDensity.current
     val topInsetPx = WindowInsets.statusBars.getTop(density)
+    val peekHeader = remember(listState, controller.story.id, topInsetPx, density) {
+        CommentsPeekHeaderState(listState, topInsetPx, with(density) { 8.dp.toPx() })
+    }
     val navigationTopOffsetPx = topInsetPx + if (reserveUpButtonInset) {
         with(density) { COMMENTS_UP_BUTTON_NAVIGATION_INSET.roundToPx() }
     } else {
@@ -277,8 +283,16 @@ fun CommentsScreen(
     )
     val resumedAt = rememberTimeOnResume()
 
-    LaunchedEffect(listState, visibleComments, animatedRows.exitingIds) {
-        var previousHeaderCoverage: Float? = null
+    LaunchedEffect(listState, visibleComments, animatedRows.exitingIds, peekHeader) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+        }.distinctUntilChanged().collect {
+            // Header animation frames must not rewrite the saved reading position.
+            if (animatedRows.exitingIds.isEmpty()) controller.updateScrollPosition(listState, visibleComments)
+        }
+    }
+
+    LaunchedEffect(listState, controller, peekHeader, topInsetPx) {
         snapshotFlow {
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 0 }
             val coverage = if (header == null || topInsetPx <= 0) {
@@ -288,19 +302,10 @@ fun CommentsScreen(
                     maxOf(header.offset, 0)
                 (overlap.toFloat() / topInsetPx).coerceIn(0f, 1f)
             }
-            Triple(
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset,
-                coverage,
-            )
-        }.distinctUntilChanged().collect { (_, _, coverage) ->
-            // During collapse, lazy indices also contain retained exiting children.
-            if (animatedRows.exitingIds.isEmpty()) controller.updateScrollPosition(listState, visibleComments)
-            if (previousHeaderCoverage != coverage) {
-                previousHeaderCoverage = coverage
-                controller.updateStatusBarHeaderCoverage(coverage)
-                controller.listener.onHeaderCoverageChanged(coverage)
-            }
+            maxOf(coverage, peekHeader.coverage)
+        }.distinctUntilChanged().collect { coverage ->
+            controller.updateStatusBarHeaderCoverage(coverage)
+            controller.listener.onHeaderCoverageChanged(coverage)
         }
     }
 
@@ -320,6 +325,7 @@ fun CommentsScreen(
             )
         }
         val listIndex = target + 1
+        peekHeader.dismissForNavigation(toHeader = listIndex == 0)
         val scrollOffset = if (listIndex == 0) 0 else -navigationTopOffsetPx
         if (request.animate) {
             listState.animateToCommentNavigationTarget(
@@ -336,6 +342,7 @@ fun CommentsScreen(
     val websiteRequest = controller.showWebsiteRequest
     LaunchedEffect(websiteRequest) {
         if (websiteRequest > 0) {
+            peekHeader.dismissForNavigation(toHeader = true)
             if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
                 listState.animateScrollToItem(0)
             }
@@ -360,6 +367,7 @@ fun CommentsScreen(
                 ?.plus(1)
         }
         if (listIndex != null) {
+            peekHeader.dismissForNavigation(toHeader = listIndex == 0)
             val scrollOffset = if (listIndex == 0) -request.topOffsetPx else -commentScrollTopOffset(
                 requestedTopOffsetPx = request.topOffsetPx,
                 searchResult = request.searchResult,
@@ -422,11 +430,12 @@ fun CommentsScreen(
                     enabled = (controller.isSheetExpanded() || controller.sideBySideActive) &&
                         !controller.isCommentActionOverlayShowing() &&
                         !controller.isLinkPreviewOverlayShowing() && !controller.searchDialogVisible,
-                ) { listState.animateScrollToItem(0) }
+                ) {
+                    peekHeader.dismissForNavigation(toHeader = true)
+                    listState.animateScrollToItem(0)
+                }
                 .fillMaxSize()
-                // Capture an opaque backdrop as well as the rows. Blurring transparent gaps
-                // around depth rails otherwise lets the original sharp lines show through.
-                .commentsHazeSource(commentsHazeState)
+                .nestedScroll(peekHeader)
                 .background(MaterialTheme.colorScheme.pageBackground)
                 // Hide the provisional position while a saved reading position is applied.
                 .graphicsLayer {
@@ -449,7 +458,11 @@ fun CommentsScreen(
             headerKey = "header",
             header = {
                 Column {
-                    headerContent()
+                    CompositionLocalProvider(LocalCommentsPeekHeader provides peekHeader) {
+                        Box(Modifier.onPlaced { peekHeader.headerCoordinates = it }) {
+                            headerContent()
+                        }
+                    }
                     AnimatedVisibility(
                         visible = controller.usingOfficialApiFallback,
                         enter = fadeIn(),
@@ -604,31 +617,44 @@ fun CommentsScreen(
             }
         }
 
-        // The story type is unknown on an uncached open. Keep the list at the same
-        // composition location when it becomes an integrated browser story, otherwise
-        // the header and row reveal animations are discarded with the old list.
-        PullToRefreshBox(
-            enabled = pullToRefreshEnabled && !controller.integratedWebView,
-            isRefreshing = controller.pullToRefreshInProgress &&
-                controller.commentsRefreshInProgress,
-            state = pullToRefreshState,
-            indicator = {
-                HarmonicPullToRefreshIndicator(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = statusBarInset),
-                    isRefreshing = controller.pullToRefreshInProgress &&
-                        controller.commentsRefreshInProgress,
-                    state = pullToRefreshState,
-                )
-            },
-            onRefresh = {
-                controller.beginPullToRefresh()
-                controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
-            },
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            list()
+        // Sample the actual composite under floating controls. Capturing just the
+        // list makes the glass back button see through the opaque peek header.
+        Box(Modifier.fillMaxSize().commentsHazeSource(commentsHazeState)) {
+            // The story type is unknown on an uncached open. Keep the list at the same
+            // composition location when it becomes an integrated browser story, otherwise
+            // the header and row reveal animations are discarded with the old list.
+            PullToRefreshBox(
+                enabled = pullToRefreshEnabled && !controller.integratedWebView,
+                isRefreshing = controller.pullToRefreshInProgress &&
+                    controller.commentsRefreshInProgress,
+                state = pullToRefreshState,
+                indicator = {
+                    HarmonicPullToRefreshIndicator(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = statusBarInset),
+                        isRefreshing = controller.pullToRefreshInProgress &&
+                            controller.commentsRefreshInProgress,
+                        state = pullToRefreshState,
+                    )
+                },
+                onRefresh = {
+                    controller.beginPullToRefresh()
+                    controller.listener.onHeaderAction(CommentsHeaderAction.REFRESH)
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                list()
+            }
+
+            CommentsPeekHeader(
+                state = peekHeader,
+                controller = controller,
+                topInset = statusBarInset,
+                reserveUpButtonInset = reserveUpButtonInset,
+                onClick = { controller.scrollToComment(0, 0, true) },
+            )
+
         }
 
         if (showNavigationControls) CommentNavigationControls(controller)

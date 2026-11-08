@@ -63,6 +63,7 @@ data class CommentDisplaySettings(
     val showHeaderCategories: Boolean = true,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val canAsk: Boolean = canProvideSummary,
+    val peekStoryHeader: Boolean = true,
 ) {
     val combineHeaderActions: Boolean get() = headerMetaInfo == CommentsHeaderMetaInfo.BUTTONS
     val cardStyle: Boolean get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
@@ -102,6 +103,7 @@ data class CommentDisplaySettings(
             headerMetaInfo = preferences.headerMetaInfo,
             headerTint = preferences.headerTint,
             showUpButton = preferences.showUpButton,
+            peekStoryHeader = preferences.peekStoryHeader,
             paletteTintMode = PaletteTintPreferences.normalizeConfigKey(
                 preferences.paletteTintConfigKey,
             ),

@@ -25,7 +25,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -71,7 +70,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.computedStateOf
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithCache
 import com.simon.harmonichackernews.ui.common.layoutHeight
 import com.simon.harmonichackernews.ui.common.layoutVerticalPadding
 import androidx.compose.runtime.getValue
@@ -85,7 +83,6 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.simon.harmonichackernews.settings.CommentsHeaderTint
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -107,7 +104,6 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
 import com.simon.harmonichackernews.settings.CommentsHeaderLayout
-import com.simon.harmonichackernews.settings.CommentsHeaderEdge
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.StoryTitleText
@@ -153,6 +149,7 @@ fun CommentsHeader(
     headerPreviewImage: @Composable (modifier: Modifier, visibleBackground: Color, onTintLoaded: (Int) -> Unit) -> Unit,
 ) {
     val categories = LocalCommentStoryCategories.current
+    val peekHeader = LocalCommentsPeekHeader.current
     val effectiveMetaInfo = settings.headerMetaInfo.resolve(settings.hasAccountDetails)
     val detailSettings = settings.copy(headerMetaInfo = effectiveMetaInfo)
     val headerSheetProgress = { if (controller.sideBySideActive) 1f else controller.sheetSlideOffset }
@@ -232,33 +229,10 @@ fun CommentsHeader(
                 if (controller.sideBySideActive) controller.sheetSlideOffset else 1f
         } else 0.dp
     }
-    val bottomRadius by animateDpAsState(
-        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.ROUNDED) 24.dp else 0.dp,
-        tween(240), label = "header bottom corners",
-    )
-    val bottomPadding by animateDpAsState(
-        if (settings.tintHeader && settings.headerEdge != CommentsHeaderEdge.FADE) 12.dp else 0.dp,
-        tween(240), label = "header bottom breathing room",
-    )
+    val edgeStyle = rememberCommentsHeaderEdgeStyle(settings.tintHeader, settings.headerEdge)
     val shimmerClearanceProgress by animateFloatAsState(
         if (settings.showUpButton) 1f else 0f,
         contentTween(), label = "header shimmer clearance",
-    )
-    val shadowElevation by animateDpAsState(
-        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.SHADOW) 1.5.dp else 0.dp,
-        tween(240), label = "header shadow",
-    )
-    val edgeHeight by animateDpAsState(
-        when {
-            !settings.tintHeader -> 8.dp
-            settings.headerEdge == CommentsHeaderEdge.FADE -> 32.dp
-            else -> 16.dp
-        },
-        tween(240), label = "header edge spacing",
-    )
-    val fadeAlpha by animateFloatAsState(
-        if (settings.tintHeader && settings.headerEdge == CommentsHeaderEdge.FADE) 1f else 0f,
-        tween(240), label = "header fade",
     )
 
     Column(
@@ -268,16 +242,9 @@ fun CommentsHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(1f)
-                // Keep one layer through zero elevation; inserting/removing a shadow layer
-                // during the corner animation can briefly redraw the old outline.
-                .graphicsLayer {
-                    this.shadowElevation = shadowElevation.toPx()
-                    shape = RoundedCornerShape(bottomStart = bottomRadius, bottomEnd = bottomRadius)
-                    clip = true
-                }
-                .drawBehind { drawRect(visibleHeaderBackground()) }
+                .commentsHeaderSurface(edgeStyle, visibleHeaderBackground)
                 .windowInsetsPadding(contentWindowInsets)
-                .layoutVerticalPadding(bottom = { bottomPadding }),
+                .layoutVerticalPadding(bottom = { edgeStyle.bottomPadding }),
         ) {
             Spacer(Modifier.layoutHeight(topSpacer))
             if (controller.integratedWebView && controller.showSheetControls) {
@@ -414,7 +381,9 @@ fun CommentsHeader(
                                                     modifier = Modifier.sharedElement(
                                                         rememberSharedContentState(titleLayout), visibility,
                                                         boundsTransform = boundsTransform,
-                                                    ).semantics { heading() },
+                                                    ).semantics { heading() }.measureCommentsPeekTitle(
+                                                        peekHeader,
+                                                    ),
                                                     color = colors.onSurface,
                                                     fontFamily = headerTypography.family,
                                                     fontWeight = FontWeight.Bold,
@@ -661,18 +630,8 @@ fun CommentsHeader(
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().layoutHeight { edgeHeight }) {
-            Box(Modifier.matchParentSize().graphicsLayer { alpha = fadeAlpha }.drawWithCache {
-                val color = visibleHeaderBackground()
-                val fadeBrush = Brush.verticalGradient(
-                    0f to color,
-                    0.25f to color.copy(alpha = color.alpha * 0.84f),
-                    0.55f to color.copy(alpha = color.alpha * 0.42f),
-                    1f to color.copy(alpha = 0f),
-                )
-                onDrawBehind { drawRect(fadeBrush) }
-            })
-        }
+        Box(Modifier.fillMaxWidth().layoutHeight { edgeStyle.edgeHeight }
+            .commentsHeaderFade(edgeStyle, visibleHeaderBackground))
         Column(Modifier.windowInsetsPadding(contentWindowInsets).commentsReadingWidth()
             .then(horizontalContentPadding)) {
             OpFilterBanner(controller)

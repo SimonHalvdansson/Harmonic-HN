@@ -92,6 +92,17 @@ internal fun HeaderStackedMetrics(
 }
 
 @Composable
+internal fun HeaderPeekMetrics(
+    controller: CommentsScreenController,
+    settings: CommentDisplaySettings,
+    headerColor: Color,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        HeaderMetricItems(controller, settings, TextStyle.Default, headerColor = headerColor, compact = true)
+    }
+}
+
+@Composable
 private fun HeaderMetricItems(
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
@@ -99,6 +110,7 @@ private fun HeaderMetricItems(
     hazeState: HazeState? = null,
     headerColor: Color = Color.Unspecified,
     animateSettingsPreview: Boolean = false,
+    compact: Boolean = false,
 ) {
     val story = controller.story
     val upvoted = controller.isUpvoted(story.id, story.isComment)
@@ -117,6 +129,7 @@ private fun HeaderMetricItems(
             settings = settings, hazeState = hazeState, textStyle = textStyle,
             selected = upvoted, loading = controller.storyVoteLoading,
             headerColor = headerColor,
+            compact = compact,
             // Keep the badge and its spacing intact throughout the fade.
             modifier = modifier.then(if (animateSettingsPreview) {
                 if (hazeState == null) Modifier.padding(bottom = 4.dp) else Modifier.padding(end = 4.dp)
@@ -131,6 +144,7 @@ private fun HeaderMetricItems(
         settings = settings, hazeState = hazeState, textStyle = textStyle,
         headerColor = headerColor,
         highlighted = commented,
+        compact = compact,
     )
 }
 
@@ -148,11 +162,12 @@ private fun ImageMetric(
     /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
     highlighted: Boolean = false,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val typography = rememberContentTypography(settings.font)
     val onImage = hazeState != null
     Box(
-        modifier.widthIn(min = if (onImage) 48.dp else 56.dp, max = if (onImage) 50.dp else 64.dp)
+        modifier.widthIn(min = if (onImage || compact) 48.dp else 56.dp, max = if (onImage || compact) 50.dp else 64.dp)
             .semantics {
                 contentDescription = description
                 stateDescription = count.toString()
@@ -166,8 +181,8 @@ private fun ImageMetric(
                 else Modifier.background(
                     lerp(headerColor, MaterialTheme.colorScheme.onSurface, 0.07f), RoundedCornerShape(10.dp),
                 )
-            ).heightIn(min = if (onImage) 28.dp else 32.dp)
-                .padding(horizontal = if (onImage) 4.dp else 8.dp, vertical = 4.dp),
+            ).heightIn(min = if (compact) 22.dp else if (onImage) 28.dp else 32.dp)
+                .padding(horizontal = if (onImage || compact) 4.dp else 8.dp, vertical = if (compact) 2.dp else 4.dp),
             horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -182,7 +197,8 @@ private fun ImageMetric(
             }
             Text(compactStoryMetric(count), Modifier.weight(1f, fill = false),
                 color = MaterialTheme.colorScheme.onSurface, fontFamily = typography.family,
-                fontWeight = FontWeight.Medium, fontSize = 12.sp, style = textStyle,
+                fontWeight = FontWeight.Medium, fontSize = if (compact) 11.sp else 12.sp,
+                lineHeight = if (compact) 14.sp else androidx.compose.ui.unit.TextUnit.Unspecified, style = textStyle,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

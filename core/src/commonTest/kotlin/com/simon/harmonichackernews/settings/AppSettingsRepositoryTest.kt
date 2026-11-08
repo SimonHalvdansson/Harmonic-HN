@@ -16,6 +16,18 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 class AppSettingsRepositoryTest {
+    @Test fun peekStoryHeaderDefaultsOnAndRetainsTheSavedChoice() {
+        val store = InMemoryKeyValueStore()
+        fun restored() = AppSettingsRepository(store, store.changes)
+        assertTrue(restored().snapshot().comments.peekStoryHeader)
+        for (enabled in listOf(false, true)) {
+            restored().setCommentBoolean(CommentBooleanPreference.PEEK_STORY_HEADER, enabled)
+            val preferences = restored().snapshot().comments
+            assertEquals(enabled, preferences.peekStoryHeader)
+            assertEquals(enabled, CommentDisplaySettings.from(preferences, false, false, false, false).peekStoryHeader)
+        }
+    }
+
     @Test fun commentsSwipeBackPreservesReleasedChoicesAndDefaultsOff() {
         for (legacyDisabled in listOf(null, false, true)) {
             val store = InMemoryKeyValueStore()

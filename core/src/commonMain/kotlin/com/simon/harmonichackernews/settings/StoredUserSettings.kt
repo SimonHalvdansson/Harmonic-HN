@@ -68,6 +68,7 @@ object UserPreferenceKeys {
     // Legacy boolean retained for importing older backups.
     const val COMMENTS_COMBINE_HEADER_ACTIONS = "pref_comments_combine_header_author"
     const val COMMENTS_SHOW_UP_BUTTON = "pref_comments_show_up_button"
+    const val COMMENTS_PEEK_STORY_HEADER = "pref_comments_peek_story_header"
     const val COMMENT_DEPTH_INDICATORS = "pref_comment_depth_indicators"
     const val LAST_ENABLED_COMMENT_DEPTH_INDICATORS = "pref_last_enabled_comment_depth_indicators"
     const val COMMENT_INDICATOR_THICKNESS = "pref_comment_indicator_thickness"
@@ -239,6 +240,7 @@ class StoredUserSettings(
                     showCommentsUpButtonByDefault,
                 ),
                 paletteTintConfigKey = paletteTintConfigKey(),
+                peekStoryHeader = boolean(UserPreferenceKeys.COMMENTS_PEEK_STORY_HEADER, true),
                 textSize = commentTextSize(),
                 depthIndicatorMode = commentDepthMode(),
                 indicatorThickness = CommentIndicatorThickness.fromStored(

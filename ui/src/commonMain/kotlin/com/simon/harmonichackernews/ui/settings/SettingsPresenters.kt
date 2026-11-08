@@ -149,6 +149,7 @@ class CommentsSettingsPresenter(
             animateChanges = comments.animateChanges,
             storyTintEnabled = settings.story.tintCardsFromImages,
             showUpButton = comments.showUpButton,
+            peekStoryHeader = comments.peekStoryHeader,
             headerTint = comments.headerTintEnabled,
             storyPreviewEnabled = settings.story.previewImageMode != StoryPreviewMode.OFF,
             headerPreviewImage = comments.headerPreviewImageEnabled,

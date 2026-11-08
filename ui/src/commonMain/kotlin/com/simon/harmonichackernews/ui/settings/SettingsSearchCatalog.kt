@@ -151,6 +151,7 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.Comments, "Navigation",
         "Show navigation buttons" to "next previous top level threads jump",
         "Show scrollbar" to "scroll bar position indicator",
+        "Peek story header" to "title scroll up top compact header",
         "Smooth scroll comments" to "scrolling animation navigation",
         "Animate comment expand/collapse" to "motion animations transitions reduce motion")
     if (capabilities.volumeNavigation) group(SettingsSection.Comments, "Navigation",

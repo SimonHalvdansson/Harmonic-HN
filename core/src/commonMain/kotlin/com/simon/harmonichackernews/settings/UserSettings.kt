@@ -122,6 +122,7 @@ data class CommentPreferences(
     val showHeaderCategories: Boolean = true,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val swipeBack: Boolean = false,
+    val peekStoryHeader: Boolean = true,
 ) {
     val cardStyle: Boolean
         get() = displayStyle == DisplayStyle.RAISED || displayStyle == DisplayStyle.OUTLINED
