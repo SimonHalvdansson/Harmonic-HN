@@ -9,6 +9,28 @@ import kotlinx.io.files.Path
 
 class FileLocalModelStorageCleanupTest {
     @Test
+    fun nativeResumeDataSurvivesRetryButIsRemovedByCancelAndClear() {
+        val temporary = Files.createTempDirectory("harmonic-resume-data-")
+        try {
+            val model = LocalModelCatalog.models.first(LocalModelDefinition::downloadable)
+            Files.createDirectories(temporary.resolve(model.id))
+            val resume = java.nio.file.Path.of(LocalModelFilePolicy.resumeDataPath(Path(temporary.toString()), model).toString())
+            val storage = FileLocalModelStorage(Path(temporary.toString()), { Long.MAX_VALUE })
+            Files.write(resume, byteArrayOf(1, 2, 3))
+            assertTrue(storage.prepareDownload(model) is LocalModelStoragePreparation.Ready)
+            assertTrue(Files.exists(resume))
+            storage.remove(model, includeFinalFile = false)
+            assertFalse(Files.exists(resume))
+            Files.createDirectories(resume.parent)
+            Files.write(resume, byteArrayOf(1))
+            assertTrue(storage.clearStoredModels())
+            assertFalse(Files.exists(resume))
+        } finally {
+            temporary.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun retiredDownloadsRemainCountedAndCanBeExplicitlyCleared() {
         val temporary = Files.createTempDirectory("harmonic-retired-models-")
         try {

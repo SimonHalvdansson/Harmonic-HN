@@ -36,7 +36,7 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSURLIsExcludedFromBackupKey
 import kotlin.time.TimeSource
 
-/** iOS owns the native runtime and foreground, resumable model transfers. */
+/** iOS supplies background model transfers; isolated test hosts can use the foreground fallback. */
 class IosLocalAiEnvironment private constructor(
     val models: LocalModelService,
     val summary: LocalSummaryEngine,
@@ -63,6 +63,7 @@ class IosLocalAiEnvironment private constructor(
             userAgent: String,
             apple: LocalSummaryEngine?,
             liteRt: IosLiteRtSummaryBridge,
+            transfers: LocalModelTransferScheduler? = null,
         ): IosLocalAiEnvironment {
             val root = Path(modelsDirectory)
             val cache = Path(cacheDirectory)
@@ -92,7 +93,7 @@ class IosLocalAiEnvironment private constructor(
                         inferenceCacheRoot = cache,
                         models = catalog,
                     ),
-                    transfers = IosLocalModelTransfers(scope, root, ResumableDownloadService(
+                    transfers = transfers ?: IosLocalModelTransfers(scope, root, ResumableDownloadService(
                         KtorTransferClient(KtorHttpClient(client)),
                     )),
                     runtimeDelivery = IosLocalRuntimeDelivery(),

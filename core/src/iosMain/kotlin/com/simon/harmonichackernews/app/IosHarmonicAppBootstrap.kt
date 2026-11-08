@@ -67,6 +67,7 @@ class IosHarmonicAppBootstrap(
             userAgent = userAgent,
             apple = bindings.localSummary,
             liteRt = it,
+            transfers = bindings.modelTransfers,
         )
     }
     val platform = createIosPlatformDependencies(

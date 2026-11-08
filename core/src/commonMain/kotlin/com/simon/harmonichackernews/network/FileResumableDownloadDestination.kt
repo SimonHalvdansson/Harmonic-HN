@@ -45,6 +45,30 @@ class FileResumableDownloadDestination(
     }
 
     override suspend fun promotePartial(): Boolean = fileOperation {
+        promotePartialFile()
+    }
+
+    /** Adopt a file delivered by an OS background downloader without loading it into memory. */
+    suspend fun importDownloadedFile(source: Path, expectedBytes: Long, appendOffset: Long = 0L) = fileOperation {
+        require(expectedBytes > 0L && appendOffset in 0 until expectedBytes)
+        val received = fileSystem.metadataOrNull(source)?.takeIf { it.isRegularFile }?.size
+        check(received == expectedBytes - appendOffset) { "Downloaded model has an unexpected size" }
+        completed.parent?.let(fileSystem::createDirectories)
+        if (appendOffset == 0L) {
+            fileSystem.delete(partial, mustExist = false)
+            fileSystem.atomicMove(source, partial)
+        } else {
+            check(fileSystem.metadataOrNull(partial)?.size == appendOffset) { "Partial model changed during download" }
+            // The OS file contains the remainder of an existing foreground download.
+            fileSystem.source(source).buffered().use { input ->
+                fileSystem.sink(partial, append = true).buffered().use { output -> input.transferTo(output) }
+            }
+            fileSystem.delete(source)
+        }
+        check(promotePartialFile()) { "Could not finish installing the model" }
+    }
+
+    private fun promotePartialFile(): Boolean =
         runCatching {
             fileSystem.delete(completed, mustExist = false)
             try {
@@ -60,7 +84,6 @@ class FileResumableDownloadDestination(
             }
             true
         }.getOrDefault(false)
-    }
 
     private fun delete(path: Path): Boolean = runCatching {
         fileSystem.delete(path, mustExist = false)

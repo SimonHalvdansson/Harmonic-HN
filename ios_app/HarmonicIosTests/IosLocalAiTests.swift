@@ -58,7 +58,8 @@ final class IosLocalAiTests: XCTestCase {
             cacheDirectory: directory.appendingPathComponent("cache").path,
             userAgent: "Harmonic-iOS-LiteRT-Tests",
             apple: IosNativeLocalSummaryEngine(bridge: UnavailableAppleModel()),
-            liteRt: bridge
+            liteRt: bridge,
+            transfers: nil
         )
     }
 

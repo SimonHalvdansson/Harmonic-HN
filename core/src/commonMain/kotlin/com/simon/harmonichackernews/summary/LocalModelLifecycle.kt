@@ -61,6 +61,9 @@ interface LocalModelTransferScheduler {
     fun work(modelId: String): LocalModelWorkSnapshot?
     fun isActive(modelId: String): Boolean
     fun enqueue(model: LocalModelDefinition)
+    /** Additional disk space before the safety buffer; called on the storage dispatcher. */
+    fun requiredSpaceBytes(model: LocalModelDefinition, partialFileBytes: Long): Long =
+        (model.sizeBytes - partialFileBytes).coerceAtLeast(0L)
     fun cancel(modelId: String, onCancelled: () -> Unit)
     fun setObserver(observer: () -> Unit) = Unit
     fun reset() = Unit
@@ -132,8 +135,10 @@ class LocalModelLifecycle(
             return LocalModelDownloadResult.StorageFailure(prepared.message)
         }
         val snapshot = (prepared as LocalModelStoragePreparation.Ready).snapshot
-        val remainingBytes = (candidate.sizeBytes - snapshot.partialFileBytes).coerceAtLeast(0L)
-        val requiredBytes = remainingBytes + storageBufferBytes
+        val transferBytes = withContext(storageDispatcher) {
+            transfers.requiredSpaceBytes(candidate, snapshot.partialFileBytes)
+        }
+        val requiredBytes = LocalModelDownloadSpacePolicy.withBuffer(transferBytes, storageBufferBytes)
         if (snapshot.usableSpaceBytes < requiredBytes) {
             return LocalModelDownloadResult.NotEnoughSpace(requiredBytes)
         }

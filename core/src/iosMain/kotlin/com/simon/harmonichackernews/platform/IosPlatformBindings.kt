@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.platform
 import com.simon.harmonichackernews.network.ReplyNotificationPlatform
 import com.simon.harmonichackernews.settings.KeyValueStore
 import com.simon.harmonichackernews.summary.IosLiteRtSummaryBridge
+import com.simon.harmonichackernews.summary.LocalModelTransferScheduler
 
 /** Keeps UIKit traits, status-bar foreground, and backing views aligned with the shared theme. */
 interface IosAppearanceController {
@@ -30,6 +31,7 @@ class IosPlatformBindings(
     nativeLocalSummary: IosNativeSummaryBridge? = null,
     val nativeLiteRt: IosLiteRtSummaryBridge? = null,
     val nativeArticleEmbeddings: IosArticleEmbeddingBridge? = null,
+    val modelTransfers: LocalModelTransferScheduler? = null,
 ) {
     val localSummary: LocalSummaryEngine? =
         localSummary ?: nativeLocalSummary?.let(::IosNativeLocalSummaryEngine)

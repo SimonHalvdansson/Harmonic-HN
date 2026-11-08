@@ -22,6 +22,10 @@ object LocalModelFilePolicy {
     fun partialPath(root: Path, model: LocalModelDefinition): Path =
         partialPath(root, model.id, model.fileName)
 
+    /** Opaque OS resume data; kept across retries and removed with the model or its partial. */
+    fun resumeDataPath(root: Path, model: LocalModelDefinition): Path =
+        Path(modelDirectory(root, model.id), model.fileName + PARTIAL_FILE_SUFFIX + ".resume")
+
     fun inferenceCachePrefixes(model: LocalModelDefinition): List<String> = buildList {
         add("${model.fileName}.xnnpack_cache_")
         when (model.id) {
@@ -70,6 +74,7 @@ class FileLocalModelStorage(
         runCatching {
             val directory = LocalModelFilePolicy.modelDirectory(root, model.id)
             fileSystem.delete(LocalModelFilePolicy.partialPath(root, model), mustExist = false)
+            fileSystem.delete(LocalModelFilePolicy.resumeDataPath(root, model), mustExist = false)
             if (includeFinalFile) {
                 fileSystem.delete(LocalModelFilePolicy.completedPath(root, model), mustExist = false)
                 deleteInferenceCacheFiles(model)
@@ -107,8 +112,9 @@ class FileLocalModelStorage(
         if (fileSystem.metadataOrNull(directory)?.isDirectory != true) return
         val completed = LocalModelFilePolicy.completedPath(root, model)
         val partial = LocalModelFilePolicy.partialPath(root, model)
+        val resumeData = LocalModelFilePolicy.resumeDataPath(root, model)
         fileSystem.list(directory).forEach { path ->
-            if (path != completed && path != partial &&
+            if (path != completed && path != partial && path != resumeData &&
                 fileSystem.metadataOrNull(path)?.isRegularFile == true
             ) {
                 fileSystem.delete(path, mustExist = false)

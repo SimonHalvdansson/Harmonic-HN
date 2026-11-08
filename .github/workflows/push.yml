@@ -318,6 +318,31 @@ jobs:
           ONLY_ACTIVE_ARCH=YES
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
+      - name: Run native model download tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(device["udid"] for runtime, entries in sorted(devices.items(), reverse=True)
+              if ".iOS-" in runtime for device in entries if device["name"].startswith("iPhone")))')
+          xcodebuild \
+            -project ios_app/HarmonicIos.xcodeproj \
+            -scheme HarmonicIos \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$simulator" \
+            -only-testing:HarmonicIosTests/IosBackgroundModelTransfersTests \
+            -resultBundlePath "$RUNNER_TEMP/ios-model-download-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            test-without-building
+      - name: Upload native model download test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-model-download-tests
+          path: ${{ runner.temp }}/ios-model-download-tests.xcresult
+          if-no-files-found: ignore
       - name: Upload iOS test reports
         if: always()
         uses: actions/upload-artifact@v7

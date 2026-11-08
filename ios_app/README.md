@@ -38,10 +38,20 @@ trace the host configuration through the shared settings and runtime guards.
 Local summaries support Apple Intelligence and downloadable Gemma, LFM3, Ministral, Nemotron, and Qwen
 LiteRT-LM models. The local Swift package in `LiteRTLM/` pins Google's official iOS XCFramework and checksum, avoiding the
 multi-platform repository's large binary history. Inference runs on a serial CPU worker on both
-devices and arm64 simulators, with streamed progress and cancellation. Downloads run while the app
-is active; interrupted downloads preserve their partial file and resume when requested again.
+devices and arm64 simulators, with streamed progress and cancellation. Model downloads use an
+app-wide background `URLSession`, reconnect to existing transfers on launch, and install completed
+files even when no scene is open. Retry uses saved OS resume data when available; existing foreground
+`.download` partials are resumed with HTTP Range requests. Cancel and Clear models wait for native
+transfers to stop before deleting files and resume data. iOS controls background scheduling; explicitly
+force-quitting the app cancels its background transfers and requires reopening the app to retry.
+Free-space checks credit bytes retained with matching native resume data and reserve the additional
+installation copy for legacy partials. A fallback to a fresh download checks available space again.
 
 The `HarmonicIosTests` target checks catalog/selection and the Kotlin-to-native summary bridge.
+Its background-transfer tests use a loopback HTTP server and isolated ephemeral sessions to cover
+file delivery, HTTP errors, size validation, legacy partials, duplicate requests, cancellation, and
+reloading interrupted transfer state. iOS CI executes this suite after building the test host.
+OS suspension and relaunch delivery still need device verification with the production background session.
 Its real Gemma tests check consecutive summaries and cancellation when `litert-test-fixture.litertlm`
 (the catalog's Gemma E2B file) is present in the test host's Application Support directory; otherwise
 those tests are skipped. Keep the large fixture outside the repository.

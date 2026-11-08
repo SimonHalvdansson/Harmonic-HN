@@ -8,7 +8,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         prepareUiTestStateIfNeeded()
+        _ = IosBackgroundModelTransfers.shared
         return true
+    }
+
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+                     completionHandler: @escaping () -> Void) {
+        IosBackgroundModelTransfers.shared.handleBackgroundEvents(identifier: identifier, completion: completionHandler)
     }
 
     func applicationSignificantTimeChange(_ application: UIApplication) {
@@ -31,6 +37,19 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
 private var harmonicUiTestDirectory: URL {
     FileManager.default.temporaryDirectory.appendingPathComponent("HarmonicUITests", isDirectory: true)
+}
+
+var harmonicIsUiTesting: Bool {
+#if DEBUG
+    return ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1"
+#else
+    return false
+#endif
+}
+
+var harmonicFilesDirectory: URL {
+    if harmonicIsUiTesting { return harmonicUiTestDirectory.appendingPathComponent("files") }
+    return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
 }
 
 /// Keep the same application and navigation graph as this window resizes or changes displays.
@@ -73,17 +92,13 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             privacyUrl: "https://simonhalvdansson.github.io/harmonic_privacy.html"
         )
         let fileManager = FileManager.default
-        var filesDirectory = fileManager.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        )[0]
+        let filesDirectory = harmonicFilesDirectory
         var cacheDirectory = fileManager.urls(
             for: .cachesDirectory,
             in: .userDomainMask
         )[0]
 #if DEBUG
         if ProcessInfo.processInfo.environment["HARMONIC_UI_TESTING"] == "1" {
-            filesDirectory = harmonicUiTestDirectory.appendingPathComponent("files")
             cacheDirectory = harmonicUiTestDirectory.appendingPathComponent("cache")
         }
 #endif
@@ -134,7 +149,8 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             localSummary: nil,
             nativeLocalSummary: services.localSummary,
             nativeLiteRt: services.liteRt,
-            nativeArticleEmbeddings: services.articleEmbeddings
+            nativeArticleEmbeddings: services.articleEmbeddings,
+            modelTransfers: IosBackgroundModelTransfers.shared
         )
         let harmonic = IosHarmonicApplication(bindings: bindings, runtime: runtime)
         let root = HarmonicRootViewController(
