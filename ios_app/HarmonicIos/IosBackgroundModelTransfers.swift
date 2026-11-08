@@ -24,7 +24,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
 
     struct SavedTransfer: Codable {
         let record: Record
-        let resumeData: Data?
+        let resumeData: Foundation.Data?
         let receivedBytes: Int64
         let error: String
     }
@@ -32,7 +32,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
     private struct DownloadPlan {
         let offset: Int64
         let receivedBytes: Int64
-        let resumeData: Data?
+        let resumeData: Foundation.Data?
         let requiredBytes: Int64
     }
 
@@ -42,7 +42,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
     private var active: Set<String> = []
     private var cancelRequested: Set<String> = []
     private var restoring = true
-    private var observer: (() -> KotlinUnit)?
+    private var observer: (() -> Void)?
     private let files: IosModelDownloadFiles
     private let models: [String: LocalModelDefinition]
     private let identifier: String
@@ -54,7 +54,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
     private var tasks: [String: URLSessionDownloadTask] = [:]
     private var lastProgress: [String: TimeInterval] = [:]
     private var completedTasks: Set<Int> = []
-    private var cancellations: [String: [() -> KotlinUnit]] = [:]
+    private var cancellations: [String: [() -> Void]] = [:]
     private var installed: Set<String> = []
     private var backgroundCompletion: (() -> Void)?
     private var eventsFinished = false
@@ -109,7 +109,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
         return restoring || active.contains(modelId)
     }
 
-    func setObserver(observer: @escaping () -> KotlinUnit) {
+    func setObserver(observer_ observer: @escaping () -> Void) {
         stateLock.lock()
         self.observer = observer
         stateLock.unlock()
@@ -149,7 +149,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
                 modelBytes: model.sizeBytes, appendOffset: offset, receivedBytes: received))
     }
 
-    func cancel(modelId: String, onCancelled: @escaping () -> KotlinUnit) {
+    func cancel(modelId: String, onCancelled: @escaping () -> Void) {
         stateLock.lock()
         cancelRequested.insert(modelId)
         stateLock.unlock()
@@ -320,7 +320,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
             return
         }
         if let error {
-            let resume = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+            let resume = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Foundation.Data
             if record.resumed && resume == nil {
                 // Resume data can expire or refer to a removed OS temporary file. Retry once fresh.
                 removeSaved(model)
@@ -373,7 +373,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
         cancelRequested.remove(id)
         stateLock.unlock()
         let callbacks = cancellations.removeValue(forKey: id) ?? []
-        DispatchQueue.main.async { callbacks.forEach { _ = $0() } }
+        DispatchQueue.main.async { callbacks.forEach { $0() } }
         notify()
     }
 
@@ -383,7 +383,7 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
     }
 
     private func readSaved(_ model: LocalModelDefinition) -> SavedTransfer? {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: files.resumeDataPath(model: model))),
+        guard let data = try? Foundation.Data(contentsOf: URL(fileURLWithPath: files.resumeDataPath(model: model))),
               let saved = try? JSONDecoder().decode(SavedTransfer.self, from: data),
               saved.record.matches(model) else { return nil }
         return saved
@@ -427,6 +427,6 @@ final class IosBackgroundModelTransfers: NSObject, LocalModelTransferScheduler, 
         stateLock.lock()
         let callback = observer
         stateLock.unlock()
-        DispatchQueue.main.async { _ = callback?() }
+        DispatchQueue.main.async { callback?() }
     }
 }
