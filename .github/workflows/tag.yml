@@ -243,7 +243,7 @@ jobs:
           echo "kotlin=$kotlin" >> "$GITHUB_OUTPUT"
           echo "xcode=$(printf '%s' "$xcode_version" | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
       - name: Cache Kotlin Native toolchain and dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.konan
           key: konan-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.konan-toolchain.outputs.kotlin }}-${{ steps.konan-toolchain.outputs.xcode }}-${{ hashFiles('gradle/libs.versions.toml', 'gradle.properties') }}
