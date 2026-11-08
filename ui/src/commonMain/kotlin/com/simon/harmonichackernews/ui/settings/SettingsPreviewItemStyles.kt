@@ -31,6 +31,7 @@ internal fun CommentsSettingsUiState.toPreviewCommentRowStyle(): CommentRowStyle
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,
+        quotePadding = quotePadding,
         displayStyle = displayStyle,
         textSize = textSize,
         collectLinks = collectLinks,

@@ -135,6 +135,7 @@ class CommentsSettingsPresenter(
             quoteSpacing = comments.quoteSpacing,
             quoteHighlightColor = comments.quoteHighlightColor,
             quoteHighlightStyle = comments.quoteHighlightStyle,
+            quotePadding = comments.quotePadding,
             roundedDepthIndicators = comments.roundedDepthIndicators,
             continuousDepthIndicators = comments.continuousDepthIndicators,
             userAvatarsEnabled = comments.userAvatarsEnabled,

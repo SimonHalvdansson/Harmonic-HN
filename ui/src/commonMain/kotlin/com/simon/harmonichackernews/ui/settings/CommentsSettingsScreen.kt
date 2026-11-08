@@ -63,6 +63,7 @@ data class CommentsSettingsUiState(
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
+    val quotePadding: Boolean = true,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,

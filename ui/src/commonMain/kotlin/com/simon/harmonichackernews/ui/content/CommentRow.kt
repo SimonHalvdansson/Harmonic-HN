@@ -85,6 +85,9 @@ import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextMotion
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,6 +130,7 @@ data class CommentRowStyle(
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
+    val quotePadding: Boolean = true,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
@@ -273,6 +277,7 @@ fun CommentRow(
             quoteSpacing = style.quoteSpacing,
             quoteHighlightColor = style.quoteHighlightColor,
             quoteHighlightStyle = style.quoteHighlightStyle,
+            quotePadding = style.quotePadding,
             html = previewBody,
             searchTerm = "",
             markedColor = MaterialTheme.colorScheme.onSurface,
@@ -322,6 +327,7 @@ fun CommentRow(
                         quoteSpacing = style.quoteSpacing,
                         quoteHighlightColor = style.quoteHighlightColor,
                         quoteHighlightStyle = style.quoteHighlightStyle,
+                        quotePadding = style.quotePadding,
                         html = inlineReferenceHtml,
                         modifier = Modifier.padding(top = 16.dp),
                         searchTerm = "",
@@ -575,6 +581,7 @@ fun CommentRow(
                                 quoteSpacing = style.quoteSpacing,
                                 quoteHighlightColor = style.quoteHighlightColor,
                                 quoteHighlightStyle = style.quoteHighlightStyle,
+                                quotePadding = style.quotePadding,
                                 html = block.bodyHtml.orEmpty(),
                                 modifier = if (hasInterleavedReferences && index > 0) {
                                     Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
@@ -669,6 +676,7 @@ internal fun CommentBodyText(
     quoteSpacing: QuoteSpacing,
     quoteHighlightColor: QuoteHighlightColor,
     quoteHighlightStyle: QuoteHighlightStyle,
+    quotePadding: Boolean = true,
     html: String,
     modifier: Modifier = Modifier,
     searchTerm: String,
@@ -685,6 +693,7 @@ internal fun CommentBodyText(
         hasQuotes = content.hasQuotes,
         enabled = highlightQuotes,
         spacing = quoteSpacing,
+        padding = quotePadding,
         color = quoteHighlightColor,
         style = quoteHighlightStyle,
         primary = colors.primary,
@@ -729,8 +738,8 @@ internal fun CommentBodyText(
         remember(fontFamily, fontSize, density, textMeasurer) {
             val textStyle = animatedCommentTextStyle.copy(fontFamily = fontFamily, fontSize = fontSize.sp)
             // A standalone glyph's height can include font leading that a blank line does not.
-            // Match the space between two Text nodes to the same paragraphs in a single Text,
-            // so entering/leaving the decorated layout does not change comfortable spacing.
+            // Measure the full gap between paragraphs in a single Text so disabling
+            // highlighting restores the original spacing after the animation.
             val singleLine = textMeasurer.measure("M", style = textStyle).size.height
             val paragraphs = textMeasurer.measure("M\n\nM", style = textStyle).size.height
             (paragraphs - 2 * singleLine).coerceAtLeast(0)
@@ -739,66 +748,88 @@ internal fun CommentBodyText(
     val gap = {
         with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
     }
-    QuoteSpacedContent(segments, gap, modifier) { segment, textModifier ->
-        // Most comments contain no links. Keep their text free of gesture nodes and geometry
-        // callbacks; quoted text still receives the layout callback needed for its decoration.
-        val segmentHasLinks = hasLinks && remember(segment) { segment.hasCommentLinks() }
-        val geometry = if (segmentHasLinks) remember(segment) { CommentTextGeometry() } else null
-        val linkModifier = if (geometry != null && linkGestureState != null) {
-            Modifier.onPlaced { geometry.coordinates = it }
-                .detectAnnotatedLinkLongPress(
-                    text = segment,
-                    layoutResult = { geometry.layout },
-                    coordinates = { geometry.coordinates },
-                    linkGestureState = linkGestureState,
-                    hapticFeedback = LocalHapticFeedback.current,
-                    onLongPress = onLinkLongClick,
-                )
-        } else Modifier
-        val quoteLayout = remember(segment, decorateQuotes) {
-            if (decorateQuotes) {
-                segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
-                    .takeIf { it.isNotEmpty() }?.let(::CommentQuoteLayout)
-            } else null
+    QuoteSpacedContent(segments, gap, modifier) { paragraph, paragraphModifier ->
+        // Keep the same text nodes while padding animates in either direction.
+        val paddedSegments = remember(paragraph, decorateQuotes) {
+            if (decorateQuotes) paragraph.quotePaddingSegments() else listOf(paragraph)
         }
-        val decoration = if (quoteLayout == null) Modifier else remember(
-            quoteLayout, quotePresentation.background, quotePresentation.accent,
-        ) {
-            Modifier.drawBehind {
-                val inset = 5.dp.toPx()
-                val railWidth = 3.dp.toPx()
-                val radius = CornerRadius(7.dp.toPx())
-                // Bounds are updated by text layout, never recalculated during color animation.
-                val background = quotePresentation.background.value
-                val accent = quotePresentation.accent.value
-                quoteLayout.bounds.forEach { bounds ->
-                    val topLeft = Offset(-inset, bounds.top)
-                    if (background.alpha > 0f) {
-                        drawRoundRect(background, topLeft, Size(size.width + inset, bounds.height), radius)
-                    }
-                    if (accent.alpha > 0f) {
-                        drawRect(accent, topLeft, Size(railWidth, bounds.height))
+        QuoteSpacedContent(paddedSegments, { 0.dp }, paragraphModifier) { segment, textModifier ->
+            // Most comments contain no links. Keep their text free of gesture nodes and geometry
+            // callbacks; quoted text still receives the layout callback needed for its decoration.
+            val segmentHasLinks = hasLinks && remember(segment) { segment.hasCommentLinks() }
+            val geometry = if (segmentHasLinks) remember(segment) { CommentTextGeometry() } else null
+            val linkModifier = if (geometry != null && linkGestureState != null) {
+                Modifier.onPlaced { geometry.coordinates = it }
+                    .detectAnnotatedLinkLongPress(
+                        text = segment,
+                        layoutResult = { geometry.layout },
+                        coordinates = { geometry.coordinates },
+                        linkGestureState = linkGestureState,
+                        hapticFeedback = LocalHapticFeedback.current,
+                        onLongPress = onLinkLongClick,
+                    )
+            } else Modifier
+            val quoteLayout = remember(segment, decorateQuotes) {
+                if (decorateQuotes) {
+                    segment.getStringAnnotations(COMMENT_QUOTE_TAG, 0, segment.length)
+                        .takeIf { it.isNotEmpty() }?.let(::CommentQuoteLayout)
+                } else null
+            }
+            val paddingFraction = quotePresentation.paddingFraction
+            val paddingModifier = if (quoteLayout == null) Modifier else remember(paddingFraction) {
+                Modifier.layout { measurable, constraints ->
+                    val start = (4.dp * paddingFraction.value).roundToPx()
+                    val vertical = (2.dp * paddingFraction.value).roundToPx()
+                    val placeable = measurable.measure(constraints.offset(-start, -2 * vertical))
+                    layout(
+                        constraints.constrainWidth(placeable.width + start),
+                        constraints.constrainHeight(placeable.height + 2 * vertical),
+                    ) { placeable.placeRelative(start, vertical) }
+                }
+            }
+            val decoration = if (quoteLayout == null) Modifier else remember(
+                quoteLayout, quotePresentation.background, quotePresentation.accent,
+                paddingFraction,
+            ) {
+                Modifier.drawBehind {
+                    val inset = 5.dp.toPx() + (4.dp * paddingFraction.value).roundToPx()
+                    val extraHeight = (2.dp * paddingFraction.value).roundToPx().toFloat()
+                    val railWidth = 3.dp.toPx()
+                    val radius = CornerRadius(7.dp.toPx())
+                    // Bounds are updated by text layout, never recalculated during color animation.
+                    val background = quotePresentation.background.value
+                    val accent = quotePresentation.accent.value
+                    quoteLayout.bounds.forEach { bounds ->
+                        val topLeft = Offset(-inset, bounds.top - extraHeight)
+                        val height = bounds.height + extraHeight * 2
+                        if (background.alpha > 0f) {
+                            drawRoundRect(background, topLeft, Size(size.width + inset, height), radius)
+                        }
+                        if (accent.alpha > 0f) {
+                            drawRect(accent, topLeft, Size(railWidth, height))
+                        }
                     }
                 }
             }
+            Text(
+                text = segment,
+                modifier = textModifier
+                    .fillMaxWidth()
+                    .then(paddingModifier)
+                    .then(decoration)
+                    .then(linkModifier),
+                onTextLayout = if (geometry != null || quoteLayout != null) {
+                    { result ->
+                        geometry?.layout = result
+                        quoteLayout?.update(result)
+                    }
+                } else { _ -> },
+                color = colors.onSurface,
+                fontFamily = fontFamily,
+                fontSize = fontSize.sp,
+                style = animatedCommentTextStyle,
+            )
         }
-        Text(
-            text = segment,
-            modifier = textModifier
-                .fillMaxWidth()
-                .then(decoration)
-                .then(linkModifier),
-            onTextLayout = if (geometry != null || quoteLayout != null) {
-                { result ->
-                    geometry?.layout = result
-                    quoteLayout?.update(result)
-                }
-            } else { _ -> },
-            color = colors.onSurface,
-            fontFamily = fontFamily,
-            fontSize = fontSize.sp,
-            style = animatedCommentTextStyle,
-        )
     }
 }
 

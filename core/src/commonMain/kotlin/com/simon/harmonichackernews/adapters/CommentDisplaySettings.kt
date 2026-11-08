@@ -48,6 +48,7 @@ data class CommentDisplaySettings(
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
+    val quotePadding: Boolean = true,
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
@@ -86,6 +87,7 @@ data class CommentDisplaySettings(
             quoteSpacing = preferences.quoteSpacing,
             quoteHighlightColor = preferences.quoteHighlightColor,
             quoteHighlightStyle = preferences.quoteHighlightStyle,
+            quotePadding = preferences.quotePadding,
             roundedDepthIndicators = preferences.roundedDepthIndicators,
             continuousDepthIndicators = preferences.continuousDepthIndicators &&
                 preferences.depthIndicatorMode != CommentDepthPreferences.AUTHOR,

@@ -30,6 +30,47 @@ import kotlin.test.assertTrue
 
 class QuoteSpacingLayoutTest {
     @Test
+    fun quotePaddingAnimatesThroughIntermediateHeightsInBothDirections() = SwingUtilities.invokeAndWait {
+        val padding = mutableStateOf(false)
+        val heights = mutableListOf<Int>()
+        var height = 0
+        val scene = ImageComposeScene(800, 600, Density(2f)) {
+            Box(Modifier.fillMaxSize()) {
+                CommentBodyText(
+                    highlightQuotes = true, quoteSpacing = QuoteSpacing.COMFORTABLE,
+                    quotePadding = padding.value,
+                    quoteHighlightColor = QuoteHighlightColor.MATERIAL,
+                    quoteHighlightStyle = QuoteHighlightStyle.BOTH,
+                    html = "&gt; Quote<br>Reply", searchTerm = "", markedColor = Color.Yellow,
+                    modifier = Modifier.onSizeChanged { height = it.height },
+                    fontFamily = FontFamily.SansSerif, fontSize = 16f,
+                    animateSearchMatches = false, onLinkClick = {}, onLinkLongClick = { _, _, _ -> },
+                )
+            }
+        }
+        try {
+            var time = 0L
+            fun settle() = repeat(24) {
+                scene.render(time.also { time += 16_666_667L }).close()
+                heights += height
+            }
+            settle()
+            val unpadded = height
+            heights.clear()
+            padding.value = true
+            settle()
+            val padded = height
+            assertEquals(unpadded + 8, padded, "2dp above and below at 2x density")
+            assertTrue(heights.any { it > unpadded && it < padded }, "Padding must animate in")
+            heights.clear()
+            padding.value = false
+            settle()
+            assertEquals(unpadded, height)
+            assertTrue(heights.any { it > unpadded && it < padded }, "Padding must animate out")
+        } finally { scene.close() }
+    }
+
+    @Test
     fun quoteSettingsLeaveOrdinaryBodiesUnchangedAndQuotedBodiesStillRoundTrip() = SwingUtilities.invokeAndWait {
         for (html in listOf(
             "Ordinary <b>text</b><p>A comparison: 4 &gt; 3<pre><code>&gt; code</code></pre>",
@@ -37,12 +78,14 @@ class QuoteSpacingLayoutTest {
         )) {
             val enabled = mutableStateOf(false)
             val spacing = mutableStateOf(QuoteSpacing.COMFORTABLE)
+            val padding = mutableStateOf(true)
             val color = mutableStateOf(QuoteHighlightColor.MATERIAL)
             val style = mutableStateOf(QuoteHighlightStyle.BOTH)
             val scene = ImageComposeScene(400, 300, Density(1f)) {
                 Box(Modifier.fillMaxSize().background(Color.White)) {
                     CommentBodyText(
                         highlightQuotes = enabled.value, quoteSpacing = spacing.value,
+                        quotePadding = padding.value,
                         quoteHighlightColor = color.value, quoteHighlightStyle = style.value,
                         html = html, searchTerm = "", markedColor = Color.Yellow,
                         fontFamily = FontFamily.SansSerif, fontSize = 16f,
@@ -76,6 +119,13 @@ class QuoteSpacingLayoutTest {
                         assertContentEquals(original, settled)
                     }
                 }
+                val padded = render()
+                padding.value = false
+                val unpadded = render()
+                if (hasQuotes) assertFalse(padded.contentEquals(unpadded), "Padding changes quoted text layout")
+                else assertContentEquals(padded, unpadded, "Padding leaves ordinary text unchanged")
+                padding.value = true
+                assertContentEquals(padded, render(), "Padding restores the same layout when re-enabled")
                 enabled.value = false
                 assertContentEquals(original, render(), "Disabling quotes restores original text and spacing")
             } finally { scene.close() }

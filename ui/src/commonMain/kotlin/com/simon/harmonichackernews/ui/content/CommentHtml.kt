@@ -199,6 +199,27 @@ internal fun AnnotatedString.quoteSpacedSegments(): List<AnnotatedString> {
     }
 }
 
+/** Isolate quote lines so padding never indents an adjacent unquoted reply. */
+internal fun AnnotatedString.quotePaddingSegments(): List<AnnotatedString> {
+    val boundaries = mutableSetOf<Int>()
+    getStringAnnotations(COMMENT_QUOTE_TAG, 0, length).forEach { quote ->
+        for (index in listOf(quote.start - 1, quote.end)) {
+            if (index > 0 && index < length - 1 && text[index] == '\n' &&
+                text[index - 1] != '\n' && text[index + 1] != '\n'
+            ) boundaries += index
+        }
+    }
+    if (boundaries.isEmpty()) return listOf(this)
+    return buildList {
+        var start = 0
+        boundaries.sorted().forEach { end ->
+            add(this@quotePaddingSegments.subSequence(start, end))
+            start = end + 1
+        }
+        add(this@quotePaddingSegments.subSequence(start, length))
+    }
+}
+
 private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) {
     private var pendingCodeBoundary = false
     // Keep just the tail needed for spacing; materializing the entire builder per text node

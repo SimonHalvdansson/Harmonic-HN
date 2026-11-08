@@ -22,6 +22,7 @@ internal class CommentQuotePresentation(
     val background: State<Color>,
     val accent: State<Color>,
     val gapFraction: State<Float>,
+    val paddingFraction: State<Float>,
 )
 
 private val transparentQuoteColor = object : State<Color> {
@@ -32,6 +33,7 @@ private val undecoratedCommentQuotePresentation = CommentQuotePresentation(
     background = transparentQuoteColor,
     accent = transparentQuoteColor,
     gapFraction = object : State<Float> { override val value: Float = 1f },
+    paddingFraction = object : State<Float> { override val value: Float = 0f },
 )
 
 /** Keep the decorated paragraphs until both the color fade and spacing animation have settled. */
@@ -40,6 +42,7 @@ internal fun rememberCommentQuotePresentation(
     hasQuotes: Boolean,
     enabled: Boolean,
     spacing: QuoteSpacing,
+    padding: Boolean,
     color: QuoteHighlightColor,
     style: QuoteHighlightStyle,
     primary: Color,
@@ -62,9 +65,18 @@ internal fun rememberCommentQuotePresentation(
         label = "quote side line",
     )
     val gap = animateFloatAsState(
-        targetValue = if (enabled && spacing == QuoteSpacing.COMPACT) 0.5f else 1f,
+        targetValue = when {
+            !enabled -> 1f
+            spacing == QuoteSpacing.COMPACT -> 0.45f
+            else -> 0.85f
+        },
         animationSpec = tween(280),
         label = "quote paragraph spacing",
+    )
+    val paddingFraction = animateFloatAsState(
+        targetValue = if (enabled && padding) 1f else 0f,
+        animationSpec = tween(280),
+        label = "quote padding",
     )
     var retainDecoration by remember { mutableStateOf(enabled) }
     LaunchedEffect(enabled) {
@@ -73,7 +85,10 @@ internal fun rememberCommentQuotePresentation(
         } else if (retainDecoration) {
             // Observe completion outside composition. A reversal cancels this wait, and ordinary
             // rows never collect animation frames just to decide whether to keep their layout.
-            snapshotFlow { background.value.alpha == 0f && accent.value.alpha == 0f && gap.value == 1f }
+            snapshotFlow {
+                background.value.alpha == 0f && accent.value.alpha == 0f &&
+                    gap.value == 1f && paddingFraction.value == 0f
+            }
                 .first { it }
             retainDecoration = false
         }
@@ -83,5 +98,6 @@ internal fun rememberCommentQuotePresentation(
         background = background,
         accent = accent,
         gapFraction = gap,
+        paddingFraction = paddingFraction,
     )
 }

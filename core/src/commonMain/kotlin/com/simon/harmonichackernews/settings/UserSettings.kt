@@ -107,6 +107,7 @@ data class CommentPreferences(
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
+    val quotePadding: Boolean = true,
     val roundedDepthIndicators: Boolean = true,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,

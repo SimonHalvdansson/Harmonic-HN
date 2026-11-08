@@ -36,6 +36,7 @@ enum class StoryStringPreference { DISPLAY_STYLE, CATEGORY_TAG_LOCATION }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
     HIGHLIGHT_QUOTES(UserPreferenceKeys.HIGHLIGHT_QUOTES),
+    QUOTE_PADDING(UserPreferenceKeys.QUOTE_PADDING),
     ROUNDED_DEPTH_INDICATORS(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS),
     CONTINUOUS_DEPTH_INDICATORS(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS),
     COLLECT_REFERENCE_LINKS(UserPreferenceKeys.COLLECT_LINKS_IN_COMMENTS),

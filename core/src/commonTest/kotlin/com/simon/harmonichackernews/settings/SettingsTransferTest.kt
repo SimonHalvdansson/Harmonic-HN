@@ -15,6 +15,7 @@ class SettingsTransferTest {
     @Test
     fun roundTripRestoresTypedValuesAndDefaultsWithoutTouchingPrivateData() {
         store.putBoolean(UserPreferenceKeys.SHOW_POINTS, false)
+        store.putBoolean(UserPreferenceKeys.QUOTE_PADDING, false)
         store.putString(UserPreferenceKeys.FONT, "georgia")
         store.putInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 22)
         store.putFloat(UserPreferenceKeys.SPLIT_RATIO_PORTRAIT, 0.6f)
@@ -28,12 +29,14 @@ class SettingsTransferTest {
         assertFalse(backup.contains("private.example"))
         assertFalse(backup.contains("someone"))
         store.putBoolean(UserPreferenceKeys.SHOW_POINTS, true)
+        store.putBoolean(UserPreferenceKeys.QUOTE_PADDING, true)
         store.putBoolean(UserPreferenceKeys.HIDE_JOBS, true)
         store.putString(UserPreferenceKeys.FONT, "verdana")
         store.putInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 14)
         store.putFloat(UserPreferenceKeys.SPLIT_RATIO_PORTRAIT, 0.3f)
         assertIs<SettingsImportResult.Imported>(transfer.import(backup))
         assertFalse(store.getBoolean(UserPreferenceKeys.SHOW_POINTS, true))
+        assertFalse(store.getBoolean(UserPreferenceKeys.QUOTE_PADDING, true))
         assertFalse(store.contains(UserPreferenceKeys.HIDE_JOBS))
         assertEquals("georgia", store.getString(UserPreferenceKeys.FONT))
         assertEquals(22, store.getInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 0))

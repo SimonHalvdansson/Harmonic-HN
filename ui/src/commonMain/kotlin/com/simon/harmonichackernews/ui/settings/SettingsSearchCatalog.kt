@@ -165,6 +165,7 @@ internal fun settingsSearchCatalog(
         "Continuous thread lines" to "connected branches nesting indentation",
         "Show top level indicators" to "root thread depth indentation")
     group(SettingsSection.QuoteHighlighting, "Appearance",
+        "Padding" to "quote inset text left top bottom space",
         "Color" to "colour quotes palette material",
         "Style" to "background stripe both blockquote",
         "Quote spacing" to "compact comfortable padding margins")

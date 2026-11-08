@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.data.CommentPresentationSnapshot
 import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_format_quote
 import com.simon.harmonichackernews.resources.settings_section_quote_highlighting
 import com.simon.harmonichackernews.settings.QuoteSpacing
 import com.simon.harmonichackernews.settings.QuoteHighlightColor
@@ -91,6 +92,16 @@ fun QuoteHighlightingSettingsRoute(
         }
         item {
             SettingsCategory("Appearance", titleTopPadding = 8.dp) {
+                SwitchSettingRow(
+                    title = "Padding",
+                    icon = Res.drawable.ic_format_quote,
+                    checked = state.quotePadding,
+                    enabled = state.highlightQuotes,
+                    onCheckedChange = {
+                        repository.setCommentBoolean(CommentBooleanPreference.QUOTE_PADDING, it)
+                    },
+                )
+                SettingsDivider()
                 SegmentedSetting(
                     title = "Color",
                     options = QuoteHighlightColor.entries.map { it to it.label },

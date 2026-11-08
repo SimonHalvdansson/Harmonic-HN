@@ -14,6 +14,18 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun paddingSeparatesQuotesFromAdjacentReplyLinesAndPreservesLinks() {
+        val source = prepareCommentHtml("Intro<br>&gt; <b>Quoted</b> <a href='https://example.com'>link</a><br>Reply")
+        val segments = source.quotePaddingSegments()
+        assertEquals(listOf("Intro", "Quoted link", "Reply"), segments.map { it.text })
+        assertEquals(source.text, segments.joinToString("\n") { it.text })
+        assertTrue(segments[1].getStringAnnotations(COMMENT_QUOTE_TAG, 0, segments[1].length).isNotEmpty())
+        assertTrue(segments[1].getStringAnnotations(0, segments[1].length).any { it.item == "https://example.com" })
+        assertTrue(segments[0].getStringAnnotations(COMMENT_QUOTE_TAG, 0, segments[0].length).isEmpty())
+        assertTrue(segments[2].getStringAnnotations(COMMENT_QUOTE_TAG, 0, segments[2].length).isEmpty())
+    }
+
+    @Test
     fun overlappingQuoteSeparatorsPreserveTextAndFormattingWhenTogglingHighlighting() {
         for (breaks in 2..6) {
             for (highlight in listOf(true, false)) {

@@ -161,6 +161,8 @@ class AppSettingsRepositoryTest {
         assertFalse(repository.snapshot().comments.highlightQuotes)
         assertEquals(QuoteHighlightColor.MATERIAL, repository.snapshot().comments.quoteHighlightColor)
         assertEquals(QuoteSpacing.COMFORTABLE, repository.snapshot().comments.quoteSpacing)
+        assertTrue(repository.snapshot().comments.quotePadding)
+        repository.setCommentBoolean(CommentBooleanPreference.QUOTE_PADDING, false)
         repository.setQuoteSpacing(QuoteSpacing.COMPACT)
         repository.setQuoteHighlightColor(QuoteHighlightColor.NEUTRAL)
         repository.setQuoteHighlightStyle(QuoteHighlightStyle.SIDE_LINE)
@@ -170,6 +172,11 @@ class AppSettingsRepositoryTest {
         assertEquals(QuoteSpacing.COMPACT, restored.quoteSpacing)
         assertEquals(QuoteHighlightColor.NEUTRAL, restored.quoteHighlightColor)
         assertEquals(QuoteHighlightStyle.SIDE_LINE, restored.quoteHighlightStyle)
+        assertFalse(restored.quotePadding)
+        assertFalse(CommentDisplaySettings.from(
+            restored, showInvert = false, isTablet = false,
+            hasAccountDetails = false, canProvideSummary = false,
+        ).quotePadding)
         assertFalse(CommentDisplaySettings.from(
             restored, showInvert = false, isTablet = false,
             hasAccountDetails = false, canProvideSummary = false,
