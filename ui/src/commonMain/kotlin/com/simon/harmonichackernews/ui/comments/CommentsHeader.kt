@@ -145,6 +145,7 @@ fun CommentsHeader(
     headerTintProgress: (() -> Float?)? = null,
     faviconPreview: Painter? = null,
     previewCommentActions: Boolean = false,
+    animateSettingsPreview: Boolean = false,
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
     contentWindowInsets: WindowInsets = WindowInsets(0),
     horizontalContentInsets: WindowInsets? = null,
@@ -435,7 +436,8 @@ fun CommentsHeader(
                                                 boundsTransform = boundsTransform,
                                             )) {
                                                 CommentsPreviewPlatformProvider(previewPlatform) {
-                                                    HeaderLinkInfo(story, visualSettings, faviconPreview, storyPosterTag, storyPosterTagColor)
+                                                    HeaderLinkInfo(story, visualSettings, faviconPreview, storyPosterTag, storyPosterTagColor,
+                                                        animateSettingsPreview = animateSettingsPreview)
                                                 }
                                             }
                                         }

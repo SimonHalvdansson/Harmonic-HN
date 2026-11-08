@@ -67,6 +67,37 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class PostHeaderPreviewTest {
+    @Test fun domainToggleRetainsOneMetadataNodeAndOnlyFadesTheDomainSpan() = SwingUtilities.invokeAndWait {
+        val settings = mutableStateOf(CommentDisplaySettings.from(
+            AppSettingsRepository(InMemoryKeyValueStore(), emptyFlow()).snapshot().comments,
+            false, false, true, false,
+        ).copy(headerMetaInfo = CommentsHeaderMetaInfo.ON_IMAGE, showHeaderDomain = true))
+        val scene = ImageComposeScene(420, 900, Density(1f)) {
+            val theme = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(theme.colorScheme, theme.dark) { HeaderDisplayPreview(settings.value, true, {}) }
+        }
+        try {
+            var time = 0L
+            fun frame() { scene.render(time.also { time += 16_666_667L }).close() }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            fun metadata() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single {
+                it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> "willow" in text.text }
+            }
+            repeat(40) { frame() }
+            val id = metadata().id
+            for (visible in listOf(false, true, false, true)) {
+                settings.value = settings.value.copy(showHeaderDomain = visible)
+                repeat(8) { frame(); assertEquals(id, metadata().id) }
+                val text = metadata().config[SemanticsProperties.Text].single { "willow" in it.text }
+                val domainSpan = text.spanStyles.single { it.start == 0 && it.item.textGeometricTransform != null }
+                assertTrue(domainSpan.item.color.alpha > 0f && domainSpan.item.color.alpha < 1f)
+                assertTrue(domainSpan.end <= text.text.indexOf("willow"), "The author must never fade with the domain")
+                repeat(40) { frame(); assertEquals(id, metadata().id) }
+                assertEquals(visible, "science.org" in metadata().config[SemanticsProperties.Text].single { "willow" in it.text }.text)
+            }
+        } finally { scene.close() }
+    }
+
     @Test fun fixedBackButtonSamplesThePreviewAndStaysFixedWhenItScrollsAway() = SwingUtilities.invokeAndWait {
         val previewHaze = HazeState()
         val unrelatedHaze = HazeState()

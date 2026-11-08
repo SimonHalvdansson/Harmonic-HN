@@ -633,6 +633,7 @@ private fun HeaderDisplayPreviewContent(
         textStyle = textStyle,
         previewPlatform = platform,
         previewCommentActions = true,
+        animateSettingsPreview = true,
         contentWindowInsets = contentWindowInsets,
         onButtonsOverflowChanged = onButtonsOverflowChanged,
         includeStatusBarSpacer = true,

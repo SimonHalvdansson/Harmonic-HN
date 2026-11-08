@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +45,9 @@ import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.ui.content.userTagColor
 import com.simon.harmonichackernews.ui.content.annotatedUserTagLabel
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.TextLayoutResult
@@ -77,6 +82,7 @@ fun HeaderLinkInfo(
     faviconPreview: Painter? = null,
     posterTag: String = "",
     posterTagColor: UserTagColor = UserTagColor.Theme,
+    animateSettingsPreview: Boolean = false,
 ) {
     if (!story.loaded) return
     val hasLink = story.isLink && !story.isComment && !story.url.isNullOrBlank()
@@ -107,12 +113,17 @@ fun HeaderLinkInfo(
         ) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = settings.showFavicons && showDomain,
-                enter = fadeIn(tween(100, delayMillis = 120)) + androidx.compose.animation.expandHorizontally(
+                // Match Stories' simultaneous fade and width change in the settings preview.
+                enter = if (animateSettingsPreview) fadeIn(contentTween()) + androidx.compose.animation.expandHorizontally(
+                    animationSpec = contentTween(), expandFrom = Alignment.Start,
+                ) else fadeIn(tween(100, delayMillis = 120)) + androidx.compose.animation.expandHorizontally(
                     animationSpec = contentTween(),
                     expandFrom = Alignment.Start,
                     clip = false,
                 ),
-                exit = fadeOut(tween(80)) + androidx.compose.animation.shrinkHorizontally(
+                exit = if (animateSettingsPreview) fadeOut(contentTween()) + androidx.compose.animation.shrinkHorizontally(
+                    animationSpec = contentTween(), shrinkTowards = Alignment.Start,
+                ) else fadeOut(tween(80)) + androidx.compose.animation.shrinkHorizontally(
                     animationSpec = tween(220, delayMillis = 80, easing = ContentMotionEasing),
                     shrinkTowards = Alignment.Start,
                     clip = false,
@@ -155,19 +166,10 @@ fun HeaderLinkInfo(
                 listOfNotNull(domain?.takeIf { showDomain && it.isNotBlank() },
                     relativeTimeOnResume(story.createdAtEpochSeconds)).joinToString(" \u00b7 ")
             } else domain.orEmpty()
-            AnimatedContent(
-                targetState = if (onImage) {
-                    annotatedUserTagLabel(label, posterTag, userTagColor(posterTagColor))
-                } else AnnotatedString(label),
-                transitionSpec = {
-                    (fadeIn(tween(100, delayMillis = 80)) togetherWith fadeOut(tween(80)))
-                        .using(SizeTransform(clip = false) { _, _ -> contentTween() })
-                },
-                label = "header domain and age",
-                modifier = Modifier.weight(1f),
-            ) { visibleLabel ->
+            val text: @Composable (AnnotatedString, Modifier) -> Unit = { visibleLabel, modifier ->
                 Text(
                     text = visibleLabel,
+                    modifier = modifier,
                     color = colors.onSurfaceVariant,
                     fontFamily = typography.family,
                     fontWeight = if (onImage) FontWeight.Medium else FontWeight.Normal,
@@ -177,7 +179,56 @@ fun HeaderLinkInfo(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
+            if (animateSettingsPreview) {
+                val suffix = if (onImage || settings.combineHeaderActions) {
+                    listOfNotNull(
+                        relativeTimeOnResume(story.createdAtEpochSeconds),
+                        story.by.orEmpty().takeIf { onImage && it.isNotBlank() }?.let {
+                            if (posterTag.isBlank()) it else "$it ($posterTag)"
+                        },
+                    ).joinToString(" \u00b7 ")
+                } else ""
+                text(previewHeaderLinkLabel(domain.orEmpty(), showDomain,
+                    if (onImage) annotatedUserTagLabel(suffix, posterTag, userTagColor(posterTagColor))
+                    else AnnotatedString(suffix)), Modifier.weight(1f))
+            } else {
+                AnimatedContent(
+                    targetState = if (onImage) {
+                        annotatedUserTagLabel(label, posterTag, userTagColor(posterTagColor))
+                    } else AnnotatedString(label),
+                    transitionSpec = {
+                        (fadeIn(tween(100, delayMillis = 80)) togetherWith fadeOut(tween(80)))
+                            .using(SizeTransform(clip = false) { _, _ -> contentTween() })
+                    },
+                    label = "header domain and age",
+                    modifier = Modifier.weight(1f),
+                ) { text(it, Modifier) }
+            }
         }
+    }
+}
+
+/** Like Stories metadata, keep one Text and collapse only the optional span. */
+@Composable
+private fun previewHeaderLinkLabel(domain: String, visible: Boolean, suffix: AnnotatedString): AnnotatedString {
+    val showDomain = visible && domain.isNotBlank()
+    val progress = remember(domain) { Animatable(if (showDomain) 1f else 0f) }
+    var renderDomain by remember(domain) { mutableStateOf(showDomain) }
+    LaunchedEffect(showDomain) {
+        if (showDomain) renderDomain = true
+        progress.animateTo(if (showDomain) 1f else 0f, contentTween())
+        if (!showDomain) renderDomain = false
+    }
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    return buildAnnotatedString {
+        if (renderDomain) {
+            append(domain)
+            if (suffix.isNotEmpty()) append(" \u00b7 ")
+            addStyle(SpanStyle(color = color.copy(alpha = progress.value),
+                textGeometricTransform = TextGeometricTransform(scaleX = progress.value.coerceAtLeast(0.001f))),
+                0, length)
+        }
+        append(suffix)
     }
 }
 
