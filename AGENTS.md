@@ -50,6 +50,10 @@ General tips:
 - iOS must supply `IosPlatformBindings` with an atomic, Keychain-backed
   `HackerNewsAccountRepository`; do not derive account persistence from separate credential reads.
   `IosHostRuntimeBindings` must receive the native files and cache directory paths.
+- For platform feature and release-readiness reviews, trace host capability flags through the shared
+  UI and runtime guards before treating shared code as enabled functionality. iOS intentionally sets
+  `cloudAiSupported = false` in `IosHarmonicAppBootstrap`; cloud AI is unavailable even with imported
+  cloud settings. See `ios_app/README.md` for the iOS behavior.
 - `core/src/commonTest/` and `ui/src/commonTest/` are active test source sets;
   `core/src/desktopMain/`, both modules' `iosMain/` directories, and desktop sources are not
   placeholders.

@@ -15,12 +15,25 @@ The app's version and build number come from `harmonic.versionName` and
 The Generate App Metadata build phase adds them to a generated copy of `HarmonicIos/Info.plist`
 before Xcode processes and signs the app, for both Debug and Release builds.
 
+Tag releases (`v*.*`) also build an unsigned iOS device archive on the same Xcode runner as iOS CI.
+The tag must match the app version in `gradle.properties`. The GitHub release includes
+`Harmonic-<version>-ios-unsigned.ipa`; the Actions run retains the zipped `.xcarchive` with debug
+symbols and the Xcode build result. These artifacts are unsigned and require signing and provisioning
+before installation or distribution. This job does not upload to TestFlight or the App Store.
+
 The native shell owns Keychain credentials, the atomic Hacker News account record, system URL
 routing, sharing, clipboard access, connectivity, locale-aware time formatting, the app icon, and
 status-bar appearance. The comments scene embeds `WKWebView` with Compose UIKit interop so its
 Compose comments sheet remains available above the article. Compose Navigation Event dispatches the
 interactive system left-edge back gesture through the KMP navigation hierarchy. Application logic
 and the rest of the UI remain in the KMP modules.
+
+Cloud AI is intentionally disabled on iOS. `IosHarmonicAppBootstrap` sets
+`HarmonicHostConfiguration.cloudAiSupported = false`: cloud provider settings and search entries
+are hidden, restored settings resolve to local mode, and `AiSummarySettingsRepository.cloudConfig()`
+rejects cloud use. Shared cloud UI and networking code also serves Android and desktop; its presence
+does not mean the feature is enabled on iOS. When reviewing iOS capabilities or release readiness,
+trace the host configuration through the shared settings and runtime guards.
 
 Local summaries support Apple Intelligence and downloadable Gemma, LFM3, Ministral, Nemotron, and Qwen
 LiteRT-LM models. The local Swift package in `LiteRTLM/` pins Google's official iOS XCFramework and checksum, avoiding the
