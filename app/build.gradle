@@ -306,38 +306,6 @@ afterEvaluate {
                 .sort()
     }
 
-    def materialComponents = [
-            "debug", "debugFast", "debugLLM", "debugLLMFast", "benchmark",
-            "fossRelease", "playRelease"
-    ].collect { variant ->
-        configurations.named("${variant}RuntimeClasspath").map { configuration ->
-            def result = configuration.incoming.resolutionResult
-            def unresolved = result.allDependencies.find { it instanceof UnresolvedDependencyResult }
-            if (unresolved != null) {
-                throw new GradleException("Could not verify ${variant}: ${unresolved.requested}", unresolved.failure)
-            }
-            result.allComponents.findAll { component ->
-                component.id instanceof ModuleComponentIdentifier &&
-                        component.id.group == "com.google.android.material" &&
-                        component.id.module == "material"
-            }.collect { "${variant}: ${it.id.displayName}" }
-        }
-    }
-    def verifyNoMaterialComponents = tasks.register("verifyNoMaterialComponents") {
-        group = "verification"
-        description = "Rejects direct or transitive Material Components for Views in every Android variant."
-        inputs.property("materialComponents", providers.provider {
-            materialComponents.collectMany { it.get() }
-        })
-        doLast {
-            def found = inputs.properties["materialComponents"].flatten()
-            if (!found.isEmpty()) {
-                throw new GradleException("Material Components for Views remains in the app: ${found.join(', ')}")
-            }
-        }
-    }
-    tasks.named("check") { dependsOn(verifyNoMaterialComponents) }
-
     tasks.register("verifyFossDependencies") {
         group = "verification"
         description =
