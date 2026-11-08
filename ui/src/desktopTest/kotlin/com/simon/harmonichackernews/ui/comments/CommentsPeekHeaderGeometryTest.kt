@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,47 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 
 class CommentsPeekHeaderGeometryTest {
+    @Test
+    fun shadowHandsOffAtTheSurfaceEdgeBeforeTheTitleReturns() = SwingUtilities.invokeAndWait {
+        val list = LazyListState()
+        val peek = CommentsPeekHeaderState(list, topInsetPx = 24, directionThresholdPx = 8f)
+        peek.titleBounds = Rect(16f, 24f, 380f, 84f)
+        val scene = ImageComposeScene(400, 700, Density(1f)) {
+            LazyColumn(state = list) {
+                item {
+                    Column(Modifier.onPlaced { peek.headerCoordinates = it }) {
+                        Box(Modifier.fillMaxWidth().height(600.dp).measureCommentsPeekSurface(peek))
+                        // Status/notice content is part of the item, but not its elevated surface.
+                        Box(Modifier.height(100.dp))
+                    }
+                }
+                items(20) { Box(Modifier.fillMaxWidth().height(100.dp)) }
+            }
+        }
+        var frame = 0L
+        fun frames() { repeat(3) { scene.render(frame++ * 16_666_667L).close() } }
+        try {
+            frames()
+            list.dispatchRawDelta(750f)
+            frames()
+            assertTrue(peek.isShadowExposed(100f), "The peek casts a shadow deep in the thread")
+            list.dispatchRawDelta(-249f)
+            frames()
+            assertTrue(peek.isShadowExposed(100f), "Trailing notices must not trigger the handoff")
+            list.dispatchRawDelta(-1f)
+            frames()
+            assertFalse(peek.isShadowExposed(100f), "Only the real shadow remains when edges meet")
+            list.dispatchRawDelta(-50f)
+            frames()
+            assertEquals(0f, peek.handoff, "A long header's title is still offscreen")
+            assertFalse(peek.isShadowExposed(100f), "The peek must not cast a shadow inside the header")
+            list.dispatchRawDelta(100f)
+            frames()
+            assertTrue(peek.isShadowExposed(100f), "The shadow returns when the surfaces separate")
+            assertFalse(peek.isShadowExposed(40f), "Reveal translation changes the peek's bottom edge")
+        } finally { scene.close() }
+    }
+
     @Test
     fun commentNavigationImmediatelyDismissesPeekAndResetsDirectionTravel() = runBlocking {
         val peek = CommentsPeekHeaderState(LazyListState(20), 24, 8f)

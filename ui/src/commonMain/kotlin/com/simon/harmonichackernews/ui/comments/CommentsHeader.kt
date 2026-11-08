@@ -242,6 +242,7 @@ fun CommentsHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(1f)
+                .measureCommentsPeekSurface(peekHeader)
                 .commentsHeaderSurface(edgeStyle, visibleHeaderBackground)
                 .windowInsetsPadding(contentWindowInsets)
                 .layoutVerticalPadding(bottom = { edgeStyle.bottomPadding }),

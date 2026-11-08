@@ -45,10 +45,14 @@ internal fun rememberCommentsHeaderEdgeStyle(tinted: Boolean, edge: CommentsHead
     }
 }
 
-internal fun Modifier.commentsHeaderSurface(edge: CommentsHeaderEdgeStyle, color: () -> Color): Modifier =
+internal fun Modifier.commentsHeaderSurface(
+    edge: CommentsHeaderEdgeStyle,
+    color: () -> Color,
+    showShadow: (surfaceHeight: Float) -> Boolean = { true },
+): Modifier =
     graphicsLayer {
         // Retain one layer through zero elevation so changing styles cannot flash an old outline.
-        shadowElevation = edge.shadowElevation.toPx()
+        shadowElevation = if (showShadow(size.height)) edge.shadowElevation.toPx() else 0f
         shape = RoundedCornerShape(bottomStart = edge.bottomRadius, bottomEnd = edge.bottomRadius)
         clip = true
     }.drawBehind { drawRect(color()) }

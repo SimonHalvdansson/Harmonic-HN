@@ -68,6 +68,7 @@ internal class CommentsPeekHeaderState(
 ) : NestedScrollConnection {
     var headerCoordinates: LayoutCoordinates? = null
     var titleBounds by mutableStateOf<Rect?>(null)
+    private var surfaceBottom by mutableStateOf<Float?>(null)
     var requested by mutableStateOf(false)
         private set
     val revealAnimation = Animatable(0f)
@@ -88,6 +89,18 @@ internal class CommentsPeekHeaderState(
         }
 
     val coverage: Float get() = reveal.let { if (it == 0f) 0f else it * (1f - handoff) }
+
+    fun isShadowExposed(peekBottom: Float): Boolean {
+        val item = header ?: return true
+        val bottom = surfaceBottom ?: return true
+        // Once the surfaces meet, only the scrolling header's outer edge casts a shadow.
+        return item.offset + bottom < peekBottom
+    }
+
+    fun measureSurface(coordinates: LayoutCoordinates) {
+        val parent = headerCoordinates?.takeIf { it.isAttached } ?: return
+        surfaceBottom = parent.localPositionOf(coordinates, Offset.Zero).y + coordinates.size.height
+    }
 
     suspend fun dismissForNavigation(toHeader: Boolean) {
         requested = false
@@ -133,6 +146,9 @@ internal fun Modifier.measureCommentsPeekTitle(state: CommentsPeekHeaderState?):
         alpha = 1f - state.reveal * (1f - titleReveal)
     }
 
+internal fun Modifier.measureCommentsPeekSurface(state: CommentsPeekHeaderState?): Modifier =
+    if (state == null) this else peekGeometryAnchor(state::measureSurface)
+
 /** Measure the untransformed layout, with the animated layer inside this coordinator. */
 private fun Modifier.peekGeometryAnchor(onPlaced: (LayoutCoordinates) -> Unit): Modifier =
     onPlaced(onPlaced).layout { measurable, constraints ->
@@ -177,7 +193,11 @@ internal fun CommentsPeekHeader(
     ) {
         Box(
             Modifier.fillMaxWidth()
-                .commentsHeaderSurface(edgeStyle, background)
+                .commentsHeaderSurface(edgeStyle, background) { height ->
+                    val translation = -(1f - state.reveal) *
+                        (height + with(density) { edgeStyle.edgeHeight.toPx() })
+                    state.isShadowExposed(height + translation)
+                }
                 .padding(top = topInset)
                 .clickable(
                     enabled = enabled && state.interactive,
