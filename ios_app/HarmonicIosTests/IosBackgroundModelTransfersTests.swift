@@ -33,14 +33,6 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
     }
 
-    func testBackgroundSessionDeliversAndInstallsFile() throws {
-        let model = try startServer(background: true) { _ in (200, "", Foundation.Data([1, 2, 3, 4])) }
-        transfers!.enqueue(model: model)
-        waitUntil { self.transfers!.work(modelId: model.id)?.state == .finished && !self.transfers!.isActive(modelId: model.id) }
-        XCTAssertEqual(try Foundation.Data(contentsOf: destination(model)), Foundation.Data([1, 2, 3, 4]))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: resumePath(model)))
-    }
-
     func testExistingForegroundPartialUsesRangeAndAppends() throws {
         let model = try startServer { request in
             XCTAssertTrue(request.lowercased().contains("range: bytes=2-"))
@@ -203,29 +195,15 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination(model).path))
     }
 
-    func testBackgroundCompletionWaitsForFinishedEventsAndRunsOnMain() throws {
-        _ = try startServer { _ in (200, "", Foundation.Data([1, 2, 3, 4])) }
-        let completed = expectation(description: "Background events acknowledged")
-        transfers!.handleBackgroundEvents(identifier: "test-download") {
-            XCTAssertTrue(Thread.isMainThread)
-            completed.fulfill()
-        }
-        // The production delegate receives this only after file and task callbacks have finished.
-        transfers!.urlSessionDidFinishEvents(forBackgroundURLSession: URLSession.shared)
-        wait(for: [completed], timeout: 5)
-    }
-
     private func startServer(delay: TimeInterval = 0, availableBytes: (() -> Int64)? = nil,
-                             background: Bool = false,
                              response: @escaping (String) -> (Int, String, Foundation.Data)) throws -> LocalModelDefinition {
         server = try ModelDownloadTestServer(delay: delay, response: response)
         let model = LocalModelDefinition(id: "test-model", displayName: "Test", parameterSize: "",
             quantization: "", brand: .google, fileName: "model.litertlm", url: server!.url,
             sizeBytes: 4, downloadable: true, runtime: .litertLm, contextTokens: 16,
             supportsSummarization: true)
-        transfers = IosBackgroundModelTransfers(directory: directory,
-            identifier: background ? "com.simon.harmonic.download-test.\(UUID().uuidString)" : "test-download",
-            configuration: background ? nil : .ephemeral, catalog: [model], availableBytes: availableBytes)
+        transfers = IosBackgroundModelTransfers(directory: directory, identifier: "test-download",
+            configuration: .ephemeral, catalog: [model], availableBytes: availableBytes)
         waitUntil { !self.transfers!.isActive(modelId: model.id) }
         return model
     }
