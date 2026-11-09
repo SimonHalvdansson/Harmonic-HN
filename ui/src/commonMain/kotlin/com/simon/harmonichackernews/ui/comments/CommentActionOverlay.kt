@@ -515,6 +515,7 @@ private fun CommentActionCardContent(
     val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(comment.time)
     val typography = rememberContentTypography(settings.font, settings.preferredTextSize)
     val commentTextSize = settings.preferredTextSize - 1f
+    val largeUserLabel = LocalDensity.current.fontScale > 1f
     val author = comment.by?.takeIf(String::isNotBlank)
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { link ->
@@ -561,7 +562,7 @@ private fun CommentActionCardContent(
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).height(40.dp),
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).then(if (largeUserLabel) Modifier.heightIn(min = 40.dp) else Modifier.height(40.dp)),
                 ) {
                     if (settings.userAvatarsEnabled && author != null) {
                         UserAvatar(
@@ -577,7 +578,7 @@ private fun CommentActionCardContent(
                         modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
+                        maxLines = if (largeUserLabel) Int.MAX_VALUE else 1,
                     )
                     if (author != null && author == controller.story.by) {
                         CommentAuthorBadge("OP", LocalContentColor.current, ProductSansFontFamily)

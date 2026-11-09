@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.data.LinkPreviewDisplayFormatter.formatDisplayUrl
-import kotlin.math.round
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -39,11 +39,8 @@ data class HuggingFaceModelInfo(
         ?.let { "$it license" }
 
     fun formatUpdated(): String? {
-        val parts = lastModified?.take(10)?.split('-') ?: return null
-        if (parts.size != 3) return null
-        val month = parts[1].toIntOrNull()?.let { MONTHS.getOrNull(it - 1) } ?: return null
-        val day = parts[2].toIntOrNull() ?: return null
-        return "Updated $month $day"
+        val date = lastModified?.take(10) ?: return null
+        return runCatching { Instant.parse("${date}T00:00:00Z") }.getOrNull()?.let { "Updated: $date" }
     }
 
     val shortenedUrl: String?
@@ -52,30 +49,5 @@ data class HuggingFaceModelInfo(
     private fun String.toPreviewLabel(): String = replaceFirstChar(Char::uppercase)
 
     private fun formatCount(count: Long, singular: String, plural: String): String =
-        if (count == 1L) "1 $singular" else "${compactFormat(count)} $plural"
-
-    private fun compactFormat(number: Long): String {
-        val (divisor, suffix) = when {
-            number >= 1_000_000_000_000L -> 1_000_000_000_000L to "T"
-            number >= 1_000_000_000L -> 1_000_000_000L to "B"
-            number >= 1_000_000L -> 1_000_000L to "M"
-            number >= 1_000L -> 1_000L to "K"
-            else -> return number.toString()
-        }
-        val scaled = number.toDouble() / divisor
-        val factor = when {
-            scaled >= 100 -> 1.0
-            scaled >= 10 -> 10.0
-            else -> 100.0
-        }
-        val value = (round(scaled * factor) / factor).toString().removeSuffix(".0")
-        return "$value$suffix"
-    }
-
-    private companion object {
-        val MONTHS = listOf(
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-        )
-    }
+        if (count == 1L) "1 $singular" else "${LinkPreviewDisplayFormatter.formatCompactCount(count)} $plural"
 }

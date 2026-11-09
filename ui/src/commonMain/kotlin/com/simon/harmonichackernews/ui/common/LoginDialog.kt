@@ -184,6 +184,7 @@ fun LoginDialog(
                 fontFamily = ProductSansFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 27.sp,
+                lineHeight = 34.sp,
             )
         },
         text = {

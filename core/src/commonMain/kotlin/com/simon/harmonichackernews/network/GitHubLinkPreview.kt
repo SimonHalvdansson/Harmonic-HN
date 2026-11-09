@@ -137,7 +137,7 @@ internal object GitHubLinkPreview {
                 url,
                 details(
                     "State" to when {
-                        json.optBoolean("merged") -> "Merged"
+                        json.optBoolean("merged") || json.nonBlankString("merged_at") != null -> "Merged"
                         json.optBoolean("draft") -> "Draft"
                         else -> json.nonBlankString("state")?.titleCase()
                     },
@@ -152,7 +152,7 @@ internal object GitHubLinkPreview {
                 type,
                 json.optString("name").requiredPreviewTitle(type),
                 "$repoLabel · ${target.ref}",
-                json.nonBlankString("path"),
+                json.nonBlankString("path")?.takeUnless { it == json.optString("name") },
                 null,
                 url,
                 details(

@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.LinkPreviewType
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -7,6 +9,19 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HuggingFaceLinkPreviewTest {
+    @Test
+    fun datasetSizeCategoriesDescribeRowsInsteadOfExposingVariableSyntax() {
+        assertEquals("Fewer than 1K", HuggingFaceLinkPreview.datasetRowRange("n<1K"))
+        assertEquals("1K–10K", HuggingFaceLinkPreview.datasetRowRange("1K<n<10K"))
+        assertEquals("More than 1T", HuggingFaceLinkPreview.datasetRowRange("n>1T"))
+        assertNull(HuggingFaceLinkPreview.datasetRowRange("unknown"))
+        val url = "https://huggingface.co/datasets/example/data"
+        val info = HuggingFaceLinkPreview.parseHuggingFace(LinkPreviewType.HUGGING_FACE_DATASET,
+            """{"id":"example/data","tags":["size_categories:n<1K"]}""",
+            HuggingFaceLinkPreview.huggingFaceTarget(url)!!, url)
+        assertEquals("Fewer than 1K", info.details.single { it.label == "Rows" }.value)
+    }
+
     @Test
     fun quantizationUsesTheFirstWholeMatchingTagAcrossRepeatedParses() {
         val tags = """"bit", "-4-bit", "4-BIT", "x4-bit", "4-bit-extra", "4-bit", "8-bit""""
@@ -74,7 +89,7 @@ class HuggingFaceLinkPreviewTest {
         assertEquals("2.16M downloads", info.formatDownloads())
         assertEquals("2.78T parameters", info.formatParameters())
         assertEquals("Kimi-K3 license", info.formatLicense())
-        assertEquals("Updated Jul 27", info.formatUpdated())
+        assertEquals("Updated: 2026-07-27", info.formatUpdated())
         assertEquals("huggingface.co/moonshotai/Kimi-K3", info.shortenedUrl)
         assertTrue(LinkPreviewUrls.isHuggingFaceUrl(info.website))
     }

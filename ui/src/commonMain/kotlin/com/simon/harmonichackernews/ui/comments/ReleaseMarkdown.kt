@@ -1,6 +1,13 @@
 package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -21,6 +29,11 @@ import com.simon.harmonichackernews.network.LinkSummaryParser
 import com.simon.harmonichackernews.network.toNetworkUrlOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_add
+import com.simon.harmonichackernews.resources.ic_remove
+import com.simon.harmonichackernews.ui.common.TextButton
+import org.jetbrains.compose.resources.painterResource
 
 internal sealed interface ReleaseMarkdownBlock {
     data class Text(val markdown: String) : ReleaseMarkdownBlock
@@ -123,7 +136,15 @@ internal fun releaseMarkdownPreviewBlocks(
     markdown: String,
     pageUrl: String,
     lineBudget: Int = RELEASE_PREVIEW_LINE_BUDGET,
-): List<ReleaseMarkdownBlock> {
+): List<ReleaseMarkdownBlock> = releaseMarkdownPreview(markdown, pageUrl, lineBudget).blocks
+
+internal data class ReleaseMarkdownPreview(val blocks: List<ReleaseMarkdownBlock>, val truncated: Boolean)
+
+internal fun releaseMarkdownPreview(
+    markdown: String,
+    pageUrl: String,
+    lineBudget: Int = RELEASE_PREVIEW_LINE_BUDGET,
+): ReleaseMarkdownPreview {
     require(lineBudget > 0)
     val visibleSource = markdown.stripMarkdownHtmlComments()
     val source = releaseMarkdownBlocks(visibleSource.take(RELEASE_PREVIEW_SOURCE_CHARACTERS), pageUrl)
@@ -182,7 +203,7 @@ internal fun releaseMarkdownPreviewBlocks(
             preview += ReleaseMarkdownBlock.Text("...")
         }
     }
-    return preview
+    return ReleaseMarkdownPreview(preview, truncated)
 }
 
 private val MARKDOWN_IMAGE = Regex("!\\[([^]]*)]\\((<[^>]+>|[^\\s]+?)(?:\\s+\"[^\"]*\")?\\)")
@@ -194,12 +215,20 @@ private val RELEASE_IMAGE = Regex(
 
 @Composable
 internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable(pageUrl, markdown) { mutableStateOf(false) }
+    var truncated by remember(markdown, pageUrl) { mutableStateOf(false) }
     var blocks by remember(markdown, pageUrl) { mutableStateOf(emptyList<ReleaseMarkdownBlock>()) }
-    LaunchedEffect(markdown, pageUrl) {
-        blocks = withContext(Dispatchers.Default) { releaseMarkdownPreviewBlocks(markdown, pageUrl) }
+    LaunchedEffect(markdown, pageUrl, expanded) {
+        val preview = withContext(Dispatchers.Default) { releaseMarkdownPreview(markdown, pageUrl) }
+        truncated = preview.truncated
+        blocks = if (expanded) withContext(Dispatchers.Default) { releaseMarkdownBlocks(markdown, pageUrl) }
+            else preview.blocks
     }
     val platform = LocalCommentsPreviewPlatform.current
-    Column(modifier) {
+    Column(modifier.animateContentSize()) {
+        if (expanded && truncated) {
+            ReleaseExpansionButton(true, { expanded = false }, Modifier.align(Alignment.End))
+        }
         blocks.forEach { block ->
             when (block) {
                 is ReleaseMarkdownBlock.Text -> SummaryMarkdownText(
@@ -222,5 +251,18 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
                 )
             }
         }
+        if (truncated) {
+            ReleaseExpansionButton(expanded, { expanded = !expanded }, Modifier.align(Alignment.End))
+        }
+    }
+}
+
+@Composable
+private fun ReleaseExpansionButton(expanded: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Icon(painterResource(if (expanded) Res.drawable.ic_remove else Res.drawable.ic_add),
+            contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(if (expanded) "Show less" else "Show more", fontFamily = LocalPreviewFontFamily.current)
     }
 }

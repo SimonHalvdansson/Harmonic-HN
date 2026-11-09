@@ -307,6 +307,9 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
     val info = story.linkPreviewInfo ?: return
     val details = remember(info.details) { splitRichPreviewDetails(info.details) }
     val isRelease = info.type == LinkPreviewType.GITHUB_RELEASE
+    // Some upstream discussion bodies really are just an ellipsis. They are not an excerpt
+    // or a loading state; omit the empty-looking body rather than inventing a summary.
+    val description = info.description.orEmpty().takeUnless { it.trim() in setOf("...", "…") }.orEmpty()
     var expanded by rememberSaveable(info.url) { mutableStateOf(false) }
     var truncated by remember(info.url, info.description) { mutableStateOf(false) }
     Column {
@@ -321,17 +324,17 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
             topPadding = 5.dp,
             bottomPadding = 0.dp,
         )
-        if (isRelease) {
+        if (isRelease && description.isNotBlank()) {
             ReleaseMarkdownContent(
-                markdown = info.description.orEmpty(),
+                markdown = description,
                 pageUrl = info.url,
                 modifier = Modifier.padding(vertical = 4.dp),
             )
-        } else if (info.type.hasMarkdownDescription()) {
+        } else if (description.isNotBlank() && info.type.hasMarkdownDescription()) {
             PreviewTextExpansion(expanded, lineHeight = 17.sp, collapsedMaxLines = 12,
                 modifier = Modifier.padding(vertical = 4.dp)) { maxLines ->
                 SummaryMarkdownText(
-                    markdown = info.description.orEmpty(),
+                    markdown = description,
                     baseUrl = info.url,
                     onOpenLink = platform.openLink,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -354,7 +357,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
             }
         } else {
             PreviewBody(
-                text = info.description.orEmpty(),
+                text = description,
                 maxLines = 12,
                 topPadding = 4.dp,
             )

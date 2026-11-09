@@ -19,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import kotlin.math.roundToInt
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -77,7 +81,7 @@ fun HeaderPreviewImage(
         NetworkImage(
             url = imageUrl.orEmpty(),
             contentDescription = "Story preview image",
-            modifier = modifier
+            modifier = Modifier.headerPreviewImageSize(imageAspectRatio).then(modifier)
                 .graphicsLayer(alpha = if (suppressed) 0f else 1f)
                 .onGloballyPositioned { bounds = it.boundsInWindow() }
                 .headerPreviewImageGestures(
@@ -101,4 +105,13 @@ fun HeaderPreviewImage(
             },
         )
     }
+}
+
+/** Wide images shorten the full-width header; fixed-size side thumbnails retain their bounds. */
+internal fun Modifier.headerPreviewImageSize(aspectRatio: Float?): Modifier = layout { measurable, constraints ->
+    val height = if (aspectRatio != null && aspectRatio.isFinite() && aspectRatio > 0f) {
+        constraints.constrainHeight((constraints.maxWidth / aspectRatio).roundToInt())
+    } else constraints.maxHeight
+    val child = measurable.measure(Constraints.fixed(constraints.maxWidth, height))
+    layout(child.width, child.height) { child.placeRelative(0, 0) }
 }

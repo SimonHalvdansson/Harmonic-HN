@@ -100,6 +100,7 @@ import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
 import kotlinx.coroutines.delay
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.commentsHazeSource
+import com.simon.harmonichackernews.ui.comments.headerPreviewImageSize
 import com.simon.harmonichackernews.ui.comments.headerPreviewImageGestures
 import com.simon.harmonichackernews.ui.comments.ZoomableImageViewport
 import com.simon.harmonichackernews.ui.common.TransformOverlay
@@ -658,7 +659,7 @@ private fun HeaderDisplayPreviewContent(
                 painter = image,
                 contentDescription = "Story preview image",
                 contentScale = ContentScale.Crop,
-                modifier = imageModifier.onGloballyPositioned {
+                modifier = Modifier.headerPreviewImageSize(image.intrinsicSize.let { it.width / it.height }).then(imageModifier).onGloballyPositioned {
                     imageBounds = it.boundsInWindow()
                 }
                     .headerPreviewImageGestures(onClick = {}, onInspect = {

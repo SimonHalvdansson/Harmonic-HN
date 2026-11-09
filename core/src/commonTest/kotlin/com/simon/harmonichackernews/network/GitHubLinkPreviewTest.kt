@@ -7,6 +7,32 @@ import kotlin.test.assertNull
 
 class GitHubLinkPreviewTest {
     @Test
+    fun mergeTimestampPreservesMergedStateWhenBooleanIsMissing() {
+        val url = "https://github.com/example/repo/pull/42"
+        for (mergeFields in listOf("\"merged\":true", "\"merged_at\":\"2026-07-31T12:00:00Z\"")) {
+            val info = GitHubLinkPreview.parseGitHub(LinkPreviewType.GITHUB_PULL_REQUEST,
+                """{"title":"A change","state":"closed",$mergeFields}""",
+                GitHubLinkPreview.githubTarget(url)!!, url)
+            assertEquals("Merged", info.details.single { it.label == "State" }.value)
+        }
+        val closed = GitHubLinkPreview.parseGitHub(LinkPreviewType.GITHUB_PULL_REQUEST,
+            """{"title":"A change","state":"closed","merged_at":null}""",
+            GitHubLinkPreview.githubTarget(url)!!, url)
+        assertEquals("Closed", closed.details.single { it.label == "State" }.value)
+    }
+
+    @Test
+    fun fileDescriptionKeepsOnlyPathInformationThatAddsToItsName() {
+        val url = "https://github.com/example/repo/blob/main/README.md"
+        for ((path, expected) in listOf("README.md" to null, "docs/README.md" to "docs/README.md")) {
+            val info = GitHubLinkPreview.parseGitHub(LinkPreviewType.GITHUB_FILE,
+                """{"name":"README.md","path":"$path"}""",
+                GitHubLinkPreview.githubTarget(url)!!, url)
+            assertEquals(expected, info.description)
+        }
+    }
+
+    @Test
     fun discImageStudioFallbackUsesExactRepositoryMetadataWithoutInventingAnAboutSection() {
         val target = GitHubLinkPreview.githubTarget(DISC_IMAGE_STUDIO_URL)!!
         val info = GitHubLinkPreview.parseGitHubRepositoryPage(DISC_IMAGE_STUDIO_PAGE, target, DISC_IMAGE_STUDIO_URL)

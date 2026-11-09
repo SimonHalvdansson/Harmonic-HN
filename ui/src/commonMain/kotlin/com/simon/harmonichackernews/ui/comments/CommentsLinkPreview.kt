@@ -18,6 +18,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -258,8 +259,16 @@ internal fun PreviewInfoRow(
 
 @Composable
 internal fun PreviewInfoColumns(left: @Composable ColumnScope.() -> Unit, right: @Composable ColumnScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth()) {
-        Column(Modifier.weight(2f), content = left)
-        Column(Modifier.weight(3f), content = right)
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // The old 40/60 split squeezed dates and short label/value pairs into two lines.
+        // Let each column have half the width, and stack them when scaled text needs more room.
+        if (maxWidth < 320.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale) {
+            Column { left(); right() }
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), content = left)
+                Column(Modifier.weight(1f), content = right)
+            }
+        }
     }
 }

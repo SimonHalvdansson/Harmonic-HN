@@ -27,12 +27,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -64,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -121,7 +124,6 @@ fun AiModelSelectorDialog(
         AiModelFilter.Free -> freeList
         AiModelFilter.Price -> priceList
     }
-    val bodyScrollState = rememberScrollState()
     var catalogState by remember {
         mutableStateOf<AiModelCatalogState>(AiModelCatalogState.Loading)
     }
@@ -242,9 +244,15 @@ fun AiModelSelectorDialog(
             if (requestedDismiss) dismissWithAnimation()
         }
         BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
-            val catalogHeight = (maxHeight * 0.5f).coerceIn(160.dp, 420.dp)
-            Column(Modifier.fillMaxWidth().fillMaxHeight()) {
-                Column(Modifier.weight(1f).verticalScroll(bodyScrollState).testTag("ai-model-picker-body")) {
+            val density = LocalDensity.current
+            var headerHeight by remember { mutableIntStateOf(0) }
+            var footerHeight by remember { mutableIntStateOf(with(density) { 77.dp.roundToPx() }) }
+            val screenHeight = LocalWindowInfo.current.containerSize.height
+            val availableHeight = with(density) { maxHeight.roundToPx() }
+            val scrollWholePage = headerHeight + footerHeight > availableHeight - screenHeight * 0.25f
+            val currentHeader by rememberUpdatedState<@Composable () -> Unit>({
+                Column(Modifier.fillMaxWidth().wrapContentHeight(unbounded = true)
+                    .onSizeChanged { headerHeight = it.height }.testTag("ai-model-picker-header")) {
                     Text(
                         text = stringResource(Res.string.ai_model_choose_title),
                         modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
@@ -252,6 +260,7 @@ fun AiModelSelectorDialog(
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 26.sp,
+                        lineHeight = 32.sp,
                     )
                     Text(
                         text = stringResource(Res.string.ai_model_catalog_subtitle),
@@ -307,11 +316,12 @@ fun AiModelSelectorDialog(
                             lineHeight = 21.sp,
                         )
                     }
-                    LazyRow(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
-                        items(AiModelFilter.entries, key = { it.name }, contentType = { "model-filter" }) { option ->
+                        AiModelFilter.entries.forEach { option ->
                             FilterChip(
                                 modifier = Modifier.testTag("ai-model-filter-${option.name}"),
                                 selected = filter == option,
@@ -333,92 +343,84 @@ fun AiModelSelectorDialog(
                         }
                     }
 
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(catalogHeight),
-                        contentAlignment = Alignment.Center,
+                }
+            })
+
+            val header = remember { movableContentOf { currentHeader() } }
+            val currentFooter by rememberUpdatedState<@Composable () -> Unit>({
+                Column(Modifier.onSizeChanged { footerHeight = it.height }) {
+
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Crossfade(targetState = catalogState, label = "model catalog") { state ->
-                            when (state) {
-                                AiModelCatalogState.Loading -> Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    HarmonicLoadingIndicator()
-                                    Text("Loading models…", modifier = Modifier.padding(top = 12.dp))
-                                }
-
-                                is AiModelCatalogState.Error -> Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(32.dp),
-                                ) {
-                                    Text(
-                                        text = state.message,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    )
-                                    OutlinedButton(
-                                        onClick = { catalogReload++ },
-                                        modifier = Modifier.padding(top = 12.dp),
-                                    ) {
-                                        Text("Retry")
-                                    }
-                                }
-
-                                is AiModelCatalogState.Loaded if state.models.isEmpty() ->
-                                    Text(stringResource(Res.string.ai_model_no_free))
-
-                                is AiModelCatalogState.Loaded -> LazyColumn(
-                            modifier = Modifier.fillMaxWidth().fillMaxHeight().testTag("ai-model-catalog"),
-                                    state = catalogListState,
-                                    contentPadding = PaddingValues(
-                                        start = 16.dp,
-                                        top = 4.dp,
-                                        end = 16.dp,
-                                        bottom = 12.dp,
-                                    ),
-                                ) {
-                                    items(state.models, key = { it.openRouterId }, contentType = { "model" }) { model ->
-                                        AiModelRow(
-                                            model = model,
-                                            provider = provider,
-                                            catalogRepository = catalogRepository,
-                                            selected = model.requestId == modelInput.trim(),
-                                            enabled = !dismissing,
-                                            onClick = {
-                                                priceState = AiModelPriceState.Resolved(model)
-                                                modelInput = model.requestId
-                                                modelError = null
-                                            },
-                                            providerIcon = providerIcon,
-                                        )
-                                    }
-                                }
-                            }
+                        SettingsDialogTextButton(
+                            onClick = { dismissWithAnimation() },
+                            enabled = !dismissing,
+                            modifier = Modifier.height(56.dp).widthIn(min = 94.dp),
+                        ) {
+                            Text(stringResource(Res.string.ai_model_cancel))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = { saveAndDismiss() },
+                            enabled = !dismissing,
+                            modifier = Modifier.height(56.dp).widthIn(min = 123.dp),
+                        ) {
+                            Text(stringResource(Res.string.ai_model_save))
                         }
                     }
                 }
-                HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+            })
+            val footer = remember { movableContentOf { currentFooter() } }
+            Column(Modifier.fillMaxWidth().fillMaxHeight().testTag("ai-model-picker-body")) {
+                if (!scrollWholePage) header()
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                        .testTag(if (scrollWholePage) "ai-model-whole-page" else "ai-model-catalog"),
+                    state = catalogListState,
                 ) {
-                    SettingsDialogTextButton(
-                        onClick = { dismissWithAnimation() },
-                        enabled = !dismissing,
-                        modifier = Modifier.height(56.dp).widthIn(min = 94.dp),
-                    ) {
-                        Text(stringResource(Res.string.ai_model_cancel))
+                    if (scrollWholePage) item(key = "header") { header() }
+                    when (val state = catalogState) {
+                        AiModelCatalogState.Loading -> item(key = "loading") {
+                            Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                HarmonicLoadingIndicator()
+                                Text("Loading models…", Modifier.padding(top = 12.dp))
+                            }
+                        }
+                        is AiModelCatalogState.Error -> item(key = "error") {
+                            Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(state.message)
+                                OutlinedButton(onClick = { catalogReload++ }) { Text("Retry") }
+                            }
+                        }
+                        is AiModelCatalogState.Loaded -> {
+                            if (state.models.isEmpty()) item(key = "empty") { Text(stringResource(Res.string.ai_model_no_free), Modifier.padding(24.dp)) }
+                            items(state.models, key = { it.openRouterId }, contentType = { "model" }) { model ->
+                                AiModelRow(
+                                    model = model,
+                                    provider = provider,
+                                    catalogRepository = catalogRepository,
+                                    selected = model.requestId == modelInput.trim(),
+                                    enabled = !dismissing,
+                                    onClick = {
+                                        priceState = AiModelPriceState.Resolved(model)
+                                        modelInput = model.requestId
+                                        modelError = null
+                                    },
+                                    providerIcon = providerIcon,
+                                )
+                            }
+                        }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { saveAndDismiss() },
-                        enabled = !dismissing,
-                        modifier = Modifier.height(56.dp).widthIn(min = 123.dp),
-                    ) {
-                        Text(stringResource(Res.string.ai_model_save))
-                    }
+                    if (scrollWholePage) item(key = "footer") { footer() }
                 }
+                if (!scrollWholePage) footer()
+
             }
         }
     }
@@ -458,21 +460,25 @@ private fun AiModelPrice(state: AiModelPriceState) {
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 13.sp,
                 )
-                is AiModelPriceState.Resolved -> Row {
+                is AiModelPriceState.Resolved -> FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
+                        modifier = Modifier.alignByBaseline(),
                         text = "${price.model.formattedInputPrice()} / " +
                             price.model.formattedOutputPrice(),
-                        modifier = Modifier.alignByBaseline(),
                         color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = ProductSansFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
+                        lineHeight = 26.sp,
                     )
                     Text(
-                        text = stringResource(Res.string.ai_model_price_per_million),
-                        modifier = Modifier.padding(start = 6.dp).alignByBaseline(),
+                        text = stringResource(Res.string.ai_model_price_per_million).replace(' ', '\u00a0'),
+                        modifier = Modifier.alignByBaseline(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                     )
                 }
             }
@@ -515,7 +521,7 @@ private fun AiModelRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = 20.dp, vertical = 4.dp)
             .defaultMinSize(minHeight = 92.dp)
             .then(
                 if (selected) {
@@ -576,7 +582,7 @@ private fun AiModelRow(
                                 Res.string.ai_model_row_price_format,
                                 model.formattedInputPrice(),
                                 model.formattedOutputPrice(),
-                            ),
+                            ).replace("per 1M tokens", "per\u00a01M\u00a0tokens"),
                             containerColor = priceChipContainer,
                             contentColor = priceChipContent,
                         )

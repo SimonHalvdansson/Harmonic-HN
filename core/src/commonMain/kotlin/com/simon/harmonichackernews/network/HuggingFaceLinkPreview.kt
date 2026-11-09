@@ -159,7 +159,7 @@ internal object HuggingFaceLinkPreview {
                     "Likes" to json.optLong("likes").toString(),
                     "Updated" to json.nonBlankString("lastModified")?.dateOnly(),
                     "Format" to tagValue(json, "format:"),
-                    "Size" to tagValue(json, "size_categories:"),
+                    "Rows" to tagValue(json, "size_categories:")?.let(::datasetRowRange),
                     "Access" to when {
                         json.optBoolean("private") -> "Private"
                         json.optBoolean("gated") || json.optString("gated") in setOf("auto", "manual") -> "Gated"
@@ -229,6 +229,14 @@ internal object HuggingFaceLinkPreview {
             (0..<tags.length()).map(tags::optString).firstOrNull { it.startsWith(prefix) }
         }
         ?.removePrefix(prefix)
+
+    internal fun datasetRowRange(bucket: String): String? = when {
+        bucket == "unknown" -> null
+        bucket.startsWith("n<") -> "Fewer than ${bucket.removePrefix("n<")}"
+        bucket.startsWith("n>") -> "More than ${bucket.removePrefix("n>")}"
+        "<n<" in bucket -> bucket.replace("<n<", "–")
+        else -> bucket.takeIf { Regex("[0-9]+[KMBT]?-[0-9]+[KMBT]?").matches(it) }?.replace('-', '–')
+    }
 
     private fun JsonArray?.objectStrings(key: String): List<String> = this?.let { values ->
         (0..<values.length()).mapNotNull { values.optJSONObject(it)?.nonBlankString(key) }

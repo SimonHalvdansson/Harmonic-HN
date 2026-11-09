@@ -490,7 +490,7 @@ fun CommentsHeader(
                                                 Column {
                                                     if (visual.imageVisible) {
                                                         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                                                            preview(Modifier.fillMaxWidth().height(216.dp))
+                                                            preview(Modifier.fillMaxWidth().heightIn(max = 216.dp))
                                                         }
                                                         Spacer(Modifier.height(10.dp))
                                                     }

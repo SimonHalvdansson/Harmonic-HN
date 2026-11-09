@@ -148,19 +148,24 @@ private fun SettingsAlertDialogLayout(
                 .windowInsetsPadding(contentWindowInsets)
                 .padding(
                     horizontal = HarmonicDimens.compose_settings_dialog_horizontal_margin,
-                    vertical = HarmonicDimens.compose_settings_dialog_vertical_margin,
                 ),
             contentAlignment = Alignment.Center,
         ) {
             // With a keyboard and large text, title + actions alone can fill a short window.
             // Let the complete card scroll there while bounding the body: lazy lists inside it
             // must still receive a finite height rather than the outer scroll's infinity.
-            val compactHeight = maxHeight < 240.dp * fontScale
-            val compactBodyHeight = (maxHeight * 0.65f).coerceAtLeast(48.dp)
+            val shortWindow = maxHeight < 300.dp * fontScale
+            val verticalMargin = if (shortWindow) 4.dp else HarmonicDimens.compose_settings_dialog_vertical_margin
+            val availableHeight = (maxHeight - verticalMargin * 2).coerceAtLeast(0.dp)
+            val inlineActions = shortWindow && scrollableContent && showButtons && title != null &&
+                minOf(maxWidth, dialogMaxWidth) >= 560.dp * fontScale
+            val compactHeight = !inlineActions && availableHeight < 128.dp * fontScale && (title != null || showButtons)
+            val compactBodyHeight = (availableHeight * 0.65f).coerceAtLeast(64.dp)
             Surface(
                 modifier = modifier
                     .widthIn(max = dialogMaxWidth)
                     .fillMaxWidth()
+                    .heightIn(max = availableHeight)
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) awaitPointerEvent()
@@ -182,11 +187,23 @@ private fun SettingsAlertDialogLayout(
                                 .testTag("settings-dialog-compact-scroll") else Modifier,
                         ),
                     ) {
-                        title?.let { titleContent ->
+                        if (inlineActions) {
+                            // In phone landscape + IME there may be only ~120dp of height.
+                            // Share one toolbar row so the editor and both actions remain visible.
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = HarmonicDimens.compose_settings_dialog_content_padding),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(Modifier.weight(1f).padding(end = 8.dp)) { title?.invoke() }
+                                neutralButton?.invoke()
+                                dismissButton?.invoke()
+                                confirmButton()
+                            }
+                        } else title?.let { titleContent ->
                             Box(
                                 modifier = Modifier.padding(
                                     start = HarmonicDimens.compose_settings_dialog_content_padding,
-                                    top = HarmonicDimens.compose_settings_dialog_content_padding,
+                                    top = if (shortWindow) 8.dp else HarmonicDimens.compose_settings_dialog_content_padding,
                                     end = HarmonicDimens.compose_settings_dialog_content_padding,
                                     bottom = 0.dp,
                                 ),
@@ -219,11 +236,11 @@ private fun SettingsAlertDialogLayout(
                                         },
                                         top = if (edgeToEdgeContent) {
                                             0.dp
+                                        } else if (inlineActions) {
+                                            0.dp
                                         } else if (title == null) {
                                             HarmonicDimens.compose_settings_dialog_content_padding
-                                        } else {
-                                            0.dp
-                                        },
+                                        } else 8.dp,
                                         end = if (edgeToEdgeContent) {
                                             0.dp
                                         } else {
@@ -235,12 +252,12 @@ private fun SettingsAlertDialogLayout(
                                 textContent()
                             }
                         }
-                        if (showButtons) {
+                        if (showButtons && !inlineActions) {
                             val actionsModifier = Modifier
                                 .fillMaxWidth()
                                 .padding(
                                     horizontal = HarmonicDimens.compose_settings_dialog_content_padding,
-                                    vertical = if (compactSpacing) 6.dp else HarmonicDimens.compose_settings_dialog_action_vertical_padding,
+                                    vertical = if (shortWindow) 0.dp else if (compactSpacing) 6.dp else HarmonicDimens.compose_settings_dialog_action_vertical_padding,
                                 )
                             // Measure each complete action against the available row width before
                             // wrapping. A Row can squeeze its final label into the remaining few

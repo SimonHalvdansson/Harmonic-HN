@@ -6,6 +6,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,8 +29,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -310,6 +318,7 @@ fun DomainFilterRuleEditor(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 internal fun TitleFilterRuleEditorContent(
     text: String,
     mode: TitleFilterMatchMode,
@@ -321,26 +330,59 @@ internal fun TitleFilterRuleEditorContent(
 ) {
     val rule = remember(text, mode) { TitleFilterRule(text.trim(), mode) }
     val examples = remember(rule) { titleFilterPreviewExamples(rule) }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("title-filter-rule-content"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = text, onValueChange = { if (enabled) onTextChanged(it) },
-            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("title-filter-rule-input"),
-            label = { Text("Word or phrase") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSave() }),
-        )
-        Column {
-            Text("Match", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium)
-            SegmentedSetting(
-                options = TitleFilterMatchMode.entries.map { it to it.label },
-                selected = mode,
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val inlineHint = maxHeight < 80.dp
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(vertical = if (inlineHint) 0.dp else 4.dp).testTag("title-filter-rule-content"),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val interactionSource = remember { MutableInteractionSource() }
+            val focused by interactionSource.collectIsFocusedAsState()
+            BasicTextField(
+                value = text, onValueChange = { if (enabled) onTextChanged(it) },
                 enabled = enabled,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentPadding = PaddingValues(top = 4.dp),
-                onSelected = onModeChanged,
+                interactionSource = interactionSource,
+                modifier = Modifier.fillMaxWidth().heightIn(min = if (inlineHint) 48.dp else 64.dp)
+                    .focusRequester(focusRequester).testTag("title-filter-rule-input")
+                    .semantics { contentDescription = "Word or phrase" }
+                    .then(if (inlineHint) Modifier.border(
+                        if (focused) 2.dp else 1.dp,
+                        if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(4.dp),
+                    ) else Modifier),
+                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp,
+                    lineHeight = 24.sp, fontFamily = ProductSansFontFamily),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onSave() }),
+                decorationBox = { input ->
+                    if (inlineHint) {
+                        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
+                            if (text.isEmpty()) Text("Word or phrase", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 16.sp, lineHeight = 24.sp, fontFamily = ProductSansFontFamily)
+                            input()
+                        }
+                    } else OutlinedTextFieldDefaults.DecorationBox(
+                        value = text, innerTextField = input, enabled = enabled, singleLine = true,
+                        visualTransformation = VisualTransformation.None,
+                        interactionSource = interactionSource,
+                        label = { Text("Word or phrase") },
+                    )
+                },
             )
+            Column {
+                Text("Match", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium)
+                SegmentedSetting(
+                    options = TitleFilterMatchMode.entries.map { it to it.label },
+                    selected = mode,
+                    enabled = enabled,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentPadding = PaddingValues(top = 4.dp),
+                    onSelected = onModeChanged,
+                )
+            }
+            RulePreview(examples, if (text.isBlank()) "Type a rule to see how it matches." else null)
         }
-        RulePreview(examples, if (text.isBlank()) "Type a rule to see how it matches." else null)
     }
 }
 
@@ -361,7 +403,7 @@ internal fun DomainFilterRuleEditorContent(
     var testDomain by rememberSaveable { mutableStateOf("") }
     val isIpAddress = host?.let(DomainFilterHostPolicy::isIpv4) == true
     val examples = remember(rule) { domainFilterPreviewExamples(rule) }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("domain-filter-rule-content"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 4.dp).testTag("domain-filter-rule-content"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = text, onValueChange = { if (enabled) onTextChanged(it) },
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("domain-filter-rule-input"),

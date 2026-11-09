@@ -401,12 +401,12 @@ class AndroidCommentsCoordinator(
                 updateBottomSheetMargin(systemInsets.bottom)
 
                 val cutoutInsets = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
-                // The website fills the pane; only comments get the tablet reading gutter.
+                // The website fills the pane; comments share the reading gutter on both edges.
                 webViewInsetLeft = max(cutoutInsets.left, systemInsets.left)
                 webViewInsetRight = max(cutoutInsets.right, systemInsets.right)
                 setCommentsContentSideInsets(
-                    webViewInsetLeft,
-                    max(webViewInsetRight, extraSidePadding),
+                    max(webViewInsetLeft, extraSidePadding / 2),
+                    max(webViewInsetRight, extraSidePadding - extraSidePadding / 2),
                 )
                 updateWebViewContainerPadding()
 
@@ -838,7 +838,10 @@ class AndroidCommentsCoordinator(
         if (extraSidePadding == paddingPx && showsUpNavigation == showUpButton) return
         showsUpNavigation = showUpButton
         extraSidePadding = paddingPx
-        setCommentsContentSideInsets(webViewInsetLeft, max(webViewInsetRight, extraSidePadding))
+        setCommentsContentSideInsets(
+            max(webViewInsetLeft, extraSidePadding / 2),
+            max(webViewInsetRight, extraSidePadding - extraSidePadding / 2),
+        )
         updateWebViewContainerPadding()
     }
 

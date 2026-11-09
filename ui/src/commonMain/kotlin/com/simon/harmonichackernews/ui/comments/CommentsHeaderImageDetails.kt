@@ -167,7 +167,7 @@ private fun ImageMetric(
     val typography = rememberContentTypography(settings.font)
     val onImage = hazeState != null
     Box(
-        modifier.widthIn(min = if (onImage || compact) 48.dp else 56.dp, max = if (onImage || compact) 50.dp else 64.dp)
+        modifier.widthIn(min = if (onImage || compact) 48.dp else 56.dp)
             .semantics {
                 contentDescription = description
                 stateDescription = count.toString()
@@ -176,7 +176,7 @@ private fun ImageMetric(
         contentAlignment = Alignment.BottomCenter,
     ) {
         Row(
-            Modifier.fillMaxWidth().then(
+            Modifier.then(
                 if (hazeState != null) Modifier.storyImageMetricBackground(hazeState)
                 else Modifier.background(
                     lerp(headerColor, MaterialTheme.colorScheme.onSurface, 0.07f), RoundedCornerShape(10.dp),
@@ -195,7 +195,7 @@ private fun ImageMetric(
                     tint = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 )
             }
-            Text(compactStoryMetric(count), Modifier.weight(1f, fill = false),
+            Text(compactStoryMetric(count),
                 color = MaterialTheme.colorScheme.onSurface, fontFamily = typography.family,
                 fontWeight = FontWeight.Medium, fontSize = if (compact) 11.sp else 12.sp,
                 lineHeight = if (compact) 14.sp else androidx.compose.ui.unit.TextUnit.Unspecified, style = textStyle,

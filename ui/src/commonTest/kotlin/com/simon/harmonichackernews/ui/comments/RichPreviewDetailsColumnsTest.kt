@@ -7,6 +7,14 @@ import kotlin.test.assertNull
 
 class RichPreviewDetailsColumnsTest {
     @Test
+    fun largeCountsAreCompactWithoutChangingIdentifiersOrExplicitDisplayText() {
+        assertEquals("GitHub stars: 10.9K", LinkPreviewDetail("GitHub stars", "10902").previewText())
+        assertEquals("Followers: 115K", LinkPreviewDetail("Followers", "114888").previewText())
+        assertEquals("Revision: 123456", LinkPreviewDetail("Revision", "123456").previewText())
+        assertEquals("special", LinkPreviewDetail("Followers", "114888", "special").previewText())
+    }
+
+    @Test
     fun preservesAlternatingOrderAcrossColumns() {
         val details = List(5) { index ->
             LinkPreviewDetail(label = "label-$index", value = "value-$index")
@@ -39,7 +47,7 @@ class RichPreviewDetailsColumnsTest {
     @Test
     fun compactTextPreservesExplicitOverridesAndAmbiguousDateLabels() {
         assertEquals("Ada", LinkPreviewDetail("Author", "Ada").previewText())
-        assertEquals("2026-08-04", LinkPreviewDetail("Published", "2026-08-04").previewText())
+        assertEquals("Published: 2026-08-04", LinkPreviewDetail("Published", "2026-08-04").previewText())
         assertEquals("Updated: 2026-08-04", LinkPreviewDetail("Updated", "2026-08-04").previewText())
         assertEquals("u/ada", LinkPreviewDetail("Author", "ada", "u/ada").previewText())
     }

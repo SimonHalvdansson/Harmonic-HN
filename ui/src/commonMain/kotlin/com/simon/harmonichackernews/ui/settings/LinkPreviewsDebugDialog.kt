@@ -65,7 +65,7 @@ data class DebugLinkPreviewSample(
 val DebugLinkPreviewSamples = listOf(
     DebugLinkPreviewSample(LinkPreviewType.GITHUB_REPOSITORY, 49070029, "Show HN: Ctxdiff", "https://github.com/salmanzafar949/ctxdiff"),
     DebugLinkPreviewSample(LinkPreviewType.GITHUB_ISSUE, 49133889, "RipGrep musl binaries occasionally segfault", "https://github.com/BurntSushi/ripgrep/issues/3494"),
-    DebugLinkPreviewSample(LinkPreviewType.GITHUB_PULL_REQUEST, 49119063, "JEP 401: Value Objects merged", "https://github.com/openjdk/jdk/pull/31120"),
+    DebugLinkPreviewSample(LinkPreviewType.GITHUB_PULL_REQUEST, 49119063, "JEP 401: Value Objects pull request (closed)", "https://github.com/openjdk/jdk/pull/31120"),
     DebugLinkPreviewSample(LinkPreviewType.GITHUB_FILE, 49166202, "FFmpeg 9.0", "https://github.com/FFmpeg/FFmpeg/blob/n9.0/RELEASE_NOTES"),
     DebugLinkPreviewSample(LinkPreviewType.GITHUB_RELEASE, 49088887, "Uv 0.12.0", "https://github.com/astral-sh/uv/releases/tag/0.12.0"),
     DebugLinkPreviewSample(LinkPreviewType.GITHUB_DISCUSSION, 49234137, "Transmission forked as ReTransmission", "https://github.com/transmission/transmission/discussions/9031"),

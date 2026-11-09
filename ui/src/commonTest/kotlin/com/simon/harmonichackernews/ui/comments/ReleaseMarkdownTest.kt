@@ -3,8 +3,22 @@ package com.simon.harmonichackernews.ui.comments
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class ReleaseMarkdownTest {
+    @Test
+    fun expansionIsAvailableOnlyWhenThePreviewActuallyOmitsContent() {
+        val short = releaseMarkdownPreview("A short release note.", pageUrl)
+        assertFalse(short.truncated)
+        val source = (1..50).joinToString("\n\n") { "Change $it with a useful description." }
+        val preview = releaseMarkdownPreview(source, pageUrl)
+        assertTrue(preview.truncated)
+        val expanded = releaseMarkdownBlocks(source, pageUrl).filterIsInstance<ReleaseMarkdownBlock.Text>()
+        assertTrue(expanded.any { "Change 50" in it.markdown })
+        assertFalse(preview.blocks.filterIsInstance<ReleaseMarkdownBlock.Text>().any { "Change 50" in it.markdown })
+    }
+
     private val pageUrl = "https://github.com/audacity/audacity/releases/tag/Audacity-4.0.0"
 
     @Test

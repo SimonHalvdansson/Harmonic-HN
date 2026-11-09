@@ -3,6 +3,9 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import com.simon.harmonichackernews.ui.comments.headerPreviewImageSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
@@ -36,6 +39,115 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsModalLayoutTest {
+    @Test
+    fun wideHeaderImagesShortenWithoutLosingWidth() = SwingUtilities.invokeAndWait {
+        for ((ratio, expectedHeight) in listOf(4f to 100f, 1f to 216f)) {
+            val scene = ImageComposeScene(400, 500, Density(1f)) {
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxWidth().heightIn(max = 216.dp),
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.headerPreviewImageSize(ratio).fillMaxSize()
+                            .testTag("sized-header-image"),
+                    )
+                }
+            }
+            try {
+                scene.render().close()
+                val bounds = scene.nodes().first {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "sized-header-image"
+                }.boundsInWindow
+                assertEquals(400f, bounds.width)
+                assertEquals(expectedHeight, bounds.height)
+            } finally { scene.close() }
+        }
+    }
+
+    @Test
+    fun filterInputKeepsFocusWhenHeightSelectsCompactDecoration() = SwingUtilities.invokeAndWait {
+        val scene = ImageComposeScene(900, 400, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                TitleFilterRuleEditor(onSave = {}, onDismiss = {})
+            }
+        }
+        var time = 0L
+        fun frames() { repeat(30) { scene.render(time.also { time += 16_666_667L }).close() } }
+        fun field() = scene.nodes().first {
+            it.config.getOrNull(SemanticsProperties.TestTag) == "title-filter-rule-input"
+        }
+        try {
+            frames()
+            field().config[SemanticsActions.RequestFocus].action!!.invoke()
+            frames()
+            assertTrue(field().config[SemanticsProperties.Focused])
+            scene.constraints = Constraints(maxWidth = 900, maxHeight = 120)
+            frames()
+            assertTrue(field().config[SemanticsProperties.Focused], "Opening the keyboard must not replace the focused input")
+            scene.constraints = Constraints(maxWidth = 900, maxHeight = 400)
+            frames()
+            assertTrue(field().config[SemanticsProperties.Focused])
+        } finally { scene.close() }
+    }
+
+    @Test
+    fun shortLandscapeSearchKeepsMatchesBelowTheFocusedField() = SwingUtilities.invokeAndWait {
+        val comment = com.simon.harmonichackernews.presentation.PortableCommentItem(
+            com.simon.harmonichackernews.data.CommentSnapshot(1, text = "Matching comment"),
+            com.simon.harmonichackernews.data.CommentPresentationSnapshot(),
+        )
+        val scene = ImageComposeScene(900, 120, Density(1f)) {
+            val palette = HarmonicThemeCatalog.resolve("light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                SettingsAlertDialog(
+                    onDismissRequest = {}, confirmButton = {}, showButtons = false,
+                    edgeToEdgeContent = true, scrollableContent = true,
+                    text = {
+                        com.simon.harmonichackernews.ui.comments.CommentSearchScreen(
+                            fieldValue = androidx.compose.ui.text.input.TextFieldValue("match"),
+                            onFieldValueChanged = {},
+                            listState = androidx.compose.foundation.lazy.rememberLazyListState(),
+                            scrollState = androidx.compose.foundation.rememberScrollState(),
+                            visibleComments = listOf(comment), mutedColor = androidx.compose.ui.graphics.Color.Gray,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Default, requestFocus = false,
+                        ) { Text("Matching comment") }
+                    },
+                )
+            }
+        }
+        try {
+            repeat(30) { scene.render(it * 16_666_667L).close() }
+            val result = scene.nodes().first {
+                it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == "Matching comment" } == true
+            }
+            assertTrue(result.boundsInWindow.height >= 16f && result.boundsInWindow.bottom <= 120f,
+                "Search results must remain visible above the landscape keyboard: ${result.boundsInWindow}")
+        } finally { scene.close() }
+    }
+
+    @Test
+    fun shortLandscapeFilterEditorKeepsItsFieldTitleAndActionsVisible() = SwingUtilities.invokeAndWait {
+        for (height in listOf(120, 140, 180, 220)) {
+            val scene = ImageComposeScene(900, height, Density(1f)) {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                HarmonicTheme(palette.colorScheme, palette.dark) {
+                    TitleFilterRuleEditor(onSave = {}, onDismiss = {})
+                }
+            }
+            try {
+                repeat(30) { scene.render(it * 16_666_667L).close() }
+                for (label in listOf("Title filter", "Word or phrase", "Cancel", "Save rule")) {
+                    val node = scene.nodes().first {
+                        it.config.getOrNull(SemanticsProperties.Text)?.any { text -> text.text == label } == true
+                    }
+                    val bounds = node.boundsInWindow
+                    assertTrue(bounds.top >= 0 && bounds.bottom <= height && bounds.height >= 14f,
+                        "$label must remain visible in a ${height}dp landscape viewport: $bounds")
+                }
+            } finally { scene.close() }
+        }
+    }
+
     @Test
     fun dialogActionsWrapWholeButtonsBeforeSqueezingTheirLabels() = SwingUtilities.invokeAndWait {
         for (scale in listOf(1f, 2f)) for (longLabel in listOf(false, true)) {

@@ -36,6 +36,7 @@ internal fun AiModelProviderIcon(
 ) {
     val context = LocalPlatformContext.current
     var iconData by remember(providerSlug, repository) { mutableStateOf<Any?>(null) }
+    var iconLoaded by remember(providerSlug, iconData) { mutableStateOf(false) }
 
     LaunchedEffect(providerSlug, repository) {
         iconData = runCatching {
@@ -50,15 +51,17 @@ internal fun AiModelProviderIcon(
     Box(
         modifier = Modifier
             .size(24.dp)
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        if (!iconLoaded) Text(
             text = providerSlug.take(1).uppercase().ifEmpty { "?" },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = ProductSansFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
+            lineHeight = 14.sp,
         )
         iconData?.let { resolvedIcon ->
             val request = remember(context, resolvedIcon, userAgent) {
@@ -73,6 +76,8 @@ internal fun AiModelProviderIcon(
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(22.dp).clip(CircleShape),
+                onSuccess = { iconLoaded = true },
+                onError = { iconLoaded = false },
             )
         }
     }

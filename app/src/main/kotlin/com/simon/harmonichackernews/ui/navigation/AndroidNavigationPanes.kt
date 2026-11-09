@@ -132,10 +132,6 @@ internal fun CommentsPane(
         controller.retainCommentsCoordinator(activity, request, viewModel.session)
     }
     val extraPadding = animatedExtraPanePadding()
-    val extraPaddingPx = with(LocalDensity.current) { extraPadding.roundToPx() }
-    SideEffect {
-        activeCoordinator.updatePaneLayout(showUpButton = showUpButton, extraPaddingPx = extraPaddingPx)
-    }
     SideEffect { controller.attachCommentsCoordinator(activeCoordinator) }
     DisposableEffect(controller, activeCoordinator, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -174,6 +170,15 @@ internal fun CommentsPane(
     )
     CommentsHazeHost {
         BoxWithConstraints(Modifier.fillMaxSize().testTag("comments-story-pane-${request.serial}")) {
+            val portal = LocalSideBySideCommentsPortal.current
+            val density = LocalDensity.current
+            val gutter = minOf(extraPadding, (maxWidth - 360.dp).coerceAtLeast(0.dp))
+            val gutterPx = with(density) { gutter.roundToPx() }
+            if (portal == null) {
+                SideEffect {
+                    activeCoordinator.updatePaneLayout(showUpButton = showUpButton, extraPaddingPx = gutterPx)
+                }
+            }
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { activeCoordinator.webViewRoot },
@@ -197,7 +202,6 @@ internal fun CommentsPane(
                 LaunchedEffect(modalOverlayVisible) {
                     if (!modalOverlayVisible) modalScrimAlpha = 0f
                 }
-                val portal = LocalSideBySideCommentsPortal.current
                 val settingsRepository = LocalHarmonicUiDependencies.current.settings
                 val appSettings by settingsRepository.updates.collectAsStateWithLifecycle(
                     initialValue = settingsRepository.snapshot(),
@@ -213,7 +217,12 @@ internal fun CommentsPane(
                 }
                 val retainedContent = if (portal != null) {
                     rememberSideBySideCommentsContent(commentsController) {
-                        TwoPaneCommentsSurface(commentsController, statusBarColor, statusBarHeight)
+                        TwoPaneCommentsSurface(commentsController, statusBarColor, statusBarHeight) { width ->
+                            // Measure the live outlet: retained comments can move to the browser's
+                            // narrower pane without changing this source pane's constraints.
+                            val padding = minOf(extraPadding, (width - 360.dp).coerceAtLeast(0.dp))
+                            activeCoordinator.updatePaneLayout(showUpButton, with(density) { padding.roundToPx() })
+                        }
                     }
                 } else null
                 if (!commentsController.webViewFullscreen) {
@@ -293,12 +302,14 @@ internal fun TwoPaneCommentsSurface(
     controller: CommentsScreenController,
     statusBarColor: Color,
     statusBarHeight: Dp,
+    onPaneWidthChanged: (Dp) -> Unit = {},
 ) {
     val portal = LocalSideBySideCommentsPortal.current
     val incomingSheet = controller.sideBySideActive && portal?.liveInLeft == false
     val background = MaterialTheme.colorScheme.pageBackground
     CommentsHazeHost {
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            SideEffect { onPaneWidthChanged(maxWidth) }
             var scrim by remember(controller) { mutableFloatStateOf(0f) }
             val modalVisible = !controller.searchDialogVisible &&
                 (controller.linkPreviewOverlay != null || controller.isCommentActionOverlayShowing())

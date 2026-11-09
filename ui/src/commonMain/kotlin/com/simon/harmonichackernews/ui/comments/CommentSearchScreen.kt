@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -12,11 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -53,39 +55,55 @@ fun CommentSearchScreen(
     RequestSettingsDialogFocus(focusRequester, enabled = requestFocus)
     val matchLabel = if (visibleComments.size == 1) "MATCH" else "MATCHES"
 
-    Column(Modifier.fillMaxWidth().verticalScroll(scrollState)) {
-        Text(
-            text = if (preparing) "Searchingâ€¦" else "(${visibleComments.size} $matchLabel)",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 2.dp),
-            color = mutedColor,
-            fontFamily = fontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-        )
-        com.simon.harmonichackernews.ui.common.DialogSearchField(
-            value = fieldValue,
-            onValueChange = onFieldValueChanged,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 24.dp)
-                .focusRequester(focusRequester),
-            placeholder = "Search comments",
-        )
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
-        ) {
-            items(visibleComments, key = PortableCommentItem::id, contentType = { "comment" }) { comment ->
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .animateItem(
+    // Give results the remaining *visible* height, rather than nesting a window-sized list
+    // inside another scrolling column that focus can pan above the keyboard.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val compact = maxHeight < 200.dp * LocalDensity.current.fontScale
+        Column(Modifier.fillMaxWidth()) {
+            if (!compact) {
+                Text(
+                    text = if (preparing) "Searching…" else "(${visibleComments.size} $matchLabel)",
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                        .padding(top = 16.dp, bottom = 2.dp),
+                    color = mutedColor,
+                    fontFamily = fontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = if (compact) 12.dp else 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                com.simon.harmonichackernews.ui.common.DialogSearchField(
+                    value = fieldValue,
+                    onValueChange = onFieldValueChanged,
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp).focusRequester(focusRequester),
+                    placeholder = "Search comments",
+                )
+                if (compact) {
+                    Text(
+                        text = if (preparing) "Searching…" else "${visibleComments.size} $matchLabel",
+                        modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                        color = mutedColor,
+                        fontFamily = fontFamily,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMaxHeight),
+                contentPadding = PaddingValues(
+                    top = if (compact) 0.dp else 8.dp,
+                    bottom = if (compact) 8.dp else 24.dp,
+                ),
+            ) {
+                items(visibleComments, key = PortableCommentItem::id, contentType = { "comment" }) { comment ->
+                    Box(
+                        Modifier.fillMaxWidth().animateItem(
                             fadeInSpec = tween(
                                 durationMillis = SearchResultFadeInDurationMillis,
                                 delayMillis = SearchResultPlacementDelayMillis,
@@ -95,12 +113,11 @@ fun CommentSearchScreen(
                                 delayMillis = SearchResultPlacementDelayMillis,
                                 easing = FastOutSlowInEasing,
                             ),
-                            fadeOutSpec = tween(
-                                durationMillis = SearchResultFadeOutDurationMillis,
-                            ),
+                            fadeOutSpec = tween(durationMillis = SearchResultFadeOutDurationMillis),
                         ),
-                ) {
-                    commentContent(comment)
+                    ) {
+                        commentContent(comment)
+                    }
                 }
             }
         }
