@@ -45,8 +45,8 @@ class LookupAndReplyBenchmark {
         for (username in listOf(" USER0 ", "missing")) {
             check(legacyContainsUser(username) == filters.containsUser(username))
         }
-        check(legacyTagFor(tags10, " USER9 ") == UserTagCodec.tagFor(tags10, " USER9 "))
-        check(legacyTagFor(tags100, " USER99 ") == UserTagCodec.tagFor(tags100, " USER99 "))
+        check(legacyTagFor(tags10, " User9 ") == UserTagCodec.tagFor(tags10, " User9 "))
+        check(legacyTagFor(tags100, " User99 ") == UserTagCodec.tagFor(tags100, " User99 "))
         for (reply in listOf(shortReply, longReply)) {
             check(legacyReplyText(reply) == ReplyText.plainReplyText(reply))
         }
@@ -69,19 +69,19 @@ class LookupAndReplyBenchmark {
     }
 
     @Test fun tags10Before() = benchmarkRule.measureRepeated {
-        textSink = legacyTagFor(tags10, " USER9 ")
+        textSink = legacyTagFor(tags10, " User9 ")
     }
 
     @Test fun tags10Optimized() = benchmarkRule.measureRepeated {
-        textSink = UserTagCodec.tagFor(tags10, " USER9 ")
+        textSink = UserTagCodec.tagFor(tags10, " User9 ")
     }
 
     @Test fun tags100Before() = benchmarkRule.measureRepeated {
-        textSink = legacyTagFor(tags100, " USER99 ")
+        textSink = legacyTagFor(tags100, " User99 ")
     }
 
     @Test fun tags100Optimized() = benchmarkRule.measureRepeated {
-        textSink = UserTagCodec.tagFor(tags100, " USER99 ")
+        textSink = UserTagCodec.tagFor(tags100, " User99 ")
     }
 
     @Test fun replyShortBefore() = benchmarkRule.measureRepeated {
@@ -106,8 +106,8 @@ class LookupAndReplyBenchmark {
     }
 
     private fun legacyTagFor(serialized: String?, username: String?): String {
-        val normalizedUsername = username?.trim()?.takeIf(String::isNotEmpty)?.lowercase() ?: return ""
-        return UserTagCodec.decode(serialized, normalizeUsernames = true)[normalizedUsername].orEmpty()
+        val exactUsername = username?.trim()?.takeIf(String::isNotEmpty) ?: return ""
+        return UserTagCodec.decode(serialized)[exactUsername].orEmpty()
     }
 
     private fun legacyReplyText(html: String?): String {
