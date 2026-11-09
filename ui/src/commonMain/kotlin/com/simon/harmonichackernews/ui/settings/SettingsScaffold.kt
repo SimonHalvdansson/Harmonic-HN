@@ -93,7 +93,7 @@ private val MainSettingsEntries = listOf(
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.WebLinks, Res.drawable.ic_web_asset, Res.string.settings_summary_web_links),
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.FiltersTags, Res.drawable.ic_filter_list, Res.string.settings_summary_filters_tags),
     SettingsListEntry(SettingsListGroup.Tools, SettingsSection.AiSummary, Res.drawable.ic_auto_awesome, Res.string.settings_summary_ai_summary),
-    SettingsListEntry(SettingsListGroup.Tools, SettingsSection.Notifications, Res.drawable.ic_notifications, Res.string.settings_summary_notifications),
+    SettingsListEntry(SettingsListGroup.App, SettingsSection.Account, Res.drawable.ic_account_circle, Res.string.settings_summary_account),
     SettingsListEntry(SettingsListGroup.App, SettingsSection.Data, Res.drawable.ic_data_table, Res.string.settings_summary_data),
     SettingsListEntry(SettingsListGroup.App, SettingsSection.About, Res.drawable.ic_info, Res.string.settings_summary_about),
     SettingsListEntry(SettingsListGroup.App, SettingsSection.Debug, Res.drawable.ic_api, Res.string.settings_summary_debug),
@@ -145,10 +145,9 @@ fun SettingsListScreen(
     val settingsCardShape = RoundedCornerShape(
         HarmonicDimens.settings_list_segment_corner_radius,
     )
-    val visibleGroups = remember(showDebugSettings, loggedIn, showNotifications) {
+    val visibleGroups = remember(showDebugSettings) {
         MainSettingsEntries.filter {
-            (it.section != SettingsSection.Debug || showDebugSettings) &&
-                (it.section != SettingsSection.Notifications || (loggedIn && showNotifications))
+            it.section != SettingsSection.Debug || showDebugSettings
         }.groupBy { it.group }
     }
     val navigationBarPadding =

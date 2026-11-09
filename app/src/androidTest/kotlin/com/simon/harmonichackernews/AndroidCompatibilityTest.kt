@@ -5,15 +5,15 @@ import android.app.job.JobScheduler
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.network.ReplyNotificationSchedule
-import com.simon.harmonichackernews.navigation.MainDestination
-import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.utils.AndroidKeystoreSecretStore
 import java.util.UUID
@@ -35,6 +35,29 @@ class AndroidCompatibilityTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
+    fun loggedOutAccountRemainsAccessibleAndUsesTheExistingLoginDialog() {
+        org.junit.Assume.assumeTrue(runBlocking {
+            compose.activity.harmonicAppComposition.platform.accounts.awaitAccount() == null
+        })
+        compose.runOnIdle {
+            compose.activity.navigationController.closeWelcome()
+            compose.activity.navigationController.dismissChangelogDialog()
+            compose.activity.navigationController.openSettings("account")
+        }
+        try {
+            compose.onNodeWithText("Account").assertIsDisplayed()
+            compose.activityRule.scenario.recreate()
+            compose.onNodeWithText("Account").assertIsDisplayed()
+            compose.onNodeWithText("Log in").performClick()
+            compose.onNodeWithText("Log in to Hacker News").assertIsDisplayed()
+            compose.onNodeWithText("Cancel").performClick()
+            compose.onNodeWithText("Account").assertIsDisplayed()
+        } finally {
+            compose.runOnIdle { compose.activity.navigationController.closeSettings() }
+        }
+    }
+
+    @Test
     fun everySettingsScreenOpensAndReturnsToStories() {
         val navigation = compose.activity.navigationController
         compose.runOnIdle {
@@ -42,22 +65,13 @@ class AndroidCompatibilityTest {
             navigation.dismissChangelogDialog()
         }
         for (section in SettingsSection.entries) {
-            // Logged-out notifications goes back: to the list on phones, or out of
-            // Settings when the tablet's selected detail has no previous destination.
-            val loggedOutNotifications = section == SettingsSection.Notifications &&
-                compose.activity.harmonicAppComposition.platform.accounts.accountState.value.accountOrNull == null
-            val title = if (loggedOutNotifications) "Settings"
-                else runBlocking { getString(section.titleResource) }
+            val title = runBlocking { getString(section.titleResource) }
             try {
                 compose.runOnIdle { navigation.openSettings(section.route) }
                 compose.waitForIdle()
                 compose.waitUntil(10_000) {
                     val headings = compose.onAllNodesWithText(title, substring = false)
-                    headings.fetchSemanticsNodes().indices.any { headings[it].isDisplayed() } ||
-                        (loggedOutNotifications &&
-                            navigation.navigationState.state.value.currentDestination == MainDestination.STORIES &&
-                            compose.onAllNodesWithContentDescription("Choose story list")
-                                .fetchSemanticsNodes().isNotEmpty())
+                    headings.fetchSemanticsNodes().indices.any { headings[it].isDisplayed() }
                 }
                 assertFalse("Opening ${section.route} must retain the activity", compose.activity.isFinishing)
             } catch (error: Throwable) {

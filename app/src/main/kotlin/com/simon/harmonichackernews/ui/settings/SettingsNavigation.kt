@@ -109,7 +109,7 @@ fun SettingsShell(
                     showNavigation = true,
                     onBack = onBack,
                 )
-                SettingsSection.Notifications -> AndroidNotificationsSettingsScreen(
+                SettingsSection.Account -> AndroidAccountSettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
                 )
@@ -175,6 +175,7 @@ fun SettingsShell(
                     onSettingsReset = onThemeChanged,
                 )
                 SettingsSection.Debug -> AndroidDebugSettingsScreen(
+                    onOpenAccountSettings = { onNavigate(SettingsSection.Account, true) },
                     showNavigation = singlePane,
                     onBack = onBack,
                     onOpenGlassSettings = { onNavigate(SettingsSection.Glass, true) },

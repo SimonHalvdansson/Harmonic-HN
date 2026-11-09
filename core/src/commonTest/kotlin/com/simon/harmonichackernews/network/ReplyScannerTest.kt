@@ -102,6 +102,26 @@ class ReplyScannerTest {
     }
 
     @Test
+    fun recentActivityIncludesSubmissionCommentsAndResolvesTheWholeDiscussion() = runTest {
+        val api = api(listOf(20, 10), 300) { id -> when (id) {
+            10 -> item(10).copy(type = "story", title = "My submission", kids = listOf(101))
+            20 -> item(20).copy(parent = 30, kids = listOf(102))
+            30 -> item(30).copy(parent = 40)
+            40 -> item(40).copy(type = "story", title = "Another discussion")
+            101 -> item(101).copy(parent = 10)
+            102 -> item(102).copy(parent = 20)
+            else -> null
+        } }
+        val result = DefaultReplyScanner(api, clock, dispatcher = UnconfinedTestDispatcher(testScheduler)).recentReplies("me")
+        assertEquals(listOf(102, 101), result.replies.map { it.id })
+        assertEquals(listOf(40, 10), result.replies.map { it.discussionId })
+        assertEquals(listOf("Another discussion", "My submission"), result.replies.map { it.storyTitle })
+        assertEquals(listOf(AccountActivityKind.Reply, AccountActivityKind.SubmissionComment), result.replies.map { it.kind })
+        assertEquals(listOf(now, now), result.replies.map { it.time })
+        assertEquals(300, result.lastSeenItemId)
+    }
+
+    @Test
     fun cancellingScanCancelsAllConcurrentReads() = runTest {
         var active = 0
         val api = api(listOf(4, 3, 2, 1), 100) {

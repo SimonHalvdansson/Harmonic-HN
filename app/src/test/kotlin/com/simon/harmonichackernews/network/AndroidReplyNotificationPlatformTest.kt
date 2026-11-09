@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.job.JobScheduler
+import android.net.NetworkCapabilities
 import android.content.Context
 import android.content.ContextWrapper
 import java.util.concurrent.CopyOnWriteArrayList
@@ -19,6 +21,36 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [32], application = Application::class)
 class AndroidReplyNotificationPlatformTest {
+    @Test
+    fun wifiOnlySchedulesRequireWifiAndCanBeReplacedWithAnyConnection() {
+        val context = RuntimeEnvironment.getApplication()
+        val platform = AndroidReplyNotificationPlatform(context)
+        val scheduler = context.getSystemService(JobScheduler::class.java)
+        platform.scheduleChecks(ReplyNotificationSchedule(wifiOnly = true))
+        assertTrue(scheduler.allPendingJobs.single().requiredNetwork!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+        platform.scheduleChecks(ReplyNotificationSchedule(wifiOnly = false))
+        assertEquals(1, scheduler.allPendingJobs.size)
+        assertTrue(!scheduler.allPendingJobs.single().requiredNetwork!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+        platform.cancelChecks()
+        assertTrue(scheduler.allPendingJobs.isEmpty())
+    }
+
+    @Test
+    fun checksOutsideTheWindowUseAPersistedDeferredJobInsteadOfAFixedDailyPhase() {
+        val context = RuntimeEnvironment.getApplication()
+        val platform = AndroidReplyNotificationPlatform(context)
+        val scheduler = context.getSystemService(JobScheduler::class.java)
+        val delay = 9 * 60 * 60_000L
+        platform.scheduleChecks(ReplyNotificationSchedule(intervalMillis = 24 * 60 * 60_000L, delayMillis = delay))
+        val deferred = scheduler.allPendingJobs.single()
+        assertTrue(deferred.isPersisted)
+        assertTrue(!deferred.isPeriodic)
+        assertEquals(delay, deferred.minLatencyMillis)
+        platform.scheduleChecks(ReplyNotificationSchedule())
+        assertTrue(scheduler.allPendingJobs.single().isPeriodic)
+        platform.cancelChecks()
+    }
+
     @Test
     fun notificationDeliveryRunsOffTheCallerAndCompletesBeforeReturning() = runBlocking {
         val owner = Thread.currentThread()

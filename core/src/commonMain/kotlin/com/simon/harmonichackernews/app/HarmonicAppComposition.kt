@@ -197,12 +197,20 @@ class HarmonicAppComposition(
         accounts = platform.accounts,
     )
     val login = LoginWorkflow(platform.accounts, hackerNewsUser)
+    val debugAccountIdentity = com.simon.harmonichackernews.presentation.DebugAccountIdentity(host.appDataStore, metadata.debugSettingsEnabled)
+    val accountActivityUsername: String?
+        get() = debugAccountIdentity.state.value.username ?: platform.accounts.currentAccount?.username
     val replyNotifications: ReplyNotificationRuntime? =
-        platform.replyNotifications?.let { notificationPlatform ->
+        run {
             ReplyNotificationRuntime(
-                useCase = ReplyNotificationUseCase(network.replyScanner, host.appDataStore),
-                platform = notificationPlatform,
-            )
+                useCase = ReplyNotificationUseCase(network.replyScanner, host.appDataStore, nowMillis),
+                platform = platform.replyNotifications ?: com.simon.harmonichackernews.network.ReplyNotificationPlatform.Unavailable,
+                currentMinutesFromMidnight = host.currentMinutesFromMidnight,
+            ).also { runtime ->
+                runtime.bindAccountScope({
+                    debugAccountIdentity.state.value.takeIf { it.username != null } ?: platform.accounts.accountState.value
+                }) { accountActivityUsername }
+            }
         }
     val dataSettings = DataSettingsService(
         settings = settings,

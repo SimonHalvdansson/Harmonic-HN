@@ -126,6 +126,7 @@ fun DebugSettingsScreen(
     onMockAiAnswersChanged: (Boolean) -> Unit = {},
     storyLoadFailurePercent: Int = 0,
     onStoryLoadFailurePercentChanged: (Int) -> Unit = {},
+    accountContent: (@Composable () -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -264,6 +265,17 @@ fun DebugSettingsScreen(
         }
 
         item {
+            SettingsCategory("Account") {
+                accountContent?.invoke()
+                if (accountContent != null) SettingsDivider()
+                SettingRow(
+                    title = "Debug notifications",
+                    icon = Res.drawable.ic_notifications,
+                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.NOTIFICATIONS) } },
+                )
+            }
+        }
+        item {
             SettingsCategory("Dialogs") {
                 SettingRow(
                     title = "Welcome screen",
@@ -275,12 +287,6 @@ fun DebugSettingsScreen(
                     title = "Changelog",
                     icon = Res.drawable.ic_history,
                     onClick = { navigate { onDialogRequested(DebugSettingsDialog.CHANGELOG) } },
-                )
-                SettingsDivider()
-                SettingRow(
-                    title = "Debug notifications",
-                    icon = Res.drawable.ic_notifications,
-                    onClick = { navigate { onDialogRequested(DebugSettingsDialog.NOTIFICATIONS) } },
                 )
             }
         }

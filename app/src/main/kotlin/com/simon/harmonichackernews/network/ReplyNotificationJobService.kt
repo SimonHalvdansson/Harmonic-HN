@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.network
 import android.app.job.JobParameters
 import android.app.job.JobService
 import android.util.Log
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.simon.harmonichackernews.awaitHarmonicAppComposition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +24,28 @@ class ReplyNotificationJobService : JobService() {
             try {
                 // A background launch can be the first graph consumer. Do not block the
                 // JobService callback on preference migration or platform initialization.
-                val runtime = checkNotNull(awaitHarmonicAppComposition().replyNotifications)
+                val app = awaitHarmonicAppComposition()
+                val runtime = checkNotNull(app.replyNotifications)
+                app.platform.accounts.awaitAccount()
+                if (runtime.isEnabled && runtime.accountScoped && runtime.configuredUsername != app.accountActivityUsername) {
+                    runtime.disable()
+                    jobFinished(params, false)
+                    return@launch
+                }
+                val connectivity = getSystemService(ConnectivityManager::class.java)
+                if (runtime.activity.snapshot(runtime.configuredUsername).alerts.wifiOnly &&
+                    connectivity.getNetworkCapabilities(connectivity.activeNetwork)
+                        ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) {
+                    jobFinished(params, true)
+                    return@launch
+                }
                 // Subscription/checkpoint mutations retain the same owner as Settings.
                 // Scanning, presentation and native publication dispatch their heavy work.
-                val result = runtime.checkNow()
+                val result = runtime.checkInBackground()
                 val success = result !is ReplyCheckResult.Failed &&
                     result != ReplyCheckResult.UserNotFound
                 jobFinished(params, !success)
+                if (success) runtime.rescheduleChecks()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

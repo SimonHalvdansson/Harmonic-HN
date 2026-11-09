@@ -25,7 +25,7 @@ import com.simon.harmonichackernews.network.AndroidReplyNotificationPlatform
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 @Composable
-fun AndroidNotificationsSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
+fun AndroidAccountSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val app = LocalHarmonicUiDependencies.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -55,11 +55,15 @@ fun AndroidNotificationsSettingsScreen(showNavigation: Boolean, onBack: () -> Un
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    NotificationsSettingsRoute(
+    AccountSettingsRoute(
         accounts = app.platform.accounts,
+        debugIdentity = app.debugAccountIdentity,
+        settings = app.settings,
         notifications = app.replyNotifications,
         showNavigation = showNavigation,
         onBack = onBack,
+        onLogin = app.navigation::showLoginDialog,
+        onOpenReply = { app.links.open(com.simon.harmonichackernews.network.ReplyNotificationPresentation.deepLink(it)) },
         deliveryAllowed = allowed,
         refreshVersion = refreshVersion,
         onRequestPermission = { onResult ->

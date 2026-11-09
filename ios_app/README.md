@@ -28,6 +28,15 @@ Compose comments sheet remains available above the article. Compose Navigation E
 interactive system left-edge back gesture through the KMP navigation hierarchy. Application logic
 and the rest of the UI remain in the KMP modules.
 
+Account activity, read state, discussion muting, and Debug → Account's public-username preview are
+shared and work without native notifications. A preview never changes Keychain credentials or
+the account used to post and vote. For native alerts, supply `ReplyNotificationPlatform` through
+`IosPlatformBindings.replyNotifications`; its optional `settingsHost: NotificationSettingsHost`
+connects authorization refresh, permission requests, and the system notification-settings link.
+The shared Account route refreshes authorization on resume. Until that adapter is supplied,
+foreground checking stays available and native alert/background controls remain disabled.
+Verify the native adapter, permission changes, and background scheduling on an iOS simulator/device.
+
 Cloud AI is intentionally disabled on iOS. `IosHarmonicAppBootstrap` sets
 `HarmonicHostConfiguration.cloudAiSupported = false`: cloud provider settings and search entries
 are hidden, restored settings resolve to local mode, and `AiSummarySettingsRepository.cloudConfig()`

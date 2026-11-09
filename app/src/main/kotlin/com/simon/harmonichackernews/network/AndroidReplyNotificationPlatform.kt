@@ -11,6 +11,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.net.NetworkRequest
+import android.net.NetworkCapabilities
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -42,15 +44,24 @@ internal class AndroidReplyNotificationPlatform(context: Context) : ReplyNotific
     override fun scheduleChecks(schedule: ReplyNotificationSchedule) {
         val scheduler = appContext.getSystemService(Context.JOB_SCHEDULER_SERVICE)
             as? JobScheduler ?: return
-        val job = JobInfo.Builder(
+        val builder = JobInfo.Builder(
             JOB_ID,
             ComponentName(appContext, ReplyNotificationJobService::class.java),
         )
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
             .setPersisted(true)
-            .setPeriodic(schedule.intervalMillis, schedule.flexMillis)
-            .build()
-        scheduler.schedule(job)
+        val delayMillis = schedule.delayMillis
+        if (delayMillis != null) {
+            builder.setMinimumLatency(delayMillis)
+        } else {
+            builder.setPeriodic(schedule.intervalMillis, schedule.flexMillis)
+        }
+        if (schedule.wifiOnly && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            builder.setRequiredNetwork(NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build())
+        }
+        check(scheduler.schedule(builder.build()) == JobScheduler.RESULT_SUCCESS) { "Could not schedule background checks" }
     }
 
     override fun cancelChecks() {

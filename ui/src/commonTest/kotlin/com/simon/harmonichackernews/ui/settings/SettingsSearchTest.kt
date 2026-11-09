@@ -64,6 +64,28 @@ class SettingsSearchTest {
             "Preload websites", "Notifications", "Volume buttons for navigation", "Transparent status bar", "API Key")
         assertFalse(entries(availability).any { it.title in unavailable || it.screenRoute == "debug" })
         assertFalse(entries().any { it.screenRoute == "notifications" })
+        assertTrue(entries().any { it.screenRoute == "account" && it.title == "Account" })
+        assertTrue(entries().any { it.title == "Log in" })
+        assertFalse(entries().any { it.title == "Check now" })
+    }
+
+    @Test fun accountSearchIncludesActivityAlertsMutingAndOldRouteCompatibility() {
+        val entries = entries(SettingsSearchAvailability(loggedIn = true))
+        val account = entries.filter { it.screenRoute == "account" }
+        for (title in listOf("Recent activity", "Check now", "Replies to your comments", "Comments on your submissions", "Muted discussions", "Wi-Fi only", "Limit checking hours", "Log out")) {
+            assertTrue(account.any { it.title == title }, title)
+        }
+        assertEquals(SettingsSection.Account, SettingsSection.fromRoute("notifications"))
+    }
+
+    @Test fun debugPreviewExposesAccountActivityWithoutEnablingAuthenticatedActions() {
+        val entries = entries(SettingsSearchAvailability(accountPreview = true, debug = true,
+            capabilities = SettingsSearchCapabilities(notifications = false)))
+        assertTrue(entries.any { it.screenRoute == "account" && it.title == "Check now" })
+        assertTrue(entries.any { it.screenRoute == "account" && it.title == "Use real account" })
+        assertFalse(entries.any { it.title == "Add all bookmarks to HN favorites" })
+        assertFalse(entries.any { it.title == "Check automatically" })
+        assertTrue(entries.any { it.screenRoute == "debug" && it.title == "Account preview" })
     }
 
     @Test fun twoPaneSearchDoesNotAdvertiseRetiredControls() {

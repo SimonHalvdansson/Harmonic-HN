@@ -29,7 +29,8 @@ fun AndroidDebugNotificationsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val runtime = checkNotNull(LocalHarmonicUiDependencies.current.replyNotifications)
-    val initialUsername = remember { runtime.configuredUsername }
+    val initialAccount = LocalHarmonicUiDependencies.current.accountActivityUsername
+    val initialUsername = remember { runtime.configuredUsername.ifBlank { initialAccount.orEmpty() } }
     val initiallyActive = remember { runtime.isEnabled }
     var pendingRequest by remember {
         mutableStateOf<PendingDebugNotificationRequest?>(null)
@@ -47,7 +48,7 @@ fun AndroidDebugNotificationsDialog(onDismiss: () -> Unit) {
                 )
             }
             DebugNotificationAction.ENABLE -> coroutineScope.launch {
-                val success = runtime.enable(request.username) is ReplySubscriptionResult.Enabled
+                val success = runtime.enable(request.username, accountScoped = false) is ReplySubscriptionResult.Enabled
                 request.onResult(
                     DebugNotificationActionResult(
                         outcome = if (success) {

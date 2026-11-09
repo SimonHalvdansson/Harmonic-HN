@@ -82,6 +82,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun rememberSettingsSearchEntries(capabilities: SettingsSearchCapabilities): List<SettingsSearchEntry> {
     val dependencies = LocalHarmonicUiDependencies.current
     val account by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
+    val debugAccount by dependencies.debugAccountIdentity.state.collectAsStateWithLifecycle()
     val ai by dependencies.aiSummarySettings.updates.collectAsStateWithLifecycle(
         initialValue = dependencies.aiSummarySettings.snapshot(),
     )
@@ -92,6 +93,7 @@ internal fun rememberSettingsSearchEntries(capabilities: SettingsSearchCapabilit
     val availability = SettingsSearchAvailability(
         capabilities = capabilities,
         loggedIn = account.accountOrNull != null,
+        accountPreview = debugAccount.username != null,
         debug = dependencies.metadata.debugSettingsEnabled,
         cloudAiSupported = dependencies.aiSummarySettings.cloudAiSupported,
         cloudAi = ai.mode == AiSummaryMode.CLOUD || dependencies.localSummaryEngine?.canAttempt() != true,

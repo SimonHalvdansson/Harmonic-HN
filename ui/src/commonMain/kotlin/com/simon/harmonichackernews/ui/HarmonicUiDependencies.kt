@@ -57,6 +57,8 @@ class HarmonicUiDependencies(
     val previewResources = app.previewResources
     val storyCache = app.storyCache
     val replyNotifications = app.replyNotifications
+    val debugAccountIdentity = app.debugAccountIdentity
+    val accountActivityUsername: String? get() = app.accountActivityUsername
     val aiSummarySettings = app.aiSummarySettings
     val aiModelDefaults = app.aiModelDefaults
     val localModels = app.localModels
@@ -106,6 +108,15 @@ fun ProvideHarmonicUiDependencies(
     dependencies: HarmonicUiDependencies,
     content: @Composable () -> Unit,
 ) {
+    val accountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
+    val debugAccount by dependencies.debugAccountIdentity.state.collectAsStateWithLifecycle()
+    LaunchedEffect(accountState, debugAccount) {
+        if (accountState !is com.simon.harmonichackernews.platform.HackerNewsAccountState.Loading) {
+            dependencies.replyNotifications?.let { runtime ->
+                if (runtime.isEnabled && runtime.accountScoped && runtime.configuredUsername != dependencies.accountActivityUsername) runtime.disable()
+            }
+        }
+    }
     LaunchedEffect(dependencies.articleCategories) { dependencies.articleCategories.start() }
     LaunchedEffect(dependencies.webContent) {
         dependencies.installBundledResources()

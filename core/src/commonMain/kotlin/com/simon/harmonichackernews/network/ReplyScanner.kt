@@ -11,13 +11,21 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.time.Clock
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class HackerNewsReply(
     val id: Int,
     val parentId: Int,
     val by: String,
     val text: String,
-)
+    val time: Int = 0,
+    val storyId: Int = 0,
+    val storyTitle: String = "",
+    val kind: AccountActivityKind = AccountActivityKind.Reply,
+) {
+    val discussionId: Int get() = storyId.takeIf { it > 0 } ?: parentId
+}
 
 data class ReplySubscriptionBaseline(
     val username: String,
@@ -39,6 +47,7 @@ interface ReplyScanner {
     suspend fun initialize(username: String): ReplySubscriptionBaseline?
     suspend fun scan(username: String, previousLastSeenItemId: Int): ReplyScanResult
     suspend fun findLatestReply(username: String): LatestReplyResult
+    suspend fun recentReplies(username: String): ReplyScanResult = scan(username, 0)
 }
 
 class DefaultReplyScanner(
@@ -87,6 +96,17 @@ class DefaultReplyScanner(
         return LatestReplyResult(scanned.replies.maxByOrNull { it.id }, true)
     }
 
+    override suspend fun recentReplies(username: String): ReplyScanResult {
+        val normalized = normalizeUsername(username)
+        val user = api.getUser(normalized)
+            ?: return ReplyScanResult(emptyList(), 0, userFound = false)
+        if (user.id != normalized) return ReplyScanResult(emptyList(), 0, userFound = false)
+        val checkpoint = api.getMaxItemId()
+        check(checkpoint > 0) { "HN returned no current item ID" }
+        val scanned = loadRecentReplies(normalized, user.submitted, minimumId = 0)
+        return ReplyScanResult(scanned.replies, max(checkpoint, scanned.highestProcessedId))
+    }
+
     private data class ScannedReplies(val replies: List<HackerNewsReply>, val highestProcessedId: Int)
 
     private suspend fun loadRecentReplies(
@@ -95,24 +115,51 @@ class DefaultReplyScanner(
         minimumId: Int,
     ): ScannedReplies = withContext(dispatcher) {
         val replies = mutableListOf<HackerNewsReply>()
+        val storyContexts = mutableMapOf<Int, Pair<Int, String>>()
         var highestProcessedId = minimumId
         // Only prefetch a small batch: older submissions terminate the scan. Await in source
         // order so concurrency cannot change the age cutoff, reply order, or checkpoint.
         for (parentIds in submitted.take(maxSubmissionsPerCheck).filter { it > 0 }.chunked(MAX_REQUESTS)) {
             val recent = loadRecentParents(parentIds)
-            val children = recent.flatMap { (parentId, parent) ->
-                parent?.kids.orEmpty().filter { it > minimumId }.map { it to parentId }
+            data class Child(val id: Int, val parentId: Int, val context: Pair<Int, String>, val kind: AccountActivityKind)
+            val children = mutableListOf<Child>()
+            for ((parentId, parent) in recent) {
+                val ids = parent?.kids.orEmpty().filter { it > minimumId }
+                if (ids.isEmpty() || parent == null) continue
+                val context = storyContext(parent, storyContexts)
+                val kind = if (parent.type == "comment") AccountActivityKind.Reply else AccountActivityKind.SubmissionComment
+                children += ids.map { Child(it, parentId, context, kind) }
             }
             for (batch in children.chunked(MAX_REQUESTS)) {
-                val items = batch.map { (id, parentId) ->
-                    async { parseReply(api.getItem(id), username, parentId) }
+                val items = batch.map { child ->
+                    async { parseReply(api.getItem(child.id), username, child.parentId)?.copy(
+                        storyId = child.context.first, storyTitle = child.context.second, kind = child.kind,
+                    ) }
                 }.awaitAll()
-                highestProcessedId = max(highestProcessedId, batch.maxOf { it.first })
+                highestProcessedId = max(highestProcessedId, batch.maxOf { it.id })
                 replies += items.filterNotNull()
             }
             if (recent.size != parentIds.size) break
         }
         ScannedReplies(replies, highestProcessedId)
+    }
+
+    private suspend fun storyContext(parent: HackerNewsItemDto, cache: MutableMap<Int, Pair<Int, String>>): Pair<Int, String> {
+        cache[parent.id]?.let { return it }
+        var current = parent
+        val visited = mutableSetOf<Int>()
+        repeat(64) {
+            cache[current.id]?.let { return it }
+            if (!visited.add(current.id)) return 0 to ""
+            if (current.type != "comment") {
+                val context = current.id to current.title.orEmpty()
+                visited.forEach { cache[it] = context }
+                return context
+            }
+            if (current.parent <= 0) return 0 to ""
+            current = api.getItem(current.parent) ?: return 0 to ""
+        }
+        return 0 to ""
     }
 
     private suspend fun loadRecentParents(ids: List<Int>): List<Pair<Int, HackerNewsItemDto?>> = coroutineScope {
@@ -156,6 +203,7 @@ class DefaultReplyScanner(
             parentId = item.parent.takeIf { it > 0 } ?: fallbackParentId,
             by = by,
             text = plainReplyText(item.text),
+            time = item.time,
         )
     }
 

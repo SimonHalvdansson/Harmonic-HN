@@ -24,7 +24,7 @@
     <string name="settings_summary_web_links">Browser, reader mode</string>
     <string name="settings_summary_filters_tags">Keywords, domains</string>
     <string name="settings_summary_ai_summary">Models, prompts</string>
-    <string name="settings_summary_notifications">Replies, frequency</string>
+    <string name="settings_summary_account">Login, activity, notifications</string>
     <string name="settings_summary_data">Bookmarks, storage</string>
     <string name="settings_summary_debug">Samples, diagnostics</string>
     <string name="settings_summary_about">Version %1$s</string>
@@ -42,7 +42,7 @@
     <string name="settings_section_ai_summary">AI features</string>
     <string name="settings_section_article_categories">Article categories</string>
     <string name="settings_section_category_exploration">How categories work</string>
-    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_account">Account</string>
     <string name="settings_section_data">Data</string>
     <string name="settings_section_debug">Debug</string>
     <string name="settings_section_debug_link_previews">Link previews</string>

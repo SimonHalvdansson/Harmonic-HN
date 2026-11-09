@@ -22,12 +22,15 @@ fun AndroidDebugSettingsScreen(
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
     onOpenGlassSettings: () -> Unit,
+    onOpenAccountSettings: () -> Unit,
 ) {
     val app = LocalHarmonicUiDependencies.current
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     DebugSettingsRoute(
         repository = app.settings,
+        debugAccountIdentity = app.debugAccountIdentity,
+        onOpenAccountSettings = onOpenAccountSettings,
         onWidgetDebugInfoChanged = { scope.launch { StoriesGlanceWidget().updateAll(context) } },
         environment = DebugEnvironmentUiState(
             appVersion = app.metadata.versionName,

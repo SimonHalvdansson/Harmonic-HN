@@ -241,10 +241,13 @@ fun DebugSettingsRoute(
     dialogContent: @Composable (DebugSettingsDialog, onDismiss: () -> Unit) -> Unit,
     onWidgetDebugInfoChanged: () -> Unit = {},
     onWelcomeRequested: () -> Unit,
+    debugAccountIdentity: com.simon.harmonichackernews.presentation.DebugAccountIdentity? = null,
+    onOpenAccountSettings: () -> Unit = {},
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<DebugSettingsDialog?>(null) }
     DebugSettingsScreen(
+        accountContent = debugAccountIdentity?.let { identity -> { DebugAccountControls(identity, onOpenAccountSettings) } },
         showNavigation = showNavigation,
         contentVersion = settings.hashCode(),
         alwaysShowTapToRefresh = settings.debug.alwaysShowTapToRefresh,

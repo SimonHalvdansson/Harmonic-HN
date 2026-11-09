@@ -22,6 +22,7 @@ internal data class SettingsSearchAvailability(
     val geminiNano: Boolean = false,
     val nighttimeScheme: Boolean = false,
     val localAi: Boolean = false,
+    val accountPreview: Boolean = false,
 )
 
 /** Use the visible row title as the target; synonyms never appear in the preference UI. */
@@ -233,14 +234,26 @@ internal fun settingsSearchCatalog(
         "Enable bold formatting" to "markdown emphasis text",
         "Show generation details" to "tokens speed performance model statistics")
 
-    if (capabilities.notifications && availability.loggedIn) {
-        page(SettingsSection.Notifications, "replies alerts background sound vibration")
-        group(SettingsSection.Notifications, "Replies",
-            "Reply notifications" to "alerts replies background notify",
+    page(SettingsSection.Account, "login log in logout log out notifications replies activity inbox alerts")
+    val hasAccount = availability.loggedIn || availability.accountPreview
+    if (!hasAccount) group(SettingsSection.Account, "", "Log in" to "account sign in hacker news")
+    if (availability.accountPreview) group(SettingsSection.Account, "", "Use real account" to "debug preview account clear")
+    else if (availability.loggedIn) group(SettingsSection.Account, "", "Log out" to "account sign out hacker news")
+    if (hasAccount) group(SettingsSection.Account, "Recent activity",
+        "Check now" to "refresh replies sync notifications",
+        "Recent activity" to "inbox unread history replies")
+    if (hasAccount) group(SettingsSection.Account, "Notifications", "Muted discussions" to "mute unmute threads alerts")
+    if (capabilities.notifications && hasAccount) {
+        group(SettingsSection.Account, "Notifications",
+            "Replies to your comments" to "alerts replies notify",
+            "Comments on your submissions" to "stories posts alerts notify")
+        group(SettingsSection.Account, "Background checking",
+            "Check automatically" to "background enable disable sync",
             "Background check frequency" to "poll interval minutes battery sync",
-            "Check now" to "refresh replies sync notifications")
-        if (capabilities.systemSettings) group(SettingsSection.Notifications, "On this device",
-            "Notification settings" to "sound vibration permissions android alerts")
+            "Wi-Fi only" to "wifi network mobile data",
+            "Limit checking hours" to "schedule time night quiet hours")
+        if (capabilities.systemSettings) group(SettingsSection.Account, "Notifications",
+            "System notification settings" to "sound vibration permissions android ios alerts")
     }
     group(SettingsSection.Data, "Bookmarks",
         "Enable bookmarks" to "saved save offline favorites favourites",
@@ -270,5 +283,9 @@ internal fun settingsSearchCatalog(
             "Show widget debug info" to "home screen errors refresh",
             "Mock AI answers" to "sample llm replies summaries fixture",
             "Open without cache" to "debug story fresh network")
+        group(SettingsSection.Debug, "Account",
+            "Account preview" to "debug logged in username impersonate public activity identity",
+            "Debug notifications" to "test notification replies alerts",
+            "Open Account settings" to "debug account inbox activity")
     }
 }

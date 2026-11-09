@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.network.ReplyCheckResult
 import com.simon.harmonichackernews.network.ReplyNotificationRuntime
 import com.simon.harmonichackernews.network.ReplySubscriptionResult
+import com.simon.harmonichackernews.network.AccountActivitySnapshot
+import com.simon.harmonichackernews.network.AccountAlertPreferences
 import com.simon.harmonichackernews.settings.ReplyNotificationFrequency
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +19,8 @@ data class NotificationsSettingsState(
     val operation: NotificationSettingsOperation? = null,
     val message: String = "",
     val isError: Boolean = false,
+    val activity: AccountActivitySnapshot = AccountActivitySnapshot(),
+    val backgroundSupported: Boolean = supported,
 )
 
 /** Account-scoped notification controls; hosts own permission requests and system settings. */
@@ -28,7 +32,9 @@ class NotificationsSettingsRuntime(
         NotificationsSettingsState(
             enabled = isEnabled(),
             supported = notifications != null,
+            backgroundSupported = notifications?.backgroundSupported == true,
             checkFrequency = notifications?.checkFrequency ?: ReplyNotificationFrequency.DEFAULT,
+            activity = notifications?.activity?.snapshot(username) ?: AccountActivitySnapshot(),
         ),
     )
     val state = mutableState.asStateFlow()
@@ -37,12 +43,13 @@ class NotificationsSettingsRuntime(
         mutableState.value = mutableState.value.copy(
             enabled = isEnabled(),
             checkFrequency = notifications?.checkFrequency ?: ReplyNotificationFrequency.DEFAULT,
+            activity = notifications?.activity?.snapshot(username) ?: AccountActivitySnapshot(),
         )
     }
 
     suspend fun enable() {
         val runtime = notifications ?: return
-        if (mutableState.value.operation != null) return
+        if (mutableState.value.operation != null || !runtime.backgroundSupported) return
         mutableState.value = mutableState.value.copy(
             operation = NotificationSettingsOperation.Enabling,
             message = "Setting up reply notifications…",
@@ -83,7 +90,37 @@ class NotificationsSettingsRuntime(
     }
 
     fun permissionDenied() {
-        finish("Allow notifications in your device settings, then turn on reply notifications.", true)
+        finish("Background checking is on. Allow notifications in system settings to receive alerts.")
+    }
+
+    fun setAlertPreferences(preferences: AccountAlertPreferences) {
+        try {
+            notifications?.setAlertPreferences(username, preferences)
+            finish("")
+        } catch (_: Exception) {
+            finish("Could not update notification preferences. Try again.", true)
+        }
+        refresh()
+    }
+
+    suspend fun refreshActivity() {
+        val runtime = notifications ?: return
+        if (mutableState.value.operation != null) return
+        mutableState.value = mutableState.value.copy(operation = NotificationSettingsOperation.Checking, message = "", isError = false)
+        try {
+            when (runtime.refreshActivity(username)) {
+                is ReplyCheckResult.Success, ReplyCheckResult.Disabled -> finish("")
+                ReplyCheckResult.UserNotFound -> finish("No public activity found for this Hacker News account.", true)
+                is ReplyCheckResult.Failed -> finish("Could not check for replies. Check your connection and try again.", true)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            finish("Could not check for replies. Try again.", true)
+        } finally {
+            mutableState.value = mutableState.value.copy(operation = null)
+            refresh()
+        }
     }
 
     suspend fun checkNow() {

@@ -81,11 +81,15 @@ fun PortableSettingsDetail(
         SettingsSection.Font -> FontSettingsRoute(app.settings, onBack)
         SettingsSection.Theme -> PortableThemeSettings(app, true, onBack)
         SettingsSection.PaletteTint -> PaletteTintSettingsRoute(app.settings, true, onBack)
-        SettingsSection.Notifications -> NotificationsSettingsRoute(
+        SettingsSection.Account -> AccountSettingsRoute(
             accounts = app.platform.accounts,
+            debugIdentity = app.debugAccountIdentity,
+            settings = app.settings,
             notifications = app.replyNotifications,
             showNavigation = singlePane,
             onBack = onBack,
+            onLogin = scene.navigation::showLoginDialog,
+            onOpenReply = { scene.links.open(com.simon.harmonichackernews.network.ReplyNotificationPresentation.deepLink(it)) },
         )
         SettingsSection.Stories -> PortableStoriesSettings(
             app = app,
@@ -142,6 +146,7 @@ fun PortableSettingsDetail(
         SettingsSection.CategoryExploration -> ArticleCategoryExplorationScreen(onBack)
         SettingsSection.Data -> dataSettings()
         SettingsSection.Debug -> PortableDebugSettings(
+            onOpenAccountSettings = { onNavigate(SettingsSection.Account, true) },
             app = app,
             scene = scene,
             platformVersion = debugPlatformVersion,
@@ -356,10 +361,13 @@ private fun PortableDebugSettings(
     onBack: () -> Unit,
     onOpenLinkPreviews: () -> Unit,
     onOpenGlassSettings: () -> Unit,
+    onOpenAccountSettings: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     DebugSettingsRoute(
         repository = app.settings,
+        debugAccountIdentity = app.debugAccountIdentity,
+        onOpenAccountSettings = onOpenAccountSettings,
         environment = DebugEnvironmentUiState(
             appVersion = app.metadata.versionName,
             appBuild = app.metadata.buildNumber,
@@ -404,11 +412,7 @@ private fun PortableDebugSettings(
                     onDismiss = dismiss,
                     onOpenGithub = { scene.links.open(app.metadata.projectUrl) },
                 )
-                DebugSettingsDialog.NOTIFICATIONS -> MessageActionDialog(
-                    title = "Notifications",
-                    message = notificationsMessage,
-                    onDismiss = dismiss,
-                )
+                DebugSettingsDialog.NOTIFICATIONS -> PortableDebugNotificationsDialog(app.replyNotifications, app.accountActivityUsername, dismiss, notificationsMessage)
             }
         },
     )

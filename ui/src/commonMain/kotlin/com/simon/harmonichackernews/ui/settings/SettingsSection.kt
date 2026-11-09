@@ -23,7 +23,7 @@ import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.resources.settings_section_stories
 import com.simon.harmonichackernews.resources.settings_section_stories_header
 import com.simon.harmonichackernews.resources.settings_section_frontpages
-import com.simon.harmonichackernews.resources.settings_section_notifications
+import com.simon.harmonichackernews.resources.settings_section_account
 import com.simon.harmonichackernews.resources.settings_section_palette_tint
 import com.simon.harmonichackernews.resources.settings_section_theme
 import com.simon.harmonichackernews.resources.settings_section_web_links
@@ -57,7 +57,7 @@ enum class SettingsSection(
     AiSummary("ai_summary", Res.string.settings_section_ai_summary),
     ArticleCategories("article_categories", Res.string.settings_section_article_categories),
     CategoryExploration("category_exploration", Res.string.settings_section_category_exploration),
-    Notifications("notifications", Res.string.settings_section_notifications),
+    Account("account", Res.string.settings_section_account),
     Data("data", Res.string.settings_section_data),
     Debug("debug", Res.string.settings_section_debug),
     DebugLinkPreviews("debug_link_previews", Res.string.settings_section_debug_link_previews),
@@ -69,6 +69,7 @@ enum class SettingsSection(
     companion object {
         fun fromRoute(route: String): SettingsSection? =
             when (route) {
+                "notifications" -> Account
                 "frontpage" -> StoriesHeader
                 HideCommentsSettingsRoute -> Comments
                 else -> entries.firstOrNull { it.route == route }
