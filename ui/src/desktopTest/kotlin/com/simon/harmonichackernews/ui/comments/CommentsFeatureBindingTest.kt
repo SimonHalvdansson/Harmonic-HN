@@ -50,6 +50,7 @@ class CommentsFeatureBindingTest {
             assertFalse(reopened.controller.initialScrollRestorationPending)
             assertEquals(203, reopened.controller.scrollToCommentRequest?.commentId)
             assertEquals(-44, reopened.controller.scrollToCommentRequest?.topOffsetPx)
+            assertFalse(checkNotNull(reopened.controller.scrollToCommentRequest).highlight)
             assertFalse(checkNotNull(reopened.store.comment(201)).expanded)
             reopened.close()
             scene.navigation.detailRemovedFromBackStack()
@@ -57,6 +58,8 @@ class CommentsFeatureBindingTest {
             val targeted = open(202)
             targeted.handleEffect(CommentsFeatureEffect.ThreadReady(false, false), scene) {}
             assertEquals(202, targeted.controller.scrollToCommentRequest?.commentId)
+            assertTrue(checkNotNull(targeted.controller.scrollToCommentRequest).highlight)
+            assertFalse(checkNotNull(targeted.controller.scrollToCommentRequest).restorePosition)
             assertTrue(checkNotNull(targeted.store.comment(201)).expanded)
             targeted.close()
         } finally { bootstrap.close() }

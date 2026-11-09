@@ -111,6 +111,27 @@ class CommentsInteractionStoreTest {
     }
 
     @Test
+    fun linkedCommentHighlightsAfterScrollingWithoutSearchNavigation() {
+        val store = store()
+        store.scrollToComment(commentId = 42, animate = false, highlight = true)
+        val request = requireNotNull(store.state.scrollRequest)
+        assertTrue(request.highlight)
+        assertFalse(request.searchResult)
+        assertFalse(request.animate)
+        assertEquals(-1, store.state.highlightedCommentId)
+
+        store.highlightLinkedComment(request.commentId)
+        store.consumeScrollRequest(request)
+        assertEquals(42, store.state.highlightedCommentId)
+        assertEquals(-1, store.state.searchScrollTopTargetId)
+        store.clearSearchHighlight(42)
+        assertEquals(-1, store.state.highlightedCommentId)
+
+        store.scrollToComment(commentId = 43, restorePosition = true)
+        assertFalse(requireNotNull(store.state.scrollRequest).highlight)
+    }
+
+    @Test
     fun voteCompletionOnlyClearsTheMatchingRequestAndTracksDownvotes() {
         val store = store()
         store.setCommentActionVoteLoading(commentId = 3, action = CommentMenuAction.DOWNVOTE)

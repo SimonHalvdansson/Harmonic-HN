@@ -954,7 +954,7 @@ class AndroidCommentsCoordinator(
             CommentTargetResolution.None -> Unit
             is CommentTargetResolution.Found -> {
                 syncComposeState()
-                composeController?.scrollToComment(target.commentId, topInset, false)
+                composeController?.scrollToLinkedComment(target.commentId, topInset)
             }
             is CommentTargetResolution.NotFound -> navigation.showMessage("Comment not found")
         }

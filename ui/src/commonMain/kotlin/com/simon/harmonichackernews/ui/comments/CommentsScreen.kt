@@ -385,6 +385,8 @@ fun CommentsScreen(
             }
             if (request.searchResult) {
                 controller.revealSearchResult(request.commentId, listIndex)
+            } else if (request.highlight) {
+                controller.highlightLinkedComment(request.commentId)
             }
         }
         controller.consumeScrollToCommentRequest(request)

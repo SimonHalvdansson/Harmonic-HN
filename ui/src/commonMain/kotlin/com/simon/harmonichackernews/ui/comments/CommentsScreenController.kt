@@ -500,6 +500,21 @@ class CommentsScreenController private constructor(
         syncInteractionState()
     }
 
+    fun scrollToLinkedComment(commentId: Int, topOffsetPx: Int = topInsetPx) {
+        interactionStore.scrollToComment(
+            commentId = commentId,
+            topOffsetPx = topOffsetPx,
+            animate = false,
+            highlight = true,
+        )
+        syncInteractionState()
+    }
+
+    fun highlightLinkedComment(commentId: Int) {
+        interactionStore.highlightLinkedComment(commentId)
+        syncInteractionState()
+    }
+
     fun showCommentSearch() {
         interactionStore.showCommentSearch()
         syncInteractionState()

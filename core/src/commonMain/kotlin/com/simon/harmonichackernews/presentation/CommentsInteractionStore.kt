@@ -18,6 +18,7 @@ data class CommentScrollRequest(
     val animate: Boolean,
     val searchResult: Boolean,
     val restorePosition: Boolean = false,
+    val highlight: Boolean = false,
 ) {
     val topOffsetPx: Int get() = topOffset.value
 }
@@ -176,12 +177,14 @@ class CommentsInteractionStore(
         animate: Boolean = true,
         searchResult: Boolean = false,
         restorePosition: Boolean = false,
+        highlight: Boolean = false,
     ) = scrollToCommentAt(
         commentId = commentId,
         topOffset = LayoutCoordinate(topOffsetPx),
         animate = animate,
         searchResult = searchResult,
         restorePosition = restorePosition,
+        highlight = highlight,
     )
 
     fun scrollToCommentAt(
@@ -190,6 +193,7 @@ class CommentsInteractionStore(
         animate: Boolean = true,
         searchResult: Boolean = false,
         restorePosition: Boolean = false,
+        highlight: Boolean = false,
     ) {
         state = state.copy(
             scrollRequest = CommentScrollRequest(
@@ -199,6 +203,7 @@ class CommentsInteractionStore(
                 animate = animate && shouldSmoothScroll(),
                 searchResult = searchResult,
                 restorePosition = restorePosition,
+                highlight = highlight,
             ),
         )
     }
@@ -232,6 +237,11 @@ class CommentsInteractionStore(
         if (state.highlightedCommentId == commentId) {
             state = state.copy(highlightedCommentId = -1)
         }
+    }
+
+    /** Linked comments share the search blink without adding the search scroll-to-top affordance. */
+    fun highlightLinkedComment(commentId: Int) {
+        state = state.copy(highlightedCommentId = commentId)
     }
 
     fun clearSearchScrollTopTarget() {

@@ -52,6 +52,54 @@ class CommentAppearanceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun linkedCommentIsVisibleAndUsesTheSearchBlinkUntilItExpires() {
+        val thread = CommentThreadStore()
+        val story = Story().apply { id = 100 }
+        thread.reset(story)
+        thread.replaceParsedComments(story, (1..20).map { id ->
+            Comment().apply { this.id = id; by = "reader$id"; text = "Comment $id"; parent = 100; expanded = true }
+        }, "Default", false)
+        val snapshot = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { true }, story = snapshot, initialThreadCached = true,
+            showWebsite = false, accountUser = null, listener = NoOpListener(),
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            },
+        )
+        controller.updateContent(CommentsScreenState(
+            story = snapshot, commentsLoaded = true, initialThreadCached = true, displaySettings = settings,
+            comments = thread.state.value.allComments, visibleComments = thread.state.value.visibleComments,
+        ))
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        try {
+            compose.setContent {
+                val palette = HarmonicThemeCatalog.resolve("light", false)
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(palette.colorScheme, false) {
+                        CommentsScreen(controller, Modifier.height(600.dp), false, pullToRefreshEnabled = false,
+                            showNavigationControls = false, animateComments = true, showScrollbar = true,
+                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            headerContent = {}, searchDialog = {}, actionOverlay = {})
+                    }
+                }
+            }
+            compose.waitForIdle()
+            compose.mainClock.autoAdvance = false
+            compose.runOnIdle { controller.scrollToLinkedComment(18) }
+            compose.mainClock.advanceTimeBy(100)
+            compose.onNodeWithText("reader18").assertIsDisplayed()
+            assertEquals(18, controller.highlightedCommentId)
+            assertEquals(-1, controller.searchScrollTopTargetId)
+            compose.mainClock.advanceTimeBy(1_500)
+            assertEquals(-1, controller.highlightedCommentId)
+        } finally { compose.mainClock.autoAdvance = true; scene.close() }
+    }
+
+    @Test
     fun headerMetadataWrapsWholeAuthorAndTimeGroups() {
         val width = mutableStateOf(260.dp)
         val story = StoryListItemSnapshot(

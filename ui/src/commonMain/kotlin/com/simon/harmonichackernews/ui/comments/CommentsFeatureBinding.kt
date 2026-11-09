@@ -99,7 +99,7 @@ class CommentsFeatureBinding private constructor(
                         deferredReadingPosition = null
                         syncContent()
                         controller.requestExpandSheet()
-                        controller.restoreReadingPosition(target.commentId, 0)
+                        controller.scrollToLinkedComment(target.commentId)
                     }
                     is CommentTargetResolution.NotFound ->
                         scene.userMessages.show("Comment not found")
