@@ -36,6 +36,7 @@ import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
 import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
+import com.simon.harmonichackernews.ui.settings.ResetSettingsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.SettingRow
 import com.simon.harmonichackernews.ui.settings.SettingsDivider
 import com.simon.harmonichackernews.ui.settings.SettingsSection
@@ -364,13 +365,8 @@ private fun DesktopDataSettings(
             onDismiss = { runtime.showDialog(null) },
             onImport = runtime::requestImport,
         )
-        DataSettingsDialogState.RESET -> MessageActionDialog(
-            title = "Reset all settings?",
-            message = "Bookmarks, history, account details, user tags and cached posts are preserved.",
-            positiveLabel = "Reset",
-            negativeLabel = "Cancel",
-            onPositive = runtime::resetSettings,
-            onNegative = { runtime.showDialog(null) },
+        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
+            onReset = runtime::resetSettings,
             onDismiss = { runtime.showDialog(null) },
         )
         DataSettingsDialogState.LINKS -> MessageActionDialog(

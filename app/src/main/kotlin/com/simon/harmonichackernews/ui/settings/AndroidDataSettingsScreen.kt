@@ -205,14 +205,8 @@ fun AndroidDataSettingsScreen(
             onImport = runtime::requestImport,
         )
 
-        DataSettingsDialogState.RESET -> MessageActionDialog(
-            title = "Reset all settings?",
-            message = "This restores app settings to their defaults. Bookmarks, history, " +
-                "favorites, user tags, account details and cached posts are not deleted.",
-            positiveLabel = "Reset",
-            negativeLabel = "Cancel",
-            onPositive = runtime::resetSettings,
-            onNegative = { runtime.showDialog(null) },
+        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
+            onReset = runtime::resetSettings,
             onDismiss = { runtime.showDialog(null) },
         )
 

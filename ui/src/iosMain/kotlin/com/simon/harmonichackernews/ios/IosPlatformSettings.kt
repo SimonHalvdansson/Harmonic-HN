@@ -31,6 +31,7 @@ import com.simon.harmonichackernews.ui.settings.ManagedLocalModelPanel
 import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
+import com.simon.harmonichackernews.ui.settings.ResetSettingsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
@@ -257,13 +258,8 @@ private fun IosDataSettings(
             onDismiss = { runtime.showDialog(null) },
             onImport = runtime::requestImport,
         )
-        DataSettingsDialogState.RESET -> MessageActionDialog(
-            title = "Reset all settings?",
-            message = "Bookmarks, history, account details, user tags and cached posts are preserved.",
-            positiveLabel = "Reset",
-            negativeLabel = "Cancel",
-            onPositive = runtime::resetSettings,
-            onNegative = { runtime.showDialog(null) },
+        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
+            onReset = runtime::resetSettings,
             onDismiss = { runtime.showDialog(null) },
         )
         DataSettingsDialogState.LINKS -> MessageActionDialog(
