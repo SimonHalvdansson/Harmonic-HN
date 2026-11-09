@@ -591,7 +591,9 @@ internal fun FrontpageHeaderControls(
                 .background(opaqueColor, RoundedCornerShape(50)),
         )
         BoxWithConstraints(
-            Modifier.fillMaxSize().clip(RoundedCornerShape(50))
+            Modifier.fillMaxSize()
+                // The hidden pill must not clip the dropdown's own rounded ripple.
+                .then(if (pillAlpha > 0f) Modifier.clip(RoundedCornerShape(50)) else Modifier)
                 .padding(horizontal = pillInset, vertical = pillVerticalInset),
         ) {
             val preferredSize = typography.storiesDropdownSelectedSize * titleScale
