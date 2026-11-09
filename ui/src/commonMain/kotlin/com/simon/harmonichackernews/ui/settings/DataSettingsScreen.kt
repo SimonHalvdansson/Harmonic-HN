@@ -101,9 +101,13 @@ fun DataSettingsScreen(
                 SettingsDivider()
                 SettingRow(
                     title = "Export bookmarks",
-                    summary = "Save newline separated .txt file with IDs",
+                    summary = if (hasBookmarks) {
+                        "Save newline separated .txt file with IDs"
+                    } else {
+                        "No bookmarks"
+                    },
                     icon = Res.drawable.ic_bookmark,
-                    enabled = state.bookmarksEnabled,
+                    enabled = state.bookmarksEnabled && hasBookmarks,
                     onClick = { onAction(DataSettingsAction.ExportBookmarks) },
                 )
                 SettingsDivider()
