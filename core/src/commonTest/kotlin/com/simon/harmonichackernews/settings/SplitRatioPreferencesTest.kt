@@ -3,28 +3,20 @@ package com.simon.harmonichackernews.settings
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class SplitRatioPreferencesTest {
     @Test
-    fun splitCustomizationDefaultsOnAndPreservesAnExplicitOptOut() {
+    fun retiredPaneOptOutsAreIgnoredWithoutLosingSavedRatios() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, emptyFlow())
-        assertNull(repository.snapshot().appearance.portraitSplitRatio)
-        assertTrue(repository.snapshot().appearance.allowSplitAdjustment)
-
         repository.setSplitRatio(SplitOrientation.Portrait, 0.6f)
-        assertTrue(repository.snapshot().appearance.allowSplitAdjustment)
-        repository.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, false)
-        val restored = AppSettingsRepository(store, emptyFlow())
-        assertEquals(0.6f, restored.snapshot().appearance.portraitSplitRatio)
-        assertFalse(restored.snapshot().appearance.allowSplitAdjustment)
+        val appearance = repository.snapshot().appearance
 
-        restored.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
-        assertEquals(0.6f, restored.snapshot().appearance.portraitSplitRatio)
-        assertTrue(restored.snapshot().appearance.allowSplitAdjustment)
+        store.putBoolean("pref_side_by_side_enabled", false)
+        store.putBoolean("pref_allow_split_adjustment", false)
+
+        assertEquals(appearance, AppSettingsRepository(store, emptyFlow()).snapshot().appearance)
     }
 
     @Test

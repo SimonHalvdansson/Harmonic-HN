@@ -1,24 +1,14 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableFloatStateOf
-import com.simon.harmonichackernews.settings.SplitOrientation
 import com.simon.harmonichackernews.settings.ExtraSidePadding
-import com.simon.harmonichackernews.settings.SplitRatioPreferences
-import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_view_agenda
 import com.simon.harmonichackernews.resources.ic_design_services
 import com.simon.harmonichackernews.resources.ic_font_download
-import com.simon.harmonichackernews.resources.ic_horizontal_split
 import com.simon.harmonichackernews.resources.ic_open_in_new
 import com.simon.harmonichackernews.resources.ic_palette
-import com.simon.harmonichackernews.resources.ic_chrome_reader_mode
 import com.simon.harmonichackernews.resources.ic_style
 import com.simon.harmonichackernews.resources.ic_visibility
 import com.simon.harmonichackernews.resources.settings_section_appearance
@@ -34,22 +24,13 @@ data class AppearanceSettingsUiState(
     val showTransparentStatusBar: Boolean,
     val transparentStatusBar: Boolean,
     val compactHeader: Boolean,
-    val showSplitRatio: Boolean = false,
-    val splitRatio: Float = 0.5f,
-    val splitOrientation: SplitOrientation = SplitOrientation.Portrait,
-    val allowSplitAdjustment: Boolean = true,
-    val sideBySideEnabled: Boolean = true,
-    val integratedBrowserEnabled: Boolean = true,
     val showExtraSidePadding: Boolean = false,
     val extraSidePadding: ExtraSidePadding = ExtraSidePadding.Standard,
     val storyListSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val surfaceEffectMode: SurfaceEffectMode = SurfaceEffectMode.Frosted,
-    val splitRatioTitle: String? = null,
 )
 
 enum class AppearanceBooleanSetting(internal val preference: AppearanceBooleanPreference) {
-    AllowSplitAdjustment(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT),
-    SideBySideEnabled(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED),
     SpecialNighttime(AppearanceBooleanPreference.SPECIAL_NIGHTTIME),
     TransparentStatusBar(AppearanceBooleanPreference.TRANSPARENT_STATUS_BAR),
     CompactHeader(AppearanceBooleanPreference.COMPACT_HEADER),
@@ -64,11 +45,9 @@ fun AppearanceSettingsScreen(
     onBooleanChanged: (AppearanceBooleanSetting, Boolean) -> Unit,
     onStyleRequested: () -> Unit,
     contentVersion: Int = 0,
-    onSplitRatioChanged: (Float) -> Unit = {},
     onExtraSidePaddingChanged: (ExtraSidePadding) -> Unit = {},
     onSurfaceEffectChanged: (SurfaceEffectMode) -> Unit = {},
 ) {
-    var sliderRatio by remember(state.splitRatio, state.splitOrientation) { mutableFloatStateOf(state.splitRatio) }
     if (state.paletteTintEnabled) PreloadPalettePreviewResources()
     SettingsPage(
         title = stringResource(Res.string.settings_section_appearance),
@@ -124,55 +103,19 @@ fun AppearanceSettingsScreen(
                 SurfaceEffectSelector(state.surfaceEffectMode, onSurfaceEffectChanged)
             }
         }
-        if (state.showSplitRatio) {
+        if (state.showExtraSidePadding) {
             item {
                 SettingsCategory("Two panes") {
-                    key(state.splitOrientation) {
-                        SliderSetting(
-                            title = state.splitRatioTitle ?: when (state.splitOrientation) {
-                                SplitOrientation.Portrait -> "Portrait split ratio"
-                                SplitOrientation.Landscape -> "Landscape split ratio"
-                            },
-                            valueLabel = "${(sliderRatio * 100).roundToInt()} / ${(100 - sliderRatio * 100).roundToInt()}",
-                            value = sliderRatio,
-                            valueRange = SplitRatioPreferences.Range,
-                            steps = 0,
-                            onValueChange = { sliderRatio = it },
-                            onValueChangeFinished = { onSplitRatioChanged(sliderRatio) },
-                        )
-                    }
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Allow adjustments",
-                        icon = Res.drawable.ic_horizontal_split,
-                        summary = "Drag the handle between panes to resize them",
-                        checked = state.allowSplitAdjustment,
-                        onCheckedChange = {
-                            onBooleanChanged(AppearanceBooleanSetting.AllowSplitAdjustment, it)
-                        },
+                    SegmentedSetting(
+                        title = "Extra side padding",
+                        options = listOf(
+                            ExtraSidePadding.None to "None",
+                            ExtraSidePadding.Small to "Small",
+                            ExtraSidePadding.Standard to "Standard",
+                        ),
+                        selected = state.extraSidePadding,
+                        onSelected = onExtraSidePaddingChanged,
                     )
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Enable side by side",
-                        summary = "Read articles and comments in separate panes with the in-app browser",
-                        icon = Res.drawable.ic_chrome_reader_mode,
-                        checked = state.sideBySideEnabled,
-                        enabled = state.integratedBrowserEnabled,
-                        onCheckedChange = { onBooleanChanged(AppearanceBooleanSetting.SideBySideEnabled, it) },
-                    )
-                    if (state.showExtraSidePadding) {
-                        SettingsDivider()
-                        SegmentedSetting(
-                            title = "Extra side padding",
-                            options = listOf(
-                                ExtraSidePadding.None to "None",
-                                ExtraSidePadding.Small to "Small",
-                                ExtraSidePadding.Standard to "Standard",
-                            ),
-                            selected = state.extraSidePadding,
-                            onSelected = onExtraSidePaddingChanged,
-                        )
-                    }
                 }
             }
         }

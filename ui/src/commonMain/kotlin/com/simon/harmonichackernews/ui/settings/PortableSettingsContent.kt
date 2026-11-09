@@ -62,7 +62,6 @@ fun PortableSettingsDetail(
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
     debugPlatformLabel: String = "Android version",
     debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
-    splitRatioTitle: String? = null,
 ) {
     when (section) {
         SettingsSection.Search -> Unit // Shared search content belongs to SettingsNavigationShell.
@@ -71,7 +70,6 @@ fun PortableSettingsDetail(
             scene,
             singlePane,
             onBack,
-            splitRatioTitle,
         ) { target ->
             onNavigate(
                 target,
@@ -254,7 +252,6 @@ private fun PortableAppearanceSettings(
     scene: HarmonicSceneComposition,
     showNavigation: Boolean,
     onBack: () -> Unit,
-    splitRatioTitle: String?,
     onNavigate: (SettingsSection) -> Unit,
 ) {
     fun themeChanged() = app.appearance.refreshSelection()
@@ -263,7 +260,6 @@ private fun PortableAppearanceSettings(
         repository = app.settings,
         labels = AppearanceRouteLabels(
             showTransparentStatusBar = false,
-            splitRatioTitle = splitRatioTitle,
         ),
         showNavigation = showNavigation,
         onBack = onBack,

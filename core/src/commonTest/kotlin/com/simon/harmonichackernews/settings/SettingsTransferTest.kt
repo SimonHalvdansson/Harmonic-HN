@@ -49,6 +49,22 @@ class SettingsTransferTest {
     }
 
     @Test
+    fun retiredPaneTogglesAreExcludedFromBackupsAndIgnoredOnImport() {
+        store.putBoolean("pref_side_by_side_enabled", false)
+        store.putBoolean("pref_allow_split_adjustment", false)
+        val exported = Json.parseToJsonElement(transfer.export()).jsonObject["settings"]!!.jsonObject
+        assertFalse("pref_side_by_side_enabled" in exported)
+        assertFalse("pref_allow_split_adjustment" in exported)
+
+        assertEquals(SettingsImportResult.Imported(1, 2), transfer.import(document("""{
+            "pref_side_by_side_enabled":false,
+            "pref_allow_split_adjustment":false,
+            "pref_split_ratio_portrait":0.6
+        }""")))
+        assertEquals(0.6f, AppSettingsRepository(store, emptyFlow()).snapshot().appearance.portraitSplitRatio)
+    }
+
+    @Test
     fun invalidAndUnknownValuesLeaveExistingPreferencesUntouched() {
         store.putInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 18)
         store.putString(UserPreferenceKeys.FONT, "georgia")

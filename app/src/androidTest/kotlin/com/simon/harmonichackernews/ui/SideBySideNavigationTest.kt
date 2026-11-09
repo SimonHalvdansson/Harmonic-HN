@@ -17,7 +17,6 @@ import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.harmonicAppComposition
 import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.StoryNavigationSeed
-import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.ReadingBooleanPreference
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -306,11 +305,11 @@ class SideBySideNavigationTest {
         }
     }
 
-    @Test fun disablingTheSettingWhileSplitIsActiveRejoinsTheComments() = withStory { coordinator, _ ->
+    @Test fun disablingTheInAppBrowserWhileSplitIsActiveRejoinsTheComments() = withStory { coordinator, _ ->
         val controller = requireNotNull(coordinator.composeUiController)
         compose.runOnIdle {
             compose.activity.harmonicAppComposition.settings
-                .setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, false)
+                .setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, false)
         }
         compose.waitForIdle()
         compose.runOnIdle {
@@ -447,19 +446,6 @@ class SideBySideNavigationTest {
         }
     }
 
-    @Test fun disablingAdjustmentsRestoresAFullWidthBrowser() = withStory { _, _ ->
-        val originalWidth = storyPane().fetchSemanticsNode().boundsInRoot.width
-        setSplit(0f)
-        compose.runOnIdle {
-            compose.activity.harmonicAppComposition.settings
-                .setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, false)
-        }
-        compose.waitForIdle()
-        assertEquals(originalWidth, storyPane().fetchSemanticsNode().boundsInRoot.width, 1f)
-        compose.onNodeWithContentDescription("Restore two panes").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Adjust split ratio").assertDoesNotExist()
-    }
-
     @Test fun standaloneSplitRevealsTheLeftPaneThroughTheDivider() = withStory(Entry.External, inspectOpening = true) { _, _ ->
         setSplit(0f)
         compose.onNodeWithContentDescription("Restore two panes").assertIsDisplayed().performClick()
@@ -543,8 +529,6 @@ class SideBySideNavigationTest {
             compose.runOnIdle {
                 settings.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, true)
                 settings.setReadingBoolean(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK, false)
-                settings.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, true)
-                settings.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, true)
                 navigation.navigationState.returnToStories()
                 navigation.closeWelcome()
                 navigation.dismissChangelogDialog()
@@ -603,8 +587,6 @@ class SideBySideNavigationTest {
             compose.runOnIdle {
                 navigation.navigationState.restore(originalNavigation)
                 externalEntry.intValue = originalExternalSerial
-                settings.setAppearanceBoolean(AppearanceBooleanPreference.SIDE_BY_SIDE_ENABLED, originalSettings.appearance.sideBySideEnabled)
-                settings.setAppearanceBoolean(AppearanceBooleanPreference.ALLOW_SPLIT_ADJUSTMENT, originalSettings.appearance.allowSplitAdjustment)
                 settings.setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, originalSettings.reading.integratedWebView)
                 settings.setReadingBoolean(ReadingBooleanPreference.CLOSE_WEB_VIEW_ON_BACK, originalSettings.reading.closeWebViewOnBack)
             }

@@ -96,8 +96,6 @@ internal fun settingsSearchCatalog(
         "Transparent status bar" to "edge to edge system clock icons transparency")
     group(SettingsSection.Appearance, "Other", "Preset" to "style default compact reset appearance")
     if (capabilities.twoPane) group(SettingsSection.Appearance, "Two panes",
-        "Allow adjustments" to "resize divider split screen drag",
-        "Enable side by side" to "tablet landscape split screen two panes multitasking",
         "Extra side padding" to "margins width space tablet")
     group(SettingsSection.Theme, "Night schedule",
         "Use a nighttime color scheme" to "automatic scheduled dark mode night theme time sunset")

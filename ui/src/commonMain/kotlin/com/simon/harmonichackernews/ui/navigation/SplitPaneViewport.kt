@@ -76,10 +76,6 @@ import kotlin.math.roundToInt
 
 internal data class SplitPaneLayout(
     val supportsTwoPane: Boolean = false,
-    val ratio: Float = 0.5f,
-    val isFoldable: Boolean = false,
-    val orientation: SplitOrientation = SplitOrientation.Portrait,
-    val snapToCenter: Boolean = isFoldable,
     val minimumListWidth: Int = 0,
 )
 internal val LocalSplitPaneLayout = compositionLocalOf { SplitPaneLayout() }
@@ -123,18 +119,13 @@ internal fun SplitPaneViewport(
     val sheetTransition = integrated && (opening ||
         logicalExpansion > 0.001f && logicalExpansion < 0.999f ||
         visualExpansion > 0.001f && visualExpansion < 0.999f)
-    val browserAdjustable = integrated && temporary && logicalExpansion <= 0.001f &&
-        settings.appearance.allowSplitAdjustment
+    val browserAdjustable = integrated && temporary && logicalExpansion <= 0.001f
     val normalRatio = SplitRatioPreferences.snapToCenter(rawRatio, snapToCenter)
     val restoring = browser?.restoreBackActive == true
     val ratio = session.target(
         normalRatio, browser?.standalone == true, browser?.sideBySide == true,
         visualExpansion,
-    ).let { target ->
-        if (temporary && !settings.appearance.allowSplitAdjustment &&
-            (browser?.standalone != true || browser.sideBySide)) session.openingRatio ?: normalRatio
-        else target
-    }.let {
+    ).let {
         if (restoring) session.restoreRatio * (browser?.restoreBackProgress ?: 0f)
         else if (browser?.backSlideActive == true && temporary && !browser.standalone) {
             session.ratio + ((session.openingRatio ?: normalRatio) - session.ratio) * browser.backSlideProgress()
@@ -240,8 +231,8 @@ internal fun SplitPaneViewport(
 
     CompositionLocalProvider(
         LocalSplitPaneLayout provides SplitPaneLayout(
-            supportsTwoPane, ratio, isFoldable, orientation, snapToCenter,
-            ((width - normalGap) * SplitRatioPreferences.Minimum).roundToInt().coerceAtLeast(0),
+            supportsTwoPane = supportsTwoPane,
+            minimumListWidth = ((width - normalGap) * SplitRatioPreferences.Minimum).roundToInt().coerceAtLeast(0),
         ),
         LocalBrowserPaneControls provides BrowserPaneControls(
             restoreVisible = browserAdjustable && ratio == 0f &&
@@ -257,7 +248,7 @@ internal fun SplitPaneViewport(
             AnimatedVisibility(
                 // Keep the grip attached to the visible divider while the sheet moves.
                 // Only the actual full-width layout removes it; input is gated separately.
-                visible = twoPane && settings.appearance.allowSplitAdjustment && handleHasWidth,
+                visible = twoPane && handleHasWidth,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
                 modifier = Modifier

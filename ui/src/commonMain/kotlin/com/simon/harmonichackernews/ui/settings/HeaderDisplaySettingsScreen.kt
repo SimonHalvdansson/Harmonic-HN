@@ -345,7 +345,6 @@ internal fun HeaderButtonSettings(
                 CommentsHeaderButton.VOTE) && large -> "Included in Large post details"
             button == CommentsHeaderButton.BOOKMARK && !settings.general.bookmarksEnabled -> "Turn on Bookmarks"
             button == CommentsHeaderButton.SUMMARIZE && !displaySettings.canProvideSummary -> "Set up AI summaries"
-            button == CommentsHeaderButton.SIDE_BY_SIDE && !settings.appearance.sideBySideEnabled -> "Turn on side by side"
             button == CommentsHeaderButton.DISABLE_AD_BLOCK && !settings.reading.blockAds -> "Turn on ad blocking"
             else -> null
         }

@@ -415,10 +415,9 @@ internal fun IosCommentsContent(
     val showStatusBarProtection = !(host.controller.integratedWebView &&
         host.controller.isScrolledToTop)
     val portal = LocalSideBySideCommentsPortal.current
-    val appSettings by app.settings.updates.collectAsState(app.settings.snapshot())
     SideEffect {
         host.controller.updateSideBySideAvailability(
-            portal != null && appSettings.appearance.sideBySideEnabled &&
+            portal != null &&
                 host.controller.story.isLink,
         )
     }

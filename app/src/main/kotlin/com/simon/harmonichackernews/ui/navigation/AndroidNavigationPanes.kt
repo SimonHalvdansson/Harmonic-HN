@@ -51,7 +51,6 @@ import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
 import com.simon.harmonichackernews.ui.comments.rememberSideBySideCommentsContent
 import com.simon.harmonichackernews.ui.comments.lerpCommentsColor
-import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
@@ -202,13 +201,9 @@ internal fun CommentsPane(
                 LaunchedEffect(modalOverlayVisible) {
                     if (!modalOverlayVisible) modalScrimAlpha = 0f
                 }
-                val settingsRepository = LocalHarmonicUiDependencies.current.settings
-                val appSettings by settingsRepository.updates.collectAsStateWithLifecycle(
-                    initialValue = settingsRepository.snapshot(),
-                )
                 SideEffect {
                     commentsController.updateSideBySideAvailability(
-                        portal != null && appSettings.appearance.sideBySideEnabled &&
+                        portal != null &&
                             commentsController.integratedWebView && commentsController.story.isLink,
                     )
                 }

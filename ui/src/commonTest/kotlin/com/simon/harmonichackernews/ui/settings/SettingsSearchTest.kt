@@ -66,6 +66,13 @@ class SettingsSearchTest {
         assertFalse(entries().any { it.screenRoute == "notifications" })
     }
 
+    @Test fun twoPaneSearchDoesNotAdvertiseRetiredControls() {
+        val entries = entries(SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(twoPane = true)))
+        val retired = setOf("Allow adjustments", "Enable side by side", "Portrait split ratio", "Landscape split ratio")
+        assertFalse(entries.any { it.title in retired })
+        assertTrue(entries.any { it.title == "Extra side padding" })
+    }
+
     @Test fun localOnlyHostDoesNotAdvertiseCloudSettingsOrProviders() {
         val entries = entries(SettingsSearchAvailability(cloudAiSupported = false, localAi = true))
         val aiEntries = entries.filter { it.screenRoute == SettingsSection.AiSummary.route }

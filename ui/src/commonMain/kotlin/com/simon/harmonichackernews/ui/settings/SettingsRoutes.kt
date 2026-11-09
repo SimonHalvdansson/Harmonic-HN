@@ -17,7 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.format.DelimitedListPolicy
-import com.simon.harmonichackernews.settings.SplitRatioPreferences
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -284,7 +283,6 @@ data class AppearanceRouteLabels(
     val showTransparentStatusBar: Boolean,
     val dynamicColorAvailable: Boolean = true,
     val showExtraSidePadding: Boolean = false,
-    val splitRatioTitle: String? = null,
 )
 
 data class ThemeRouteLabels(
@@ -315,14 +313,7 @@ fun AppearanceSettingsRoute(
             fontLabel = settings.story.fontChoice.label,
             showTransparentStatusBar = labels.showTransparentStatusBar,
         ).copy(
-            showSplitRatio = splitLayout.supportsTwoPane,
-            splitRatio = splitLayout.ratio,
-            splitOrientation = splitLayout.orientation,
-            splitRatioTitle = labels.splitRatioTitle,
-            allowSplitAdjustment = settings.appearance.allowSplitAdjustment,
-            sideBySideEnabled = settings.appearance.sideBySideEnabled,
-            integratedBrowserEnabled = settings.reading.integratedWebView,
-            showExtraSidePadding = labels.showExtraSidePadding,
+            showExtraSidePadding = splitLayout.supportsTwoPane && labels.showExtraSidePadding,
             extraSidePadding = settings.appearance.extraSidePadding,
         ),
         showNavigation = showNavigation,
@@ -334,12 +325,6 @@ fun AppearanceSettingsRoute(
             }
         },
         onStyleRequested = onStyleRequested,
-        onSplitRatioChanged = {
-            repository.setSplitRatio(
-                splitLayout.orientation,
-                SplitRatioPreferences.snapToCenter(it, splitLayout.snapToCenter),
-            )
-        },
         onExtraSidePaddingChanged = repository::setExtraSidePadding,
         onSurfaceEffectChanged = repository::setSurfaceEffectMode,
         contentVersion = settings.hashCode(),
