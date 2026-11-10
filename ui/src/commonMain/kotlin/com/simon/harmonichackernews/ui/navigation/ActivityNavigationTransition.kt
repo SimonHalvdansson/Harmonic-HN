@@ -16,6 +16,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.dp
@@ -120,6 +122,7 @@ internal fun ActivityNavigationTransitionViewport(
     forwardExit: Boolean = false,
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
+    surfaceVisible: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val transitionTranslationX by transition.animateFloat(
@@ -167,19 +170,26 @@ internal fun ActivityNavigationTransitionViewport(
         alpha = { transitionAlpha },
         modifier = modifier,
         contentModifier = contentModifier,
+        surfaceVisible = surfaceVisible,
         content = content,
     )
 }
 
 @Composable
-private fun ActivityNavigationViewportLayout(
+internal fun ActivityNavigationViewportLayout(
     translationX: () -> Float,
     alpha: () -> Float,
     modifier: Modifier,
     contentModifier: Modifier,
+    surfaceVisible: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val destinationLayer = rememberGraphicsLayer()
+    SideEffect {
+        // Covered entries keep their composition but no longer draw, so the draw callback
+        // cannot release their buffer. Do it here even if their retained offset is nonzero.
+        if (!surfaceVisible) destinationLayer.compositingStrategy = CompositingStrategy.Auto
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -191,14 +201,23 @@ private fun ActivityNavigationViewportLayout(
             Modifier
                 .fillMaxSize()
                 .drawWithContent destination@{
+                    if (!surfaceVisible) return@destination
                     // Translation changes drawing only; reading it here keeps the animation
                     // from recomposing the viewport on every frame.
                     val offset = translationX()
                     if (abs(offset) < 0.01f) {
+                        // The sampled surface is unused at rest; do not retain its GPU buffer.
+                        destinationLayer.compositingStrategy = CompositingStrategy.Auto
                         drawContent()
                         return@destination
                     }
 
+                    // Sample pixels instead of replaying child RenderNodes and rounded clips
+                    // under the extreme scale of the one-pixel edge (#416, Android 11). The
+                    // parent's alpha stops providing offscreen isolation after the short fade,
+                    // while the slide is still running. Rasterize throughout translation; the
+                    // parent still applies alpha once to the combined page and edge.
+                    destinationLayer.compositingStrategy = CompositingStrategy.Offscreen
                     // Refresh every frame, then reuse the recording for both the surface and edge.
                     destinationLayer.record { this@destination.drawContent() }
                     withTransform({ translate(left = offset) }) {

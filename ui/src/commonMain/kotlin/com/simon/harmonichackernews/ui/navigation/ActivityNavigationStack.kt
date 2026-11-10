@@ -261,6 +261,7 @@ internal fun <T, K : Any> ActivityNavigationStack(
                             forwardExit = layer.forwardExit,
                             modifier = Modifier.fillMaxSize(),
                             contentModifier = backModifier,
+                            surfaceVisible = revealed,
                             content = surface,
                         )
                     }
