@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,11 +39,15 @@ import java.io.File
 import org.jetbrains.skia.EncodedImageFormat
 import java.lang.reflect.Proxy
 import javax.swing.SwingUtilities
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StoryPreviewDismissInputTest {
     @Test
     fun roundedCornerStartsAnimatedDismissal() = verifyDismissal(tapUpdate = false)
@@ -84,7 +89,8 @@ class StoryPreviewDismissInputTest {
         var scrim = 0f
         var previewContentCommits = 0
         var sharedTransition: StoryPreviewSharedTransitionState? = null
-        val scene = ImageComposeScene(400, 800, Density(1f)) {
+        val scheduler = TestCoroutineScheduler()
+        val scene = ImageComposeScene(400, 800, Density(1f), coroutineContext = StandardTestDispatcher(scheduler)) {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
@@ -120,7 +126,26 @@ class StoryPreviewDismissInputTest {
             }
         }
         var time = 0L
-        fun frame() { scene.render(time.also { time += 16_000_000 }).close() }
+        fun frame() {
+            // Drive effects, delays, and frames on one clock instead of racing the unconfined
+            // scene dispatcher and real-time coroutine delays against a tight render loop.
+            scheduler.runCurrent()
+            Snapshot.sendApplyNotifications()
+            scene.render(time).close()
+            time += 16_000_000
+            scheduler.advanceTimeBy(16)
+            scheduler.runCurrent()
+        }
+        fun awaitIdle() {
+            repeat(120) {
+                frame()
+                Snapshot.sendApplyNotifications()
+                scheduler.runCurrent()
+                if (!Snapshot.current.hasPendingChanges() &&
+                    !Snapshot.isApplyObserverNotificationPending && !scene.hasInvalidations()) return
+            }
+            error("Preview must settle before measuring gesture recompositions")
+        }
         fun tap(point: Offset) {
             scene.sendPointerEvent(PointerEventType.Press, point, timeMillis = time / 1_000_000, type = PointerType.Touch)
             scene.sendPointerEvent(PointerEventType.Release, point, timeMillis = time / 1_000_000 + 1, type = PointerType.Touch)
@@ -145,6 +170,7 @@ class StoryPreviewDismissInputTest {
                 }
             }
             if (withSource) assertTrue(sharedAuthorFrames > 2, "Author must participate in shared opening frames")
+            awaitIdle()
             assertTrue(cardBounds.width > 0f)
             assertTrue(updateBounds.width > 0f)
             assertEquals(0.32f, scrim, 0.001f)
@@ -155,14 +181,16 @@ class StoryPreviewDismissInputTest {
             assertEquals("tester (Maintainer)", author.config[SemanticsProperties.Text].single().text)
             assertTrue(cardBounds.contains(author.boundsInRoot.center), "The author tag belongs inside the preview card")
             controller.startStoryPreviewPredictiveBack(0.1f, edge = 0, touchY = 200f)
-            repeat(4) { frame() }
+            // Starting the gesture may finish pending geometry or snapshot work. Measure only
+            // subsequent progress updates once those one-time changes have settled.
+            awaitIdle()
             val commitsBeforeGesture = previewContentCommits
             for (progress in listOf(0.2f, 0.4f, 0.6f, 0.8f)) {
                 controller.updateStoryPreviewPredictiveBack(progress, edge = 0, touchY = 200f)
                 repeat(2) { frame() }
+                assertEquals(commitsBeforeGesture, previewContentCommits,
+                    "Gesture progress $progress must not invalidate retained preview content through its CompositionLocal")
             }
-            assertEquals(commitsBeforeGesture, previewContentCommits,
-                "Gesture frames must not invalidate retained preview content through its CompositionLocal")
             assertTrue(scrim < 0.2f, "The scrim must still follow gesture progress")
             controller.cancelStoryPreviewPredictiveBack()
             repeat(25) { frame() }
@@ -187,6 +215,7 @@ class StoryPreviewDismissInputTest {
             }
         } finally {
             scene.close()
+            scheduler.runCurrent()
             bootstrap.close()
         }
     }
