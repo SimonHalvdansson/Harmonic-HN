@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""ADB settings controls for Harmonic development builds. See --help."""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import uuid
+
+
+def adb_path():
+    configured = os.environ.get("ADB")
+    if configured:
+        return configured
+    found = shutil.which("adb")
+    if found:
+        return found
+    for root in [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"),
+                 str(Path.home() / "Library/Android/sdk")]:
+        if root and (Path(root) / "platform-tools/adb").is_file():
+            return str(Path(root) / "platform-tools/adb")
+    raise RuntimeError("ADB not found; set ADB or ANDROID_HOME")
+
+
+class SettingsClient:
+    def __init__(self, device, package):
+        self.adb = [adb_path()]
+        if device:
+            self.adb += ["-s", device]
+        self.uri = f"content://{package}.dev.settings"
+
+    def call(self, method, arg=None, value=None):
+        command = ["content", "call", "--uri", self.uri, "--method", method]
+        if arg is not None:
+            command += ["--arg", arg]
+        if value is not None:
+            command += ["--extra", "value:s:" + json.dumps(value, ensure_ascii=False)]
+        # adb shell accepts a shell command: quote every token, including user JSON.
+        result = subprocess.run(self.adb + ["shell", shlex.join(command)],
+                                capture_output=True, text=True, timeout=45)
+        match = re.search(r"\bjson=", result.stdout)
+        if result.returncode or not match:
+            raise RuntimeError((result.stderr + result.stdout).strip() or
+                               "No reply; install a development build with settings controls")
+        reply, _ = json.JSONDecoder().raw_decode(result.stdout[match.end():])
+        if not reply.get("ok"):
+            raise RuntimeError(reply.get("error", "Settings command failed"))
+        return reply
+
+
+def parser():
+    root = argparse.ArgumentParser(description=__doc__)
+    root.add_argument("--device", help="ADB serial; required if multiple devices are connected")
+    root.add_argument("--package", default="com.simon.harmonichackernews")
+    commands = root.add_subparsers(dest="command", required=True)
+    settings = commands.add_parser("settings", help="Inspect or change app preferences")
+    operations = settings.add_subparsers(dest="operation", required=True)
+    for operation in ["snapshot", "restore", "delete", "get", "reset"]:
+        item = operations.add_parser(operation)
+        item.add_argument("name")
+    for operation in ["list", "snapshots"]:
+        operations.add_parser(operation)
+    item = operations.add_parser("set", help="Set a friendly boolean name or validated storage key")
+    item.add_argument("name")
+    item.add_argument("value", help='JSON value, e.g. false, 17, or \'"googlesansflexrounded"\'')
+    item = commands.add_parser("with-settings", help="Run a command and restore settings in finally")
+    item.add_argument("overrides", nargs="*", help="NAME=JSON assignments")
+    return root
+
+
+def run_with_settings(client, overrides, child):
+    name = "temporary-" + uuid.uuid4().hex
+    client.call("snapshot", name)
+
+    def interrupted(_signum, _frame):
+        raise KeyboardInterrupt
+
+    previous = {sig: signal.signal(sig, interrupted) for sig in [signal.SIGINT, signal.SIGTERM]}
+    try:
+        for assignment in overrides:
+            key, separator, raw = assignment.partition("=")
+            if not separator:
+                raise ValueError("Expected NAME=JSON: " + assignment)
+            value = json.loads(raw)
+            client.call("reset" if value is None else "set", key, value)
+        try:
+            code = subprocess.call(child)
+            return 128 - code if code < 0 else code
+        except KeyboardInterrupt:
+            return 130
+    finally:
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            try:
+                client.call("restore", name)
+            except Exception:
+                print(f"Restore failed. Snapshot retained: {name}", file=sys.stderr)
+                raise
+            try:
+                client.call("delete", name)
+            except Exception:
+                print(f"Settings restored; snapshot cleanup failed: {name}", file=sys.stderr)
+                raise
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # Keep the child argv intact; argparse otherwise ambiguously splits two variable-length lists.
+    child = None
+    if "--" in argv:
+        split = argv.index("--")
+        child, argv = argv[split + 1:], argv[:split]
+    args = parser().parse_args(argv)
+    if args.command == "with-settings":
+        if not child:
+            raise ValueError("with-settings requires -- COMMAND [ARGS...]")
+    elif child is not None:
+        raise ValueError("Only with-settings accepts a child command")
+    client = SettingsClient(args.device, args.package)
+    if args.command == "with-settings":
+        return run_with_settings(client, args.overrides, child)
+    value = json.loads(args.value) if args.operation == "set" else None
+    # JSON null is a reset, whereas None also means 'no value extra' in the transport.
+    method = "reset" if args.operation == "set" and value is None else args.operation
+    reply = client.call(method, getattr(args, "name", None), value)
+    print(json.dumps(reply, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except (RuntimeError, ValueError, subprocess.SubprocessError, OSError) as error:
+        print(f"harmonic-dev: {error}", file=sys.stderr)
+        sys.exit(1)

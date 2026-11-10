@@ -128,6 +128,12 @@ android {
         }
     }
 
+    // Explicit source inclusion also covers the non-debuggable development variants.
+    ["debug", "debugFast", "debugLLM", "debugLLMFast"].each { variant ->
+        sourceSets.getByName(variant).kotlin.srcDir("src/development/kotlin")
+        sourceSets.getByName(variant).manifest.srcFile("src/development/AndroidManifest.xml")
+    }
+
     testOptions {
         unitTests.includeAndroidResources = true
     }

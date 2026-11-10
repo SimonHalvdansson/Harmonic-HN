@@ -141,6 +141,31 @@ When device use is authorized, use Google's Android CLI as the primary interface
 
 If a required ADB fallback is not on `PATH`, use `/Users/simon/Library/Android/sdk/platform-tools/adb` rather than searching the system repeatedly.
 
+### Settings from the CLI
+
+Development variants (`debug`, `debugFast`, `debugLLM`, `debugLLMFast`) include an ADB-shell-only
+settings endpoint. Snapshot before changing settings and restore after verification; prefer
+`tools/harmonic-dev --device=<serial>` over navigating Settings manually:
+
+```sh
+tools/harmonic-dev --device=emulator-5554 settings snapshot before-test
+tools/harmonic-dev --device=emulator-5554 settings set integrated-browser false
+tools/harmonic-dev --device=emulator-5554 settings get pref_webview
+tools/harmonic-dev --device=emulator-5554 settings restore before-test
+tools/harmonic-dev --device=emulator-5554 settings delete before-test
+```
+
+Use `with-settings integrated-browser=false pull-to-open-browser=true -- COMMAND [ARGS...]` to
+snapshot, apply overrides, run a command, and restore in `finally`, including command failures and
+interrupts. Check its exit status; if restoration fails, it reports the retained snapshot name for
+manual retry. `settings list`, `snapshots`, and `reset KEY` are also available. Values are JSON;
+raw storage keys use the portable settings schema's validation and types. Friendly aliases are
+`integrated-browser`, `external-browser`, and `pull-to-open-browser`.
+Snapshots preserve unset values and stored types, including debug/AI preferences and nighttime
+hours; credentials and content stores are excluded. Commands await persistence. Snapshots are
+private to the installed app and survive process restarts, but not uninstall/data clearing. Device
+interaction still requires user authorization; these commands do not authorize clearing app data.
+
 ### Debug Fixtures
 
 Before searching live Hacker News content or adding temporary debug hooks, check Settings -> Debug. Its Sample content section provides repeatable link posts, reference-link posts, polls, internal HN links, and video examples. It also provides direct access to dialogs and arbitrary HN item IDs. Prefer these fixtures when they cover the behavior being tested. Do not duplicate their hardcoded item IDs in `AGENTS.md`; `ui/settings/DebugSettingsScreen.kt` is the source of truth.

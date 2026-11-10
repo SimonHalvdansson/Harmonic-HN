@@ -71,6 +71,34 @@ class DataStoreKeyValueStore private constructor(
         result.failure?.let { throw it }
     }
 
+    /** Copies a single immutable in-memory revision, without opening a second DataStore. */
+    fun snapshotValues(): Map<String, StoredPreferenceValue> =
+        snapshot.value.preferences.asMap().entries.associate { (key, value) ->
+            key.name to StoredPreferenceValue.from(value)
+        }
+
+    /** Validates first, then replaces only the selected scope in one published edit. */
+    fun restoreValues(values: Map<String, StoredPreferenceValue>, acceptsKey: (String) -> Boolean) {
+        require(values.keys.all(acceptsKey)) { "Snapshot contains keys outside its scope" }
+        val decoded = values.mapValues { it.value.decoded() }
+        edit(unchanged = { false }) {
+            asMap().keys.filter { acceptsKey(it.name) }.forEach { remove(it) }
+            decoded.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> this[booleanPreferencesKey(key)] = value
+                    is Int -> this[intPreferencesKey(key)] = value
+                    is Long -> this[longPreferencesKey(key)] = value
+                    is Float -> this[floatPreferencesKey(key)] = value
+                    is String -> this[stringPreferencesKey(key)] = value
+                    is Set<*> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        this[stringSetPreferencesKey(key)] = value as Set<String>
+                    }
+                }
+            }
+        }
+    }
+
     override fun contains(key: String): Boolean = snapshot.value.preferences.contains(stringPreferencesKey(key))
     override fun keys(): Set<String> = snapshot.value.preferences.asMap().keys.mapTo(mutableSetOf()) { it.name }
     override fun getString(key: String, default: String?): String? =

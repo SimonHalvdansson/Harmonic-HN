@@ -33,6 +33,9 @@ class AndroidKeyValueStore private constructor(
     suspend fun awaitLoaded() { load() }
     val changes: Flow<Unit> = flow { emitAll(load().changes) }
     suspend fun awaitPersisted() = load().awaitPersisted()
+    fun snapshotValues(): Map<String, StoredPreferenceValue> = store.snapshotValues()
+    fun restoreValues(values: Map<String, StoredPreferenceValue>, acceptsKey: (String) -> Boolean) =
+        store.restoreValues(values, acceptsKey)
 
     override fun contains(key: String) = store.contains(key)
     override fun keys() = store.keys()

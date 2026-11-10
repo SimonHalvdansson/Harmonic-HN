@@ -122,6 +122,76 @@ class DataStoreKeyValueStoreTest {
         assertEquals(2, disk.data.value[intPreferencesKey("count")])
     }
 
+    @Test
+    fun exactSnapshotsRestoreTypesAndAbsenceWithoutTouchingOtherRecords() = runTest {
+        val disk = TestDataStore()
+        val store = DataStoreKeyValueStore.open(disk, backgroundScope)
+        store.update {
+            putBoolean("pref_boolean", false)
+            putInt("pref_int", 17)
+            putLong("pref_long", Long.MAX_VALUE)
+            putFloat("pref_float", 0.375f)
+            putString("pref_string", "blåbær, \"quoted\"\n")
+            putStringSet("pref_set", setOf("", "a,b", "😀"))
+            putStringSet("pref_empty", emptySet())
+            putString("pref_ai_summary_api_key", "credential")
+            putString("account_record", "original")
+        }
+        val original = store.snapshotValues().filterKeys(DevelopmentSettingsScope::isSetting)
+        val document = PreferenceSnapshot.decode(PreferenceSnapshot(settings = original, nighttime = emptyMap()).encode())
+        store.putString("pref_boolean", "wrong temporary type")
+        store.remove("pref_long")
+        store.putBoolean("pref_introduced", true)
+        store.putString("pref_ai_summary_api_key", "updated credential")
+        store.putString("account_record", "updated")
+        store.restoreValues(document.settings, DevelopmentSettingsScope::isSetting)
+        store.awaitPersisted()
+        val reopened = DataStoreKeyValueStore.open(disk, backgroundScope)
+        assertEquals(original, reopened.snapshotValues().filterKeys(DevelopmentSettingsScope::isSetting))
+        assertFalse(reopened.contains("pref_introduced"))
+        assertEquals(Long.MAX_VALUE, reopened.getLong("pref_long", 0))
+        assertEquals("updated credential", reopened.getString("pref_ai_summary_api_key"))
+        assertEquals("updated", reopened.getString("account_record"))
+    }
+
+    @Test
+    fun invalidSnapshotDoesNotPublishPartialChanges() = runTest {
+        val store = DataStoreKeyValueStore.open(TestDataStore(), backgroundScope)
+        store.putInt("pref_original", 7)
+        val bad = mapOf(
+            "pref_original" to StoredPreferenceValue.from(8),
+            "pref_bad" to StoredPreferenceValue("int", kotlinx.serialization.json.JsonPrimitive("oops")),
+        )
+        assertFailsWith<IllegalArgumentException> {
+            store.restoreValues(bad, DevelopmentSettingsScope::isSetting)
+        }
+        assertEquals(7, store.getInt("pref_original", 0))
+        assertFalse(store.contains("pref_bad"))
+        assertFailsWith<IllegalArgumentException> {
+            PreferenceSnapshot.decode(PreferenceSnapshot(settings = mapOf(
+                "pref_ai_summary_api_key" to StoredPreferenceValue.from("secret"),
+            ), nighttime = emptyMap()).encode())
+        }
+        assertFailsWith<IllegalArgumentException> {
+            PreferenceSnapshot.decode(PreferenceSnapshot(version = 2, settings = emptyMap(), nighttime = emptyMap()).encode())
+        }
+    }
+
+    @Test
+    fun scopedRestoreRemovesAddedScheduleKeysButPreservesGlobalContent() = runTest {
+        val store = DataStoreKeyValueStore.open(TestDataStore(), backgroundScope)
+        store.putString(NighttimeScheduleKeys.FROM_HOUR, "21")
+        val saved = store.snapshotValues().filterKeys(DevelopmentSettingsScope::isNighttime)
+        store.putString(NighttimeScheduleKeys.FROM_HOUR, "23")
+        store.putString(NighttimeScheduleKeys.TO_HOUR, "7")
+        store.putString("history", "keep")
+        store.restoreValues(saved, DevelopmentSettingsScope::isNighttime)
+        store.awaitPersisted()
+        assertEquals("21", store.getString(NighttimeScheduleKeys.FROM_HOUR))
+        assertFalse(store.contains(NighttimeScheduleKeys.TO_HOUR))
+        assertEquals("keep", store.getString("history"))
+    }
+
     private class TestDataStore : DataStore<Preferences> {
         override val data = MutableStateFlow(emptyPreferences())
         var beforeWrite: suspend () -> Unit = {}

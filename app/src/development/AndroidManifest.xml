@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Calls are restricted to the ADB shell UID inside the provider. -->
+        <provider
+            android:name=".development.DevelopmentSettingsProvider"
+            android:authorities="${applicationId}.dev.settings"
+            android:exported="true" />
+    </application>
+</manifest>

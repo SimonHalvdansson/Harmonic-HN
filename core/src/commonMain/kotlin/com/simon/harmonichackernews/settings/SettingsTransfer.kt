@@ -28,6 +28,15 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
         put("nighttime", exportValues(scheduleStore, scheduleRules))
     })
 
+    /** A single validated setting edit for development tooling; preserves the stored value type. */
+    fun setValue(key: String, value: JsonElement, nighttime: Boolean = false): Boolean {
+        val schema = if (nighttime) scheduleRules else rules
+        val staged = validate(buildJsonObject { put(key, value) }, schema)
+        if (staged.isEmpty()) return false
+        apply(if (nighttime) scheduleStore else store, staged)
+        return true
+    }
+
     fun import(content: String): SettingsImportResult {
         if (content.length > MAX_CHARS || !hasBoundedNesting(content)) return SettingsImportResult.Invalid
         val root = try { json.parseToJsonElement(content) as? JsonObject } catch (_: Exception) { null }

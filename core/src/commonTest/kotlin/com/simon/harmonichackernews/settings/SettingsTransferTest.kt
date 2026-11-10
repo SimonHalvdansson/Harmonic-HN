@@ -5,6 +5,24 @@ import kotlinx.serialization.json.*
 import kotlin.test.*
 
 class SettingsTransferTest {
+    @Test
+    fun singleSettingCommandsValidateBeforeWritingAndResetToUnset() {
+        val store = InMemoryKeyValueStore()
+        val schedule = InMemoryKeyValueStore()
+        val transfer = SettingsTransfer(store, schedule)
+        assertTrue(transfer.setValue(UserPreferenceKeys.READER_MODE_FONT_SIZE, JsonPrimitive(19)))
+        assertEquals(19, store.getInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 0))
+        assertFalse(transfer.setValue(UserPreferenceKeys.READER_MODE_FONT_SIZE, JsonPrimitive(999)))
+        assertFalse(transfer.setValue(UserPreferenceKeys.WEBVIEW, JsonPrimitive("false")))
+        assertFalse(transfer.setValue("pref_ai_summary_api_key", JsonPrimitive("secret")))
+        assertEquals(19, store.getInt(UserPreferenceKeys.READER_MODE_FONT_SIZE, 0))
+        assertTrue(transfer.setValue(UserPreferenceKeys.READER_MODE_FONT_SIZE, JsonNull))
+        assertFalse(store.contains(UserPreferenceKeys.READER_MODE_FONT_SIZE))
+        assertTrue(transfer.setValue(NighttimeScheduleKeys.FROM_HOUR, JsonPrimitive("22"), nighttime = true))
+        assertEquals("22", schedule.getString(NighttimeScheduleKeys.FROM_HOUR))
+        assertFalse(store.contains(NighttimeScheduleKeys.FROM_HOUR))
+    }
+
     private val store = InMemoryKeyValueStore()
     private val schedule = InMemoryKeyValueStore()
     private val transfer = SettingsTransfer(store, schedule)
