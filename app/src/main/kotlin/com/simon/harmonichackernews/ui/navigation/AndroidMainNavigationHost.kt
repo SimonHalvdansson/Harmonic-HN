@@ -128,6 +128,9 @@ object AndroidMainNavigationHost {
                                 activity = activity,
                                 controller = controller,
                             )
+                            com.simon.harmonichackernews.ui.AndroidLocalNetworkPermissionHost(
+                                (activity.application as com.simon.harmonichackernews.HarmonicApplication).localNetworkAccess,
+                            )
                         }
                     }
                 }

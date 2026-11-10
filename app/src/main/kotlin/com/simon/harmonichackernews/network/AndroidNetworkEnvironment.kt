@@ -57,6 +57,7 @@ internal class AndroidNetworkEnvironment(context: Context) : NetworkCacheMainten
             userAgent = userAgent,
             cacheMaintenance = this,
             transportDispatcher = Dispatchers.IO,
+            cloudEndpointAccess = (appContext as com.simon.harmonichackernews.HarmonicApplication).localNetworkAccess,
             // HttpCache buffers entire bodies, including legacy disk entries, before our byte
             // limits run. Retain the bounded application story/preview caches instead.
 

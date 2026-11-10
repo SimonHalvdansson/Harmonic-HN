@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.simon.harmonichackernews.presentation.UserProfileRepository
+import com.simon.harmonichackernews.platform.CloudEndpointAccess
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,7 @@ class NetworkGraph internal constructor(
     val userAgent: String = "Harmonic-HN",
     private val cacheMaintenance: NetworkCacheMaintenance = NetworkCacheMaintenance.None,
     private val readOnlyTransport: NetworkTransport? = null,
+    private val cloudEndpointAccess: CloudEndpointAccess = CloudEndpointAccess.Unrestricted,
 ) {
     /** Retains ownership of caller-supplied transports for native and test hosts. */
     constructor(
@@ -87,7 +89,7 @@ class NetworkGraph internal constructor(
         KtorLinkSummaryRepository(client, linkPreviewRepository)
     val previewContentCoordinator: PreviewContentCoordinator = PreviewContentCoordinator(scope)
     val cloudSummaryRepository: CloudSummaryRepository =
-        KtorCloudSummaryRepository(httpClient, userAgent)
+        KtorCloudSummaryRepository(httpClient, userAgent, endpointAccess = cloudEndpointAccess)
     val summaryUseCase: SummaryUseCase = SummaryUseCase(cloudSummaryRepository)
     val aiModelCatalogRepository: AiModelCatalogRepository =
         KtorAiModelCatalogRepository(httpClient)

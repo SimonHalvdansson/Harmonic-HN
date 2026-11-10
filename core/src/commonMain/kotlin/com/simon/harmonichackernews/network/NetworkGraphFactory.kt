@@ -5,6 +5,7 @@ import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import com.simon.harmonichackernews.platform.CloudEndpointAccess
 
 /** Inputs that genuinely differ between Ktor hosts. */
 data class NetworkGraphEnvironment(
@@ -21,6 +22,7 @@ data class NetworkGraphEnvironment(
     // Optional transport with connection recovery enabled, used only by read-only repositories.
     // Generic HTTP and HN actions continue to use engine, even when the action is a GET.
     val readOnlyEngine: (() -> HttpClientEngine)? = null,
+    val cloudEndpointAccess: CloudEndpointAccess = CloudEndpointAccess.Unrestricted,
 )
 
 /** Canonical network bootstrap used by Android, iOS and desktop. */
@@ -46,6 +48,7 @@ object NetworkGraphFactory {
             authenticatedClientProvider = authenticated,
             userAgent = environment.userAgent,
             cacheMaintenance = environment.cacheMaintenance,
+            cloudEndpointAccess = environment.cloudEndpointAccess,
             readOnlyTransport = environment.readOnlyEngine?.let { engine ->
                 NetworkTransport(environment.transportDispatcher) {
                     createHarmonicHttpClient(engine(), environment.userAgent, environment.configureTransport)

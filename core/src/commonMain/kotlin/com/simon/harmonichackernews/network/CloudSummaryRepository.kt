@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.network
 
 import com.fleeksoft.ksoup.Ksoup
+import com.simon.harmonichackernews.platform.CloudEndpointAccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -49,8 +50,10 @@ class KtorCloudSummaryRepository(
     private val client: KtorHttpClient,
     private val articleUserAgent: String,
     private val requestDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val endpointAccess: CloudEndpointAccess = CloudEndpointAccess.Unrestricted,
 ) : CloudSummaryRepository {
     override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = withContext(requestDispatcher) {
+        endpointAccess.ensureAccess(baseUrl)
         val requestBuilder = HttpRequest.Builder().url(joinUrl(baseUrl, "models"))
         if (apiKey.isNotBlank()) requestBuilder.header("Authorization", "Bearer $apiKey")
         val response = client.execute(requestBuilder.get().build(), maxBytes = MAX_MODEL_CATALOG_BYTES)
@@ -106,6 +109,7 @@ class KtorCloudSummaryRepository(
                 "Model missing. Open AI features settings and choose a model.",
             )
         }
+        endpointAccess.ensureAccess(config.baseUrl)
         send(CloudSummaryEvent.DebugInfo("$model · load —"))
 
         val anthropic = AiSummaryProviders.isAnthropicBaseUrl(config.baseUrl)

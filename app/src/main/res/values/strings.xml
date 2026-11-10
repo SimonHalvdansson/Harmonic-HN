@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="local_network_permission_title">Allow local network access?</string>
+    <string name="local_network_permission_reason">Your AI server (%1$s) is on your local network. Allow access to generate summaries and answer questions.</string>
+    <string name="local_network_continue">Continue</string>
+    <string name="local_network_not_now">Not now</string>
+    <string name="local_network_denied_title">Local network access is off</string>
+    <string name="local_network_denied_reason">To use your AI server, open Permissions in app settings and allow Nearby devices. Then try again.</string>
+    <string name="local_network_open_settings">Open settings</string>
+    <string name="local_network_access_required">Local network access is required to reach your AI server. Allow Nearby devices in Harmonic’s app permissions, then try again.</string>
     <string name="app_name">Harmonic</string>
     <string name="startup_failure_title">Harmonic couldn’t open your saved data</string>
     <string name="startup_failure_message">If your device is low on storage, free up some space and try again. Your saved data has been kept.</string>

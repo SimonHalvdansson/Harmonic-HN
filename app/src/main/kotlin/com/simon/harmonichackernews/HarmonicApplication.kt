@@ -33,6 +33,9 @@ import kotlinx.io.files.Path
 
 /** Application-level configuration for libraries that require process-wide coordination.  */
 class HarmonicApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
+    internal val localNetworkAccess by lazy {
+        com.simon.harmonichackernews.network.AndroidLocalNetworkAccess(this)
+    }
     private val localAiSupport: LocalAiApplicationSupport = LocalAiApplicationSupportImpl()
     private val draftScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val editorDrafts = mutableMapOf<String, BufferedEditorDraftStorage>()
