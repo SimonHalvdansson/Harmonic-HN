@@ -13,6 +13,7 @@ import com.simon.harmonichackernews.app.LicenseEntry
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 private val AndroidLicenses = listOf(
+    LicenseEntry("AndroidSVG", "Paul LeBeau, Cave Rock Software Ltd.", "Apache License 2.0", "https://bigbadaboom.github.io/androidsvg/"),
     LicenseEntry("AndroidX", "Google", "Apache License 2.0", "https://developer.android.com/jetpack/androidx"),
 )
 

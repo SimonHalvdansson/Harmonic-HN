@@ -189,6 +189,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor3)
     implementation(libs.coil.svg)
+    implementation(libs.androidsvg)
     debugLLMImplementation(libs.mlkit.genai.summarization)
     debugLLMImplementation(libs.mlkit.genai.prompt)
     debugLLMImplementation(libs.mlkit.genai.embedding)

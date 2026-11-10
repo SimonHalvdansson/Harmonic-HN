@@ -2,51 +2,42 @@ package com.simon.harmonichackernews
 
 import coil3.annotation.ExperimentalCoilApi
 import coil3.svg.Svg
+import com.caverock.androidsvg.SVG
 import okio.Buffer
 import okio.BufferedSource
+import okio.GzipSource
+import okio.buffer
+import java.io.IOException
 
-/** AndroidSVG 1.4 treats the CSS currentColor keyword as case-sensitive. */
+/** Bounds untrusted SVGs before AndroidSVG parses or renders them. */
 @OptIn(ExperimentalCoilApi::class)
 internal object AndroidCompatibleSvgParser : Svg.Parser {
-    override fun parse(source: BufferedSource): Svg {
-        // AndroidSVG also accepts SVGZ. Leave compressed bytes to its own decompressor.
-        if (source.request(2) && source.buffer[0] == 0x1f.toByte() && source.buffer[1] == 0x8b.toByte()) {
-            return Svg.Parser.DEFAULT.parse(source)
-        }
-        // A byte-preserving mapping lets us change ASCII attributes without re-encoding the
-        // document's text or overriding its XML encoding. Non-ASCII-compatible encodings pass
-        // through unchanged to AndroidSVG.
-        val document = source.readByteArray().toString(Charsets.ISO_8859_1)
-        if (!document.contains("currentcolor", ignoreCase = true)) {
-            return parseDocument(document)
-        }
-        val normalized = xmlMarkup.replace(document) { markup ->
-            val tag = markup.value
-            if (tag.startsWith("<!") || tag.startsWith("<?")) {
-                tag
-            } else {
-                attribute.replace(tag) { match ->
-                    val name = match.groupValues[1]
-                    val value = match.groupValues[4]
-                    if (name in paintAttributes && value.trim().equals("currentColor", ignoreCase = true)) {
-                        "${match.groupValues[1]}${match.groupValues[2]}${match.groupValues[3]}currentColor${match.groupValues[3]}"
-                    } else {
-                        match.value
-                    }
-                }
-            }
-        }
-        return parseDocument(normalized)
+    internal const val MAX_SOURCE_BYTES = 2L * 1024 * 1024
+    internal const val MAX_DOCUMENT_BYTES = 4L * 1024 * 1024
+
+    init {
+        // AndroidSVG otherwise switches to SAX and expands internal XML entities.
+        SVG.setInternalEntitiesEnabled(false)
     }
 
-    private fun parseDocument(document: String): Svg =
-        Buffer().write(document.toByteArray(Charsets.ISO_8859_1)).use(Svg.Parser.DEFAULT::parse)
+    override fun parse(source: BufferedSource): Svg {
+        val encoded = source.readBounded(MAX_SOURCE_BYTES)
+        val document = if (encoded.size >= 2 &&
+            encoded[0] == 0x1f.toByte() && encoded[1] == 0x8b.toByte()
+        ) {
+            // Do not let AndroidSVG inflate SVGZ without an expanded-size budget.
+            GzipSource(encoded).buffer().use { it.readBounded(MAX_DOCUMENT_BYTES) }
+        } else {
+            encoded
+        }
+        return AndroidSvgDocumentPolicy.prepare(document).use(Svg.Parser.DEFAULT::parse)
+    }
+}
 
-    // Match whole quoted attributes and skip comments/CDATA so IDs, URLs, text, and unrelated
-    // attribute values keep their original case. Do not replace arbitrary keyword occurrences.
-    private val xmlMarkup = Regex(
-        """<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?]]>|<\?[\s\S]*?\?>|<(?:[^>"']++|"[^"]*"|'[^']*')*>""",
-    )
-    private val attribute = Regex("""([\w:.-]+)(\s*=\s*)(["'])(.*?)\3""", RegexOption.DOT_MATCHES_ALL)
-    private val paintAttributes = setOf("fill", "stroke")
+private fun BufferedSource.readBounded(limit: Long): Buffer {
+    val result = Buffer()
+    while (read(result, minOf(8_192L, limit + 1 - result.size)) != -1L) {
+        if (result.size > limit) throw IOException("SVG exceeds byte limit ($limit)")
+    }
+    return result
 }
