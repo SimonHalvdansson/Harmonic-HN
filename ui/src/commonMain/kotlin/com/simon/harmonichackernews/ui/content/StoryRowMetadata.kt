@@ -36,9 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -63,10 +61,6 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-
-private const val StoryMetricPillDimStrength = 0.75f
-
-private const val ReadNoImageMetricPillAlpha = 0.8f
 
 private val StoryMetricPillShape = RoundedCornerShape(50)
 
@@ -104,18 +98,7 @@ internal fun StoryMetricPill(
 ) {
     val colors = MaterialTheme.colorScheme
     val container = colors.surfaceContainerHighest
-    val foreground = readStateForeground(
-        colors.onSurface,
-        colors.onSurfaceVariant,
-        dimAlpha,
-        StoryMetricPillDimStrength,
-    )
-    val pillAlpha = if (hazeState == null) {
-        val dimProgress = ((1f - dimAlpha) / (1f - DimmedStoryAlpha)).coerceIn(0f, 1f)
-        1f + (ReadNoImageMetricPillAlpha - 1f) * dimProgress
-    } else {
-        1f
-    }
+    val foreground = colors.onSurface
     val backgroundModifier = if (hazeState == null) {
         Modifier
             .clip(StoryMetricPillShape)
@@ -126,7 +109,7 @@ internal fun StoryMetricPill(
     }
     Row(
         modifier = modifier
-            .graphicsLayer(alpha = pillAlpha)
+            .graphicsLayer(alpha = dimAlpha)
             .then(backgroundModifier)
             .then(if (animateSize) Modifier.animateContentSize(
                 contentTween(), alignment = Alignment.CenterEnd,
@@ -150,7 +133,7 @@ internal fun StoryMetricPill(
                 modifier = Modifier
                     .size(iconSize)
                     .graphicsLayer(scaleX = iconScale, scaleY = iconScale),
-                tint = if (highlighted) colors.primary.copy(alpha = dimAlpha) else foreground,
+                tint = if (highlighted) colors.primary else foreground,
             )
         }
         if (text != null) {
@@ -180,16 +163,6 @@ internal fun compactStoryMetric(value: Int): String {
         }
         else -> count.toString()
     }
-}
-
-internal fun readStateForeground(
-    normal: Color,
-    disabled: Color,
-    dimAlpha: Float,
-    dimStrength: Float = 1f,
-): Color {
-    val dimProgress = ((1f - dimAlpha) / (1f - DimmedStoryAlpha)).coerceIn(0f, 1f)
-    return lerp(normal, disabled, dimProgress * dimStrength)
 }
 
 @Composable
@@ -430,7 +403,8 @@ private fun StoryMetaRow(
     animateChanges: Boolean,
     modifier: Modifier,
 ) {
-    Row(modifier = if (wrapContent) modifier else modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = (if (wrapContent) modifier else modifier.fillMaxWidth())
+        .graphicsLayer { alpha = dimAlpha }, verticalAlignment = Alignment.CenterVertically) {
         StoryVisibility(
             visible = style.showFavicon,
             animate = animateChanges || placementAnimation != null,
@@ -445,7 +419,8 @@ private fun StoryMetaRow(
         ) {
             StoryFavicon(
                 model = model,
-                dimAlpha = dimAlpha,
+                // The complete metadata row fades once, including its site icon.
+                dimAlpha = 1f,
                 tintBaseColorArgb = tintBaseColorArgb,
                 paletteTintConfigKey = paletteTintConfigKey,
                 extractTint = extractTint,
@@ -476,11 +451,7 @@ internal fun StoryCommentRail(
     modifier: Modifier = Modifier,
     placementAnimation: StoryRowPlacementAnimation? = null,
 ) {
-    val foreground = readStateForeground(
-        MaterialTheme.colorScheme.onSurface,
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        dimAlpha,
-    )
+    val foreground = MaterialTheme.colorScheme.onSurface
     val countSize = if (animateChanges) {
         val animatedCountSize by animateFloatAsState(
             targetValue = typography.storyCommentCountSize,
@@ -496,6 +467,7 @@ internal fun StoryCommentRail(
             .width(60.dp)
             .fillMaxHeight()
             .then(modifier)
+            .graphicsLayer { alpha = dimAlpha }
             .combinedClickable(
                 enabled = onClick != null,
                 onClickLabel = "Open comments",
@@ -526,7 +498,7 @@ internal fun StoryCommentRail(
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
-                    }.copy(alpha = dimAlpha),
+                    },
                 )
                 StoryVisibility(
                     visible = style.showCommentCount && !style.compact,

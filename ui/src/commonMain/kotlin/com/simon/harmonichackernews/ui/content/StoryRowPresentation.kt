@@ -29,7 +29,27 @@ import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 private const val ContentAnimationDuration = 220
 internal val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-internal const val DimmedStoryAlpha = 0.6f
+private const val ReadContentLightAlpha = 0.79f
+private const val ReadContentLightTintedAlpha = 0.825f
+private const val ReadContentDarkAlpha = 0.685f
+private const val ReadContentDarkTintedAlpha = 0.755f
+
+/** Shared read opacity for story content; surfaces retain their normal color. */
+internal fun storyContentAlpha(
+    dimmed: Boolean,
+    darkTheme: Boolean,
+    tintedBackground: Boolean,
+): Float = when {
+    !dimmed -> 1f
+    darkTheme && tintedBackground -> ReadContentDarkTintedAlpha
+    darkTheme -> ReadContentDarkAlpha
+    tintedBackground -> ReadContentLightTintedAlpha
+    else -> ReadContentLightAlpha
+}
+
+/** Category chips fade a little further, following the same animated read progress. */
+internal fun storyCategoryAlpha(contentAlpha: Float): Float =
+    (1f - (1f - contentAlpha) * 1.25f).coerceIn(0f, 1f)
 
 /** Local rendering state; resolved palettes are still published to the feature's owner. */
 internal class StoryRowPresentation(
@@ -61,17 +81,16 @@ internal fun rememberStoryRowPresentation(
     animatePreviewPlacement: Boolean = animate,
 ): StoryRowPresentation {
     val colors = MaterialTheme.colorScheme
+    val targetDimAlpha = storyContentAlpha(style.dimmed, HarmonicTheme.isDark, style.tintCard)
     val dimAlpha = if (animate) {
         val animatedDimAlpha by animateFloatAsState(
-            targetValue = if (style.dimmed) DimmedStoryAlpha else 1f,
+            targetValue = targetDimAlpha,
             animationSpec = tween(180),
             label = "story dim alpha",
         )
         animatedDimAlpha
-    } else if (style.dimmed) {
-        DimmedStoryAlpha
     } else {
-        1f
+        targetDimAlpha
     }
     val cardProgress = if (listItem) {
         if (style.cardStyle) 1f else 0f

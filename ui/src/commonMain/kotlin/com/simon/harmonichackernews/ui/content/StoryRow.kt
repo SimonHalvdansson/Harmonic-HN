@@ -572,7 +572,7 @@ fun StoryRow(
                                             modifier = Modifier.alignBy(FirstBaseline)) { categoryModifier ->
                                             CategoryLabelText(label, categoryColors,
                                                 categoryModifier.animateStoryRowTextSize(placementAnimation, storyCategoryFontSize(style.textSize).value)
-                                                    .graphicsLayer { alpha = dimAlpha },
+                                                    .graphicsLayer { alpha = storyCategoryAlpha(dimAlpha) },
                                                 model.categoryIds.getOrNull(index), storyCategoryFontSize(style.textSize))
                                         }
                                     }
@@ -580,7 +580,8 @@ fun StoryRow(
                                 StoryAuthorTag(model, typography, if (style.tintCard) ({ background.value }) else null,
                                     Modifier.captureStoryPreviewElement(captureSourceContent,
                                         onPositioned = { itemGeometry.authorCoordinates = it },
-                                        onLayerChanged = { itemGeometry.authorLayer = it }))
+                                        onLayerChanged = { itemGeometry.authorLayer = it })
+                                        .graphicsLayer { alpha = dimAlpha })
                             }
                             }) else null,
                         ) {
@@ -761,11 +762,7 @@ private fun StoryMainContent(
     sharedContentKey: Any?,
     modifier: Modifier,
 ) {
-    val foreground = readStateForeground(
-        MaterialTheme.colorScheme.onSurface,
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        dimAlpha,
-    )
+    val foreground = MaterialTheme.colorScheme.onSurface.copy(alpha = dimAlpha)
     val titleSize = if (animateChanges) {
         val animatedTitleSize by animateFloatAsState(
             targetValue = typography.storyTitleSize,
@@ -889,7 +886,7 @@ private fun StoryMainContent(
                         fontSize = titleSize.sp,
                         style = storyRowTextStyle,
                     )
-                    if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, dimAlpha, tintedSurface, animate = animateContentChanges,
+                    if (!categoriesWithMetadata(model, style)) StoryCategoryLabels(model.categoryLabels, storyCategoryAlpha(dimAlpha), tintedSurface, animate = animateContentChanges,
                         inspection = model.categoryInspection.takeIf { inspectCategories }, categoryIds = model.categoryIds,
                         placementAnimation = placementAnimation, fontSize = storyCategoryFontSize(style.textSize))
                 }
@@ -911,7 +908,7 @@ private fun StoryMainContent(
                                 onPositioned = { itemGeometry.summaryCoordinates = it },
                                 onLayerChanged = { itemGeometry.summaryLayer = it },
                             ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dimAlpha),
                         fontFamily = typography.family,
                         fontSize = summarySize.sp,
                         maxLines = 3,
@@ -949,7 +946,8 @@ private fun StoryMainContent(
                 if (!categoriesWithMetadata(model, style)) StoryAuthorTag(model, typography, tintedSurface,
                     Modifier.captureStoryPreviewElement(capturePreviewSource,
                         onPositioned = { itemGeometry.authorCoordinates = it },
-                        onLayerChanged = { itemGeometry.authorLayer = it }))
+                        onLayerChanged = { itemGeometry.authorLayer = it })
+                        .graphicsLayer { alpha = dimAlpha })
             }
             if (animateContentChanges) {
                 val separateSmallPreview = placementAnimation != null && categoriesWithMetadata(model, style) &&
