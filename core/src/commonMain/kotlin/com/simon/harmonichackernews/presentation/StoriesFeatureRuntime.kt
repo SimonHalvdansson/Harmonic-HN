@@ -1583,7 +1583,8 @@ class StoriesFeatureRuntime(
 
     private fun loadHistory() {
         replaceActive(
-            historyStore.load().map {
+            // New visits are appended in storage; initialization alone sorts persisted history.
+            historyStore.load().sortedByDescending { it.created }.map {
                 Story("Loading...", it.id, false, false, it.created)
             },
         )

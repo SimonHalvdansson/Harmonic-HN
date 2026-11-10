@@ -176,6 +176,8 @@ class StoriesScreenController private constructor(
         }
         val requestedRefreshCompleted = scrollToTopAfterRefresh &&
             refreshInProgressObserved && !state.refreshIndicatorShowing
+        val enteringHistory = !state.searching && state.currentType.isHistory &&
+            (previousContent.searching || !previousContent.currentType.isHistory)
         // A cached/live replacement must discard outgoing lazy row animation layers, which can
         // otherwise remain visible through gaps between the replacement stories.
         if (shellState.showingCached != state.activeList.showingCached ||
@@ -245,8 +247,10 @@ class StoriesScreenController private constructor(
                 tapToUpdateRefreshStarted = false
                 tapToUpdateExitInProgress = false
             }
-            scrollToTopRequestVersion++
         }
+        // History loads synchronously, so Compose can skip its empty state and retain an old
+        // row's key. Anchor the incoming list at the top so newly visited stories stay visible.
+        if (requestedRefreshCompleted || enteringHistory) scrollToTopRequestVersion++
     }
 
     private fun updatePreviewResources(

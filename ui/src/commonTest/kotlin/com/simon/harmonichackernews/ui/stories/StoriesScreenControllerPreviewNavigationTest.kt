@@ -287,6 +287,28 @@ class StoriesScreenControllerPreviewNavigationTest {
     }
 
     @Test
+    fun enteringHistoryAnchorsNewVisitsAboveRowsSharedWithThePreviousFeed() {
+        val controller = controller(destinationRemainsBesideStories = false)
+        val top = storiesState(mainStories = listOf(storySnapshot(1), storySnapshot(2)))
+        controller.updateContent(top)
+        val history = top.copy(
+            currentType = com.simon.harmonichackernews.StoryType.HISTORY,
+            mainList = top.mainList.copy(items = listOf(storySnapshot(3), storySnapshot(1))),
+        )
+
+        controller.updateContent(history)
+        assertEquals(1, controller.scrollToTopRequestVersion)
+        controller.updateContent(history.copy(mainList = history.mainList.copy(
+            items = listOf(storySnapshot(4), storySnapshot(3), storySnapshot(1)),
+        )))
+        assertEquals(1, controller.scrollToTopRequestVersion)
+
+        controller.updateContent(top)
+        controller.updateContent(history)
+        assertEquals(2, controller.scrollToTopRequestVersion)
+    }
+
+    @Test
     fun completedUserRefreshRequestsAnExactScrollToTop() {
         val listener = TestListener(destinationRemainsBesideStories = false)
         val controller = controller(

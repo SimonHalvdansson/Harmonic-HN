@@ -237,6 +237,37 @@ class StoryRequestsTest {
     }
 
     @Test
+    fun historySelectionAndRefreshShowLatestVisitsFirstWithoutRestarting() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val history = MemoryHistoryStore()
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(), history = history)
+        runtime.initialize(restoring = false)
+        runtime.initializeHistory()
+        history.recordHistory(1, 100L)
+        history.recordHistory(2, 300L)
+        history.recordHistory(3, 200L)
+
+        runtime.selectTypeAndRefresh(StoryType.HISTORY)
+        assertEquals(listOf(2, 3, 1), runtime.mainStories.map(Story::id))
+
+        history.recordHistory(4, 400L)
+        assertEquals(StoryHistorySyncResult.REFRESH_REQUIRED, runtime.syncHistoryIfChanged())
+        assertEquals(listOf(4, 2, 3, 1), runtime.mainStories.map(Story::id))
+
+        history.recordHistory(5, 500L)
+        runtime.refresh(showSwipeRefreshIndicator = true)
+        assertEquals(listOf(5, 4, 2, 3, 1), runtime.mainStories.map(Story::id))
+
+        runtime.selectType(StoryListTarget.MAIN, StoryType.TOP_STORIES)
+        history.recordHistory(6, 600L)
+        runtime.syncHistoryIfChanged()
+        runtime.selectTypeAndRefresh(StoryType.HISTORY)
+        assertEquals(listOf(6, 5, 4, 2, 3, 1), runtime.mainStories.map(Story::id))
+    }
+
+    @Test
     fun historyReconciliationUsesPublishedMembershipAndSkipsAnUnchangedVersion() = runTest {
         val session = StoriesSessionState()
         val saved = SavedItemsRepository(MemoryKeyValueStore())
