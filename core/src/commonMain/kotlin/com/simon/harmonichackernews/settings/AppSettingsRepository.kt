@@ -75,6 +75,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
     READER_MODE_ENABLED(UserPreferenceKeys.READER_MODE_ENABLED),
     LINK_PREVIEWS_ENABLED(UserPreferenceKeys.LINK_PREVIEWS_ENABLED),
     READER_MODE_DEFAULT(UserPreferenceKeys.READER_MODE_DEFAULT),
+    PULL_TO_OPEN_BROWSER(UserPreferenceKeys.PULL_TO_OPEN_BROWSER),
     EXTERNAL_BROWSER(UserPreferenceKeys.EXTERNAL_BROWSER),
     REDIRECT_NITTER(UserPreferenceKeys.REDIRECT_NITTER),
 }

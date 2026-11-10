@@ -37,6 +37,7 @@ data class WebLinksSettingsUiState(
     val archiveDomainCount: Int,
     val enabledLinkPreviews: Set<LinkPreviewType>,
     val linkPreviewsEnabled: Boolean = true,
+    val pullToOpenBrowser: Boolean = false,
 )
 
 /** Hide controls for browser facilities the current host does not implement. */
@@ -56,6 +57,7 @@ enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPrefere
     ReaderModeEnabled(ReadingBooleanPreference.READER_MODE_ENABLED),
     LinkPreviewsEnabled(ReadingBooleanPreference.LINK_PREVIEWS_ENABLED),
     ReaderModeDefault(ReadingBooleanPreference.READER_MODE_DEFAULT),
+    PullToOpenBrowser(ReadingBooleanPreference.PULL_TO_OPEN_BROWSER),
     ExternalBrowser(ReadingBooleanPreference.EXTERNAL_BROWSER),
     RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
 }
@@ -154,6 +156,20 @@ fun WebLinksSettingsScreen(
                     setting = WebLinksBooleanSetting.ExternalBrowser,
                     onBooleanChanged = onBooleanChanged,
                     summary = "In place of custom tabs",
+                )
+                SettingsDivider()
+                BooleanSettingRow(
+                    title = "Pull down to open browser",
+                    summary = if (state.integratedWebView && capabilities.integratedWebView) {
+                        "Turn off the in-app browser to use this gesture"
+                    } else {
+                        "Pull down from the top of comments and release to open the story link"
+                    },
+                    icon = Res.drawable.ic_open_in_browser,
+                    checked = state.pullToOpenBrowser,
+                    setting = WebLinksBooleanSetting.PullToOpenBrowser,
+                    onBooleanChanged = onBooleanChanged,
+                    enabled = !state.integratedWebView || !capabilities.integratedWebView,
                 )
                 SettingsDivider()
                 BooleanSettingRow(

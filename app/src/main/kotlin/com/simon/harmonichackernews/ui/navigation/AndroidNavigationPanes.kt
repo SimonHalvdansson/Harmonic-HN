@@ -228,6 +228,7 @@ internal fun CommentsPane(
                     )
                 }
                 val showStatusBarProtection = drawStatusBarProtection &&
+                    !commentsController.browserPullActive &&
                     !(commentsController.integratedWebView && commentsController.isScrolledToTop)
                 // Ask lifts the overlay above the persistent controls and status bar protection.
                 // Its scrim already dims them throughout the morph in both directions.
@@ -310,8 +311,9 @@ internal fun TwoPaneCommentsSurface(
                 (controller.linkPreviewOverlay != null || controller.isCommentActionOverlayShowing())
             LaunchedEffect(modalVisible) { if (!modalVisible) scrim = 0f }
             AndroidCommentsScreen(controller, reserveUpButtonInset = false)
-            if ((controller.sideBySideActive && !incomingSheet) ||
-                !(controller.integratedWebView && controller.isScrolledToTop)
+            if (!controller.browserPullActive &&
+                ((controller.sideBySideActive && !incomingSheet) ||
+                    !(controller.integratedWebView && controller.isScrolledToTop))
             ) {
                 StatusBarProtection(
                     // The incoming header already protects its top edge. When scrolled,

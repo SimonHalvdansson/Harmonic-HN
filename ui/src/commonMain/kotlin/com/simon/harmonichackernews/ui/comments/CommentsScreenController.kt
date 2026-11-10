@@ -40,6 +40,7 @@ data class CommentsScreenState(
     val hasCommentsByUser: Boolean = false,
     val adBlockActive: Boolean = false,
     val integratedWebView: Boolean = false,
+    val pullToOpenBrowser: Boolean = false,
     val readerModeAvailable: Boolean = false,
     val readerModeEnabled: Boolean = false,
     val showSheetControls: Boolean = true,
@@ -117,6 +118,7 @@ class CommentsScreenController private constructor(
     val hasCommentsByUser: Boolean get() = screenState.hasCommentsByUser
     val adBlockActive: Boolean get() = screenState.adBlockActive
     val integratedWebView: Boolean get() = screenState.integratedWebView
+    val pullToOpenBrowser: Boolean get() = screenState.pullToOpenBrowser
     val readerModeAvailable: Boolean get() = screenState.readerModeAvailable
     val readerModeEnabled: Boolean get() = screenState.readerModeEnabled
     val showSheetControls: Boolean get() = screenState.showSheetControls
@@ -140,6 +142,8 @@ class CommentsScreenController private constructor(
     /** Header color before the sheet reveal, shared with the detached browser controls. */
     var headerBackgroundColor by mutableStateOf<Color?>(null)
         private set
+    var browserPullActive by mutableStateOf(false)
+        internal set
     var statusBarHeaderCoverage by mutableFloatStateOf(0f)
         private set
     var contentVersion by mutableIntStateOf(0)

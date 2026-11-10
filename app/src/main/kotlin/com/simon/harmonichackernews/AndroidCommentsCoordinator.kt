@@ -748,7 +748,7 @@ class AndroidCommentsCoordinator(
         val root = webViewHost?.root ?: return
         statusBars.update(
             root = root,
-            sheetExpanded = isBottomSheetFullyExpanded,
+            sheetExpanded = isBottomSheetFullyExpanded && composeController?.browserPullActive != true,
             adaptive = navigation.isAdaptiveTwoPane(),
             transparent = commentsStore.state.value.settings?.transparentStatusBar == true,
         )

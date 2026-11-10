@@ -16,6 +16,39 @@ import kotlin.test.assertTrue
 
 class CommentsBrowserCapabilityTest {
     @Test
+    fun browserPullRequiresOptInAndALinkWithoutAnIntegratedBrowser() {
+        val settings = StoredUserSettings(InMemoryKeyValueStore(), emptyFlow())
+        val display = CommentDisplaySettings.from(
+            settings.comments, showInvert = false, isTablet = false,
+            hasAccountDetails = false, canProvideSummary = false,
+        )
+        val platform = CommentsPlatformPresentation(
+            adBlockActive = false, readerModeAvailable = false, readerModeEnabled = false,
+            topInsetPx = 0, contentInsetLeftPx = 0, contentInsetRightPx = 0,
+        )
+        for (optIn in listOf(false, true)) {
+            for (integrated in listOf(false, true)) {
+                for (link in listOf(false, true)) {
+                    val feature = CommentsState(
+                        story = StoryListItemSnapshot(
+                            StorySnapshot(42, url = if (link) "https://example.com" else null),
+                            StoryPresentationSnapshot(isLink = link),
+                        ),
+                        settings = CommentsSettingsState(
+                            displaySettings = display,
+                            reading = settings.reading.copy(pullToOpenBrowser = optIn),
+                            integratedWebView = integrated,
+                            smoothScroll = true, transparentStatusBar = false,
+                        ),
+                    )
+                    kotlin.test.assertEquals(optIn && !integrated && link,
+                        assertNotNull(CommentsScreenStateFactory.create(feature, platform)).pullToOpenBrowser)
+                }
+            }
+        }
+    }
+
+    @Test
     fun unsupportedHostDisablesBrowserControlsWithoutChangingTheSavedPreference() {
         val settings = StoredUserSettings(InMemoryKeyValueStore(), emptyFlow())
         val feature = CommentsState(

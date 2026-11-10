@@ -200,6 +200,7 @@ internal fun settingsSearchCatalog(
         "Block in-app browser ads" to "adblock ad blocker advertisements advertising tracking")
     group(SettingsSection.WebLinks, "Browser and links",
         "Use external browser" to "chrome firefox default browser custom tabs",
+        "Pull down to open browser" to "swipe gesture comments article link external browser custom tabs",
         "Redirect Twitter/X to Nitter" to "twitter x social alternative privacy",
         "Nitter instance URL" to "twitter server host address",
         "Redirect to archive version" to "archive is archive ph paywall archived domains",

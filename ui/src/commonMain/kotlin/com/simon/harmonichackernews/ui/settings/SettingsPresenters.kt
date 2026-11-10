@@ -223,6 +223,7 @@ class WebLinksSettingsPresenter(
             readerModeFontSizeDefault = TextPreferences.DEFAULT_READER_MODE_FONT_SIZE,
             readerModeFontSizeRange = TextPreferences.MIN_READER_MODE_FONT_SIZE..
                 TextPreferences.MAX_READER_MODE_FONT_SIZE,
+            pullToOpenBrowser = reading.pullToOpenBrowser,
             externalBrowser = reading.externalBrowser,
             redirectNitter = reading.redirectNitter,
             nitterInstanceUrl = reading.nitterInstanceUrl,

@@ -16,6 +16,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 class AppSettingsRepositoryTest {
+    @Test fun pullToOpenBrowserDefaultsOffAndPersistsIndependentlyOfBrowserChoice() {
+        val store = InMemoryKeyValueStore()
+        fun restored() = AppSettingsRepository(store, store.changes)
+        assertFalse(restored().snapshot().reading.pullToOpenBrowser)
+        restored().setReadingBoolean(ReadingBooleanPreference.PULL_TO_OPEN_BROWSER, true)
+        assertTrue(restored().snapshot().reading.pullToOpenBrowser)
+        for (integrated in listOf(false, true)) {
+            restored().setReadingBoolean(ReadingBooleanPreference.INTEGRATED_WEB_VIEW, integrated)
+            assertTrue(restored().snapshot().reading.pullToOpenBrowser)
+            assertFalse(restored().snapshot().reading.externalBrowser)
+        }
+        restored().setReadingBoolean(ReadingBooleanPreference.PULL_TO_OPEN_BROWSER, false)
+        assertFalse(restored().snapshot().reading.pullToOpenBrowser)
+    }
+
     @Test fun peekStoryHeaderDefaultsOnAndRetainsTheSavedChoice() {
         val store = InMemoryKeyValueStore()
         fun restored() = AppSettingsRepository(store, store.changes)

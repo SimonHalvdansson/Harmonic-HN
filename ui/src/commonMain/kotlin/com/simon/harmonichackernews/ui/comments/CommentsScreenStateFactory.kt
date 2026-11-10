@@ -59,6 +59,9 @@ object CommentsScreenStateFactory {
             hasCommentsByUser = thread.hasCommentsByUser,
             adBlockActive = platform.adBlockActive,
             integratedWebView = settings.integratedWebView && platform.integratedWebViewAvailable,
+            pullToOpenBrowser = settings.reading.pullToOpenBrowser &&
+                !(settings.integratedWebView && platform.integratedWebViewAvailable) &&
+                story.isLink && !story.url.isNullOrBlank(),
             readerModeAvailable = platform.readerModeAvailable,
             readerModeEnabled = platform.readerModeEnabled,
             showSheetControls = platform.showSheetControls,

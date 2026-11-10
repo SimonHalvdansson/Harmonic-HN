@@ -119,6 +119,7 @@ object UserPreferenceKeys {
     const val READER_MODE_FONT = "pref_webview_reader_mode_font"
     const val READER_MODE_LINE_HEIGHT = "pref_webview_reader_mode_line_height"
     const val READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size"
+    const val PULL_TO_OPEN_BROWSER = "pref_pull_to_open_browser"
     const val EXTERNAL_BROWSER = "pref_external_browser"
     const val REDIRECT_NITTER = "pref_redirect_nitter"
     const val NITTER_INSTANCE_URL = "pref_nitter_instance_url"
@@ -342,6 +343,7 @@ class StoredUserSettings(
                 readerModeFontSize = TextPreferences.clampReaderModeFontSize(
                     integer(UserPreferenceKeys.READER_MODE_FONT_SIZE, TextPreferences.DEFAULT_READER_MODE_FONT_SIZE),
                 ),
+                pullToOpenBrowser = boolean(UserPreferenceKeys.PULL_TO_OPEN_BROWSER, false),
                 externalBrowser = boolean(UserPreferenceKeys.EXTERNAL_BROWSER, false),
                 redirectNitter = boolean(UserPreferenceKeys.REDIRECT_NITTER, false),
                 nitterInstanceUrl = NitterInstance.effectiveUrl(

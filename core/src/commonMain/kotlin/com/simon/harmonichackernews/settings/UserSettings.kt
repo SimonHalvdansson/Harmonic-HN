@@ -155,6 +155,7 @@ data class ReadingPreferences(
     val nitterInstanceUrl: String = NitterInstance.DEFAULT_URL,
     val readerModeLineHeight: ReaderLineHeight = ReaderLineHeight.STANDARD,
     val linkPreviewsEnabled: Boolean = true,
+    val pullToOpenBrowser: Boolean = false,
 ) {
     val activeLinkPreviews: Set<LinkPreviewType>
         get() = if (linkPreviewsEnabled) enabledLinkPreviews else emptySet()

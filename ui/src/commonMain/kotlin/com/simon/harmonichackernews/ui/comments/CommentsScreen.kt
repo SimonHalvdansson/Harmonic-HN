@@ -294,6 +294,7 @@ fun CommentsScreen(
 
     LaunchedEffect(listState, controller, peekHeader, topInsetPx) {
         snapshotFlow {
+            if (controller.browserPullActive) return@snapshotFlow 0f
             val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 0 }
             val coverage = if (header == null || topInsetPx <= 0) {
                 0f
@@ -621,12 +622,19 @@ fun CommentsScreen(
 
         // Sample the actual composite under floating controls. Capturing just the
         // list makes the glass back button see through the opaque peek header.
-        Box(Modifier.fillMaxSize().commentsHazeSource(commentsHazeState)) {
+        PullToOpenBrowserBox(
+            enabled = controller.pullToOpenBrowser && !controller.sheetGesturesBlocked,
+            topInset = statusBarInset,
+            onOpen = controller.listener::onHeaderClick,
+            onPullActiveChanged = { controller.browserPullActive = it },
+            modifier = Modifier.fillMaxSize().commentsHazeSource(commentsHazeState),
+        ) {
             // The story type is unknown on an uncached open. Keep the list at the same
             // composition location when it becomes an integrated browser story, otherwise
             // the header and row reveal animations are discarded with the old list.
             PullToRefreshBox(
-                enabled = pullToRefreshEnabled && !controller.integratedWebView,
+                enabled = pullToRefreshEnabled && !controller.integratedWebView &&
+                    !controller.pullToOpenBrowser,
                 isRefreshing = controller.pullToRefreshInProgress &&
                     controller.commentsRefreshInProgress,
                 state = pullToRefreshState,
