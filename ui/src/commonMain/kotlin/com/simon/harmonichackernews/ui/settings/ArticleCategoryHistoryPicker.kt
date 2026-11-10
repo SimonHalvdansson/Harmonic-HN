@@ -35,7 +35,7 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.DialogSearchField
 import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
 import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -176,7 +176,7 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .animateContentSize(tween(300, easing = FastOutSlowInEasing), Alignment.TopCenter)) {
                 if (!compactHeight) Text(if (hasCenter) "Choose examples from your history." else "Add an example to start comparing similarities.", Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else Spacer(Modifier.height(12.dp))
                 DialogSearchField(query, {
@@ -187,17 +187,17 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
                 AnimatedVisibility(visible = adding) {
                     Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
                         Text("Adding ${(progress + 1).coerceAtMost(selected.size)} of ${selected.size}…",
-                            fontFamily = ProductSansFontFamily, fontSize = 14.sp)
+                            fontFamily = AppUiFontFamily, fontSize = 14.sp)
                         LinearProgressIndicator(progress = { progress.toFloat() / selected.size.coerceAtLeast(1) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                     }
                 }
                 if (error != null) Text(error.orEmpty(), Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    fontFamily = ProductSansFontFamily, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                 if (similarityError) Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Similarities unavailable", Modifier.weight(1f), fontFamily = ProductSansFontFamily, fontSize = 13.sp,
+                    Text("Similarities unavailable", Modifier.weight(1f), fontFamily = AppUiFontFamily, fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { app.articleCategories.retry(); scoreRetry++ }) { Text("Retry", fontFamily = ProductSansFontFamily) }
+                    TextButton(onClick = { app.articleCategories.retry(); scoreRetry++ }) { Text("Retry", fontFamily = AppUiFontFamily) }
                 }
                 if (stories.isEmpty() && !loading && error == null) CategoryHistoryEmptyState(
                     "No stories yet", "Open stories in Harmonic to choose them as examples here.", compactHeight)
@@ -216,13 +216,13 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
                                         if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                                         else Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp))
                                         Text(if (busy) "Loading history…" else if (error != null) "Try again" else "Load older stories",
-                                            fontFamily = ProductSansFontFamily)
+                                            fontFamily = AppUiFontFamily)
                                     }
                                 }
                             }
                         }
                         if (selected.size >= 20) Text("Add up to 20 at a time.", Modifier.padding(horizontal = 24.dp),
-                            fontFamily = ProductSansFontFamily, fontSize = 13.sp)
+                            fontFamily = AppUiFontFamily, fontSize = 13.sp)
                     }, onSelection = { id, checked ->
                         if (!keyboardAction.isClosing) {
                             selected = if (checked && selected.size < 20) selected + id else selected - id
@@ -232,10 +232,10 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
         },
         confirmButton = { SettingsDialogTextButton(enabled = selected.isNotEmpty() && !adding && !keyboardAction.isClosing,
             modifier = Modifier.animateContentSize(), onClick = ::addSelected) {
-            Text(if (selected.isEmpty()) "Add" else "Add (${selected.size})", fontFamily = ProductSansFontFamily, fontSize = 16.sp,
+            Text(if (selected.isEmpty()) "Add" else "Add (${selected.size})", fontFamily = AppUiFontFamily, fontSize = 16.sp,
             style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "'liga' 0, 'clig' 0, 'calt' 0, 'dlig' 0")) } },
         dismissButton = { SettingsDialogTextButton(enabled = !keyboardAction.isClosing, onClick = ::dismissPicker) {
-            Text("Cancel", fontFamily = ProductSansFontFamily, fontSize = 16.sp)
+            Text("Cancel", fontFamily = AppUiFontFamily, fontSize = 16.sp)
         } },
     )
 }
@@ -261,7 +261,7 @@ internal fun CategoryHistoryRows(stories: List<ArticleTrainingStory>, selected: 
                 Checkbox(checked = alreadyAdded || story.id in selected, enabled = enabled && !alreadyAdded, onCheckedChange = null)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(story.title, fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
+                    Text(story.title, fontFamily = AppUiFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
                     val viewed = story.viewedAtEpochSeconds?.let { time -> relativeTimeOnResume(time.toInt()).let {
                         if (it == "just now" || it == "?") it else "$it ago"
@@ -269,7 +269,7 @@ internal fun CategoryHistoryRows(stories: List<ArticleTrainingStory>, selected: 
                     Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(listOfNotNull(DomainNamePolicy.fromUrl(story.url)?.takeIf(String::isNotBlank), viewed).joinToString(" · "),
-                            fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+                            fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f),
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         CategoryCosineScore(similarities[story.id])
@@ -289,9 +289,9 @@ internal fun CategoryHistoryEmptyState(title: String, subtitle: String, compact:
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         if (!compact) Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(32.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(title, Modifier.padding(top = if (compact) 0.dp else 16.dp), fontFamily = ProductSansFontFamily,
+        Text(title, Modifier.padding(top = if (compact) 0.dp else 16.dp), fontFamily = AppUiFontFamily,
             fontSize = 16.sp, textAlign = TextAlign.Center)
-        Text(subtitle, Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+        Text(subtitle, Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily,
             fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

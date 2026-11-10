@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.categorization.ArticleCategories
 import com.simon.harmonichackernews.resources.*
 import org.jetbrains.compose.resources.painterResource
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.contrastingColor
 import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
@@ -57,9 +57,9 @@ fun ArticleCategoryExplorationScreen(onBack: () -> Unit) {
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
                 Text("A map of meaning", Modifier.semantics { heading() },
-                    fontFamily = ProductSansFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                    fontFamily = AppUiFontFamily, fontSize = 26.sp, fontWeight = FontWeight.Medium)
                 Text("Each dot is an example headline. Nearby dots have similar embeddings. Preview text can refine a story’s matches.",
-                    Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+                    Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily,
                     fontSize = 16.sp, lineHeight = 23.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -92,7 +92,7 @@ internal fun CategoryExplorationLegend(
                 onClick = { onSelected(id) },
                 elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
                 label = { Text(name, Modifier.padding(vertical = 6.dp),
-                    fontFamily = ProductSansFontFamily, fontSize = 12.sp, lineHeight = 17.sp) },
+                    fontFamily = AppUiFontFamily, fontSize = 12.sp, lineHeight = 17.sp) },
                 leadingIcon = { Icon(painterResource(com.simon.harmonichackernews.ui.content.categorySymbol(id)),
                     null, Modifier.size(18.dp), tint = colors[index]) },
             )
@@ -113,7 +113,7 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Box(Modifier.widthIn(max = 600.dp).fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
                     if (data == null) {
-                        if (failed) TextButton(onClick = onRetry) { Text("Couldn't load map · Retry", fontFamily = ProductSansFontFamily) }
+                        if (failed) TextButton(onClick = onRetry) { Text("Couldn't load map · Retry", fontFamily = AppUiFontFamily) }
                         else CircularProgressIndicator()
                     } else CategoryEmbeddingMap(data, data.methods.first { it.id == method }, colors, highlighted, selected,
                         Modifier.fillMaxSize(), onSelect = onSelect)
@@ -123,12 +123,12 @@ internal fun CategoryExplorationPanel(data: CategoryExplorationData?, failed: Bo
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
                 val point = data?.points?.firstOrNull { it.id == selected }
                 if (point != null) {
-                    Text(point.title, fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
+                    Text(point.title, fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
                         minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
                     CategoryExampleMatches(point, colors, reserveSpace = true)
                 } else {
                     Text("Tap a dot to compare its closest categories.",
-                        fontFamily = ProductSansFontFamily, fontSize = 14.sp, minLines = 2,
+                        fontFamily = AppUiFontFamily, fontSize = 14.sp, minLines = 2,
                         lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     CategoryExampleMatches(null, colors, reserveSpace = true)
                 }
@@ -184,7 +184,7 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint?, colors: List<Color
     val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
     val matches = point?.matches.orEmpty().filter { it.similarity >= ArticleCategories.MIN_CUTOFF }.take(3)
     if (matches.isEmpty() && !reserveSpace) {
-        Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above", Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+        Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above", Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily,
             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
@@ -201,8 +201,8 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint?, colors: List<Color
                 }) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(match?.let { categories.getValue(it.category).name }.orEmpty(), Modifier.weight(1f),
-                            fontFamily = ProductSansFontFamily, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("$score", fontFamily = ProductSansFontFamily, fontSize = 12.sp,
+                            fontFamily = AppUiFontFamily, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("$score", fontFamily = AppUiFontFamily, fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Canvas(Modifier.fillMaxWidth().padding(top = 4.dp).height(5.dp)) {
@@ -214,13 +214,13 @@ internal fun CategoryExampleMatches(point: CategoryMapPoint?, colors: List<Color
             Row(Modifier.fillMaxWidth().graphicsLayer { alpha = if (matches.isEmpty()) 0f else 1f }
                 .then(if (matches.isEmpty()) Modifier.clearAndSetSemantics { } else Modifier),
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${(ArticleCategories.MIN_CUTOFF * 100).toInt()}", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("100", fontFamily = ProductSansFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${(ArticleCategories.MIN_CUTOFF * 100).toInt()}", fontFamily = AppUiFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("100", fontFamily = AppUiFontFamily, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (point != null && matches.isEmpty()) {
             Text("No matches at ${(ArticleCategories.MIN_CUTOFF * 100).toInt()} or above",
-                Modifier.align(Alignment.Center), fontFamily = ProductSansFontFamily,
+                Modifier.align(Alignment.Center), fontFamily = AppUiFontFamily,
                 fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

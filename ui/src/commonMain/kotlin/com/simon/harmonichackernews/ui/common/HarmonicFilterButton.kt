@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -77,7 +77,7 @@ fun HarmonicFilterButton(
     colors: HarmonicFilterButtonColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    fontFamily: FontFamily = ProductSansFontFamily,
+    fontFamily: FontFamily = AppUiFontFamily,
     lastPosition: Int = 2,
     icon: DrawableResource? = null,
     showIcon: Boolean? = null,

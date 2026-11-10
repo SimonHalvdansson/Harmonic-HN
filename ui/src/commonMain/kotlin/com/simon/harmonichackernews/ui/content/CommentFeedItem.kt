@@ -31,7 +31,7 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.common.TextButton
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -99,7 +99,7 @@ fun CommentFeedItem(
                     Text(
                         text = "On",
                         color = colors.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         style = legacyTextStyle,
@@ -113,7 +113,7 @@ fun CommentFeedItem(
                     text = "On \"$rootStoryTitle\"",
                     modifier = Modifier.weight(1f),
                     color = colors.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     style = legacyTextStyle,
@@ -137,7 +137,7 @@ fun CommentFeedItem(
                     text = timeText,
                     modifier = Modifier.offset(y = timeOpticalOffset),
                     color = colors.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
                     style = legacyTextStyle,
@@ -254,7 +254,7 @@ private fun CommentFeedActionButton(
         Text(
             text = label,
             modifier = Modifier.padding(start = 8.dp),
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
         )

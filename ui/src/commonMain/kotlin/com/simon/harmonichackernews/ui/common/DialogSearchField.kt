@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 /** Shared filled, rounded search input for comment search and selection dialogs. */
@@ -28,8 +28,8 @@ internal fun DialogSearchField(value: TextFieldValue, onValueChange: (TextFieldV
     val background = if (HarmonicTheme.isDark) MaterialTheme.colorScheme.surfaceContainerHigh
         else MaterialTheme.colorScheme.surfaceContainerHighest
     TextField(value, onValueChange, modifier = modifier, enabled = enabled,
-        placeholder = { Text(placeholder, fontFamily = ProductSansFontFamily) },
-        textStyle = TextStyle(fontFamily = ProductSansFontFamily, fontSize = 16.sp),
+        placeholder = { Text(placeholder, fontFamily = AppUiFontFamily) },
+        textStyle = TextStyle(fontFamily = AppUiFontFamily, fontSize = 16.sp),
         leadingIcon = { Icon(painterResource(Res.drawable.ic_search), null) },
         shape = RoundedCornerShape(32.dp),
         colors = TextFieldDefaults.colors(focusedContainerColor = background, unfocusedContainerColor = background,

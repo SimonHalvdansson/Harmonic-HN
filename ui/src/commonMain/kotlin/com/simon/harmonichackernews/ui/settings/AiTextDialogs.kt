@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 
@@ -139,7 +139,7 @@ fun AiSummaryTextDialog(
                 minLines = minLines,
                 maxLines = maxLines,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = textSizeSp.sp,
                     lineHeight = if (maxLines > 1) (textSizeSp + 3).sp else (textSizeSp + 4).sp,
                 ),
@@ -217,7 +217,7 @@ fun AiSummaryBaseUrlDialog(
                     text = "Presets",
                     modifier = Modifier.padding(top = 4.dp),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                 )

@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicSwitch
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 fun HiddenCommentsDialog(
@@ -38,7 +38,7 @@ fun HiddenCommentsDialog(
                     text = "Applies when the entire comment is [flagged], [dead] or [delayed].",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                 )
@@ -86,7 +86,7 @@ private fun HiddenCommentSwitch(
             text = title,
             modifier = Modifier.weight(1f).padding(end = 16.dp),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 16.sp,
             lineHeight = 20.sp,
         )

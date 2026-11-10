@@ -34,7 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.time.TimeMark
 import kotlin.math.roundToInt
 import kotlin.time.TimeSource
@@ -391,7 +391,7 @@ private fun DebugOpenSetting(
             Text(
                 title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
@@ -409,14 +409,14 @@ private fun DebugOpenSetting(
                     error = null
                 },
                 modifier = Modifier.weight(1f),
-                label = { Text(label, fontFamily = ProductSansFontFamily) },
+                label = { Text(label, fontFamily = AppUiFontFamily) },
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { message ->
-                    { Text(message, fontFamily = ProductSansFontFamily) }
+                    { Text(message, fontFamily = AppUiFontFamily) }
                 },
                 textStyle = androidx.compose.ui.text.TextStyle(
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
                 ),

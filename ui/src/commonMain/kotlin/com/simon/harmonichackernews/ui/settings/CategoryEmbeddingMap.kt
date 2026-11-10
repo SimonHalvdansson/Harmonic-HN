@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.categorization.ArticleCategories
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -84,7 +84,7 @@ internal fun CategoryEmbeddingMap(data: CategoryExplorationData, projection: Cat
     highlighted: String?, selected: Int?, modifier: Modifier = Modifier, onSelect: (Int?) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val font = ProductSansFontFamily
+    val font = AppUiFontFamily
     val density = LocalDensity.current.density
     val categoryIndices = remember { ArticleCategories.defaults.mapIndexed { i, c -> c.id to i }.toMap() }
     val labels = remember(measurer, colors, font) { ArticleCategories.defaults.mapIndexed { index, category ->

@@ -79,8 +79,8 @@ import com.simon.harmonichackernews.network.AiModelCatalogSort
 import com.simon.harmonichackernews.network.AiSummaryProviders
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.resources.HarmonicDimens
-import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppTechnicalFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -257,7 +257,7 @@ fun AiModelSelectorDialog(
                         text = stringResource(Res.string.ai_model_choose_title),
                         modifier = Modifier.padding(start = 24.dp, top = 18.dp, end = 24.dp),
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 26.sp,
                         lineHeight = 32.sp,
@@ -288,7 +288,7 @@ fun AiModelSelectorDialog(
                         supportingText = modelError?.let { message -> { Text(message) } },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = GoogleSansCodeFontFamily,
+                            fontFamily = AppTechnicalFontFamily,
                             fontSize = 14.sp,
                         ),
                         keyboardOptions = KeyboardOptions(
@@ -310,7 +310,7 @@ fun AiModelSelectorDialog(
                             } ?: stringResource(Res.string.ai_model_suggestions),
                             modifier = Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,
                             lineHeight = 21.sp,
@@ -434,7 +434,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
         Text(
             text = stringResource(Res.string.ai_model_price_label),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
             letterSpacing = 0.08.sp,
@@ -468,7 +468,7 @@ private fun AiModelPrice(state: AiModelPriceState) {
                         text = "${price.model.formattedInputPrice()} / " +
                             price.model.formattedOutputPrice(),
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         lineHeight = 26.sp,
@@ -548,7 +548,7 @@ private fun AiModelRow(
                 Text(
                     text = model.displayName(),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
@@ -559,7 +559,7 @@ private fun AiModelRow(
                     text = model.requestId,
                     modifier = Modifier.padding(top = 2.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = GoogleSansCodeFontFamily,
+                    fontFamily = AppTechnicalFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 17.sp,
                     maxLines = 1,
@@ -617,7 +617,7 @@ private fun AiModelMetadataChip(
             .background(containerColor, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         color = contentColor,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 10.sp,
         lineHeight = 15.sp,

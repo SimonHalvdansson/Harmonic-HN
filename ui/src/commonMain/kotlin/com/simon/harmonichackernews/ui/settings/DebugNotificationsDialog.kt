@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -138,11 +138,11 @@ fun DebugNotificationsDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(painterResource(Res.drawable.ic_notifications), null, Modifier.size(24.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text("Reply alerts", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
+                            Text("Reply alerts", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold)
                         }
                         Text(if (nativeSupported) "Send a test alert for a recent reply, or check this public user's replies in the background."
                             else unavailableMessage ?: "Native alerts are not connected on this platform yet. You can test public activity in Debug → Account.",
-                            fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp)
+                            fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp)
                     }
                 }
                 OutlinedTextField(
@@ -163,7 +163,7 @@ fun DebugNotificationsDialog(
                         .fillMaxWidth()
                         .padding(top = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 13.sp,
                     minLines = 1,
                 )
@@ -226,7 +226,7 @@ private fun DebugNotificationButton(
             Text(
                 text = label,
                 modifier = Modifier.padding(start = 8.dp),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )

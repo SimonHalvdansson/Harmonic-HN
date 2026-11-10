@@ -250,7 +250,7 @@ internal fun EmbeddingModelProgress(visible: Boolean, received: Long, total: Lon
 @Composable
 internal fun CategorySettingsInfo(text: String, error: Boolean = false) {
     Text(text, modifier = Modifier.fillMaxWidth().themeBackground { cardBackground }.padding(horizontal = 24.dp, vertical = 12.dp),
-        fontFamily = com.simon.harmonichackernews.ui.theme.ProductSansFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
+        fontFamily = com.simon.harmonichackernews.ui.theme.AppUiFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
         color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

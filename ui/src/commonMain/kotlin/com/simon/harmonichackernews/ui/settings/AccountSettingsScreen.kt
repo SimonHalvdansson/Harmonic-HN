@@ -57,7 +57,7 @@ import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.UserAvatar
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.themeBackground
 import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import kotlinx.coroutines.delay
@@ -251,7 +251,7 @@ fun AccountSettingsScreen(
                         Spacer(Modifier.height(12.dp))
                         Button(onClick = onLogin, enabled = !busy, modifier = Modifier.settingsSearchTarget("Log in")) {
                             ActionIcon(Res.drawable.ic_login)
-                            Text("Log in", fontFamily = ProductSansFontFamily)
+                            Text("Log in", fontFamily = AppUiFontFamily)
                         }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -269,21 +269,21 @@ fun AccountSettingsScreen(
                                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                                     Spacer(Modifier.width(8.dp))
                                 } else ActionIcon(Res.drawable.ic_refresh)
-                                Text("Check now", fontFamily = ProductSansFontFamily)
+                                Text("Check now", fontFamily = AppUiFontFamily)
                             }
                             OutlinedButton(onClick = onLogout, enabled = !accountActionBusy,
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                     disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .38f)),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = if (accountActionBusy) .24f else .65f))) {
                                 ActionIcon(Res.drawable.ic_logout)
-                                Text(if (debugAccount) "Use real account" else "Log out", fontFamily = ProductSansFontFamily)
+                                Text(if (debugAccount) "Use real account" else "Log out", fontFamily = AppUiFontFamily)
                             }
                         }
                         if (state.enabled && !deliveryAllowed && onOpenSystemSettings != null) {
                             Spacer(Modifier.height(8.dp))
                             AccountText("System notification alerts are disabled", 13, primary = true)
                             TextButton(onClick = onOpenSystemSettings, contentPadding = PaddingValues(vertical = 4.dp)) {
-                                Text("Allow alerts in system settings", fontFamily = ProductSansFontFamily)
+                                Text("Allow alerts in system settings", fontFamily = AppUiFontFamily)
                                 Spacer(Modifier.width(8.dp))
                                 Icon(painterResource(Res.drawable.ic_open_in_new), null, Modifier.size(16.dp))
                             }
@@ -298,7 +298,7 @@ fun AccountSettingsScreen(
                 if (message != null) Text(message, Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
                     color = if (state.isError || accountMessage != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily, fontSize = 14.sp)
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp)
             }
             item(key = "recent-activity") {
                 SettingsCategory("Recent activity") {
@@ -311,7 +311,7 @@ fun AccountSettingsScreen(
                         }
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick = onMarkAllRead, enabled = activity.entries.any { !it.read }, modifier = Modifier.testTag("account-mark-all-read")) {
-                            Text("Mark all read", fontFamily = ProductSansFontFamily)
+                            Text("Mark all read", fontFamily = AppUiFontFamily)
                         }
                     }
                     SettingsDivider()
@@ -355,7 +355,7 @@ fun AccountSettingsScreen(
                             if (content.count > 5) {
                                 SettingsDivider()
                                 TextButton(onClick = { showAll = !showAll }, modifier = Modifier.fillMaxWidth()) {
-                                    Text(if (content.showAll) "Show less" else "Show all (${content.count})", fontFamily = ProductSansFontFamily)
+                                    Text(if (content.showAll) "Show less" else "Show all (${content.count})", fontFamily = AppUiFontFamily)
                                 }
                             }
                         }
@@ -377,12 +377,12 @@ fun AccountSettingsScreen(
                         Column(Modifier.fillMaxWidth().themeBackground { cardBackground }.padding(16.dp)) {
                             if (!deliveryAllowed) {
                                 Text("System notifications are disabled. Your activity will still appear here.", color = MaterialTheme.colorScheme.error,
-                                    fontFamily = ProductSansFontFamily, fontSize = 14.sp)
+                                    fontFamily = AppUiFontFamily, fontSize = 14.sp)
                                 Spacer(Modifier.height(8.dp))
                             }
                             OutlinedButton(onClick = onOpenSystemSettings,
                                 modifier = Modifier.align(Alignment.End).settingsSearchTarget("System notification settings").testTag("account-system-settings")) {
-                                Text("System notification settings", fontFamily = ProductSansFontFamily)
+                                Text("System notification settings", fontFamily = AppUiFontFamily)
                                 Spacer(Modifier.width(8.dp))
                                 Icon(painterResource(Res.drawable.ic_open_in_new), null, Modifier.size(18.dp))
                             }
@@ -390,7 +390,7 @@ fun AccountSettingsScreen(
                     }
                     if (!state.backgroundSupported) Text("Background alerts are not available on this platform yet. Check now and your activity history still work.",
                         Modifier.fillMaxWidth().themeBackground { cardBackground }.padding(20.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = ProductSansFontFamily, fontSize = 13.sp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = AppUiFontFamily, fontSize = 13.sp)
                 }
             }
             item(key = "account-background") {
@@ -418,7 +418,7 @@ fun AccountSettingsScreen(
                 }
                 Text("Your device may delay automatic checks to save battery. Activity covers replies to comments and submissions from the last 14 days; the latest 100 replies are kept on this device.",
                     Modifier.padding(horizontal = 24.dp, vertical = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp)
+                    fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp)
             }
         }
     }
@@ -437,7 +437,7 @@ fun AccountSettingsScreen(
                 else LazyColumn(Modifier.heightIn(max = 400.dp)) {
                     items(activity.mutedDiscussions, key = { it.id }) { discussion ->
                         Column(Modifier.padding(vertical = 8.dp)) {
-                            Text(discussion.title, fontFamily = ProductSansFontFamily)
+                            Text(discussion.title, fontFamily = AppUiFontFamily)
                             TextButton(onClick = { onMute(discussion.id, discussion.title, false) }) { Text("Unmute") }
                         }
                     }
@@ -463,18 +463,18 @@ private fun AccountActivityRow(entry: AccountActivityEntry, muted: Boolean, now:
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (!entry.read) Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-                Text(reply.by, fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 17.sp,
+                Text(reply.by, fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 17.sp,
                     modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (reply.time > 0) AccountText(RelativeTimeFormatter.format(reply.time.toLong(), now), 12)
             }
             AccountText(if (reply.kind == AccountActivityKind.Reply) "Replied to your comment" else "Commented on your submission", 12)
             if (reply.storyTitle.isNotBlank()) {
                 Spacer(Modifier.height(5.dp))
-                Text(reply.storyTitle, fontFamily = ProductSansFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                Text(reply.storyTitle, fontFamily = AppUiFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(5.dp))
-            Text(reply.text, fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
+            Text(reply.text, fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 19.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
             AnimatedVisibility(
                 visible = muted,
@@ -528,7 +528,7 @@ private fun AccountCheckingHoursDialog(preferences: AccountAlertPreferences, onD
 
 @Composable
 private fun AccountText(text: String, size: Int, weight: FontWeight = FontWeight.Normal, primary: Boolean = false) {
-    Text(text, fontFamily = ProductSansFontFamily, fontSize = size.sp, lineHeight = (size + 5).sp, fontWeight = weight,
+    Text(text, fontFamily = AppUiFontFamily, fontSize = size.sp, lineHeight = (size + 5).sp, fontWeight = weight,
         color = if (primary) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

@@ -23,7 +23,7 @@ import com.simon.harmonichackernews.categorization.*
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.Button
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -68,9 +68,9 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
             Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(name, fontFamily = ProductSansFontFamily, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(name, fontFamily = AppUiFontFamily, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(categoryTrainingCount(examples?.size ?: 0), modifier = Modifier.animateContentSize(), style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (builtIn) {
@@ -85,12 +85,12 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
                 IconButton(onClick = { info = true }) { Icon(painterResource(Res.drawable.ic_info), "About category examples") }
             }
             if (builtIn) Text(category.description, Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp),
-                fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = { history = true }, enabled = canTrain,
                 modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp)) {
                 Icon(painterResource(Res.drawable.ic_add), null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Add from history", fontFamily = ProductSansFontFamily)
+                Text("Add from history", fontFamily = AppUiFontFamily)
             }
             if (!canTrain) Text("Download embedding model to add stories from history.",
                 Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall,
@@ -100,15 +100,15 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
             if (!builtIn && configuration.added[category.id].orEmpty().isNotEmpty()) Row(
                 Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = { reset = true }) { Text("Clear examples", fontFamily = ProductSansFontFamily) }
+                TextButton(onClick = { reset = true }) { Text("Clear examples", fontFamily = AppUiFontFamily) }
             }
             if (examples?.isEmpty() == true) {
                 Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(painterResource(Res.drawable.ic_label), null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
-                    Text("No examples yet", fontFamily = ProductSansFontFamily, fontSize = 16.sp)
+                    Text("No examples yet", fontFamily = AppUiFontFamily, fontSize = 16.sp)
                     Text("Choose a few matching stories from your history to get started.",
-                        modifier = Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                        modifier = Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -120,11 +120,11 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
                         shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                         Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(story.title, fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text(story.title, fontFamily = AppUiFontFamily, fontSize = 16.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(listOfNotNull(DomainNamePolicy.fromUrl(story.url), if (story.source == "default") "Default example" else "From history").joinToString(" · "),
-                                        fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+                                        fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f),
                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     CategoryCosineScore(similarities[story.id])

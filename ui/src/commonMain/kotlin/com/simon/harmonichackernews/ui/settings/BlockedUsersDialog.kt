@@ -40,7 +40,7 @@ import com.simon.harmonichackernews.resources.ic_close
 import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_person
 import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -85,7 +85,7 @@ fun BlockedUsersDialog(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Case sensitive",
-                    fontFamily = ProductSansFontFamily, fontSize = 14.sp,
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -122,7 +122,7 @@ fun BlockedUsersDialog(
                             ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(username, Modifier.weight(1f), fontFamily = ProductSansFontFamily)
+                            Text(username, Modifier.weight(1f), fontFamily = AppUiFontFamily)
                             IconButton(onClick = { childOpening.request { onProfileRequested(username) } },
                                 enabled = !inputLocked, modifier = Modifier.size(48.dp)) {
                                 Icon(painterResource(Res.drawable.ic_person), "View profile for $username")
@@ -150,7 +150,7 @@ fun BlockedUsersDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text(username, fontFamily = ProductSansFontFamily)
+                                Text(username, fontFamily = AppUiFontFamily)
                                 Text("Needs exact username", fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -208,7 +208,7 @@ fun LegacyUsernameReviewDialog(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("The saved username “$savedUsername” may have lost its capitalization in an older version. It is inactive until you confirm the exact HN username.",
                     fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                savedTag?.let { Text("Saved tag: $it", fontFamily = ProductSansFontFamily) }
+                savedTag?.let { Text("Saved tag: $it", fontFamily = AppUiFontFamily) }
                 OutlinedTextField(
                     value = username,
                     onValueChange = { if (!dismissal.isClosing) { username = it; error = null } },

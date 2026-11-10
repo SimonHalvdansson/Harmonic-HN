@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -86,7 +86,7 @@ fun OpFilterBanner(controller: CommentsScreenController) {
                 if (showingUserFilter) "Showing your comment threads" else "Showing comment threads with OP",
                 modifier = Modifier.weight(1f),
                 color = contentColor,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
             )
@@ -184,7 +184,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                     if (controller.loadingFailedServerError) "Loading failed" else "No internet connection",
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 6.dp),
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                 )
@@ -205,7 +205,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "Try again",
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                     )
@@ -221,7 +221,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                 Text(
                     if (controller.story.isComment) "No replies" else "No comments",
                     modifier = Modifier.padding(top = 4.dp),
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
@@ -237,7 +237,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                             .fillMaxWidth()
                             .padding(top = 4.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -260,7 +260,7 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
                     text = {
                         Text(
                             "Tap to refresh",
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     },

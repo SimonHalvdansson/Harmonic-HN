@@ -114,7 +114,7 @@ import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
 
 /**
@@ -467,7 +467,7 @@ private fun BoxScope.SubmissionsList(
                     Text(
                         "Couldn't load submissions",
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                     )
                     OutlinedButton(
                         onClick = { onIntent(SubmissionsIntent.Retry) },
@@ -588,7 +588,7 @@ private fun SubmissionsHeader(
                     contentDescription = "Submissions by $userName"
                 },
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 26.sp,
             style = legacyTextStyle,
@@ -611,7 +611,7 @@ private fun SubmissionsHeader(
                         text = animatedSummary,
                         modifier = Modifier.padding(bottom = if (compact) 12.dp else 16.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp,
                         style = legacyTextStyle,
@@ -623,7 +623,7 @@ private fun SubmissionsHeader(
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val density = LocalDensity.current
                 val measurer = rememberTextMeasurer()
-                val textStyle = LocalTextStyle.current.copy(fontFamily = ProductSansFontFamily,
+                val textStyle = LocalTextStyle.current.copy(fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 val widths = listOf("Stories", "All", "Comments").map {
                     with(density) { measurer.measure(it, textStyle, maxLines = 1).size.width.toDp().value }
@@ -738,7 +738,7 @@ private fun LoadMoreButton(
                         Text(
                             text = "Load more",
                             modifier = Modifier.padding(start = 8.dp),
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -769,7 +769,7 @@ private fun EmptySubmissions(
             text = text,
             modifier = Modifier.padding(top = 4.dp, bottom = 36.dp),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
             style = legacyTextStyle,

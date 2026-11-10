@@ -73,7 +73,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 
 private enum class SettingsListGroup { Reading, Tools, App }
@@ -276,7 +276,7 @@ private fun SettingsNavigationRow(
             Text(
                 text = title,
                 color = { if (useDarkSelection) colors.onSecondaryContainer else colors.onSurface },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -285,7 +285,7 @@ private fun SettingsNavigationRow(
                 text = summary,
                 modifier = Modifier.padding(top = 1.dp),
                 color = { if (useDarkSelection) colors.onSecondaryContainer else colors.onSurfaceVariant },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
             )
@@ -528,7 +528,7 @@ private fun SettingsCategoryHeading(title: String, titleTopPadding: Dp) {
                     colors.primary,
                     0.45f,
                 ) },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,

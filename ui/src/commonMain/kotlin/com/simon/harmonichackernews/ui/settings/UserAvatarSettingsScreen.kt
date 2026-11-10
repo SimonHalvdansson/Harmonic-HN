@@ -50,7 +50,7 @@ import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.CommentRowModel
 import com.simon.harmonichackernews.ui.content.UserAvatar
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -145,7 +145,7 @@ fun UserAvatarSettingsScreen(
                                     Text(
                                         style.label, modifier = Modifier.weight(1f),
                                         color = MaterialTheme.colorScheme.onSurface,
-                                        fontFamily = ProductSansFontFamily, fontSize = 16.sp,
+                                        fontFamily = AppUiFontFamily, fontSize = 16.sp,
                                     )
                                     Checkbox(checked = selected, onCheckedChange = null, enabled = canToggle)
                                 }

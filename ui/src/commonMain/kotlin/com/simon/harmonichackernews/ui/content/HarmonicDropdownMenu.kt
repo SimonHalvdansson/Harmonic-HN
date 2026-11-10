@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.menuBackground
 
 private const val MenuRevealDurationMillis = 220
@@ -186,7 +186,7 @@ fun HarmonicMenuText(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
-    fontFamily: FontFamily = ProductSansFontFamily,
+    fontFamily: FontFamily = AppUiFontFamily,
     fontWeight: FontWeight = FontWeight.Normal,
     fontSize: TextUnit = 16.sp,
 ) {

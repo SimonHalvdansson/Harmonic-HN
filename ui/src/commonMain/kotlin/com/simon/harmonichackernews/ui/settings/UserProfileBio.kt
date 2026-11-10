@@ -42,7 +42,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_link
 import com.simon.harmonichackernews.ui.common.TextButton
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -92,7 +92,7 @@ internal fun UserProfileBio(userId: String, about: String, onOpenLink: (String) 
                 },
                 onTextLayout = { layout = it },
                 color = bodyColor,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )

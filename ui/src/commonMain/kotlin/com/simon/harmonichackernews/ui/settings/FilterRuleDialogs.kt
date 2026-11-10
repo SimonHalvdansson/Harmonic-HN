@@ -47,7 +47,7 @@ import com.simon.harmonichackernews.settings.TitleFilterMatchMode
 import com.simon.harmonichackernews.settings.TitleFilterRule
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -187,15 +187,15 @@ internal fun FilterRuleListContent(
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("filter-rule-list-content")) {
         if (!editable) Text(
             "These saved rules use an unsupported or damaged format. They are inactive, and their data has been kept unchanged. A newer version of Harmonic may be needed to read them.",
-            fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+            fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
         )
-        Text(description, fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+        Text(description, fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
         Button(onClick = onAdd, enabled = editable, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Icon(painterResource(Res.drawable.ic_add), null, Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Add rule", fontFamily = ProductSansFontFamily)
+            Text("Add rule", fontFamily = AppUiFontFamily)
         }
         LazyColumn(
             // The shared card animates this natural height, including wrapped mode labels.
@@ -204,7 +204,7 @@ internal fun FilterRuleListContent(
             if (rows.isEmpty()) item {
                 Box(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Text(if (editable) emptyMessage else "Saved rules unavailable", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily, fontSize = 15.sp)
+                        fontFamily = AppUiFontFamily, fontSize = 15.sp)
                 }
             }
             itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
@@ -217,9 +217,9 @@ internal fun FilterRuleListContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(row.title, fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 20.sp,
+                        Text(row.title, fontFamily = AppUiFontFamily, fontSize = 16.sp, lineHeight = 20.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(row.mode, fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
+                        Text(row.mode, fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                     }
                     IconButton(onClick = { onEdit(index) }, enabled = editable, modifier = Modifier.size(48.dp)) {
@@ -350,7 +350,7 @@ internal fun TitleFilterRuleEditorContent(
                         RoundedCornerShape(4.dp),
                     ) else Modifier),
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp,
-                    lineHeight = 24.sp, fontFamily = ProductSansFontFamily),
+                    lineHeight = 24.sp, fontFamily = AppUiFontFamily),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -359,7 +359,7 @@ internal fun TitleFilterRuleEditorContent(
                     if (inlineHint) {
                         Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
                             if (text.isEmpty()) Text("Word or phrase", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 16.sp, lineHeight = 24.sp, fontFamily = ProductSansFontFamily)
+                                fontSize = 16.sp, lineHeight = 24.sp, fontFamily = AppUiFontFamily)
                             input()
                         }
                     } else OutlinedTextFieldDefaults.DecorationBox(
@@ -371,7 +371,7 @@ internal fun TitleFilterRuleEditorContent(
                 },
             )
             Column {
-                Text("Match", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium)
+                Text("Match", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Medium)
                 SegmentedSetting(
                     options = TitleFilterMatchMode.entries.map { it to it.label },
                     selected = mode,
@@ -421,7 +421,7 @@ internal fun DomainFilterRuleEditorContent(
             keyboardActions = KeyboardActions(onDone = { onSave() }),
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Include subdomains", fontFamily = ProductSansFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
+            Text("Include subdomains", fontFamily = AppUiFontFamily, fontSize = 16.sp, lineHeight = 21.sp,
                 modifier = Modifier.weight(1f).padding(end = 8.dp))
             Switch(checked = includeSubdomains && !isIpAddress, onCheckedChange = onIncludeSubdomainsChanged,
                 enabled = enabled && !isIpAddress,
@@ -429,7 +429,7 @@ internal fun DomainFilterRuleEditorContent(
         }
         if (legacyRule) Text(
             "This saved rule uses the previous contains-text matching. Saving replaces it with the hostname rule shown here.",
-            fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.tertiary,
+            fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.tertiary,
         )
         RulePreview(examples, if (rule == null) "Enter a valid hostname to see how it matches." else null)
         SettingsDialogTextButton(onClick = { customTest = !customTest }, enabled = enabled,
@@ -476,11 +476,11 @@ internal fun domainFilterPreviewExamples(rule: DomainFilterRule?): List<FilterPr
 @Composable
 private fun RulePreview(examples: List<FilterPreviewExample>, emptyMessage: String?) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Preview", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text("Preview", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest, shape = RoundedCornerShape(16.dp)) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                 if (emptyMessage != null) Text(emptyMessage, Modifier.padding(vertical = 14.dp),
-                    fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
+                    fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 examples.forEachIndexed { index, example ->
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -498,8 +498,8 @@ private fun RulePreviewResult(text: String, hidden: Boolean) {
         val tint = if (hidden) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         Icon(painterResource(if (hidden) Res.drawable.ic_check else Res.drawable.ic_horizontal_rule), null,
             Modifier.padding(end = 10.dp).size(20.dp), tint = tint)
-        Text(text, fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.weight(1f))
-        Text(if (hidden) "Hidden" else "Visible", fontFamily = ProductSansFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
+        Text(text, fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+        Text(if (hidden) "Hidden" else "Visible", fontFamily = AppUiFontFamily, fontSize = 12.sp, lineHeight = 17.sp,
             fontWeight = FontWeight.Medium, color = tint, modifier = Modifier.padding(start = 8.dp))
     }
 }

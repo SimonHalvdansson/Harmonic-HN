@@ -30,6 +30,7 @@ import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_section_font
+import com.simon.harmonichackernews.settings.AppearanceBooleanPreference
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
@@ -60,6 +61,10 @@ fun FontSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
     val commentsPresenter = remember(repository) { CommentsSettingsPresenter(repository) }
     FontSettingsScreen(
         selectedFont = settings.story.fontChoice,
+        applyEverywhere = settings.appearance.applyFontEverywhere,
+        onApplyEverywhereChanged = {
+            repository.setAppearanceBoolean(AppearanceBooleanPreference.APPLY_FONT_EVERYWHERE, it)
+        },
         storyStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(
                 score = SettingsStoryPreviewModel.points,
@@ -76,6 +81,8 @@ fun FontSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
 @Composable
 fun FontSettingsScreen(
     selectedFont: AppFont,
+    applyEverywhere: Boolean,
+    onApplyEverywhereChanged: (Boolean) -> Unit,
     storyStyle: StoryRowStyle,
     commentStyle: CommentRowStyle,
     onFontSelected: (AppFont) -> Unit,
@@ -86,7 +93,7 @@ fun FontSettingsScreen(
         title = stringResource(Res.string.settings_section_font),
         showNavigation = true,
         onBack = onBack,
-        contentVersion = selectedFont.hashCode() + storyStyle.hashCode() + commentStyle.hashCode(),
+        contentVersion = selectedFont.hashCode() + storyStyle.hashCode() + commentStyle.hashCode() + applyEverywhere.hashCode(),
         pinnedContent = {
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 LargestFontPreview(selectedFont) { font ->
@@ -120,6 +127,17 @@ fun FontSettingsScreen(
             }
         },
     ) {
+        item {
+            SettingsCard {
+                SegmentedSetting(
+                    title = "Apply",
+                    options = listOf(false to "Posts and comments", true to "Everywhere"),
+                    optionWeights = mapOf(false to 1.5f, true to 1f),
+                    selected = applyEverywhere,
+                    onSelected = onApplyEverywhereChanged,
+                )
+            }
+        }
         item {
             SettingsCategory("Font") {
                 Column(Modifier.selectableGroup()) {

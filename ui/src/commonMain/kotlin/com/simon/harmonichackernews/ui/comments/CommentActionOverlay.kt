@@ -103,7 +103,7 @@ import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -576,12 +576,12 @@ private fun CommentActionCardContent(
                     Text(
                         author ?: "Unknown user",
                         modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         maxLines = if (largeUserLabel) Int.MAX_VALUE else 1,
                     )
                     if (author != null && author == controller.story.by) {
-                        CommentAuthorBadge("OP", LocalContentColor.current, ProductSansFontFamily)
+                        CommentAuthorBadge("OP", LocalContentColor.current, AppUiFontFamily)
                     }
                 }
                 if (settings.canAsk) {
@@ -591,7 +591,7 @@ private fun CommentActionCardContent(
                     ) {
                         Icon(painterResource(Res.drawable.ic_auto_awesome), contentDescription = null,
                             modifier = Modifier.size(20.dp))
-                        Text("Ask", modifier = Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily)
+                        Text("Ask", modifier = Modifier.padding(start = 6.dp), fontFamily = AppUiFontFamily)
                     }
                 }
             }
@@ -664,7 +664,7 @@ private fun CommentActionCardContent(
                         Icon(painterResource(Res.drawable.ic_settings), contentDescription = null,
                             modifier = Modifier.size(20.dp))
                         Text("Toggle visibility of $placeholder",
-                            modifier = Modifier.padding(start = 8.dp), fontFamily = ProductSansFontFamily)
+                            modifier = Modifier.padding(start = 8.dp), fontFamily = AppUiFontFamily)
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
@@ -776,7 +776,7 @@ private fun CommentActionCardContent(
                         Text(
                             "Reply",
                             modifier = Modifier.padding(start = 8.dp),
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     }

@@ -81,6 +81,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
 }
 
 enum class AppearanceBooleanPreference(internal val storageKey: String) {
+    APPLY_FONT_EVERYWHERE(UserPreferenceKeys.APPLY_FONT_EVERYWHERE),
     SPECIAL_NIGHTTIME(UserPreferenceKeys.SPECIAL_NIGHTTIME),
     TRANSPARENT_STATUS_BAR(UserPreferenceKeys.TRANSPARENT_STATUS_BAR),
     COMPACT_HEADER(UserPreferenceKeys.COMPACT_HEADER),

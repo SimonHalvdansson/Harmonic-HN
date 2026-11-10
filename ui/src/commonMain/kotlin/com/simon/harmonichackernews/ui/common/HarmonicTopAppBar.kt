@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.themeBackground
 import org.jetbrains.compose.resources.painterResource
@@ -108,7 +108,7 @@ fun HarmonicTopAppBar(
             text = title,
             modifier = Modifier.padding(top = 1.dp),
             color = { colors.onSurface },
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 22.sp,
             fontWeight = FontWeight.Normal,
             style = platformTextStyle,

@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.unit.sp
+import com.simon.harmonichackernews.settings.AppearancePreferences
+import com.simon.harmonichackernews.settings.TextPreferences
+import com.simon.harmonichackernews.ui.content.contentFontFamily
 
 /**
  * Shared canvas for screens, headers, navigation layers, and native hosts. Light themes place
@@ -70,9 +73,16 @@ object HarmonicTheme {
 fun HarmonicTheme(
     colorScheme: ColorScheme,
     darkTheme: Boolean,
+    appearance: AppearancePreferences? = null,
     content: @Composable () -> Unit,
 ) {
-    val fontFamily = ProductSansFontFamily
+    // Nested palette previews inherit the font scope from their host.
+    val fontOverride = when {
+        appearance == null -> LocalAppUiFontOverride.current
+        appearance.applyFontEverywhere -> contentFontFamily(TextPreferences.sanitizeFont(appearance.font))
+        else -> null
+    }
+    val fontFamily = fontOverride ?: ProductSansFontFamily
     val typography = remember(fontFamily) {
         val defaults = Typography(fontFamily = fontFamily)
         // Compact UI text uses 20sp leading. Reading content supplies its own size and leading.
@@ -86,6 +96,7 @@ fun HarmonicTheme(
     val colors = key(darkTheme) { rememberAnimatedThemeColors(colorScheme) }
     val initialScheme = remember(colors) { colors.colorScheme }
     CompositionLocalProvider(
+        LocalAppUiFontOverride provides fontOverride,
         LocalHarmonicDarkTheme provides darkTheme,
         LocalTargetColorScheme provides colorScheme,
         LocalHarmonicColors provides colors,

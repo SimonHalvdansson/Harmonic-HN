@@ -22,7 +22,7 @@ import com.simon.harmonichackernews.settings.QuoteHighlightStyle
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentBooleanPreference
 import com.simon.harmonichackernews.ui.content.CommentRow
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 
@@ -66,7 +66,7 @@ fun QuoteHighlightingSettingsRoute(
                 text = "Distinguish quoted text from the reply with a subtle background, side line, or both.",
                 modifier = Modifier.padding(horizontal = 24.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )

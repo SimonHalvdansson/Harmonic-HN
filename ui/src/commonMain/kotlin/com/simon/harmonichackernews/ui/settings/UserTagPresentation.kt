@@ -34,7 +34,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_check
 import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.ui.content.userTagColor
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -106,7 +106,7 @@ internal fun UserTagPreview(userName: String, tag: String, color: UserTagColor) 
             preview,
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 14.sp,
             lineHeight = 20.sp,
         )

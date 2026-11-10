@@ -47,7 +47,7 @@ import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatformProvider
 import com.simon.harmonichackernews.ui.comments.LinkPreviewContent
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -184,7 +184,7 @@ private fun DebugLinkPreviewSampleRow(
             text = sample.type.title,
             modifier = Modifier.padding(horizontal = 24.dp),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
             lineHeight = 21.sp,
@@ -196,7 +196,7 @@ private fun DebugLinkPreviewSampleRow(
                 .clickable { onOpenLink(sample.hnUrl) }
                 .padding(horizontal = 24.dp, vertical = 5.dp),
             color = MaterialTheme.colorScheme.primary,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 14.sp,
             lineHeight = 18.sp,
             textDecoration = TextDecoration.Underline,
@@ -260,7 +260,7 @@ private fun DebugLinkPreviewSampleRow(
                         )
                         .padding(14.dp),
                     color = MaterialTheme.colorScheme.onErrorContainer,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                 )
             }

@@ -99,7 +99,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.navigation.EditorType
@@ -336,7 +336,7 @@ fun EditorScreen(
     when (dialog) {
         EditorDialog.OriginalComment -> SettingsAlertDialog(
             onDismissRequest = { dialog = null },
-            title = { Text("Replying to ${user.orEmpty()}", fontFamily = ProductSansFontFamily) },
+            title = { Text("Replying to ${user.orEmpty()}", fontFamily = AppUiFontFamily) },
             scrollableContent = true,
             text = {
                 OriginalCommentText(
@@ -394,7 +394,7 @@ private fun EditorMessageActionDialog(
                 Text(
                     text = value,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                 )
             }
         },
@@ -407,7 +407,7 @@ private fun EditorMessageActionDialog(
                     Modifier
                 }).verticalScroll(rememberScrollState()),
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
                 style = includeFontPaddingStyle,
@@ -471,7 +471,7 @@ private fun ComposeEditorTopBar(
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 22.sp,
                 lineHeight = 28.sp,
                 maxLines = 1,
@@ -482,7 +482,7 @@ private fun ComposeEditorTopBar(
                 Text(
                     text = subtitle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                     maxLines = 1,
@@ -549,7 +549,7 @@ private fun OriginalCommentText(
             text = formattedParent,
             modifier = modifier.fillMaxWidth().testTag("compose_editor_replying_text"),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 15.sp,
             lineHeight = 20.sp,
             style = includeFontPaddingStyle,
@@ -900,7 +900,7 @@ private val editorFieldShape = RoundedCornerShape(4.dp)
 
 private val editorTextStyle: TextStyle
     @Composable get() = TextStyle(
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontSize = 16.sp,
         lineHeight = 20.sp,
     )

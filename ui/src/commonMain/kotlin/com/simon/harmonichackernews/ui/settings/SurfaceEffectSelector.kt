@@ -35,7 +35,7 @@ import com.simon.harmonichackernews.ui.common.LocalHazePreferences
 import com.simon.harmonichackernews.ui.common.currentSharedHazeState
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 internal fun SurfaceEffectSelector(mode: SurfaceEffectMode, onSelected: (SurfaceEffectMode) -> Unit) {
@@ -54,7 +54,7 @@ internal fun SurfaceEffectSelector(mode: SurfaceEffectMode, onSelected: (Surface
                     text = value.displayLabel,
                     color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
                         else MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                 )

@@ -8,6 +8,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
@@ -26,7 +28,9 @@ fun HarmonicTheme(
     val palette = remember(context, configuration, activeSelection) {
         harmonicThemePalette(context, activeSelection)
     }
-    HarmonicTheme(palette.colorScheme, palette.dark, content)
+    val repository = context.harmonicAppComposition.settings
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
+    HarmonicTheme(palette.colorScheme, palette.dark, appearance = settings.appearance, content = content)
 }
 
 /** System supplies the entire scheme; presets and custom themes are portable. */

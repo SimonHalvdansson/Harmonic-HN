@@ -96,7 +96,7 @@ import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
 import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.toCommentRowStyle
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.HazeGlassAppearance
 import com.simon.harmonichackernews.ui.common.sharedHazeBackground
@@ -500,7 +500,7 @@ fun CommentsScreen(
                                     .background(badgeBackground)
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
                                 color = badgeText,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 12.sp,
                             )
@@ -711,7 +711,7 @@ fun CommentsScreen(
                 text = {
                     Text(
                         "Scroll to top",
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 },
@@ -810,7 +810,7 @@ private fun AlgoliaFallbackNotice() {
         Text(
             text = stringResource(Res.string.comments_algolia_fallback),
             color = colors.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 16.sp,

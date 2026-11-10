@@ -58,7 +58,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogDismissState
 import com.simon.harmonichackernews.ui.settings.CompleteSettingsDialogDismissal
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -181,7 +181,7 @@ fun LoginDialog(
                 text = stringResource(Res.string.login_dialog_title),
                 modifier = Modifier.semantics { heading() },
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 27.sp,
                 lineHeight = 34.sp,
@@ -256,7 +256,7 @@ fun LoginDialog(
                         bottom = HarmonicDimens.login_dialog_small_spacing,
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
                 )
@@ -278,7 +278,7 @@ fun LoginDialog(
                             bottom = HarmonicDimens.login_dialog_small_spacing,
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 13.sp,
                         lineHeight = 16.sp,
                     )
@@ -343,7 +343,7 @@ fun LoginDialog(
                             Text(
                                 text = stringResource(Res.string.login_dialog_loading),
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 14.sp,
                                 lineHeight = 18.sp,
                             )
@@ -354,7 +354,7 @@ fun LoginDialog(
                                 top = HarmonicDimens.login_dialog_section_spacing,
                             ),
                             color = MaterialTheme.colorScheme.error,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                         )
@@ -386,7 +386,7 @@ fun LoginDialog(
                                 stringResource(Res.string.login_dialog_troubleshooting),
                             modifier = Modifier.verticalScroll(rememberScrollState()),
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
                         )
@@ -450,7 +450,7 @@ fun CaptchaDialogLayout(
             Text(
                 text = stringResource(Res.string.captcha_dialog_title),
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
             )
@@ -477,7 +477,7 @@ fun CaptchaDialogLayout(
                         text = message,
                         modifier = Modifier.padding(top = HarmonicDimens.captcha_dialog_error_top_spacing),
                         color = MaterialTheme.colorScheme.error,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 14.sp,
                         lineHeight = 18.sp,
                     )

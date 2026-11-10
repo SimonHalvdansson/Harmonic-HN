@@ -36,7 +36,7 @@ import com.simon.harmonichackernews.ui.common.TextButton
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
@@ -61,7 +61,7 @@ internal fun NewStoriesFilterDialog(
                     "Show stories that meet both minimums. Only applies to New stories.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                 )
                 ThresholdSlider("Minimum points", points, { points = it })
                 ThresholdSlider("Minimum comments", comments, { comments = it })
@@ -70,18 +70,18 @@ internal fun NewStoriesFilterDialog(
                     enabled = initial.active || points > 0 || comments > 0,
                 ) {
                     Icon(painterResource(Res.drawable.ic_close), null, Modifier.size(18.dp))
-                    Text("Clear filters", Modifier.padding(start = 8.dp), fontFamily = ProductSansFontFamily)
+                    Text("Clear filters", Modifier.padding(start = 8.dp), fontFamily = AppUiFontFamily)
                 }
             }
         },
         dismissButton = {
             SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel", fontFamily = ProductSansFontFamily)
+                Text("Cancel", fontFamily = AppUiFontFamily)
             }
         },
         confirmButton = {
             SettingsDialogTextButton(onClick = { onApply(NewStoriesFilter(points, comments)) }) {
-                Text("Apply", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
+                Text("Apply", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold)
             }
         },
     )
@@ -95,7 +95,7 @@ private fun ThresholdSlider(label: String, value: Int, onValueChange: (Int) -> U
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyMedium, fontFamily = ProductSansFontFamily,
+                style = MaterialTheme.typography.bodyMedium, fontFamily = AppUiFontFamily,
             )
             Surface(
                 shape = RoundedCornerShape(8.dp),
@@ -106,7 +106,7 @@ private fun ThresholdSlider(label: String, value: Int, onValueChange: (Int) -> U
                 Text(
                     valueLabel, Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
-                    fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold,
+                    fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -160,7 +160,7 @@ internal fun NewStoriesFilterIndicator(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Icon(painterResource(Res.drawable.ic_filter_list), null, Modifier.size(18.dp))
-                Text(summary, style = MaterialTheme.typography.labelLarge, fontFamily = ProductSansFontFamily)
+                Text(summary, style = MaterialTheme.typography.labelLarge, fontFamily = AppUiFontFamily)
             }
             IconButton(onClick = onClear) {
                 Icon(painterResource(Res.drawable.ic_close), "Clear new story filters", Modifier.size(18.dp))

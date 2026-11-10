@@ -69,7 +69,7 @@ import com.simon.harmonichackernews.resources.library_logo_pdfjs
 import com.simon.harmonichackernews.resources.library_logo_readability
 import com.simon.harmonichackernews.resources.settings_section_licenses
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -166,7 +166,7 @@ fun LicensesScreen(
 private fun LicenseHeader(platformTextStyle: TextStyle) {
     val colors = MaterialTheme.colorScheme
     val style = TextStyle(
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp,
     ).merge(platformTextStyle)
@@ -230,7 +230,7 @@ private fun LicenseRow(
             Text(
                 text = license.name,
                 color = colors.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
                 style = platformTextStyle,
@@ -238,7 +238,7 @@ private fun LicenseRow(
             Text(
                 text = license.licenseType,
                 color = colors.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
                 style = platformTextStyle,
             )
@@ -249,7 +249,7 @@ private fun LicenseRow(
                 text = license.creator,
                 modifier = Modifier.widthIn(max = 180.dp),
                 color = colors.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
                 textAlign = TextAlign.End,
                 style = platformTextStyle,
@@ -273,7 +273,7 @@ private fun LicenseIcon(license: LicenseEntryUi) {
             Text(
                 text = license.name.take(1).uppercase(),
                 color = Color(0xff303030),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
             )

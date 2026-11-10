@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.math.roundToInt
 
 /** Same 0–100 scale as the cutoff and map, with a fixed width while inference is pending. */
@@ -25,6 +25,6 @@ internal fun CategoryCosineScore(similarity: Float?) {
         .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(5.dp))
         .padding(horizontal = 5.dp, vertical = 2.dp).clearAndSetSemantics {
             contentDescription = if (similarity == null) "Cosine similarity unavailable" else "Cosine similarity $value out of 100"
-        }, fontFamily = ProductSansFontFamily, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+        }, fontFamily = AppUiFontFamily, fontSize = 11.sp, fontWeight = FontWeight.Medium,
         lineHeight = 14.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSecondaryContainer)
 }

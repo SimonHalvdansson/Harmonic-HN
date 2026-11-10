@@ -30,7 +30,7 @@ import com.simon.harmonichackernews.settings.UserAvatarOptions
 import com.simon.harmonichackernews.settings.UserAvatarShape
 import com.simon.harmonichackernews.settings.UserAvatarStyle
 import com.simon.harmonichackernews.settings.userAvatarInitial
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 private data class AvatarVisual(
@@ -107,7 +107,7 @@ fun UserAvatar(
 private fun LetterAvatar(author: String, artwork: GeneratedAvatarArtwork, saturation: Float) {
     val initial = remember(author) { userAvatarInitial(author) }
     val textMeasurer = rememberTextMeasurer()
-    val fontFamily = ProductSansFontFamily
+    val fontFamily = AppUiFontFamily
     Canvas(Modifier.fillMaxSize()) {
         scale(size.width / 100f, size.height / 100f, pivot = Offset.Zero) {
             artwork.draw(this, saturation)

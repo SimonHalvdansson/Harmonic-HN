@@ -69,7 +69,7 @@ import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.preloadResourcePreview
 import com.simon.harmonichackernews.ui.content.rememberResourcePreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
@@ -325,7 +325,7 @@ fun PaletteTintSettingsScreen(
             ),
             contentColor = MaterialTheme.colorScheme.onFloatingContainer,
             icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
-            text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+            text = { Text("Reset", fontFamily = AppUiFontFamily, fontWeight = FontWeight.SemiBold) },
         )
     }
 }
@@ -382,14 +382,14 @@ private fun PaletteAdjustment(
                 text = label,
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
             Text(
                 text = valueLabel,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
             )
         }

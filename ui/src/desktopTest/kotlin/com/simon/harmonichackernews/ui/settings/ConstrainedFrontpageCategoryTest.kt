@@ -207,7 +207,7 @@ class ConstrainedFrontpageCategoryTest {
         private var time = 0L
         private val scene = ImageComposeScene(width, height, Density(1f, scale)) {
             val palette = HarmonicThemeCatalog.scheme("dynamic", false)
-            HarmonicTheme(palette.colorScheme, palette.dark, content)
+            HarmonicTheme(palette.colorScheme, palette.dark, content = content)
         }
         fun frames(count: Int = 8) = repeat(count) { scene.render(time.also { time += 16_666_667L }).close() }
         fun nodes(merged: Boolean = true): List<SemanticsNode> {

@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 /** Compose replacement for the selectable message in the legacy Android failure dialog. */
 @Composable
@@ -36,7 +36,7 @@ fun FailureDetailDialog(
                     Text(
                         text = value,
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 16.sp,
                         lineHeight = 20.sp,
                         overflow = TextOverflow.Clip,

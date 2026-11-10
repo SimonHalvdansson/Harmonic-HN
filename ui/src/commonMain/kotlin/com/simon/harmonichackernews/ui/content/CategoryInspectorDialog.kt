@@ -66,7 +66,7 @@ import com.simon.harmonichackernews.ui.common.platformDialogPredictiveBackSuppor
 import com.simon.harmonichackernews.ui.common.platformDialogProperties
 import com.simon.harmonichackernews.ui.settings.ArticleCategoryEditor
 import com.simon.harmonichackernews.ui.settings.settingsDialogMaxWidth
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
@@ -207,7 +207,7 @@ internal fun CategoryInspectorContent(
                 Text(if (compactHeight) { if (sample) "Sample" else "Category" }
                     else if (sample) "Sample category inspector" else "Category match",
                     Modifier.weight(1f),
-                    color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                    color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                     style = MaterialTheme.typography.titleSmall,
                     fontSize = if (compactHeight) 12.sp else MaterialTheme.typography.titleSmall.fontSize,
                     lineHeight = if (compactHeight) 16.sp else MaterialTheme.typography.titleSmall.lineHeight,
@@ -220,9 +220,9 @@ internal fun CategoryInspectorContent(
                 .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(name, Modifier.semantics { heading() },
-                    color = colors.onSurface, fontFamily = ProductSansFontFamily,
+                    color = colors.onSurface, fontFamily = AppUiFontFamily,
                     style = MaterialTheme.typography.headlineSmall)
-                Text(title, color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                Text(title, color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                     style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CategoryScoreMetric("Similarity", score?.takeIf(Float::isFinite)?.let(::similarityScore))
@@ -230,13 +230,13 @@ internal fun CategoryInspectorContent(
                 }
                 if (!canEdit) {
                     Text("This category was removed.", color = colors.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodySmall)
+                        fontFamily = AppUiFontFamily, style = MaterialTheme.typography.bodySmall)
                 } else if (result == null) {
                     Text("This match needs to be recalculated.", color = colors.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodySmall)
+                        fontFamily = AppUiFontFamily, style = MaterialTheme.typography.bodySmall)
                 } else if (score?.isFinite() != true) {
                     Text("This category has no current similarity score. Edit its examples to update the match.",
-                        color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                        color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                         style = MaterialTheme.typography.bodySmall)
                 } else {
                     Text(
@@ -245,13 +245,13 @@ internal fun CategoryInspectorContent(
                             ArticleCategoryInputSource.PREVIEW_TEXT -> "Based on the title and preview text"
                         },
                         modifier = Modifier.testTag("category-inspector-provenance"),
-                        color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                        color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 if (nearby.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Nearby categories", Modifier.semantics { heading() }, color = colors.onSurface,
-                        fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.titleSmall)
+                        fontFamily = AppUiFontFamily, style = MaterialTheme.typography.titleSmall)
                     nearby.forEach { match ->
                         val category = preferences.categories.first { it.id == match.categoryId }
                         val categoryName = preferences.name(category)
@@ -262,8 +262,8 @@ internal fun CategoryInspectorContent(
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(categoryName, Modifier.weight(1f), color = colors.onSurface,
-                                    fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodyMedium)
-                                Text(value, color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                                    fontFamily = AppUiFontFamily, style = MaterialTheme.typography.bodyMedium)
+                                Text(value, color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                                     style = MaterialTheme.typography.labelLarge)
                             }
                             LinearProgressIndicator(progress = { match.similarity.coerceIn(0f, 1f) },
@@ -275,7 +275,7 @@ internal fun CategoryInspectorContent(
                 }
                 Text(if (sample) "These sample scores demonstrate the inspector. They are not a result for a live story."
                     else "Labels need at least 75% of the strongest match.",
-                    color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily,
+                    color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
                     fontSize = 12.sp, lineHeight = 17.sp)
             }
             Button(onClick = onEditExamples, enabled = canEdit,
@@ -284,7 +284,7 @@ internal fun CategoryInspectorContent(
                     .semantics { contentDescription = "Edit examples for $name" }) {
                 Icon(painterResource(Res.drawable.ic_edit), null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (compactHeight) "Examples" else "Edit examples", fontFamily = ProductSansFontFamily,
+                Text(if (compactHeight) "Examples" else "Edit examples", fontFamily = AppUiFontFamily,
                     modifier = Modifier.clearAndSetSemantics { })
             }
         }
@@ -297,9 +297,9 @@ private fun CategoryScoreMetric(label: String, value: String?) {
         contentDescription = if (value == null) "$label, not available" else "$label, $value out of 100"
     }) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.labelMedium)
+            fontFamily = AppUiFontFamily, style = MaterialTheme.typography.labelMedium)
         Text(if (value == null) "—" else "$value / 100", color = MaterialTheme.colorScheme.primary,
-            fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.headlineSmall)
+            fontFamily = AppUiFontFamily, style = MaterialTheme.typography.headlineSmall)
     }
 }
 

@@ -68,7 +68,7 @@ fun AppearanceSettingsScreen(
         item {
             SettingsCategory("Visual") {
                 SettingRow(
-                    title = "Title and comment font",
+                    title = "Font",
                     summary = state.fontLabel,
                     icon = Res.drawable.ic_font_download,
                     onClick = { onNavigate(SettingsSection.Font) },

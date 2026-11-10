@@ -50,7 +50,7 @@ import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.prepareCommentHtml
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.data.LinkPreviewDetail
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.ui.settings.linkPreviewIcon

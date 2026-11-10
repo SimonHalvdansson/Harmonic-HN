@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_algolia
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.ui.theme.GoogleSansCodeFontFamily
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppTechnicalFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 data class FaviconProviderUiOption(
@@ -80,7 +80,7 @@ fun FaviconProviderDialog(
                             Text(
                                 text = provider.label,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 lineHeight = 20.sp,
@@ -88,7 +88,7 @@ fun FaviconProviderDialog(
                             Text(
                                 text = provider.urlTemplate,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = GoogleSansCodeFontFamily,
+                                fontFamily = AppTechnicalFontFamily,
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp,
                             )
@@ -145,7 +145,7 @@ fun CommentsProviderDialog(
                             Text(
                                 text = provider.label,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 lineHeight = 20.sp,
@@ -157,7 +157,7 @@ fun CommentsProviderDialog(
                                     "Fast threaded results from Algolia's HN search API"
                                 },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 12.sp,
                                 lineHeight = 15.sp,
                             )
@@ -194,7 +194,7 @@ private fun ProviderBrandMark(provider: CommentsProvider) {
             Text(
                 text = "Y",
                 color = Color.White,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 21.sp,
             )

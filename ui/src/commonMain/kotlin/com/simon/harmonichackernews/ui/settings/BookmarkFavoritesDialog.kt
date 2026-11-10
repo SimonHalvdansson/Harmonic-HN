@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -168,7 +168,7 @@ fun AddBookmarksToFavoritesDialog(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -306,7 +306,7 @@ private fun BookmarkFavoriteResults(
                             Text(
                                 text = result.title,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 15.sp,
                                 lineHeight = 19.sp,
                                 maxLines = 2,
@@ -316,7 +316,7 @@ private fun BookmarkFavoriteResults(
                                 text = result.message,
                                 modifier = Modifier.padding(top = 2.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 13.sp,
                                 lineHeight = 17.sp,
                                 maxLines = 3,

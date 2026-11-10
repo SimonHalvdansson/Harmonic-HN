@@ -244,7 +244,7 @@ private fun ColorSchemePicker(
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
                     color = { if (checked) colors.onSecondaryContainer else colors.onSurface },
-                    fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold,
+                    fontFamily = AppUiFontFamily, fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp, lineHeight = 18.sp, textAlign = TextAlign.Center,
                 )
             },
@@ -298,7 +298,7 @@ private fun ColorSchemeSwatch(
         }
         Text(label, modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp).padding(top = 2.dp),
             color = { colors.onSurface },
-            fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
+            fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 16.sp,
             textAlign = TextAlign.Center,
             fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium)
     }

@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.PopupPositionProvider
 import com.simon.harmonichackernews.ui.common.TextButton
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.delay
 
 @Composable
@@ -117,12 +117,12 @@ internal fun StoriesMenuWelcomeHint(
                 Column(Modifier.width(maxWidth).heightIn(max = maxHeight)
                     .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
                     Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                        Text("Make it yours", fontFamily = ProductSansFontFamily,
+                        Text("Make it yours", fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
                             color = colors.titleContentColor, modifier = Modifier.semantics { heading() })
                         Spacer(Modifier.height(4.dp))
                     Text("Login and extensive customization options are available from here when you feel like it",
-                            fontFamily = ProductSansFontFamily, style = MaterialTheme.typography.bodyMedium)
+                            fontFamily = AppUiFontFamily, style = MaterialTheme.typography.bodyMedium)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -130,7 +130,7 @@ internal fun StoriesMenuWelcomeHint(
                             onClick = dismiss,
                             colors = ButtonDefaults.textButtonColors(contentColor = colors.actionContentColor),
                         ) {
-                            Text("Got it", fontFamily = ProductSansFontFamily)
+                            Text("Got it", fontFamily = AppUiFontFamily)
                         }
                     }
                 }

@@ -6,7 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -72,7 +72,7 @@ fun AiSummarySettingsScreen(
                 text = "Summarize articles and use Ask to ask questions about articles and comments with your selected AI model.",
                 modifier = Modifier.padding(horizontal = 24.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
@@ -85,7 +85,7 @@ fun AiSummarySettingsScreen(
                         text = reason,
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 14.sp,
                     )
                 }

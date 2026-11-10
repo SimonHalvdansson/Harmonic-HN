@@ -116,7 +116,7 @@ import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.contentTween
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.flow.first
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButton
@@ -376,7 +376,7 @@ internal fun StoriesHeader(
                     Text(
                         text = lastUpdated.orEmpty(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
@@ -441,7 +441,7 @@ internal fun StoriesHeader(
                         Text(
                             text = status,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.fillMaxWidth(),
@@ -841,7 +841,7 @@ private fun SearchHeader(
         iconColor = colors.onSurfaceVariant,
         menuColor = colors.menuBackground,
         menuTextColor = colors.onSurface,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         onDraftChanged = controller::updateSearchDraft,
         onSearch = controller.listener::onSearch,
         onClose = controller.listener::onCloseSearch,
@@ -975,8 +975,8 @@ internal fun HeaderStatus(
         controller.mainStories.isEmpty() && !controller.presentation.loading && !controller.presentation.loadingFailed
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
-            Text("No stories match these filters", color = colors.onSurface, fontFamily = ProductSansFontFamily)
-            Text("Try lower minimums or clear the filters.", color = colors.onSurfaceVariant, fontFamily = ProductSansFontFamily)
+            Text("No stories match these filters", color = colors.onSurface, fontFamily = AppUiFontFamily)
+            Text("Try lower minimums or clear the filters.", color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily)
         }
     }
     StoryListStatus(
@@ -994,7 +994,7 @@ internal fun HeaderStatus(
         searchMode = searchMode,
         normalColor = colors.onSurface,
         disabledColor = colors.onSurfaceVariant,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         loadingIndicator = { HarmonicLoadingIndicator(Modifier.size(48.dp)) },
         centerFailure = centerFailure,
         showFailure = showFailure,

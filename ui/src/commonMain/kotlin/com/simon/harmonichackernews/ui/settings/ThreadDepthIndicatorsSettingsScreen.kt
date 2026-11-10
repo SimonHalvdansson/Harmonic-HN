@@ -28,7 +28,7 @@ import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.ui.content.CommentRow
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 
@@ -193,7 +193,7 @@ private fun ThreadDepthIndicatorsSettingsScreen(
                                 text = CommentDepthPreferences.modeLabel(option),
                                 modifier = Modifier.padding(start = 4.dp),
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 16.sp,
                             )
                         }

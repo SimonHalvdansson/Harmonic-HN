@@ -36,7 +36,7 @@ import com.simon.harmonichackernews.format.parseChangelogMarkdown
 import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.ui.common.fadingScrollEdges
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -124,7 +124,7 @@ private fun ChangelogHeading(text: String, latest: Boolean) {
             modifier = Modifier.weight(1f).semantics { heading() },
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
             ),
         )
@@ -148,7 +148,7 @@ private fun ChangelogBodyText(text: String) {
         text = text,
         color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.bodyLarge.copy(
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = ChangelogBodyFontSize,
             lineHeight = ChangelogBodyLineHeight,
         ),

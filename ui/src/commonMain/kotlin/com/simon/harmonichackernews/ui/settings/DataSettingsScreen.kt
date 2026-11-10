@@ -26,7 +26,7 @@ import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.settings.DataSettingsSnapshot
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 enum class DataSettingsAction {
     AddBookmarksToFavorites,
@@ -218,7 +218,7 @@ fun ClearAiModelsConfirmationDialog(
                     text = "Downloaded and partially downloaded local AI models will be " +
                         "removed. You can download them again later.",
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                 )
@@ -227,7 +227,7 @@ fun ClearAiModelsConfirmationDialog(
                         text = "Models to delete",
                         modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         lineHeight = 18.sp,
@@ -236,7 +236,7 @@ fun ClearAiModelsConfirmationDialog(
                         Text(
                             text = "•  $modelName",
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                         )
@@ -272,7 +272,7 @@ fun ImportBookmarksDialog(
                     text = "Choose what should happen to your existing bookmarks.",
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                 )
@@ -330,7 +330,7 @@ private fun ImportBookmarksOption(
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
@@ -338,7 +338,7 @@ private fun ImportBookmarksOption(
             Text(
                 text = summary,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
             )

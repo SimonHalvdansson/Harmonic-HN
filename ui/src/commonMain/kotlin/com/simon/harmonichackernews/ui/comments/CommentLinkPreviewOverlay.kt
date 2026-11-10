@@ -73,7 +73,7 @@ import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.StoryTextProcessor
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -465,7 +465,7 @@ fun ReferenceCardContent(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             stringResource(Res.string.link_summary_open_short),
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -508,7 +508,7 @@ private fun HackerNewsStoryCard(
                 "Hacker News",
                 modifier = Modifier.padding(start = 8.dp),
                 color = colors.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
                 lineHeight = 16.sp,
@@ -519,7 +519,7 @@ private fun HackerNewsStoryCard(
                     domain,
                     modifier = Modifier.weight(1f),
                     color = colors.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 12.sp,
                     lineHeight = 14.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.End,
@@ -549,7 +549,7 @@ private fun HackerNewsStoryCard(
                 byline,
                 modifier = Modifier.padding(top = 4.dp),
                 color = colors.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 13.sp,
                 lineHeight = 16.sp,
             )
@@ -592,7 +592,7 @@ private fun HackerNewsStoryCard(
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Text(stringResource(Res.string.link_summary_open_short), fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.link_summary_open_short), fontFamily = AppUiFontFamily, fontWeight = FontWeight.Bold)
                 Icon(painterResource(Res.drawable.ic_chevron_right), null, Modifier.padding(start = 4.dp).size(18.dp))
             }
         }
@@ -605,7 +605,7 @@ private fun HnStoryStat(count: Int, singular: String, plural: String) {
         Text(
             count.toString(),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp,
             lineHeight = 20.sp,
@@ -613,7 +613,7 @@ private fun HnStoryStat(count: Int, singular: String, plural: String) {
         Text(
             if (count == 1) singular else plural,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 12.sp,
             lineHeight = 14.sp,
         )

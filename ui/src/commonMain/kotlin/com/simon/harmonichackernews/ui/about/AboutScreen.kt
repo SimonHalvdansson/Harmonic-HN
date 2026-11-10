@@ -59,8 +59,8 @@ import com.simon.harmonichackernews.resources.settings_section_about
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.settings.SettingsCard
-import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppHeadlineFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -148,7 +148,7 @@ fun AboutScreen(
                             .fillMaxWidth()
                             .padding(top = 22.dp, bottom = 18.dp),
                         color = colors.onSurface,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 15.sp,
                         style = platformTextStyle,
                     )
@@ -203,7 +203,7 @@ private fun AboutIdentity(
                 text = "Harmonic",
                 modifier = Modifier.offset(y = (-2).dp).semantics { heading() },
                 color = colors.onSurface,
-                fontFamily = GoogleSansFlexRoundedFontFamily,
+                fontFamily = AppHeadlineFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(29.dp),
                 style = platformTextStyle,
@@ -212,7 +212,7 @@ private fun AboutIdentity(
                 text = versionLabel,
                 modifier = Modifier.offset(y = 34.dp),
                 color = colors.onSurfaceVariant,
-                fontFamily = GoogleSansFlexRoundedFontFamily,
+                fontFamily = AppHeadlineFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = fixedDpTextSize(13.dp),
                 style = platformTextStyle,
@@ -243,7 +243,7 @@ private fun FeedbackCard(platformTextStyle: TextStyle) {
             Text(
                 text = "Have feedback?",
                 color = colors.onSecondaryContainer,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
                 style = platformTextStyle,
@@ -252,7 +252,7 @@ private fun FeedbackCard(platformTextStyle: TextStyle) {
             Text(
                 text = FeedbackBody,
                 color = colors.onSecondaryContainer,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 style = platformTextStyle,
             )
@@ -301,7 +301,7 @@ private fun AboutActionButton(
                 text = text,
                 modifier = Modifier.align(Alignment.Center).offset(x = 12.dp, y = (-0.5).dp),
                 color = colors.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,

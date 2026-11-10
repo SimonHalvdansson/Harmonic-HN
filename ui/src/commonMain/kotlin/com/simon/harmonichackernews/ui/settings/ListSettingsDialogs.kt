@@ -65,7 +65,7 @@ import com.simon.harmonichackernews.resources.HarmonicDimens
 import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.WebViewPreloadMode
 import com.simon.harmonichackernews.ui.content.FontMetrics
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import kotlinx.coroutines.flow.first
@@ -81,7 +81,7 @@ fun FontSelectionDialog(
     SettingsAlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            SettingsDialogTitle(if (readerMode) "Reader mode font" else "Title and comment font")
+            SettingsDialogTitle(if (readerMode) "Reader mode font" else "Font")
         },
         edgeToEdgeContent = true,
         scrollableContent = true,
@@ -203,7 +203,7 @@ private fun PreloadPolicyDialog(
                 Text(
                     text = description,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                     modifier = Modifier.padding(horizontal = 24.dp),
@@ -226,7 +226,7 @@ private fun PreloadPolicyDialog(
                             Text(
                                 text = value.label,
                                 modifier = Modifier.padding(start = 4.dp),
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 fontSize = 16.sp,
                             )
                         }
@@ -241,7 +241,7 @@ private fun PreloadPolicyDialog(
                     Text(
                         text = "Minimum battery: " +
                             if (battery <= 0f) "Any" else "${battery.toInt()}%",
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 14.sp,
                     )
                     Slider(
@@ -332,7 +332,7 @@ fun StringListEditorDialog(
                     text = subtitle,
                     modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                 )
@@ -393,7 +393,7 @@ fun StringListEditorDialog(
                                 Text(
                                     text = emptyMessage,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = ProductSansFontFamily,
+                                    fontFamily = AppUiFontFamily,
                                     fontSize = 15.sp,
                                 )
                             }
@@ -421,7 +421,7 @@ fun StringListEditorDialog(
                                     text = item,
                                     modifier = Modifier.weight(1f),
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    fontFamily = ProductSansFontFamily,
+                                    fontFamily = AppUiFontFamily,
                                     fontSize = 16.sp,
                                     lineHeight = 20.sp,
                                     maxLines = 2,
@@ -462,7 +462,7 @@ fun StringListEditorDialog(
                             text = suggestionsLabel,
                             modifier = Modifier.padding(top = 18.dp),
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                         )

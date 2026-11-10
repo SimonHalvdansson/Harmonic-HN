@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.categorization.ArticleCategories
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.themeBackground
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
@@ -50,8 +50,8 @@ internal fun CategorySimilaritySetting(value: Float, onValueChange: (Float) -> U
     Column(Modifier.fillMaxWidth().themeBackground { cardBackground }.settingsSearchTarget("Similarity cutoff")
         .padding(horizontal = 24.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Similarity cutoff", Modifier.weight(1f), fontFamily = ProductSansFontFamily, fontSize = 16.sp)
-            Text("${(value * 100).roundToInt()} / 100", fontFamily = ProductSansFontFamily, fontSize = 15.sp)
+            Text("Similarity cutoff", Modifier.weight(1f), fontFamily = AppUiFontFamily, fontSize = 16.sp)
+            Text("${(value * 100).roundToInt()} / 100", fontFamily = AppUiFontFamily, fontSize = 15.sp)
             IconButton(onClick = onReset, enabled = resetEnabled) {
                 val buttonColors = IconButtonDefaults.iconButtonColors()
                 val resetColor = animateColorAsState(
@@ -96,9 +96,9 @@ internal fun CategorySimilaritySetting(value: Float, onValueChange: (Float) -> U
                 })
             })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("${(ArticleCategories.MIN_CUTOFF * 100).roundToInt()}", fontFamily = ProductSansFontFamily,
+            Text("${(ArticleCategories.MIN_CUTOFF * 100).roundToInt()}", fontFamily = AppUiFontFamily,
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${(ArticleCategories.MAX_CUTOFF * 100).roundToInt()}", fontFamily = ProductSansFontFamily,
+            Text("${(ArticleCategories.MAX_CUTOFF * 100).roundToInt()}", fontFamily = AppUiFontFamily,
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

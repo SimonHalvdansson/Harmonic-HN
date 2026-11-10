@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.cos
 import kotlin.math.sin
@@ -31,14 +31,14 @@ import kotlin.random.Random
 internal fun ArticleCategoryIntroduction(onHowItWorks: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 30.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         CategoryHeaderIllustration(Modifier.widthIn(max = 340.dp).fillMaxWidth().height(144.dp))
-        Text("Tag stories automatically", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.Medium, fontSize = 18.sp)
+        Text("Tag stories automatically", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Medium, fontSize = 18.sp)
         Text("Set up categories, compare items, and find matches using text embeddings.",
-            Modifier.padding(top = 4.dp), fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+            Modifier.padding(top = 4.dp), fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         TextButton(onClick = onHowItWorks, modifier = Modifier.align(Alignment.End)) {
             Icon(painterResource(Res.drawable.ic_info), null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text("How this works", fontFamily = ProductSansFontFamily, fontSize = 14.sp)
+            Text("How this works", fontFamily = AppUiFontFamily, fontSize = 14.sp)
         }
     }
 }
@@ -48,7 +48,7 @@ internal fun ArticleCategoryIntroduction(onHowItWorks: () -> Unit) {
 internal fun CategoryHeaderIllustration(modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val font = ProductSansFontFamily
+    val font = AppUiFontFamily
     val accents = listOf(scheme.primary, scheme.tertiary, scheme.secondary)
     val fills = listOf(scheme.primaryContainer, scheme.tertiaryContainer, scheme.secondaryContainer)
     val inks = listOf(scheme.onPrimaryContainer, scheme.onTertiaryContainer, scheme.onSecondaryContainer)

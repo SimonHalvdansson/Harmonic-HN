@@ -26,7 +26,7 @@ import coil3.request.crossfade
 import com.simon.harmonichackernews.network.OpenRouterProviderIcon
 import com.simon.harmonichackernews.network.OpenRouterProviderIconRepository
 import com.simon.harmonichackernews.network.networkHeader
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 internal fun AiModelProviderIcon(
@@ -58,7 +58,7 @@ internal fun AiModelProviderIcon(
         if (!iconLoaded) Text(
             text = providerSlug.take(1).uppercase().ifEmpty { "?" },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
             lineHeight = 14.sp,

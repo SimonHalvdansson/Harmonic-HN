@@ -45,6 +45,7 @@ object UserPreferenceKeys {
     const val HOTNESS = "pref_hotness"
     const val FAVICON_PROVIDER = "pref_favicon_provider"
     const val FONT = "pref_font"
+    const val APPLY_FONT_EVERYWHERE = "pref_apply_font_everywhere"
     const val HIDE_JOBS = "pref_hide_jobs"
     const val SWIPE_TO_HIDE = "pref_swipe_to_hide"
     const val HIDE_CLICKED = "pref_hide_clicked"
@@ -391,6 +392,7 @@ class StoredUserSettings(
                 },
                 colorSchemes = ColorSchemePreferences.read(store),
                 font = configuredFont(),
+                applyFontEverywhere = boolean(UserPreferenceKeys.APPLY_FONT_EVERYWHERE, false),
                 portraitSplitRatio = SplitRatioPreferences.sanitize(
                     store.getFloat(UserPreferenceKeys.SPLIT_RATIO_PORTRAIT, Float.NaN),
                 ),

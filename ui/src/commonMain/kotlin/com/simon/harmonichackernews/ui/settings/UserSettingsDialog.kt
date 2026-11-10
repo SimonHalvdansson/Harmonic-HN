@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.content.UserAvatar
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.common.TextButton
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -169,7 +169,7 @@ internal fun UserProfileDialogContent(
                     text = userName,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,
                 )
@@ -245,14 +245,14 @@ private fun UserLoadError(onRetry: () -> Unit) {
             text = "Loading failed",
             modifier = Modifier.padding(bottom = 6.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 16.sp,
         )
         Text(
             text = "Check the usernameâ€™s capitalization. HN profile names are case-sensitive.",
             modifier = Modifier.padding(bottom = 10.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
         )
@@ -268,7 +268,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
             Text(
                 text = "Retry",
                 modifier = Modifier.padding(start = 6.dp),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
             )
@@ -309,14 +309,14 @@ private fun UserLoadedContent(
                     "Block ${user.id}?",
                     modifier = Modifier.semantics { heading() },
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
                 Text(
                     "Their stories and comments will be hidden. You can unblock them from this profile or Settings â†’ Filters and tags.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                 )
@@ -336,7 +336,7 @@ private fun UserLoadedContent(
                 text = user.meta,
                 modifier = Modifier.padding(bottom = 4.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
             )
@@ -416,7 +416,7 @@ private fun UserOutlinedAction(
             text = label,
             modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
         )
@@ -442,7 +442,7 @@ private fun UserIconAction(
                 text = label,
                 modifier = textModifier,
                 color = tint,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 textAlign = if (horizontal) TextAlign.Start else TextAlign.Center,

@@ -44,7 +44,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ButtonDefaults
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
@@ -586,7 +586,7 @@ fun CommentsHeader(
                                             ),
                                         ) {
                                             Icon(painterResource(icon), null, Modifier.size(18.dp))
-                                            Text(label, Modifier.padding(start = 6.dp), fontFamily = ProductSansFontFamily,
+                                            Text(label, Modifier.padding(start = 6.dp), fontFamily = AppUiFontFamily,
                                                 fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }

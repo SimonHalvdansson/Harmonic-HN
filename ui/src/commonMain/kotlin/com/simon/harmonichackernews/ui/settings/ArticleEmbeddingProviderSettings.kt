@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.categorization.ArticleEmbeddingInput
 import com.simon.harmonichackernews.categorization.NativeEmbeddingProgress
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.themeBackground
 
 @Composable
@@ -41,7 +41,7 @@ internal fun ArticleEmbeddingProviderSettings(
                             trailing = {
                                 if (!native.preparing) TextButton(onClick = onResume) {
                                     Text(if (native.completed == 0 && !native.paused) "Prepare" else "Resume",
-                                        fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 18.sp)
+                                        fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 18.sp)
                                 }
                             })
                         LinearProgressIndicator(progress = { native.completed.toFloat() / native.total.coerceAtLeast(1) },

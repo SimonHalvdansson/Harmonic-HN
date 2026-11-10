@@ -50,7 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.simon.harmonichackernews.ui.common.captureSharedTransformSourceContent
 import com.simon.harmonichackernews.ui.theme.contrastingColor
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
@@ -151,7 +151,7 @@ internal fun CategoryLabelText(label: String, colors: StoryCategoryColors, modif
         .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(painterResource(categorySymbol(categoryId)), null, Modifier.size((12f * fontSize.value / 11f).dp), tint = colors.foreground)
-        Text(text = label, color = colors.foreground, fontFamily = ProductSansFontFamily,
+        Text(text = label, color = colors.foreground, fontFamily = AppUiFontFamily,
             style = MaterialTheme.typography.labelSmall, fontSize = fontSize)
     }
 }

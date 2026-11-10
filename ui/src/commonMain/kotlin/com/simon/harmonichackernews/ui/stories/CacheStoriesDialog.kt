@@ -28,7 +28,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.settings.StoryCachePreferences
 
 /**
@@ -79,7 +79,7 @@ fun CacheStoriesDialog(
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                 )
                 if (integratedWebView) {
                     Row(
@@ -105,7 +105,7 @@ fun CacheStoriesDialog(
                             modifier = Modifier.weight(1f).padding(start = 8.dp),
                             color = MaterialTheme.colorScheme.onSurface,
                             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                         )
                     }
                 }
@@ -122,7 +122,7 @@ fun CacheStoriesDialog(
                         modifier = Modifier.weight(1f),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                     )
                     Spacer(
                         Modifier.width(
@@ -133,7 +133,7 @@ fun CacheStoriesDialog(
                         text = sanitizedStoryCount.toString(),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -159,7 +159,7 @@ fun CacheStoriesDialog(
             SettingsDialogTextButton(onClick = onDismiss) {
                 Text(
                     text = stringResource(Res.string.common_cancel),
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                 )
             }
         },
@@ -174,7 +174,7 @@ fun CacheStoriesDialog(
             ) {
                 Text(
                     text = stringResource(Res.string.cache_stories_action),
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                 )
             }
         },

@@ -72,7 +72,7 @@ import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -189,7 +189,7 @@ fun LocalModelsPanel(
                     text = "System model managed by the operating system. No download required.",
                     modifier = Modifier.padding(top = 7.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
                 )
@@ -233,7 +233,7 @@ fun LocalModelsPanel(
                             "device to run in reasonable time.",
                         modifier = Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 11.sp,
                         lineHeight = 14.sp,
                     )
@@ -264,7 +264,7 @@ private fun LocalModelGroup(
                 text = it,
                 modifier = Modifier.padding(start = 2.dp, bottom = 5.dp),
                 color = MaterialTheme.colorScheme.primary,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
                 lineHeight = 15.sp,
@@ -322,7 +322,7 @@ fun ManagedLocalModelPanel(
                 Text(
                     text = title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     lineHeight = 18.sp,
@@ -331,7 +331,7 @@ fun ManagedLocalModelPanel(
                     text = status,
                     modifier = Modifier.padding(top = 2.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
                 )
@@ -341,7 +341,7 @@ fun ManagedLocalModelPanel(
             text = "This model is managed by the operating system and does not require a separate download.",
             modifier = Modifier.padding(top = 8.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 11.sp,
             lineHeight = 14.sp,
         )
@@ -431,7 +431,7 @@ private fun LocalModelCard(
                 Text(
                     text = row.model.displayName,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     lineHeight = 18.sp,
@@ -443,7 +443,7 @@ private fun LocalModelCard(
                         text = presentation.summary,
                         modifier = Modifier.padding(top = 2.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 11.sp,
                         lineHeight = 14.sp,
                         maxLines = 2,
@@ -515,7 +515,7 @@ private fun LocalModelCard(
                 text = status.orEmpty(),
                 modifier = Modifier.padding(start = 42.dp, top = 2.dp, end = 6.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 11.sp,
                 lineHeight = 14.sp,
             )
@@ -537,7 +537,7 @@ internal fun LocalModelTag(
             .background(background)
             .padding(horizontal = 5.dp, vertical = 2.dp),
         color = foreground,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         lineHeight = 10.sp,

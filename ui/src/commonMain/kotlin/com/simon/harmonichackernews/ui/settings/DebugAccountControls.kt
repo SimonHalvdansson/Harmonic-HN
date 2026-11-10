@@ -20,7 +20,7 @@ import com.simon.harmonichackernews.resources.ic_account_circle
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.common.TextButton
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import org.jetbrains.compose.resources.painterResource
 
@@ -41,26 +41,26 @@ internal fun DebugAccountControls(identity: DebugAccountIdentity, onOpenAccount:
     }
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.cardBackground).settingsSearchTarget("Account preview").padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Account preview", fontFamily = ProductSansFontFamily, color = MaterialTheme.colorScheme.onSurface)
+        Text("Account preview", fontFamily = AppUiFontFamily, color = MaterialTheme.colorScheme.onSurface)
         Text("View public activity and test Account settings as another user. Your real Hacker News login stays unchanged.",
-            fontFamily = ProductSansFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(username, { username = it; error = null }, modifier = Modifier.fillMaxWidth(),
             label = { Text("HN username") }, singleLine = true, isError = error != null,
             supportingText = error?.let { message -> { Text(message) } })
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Button(onClick = { select(username.trim()) }, enabled = username.isNotBlank() && username.trim().none(Char::isWhitespace)) {
-                Text("Use account", fontFamily = ProductSansFontFamily)
+                Text("Use account", fontFamily = AppUiFontFamily)
             }
             OutlinedButton(onClick = { select(null) }, enabled = state.username != null) {
-                Text("Use real account", fontFamily = ProductSansFontFamily)
+                Text("Use real account", fontFamily = AppUiFontFamily)
             }
         }
         Text(if (state.username != null) "Previewing ${state.username}" else "Using your real account",
-            fontFamily = ProductSansFontFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            fontFamily = AppUiFontFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = { focus.clearFocus(); onOpenAccount() }, modifier = Modifier.align(Alignment.End).settingsSearchTarget("Open Account settings")) {
             Icon(painterResource(Res.drawable.ic_account_circle), null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Open Account settings", fontFamily = ProductSansFontFamily)
+            Text("Open Account settings", fontFamily = AppUiFontFamily)
         }
     }
 }

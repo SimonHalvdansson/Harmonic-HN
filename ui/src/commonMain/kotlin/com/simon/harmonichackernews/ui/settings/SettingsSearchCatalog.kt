@@ -59,6 +59,7 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.Appearance, "look design layout customize")
     page(SettingsSection.Theme, "theme dark light black amoled oled dynamic material you colors colours",
         aliases = listOf("dark mode", "light mode", "theme"))
+    group(SettingsSection.Font, "", "Apply" to "everywhere posts comments font scope menus dialogs interface")
     page(SettingsSection.Font, "typeface typography fonts letters text size comments stories",
         aliases = listOf("font", "fonts", "typeface"))
     page(SettingsSection.PaletteTint, "image color colour vibrant muted saturation")

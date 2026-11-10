@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.presentation.StoryFrontDatePickerRequest
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 internal fun FrontPageDatePickerDialog(
@@ -71,7 +71,7 @@ private fun FrontPageDatePickerContent(
             Text(
                 text = "Select front page day",
                 modifier = Modifier.padding(start = 24.dp, top = 16.dp),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
             )
         },

@@ -69,8 +69,8 @@ import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.rememberResourceTintPalette
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.ui.content.contentTween
-import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppHeadlineFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.navigation.LocalActivityNavigationForwardExit
 import org.jetbrains.compose.resources.painterResource
@@ -148,7 +148,7 @@ internal fun WelcomeScreenContent(
                     }
                     Text(
                         text = if (styleChooser) "Apply" else "Get started",
-                        fontFamily = GoogleSansFlexRoundedFontFamily,
+                        fontFamily = AppHeadlineFontFamily,
                         fontWeight = FontWeight.Bold,
                         style = welcomeTextStyle,
                     )
@@ -213,7 +213,7 @@ internal fun WelcomeScreenContent(
                                 selected = expressive,
                                 position = 0,
                                 colors = filterButtonColors,
-                                fontFamily = GoogleSansFlexRoundedFontFamily,
+                                fontFamily = AppHeadlineFontFamily,
                                 onClick = { expressive = true },
                                 modifier = Modifier.weight(1f),
                             )
@@ -222,7 +222,7 @@ internal fun WelcomeScreenContent(
                                 selected = !expressive,
                                 position = 1,
                                 colors = filterButtonColors,
-                                fontFamily = ProductSansFontFamily,
+                                fontFamily = AppUiFontFamily,
                                 onClick = { expressive = false },
                                 modifier = Modifier.weight(1f),
                             )

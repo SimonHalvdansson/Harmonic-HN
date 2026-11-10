@@ -182,6 +182,7 @@ data class AppearancePreferences(
     val colorSchemes: ColorSchemeSelection = ColorSchemeSelection(),
     /** Saved font choice, shared by every color scheme. */
     val font: String = "googlesansflexrounded",
+    val applyFontEverywhere: Boolean = false,
     /** Null preserves the host’s original pane proportions until the user chooses a ratio. */
     val portraitSplitRatio: Float? = null,
     val landscapeSplitRatio: Float? = null,

@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -14,6 +15,20 @@ import com.simon.harmonichackernews.resources.product_sans_italic
 import com.simon.harmonichackernews.resources.product_sans_medium
 import com.simon.harmonichackernews.resources.product_sans_regular
 import org.jetbrains.compose.resources.Font
+
+internal val LocalAppUiFontOverride = compositionLocalOf<FontFamily?> { null }
+
+/** Interface text follows the selected font only when its scope includes the whole app. */
+val AppUiFontFamily: FontFamily
+    @Composable get() = LocalAppUiFontOverride.current ?: ProductSansFontFamily
+
+/** Expressive headings retain their original family until the user chooses Everywhere. */
+val AppHeadlineFontFamily: FontFamily
+    @Composable get() = LocalAppUiFontOverride.current ?: GoogleSansFlexRoundedFontFamily
+
+/** Technical labels keep their monospace default unless the font applies everywhere. */
+val AppTechnicalFontFamily: FontFamily
+    @Composable get() = LocalAppUiFontOverride.current ?: GoogleSansCodeFontFamily
 
 val GoogleSansCodeFontFamily: FontFamily
     @Composable get() {

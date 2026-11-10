@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_error
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 /** One retry target for the whole row, without unavailable story metadata or actions. */
@@ -49,7 +49,7 @@ internal fun StoryLoadFailureItem(onRetry: () -> Unit, modifier: Modifier = Modi
                 Text(
                     text = "Loading failed",
                     color = colors.onSurface,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
@@ -57,7 +57,7 @@ internal fun StoryLoadFailureItem(onRetry: () -> Unit, modifier: Modifier = Modi
                 Text(
                     text = "Tap to try again",
                     color = colors.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 18.sp,
                 )

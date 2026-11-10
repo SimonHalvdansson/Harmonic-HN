@@ -125,7 +125,7 @@ internal data class FontMetrics(
 }
 
 @Composable
-private fun contentFontFamily(font: String): FontFamily = when (font) {
+internal fun contentFontFamily(font: String): FontFamily = when (font) {
     "productsans" -> rememberFontFamily(
         font,
         Font(Res.font.product_sans_regular, FontWeight.Normal),

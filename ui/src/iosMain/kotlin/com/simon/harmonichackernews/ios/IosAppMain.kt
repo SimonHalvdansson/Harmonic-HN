@@ -233,6 +233,7 @@ private fun IosApp(
     var editorBackRequestVersion by remember { mutableIntStateOf(0) }
     var completedBackTarget by remember { mutableStateOf(IosBackVisualTarget.None) }
 
+    val fontSettings by bootstrap.app.settings.updates.collectAsState(bootstrap.app.settings.snapshot())
     val selection by bootstrap.app.appearance.selections.collectAsState(
         initial = bootstrap.app.appearance.selection(),
     )
@@ -341,7 +342,7 @@ private fun IosApp(
     ProvideHarmonicUiDependencies(
         HarmonicUiDependencies(bootstrap.app, scene),
     ) {
-        HarmonicTheme(palette.colorScheme, palette.dark) {
+        HarmonicTheme(palette.colorScheme, palette.dark, appearance = fontSettings.appearance) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.pageBackground) {
                 IosAppContent(
                     app = bootstrap.app,

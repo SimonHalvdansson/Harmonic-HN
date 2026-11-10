@@ -210,6 +210,7 @@ fun main() {
                         val releaseTitleBar = DesktopWindowAppearance.configureTitleBar(window)
                         onDispose { releaseTitleBar() }
                     }
+                    val fontSettings by bootstrap.app.settings.updates.collectAsState(bootstrap.app.settings.snapshot())
                     val selection by bootstrap.app.appearance.selections.collectAsState(
                         initial = bootstrap.app.appearance.selection(),
                     )
@@ -240,7 +241,7 @@ fun main() {
                     ProvideHarmonicUiDependencies(
                         HarmonicUiDependencies(bootstrap.app, sceneOwner.scene),
                     ) {
-                        HarmonicTheme(palette.colorScheme, palette.dark) {
+                        HarmonicTheme(palette.colorScheme, palette.dark, appearance = fontSettings.appearance) {
                             Surface(
                                 modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Default),
                                 color = palette.colorScheme.pageBackground,

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.common.Button
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 private val preservedSettingsData = listOf(
@@ -96,7 +96,7 @@ fun ResetSettingsConfirmationDialog(
                             "Restored to defaults",
                             modifier = Modifier.semantics { heading() },
                             color = colors.onPrimaryContainer,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
@@ -104,7 +104,7 @@ fun ResetSettingsConfirmationDialog(
                         Text(
                             "All app preferences",
                             color = colors.onPrimaryContainer,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                         )
@@ -130,7 +130,7 @@ fun ResetSettingsConfirmationDialog(
                             "Kept as they are",
                             modifier = Modifier.semantics { heading() },
                             color = colors.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
@@ -161,7 +161,7 @@ fun ResetSettingsConfirmationDialog(
                                                 label,
                                                 modifier = Modifier.weight(1f),
                                                 color = colors.onSurfaceVariant,
-                                                fontFamily = ProductSansFontFamily,
+                                                fontFamily = AppUiFontFamily,
                                                 fontSize = 13.sp,
                                                 lineHeight = 18.sp,
                                             )

@@ -68,7 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 fun SettingsRadioButton(
@@ -154,7 +154,7 @@ fun SettingsMainToggle(
             Text(
                 text = title,
                 color = textColor,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
                 lineHeight = 21.sp,
@@ -175,7 +175,7 @@ fun SettingsMainToggle(
                         text = displayedSummary,
                         modifier = Modifier.padding(top = 1.dp),
                         color = textColor,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 13.sp,
                         lineHeight = 17.sp,
                     )
@@ -268,7 +268,7 @@ fun SettingRow(
             Text(
                 text = title,
                 color = { colors.onSurface },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
@@ -276,7 +276,7 @@ fun SettingRow(
                 Text(
                     text = summary,
                     color = { summaryColor ?: colors.onSurfaceVariant },
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = summaryFontSizeSp.sp,
                     lineHeight = summaryLineHeightSp.sp,
                     maxLines = summaryMaxLines,
@@ -379,7 +379,7 @@ fun <T> SegmentedSetting(
             Text(
                 text = title,
                 color = { colors.onSurface },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
@@ -395,7 +395,7 @@ fun <T> SegmentedSetting(
                     )
                 },
                 color = { colors.onSurfaceVariant },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
             )
@@ -536,7 +536,7 @@ private fun <T> SegmentedSettingOption(
                 } else {
                     colors.onSurface
                 },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
@@ -587,14 +587,14 @@ fun SliderSetting(
                 text = title,
                 modifier = Modifier.weight(1f),
                 color = { colors.onSurface },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 16.sp,
                 lineHeight = 20.sp,
             )
             Text(
                 text = valueLabel,
                 color = { colors.onSurface },
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
                 lineHeight = 20.sp,

@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.ui.content.ContentTypography
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlin.math.roundToInt
 
@@ -157,7 +157,7 @@ private fun PollOptionCard(
                     )
                     Text(
                         pointCount(option.points.coerceAtLeast(0).toLong()),
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
                         color = colors.onSurfaceVariant,
@@ -168,7 +168,7 @@ private fun PollOptionCard(
                 } else if (share != null) {
                     Text(
                         "${(share * 100).roundToInt()}%",
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = colors.onSurface,
@@ -195,7 +195,7 @@ private fun PollOptionCard(
                 if (!option.loadFailed) HarmonicLoadingIndicator(Modifier.size(24.dp))
                 Text(
                     if (option.loadFailed) "Unable to load this option" else "Loading option…",
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     color = colors.onSurfaceVariant,
                 )

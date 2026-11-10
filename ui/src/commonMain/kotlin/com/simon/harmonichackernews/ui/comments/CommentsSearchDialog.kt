@@ -34,7 +34,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsDialogDismissState
 import com.simon.harmonichackernews.ui.settings.CompleteSettingsDialogDismissal
 import com.simon.harmonichackernews.ui.common.PlatformDisableDialogWindowAnimations
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 @Composable
@@ -158,7 +158,7 @@ fun CommentsSearchContent(
         scrollState = scrollState,
         visibleComments = visibleComments,
         mutedColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         requestFocus = requestFocus,
         preparing = preparing,
         collectLinks = settings.collectReferenceLinks,

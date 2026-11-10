@@ -32,7 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
@@ -151,7 +151,7 @@ fun GlassSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
                         contentColor = MaterialTheme.colorScheme.onFloatingContainer,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                         icon = { Icon(painterResource(Res.drawable.ic_refresh), null) },
-                        text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+                        text = { Text("Reset", fontFamily = AppUiFontFamily, fontWeight = FontWeight.SemiBold) },
                     )
                 }
             }

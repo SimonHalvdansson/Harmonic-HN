@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.resources.*
@@ -99,7 +99,7 @@ internal fun CategoryEmbeddingWalkthrough(stepIndex: Int, onStepChanged: (Int) -
             Column(Modifier.padding(vertical = 20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Step ${stepIndex + 1} of ${steps.size}", fontFamily = ProductSansFontFamily,
+                    Text("Step ${stepIndex + 1} of ${steps.size}", fontFamily = AppUiFontFamily,
                         fontSize = 12.sp, color = scheme.onSurfaceVariant,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -131,10 +131,10 @@ internal fun CategoryEmbeddingWalkthrough(stepIndex: Int, onStepChanged: (Int) -
                     OutlinedButton(onClick = { onStepChanged(stepIndex - 1) }, enabled = stepIndex > 0) {
                         Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Previous", fontFamily = ProductSansFontFamily)
+                        Text("Previous", fontFamily = AppUiFontFamily)
                     }
                     Button(onClick = { onStepChanged(stepIndex + 1) }, enabled = stepIndex < steps.lastIndex) {
-                        Text("Next", fontFamily = ProductSansFontFamily)
+                        Text("Next", fontFamily = AppUiFontFamily)
                         Spacer(Modifier.width(8.dp))
                         Icon(painterResource(Res.drawable.ic_arrow_forward), null, Modifier.size(18.dp))
                     }
@@ -167,12 +167,12 @@ private fun EmbeddingStepContent(step: EmbeddingExplanation) {
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().wrapContentHeight(Alignment.CenterVertically).padding(horizontal = 20.dp)) {
         EmbeddingStepIllustration(step, Modifier.padding(top = 16.dp).fillMaxWidth().aspectRatio(320f / 180f))
-        Text(step.caption, Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+        Text(step.caption, Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily,
             fontSize = 12.sp, lineHeight = 17.sp, color = scheme.onSurfaceVariant)
         Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text(step.title, fontFamily = ProductSansFontFamily, fontSize = 22.sp,
+            Text(step.title, fontFamily = AppUiFontFamily, fontSize = 22.sp,
                 lineHeight = 28.sp, fontWeight = FontWeight.Medium)
-            Text(step.body, Modifier.padding(top = 8.dp), fontFamily = ProductSansFontFamily,
+            Text(step.body, Modifier.padding(top = 8.dp), fontFamily = AppUiFontFamily,
                 fontSize = 14.sp, lineHeight = 21.sp, color = scheme.onSurfaceVariant)
         }
     }
@@ -183,7 +183,7 @@ private fun EmbeddingStepContent(step: EmbeddingExplanation) {
 private fun EmbeddingStepIllustration(step: EmbeddingExplanation, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val font = ProductSansFontFamily
+    val font = AppUiFontFamily
     Box(modifier.semantics { contentDescription = step.illustrationDescription }) {
         Canvas(Modifier.fillMaxSize()) {
             withTransform({ scale(size.width / 320f, size.height / 180f, pivot = Offset.Zero) }) {

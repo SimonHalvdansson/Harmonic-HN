@@ -96,7 +96,7 @@ import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDu
 import com.simon.harmonichackernews.ui.stories.menuIcon
 import com.simon.harmonichackernews.ui.theme.HarmonicRipple
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -249,7 +249,7 @@ fun ManageFrontpagesSettingsScreen(
                     text = "Drag to reorder",
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                 )
@@ -354,7 +354,7 @@ fun ManageFrontpagesSettingsScreen(
                                     Text(
                                         text = type.label,
                                         color = textColor,
-                                        fontFamily = ProductSansFontFamily,
+                                        fontFamily = AppUiFontFamily,
                                         fontSize = 16.sp,
                                         lineHeight = 20.sp,
                                     )
@@ -365,7 +365,7 @@ fun ManageFrontpagesSettingsScreen(
                                                 .background(selectedContent.copy(alpha = 0.12f), RoundedCornerShape(5.dp))
                                                 .padding(horizontal = 6.dp, vertical = 3.dp),
                                             color = selectedContent,
-                                            fontFamily = ProductSansFontFamily,
+                                            fontFamily = AppUiFontFamily,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 9.sp,
                                             lineHeight = 12.sp,
@@ -425,7 +425,7 @@ fun ManageFrontpagesSettingsScreen(
                         modifier = Modifier.animateItem().padding(start = 24.dp, top = 20.dp, bottom = 8.dp)
                             .semantics { heading() },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
                     )
@@ -470,7 +470,7 @@ fun ManageFrontpagesSettingsScreen(
                                     text = type.label,
                                     modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    fontFamily = ProductSansFontFamily,
+                                    fontFamily = AppUiFontFamily,
                                     fontSize = 16.sp,
                                     lineHeight = 20.sp,
                                 )
@@ -526,7 +526,7 @@ fun ManageFrontpagesSettingsScreen(
             ),
             contentColor = MaterialTheme.colorScheme.onFloatingContainer,
             icon = { Icon(painterResource(Res.drawable.ic_refresh), contentDescription = null) },
-            text = { Text("Reset", fontFamily = ProductSansFontFamily, fontWeight = FontWeight.SemiBold) },
+            text = { Text("Reset", fontFamily = AppUiFontFamily, fontWeight = FontWeight.SemiBold) },
         )
     }
     infoFrontpage?.let { source ->

@@ -69,7 +69,7 @@ import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.SettingsSearchEntry
 import com.simon.harmonichackernews.settings.SettingsSearchIndex
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -131,7 +131,7 @@ private fun SettingsSearchPillContent(modifier: Modifier = Modifier, showIcon: B
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
         else Spacer(Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
-        Text(stringResource(Res.string.settings_search_title), fontFamily = ProductSansFontFamily, fontSize = 16.sp,
+        Text(stringResource(Res.string.settings_search_title), fontFamily = AppUiFontFamily, fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -148,7 +148,7 @@ internal fun SettingsSearchDetailPlaceholder() {
         Text(
             stringResource(Res.string.settings_search_choose_result),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
         )
@@ -232,7 +232,7 @@ internal fun SettingsSearchScreen(
                 textFieldState = textFieldState,
                 searchBarState = searchBarState,
                 onSearch = { hideKeyboard() },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = ProductSansFontFamily),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = AppUiFontFamily),
                 colors = SearchBarDefaults.inputFieldColors().copy(
                     focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
                     unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -297,7 +297,7 @@ internal fun SettingsSearchScreen(
                     Spacer(Modifier.height(20.dp))
                     Text(
                         stringResource(if (queryEmpty) Res.string.settings_search_hint else Res.string.settings_search_empty),
-                        fontFamily = ProductSansFontFamily, fontSize = 20.sp, fontWeight = FontWeight.Medium,
+                        fontFamily = AppUiFontFamily, fontSize = 20.sp, fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
@@ -305,7 +305,7 @@ internal fun SettingsSearchScreen(
                         stringResource(if (queryEmpty) Res.string.settings_search_hint_detail else Res.string.settings_search_empty_detail),
                         Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = ProductSansFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                        fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -320,7 +320,7 @@ internal fun SettingsSearchScreen(
                             Modifier.padding(start = 24.dp, top = 16.dp, end = 24.dp)
                                 .semantics { liveRegion = LiveRegionMode.Polite },
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = ProductSansFontFamily, fontSize = 13.sp,
+                            fontFamily = AppUiFontFamily, fontSize = 13.sp,
                         )
                     }
                     groups.forEach { (heading, group) ->

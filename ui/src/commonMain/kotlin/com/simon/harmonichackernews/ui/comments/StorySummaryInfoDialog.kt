@@ -44,7 +44,7 @@ import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.StorySummaryMode
 import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.TimeSource
@@ -157,7 +157,7 @@ private fun ModelIdentityCard(
             Text(
                 text = identity.badge,
                 color = contentColor.copy(alpha = 0.78f),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.7.sp,
@@ -167,7 +167,7 @@ private fun ModelIdentityCard(
                 text = modelName.withModelNameBreaks(),
                 modifier = Modifier.semantics { contentDescription = modelName },
                 color = contentColor,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = if (compactModelName) 17.sp else 18.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = if (compactModelName) 20.sp else 21.sp,
@@ -303,7 +303,7 @@ private fun TimingPhaseLabel(
             Text(
                 text = phase.label,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
                 maxLines = 1,
@@ -312,7 +312,7 @@ private fun TimingPhaseLabel(
             Text(
                 text = phase.value,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 17.sp,
@@ -397,7 +397,7 @@ private fun MetricTile(
                 text = label,
                 modifier = Modifier.weight(1f),
                 color = contentColor.copy(alpha = 0.76f),
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 13.sp,
@@ -421,7 +421,7 @@ private fun MetricTile(
         Text(
             text = value,
             color = contentColor,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 21.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 23.sp,
@@ -445,7 +445,7 @@ private fun SectionHeader(
             text = title,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -456,7 +456,7 @@ private fun SectionHeader(
                     .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                fontFamily = ProductSansFontFamily,
+                fontFamily = AppUiFontFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )

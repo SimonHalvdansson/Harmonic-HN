@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
 /** Shared by the Stories title and the widget's frontpage preference. */
@@ -31,7 +31,7 @@ internal fun StoryTypeDropdownMenu(
     types: List<StoryType>,
     selectedType: StoryType,
     onSelected: (StoryType) -> Unit,
-    fontFamily: FontFamily = ProductSansFontFamily,
+    fontFamily: FontFamily = AppUiFontFamily,
     fontSize: TextUnit = 16.sp,
 ) {
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss, modifier = Modifier.width(240.dp)) {

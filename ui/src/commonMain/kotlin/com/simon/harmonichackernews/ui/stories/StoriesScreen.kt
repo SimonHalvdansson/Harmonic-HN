@@ -66,7 +66,7 @@ import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.sharedHazeSource
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.rememberHazeState
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
@@ -355,7 +355,7 @@ fun BoxScope.StoryTapToUpdateButton(
                 text = {
                     Text(
                         "Tap to update",
-                        fontFamily = ProductSansFontFamily,
+                        fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 },

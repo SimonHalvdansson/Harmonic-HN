@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.data.LinkPreviewGroup
 import com.simon.harmonichackernews.data.LinkPreviewType
 import com.simon.harmonichackernews.resources.*
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -52,7 +52,7 @@ fun LinkPreviewsSettingsDialog(
                         else "Link previews are off. Your selections are saved for when you turn them back on.",
                     modifier = Modifier.padding(top = 6.dp, end = 16.dp, bottom = 10.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = ProductSansFontFamily,
+                    fontFamily = AppUiFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
                 )
@@ -76,7 +76,7 @@ fun LinkPreviewsSettingsDialog(
                                 bottom = 4.dp,
                             ),
                             color = MaterialTheme.colorScheme.primary,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             letterSpacing = 0.7.sp,
@@ -157,7 +157,7 @@ private fun LinkPreviewToggleRow(
             text = type.title,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = ProductSansFontFamily,
+            fontFamily = AppUiFontFamily,
             fontSize = 16.sp,
             lineHeight = 20.sp,
         )

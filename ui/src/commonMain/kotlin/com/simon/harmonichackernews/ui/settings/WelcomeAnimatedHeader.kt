@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.simon.harmonichackernews.ui.theme.GoogleSansFlexRoundedFontFamily
+import com.simon.harmonichackernews.ui.theme.AppHeadlineFontFamily
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.setHarmonicLogoStroke
 import kotlinx.coroutines.currentCoroutineContext
@@ -164,13 +164,13 @@ internal fun WelcomeAnimatedHeader(
         ) {
             Text(
                 title, Modifier.widthIn(max = 240.dp),
-                color = scheme.onSurface, fontFamily = GoogleSansFlexRoundedFontFamily,
+                color = scheme.onSurface, fontFamily = AppHeadlineFontFamily,
                 fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp,
                 textAlign = TextAlign.Center, style = LocalSettingsPlatformStyle.current.textStyle,
             )
             Text(
                 subtitle, Modifier.padding(top = 10.dp),
-                color = scheme.onSurfaceVariant, fontFamily = GoogleSansFlexRoundedFontFamily,
+                color = scheme.onSurfaceVariant, fontFamily = AppHeadlineFontFamily,
                 fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center,
                 style = LocalSettingsPlatformStyle.current.textStyle,
             )

@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
-import com.simon.harmonichackernews.ui.theme.ProductSansFontFamily
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
 @Composable
 fun SettingsAlertDialog(
@@ -354,7 +354,7 @@ fun SingleChoiceDialog(
                             text = option.second,
                             modifier = Modifier.padding(start = 4.dp),
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 16.sp,
                         )
                     }
@@ -400,7 +400,7 @@ fun MultiChoiceDialog(
                                 bottom = 12.dp,
                             ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
                         )
@@ -430,7 +430,7 @@ fun MultiChoiceDialog(
                             text = option,
                             modifier = Modifier.padding(start = 4.dp),
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = ProductSansFontFamily,
+                            fontFamily = AppUiFontFamily,
                             fontSize = 16.sp,
                         )
                     }
@@ -504,7 +504,7 @@ fun SettingsDialogBodyText(text: String, modifier: Modifier = Modifier) {
         text = text,
         modifier = modifier,
         color = MaterialTheme.colorScheme.onSurface,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontSize = 16.sp,
         lineHeight = 20.sp,
     )
@@ -516,7 +516,7 @@ fun SettingsDialogTitle(title: String) {
         text = title,
         modifier = Modifier.semantics { heading() },
         color = MaterialTheme.colorScheme.onSurface,
-        fontFamily = ProductSansFontFamily,
+        fontFamily = AppUiFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 24.sp,
         lineHeight = 30.sp,
