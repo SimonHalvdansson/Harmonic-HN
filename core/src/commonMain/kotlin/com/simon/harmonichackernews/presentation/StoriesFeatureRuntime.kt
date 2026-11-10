@@ -913,6 +913,22 @@ class StoriesFeatureRuntime(
         }
     }
 
+    fun markScrolledPostsRead(storyIds: List<Int>) {
+        val preferences = userSettings.story
+        if (!preferences.markScrolledPostsRead || preferences.hideRead) return
+        val ids = storyIds.toSet()
+        val passed = activeStories.filter {
+            it.id in ids && it.loaded && !it.isComment && !it.isFrontpageLink && !it.isRead
+        }
+        if (passed.isEmpty()) return
+        passed.forEach { updateStoryReadState(it, true) }
+        scope.launch {
+            val timestamp = nowMillis()
+            passed.forEach { historyStore.recordHistory(it.id, timestamp) }
+        }
+        changed()
+    }
+
     fun openStory(story: Story, showWebsite: Boolean) {
         markRead(story)
         changed(story, contentAlreadyPublished = true)

@@ -105,6 +105,10 @@ class StoriesFeatureListener(
         )
     }
 
+    override fun onStoriesScrolledPast(storyIds: List<Int>) {
+        store.accept(StoriesIntent.ScrolledPast(storyIds))
+    }
+
     override fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int) {
         store.accept(StoriesIntent.VisibleRange(lastVisibleIndex, firstVisibleIndex))
     }

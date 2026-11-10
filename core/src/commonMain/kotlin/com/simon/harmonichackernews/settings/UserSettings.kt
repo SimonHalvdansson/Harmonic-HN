@@ -57,6 +57,7 @@ data class StoryPreferences(
     val additionalFrontpages: Set<String>,
     val listSelector: StoryListSelector = StoryListSelector.DROPDOWN,
     val frontpageOrder: List<String> = emptyList(),
+    val markScrolledPostsRead: Boolean = false,
     val swipeToHide: Boolean = false,
     val headerPill: StoriesHeaderPill = StoriesHeaderPill.OFF,
     val headerPillElevation: Boolean = true,

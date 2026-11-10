@@ -12,6 +12,13 @@ class StoredSettingsMutator(
     fun setStoryBoolean(preference: StoryBooleanPreference, value: Boolean) {
         store.update {
             putBoolean(preference.storageKey, value)
+            if (value) {
+                when (preference) {
+                    StoryBooleanPreference.HIDE_CLICKED -> putBoolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, false)
+                    StoryBooleanPreference.MARK_SCROLLED_POSTS_READ -> putBoolean(UserPreferenceKeys.HIDE_CLICKED, false)
+                    else -> Unit
+                }
+            }
             if (preference == StoryBooleanPreference.TINT_CARD_USING_PREVIEW && value &&
                 DisplayStyle.fromStored(store.getString(UserPreferenceKeys.STORY_DISPLAY_STYLE)) == DisplayStyle.FLAT
             ) {

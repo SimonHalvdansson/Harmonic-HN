@@ -724,6 +724,7 @@ class StoriesScreenController private constructor(
             tintColorArgb: Int,
             favicon: Boolean,
         )
+        fun onStoriesScrolledPast(storyIds: List<Int>) = Unit
         fun onVisibleStoryRange(firstVisibleIndex: Int, lastVisibleIndex: Int)
         fun onStoryPreviewStopScroll()
         fun onStoryPreviewPageChanged(storyId: Int) = Unit

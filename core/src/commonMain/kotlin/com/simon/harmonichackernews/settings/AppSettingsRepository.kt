@@ -30,6 +30,7 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
     HIDE_CLICKED(UserPreferenceKeys.HIDE_CLICKED),
     SWIPE_TO_HIDE(UserPreferenceKeys.SWIPE_TO_HIDE),
     GRAY_OUT_CLICKED(UserPreferenceKeys.GRAY_OUT_CLICKED),
+    MARK_SCROLLED_POSTS_READ(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ),
     HIDE_JOBS(UserPreferenceKeys.HIDE_JOBS),
 }
 

@@ -1364,6 +1364,42 @@ class StoryRequestsTest {
         assertEquals(listOf(42), recreated.mainStories.map(Story::id))
     }
 
+    @Test
+    fun scrollingMarksOnlyLoadedUnreadPostsAndRespectsSettings() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val preferences = MemoryKeyValueStore()
+        val history = MemoryHistoryStore()
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope), QueuedCacheDispatcher(),
+            settings = StoredUserSettings(preferences, emptyFlow()), history = history)
+        val unread = Story("Unread", 1, true, false)
+        val placeholder = Story("Loading...", 2, false, false)
+        val comment = Story("Comment", 3, true, false).apply { isComment = true }
+        val alreadyRead = Story("Read", 4, true, false).apply { isRead = true }
+        runtime.mainStore.replace(listOf(unread, placeholder, comment, alreadyRead))
+        runtime.markScrolledPostsRead(listOf(1))
+        runCurrent()
+        assertFalse(unread.isRead)
+        preferences.putBoolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, true)
+        runtime.markScrolledPostsRead(listOf(1, 2, 3, 4, 999))
+        runCurrent()
+        assertTrue(unread.isRead)
+        assertFalse(placeholder.isRead)
+        assertFalse(comment.isRead)
+        assertEquals(listOf(1), history.load().map { it.id })
+        runtime.markScrolledPostsRead(listOf(1))
+        runCurrent()
+        assertEquals(listOf(1), history.load().map { it.id })
+        preferences.putBoolean(UserPreferenceKeys.HIDE_CLICKED, true)
+        val blocked = Story("Blocked", 5, true, false)
+        runtime.mainStore.replace(listOf(blocked))
+        runtime.markScrolledPostsRead(listOf(5))
+        runCurrent()
+        assertFalse(blocked.isRead)
+        assertFalse(history.contains(5))
+    }
+
     private fun cachedHeader(id: Int, title: String = "Cached $id", extra: String = "") =
         JSONParser.prepareCachedStoryHeader(
             """{"id":$id,"title":"$title","author":"fixture"$extra}""", id,

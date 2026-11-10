@@ -11,6 +11,25 @@ import kotlin.test.assertTrue
 
 class StoredSettingsMutatorTest {
     @Test
+    fun markingScrolledPostsDefaultsOffAndExcludesHidingClickedPosts() {
+        val store = TestKeyValueStore()
+        val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
+        assertFalse(repository.snapshot().story.markScrolledPostsRead)
+        repository.setStoryBoolean(StoryBooleanPreference.MARK_SCROLLED_POSTS_READ, true)
+        assertTrue(repository.snapshot().story.markScrolledPostsRead)
+        assertFalse(repository.snapshot().story.hideRead)
+        repository.setStoryBoolean(StoryBooleanPreference.HIDE_CLICKED, true)
+        assertTrue(repository.snapshot().story.hideRead)
+        assertFalse(store.getBoolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, true))
+        repository.setStoryBoolean(StoryBooleanPreference.MARK_SCROLLED_POSTS_READ, true)
+        assertFalse(repository.snapshot().story.hideRead)
+        assertTrue(repository.snapshot().story.markScrolledPostsRead)
+        // Imported settings cannot bypass the conflict guard.
+        store.putBoolean(UserPreferenceKeys.HIDE_CLICKED, true)
+        assertFalse(repository.snapshot().story.markScrolledPostsRead)
+    }
+
+    @Test
     fun unslopCanBeEnabledAndUsedAsStartingPageThenDisabled() {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())

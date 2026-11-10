@@ -70,6 +70,7 @@ class StoriesSettingsPresenter(
             hideRead = story.hideRead,
             swipeToHide = story.swipeToHide,
             dimReadStories = story.dimReadStories,
+            markScrolledPostsRead = story.markScrolledPostsRead,
             faviconProvider = story.faviconProvider,
             faviconIcon = faviconIcon,
         )

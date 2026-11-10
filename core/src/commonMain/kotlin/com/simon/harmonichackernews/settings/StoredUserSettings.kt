@@ -41,6 +41,7 @@ object UserPreferenceKeys {
     const val PALETTE_TINT_COLORFULNESS = "pref_palette_tint_colorfulness"
     const val PALETTE_TINT_TONE = "pref_palette_tint_tone"
     const val PALETTE_TINT_AVOID_BACKGROUND_COLOR = "pref_palette_tint_avoid_background_color"
+    const val MARK_SCROLLED_POSTS_READ = "pref_mark_scrolled_posts_read"
     const val GRAY_OUT_CLICKED = "pref_gray_out_clicked"
     const val HOTNESS = "pref_hotness"
     const val FAVICON_PROVIDER = "pref_favicon_provider"
@@ -183,6 +184,8 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
                 dimReadStories = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
+                markScrolledPostsRead = boolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, false) &&
+                    !boolean(UserPreferenceKeys.HIDE_CLICKED, false),
                 hotnessThreshold = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,
                 faviconProvider = FaviconPreferences.sanitizeProvider(
                     string(UserPreferenceKeys.FAVICON_PROVIDER, FaviconPreferences.GOOGLE),

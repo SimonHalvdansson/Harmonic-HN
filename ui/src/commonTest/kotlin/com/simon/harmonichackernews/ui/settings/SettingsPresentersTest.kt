@@ -71,6 +71,18 @@ class SettingsPresentersTest {
     }
 
     @Test
+    fun scrollMarkingAndHidingClickedPostsAreMutuallyExclusive() {
+        val presenter = fixture().stories
+        assertFalse(presenter.snapshot.story.markScrolledPostsRead)
+        presenter.setBoolean(StoriesBooleanSetting.MarkScrolledPostsRead, true)
+        assertTrue(presenter.snapshot.story.markScrolledPostsRead)
+        assertFalse(presenter.snapshot.story.hideRead)
+        presenter.setBoolean(StoriesBooleanSetting.HideRead, true)
+        assertTrue(presenter.snapshot.story.hideRead)
+        assertFalse(presenter.snapshot.story.markScrolledPostsRead)
+    }
+
+    @Test
     fun storiesLayoutResetRefreshesWidgetsWithoutResettingBehavior() {
         val presenter = fixture().stories
         presenter.setBoolean(StoriesBooleanSetting.ShowIndex, false)

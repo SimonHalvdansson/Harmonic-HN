@@ -48,6 +48,7 @@ data class StoriesSettingsUiState(
     val dimReadStories: Boolean,
     val faviconProvider: String,
     val faviconIcon: Painter,
+    val markScrolledPostsRead: Boolean = false,
     val swipeToHide: Boolean = false,
     val showDividers: Boolean = false,
     val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
@@ -74,6 +75,7 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
     HideRead(StoryBooleanPreference.HIDE_CLICKED),
     SwipeToHide(StoryBooleanPreference.SWIPE_TO_HIDE),
     DimReadStories(StoryBooleanPreference.GRAY_OUT_CLICKED),
+    MarkScrolledPostsRead(StoryBooleanPreference.MARK_SCROLLED_POSTS_READ),
 }
 
 enum class StoriesStringSetting { DisplayStyle, CategoryTagLocation }
@@ -284,10 +286,18 @@ fun StoriesSettingsScreen(
                 BooleanRow("Swipe to hide", Res.drawable.ic_visibility_off, state.swipeToHide, StoriesBooleanSetting.SwipeToHide, onBooleanChanged, summary = "Swipe left or right to hide posts from frontpages.")
             }
             row {
-                BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideRead, StoriesBooleanSetting.HideRead, onBooleanChanged)
+                BooleanRow("Hide clicked posts", Res.drawable.ic_visibility_off, state.hideRead, StoriesBooleanSetting.HideRead, onBooleanChanged,
+                    enabled = !state.markScrolledPostsRead,
+                    summary = if (state.markScrolledPostsRead) "Turn off scroll marking first" else null)
             }
             row {
                 BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.dimReadStories, StoriesBooleanSetting.DimReadStories, onBooleanChanged, enabled = !state.hideRead)
+            }
+            row {
+                BooleanRow("Mark scrolled posts as read", Res.drawable.ic_swipe_vertical, state.markScrolledPostsRead,
+                    StoriesBooleanSetting.MarkScrolledPostsRead, onBooleanChanged,
+                    enabled = !state.hideRead,
+                    summary = if (state.hideRead) "Turn off Hide clicked posts first" else "Marks posts as read when you scroll past them")
             }
             row {
                 SettingRow(
