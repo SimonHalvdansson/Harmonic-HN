@@ -20,6 +20,12 @@
 # hide the original source file name.
 -renamesourcefileattribute SourceFile
 
+# Match configureAndroidComposeFocus before R8 inlines Compose's focus branches. Revisit when
+# https://issuetracker.google.com/issues/469958424 is fixed in our Compose UI version.
+-assumevalues class androidx.compose.ui.ComposeUiFlags {
+    public static boolean isBypassUnfocusableComposeViewEnabled return false;
+}
+
 #Got told to add this to resolve build errors
 -dontwarn org.bouncycastle.jsse.BCSSLParameters
 -dontwarn org.bouncycastle.jsse.BCSSLSocket

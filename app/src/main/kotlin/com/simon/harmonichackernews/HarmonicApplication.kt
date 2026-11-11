@@ -63,6 +63,7 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
     internal val compositionOrNull: HarmonicAppComposition? get() = startup.valueOrNull
 
     override fun onCreate() {
+        configureAndroidComposeFocus()
         super.onCreate()
         // Register lifecycle callbacks on Main before the first activity can resume. This adapter
         // does not open storage or initialize the runtime; the remaining graph is prepared on IO.
