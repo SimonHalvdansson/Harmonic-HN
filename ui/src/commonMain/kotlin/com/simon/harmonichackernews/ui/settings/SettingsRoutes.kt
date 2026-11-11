@@ -412,6 +412,8 @@ fun ThemeSettingsRoute(
         onManualDarkChanged = { value -> applyThemeChange { presenter.setManualDark(value) } },
         onColorSchemeSelected = { value -> applyThemeChange { presenter.setColorScheme(value) } },
         onColorStyleSelected = { value -> applyThemeChange { presenter.setColorStyle(value) } },
+        onPureBlackDarkModeChanged = { value -> applyThemeChange { presenter.setPureBlackDarkMode(value) } },
+        onNighttimePureBlackDarkModeChanged = { value -> applyThemeChange { presenter.setNighttimePureBlackDarkMode(value) } },
         onNighttimeColorStyleSelected = { value -> applyThemeChange { presenter.setNighttimeColorStyle(value) } },
         onNighttimeColorSchemeSelected = { value -> applyThemeChange { presenter.setNighttimeColorScheme(value) } },
         onSpecialNighttimeChanged = { value ->
@@ -423,7 +425,7 @@ fun ThemeSettingsRoute(
             StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
         ).copy(preferredFont = settings.appearance.font),
         commentPreviewStyle = remember(repository) { CommentsSettingsPresenter(repository) }
-            .state(settings).toPreviewCommentRowStyle().copy(animateChanges = false),
+            .state(settings.copy(pureBlackDarkMode = false)).toPreviewCommentRowStyle().copy(animateChanges = false),
         contentVersion = settings.hashCode(),
     )
     dialog?.let { dialogContent(it, presenter) { dialog = null } }

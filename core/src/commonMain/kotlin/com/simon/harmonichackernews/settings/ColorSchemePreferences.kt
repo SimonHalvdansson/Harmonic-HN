@@ -21,12 +21,16 @@ data class ColorSchemeSelection(
     val lightStyle: ColorSchemeStyle = ColorSchemeStyle.Balanced,
     val darkStyle: ColorSchemeStyle = lightStyle,
     val nighttimeStyle: ColorSchemeStyle = ColorSchemeStyle.Balanced,
+    val pureBlackDarkMode: Boolean = false,
+    val nighttimePureBlackDarkMode: Boolean = false,
 ) {
     fun forMode(darkMode: Boolean): String = if (darkMode) dark else light
     fun styleForMode(darkMode: Boolean): ColorSchemeStyle = if (darkMode) darkStyle else lightStyle
 }
 
 object ColorSchemePreferences {
+    const val PURE_BLACK_KEY = "pref_color_scheme_pure_black"
+    const val NIGHTTIME_PURE_BLACK_KEY = "pref_color_scheme_nighttime_pure_black"
     const val LIGHT_STYLE_KEY = "pref_color_scheme_light_style"
     const val DARK_STYLE_KEY = "pref_color_scheme_dark_style"
     const val NIGHTTIME_STYLE_KEY = "pref_color_scheme_nighttime_style"
@@ -92,6 +96,8 @@ object ColorSchemePreferences {
         return ColorSchemeSelection(
             light = light, dark = light, coupled = true, nighttime = nighttime,
             lightStyle = lightStyle, darkStyle = lightStyle, nighttimeStyle = nighttimeStyle,
+            pureBlackDarkMode = store.getBoolean(PURE_BLACK_KEY, false),
+            nighttimePureBlackDarkMode = store.getBoolean(NIGHTTIME_PURE_BLACK_KEY, false),
         )
     }
 
@@ -99,6 +105,8 @@ object ColorSchemePreferences {
         putString(LIGHT_KEY, sanitize(selection.light))
         putString(DARK_KEY, sanitize(selection.light))
         putBoolean(COUPLED_KEY, true)
+        putBoolean(PURE_BLACK_KEY, selection.pureBlackDarkMode)
+        putBoolean(NIGHTTIME_PURE_BLACK_KEY, selection.nighttimePureBlackDarkMode)
         putString(NIGHTTIME_KEY, sanitize(selection.nighttime))
         putString(LIGHT_STYLE_KEY, selection.lightStyle.storedValue)
         putString(DARK_STYLE_KEY, selection.lightStyle.storedValue)

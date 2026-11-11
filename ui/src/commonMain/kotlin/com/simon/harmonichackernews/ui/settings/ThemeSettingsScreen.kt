@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.CornerRadius
@@ -72,6 +73,9 @@ data class ThemeSettingsUiState(
 enum class ThemeSettingsDialog { NighttimeRange }
 
 fun themeSettingsSummary(appearance: AppearancePreferences): String {
+    if (!appearance.followSystem && appearance.manualDark && appearance.colorSchemes.pureBlackDarkMode) {
+        return "Black"
+    }
     val scheme = ColorSchemeCatalog.label(appearance.colorSchemes.light)
     val mode = if (appearance.followSystem) "System" else if (appearance.manualDark) "Dark" else "Light"
     return "$mode · $scheme"
@@ -94,6 +98,8 @@ fun ThemeSettingsScreen(
     previewStyle: StoryRowStyle,
     commentPreviewStyle: CommentRowStyle,
     contentVersion: Int = 0,
+    onPureBlackDarkModeChanged: (Boolean) -> Unit = {},
+    onNighttimePureBlackDarkModeChanged: (Boolean) -> Unit = {},
 ) {
     SettingsPage(
         title = "Color scheme",
@@ -124,14 +130,17 @@ fun ThemeSettingsScreen(
             SettingsCategory("Color scheme") {
                 ColorSchemePicker(
                     selected = state.schemes.light,
+                    enabled = !state.schemes.pureBlackDarkMode || state.followSystem || !state.manualDark,
                     dynamicColorAvailable = state.dynamicColorAvailable,
-                    dark = state.activeDark,
+                    dark = state.activeDark && !state.schemes.pureBlackDarkMode,
                     style = state.schemes.lightStyle,
                     tag = "Color scheme",
                     resolveScheme = resolvePreviewScheme,
                     onSelected = onColorSchemeSelected,
                     onStyleSelected = onColorStyleSelected,
                 )
+                PureBlackSetting("Color scheme", state.schemes.pureBlackDarkMode, state.followSystem || state.manualDark,
+                    onPureBlackDarkModeChanged)
             }
         }
         item {
@@ -156,7 +165,10 @@ fun ThemeSettingsScreen(
                 SettingsCategory("Nighttime color scheme") {
                     ColorSchemePicker(state.schemes.nighttime, dynamicColorAvailable = state.dynamicColorAvailable, dark = true, style = state.schemes.nighttimeStyle,
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
+                        enabled = !state.schemes.nighttimePureBlackDarkMode,
                         onSelected = onNighttimeColorSchemeSelected, onStyleSelected = onNighttimeColorStyleSelected)
+                    PureBlackSetting("Nighttime color scheme", state.schemes.nighttimePureBlackDarkMode, state.followSystem || state.manualDark,
+                        onNighttimePureBlackDarkModeChanged, title = "Pure black")
                 }
             }
         }
@@ -175,6 +187,27 @@ private fun ThemeSettingsVisibility(visible: Boolean, content: @Composable () ->
     }
 }
 
+@Composable
+private fun PureBlackSetting(
+    tag: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    title: String = "Pure black dark mode",
+) {
+    Column(Modifier.testTag("$tag pure black")) {
+        SettingsDivider()
+        SwitchSettingRow(
+            title = title,
+            summary = "Overrides dark mode to pure black",
+            icon = Res.drawable.ic_dark_mode,
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
 private val ColorSchemeSwatchWidth = 66.dp
 
 /** Minimize the difference between full and final rows without adding or removing a row. */
@@ -187,6 +220,7 @@ internal fun balancedSwatchesPerRow(itemCount: Int, capacity: Int): Int {
 @Composable
 private fun ColorSchemePicker(
     selected: String,
+    enabled: Boolean,
     dynamicColorAvailable: Boolean,
     dark: Boolean,
     style: ColorSchemeStyle,
@@ -209,7 +243,7 @@ private fun ColorSchemePicker(
     ) {
         val capacity = (constraints.maxWidth / swatchWidthPx).coerceAtLeast(1)
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.38f),
             maxItemsInEachRow = balancedSwatchesPerRow(options.size, capacity),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalArrangement = Arrangement.spacedBy(0.dp),
@@ -219,6 +253,7 @@ private fun ColorSchemePicker(
                     value = option.value,
                     label = option.label,
                     checked = selected == option.value,
+                    enabled = enabled,
                     dark = dark,
                     style = style,
                     tag = tag,
@@ -234,7 +269,7 @@ private fun ColorSchemePicker(
             options = listOf(ColorSchemeStyle.NeutralSurfaces to "Neutral",
                 ColorSchemeStyle.Balanced to "Balanced", ColorSchemeStyle.Vibrant to "Vibrant"),
             selected = style,
-            enabled = ColorSchemePreferences.supportsStyle(selected),
+            enabled = enabled && ColorSchemePreferences.supportsStyle(selected),
             optionContent = { value, checked ->
                 Text(
                     when (value) {
@@ -256,6 +291,7 @@ private fun ColorSchemePicker(
 @Composable
 private fun ColorSchemeSwatch(
     value: String,
+    enabled: Boolean,
     label: String,
     checked: Boolean,
     dark: Boolean,
@@ -273,7 +309,7 @@ private fun ColorSchemeSwatch(
     val onPrimary = animateColorAsState(target.onPrimary, tween(250))
     Column(
         modifier = Modifier.width(ColorSchemeSwatchWidth).clip(RoundedCornerShape(16.dp))
-            .selectable(selected = checked, role = Role.RadioButton, onClick = { onSelected(value) })
+            .selectable(selected = checked, enabled = enabled, role = Role.RadioButton, onClick = { onSelected(value) })
             .semantics { contentDescription = "$label color scheme" }
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -323,8 +359,10 @@ private fun ThemeLivePreview(
     val lightPalette = remember(state.schemes.light, state.schemes.lightStyle, resolveScheme) {
         resolveScheme(state.schemes.light, false, state.schemes.lightStyle)
     }
-    val darkPalette = remember(state.schemes.dark, state.schemes.darkStyle, resolveScheme) {
-        resolveScheme(state.schemes.dark, true, state.schemes.darkStyle)
+    val pureBlack = state.schemes.pureBlackDarkMode
+    val darkPalette = remember(state.schemes, resolveScheme) {
+        resolveScheme(if (pureBlack) ColorSchemePreferences.PURE else state.schemes.dark, true,
+            if (pureBlack) ColorSchemeStyle.NeutralSurfaces else state.schemes.darkStyle)
     }
     // Both halves have identical content and typography, so their natural heights match.
     // Let Box measure them normally instead of walking both text trees for intrinsic height.
@@ -334,11 +372,14 @@ private fun ThemeLivePreview(
                 lineTo(size.width * lightFraction, 0f); lineTo(size.width * lightFraction, size.height)
                 lineTo(0f, size.height); close()
             }).then(if (state.manualDark && !state.followSystem) Modifier.clearAndSetSemantics {} else Modifier))
-        StoryThemePreview(darkPalette, style, commentStyle,
+        StoryThemePreview(darkPalette,
+            if (pureBlack) style.copy(tintCard = false) else style,
+            commentStyle,
             Modifier.clip(GenericShape { size, _ ->
                 moveTo(size.width * lightFraction, 0f); lineTo(size.width, 0f)
                 lineTo(size.width, size.height); lineTo(size.width * lightFraction, size.height); close()
-            }).then(if (state.followSystem || !state.manualDark) Modifier.clearAndSetSemantics {} else Modifier))
+            }).then(if (state.followSystem || !state.manualDark) Modifier.clearAndSetSemantics {} else Modifier),
+            pureBlack = pureBlack)
     }
 }
 
@@ -348,6 +389,7 @@ private fun StoryThemePreview(
     style: StoryRowStyle,
     commentStyle: CommentRowStyle,
     modifier: Modifier = Modifier,
+    pureBlack: Boolean = false,
 ) {
     // Extract against the destination palette, not every intermediate animation color. Keep the
     // existing sample tint visible while extraction runs; unchanged tints need no transition.
@@ -372,6 +414,12 @@ private fun StoryThemePreview(
     val commentModel = remember {
         SettingsCommentPreviewModel.copy(body = "A neat result.", referenceMarker = "", referenceUrl = "")
     }
+    // Retain the saved row geometry in both halves, including Raised/Outlined padding.
+    // Only row surfaces change: palette pills and navigation retain the real theme colors.
+    val rowColors = remember(palette.colorScheme, pureBlack) {
+        if (pureBlack) palette.colorScheme.copy(surfaceContainer = Color.Black, outlineVariant = Color.Black)
+        else palette.colorScheme
+    }
     HarmonicTheme(palette.colorScheme, palette.dark) {
         HazeHost {
             val hazeState = currentSharedHazeState()
@@ -389,12 +437,14 @@ private fun StoryThemePreview(
                         ThemePreviewPalettePills()
                         ThemePreviewPalettePills()
                     }
-                    ThemePreviewStory(storyModel, storyStyle)
-                    CommentRow(
-                        model = commentModel,
-                        style = commentStyle,
-                        verticalPadding = 2.dp,
-                    )
+                    HarmonicTheme(rowColors, palette.dark) {
+                        ThemePreviewStory(storyModel, storyStyle)
+                        CommentRow(
+                            model = commentModel,
+                            style = commentStyle,
+                            verticalPadding = 2.dp,
+                        )
+                    }
                 }
                 Box(
                     Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp)

@@ -73,6 +73,7 @@ data class CommentsSettingsUiState(
     val swipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
     val spacing: Int = com.simon.harmonichackernews.settings.RowSpacingPreferences.DEFAULT,
+    val pureBlackDarkMode: Boolean = false,
 )
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
@@ -146,6 +147,8 @@ fun CommentsSettingsScreen(
             row {
                 SegmentedSetting(
                     title = "Display style",
+                    summary = if (state.pureBlackDarkMode) "Forced to Flat in pure black mode" else null,
+                    enabled = !state.pureBlackDarkMode,
                     options = listOf(
                         DisplayStyle.FLAT.storedValue to "Flat",
                         DisplayStyle.STANDARD.storedValue to "Filled",

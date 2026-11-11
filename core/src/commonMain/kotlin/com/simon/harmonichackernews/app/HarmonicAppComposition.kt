@@ -44,6 +44,7 @@ import com.simon.harmonichackernews.settings.SettingsResetUseCase
 import com.simon.harmonichackernews.settings.AppLaunchStateStore
 import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.NighttimeScheduleStore
+import com.simon.harmonichackernews.settings.ThemeUserSettings
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.settings.DataSettingsRuntime
@@ -56,6 +57,7 @@ import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.summary.LocalSummaryBehavior
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.map
 
 /**
@@ -90,18 +92,24 @@ class HarmonicAppComposition(
         currentMinutesFromMidnight = host.currentMinutesFromMidnight,
         systemDark = host.systemDark,
     )
-    val userSettings: UserSettings = StoredUserSettings(
+    private val storedUserSettings: UserSettings = StoredUserSettings(
         store = host.settingsStore,
-        changes = host.settingsChanges,
+        changes = merge(host.settingsChanges, appearance.selections.map { Unit }),
         theme = { appearance.selection().colorScheme },
         showCommentsUpButtonByDefault = host.showCommentsUpButtonByDefault,
         preloadCommentsFromStoriesByDefault = host.preloadCommentsFromStoriesByDefault,
         defaultSurfaceEffectMode = host.defaultSurfaceEffectMode,
     )
+    val userSettings: UserSettings = ThemeUserSettings(
+        storedUserSettings, appearance::selection,
+    )
     val externalLinks = ConfiguredExternalLinkOpener(platform.externalLinks) {
         userSettings.reading.externalBrowser
     }
-    val settings = AppSettingsRepository(userSettings, StoredSettingsMutator(host.settingsStore), network.scope)
+    val settings = AppSettingsRepository(
+        storedUserSettings, StoredSettingsMutator(host.settingsStore), network.scope,
+        pureBlackDarkMode = { appearance.selection().pureBlackDarkMode },
+    )
     val articleCategoryTraining = com.simon.harmonichackernews.categorization.ArticleCategoryTraining(host.appDataStore)
     val articleCategorySettings = com.simon.harmonichackernews.categorization.ArticleCategorySettings(
         host.settingsStore, host.settingsChanges, { articleCategoryTraining.categories },

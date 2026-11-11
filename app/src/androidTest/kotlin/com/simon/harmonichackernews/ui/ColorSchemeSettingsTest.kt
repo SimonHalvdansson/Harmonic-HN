@@ -35,7 +35,8 @@ class ColorSchemeSettingsTest {
                 val settings by repository.updates.collectAsState(initial = repository.snapshot())
                 val dark = if (settings.appearance.followSystem) systemDark.value else settings.appearance.manualDark
                 val palette = harmonicThemePalette(compose.activity,
-                    ThemeSelection.forScheme(settings.appearance.colorSchemes.forMode(dark), dark, settings.appearance.colorSchemes.styleForMode(dark)))
+                    ThemeSelectionPolicy.select(settings.appearance.colorSchemes, settings.appearance.followSystem,
+                        settings.appearance.manualDark, systemDark.value, false, NighttimeSchedule(), 12 * 60))
                 CompositionLocalProvider(
                     LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene),
                     // Hardware ripple timing is independent of Compose's test clock. Sample resting roles.
@@ -93,6 +94,79 @@ class ColorSchemeSettingsTest {
         assertRole(expected.primary, .15f, .3f)
         assertRole(expected.secondary, .7f, .7f)
         assertRole(expected.tertiary, .3f, .7f)
+    }
+
+    private fun pureBlackSwitch(tag: String) = compose.onNode(
+        hasText(if (tag == "Nighttime color scheme") "Pure black" else "Pure black dark mode") and hasAnyAncestor(hasTestTag("$tag pure black")))
+
+    private fun assertPickerEnabled(tag: String, enabled: Boolean) {
+        rootList().performScrollToNode(hasTestTag(tag))
+        val swatches = compose.onAllNodes(hasAnyAncestor(hasTestTag(tag)) and hasContentDescription("color scheme", substring = true))
+        assertEquals(ColorSchemeCatalog.options.size, swatches.fetchSemanticsNodes().size)
+        swatches.fetchSemanticsNodes().indices.forEach { index ->
+            if (enabled) swatches[index].assertIsEnabled() else swatches[index].assertIsNotEnabled()
+        }
+        rootList().performScrollToNode(hasTestTag("$tag style"))
+        for (label in listOf("Neutral", "Balanced", "Vibrant")) {
+            val option = compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("$tag style")))
+            if (enabled) option.assertIsEnabled() else option.assertIsNotEnabled()
+        }
+    }
+
+    @Test
+    fun pureBlackSwitchKeepsSchemeAndStyleAndIsDisabledForLightAppearance() = showSettings {
+        select("Color scheme", "blue")
+        style("Color scheme", "Vibrant")
+        click("Dark")
+        rootList().performScrollToNode(hasTestTag("Color scheme pure black"))
+        pureBlackSwitch("Color scheme").assertIsEnabled().assertIsOff().performClick()
+        pureBlackSwitch("Color scheme").assertIsOn()
+        assertTrue(appearance().colorSchemes.pureBlackDarkMode)
+        assertEquals("blue", appearance().colorSchemes.light)
+        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.lightStyle)
+        assertPickerEnabled("Color scheme", false)
+        click("Light")
+        assertPickerEnabled("Color scheme", true)
+        rootList().performScrollToNode(hasTestTag("Color scheme pure black"))
+        pureBlackSwitch("Color scheme").assertIsNotEnabled().assertIsOn()
+        click("System")
+        compose.runOnIdle { systemDark.value = true }
+        assertPickerEnabled("Color scheme", true)
+        // In System appearance these controls still configure the light scheme.
+        assertSwatch("Color scheme", "blue", false, ColorSchemeStyle.Vibrant)
+        select("Color scheme", "rose")
+        rootList().performScrollToNode(hasTestTag("Color scheme pure black"))
+        pureBlackSwitch("Color scheme").assertIsEnabled().assertIsOn().performClick()
+        assertFalse(appearance().colorSchemes.pureBlackDarkMode)
+        assertEquals("rose", appearance().colorSchemes.light)
+        click("Dark")
+        assertPickerEnabled("Color scheme", true)
+    }
+
+    @Test
+    fun nighttimePureBlackSwitchIsIndependentAndPreservesNighttimeSelection() = showSettings {
+        click("Use a nighttime color scheme")
+        select("Nighttime color scheme", "teal")
+        style("Nighttime color scheme", "Vibrant")
+        rootList().performScrollToNode(hasTestTag("Nighttime color scheme pure black"))
+        pureBlackSwitch("Nighttime color scheme").assertIsEnabled().performClick()
+        assertTrue(appearance().colorSchemes.nighttimePureBlackDarkMode)
+        assertFalse(appearance().colorSchemes.pureBlackDarkMode)
+        assertEquals("teal", appearance().colorSchemes.nighttime)
+        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.nighttimeStyle)
+        assertPickerEnabled("Nighttime color scheme", false)
+        click("Dark")
+        assertPickerEnabled("Nighttime color scheme", false)
+        click("Light")
+        assertPickerEnabled("Nighttime color scheme", false)
+        rootList().performScrollToNode(hasTestTag("Nighttime color scheme pure black"))
+        pureBlackSwitch("Nighttime color scheme").assertIsNotEnabled().assertIsOn()
+        click("System")
+        rootList().performScrollToNode(hasTestTag("Nighttime color scheme pure black"))
+        pureBlackSwitch("Nighttime color scheme").performClick()
+        assertPickerEnabled("Nighttime color scheme", true)
+        assertEquals("teal", appearance().colorSchemes.nighttime)
+        assertEquals(ColorSchemeStyle.Vibrant, appearance().colorSchemes.nighttimeStyle)
     }
 
     @Test

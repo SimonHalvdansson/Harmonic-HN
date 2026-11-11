@@ -56,6 +56,7 @@ data class StoriesSettingsUiState(
     val categorizationEnabled: Boolean = false,
     val canEnableCategorization: Boolean = true,
     val categorizationUnavailableReason: String? = null,
+    val pureBlackDarkMode: Boolean = false,
 )
 
 enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference) {
@@ -159,6 +160,8 @@ fun StoriesSettingsScreen(
             row {
                 SegmentedSetting(
                     title = "Display style",
+                    summary = if (state.pureBlackDarkMode) "Forced to Flat in pure black mode" else null,
+                    enabled = !state.pureBlackDarkMode,
                     options = listOf(
                         DisplayStyle.FLAT.storedValue to "Flat",
                         DisplayStyle.STANDARD.storedValue to "Filled",
@@ -173,7 +176,8 @@ fun StoriesSettingsScreen(
             row {
                 NavigationSwitchSettingRow(
                     title = "Tint",
-                    summary = "Uses preview or favicon",
+                    summary = if (state.pureBlackDarkMode) "Forced to Off in pure black mode" else "Uses preview or favicon",
+                    switchEnabled = !state.pureBlackDarkMode,
                     icon = Res.drawable.ic_palette,
                     checked = state.tint,
                     onClick = onPaletteTintRequested,

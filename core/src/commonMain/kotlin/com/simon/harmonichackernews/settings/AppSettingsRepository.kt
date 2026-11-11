@@ -82,6 +82,8 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
 }
 
 enum class AppearanceBooleanPreference(internal val storageKey: String) {
+    PURE_BLACK_DARK_MODE(ColorSchemePreferences.PURE_BLACK_KEY),
+    NIGHTTIME_PURE_BLACK_DARK_MODE(ColorSchemePreferences.NIGHTTIME_PURE_BLACK_KEY),
     APPLY_FONT_EVERYWHERE(UserPreferenceKeys.APPLY_FONT_EVERYWHERE),
     SPECIAL_NIGHTTIME(UserPreferenceKeys.SPECIAL_NIGHTTIME),
     TRANSPARENT_STATUS_BAR(UserPreferenceKeys.TRANSPARENT_STATUS_BAR),
@@ -109,6 +111,7 @@ class AppSettingsRepository(
     private val reader: UserSettings,
     private val mutator: StoredSettingsMutator,
     scope: CoroutineScope? = null,
+    private val pureBlackDarkMode: () -> Boolean = { false },
 ) {
     constructor(
         store: KeyValueStore,
@@ -139,6 +142,7 @@ class AppSettingsRepository(
         general = reader.general,
         appearance = reader.appearance,
         debug = reader.debug,
+        pureBlackDarkMode = pureBlackDarkMode(),
     )
 
     private val snapshotUpdates: Flow<AppSettings> = flow {

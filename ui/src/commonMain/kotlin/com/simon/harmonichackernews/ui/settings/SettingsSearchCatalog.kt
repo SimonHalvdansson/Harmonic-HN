@@ -99,6 +99,8 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.Appearance, "Other", "Preset" to "style default compact reset appearance")
     if (capabilities.twoPane) group(SettingsSection.Appearance, "Two panes",
         "Extra side padding" to "margins width space tablet")
+    group(SettingsSection.Theme, "Color scheme",
+        "Pure black dark mode" to "black amoled oled dark override neutral flat tint")
     group(SettingsSection.Theme, "Night schedule",
         "Use a nighttime color scheme" to "automatic scheduled dark mode night theme time sunset")
     if (availability.nighttimeScheme) group(SettingsSection.Theme, "Night schedule",

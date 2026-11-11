@@ -108,6 +108,8 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             put(ColorSchemePreferences.DARK_KEY, schemes.dark)
             put(ColorSchemePreferences.NIGHTTIME_KEY, schemes.nighttime)
             put(ColorSchemePreferences.COUPLED_KEY, schemes.coupled)
+            put(ColorSchemePreferences.PURE_BLACK_KEY, schemes.pureBlackDarkMode)
+            put(ColorSchemePreferences.NIGHTTIME_PURE_BLACK_KEY, schemes.nighttimePureBlackDarkMode)
             put(ColorSchemePreferences.LIGHT_STYLE_KEY, schemes.lightStyle.storedValue)
             put(ColorSchemePreferences.DARK_STYLE_KEY, schemes.darkStyle.storedValue)
             put(ColorSchemePreferences.NIGHTTIME_STYLE_KEY, schemes.nighttimeStyle.storedValue)

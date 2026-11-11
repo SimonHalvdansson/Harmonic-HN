@@ -212,4 +212,5 @@ data class AppSettings(
     val general: GeneralPreferences,
     val appearance: AppearancePreferences,
     val debug: DebugPreferences,
+    val pureBlackDarkMode: Boolean = false,
 )

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
+import com.simon.harmonichackernews.settings.forPureBlackDarkMode
 
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.CollectedLinksMode
@@ -37,8 +38,9 @@ class StoriesSettingsPresenter(
         previewModel: StoryRowModel,
         faviconIcon: Painter,
     ): StoriesSettingsUiState {
-        val story = settings.story
+        val story = settings.story.forPureBlackDarkMode(settings.pureBlackDarkMode)
         return StoriesSettingsUiState(
+            pureBlackDarkMode = settings.pureBlackDarkMode,
             previewModel = previewModel,
             spacing = story.spacing,
             showDividers = story.showDividers,
@@ -122,8 +124,9 @@ class CommentsSettingsPresenter(
     private val repository: AppSettingsRepository,
 ) {
     fun state(settings: AppSettings = repository.snapshot()): CommentsSettingsUiState {
-        val comments = settings.comments
+        val comments = settings.comments.forPureBlackDarkMode(settings.pureBlackDarkMode)
         return CommentsSettingsUiState(
+            pureBlackDarkMode = settings.pureBlackDarkMode,
             spacing = comments.spacing,
             displayStyle = comments.displayStyle,
             textSize = comments.textSize,
@@ -311,6 +314,12 @@ class AppearanceSettingsPresenter(
     fun setColorStyle(value: ColorSchemeStyle) = themeEffect { repository.setColorStyle(value) }
     fun setNighttimeColorStyle(value: ColorSchemeStyle) = themeEffect { repository.setNighttimeColorStyle(value) }
     fun setNighttimeColorScheme(value: String) = themeEffect { repository.setNighttimeColorScheme(value) }
+    fun setPureBlackDarkMode(value: Boolean) = themeEffect {
+        repository.setAppearanceBoolean(AppearanceBooleanPreference.PURE_BLACK_DARK_MODE, value)
+    }
+    fun setNighttimePureBlackDarkMode(value: Boolean) = themeEffect {
+        repository.setAppearanceBoolean(AppearanceBooleanPreference.NIGHTTIME_PURE_BLACK_DARK_MODE, value)
+    }
     fun setSpecialNighttime(value: Boolean) = themeEffect {
         repository.setAppearanceBoolean(AppearanceBooleanPreference.SPECIAL_NIGHTTIME, value)
     }

@@ -32,7 +32,12 @@ data class NighttimeSchedule(
     )
 }
 
-data class ThemeSelection(val colorScheme: String, val dark: Boolean, val colorStyle: ColorSchemeStyle = ColorSchemeStyle.Balanced) {
+data class ThemeSelection(
+    val colorScheme: String,
+    val dark: Boolean,
+    val colorStyle: ColorSchemeStyle = ColorSchemeStyle.Balanced,
+    val pureBlackDarkMode: Boolean = false,
+) {
     companion object {
         fun forScheme(scheme: String, dark: Boolean, style: ColorSchemeStyle = ColorSchemeStyle.Balanced) =
             ThemeSelection(ColorSchemePreferences.sanitize(scheme), dark, style)
@@ -52,6 +57,11 @@ object ThemeSelectionPolicy {
     ): ThemeSelection {
         val nighttime = useSpecialNighttimeTheme && schedule.containsMinutes(currentMinutesFromMidnight)
         val dark = nighttime || if (followSystem) systemDark else manualDark
+        val pureBlack = dark && if (nighttime) colorSchemes.nighttimePureBlackDarkMode else colorSchemes.pureBlackDarkMode
+        if (pureBlack) return ThemeSelection(
+            ColorSchemePreferences.PURE, dark = true,
+            colorStyle = ColorSchemeStyle.NeutralSurfaces, pureBlackDarkMode = true,
+        )
         return ThemeSelection.forScheme(
             if (nighttime) colorSchemes.nighttime else colorSchemes.forMode(dark), dark,
             if (nighttime) colorSchemes.nighttimeStyle else colorSchemes.styleForMode(dark),
