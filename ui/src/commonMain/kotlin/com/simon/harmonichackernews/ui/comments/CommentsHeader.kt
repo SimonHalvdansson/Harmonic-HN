@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionLayout
 import com.simon.harmonichackernews.ui.content.ContentMotionEasing
 import androidx.compose.animation.BoundsTransform
@@ -75,6 +76,7 @@ import com.simon.harmonichackernews.ui.common.layoutVerticalPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -156,6 +158,7 @@ fun CommentsHeader(
     val density = LocalDensity.current
     // Keep derived header objects keyed to the immutable story revision supplied by the store.
     val story = remember(controller.story, contentVersion) { controller.story }
+    var actionsExpanded by rememberSaveable(story.id, settings.minimalisticHeader) { mutableStateOf(false) }
     val storyTitle = storyTitlePresentation(
         title = story.title,
         pdfTitle = story.pdfTitle,
@@ -420,15 +423,20 @@ fun CommentsHeader(
                                                 boundsTransform = boundsTransform,
                                                 resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                                             )) {
-                                                HeaderColorContent(visibleHeaderBackground) { background ->
-                                                    headerPreviewImage(
-                                                        Modifier.sharedElement(
-                                                            rememberSharedContentState("image"), visibility,
-                                                            boundsTransform = boundsTransform,
-                                                        ).fillMaxSize()
-                                                            .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
-                                                        background,
-                                                    ) { loadedTint = it }
+                                                Box(
+                                                    modifier = if (sideImage) Modifier.matchParentSize() else Modifier.fillMaxWidth(),
+                                                    propagateMinConstraints = sideImage,
+                                                ) {
+                                                    HeaderColorContent(visibleHeaderBackground) { background ->
+                                                        headerPreviewImage(
+                                                            Modifier.sharedElement(
+                                                                rememberSharedContentState("image"), visibility,
+                                                                boundsTransform = boundsTransform,
+                                                            ).fillMaxSize()
+                                                                .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
+                                                            background,
+                                                        ) { loadedTint = it }
+                                                    }
                                                 }
                                                 val metricsAlpha by animateFloatAsState(
                                                     if (headerImageInspected) 0f else 1f,
@@ -447,6 +455,7 @@ fun CommentsHeader(
                                                             enter = fadeIn(tween(140, delayMillis = 160)),
                                                             exit = fadeOut(tween(80)),
                                                         ),
+                                                    stacked = sideImage,
                                                     animateSettingsPreview = animateSettingsPreview,
                                                 )
                                             }
@@ -483,7 +492,7 @@ fun CommentsHeader(
                                                     }
                                                     stackedMetrics()
                                                     if (visual.imageVisible) Box(Modifier.padding(end = 16.dp)) {
-                                                        preview(Modifier.width(thumbnailWidth).height(thumbnailHeight))
+                                                        preview(Modifier.width(thumbnailWidth).heightIn(min = thumbnailHeight))
                                                     }
                                                 }
                                             } else {
@@ -560,7 +569,7 @@ fun CommentsHeader(
                                     selectionState = controller.summarySelectionState,
                                 )
                             }
-                            if (story.isComment) {
+                            if (story.isComment && !settings.minimalisticHeader) {
                                 val actions = buildList {
                                     if (story.parentId > 0) add(Triple("Open parent", Res.drawable.ic_reply, CommentsMoreAction.OPEN_PARENT))
                                     if (story.rootStoryId > 0) add(Triple("Open top level", Res.drawable.ic_arrow_upward, CommentsMoreAction.OPEN_TOP_LEVEL))
@@ -614,18 +623,29 @@ fun CommentsHeader(
                                             commented = controller.storyCommented,
                                             headerColor = background,
                                             animateSettingsPreview = animateSettingsPreview,
+                                            actionsExpanded = actionsExpanded,
+                                            onToggleActions = { actionsExpanded = !actionsExpanded },
                                         )
                                     }
                                 }
                             }
-                            CommentsHeaderActions(
-                                controller = controller,
-                                settings = settings.copy(headerMetaInfo = effectiveMetaInfo),
-                                contentVersion = contentVersion,
-                                bookmarksEnabled = bookmarksEnabled,
-                                previewCommentActions = previewCommentActions,
-                                onButtonsOverflowChanged = onButtonsOverflowChanged,
-                            )
+                            AnimatedVisibility(
+                                visible = !settings.minimalisticHeader || actionsExpanded,
+                                enter = expandVertically(contentTween(), expandFrom = Alignment.Top) +
+                                    fadeIn(tween(160, delayMillis = 55)) +
+                                    scaleIn(contentTween(), initialScale = 0.96f),
+                                exit = shrinkVertically(contentTween(), shrinkTowards = Alignment.Top) +
+                                    fadeOut(tween(120)) + scaleOut(contentTween(), targetScale = 0.96f),
+                            ) {
+                                CommentsHeaderActions(
+                                    controller = controller,
+                                    settings = detailSettings,
+                                    contentVersion = contentVersion,
+                                    bookmarksEnabled = bookmarksEnabled,
+                                    previewCommentActions = previewCommentActions,
+                                    onButtonsOverflowChanged = onButtonsOverflowChanged,
+                                )
+                            }
                         }
                     }
                 }

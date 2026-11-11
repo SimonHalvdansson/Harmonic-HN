@@ -49,6 +49,7 @@ internal fun HeaderImageMetrics(
     hazeState: HazeState,
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
+    stacked: Boolean = false,
     animateSettingsPreview: Boolean = false,
 ) {
     AnimatedVisibility(
@@ -56,10 +57,26 @@ internal fun HeaderImageMetrics(
         modifier,
         enter = fadeIn(tween(240)), exit = fadeOut(tween(120)),
     ) {
-        Row(Modifier.padding(4.dp).testTag("header-image-metrics"),
-            horizontalArrangement = Arrangement.spacedBy(if (animateSettingsPreview) 0.dp else 4.dp)) {
-            HeaderMetricItems(controller, settings, textStyle, hazeState = hazeState,
-                animateSettingsPreview = animateSettingsPreview)
+        val metricsModifier = Modifier.padding(4.dp).testTag("header-image-metrics")
+        val metrics: @Composable () -> Unit = {
+            HeaderMetricItems(
+                controller, settings, textStyle, hazeState = hazeState, vertical = stacked,
+                animateSettingsPreview = animateSettingsPreview,
+            )
+        }
+        if (stacked) {
+            Column(
+                metricsModifier,
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(if (animateSettingsPreview) 0.dp else 4.dp),
+                content = { metrics() },
+            )
+        } else {
+            Row(
+                metricsModifier,
+                horizontalArrangement = Arrangement.spacedBy(if (animateSettingsPreview) 0.dp else 4.dp),
+                content = { metrics() },
+            )
         }
     }
 }
@@ -111,15 +128,15 @@ private fun HeaderMetricItems(
     headerColor: Color = Color.Unspecified,
     animateSettingsPreview: Boolean = false,
     compact: Boolean = false,
+    vertical: Boolean = hazeState == null,
 ) {
     val story = controller.story
     val upvoted = controller.isUpvoted(story.id, story.isComment)
     HeaderSettingsVisibility(
         visible = !story.isComment && settings.showHeaderPoints,
         animate = animateSettingsPreview,
-        // Resize the stacked slot to move the comments pill, without cropping the fading badge.
         animateSize = hazeState == null,
-        vertical = true,
+        vertical = vertical,
         clip = false,
     ) { modifier ->
         ImageMetric(
@@ -132,7 +149,7 @@ private fun HeaderMetricItems(
             compact = compact,
             // Keep the badge and its spacing intact throughout the fade.
             modifier = modifier.then(if (animateSettingsPreview) {
-                if (hazeState == null) Modifier.padding(bottom = 4.dp) else Modifier.padding(end = 4.dp)
+                if (vertical) Modifier.padding(bottom = 4.dp) else Modifier.padding(end = 4.dp)
             } else Modifier),
         )
     }
@@ -167,7 +184,7 @@ private fun ImageMetric(
     val typography = rememberContentTypography(settings.font)
     val onImage = hazeState != null
     Box(
-        modifier.widthIn(min = if (onImage || compact) 48.dp else 56.dp)
+        modifier.then(if (onImage) Modifier else Modifier.widthIn(min = if (compact) 48.dp else 56.dp))
             .semantics {
                 contentDescription = description
                 stateDescription = count.toString()
@@ -182,7 +199,7 @@ private fun ImageMetric(
                     lerp(headerColor, MaterialTheme.colorScheme.onSurface, 0.07f), RoundedCornerShape(10.dp),
                 )
             ).heightIn(min = if (compact) 22.dp else if (onImage) 28.dp else 32.dp)
-                .padding(horizontal = if (onImage || compact) 4.dp else 8.dp, vertical = if (compact) 2.dp else 4.dp),
+                .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = if (compact) 2.dp else 4.dp),
             horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {

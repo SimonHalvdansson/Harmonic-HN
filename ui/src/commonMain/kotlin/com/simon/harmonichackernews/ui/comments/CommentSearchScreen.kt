@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.PortableCommentItem
+import com.simon.harmonichackernews.ui.common.fadingScrollEdges
 import com.simon.harmonichackernews.ui.content.PrefetchCommentContent
 import com.simon.harmonichackernews.ui.settings.RequestSettingsDialogFocus
 
@@ -95,7 +96,11 @@ fun CommentSearchScreen(
             }
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMaxHeight),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = listMaxHeight)
+                    .fadingScrollEdges(topScroll = {
+                        if (listState.firstVisibleItemIndex > 0) Float.POSITIVE_INFINITY
+                        else listState.firstVisibleItemScrollOffset.toFloat()
+                    }),
                 contentPadding = PaddingValues(
                     top = if (compact) 0.dp else 8.dp,
                     bottom = if (compact) 8.dp else 24.dp,

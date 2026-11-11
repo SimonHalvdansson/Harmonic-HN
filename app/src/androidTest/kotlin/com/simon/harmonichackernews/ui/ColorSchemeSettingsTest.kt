@@ -91,9 +91,9 @@ class ColorSchemeSettingsTest {
             assertEquals(expected.blue, actual.blue, .01f)
         }
         // Keep clear of the selected check mark in the top-right quadrant.
-        assertRole(expected.primary, .15f, .3f)
-        assertRole(expected.secondary, .7f, .7f)
-        assertRole(expected.tertiary, .3f, .7f)
+        assertRole(if (dark) expected.primary else expected.primaryContainer, .15f, .3f)
+        assertRole(if (dark) expected.secondary else expected.tertiaryContainer, .7f, .7f)
+        assertRole(if (dark) expected.tertiary else expected.secondaryContainer, .3f, .7f)
     }
 
     private fun pureBlackSwitch(tag: String) = compose.onNode(

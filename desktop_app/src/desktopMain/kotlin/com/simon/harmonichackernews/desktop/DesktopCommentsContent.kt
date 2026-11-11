@@ -277,6 +277,7 @@ internal fun DesktopCommentsContent(
                             bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
                             textStyle = TextStyle.Default,
                             onOpenLink = { scene.links.open(it) },
+                            userTags = app.userTags,
                         )
                     },
                 )

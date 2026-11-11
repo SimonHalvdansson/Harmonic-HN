@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.HarmonicApplication
 import com.simon.harmonichackernews.app.AppMetadata
 import com.simon.harmonichackernews.app.HarmonicAppComposition
@@ -190,6 +191,51 @@ class HeaderDisplayPreviewTest {
         save("header-preview-menu")
     }
 
+    @Test fun minimalisticActionsAnimateInBothDirections() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        repository.setCommentsHeaderImage(CommentsHeaderImage.LARGE)
+        repository.setCommentsHeaderMetaInfo(CommentsHeaderMetaInfo.ON_IMAGE)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_MINIMALISTIC, true)
+        val preferences = CommentDisplaySettings.from(repository.snapshot().comments, false, false, true, false)
+        assertFalse(preferences.showHeaderPreviewImage)
+        assertEquals(CommentsHeaderMetaInfo.SMALL, preferences.headerMetaInfo)
+
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) { HeaderDisplayPreview(preferences, true, {}) }
+        }
+        compose.onNodeWithContentDescription("Story preview image", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+        val expandCaret = compose.onNodeWithContentDescription("Expand post actions")
+        expandCaret.assertHeightIsEqualTo(32.dp)
+        compose.onNodeWithContentDescription("Expand post actions", useUnmergedTree = true)
+            .assertHeightIsEqualTo(22.dp)
+        val collapsed = height()
+        compose.mainClock.autoAdvance = false
+        expandCaret.performTouchInput { click() }
+        compose.mainClock.advanceTimeBy(130)
+        val expanding = height()
+        compose.mainClock.advanceTimeBy(500)
+        val expanded = height()
+        assertTrue("Header should grow smoothly: $collapsed -> $expanding -> $expanded",
+            expanding > collapsed && expanding < expanded)
+        compose.onNodeWithContentDescription("More options").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Collapse post actions").performClick()
+        compose.mainClock.advanceTimeBy(130)
+        val collapsing = height()
+        compose.mainClock.advanceTimeBy(500)
+        assertTrue("Header should shrink smoothly: $expanded -> $collapsing -> $collapsed",
+            collapsing > collapsed && collapsing < expanded)
+        assertEquals(collapsed, height(), 1f)
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_MINIMALISTIC, false)
+        val restored = CommentDisplaySettings.from(repository.snapshot().comments, false, false, true, false)
+        assertTrue(restored.showHeaderPreviewImage)
+        assertEquals(CommentsHeaderMetaInfo.ON_IMAGE, restored.headerMetaInfo)
+    }
+
     @Test fun loggedOutKeepsSeparateActionsAndPreviewRefreshFinishes() {
         compose.setContent {
             val palette = HarmonicThemeCatalog.resolve("material_light", false)
@@ -266,7 +312,12 @@ class HeaderDisplayPreviewTest {
         assertTrue("Small preview should be wider than tall", image.width > image.height)
         val voteBadge = compose.onNodeWithContentDescription("53 points", useUnmergedTree = true).assertHasNoClickAction().fetchSemanticsNode().boundsInRoot
         val replyBadge = compose.onNodeWithContentDescription("18 comments", useUnmergedTree = true).assertHasNoClickAction().fetchSemanticsNode().boundsInRoot
-        assertTrue("Informational counts belong on the image", image.contains(voteBadge.center) && image.contains(replyBadge.center))
+        for (badge in listOf(voteBadge, replyBadge)) {
+            assertTrue("The entire badge must fit inside the image: $badge in $image",
+                badge.left >= image.left && badge.top >= image.top &&
+                    badge.right <= image.right && badge.bottom <= image.bottom)
+        }
+        assertTrue("Small image badges should stack", voteBadge.bottom < replyBadge.top)
         compose.onNodeWithText("science.org \u00b7 2h \u00b7 willow", useUnmergedTree = true).assertIsDisplayed()
         val title = compose.onNodeWithText("Algorithm breaks speed limit for solving linear equations", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val domain = compose.onNodeWithText("science.org", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot

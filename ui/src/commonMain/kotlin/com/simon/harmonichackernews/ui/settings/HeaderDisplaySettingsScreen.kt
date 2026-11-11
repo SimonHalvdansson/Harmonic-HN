@@ -240,19 +240,29 @@ fun HeaderDisplaySettingsRoute(
                     SegmentedSetting(
                         title = "Preview image",
                         options = CommentsHeaderImage.entries.map { it to it.label },
-                        selected = CommentsHeaderImage.from(state.headerPreviewImage, settings.comments.headerLayout),
-                        enabled = state.storyPreviewEnabled,
+                        selected = CommentsHeaderImage.from(
+                            state.headerPreviewImage && !displaySettings.minimalisticHeader, displaySettings.headerLayout,
+                        ),
+                        enabled = state.storyPreviewEnabled && !displaySettings.minimalisticHeader,
                         onSelected = repository::setCommentsHeaderImage,
                     )
                     SettingsDivider()
                     SegmentedSetting(
                         title = "Post details",
                         options = CommentsHeaderMetaInfo.entries.map { it to it.label },
-                        selected = settings.comments.headerMetaInfo,
+                        selected = if (displaySettings.minimalisticHeader) CommentsHeaderMetaInfo.SMALL else settings.comments.headerMetaInfo,
+                        enabled = !displaySettings.minimalisticHeader,
                         disabledOptions = buildSet {
                             if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
                         },
                         onSelected = repository::setCommentsHeaderMetaInfo,
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Minimalistic",
+                        icon = Res.drawable.ic_keyboard_arrow_down,
+                        checked = displaySettings.minimalisticHeader,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_MINIMALISTIC, it) },
                     )
                     SettingsDivider()
                     SwitchSettingRow(

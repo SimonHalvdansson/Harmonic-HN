@@ -49,6 +49,7 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
     ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
     HEADER_TINT(UserPreferenceKeys.COMMENTS_HEADER_TINT),
+    HEADER_MINIMALISTIC(UserPreferenceKeys.COMMENTS_HEADER_MINIMALISTIC),
     HEADER_DOMAIN(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN),
     HEADER_CATEGORIES(UserPreferenceKeys.COMMENTS_HEADER_CATEGORIES),
     HEADER_FAVICON(UserPreferenceKeys.COMMENTS_HEADER_FAVICON),

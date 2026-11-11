@@ -97,7 +97,7 @@ fun CommentsSpacingSettingsRoute(repository: AppSettingsRepository, onBack: () -
         val createdAt = Clock.System.now().epochSeconds.toInt() - 3600
         listOf(
             "willow" to "Small details can make a conversation much easier to follow.",
-            "lantern" to "&gt; Small details<p>A little breathing room makes a difference.",
+            "lantern" to "A little breathing room makes a difference.",
             "pebble" to "I like being able to choose what feels comfortable to read.",
         ).mapIndexed { index, (author, body) ->
             PortableCommentItem(

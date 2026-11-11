@@ -61,6 +61,7 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_HEADER_TINT_SOURCE = "pref_comments_header_tint_source"
+    const val COMMENTS_HEADER_MINIMALISTIC = "pref_comments_header_minimalistic"
     const val COMMENTS_HEADER_DOMAIN = "pref_comments_header_domain"
     const val COMMENTS_HEADER_CATEGORIES = "pref_comments_header_categories"
     const val COMMENTS_HEADER_FAVICON = "pref_comments_header_favicon"
@@ -222,6 +223,7 @@ class StoredUserSettings(
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 showFavicons = boolean(UserPreferenceKeys.COMMENTS_HEADER_FAVICON, true),
+                minimalisticHeader = boolean(UserPreferenceKeys.COMMENTS_HEADER_MINIMALISTIC, false),
                 showHeaderDomain = boolean(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN, true),
                 showHeaderPoints = boolean(UserPreferenceKeys.COMMENTS_HEADER_POINTS, true),
                 showHeaderCategories = boolean(UserPreferenceKeys.COMMENTS_HEADER_CATEGORIES, true),

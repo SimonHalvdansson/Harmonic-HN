@@ -25,6 +25,7 @@ internal fun AndroidCommentActionOverlay(
         textStyle = commentActionLegacyTextStyle,
         onOpenLink = { url -> dependencies.links.open(url) },
         onScrimAlphaChanged = onScrimAlphaChanged,
+        userTags = dependencies.userTags,
     )
 }
 

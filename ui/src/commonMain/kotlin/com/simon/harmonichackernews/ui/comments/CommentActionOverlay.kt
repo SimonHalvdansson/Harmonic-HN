@@ -9,7 +9,14 @@ import kotlin.time.Duration.Companion.milliseconds
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.ui.common.ScrollableTextScrollbar
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.common.fadingScrollEdges
+import com.simon.harmonichackernews.ui.content.annotatedUserTagLabel
+import com.simon.harmonichackernews.ui.content.userTagColor
+import com.simon.harmonichackernews.ui.theme.contrastingColor
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -120,11 +127,16 @@ fun CommentActionOverlay(
     textStyle: TextStyle,
     onOpenLink: (String) -> Unit,
     onScrimAlphaChanged: (Float) -> Unit = {},
+    userTags: UserTagsRepository? = null,
 ) {
     PostAskOverlay(controller, settings, onOpenLink)
     val state = controller.commentActionOverlay ?: return
     val commentsHazeState = currentCommentsHazeState()
     val comment = state.comment
+    val tags = userTags?.let { it.updates.collectAsStateWithLifecycle(initialValue = it.current()).value }
+    val username = comment.by.orEmpty().trim()
+    val userTag = tags?.tags?.get(username).orEmpty()
+    val tagColor = tags?.colors?.get(username) ?: UserTagColor.Theme
     val discussionProgress = rememberAskProgress(controller.askOpen, controller.askBackProgress)
     val discussionVisible by remember(discussionProgress, controller) {
         computedStateOf { discussionProgress.value > 0f || controller.askOpen }
@@ -453,6 +465,8 @@ fun CommentActionOverlay(
                             controller = controller,
                             settings = settings,
                             comment = comment,
+                            userTag = userTag,
+                            tagColor = tagColor,
                             hasAccount = hasAccount,
                             bookmarksEnabled = bookmarksEnabled,
                             textStyle = textStyle,
@@ -494,6 +508,8 @@ private fun CommentActionCardContent(
     controller: CommentsScreenController,
     settings: CommentDisplaySettings,
     comment: PortableCommentItem,
+    userTag: String,
+    tagColor: UserTagColor,
     hasAccount: Boolean,
     bookmarksEnabled: Boolean,
     textStyle: TextStyle,
@@ -517,6 +533,11 @@ private fun CommentActionCardContent(
     val commentTextSize = settings.preferredTextSize - 1f
     val largeUserLabel = LocalDensity.current.fontScale > 1f
     val author = comment.by?.takeIf(String::isNotBlank)
+    val authorLabel = author ?: "Unknown user"
+    val taggedAuthor = if (userTag.isBlank()) authorLabel else "$authorLabel ($userTag)"
+    val authorButtonColor = MaterialTheme.colorScheme.primaryContainer
+    val authorTagColor = if (userTag.isBlank()) Color.Unspecified
+        else contrastingColor(userTagColor(tagColor), listOf(authorButtonColor), 4.5f)
     val linkListener = remember(onOpenLink) {
         LinkInteractionListener { link ->
             val url = (link as? LinkAnnotation.Url)?.url ?: return@LinkInteractionListener
@@ -558,11 +579,14 @@ private fun CommentActionCardContent(
                         )
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        containerColor = authorButtonColor,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).then(if (largeUserLabel) Modifier.heightIn(min = 40.dp) else Modifier.height(40.dp)),
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 12.dp).then(
+                        if (largeUserLabel || userTag.isNotBlank()) Modifier.heightIn(min = 40.dp)
+                        else Modifier.height(40.dp),
+                    ),
                 ) {
                     if (settings.userAvatarsEnabled && author != null) {
                         UserAvatar(
@@ -574,11 +598,12 @@ private fun CommentActionCardContent(
                         Icon(painterResource(Res.drawable.ic_account_circle), contentDescription = null)
                     }
                     Text(
-                        author ?: "Unknown user",
+                        annotatedUserTagLabel(taggedAuthor, userTag, authorTagColor),
                         modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
                         fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
-                        maxLines = if (largeUserLabel) Int.MAX_VALUE else 1,
+                        maxLines = if (largeUserLabel) Int.MAX_VALUE else if (userTag.isNotBlank()) 2 else 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (author != null && author == controller.story.by) {
                         CommentAuthorBadge("OP", LocalContentColor.current, AppUiFontFamily)

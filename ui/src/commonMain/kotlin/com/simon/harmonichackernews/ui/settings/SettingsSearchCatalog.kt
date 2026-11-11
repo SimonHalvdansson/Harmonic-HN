@@ -174,7 +174,7 @@ internal fun settingsSearchCatalog(
         "Continuous thread lines" to "connected branches nesting indentation",
         "Show top level indicators" to "root thread depth indentation")
     group(SettingsSection.QuoteHighlighting, "Appearance",
-        "Padding" to "quote inset text left top bottom space",
+        "Extra padding" to "quote inset text left top bottom space",
         "Color" to "colour quotes palette material",
         "Style" to "background stripe both blockquote",
         "Quote spacing" to "compact comfortable padding margins")
@@ -183,7 +183,8 @@ internal fun settingsSearchCatalog(
         "Colors" to "colours profile images material original")
     group(SettingsSection.HeaderDisplay, "Layout",
         "Preview image" to "header photo cover picture",
-        "Post details" to "metadata title author points time score",
+        "Post details" to "metadata title author points time score row",
+        "Minimalistic" to "compact post header expand collapse buttons preview image",
         "Domain" to "website url host",
         "Article category tags" to "categorization labels post header",
         "Thumbnail" to "favicon website logo icon",

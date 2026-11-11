@@ -20,7 +20,19 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.HarmonicDimens
 
 /** Apply before verticalScroll, to the content viewport only, never its translucent background. */
-internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
+internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier = fadingScrollEdges(
+    topScroll = { if (state.viewportSize > 0 && state.maxValue > 0) state.value.toFloat() else 0f },
+    bottomScroll = {
+        if (state.viewportSize > 0 && state.maxValue > 0) {
+            (state.maxValue - state.value).toFloat()
+        } else 0f
+    },
+)
+
+internal fun Modifier.fadingScrollEdges(
+    topScroll: () -> Float,
+    bottomScroll: (() -> Float)? = null,
+): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
             val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
@@ -30,9 +42,9 @@ internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
                 startY = size.height - fadeLength, endY = size.height)
             onDrawWithContent {
                 drawContent()
-                if (fadeLength > 0f && state.viewportSize > 0 && state.maxValue > 0) {
-                    val topStrength = (state.value / fadeLength).coerceIn(0f, 1f)
-                    val bottomStrength = ((state.maxValue - state.value) / fadeLength).coerceIn(0f, 1f)
+                if (fadeLength > 0f) {
+                    val topStrength = (topScroll() / fadeLength).coerceIn(0f, 1f)
+                    val bottomStrength = ((bottomScroll?.invoke() ?: 0f) / fadeLength).coerceIn(0f, 1f)
                     if (topStrength > 0f) drawRect(topBrush, size = Size(size.width, fadeLength),
                         alpha = topStrength, blendMode = BlendMode.DstOut)
                     if (bottomStrength > 0f) drawRect(bottomBrush,

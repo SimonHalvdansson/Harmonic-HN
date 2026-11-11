@@ -12,9 +12,11 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.selected
@@ -22,6 +24,7 @@ import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.FlowRow
@@ -33,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.common.relativeTimeOnResume
+import com.simon.harmonichackernews.ui.content.contentTween
 import com.simon.harmonichackernews.ui.content.ContentTypography
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import org.jetbrains.compose.resources.DrawableResource
@@ -71,6 +76,8 @@ fun CommentsHeaderMetadata(
     headerColor: Color = MaterialTheme.colorScheme.surface,
     storyPosterTagColor: UserTagColor = UserTagColor.Theme,
     animateSettingsPreview: Boolean = false,
+    actionsExpanded: Boolean = false,
+    onToggleActions: () -> Unit = {},
 ) {
     val commentIcon = if (commented) Res.drawable.ic_comment_filled else Res.drawable.ic_comment
     if (!story.loaded || settings.headerMetaInfo == com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo.ON_IMAGE) return
@@ -138,7 +145,7 @@ fun CommentsHeaderMetadata(
         FlowRow(
             modifier = Modifier
                 .weight(1f)
-                .padding(top = 6.dp),
+                .padding(top = if (settings.minimalisticHeader) 0.dp else 6.dp),
             horizontalArrangement = Arrangement.spacedBy(if (animateSettingsPreview) 0.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -152,7 +159,19 @@ fun CommentsHeaderMetadata(
                 annotatedLabel = annotatedPosterLabel)
 
         }
-        if (story.isLink) {
+        if (settings.minimalisticHeader) {
+            val rotation by animateFloatAsState(
+                if (actionsExpanded) 180f else 0f, contentTween(), label = "header actions caret",
+            )
+            IconButton(onClick = onToggleActions, modifier = Modifier.height(32.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_keyboard_arrow_down),
+                    contentDescription = if (actionsExpanded) "Collapse post actions" else "Expand post actions",
+                    modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = rotation },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else if (story.isLink) {
             Icon(
                 painterResource(Res.drawable.ic_link),
                 contentDescription = null,

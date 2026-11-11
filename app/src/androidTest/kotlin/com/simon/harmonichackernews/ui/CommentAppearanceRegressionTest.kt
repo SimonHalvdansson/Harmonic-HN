@@ -18,7 +18,10 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
@@ -34,6 +37,7 @@ import com.simon.harmonichackernews.ui.comments.*
 import com.simon.harmonichackernews.ui.common.HazeHost
 import com.simon.harmonichackernews.ui.common.LocalHazePreferences
 import com.simon.harmonichackernews.ui.common.sharedHazeDialogBackground
+import com.simon.harmonichackernews.ui.content.CommentMeta
 import com.simon.harmonichackernews.ui.content.CommentRow
 import com.simon.harmonichackernews.ui.content.CommentRowStyle
 import com.simon.harmonichackernews.ui.content.SettingsCommentPreviewModel
@@ -318,6 +322,66 @@ class CommentAppearanceRegressionTest {
         compose.waitForIdle()
         capturePolishFrame("op")
         if (!polishBaseline()) compose.onNodeWithText("OP", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun commentTagMatchesTimestampWeight() {
+        val palette = HarmonicThemeCatalog.resolve("light", false)
+        compose.setContent {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                CommentMeta(
+                    author = "reader", age = "1h", userTag = "Maintainer",
+                    avatarsEnabled = false, avatarOptions = UserAvatarOptions(),
+                    byOp = false, byUser = false, hiddenPreview = null,
+                    subtreeReplyCount = null, showHiddenReplyCount = false, emphasized = false,
+                    fontFamily = com.simon.harmonichackernews.ui.theme.AppUiFontFamily, animateChanges = false,
+                )
+            }
+        }
+        fun weight(label: String): FontWeight? {
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(label, substring = true, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            return layouts.single().layoutInput.style.fontWeight
+        }
+        assertEquals(FontWeight.Normal, weight("1h"))
+        assertEquals(FontWeight.Normal, weight("Maintainer"))
+    }
+
+    @Test
+    fun commentActionTagRemainsReadableOnHnTheme() {
+        val tags = UserTagsRepository(InMemoryKeyValueStore()).apply { setTag("reader", "Maintainer") }
+        val controller = CommentsScreenController.create(
+            shouldSmoothScroll = { false },
+            story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot(loaded = true)),
+            initialThreadCached = true, showWebsite = false, accountUser = null, listener = NoOpListener(),
+            savedItemState = object : SavedItemStateReader {
+                override fun isBookmarked(itemId: Int) = false
+                override fun isFavorited(itemId: Int) = false
+                override fun isUpvoted(itemId: Int, isComment: Boolean) = false
+            },
+        )
+        val palette = HarmonicThemeCatalog.scheme(ColorSchemePreferences.HACKER_NEWS, dark = false)
+        compose.setContent {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                Box(Modifier.fillMaxSize()) {
+                    CommentActionOverlay(controller, settings, false, false, TextStyle.Default,
+                        onOpenLink = {}, userTags = tags)
+                }
+            }
+        }
+        compose.runOnIdle {
+            controller.restoreCommentActions(PortableCommentItem(
+                CommentSnapshot(1, author = "reader", text = "A comment.", expandedAnchorText = "A comment."),
+                CommentPresentationSnapshot(expanded = true),
+            ))
+        }
+        val label = compose.onNodeWithText("reader (Maintainer)", useUnmergedTree = true)
+            .assertIsDisplayed().fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].single()
+        val contrast = com.simon.harmonichackernews.ui.theme.colorContrast(
+            label.spanStyles.single().item.color, palette.colorScheme.primaryContainer,
+        )
+        assertTrue("Author tag contrast was $contrast", contrast >= 4.5f)
     }
 
     @Test
