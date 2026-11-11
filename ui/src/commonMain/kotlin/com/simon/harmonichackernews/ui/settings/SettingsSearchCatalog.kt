@@ -147,7 +147,7 @@ internal fun settingsSearchCatalog(
         "Display style" to "flat filled raised outlined cards border",
         "Text size" to "font bigger smaller accessibility zoom",
         "Collect links" to "reference links collect references urls expand collapse",
-        "Emphasize username and time" to "highlight metadata author date bold",
+        "Highlight comment headers" to "highlight metadata author username date time timestamp bold",
         "Mark new comments" to "unread new replies highlight dot")
     group(SettingsSection.Comments, "Interactions",
         "Hide text of collapsed comments" to "collapse parent minimize minimize hide",

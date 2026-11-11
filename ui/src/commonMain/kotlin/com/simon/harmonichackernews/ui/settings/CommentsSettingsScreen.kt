@@ -183,7 +183,7 @@ fun CommentsSettingsScreen(
                 )
             }
             row {
-                BooleanRow("Emphasize username and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
+                BooleanRow("Highlight comment headers", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
             }
             row {
                 NavigationSwitchSettingRow(
