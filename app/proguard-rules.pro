@@ -41,21 +41,14 @@
     public <init>();
 }
 
-# LiteRT-LM 0.19.1 has no consumer rules for its embedding JNI lookups (#405).
-# GetNativeInputData looks up all three classes/getters, even for text-only input.
--keep class com.google.ai.edge.litertlm.InputData$Text {
-    public java.lang.String getText();
-}
--keep class com.google.ai.edge.litertlm.InputData$Audio {
-    public byte[] getBytes();
-}
--keep class com.google.ai.edge.litertlm.InputData$Image {
-    public byte[] getBytes();
-}
-# Native code constructs the response; R8 cannot see this constructor call.
--keep class com.google.ai.edge.litertlm.EmbeddingResponse {
-    public <init>(float[]);
-}
+# LiteRT-LM 0.19.1 ships no consumer rules for its JNI surface:
+# https://github.com/google-ai-edge/LiteRT-LM/issues/3739
+# Native code resolves configuration getters, input/response classes, constructors,
+# and streaming callback methods by name. Keep implementations and nested classes
+# too: preserving only embeddings (#405) still lets conversation creation abort.
+# Keep this library intact until upstream ships complete consumer rules; names
+# alone are insufficient because R8 can also remove or optimize these members.
+-keep class com.google.ai.edge.litertlm.** { *; }
 
 # ML Kit deserializes this structured suggestion result in Play builds.
 -keep class com.simon.harmonichackernews.network.NanoQuestionSuggestions { *; }
