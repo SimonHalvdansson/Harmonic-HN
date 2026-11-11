@@ -132,6 +132,12 @@ class DataSettingsService(
         .takeIf { it.isNotEmpty() }
         ?.let(SavedItemCodec::encode)
 
+    suspend fun initializeHistory() { history?.awaitHistories() }
+
+    suspend fun exportReadingHistory(): String? = history?.awaitHistories()
+        ?.takeIf { it.isNotEmpty() }
+        ?.let(ReadingHistoryExport::csv)
+
     suspend fun importBookmarks(content: String, overwrite: Boolean): BookmarkImportResult {
         val result = savedItems.importBookmarksAtomic(content, overwrite)
             ?: return BookmarkImportResult.Empty

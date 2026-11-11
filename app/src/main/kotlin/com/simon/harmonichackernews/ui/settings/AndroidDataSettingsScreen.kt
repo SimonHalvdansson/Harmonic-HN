@@ -66,9 +66,7 @@ fun AndroidDataSettingsScreen(
         onDispose(pendingExport::clear)
     }
 
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain"),
-    ) { uri ->
+    val writeExport: (Uri?) -> Unit = { uri ->
         val content = pendingExport.take()
         if (uri != null && content != null) {
             scope.launch {
@@ -82,6 +80,13 @@ fun AndroidDataSettingsScreen(
             }
         }
     }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"), writeExport,
+    )
+    val historyExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"), writeExport,
+    )
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -139,7 +144,8 @@ fun AndroidDataSettingsScreen(
                             settingsExportLauncher.launch(effect.filename)
                         } else {
                             pendingExport.replace(effect.content)
-                            exportLauncher.launch(effect.filename)
+                            if (effect.mimeType == "text/csv") historyExportLauncher.launch(effect.filename)
+                            else exportLauncher.launch(effect.filename)
                         }
                     } catch (_: ActivityNotFoundException) {
                         pendingExport.clear()
