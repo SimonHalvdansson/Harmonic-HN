@@ -1,12 +1,12 @@
 [versions]
 agp = "9.5.1"
 compose-bom = "2026.09.00"
-compose-multiplatform = "1.13.0-beta01"
-compose-multiplatform-material3 = "1.13.0-beta01"
+compose-multiplatform = "1.13.0-beta02"
+compose-multiplatform-material3 = "1.13.0-beta02"
 # 2.5.0-Beta1 breaks Native enum lowering and linking of core test declarations.
 kotlin = "2.4.21"
 ksp = "2.3.12"
-material3 = "1.5.0-beta02"
+material3 = "1.5.0-rc01"
 material3-adaptive = "1.4.0-alpha01"
 navigation3 = "1.2.0"
 navigationevent = "1.2.0"

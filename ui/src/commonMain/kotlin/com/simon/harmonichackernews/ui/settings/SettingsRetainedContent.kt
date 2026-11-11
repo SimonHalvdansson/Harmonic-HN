@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.LookaheadScope
 import com.simon.harmonichackernews.ui.navigation.NavigationEntryScopes
 import com.simon.harmonichackernews.ui.navigation.rememberNavigationEntryScopes
 
@@ -38,7 +39,12 @@ internal class SettingsRetainedContent(private val scopes: NavigationEntryScopes
             // when it is first created. Moving a slot preserves its composition and native views.
             movableContentOf { render: @Composable () -> Unit ->
                 DisposableEffect(key) { onDispose { slots.remove(key) } }
-                scopes.Content(key, render)
+                // Keep lookahead ownership inside the movable slot. Moving a slider from the
+                // two-pane lookahead tree to the one-pane stack otherwise leaves Compose's
+                // alignment-line delegate referring to a removed lookahead pass.
+                LookaheadScope {
+                    scopes.Content(key, render)
+                }
             }
         }
         slot(content)
