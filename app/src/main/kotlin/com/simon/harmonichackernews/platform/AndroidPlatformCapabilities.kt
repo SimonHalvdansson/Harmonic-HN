@@ -68,8 +68,12 @@ class AndroidHistoryStore(context: Context) : ObservableHistoryStore by StoredHi
 )
 
 class AndroidClipboardService(context: Context) : ClipboardService {
-    private val clipboard = context.applicationContext
-        .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    private val appContext = context.applicationContext
+    // The app graph is built on IO. Android 8 creates a Handler when obtaining this service,
+    // so defer the lookup until a copy action on the UI thread.
+    private val clipboard by lazy {
+        appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
 
     override fun copy(label: String, text: String) {
         clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
