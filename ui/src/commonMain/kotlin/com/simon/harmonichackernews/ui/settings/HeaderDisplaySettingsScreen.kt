@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AppSettings
+import com.simon.harmonichackernews.settings.forPureBlackDarkMode
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.settings.CommentsHeaderButton
 import com.simon.harmonichackernews.ui.comments.icon
@@ -141,7 +142,7 @@ fun HeaderDisplaySettingsRoute(
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val state = presenter.state(settings)
     val displaySettings = CommentDisplaySettings.from(
-        preferences = settings.comments,
+        preferences = settings.comments.forPureBlackDarkMode(settings.pureBlackDarkMode),
         showInvert = false,
         isTablet = false,
         hasAccountDetails = account.accountOrNull != null,
@@ -320,8 +321,10 @@ fun HeaderDisplaySettingsRoute(
                 SettingsCategory("Background") {
                     SegmentedSetting(
                         title = "Background tint",
+                        summary = if (state.pureBlackDarkMode) "Forced to Off in pure black mode" else null,
                         options = CommentsHeaderTint.entries.map { it to it.label },
-                        selected = settings.comments.headerTint,
+                        selected = displaySettings.headerTint,
+                        enabled = !state.pureBlackDarkMode,
                         onSelected = repository::setCommentsHeaderTint,
                     )
                     SettingsDivider()
