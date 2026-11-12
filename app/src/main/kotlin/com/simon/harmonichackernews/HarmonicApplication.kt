@@ -18,6 +18,7 @@ import com.simon.harmonichackernews.app.AppBootstrapPolicy
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.summary.local.createAndroidLocalRuntimeDelivery
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
+import com.simon.harmonichackernews.platform.AndroidCurrentActivity
 import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.ui.content.trimHarmonicUiMemoryCaches
@@ -65,6 +66,7 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
     override fun onCreate() {
         configureAndroidComposeFocus()
         super.onCreate()
+        val currentActivity = AndroidCurrentActivity(this)
         // Register lifecycle callbacks on Main before the first activity can resume. This adapter
         // does not open storage or initialize the runtime; the remaining graph is prepared on IO.
         val runtimeDelivery = createAndroidLocalRuntimeDelivery(this)
@@ -79,7 +81,9 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
                     AndroidKeyValueStore.named(this@HarmonicApplication, StorageKeyPolicy.FILE_ACCESS_STORE),
                 ).map { store -> async { store.awaitLoaded() } }.awaitAll()
             }
-            createAndroidAppComposition(this@HarmonicApplication, preloadScope, runtimeDelivery)
+            createAndroidAppComposition(
+                this@HarmonicApplication, preloadScope, runtimeDelivery, currentActivity::get,
+            )
         }
         startup.start()
     }

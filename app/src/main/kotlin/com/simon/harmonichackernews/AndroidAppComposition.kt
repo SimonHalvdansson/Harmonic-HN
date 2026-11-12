@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews
 
+import android.app.Activity
 import android.content.Context
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicHostConfiguration
@@ -35,6 +36,7 @@ internal fun createAndroidAppComposition(
     context: Context,
     cacheScope: CoroutineScope,
     runtimeDelivery: AndroidLocalRuntimeDelivery,
+    currentActivity: () -> Activity?,
 ): HarmonicAppComposition {
     val network = AndroidNetworkEnvironment(context)
     val settingsStore = AndroidKeyValueStore.defaults(context)
@@ -61,6 +63,7 @@ internal fun createAndroidAppComposition(
         platform = createAndroidPlatformDependencies(
             context,
             localModels = localModels,
+            currentActivity = currentActivity,
         ),
         host = HarmonicHostConfiguration(
             dynamicColorAvailable = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,
