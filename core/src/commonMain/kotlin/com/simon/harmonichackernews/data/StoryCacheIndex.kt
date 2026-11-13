@@ -50,10 +50,15 @@ object StoryCacheIndex {
         return StoryCacheIndexUpdate(validEntries.values.mapTo(linkedSetOf(), ::encode), evicted)
     }
 
-    fun remove(encodedEntries: Set<String>, storyId: Int): Set<String> =
-        encodedEntries.mapNotNull(::parse)
-            .filterNot { it.storyId == storyId }
-            .mapTo(linkedSetOf(), ::encode)
+    fun remove(encodedEntries: Set<String>, storyId: Int): Set<String> {
+        val retained = linkedSetOf<String>()
+        for (value in encodedEntries) {
+            parse(value) { id, cachedAt ->
+                if (id != storyId) retained.add("$id-$cachedAt")
+            }
+        }
+        return retained
+    }
 
     fun storyIds(encodedEntries: Set<String>): Set<Int> =
         encodedEntries.mapNotNullTo(linkedSetOf()) { value -> parse(value) { id, _ -> id } }

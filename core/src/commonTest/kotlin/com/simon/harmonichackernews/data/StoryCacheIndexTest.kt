@@ -7,6 +7,23 @@ import kotlin.test.assertTrue
 
 class StoryCacheIndexTest {
     @Test
+    fun removalPreservesNormalizationDeduplicationAndInsertionOrder() {
+        val encoded = linkedSetOf(
+            "9-100", "+7-+12", "0008-00013", "8-13", "9-200", "9-100",
+            "2147483647-9223372036854775807", "0-1", "-1-1", "2147483648-1",
+            "1-9223372036854775808", "2--1", "3-+", "4-2-3", "5-", "6", "", "broken",
+        )
+        for (removed in listOf(0, 7, 8, 9, Int.MAX_VALUE, -1, 42)) {
+            val expected = StoryCacheIndex.entries(encoded)
+                .filterNot { it.storyId == removed }
+                .mapTo(linkedSetOf()) { "${it.storyId}-${it.cachedAtMillis}" }
+            assertEquals(expected.toList(), StoryCacheIndex.remove(encoded, removed).toList())
+        }
+        assertEquals(emptySet(), StoryCacheIndex.remove(emptySet(), 1))
+        assertEquals(emptySet(), StoryCacheIndex.remove(setOf("7-12", "+7-+13"), 7))
+    }
+
+    @Test
     fun idOnlyReadsStillValidateTimestampsAndPreserveFirstOccurrenceOrder() {
         val entries = linkedSetOf(
             "9-100", "+7-+12", "0008-00013", "9-200", "2147483647-9223372036854775807",

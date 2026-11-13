@@ -50,5 +50,6 @@ object ArticleEmbeddingInput {
     }
 
     private val overflowPattern = Regex("Input sequence length \\((\\d+)\\) exceeds maximum supported signature length \\((\\d+)\\)")
-    private fun clean(value: String): String = value.replace(Regex("\\s+"), " ").trim()
+    private val whitespacePattern = Regex("\\s+")
+    private fun clean(value: String): String = value.replace(whitespacePattern, " ").trim()
 }

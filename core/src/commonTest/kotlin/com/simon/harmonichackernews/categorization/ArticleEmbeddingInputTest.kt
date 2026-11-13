@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.categorization
 
+import com.simon.harmonichackernews.network.HtmlDescriptionExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -9,6 +10,21 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ArticleEmbeddingInputTest {
+    @Test
+    fun reusedWhitespacePatternPreservesInputAndDescriptionFallbacks() {
+        val inputs = listOf("", "  ", "Kotlin\tand\nperformance", "Café\u00a0news\u2003today",
+            "  Tools\r\nfor\u000bdevelopers\u000c  ", "😀 " + "Long title ".repeat(50))
+        for (title in inputs) {
+            for (description in inputs + listOf(null, title, "Subscribe to continue reading")) {
+                val expectedTitle = title.replace(Regex("\\s+"), " ").trim().take(300)
+                val expectedDetails = description.orEmpty().replace(Regex("\\s+"), " ").trim().take(600)
+                    .takeIf { HtmlDescriptionExtractor.isMeaningful(it, expectedTitle, expectedTitle) }.orEmpty()
+                assertEquals("title: $expectedTitle | text: ${expectedDetails.ifBlank { expectedTitle }}",
+                    ArticleEmbeddingInput.format(title, description))
+            }
+        }
+    }
+
     @Test
     fun onlyOverLimitInputsAreShortenedAndRetried() = runTest {
         val input = ArticleEmbeddingInput.format("Title", "An article about programming languages and compilers. ".repeat(15))
