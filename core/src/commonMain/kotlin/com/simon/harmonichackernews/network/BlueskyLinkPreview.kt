@@ -12,8 +12,9 @@ internal object BlueskyLinkPreview {
     }
 
     internal fun isBlueskyPost(parsed: NetworkUrl): Boolean {
+        if (parsed.host.lowercase() != "bsky.app") return false
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
-        return parsed.host.lowercase() == "bsky.app" && segments.size >= 4 &&
+        return segments.size >= 4 &&
             segments[0] == "profile" && segments[2] == "post"
     }
 

@@ -23,9 +23,9 @@ internal object SubstackLinkPreview {
     }
 
     internal fun isSubstackArticle(parsed: NetworkUrl): Boolean {
+        if (!parsed.host.lowercase().endsWith(".substack.com")) return false
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
-        return parsed.host.lowercase().endsWith(".substack.com") &&
-            segments.size >= 2 && segments[0] == "p"
+        return segments.size >= 2 && segments[0] == "p"
     }
 
     fun parseSubstackChannelImage(response: String): String? =

@@ -23,12 +23,24 @@ internal fun colorContrast(first: Color, second: Color): Float {
 
 /** Smallest neutral blend that clears the contrast floor on every supplied surface. */
 internal fun contrastingColor(color: Color, backgrounds: List<Color>, minimum: Float): Color {
-    fun passes(candidate: Color) = backgrounds.all { colorContrast(candidate, it) >= minimum }
     val opaque = color.copy(alpha = 1f)
-    if (passes(opaque)) return opaque
-    val endpoint = listOf(Color.Black, Color.White).maxBy { candidate ->
-        backgrounds.minOf { colorContrast(candidate, it) }
+    if (backgrounds.isEmpty()) return opaque
+    fun contrast(first: Float, second: Float) =
+        (maxOf(first, second) + 0.05f) / (minOf(first, second) + 0.05f)
+    val opaqueLuminance = opaque.luminance()
+    if (backgrounds.all { contrast(opaqueLuminance, it.luminance()) >= minimum }) return opaque
+    // The surfaces do not change during the search, and each candidate has one luminance
+    // regardless of how many surfaces it must contrast with. Allocate only when correction is needed.
+    val backgroundLuminances = FloatArray(backgrounds.size) { backgrounds[it].luminance() }
+    fun passes(candidate: Color): Boolean {
+        val luminance = candidate.luminance()
+        return backgroundLuminances.all { contrast(luminance, it) >= minimum }
     }
+    val blackLuminance = Color.Black.luminance()
+    val whiteLuminance = Color.White.luminance()
+    val blackContrast = backgroundLuminances.minOf { contrast(blackLuminance, it) }
+    val whiteContrast = backgroundLuminances.minOf { contrast(whiteLuminance, it) }
+    val endpoint = if (blackContrast.compareTo(whiteContrast) < 0) Color.White else Color.Black
     var low = 0f
     var high = 1f
     repeat(16) {
@@ -42,6 +54,11 @@ internal fun contrastingColor(color: Color, backgrounds: List<Color>, minimum: F
 internal fun perceptualColorDistance(first: Color, second: Color): Float {
     val a = first.convert(ColorSpaces.CieLab)
     val b = second.convert(ColorSpaces.CieLab)
+    return perceptualLabDistance(a, b)
+}
+
+/** Inputs already converted to CieLab can be reused across palette comparisons. */
+internal fun perceptualLabDistance(a: Color, b: Color): Float {
     val dl = a.red - b.red
     val da = a.green - b.green
     val db = a.blue - b.blue

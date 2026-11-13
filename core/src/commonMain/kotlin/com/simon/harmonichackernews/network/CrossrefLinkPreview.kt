@@ -15,7 +15,7 @@ internal object CrossrefLinkPreview {
 
     internal fun crossrefDoi(parsed: NetworkUrl): String? {
         val host = parsed.host.lowercase().removePrefix("www.")
-        if (host !in setOf("doi.org", "dx.doi.org")) return null
+        if (host != "doi.org" && host != "dx.doi.org") return null
         return parsed.pathSegments.filter(String::isNotEmpty).joinToString("/").takeIf(String::isNotEmpty)
     }
 

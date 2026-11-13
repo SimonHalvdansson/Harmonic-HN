@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.presentation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.random.Random
 
 class UserProfileLinksTest {
     @Test
@@ -32,6 +33,46 @@ class UserProfileLinksTest {
             ),
             detectUserProfileLinks(text).map { it.url },
         )
+    }
+
+    @Test
+    fun punctuationTrimmingMatchesOriginalForMixedBracketBalances() {
+        val random = Random(72183)
+        val characters = "abc()[]{}.,;:!?"
+        val paths = listOf(
+            "article" + ")]}.".repeat(128),
+            "((article)))]!}",
+            "[{article}])",
+            "article([)]",
+        ) + List(1_000) {
+            buildString {
+                repeat(random.nextInt(1, 100)) { append(characters[random.nextInt(characters.length)]) }
+            }
+        }
+        for (path in paths) {
+            val candidate = "https://example.com/$path"
+            val expected = legacyTrimPunctuation(candidate)
+            val text = "My site: $candidate"
+            val actual = detectUserProfileLinks(text).single()
+            assertEquals(expected, actual.url, candidate)
+            assertEquals(expected, text.substring(actual.start, actual.end), candidate)
+        }
+    }
+
+    private fun legacyTrimPunctuation(value: String): String {
+        var end = value.length
+        while (end > 0) {
+            val trim = when (value[end - 1]) {
+                '.', ',', ';', ':', '!', '?' -> true
+                ')' -> value.take(end).count { it == ')' } > value.take(end).count { it == '(' }
+                ']' -> value.take(end).count { it == ']' } > value.take(end).count { it == '[' }
+                '}' -> value.take(end).count { it == '}' } > value.take(end).count { it == '{' }
+                else -> false
+            }
+            if (!trim) break
+            end--
+        }
+        return value.substring(0, end)
     }
 
     @Test

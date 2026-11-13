@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import kotlin.math.absoluteValue
 
@@ -16,25 +17,38 @@ object CommentDepthPaletteCatalog {
         val backgrounds = listOf(scheme.pageBackground, scheme.cardBackground)
         val roles = listOf(scheme.primary, scheme.secondary, scheme.tertiary,
             scheme.primaryContainer, scheme.tertiaryContainer)
-        val palette = mutableListOf<Color>()
+        val palette = mutableListOf<MaterialColor>()
         val alternatives by lazy {
             (0 until 36).flatMap { hue ->
                 listOf(0.45f, 0.65f).map { saturation ->
-                    contrastingColor(Color.hsl(hue * 10f, saturation, 0.5f), backgrounds, 3f)
+                    MaterialColor(contrastingColor(Color.hsl(hue * 10f, saturation, 0.5f), backgrounds, 3f))
                 }
             }
         }
         roles.forEach { role ->
-            val preferred = contrastingColor(role, backgrounds, 3f)
-            val distinct = { color: Color -> palette.all { perceptualColorDistance(it, color) >= 22f } }
+            val preferred = MaterialColor(contrastingColor(role, backgrounds, 3f))
+            val distinct = { color: MaterialColor -> palette.all { perceptualLabDistance(it.lab, color.lab) >= 22f } }
             palette += if (distinct(preferred)) preferred else {
                 // Preserve a theme role whenever it remains distinguishable. Only colliding
                 // roles need a nearby alternative; do not repeat pale container colors.
-                alternatives.filter(distinct).minByOrNull { perceptualColorDistance(it, preferred) }
-                    ?: alternatives.maxBy { candidate -> palette.minOf { perceptualColorDistance(it, candidate) } }
+                var nearest: MaterialColor? = null
+                var nearestDistance = 0f
+                for (candidate in alternatives) {
+                    if (!distinct(candidate)) continue
+                    val distance = perceptualLabDistance(candidate.lab, preferred.lab)
+                    if (nearest == null || nearestDistance.compareTo(distance) > 0) {
+                        nearest = candidate
+                        nearestDistance = distance
+                    }
+                }
+                nearest ?: alternatives.maxBy { candidate -> palette.minOf { perceptualLabDistance(it.lab, candidate.lab) } }
             }
         }
-        return palette
+        return palette.map { it.color }
+    }
+    // Each color participates in many distance comparisons; convert it to CieLab only once.
+    private class MaterialColor(val color: Color) {
+        val lab = color.convert(ColorSpaces.CieLab)
     }
     private val monochrome = List(colorCount) { Color(0xFF808080) }
 

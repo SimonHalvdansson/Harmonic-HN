@@ -4,6 +4,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -238,5 +239,28 @@ class SummaryMarkdownTest {
                 wasStreaming = false,
             ),
         )
+    }
+
+    @Test
+    fun streamingFadeKeepsCommonPrefixUnicodeBoundaries() {
+        val random = Random(481)
+        val atoms = listOf("a", " ", "\n", "å", "\uD83D\uDE00", "\uD83D", "\uDE01")
+        fun text() = buildString { repeat(random.nextInt(12)) { append(atoms.random(random)) } }
+        val pairs = listOf(
+            "" to "new", "same" to "same", "longer" to "long", "old" to "new",
+            "x\uD83D\uDE00" to "x\uD83D\uDE01", "x\uD83D" to "x\uD83D\uDE00",
+            "x\uD83D\uDE00" to "x\uD83D", "a".repeat(16_384) to "a".repeat(16_384) + "more",
+        ) + List(1_000) {
+            val prefix = text()
+            (prefix + text()) to (prefix + text())
+        }
+        for ((previous, current) in pairs) for (streaming in listOf(false, true)) {
+            for (wasStreaming in listOf(false, true)) {
+                val prefixLength = previous.commonPrefixWith(current).length
+                val expected = if ((!streaming && !wasStreaming) || current.isEmpty() ||
+                    current == previous || prefixLength >= current.length) null else prefixLength until current.length
+                assertEquals(expected, streamingTextFadeRange(previous, current, streaming, wasStreaming))
+            }
+        }
     }
 }

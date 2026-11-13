@@ -18,8 +18,7 @@ internal object RedditLinkPreview {
 
     internal fun isRedditPost(parsed: NetworkUrl): Boolean {
         val host = parsed.host.lowercase().removePrefix("www.").removePrefix("old.")
-        val segments = parsed.pathSegments.filter(String::isNotEmpty)
-        return host == "reddit.com" && "comments" in segments
+        return host == "reddit.com" && "comments" in parsed.pathSegments
     }
 
     internal fun postId(url: String): String? {
