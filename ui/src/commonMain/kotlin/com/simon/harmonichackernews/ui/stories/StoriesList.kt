@@ -94,6 +94,7 @@ import com.simon.harmonichackernews.ui.content.CommentFeedItem
 import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.StoryRowModel
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.common.LazyContentList
@@ -162,6 +163,11 @@ internal fun StoriesList(
         initialValue = categorySettings.snapshot(),
     )?.value ?: ArticleCategoryPreferences()
     val categoryRuntime = categoryRuntimeService?.state?.collectAsStateWithLifecycle()?.value ?: ArticleCategoryRuntimeState()
+    // Every story uses the same font and size. Retain their resources outside recycled rows.
+    val rowTypography = rememberContentTypography(
+        preferredFont = settings.font,
+        storyTextSize = settings.storyTextSize,
+    )
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
@@ -490,6 +496,7 @@ internal fun StoriesList(
                                 StoryRow(
                                     model = model,
                                     style = style,
+                                    typographyOverride = rowTypography,
                                     modifier = itemModifier,
                                     listItem = true,
                                     pageBackground = MaterialTheme.colorScheme.pageBackground,
