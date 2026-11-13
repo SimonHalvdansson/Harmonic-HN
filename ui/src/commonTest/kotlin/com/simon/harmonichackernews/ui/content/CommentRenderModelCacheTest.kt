@@ -9,6 +9,7 @@ import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.PortableCommentThreadState
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
+import com.simon.harmonichackernews.utils.CollectedReferenceLinks.ContentBlock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,6 +28,37 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentRenderModelCacheTest {
+    @Test
+    fun cachedModelPrefetchRepairsOnlyMissingDistinctTextBlocks() = runTest {
+        CommentRenderModelCache.clearForTest()
+        CommentHtmlTextCache.clearForTest()
+        val comment = commentsForPrefetch(1).single()
+        val retainedHtml = "<p>Still cached</p>"
+        val missingHtml = "<p>Evicted text</p>"
+        val model = CommentRenderModel(null, listOf(
+            ContentBlock.text(retainedHtml),
+            ContentBlock.link(null),
+            ContentBlock.text(missingHtml),
+            ContentBlock.text(missingHtml),
+        ))
+        CommentRenderModelCache.install(comment.id, comment.expandedAnchorText!!, true, model)
+        val retained = CommentHtmlTextCache.getPrepared(retainedHtml)
+        val prepared = mutableListOf<String>()
+
+        prefetchCommentRenderModels(listOf(comment), collectLinks = true) { html ->
+            prepared += html
+            prepareCommentHtmlContent(html)
+        }
+
+        assertEquals(listOf(missingHtml), prepared)
+        assertSame(retained, CommentHtmlTextCache.getPrepared(retainedHtml))
+        assertEquals("Evicted text", CommentHtmlTextCache.get(missingHtml).text)
+        assertSame(model, CommentRenderModelCache.peek(comment.id, comment.expandedAnchorText!!, true))
+        prefetchCommentRenderModels(listOf(comment), collectLinks = true) {
+            error("A repaired window must not parse again")
+        }
+    }
+
     @Test
     fun quoteDetectionExcludesComparisonsAndCodeWhileKeepingRealQuoteVariants() {
         for (html in listOf(

@@ -226,7 +226,10 @@ internal fun StoriesList(
         }
     }
 
-    val currentStories by rememberUpdatedState(stories)
+    val storyIds = if (settings.markScrolledPostsRead) {
+        remember(stories) { stories.map { it.id } }
+    } else emptyList()
+    val currentStoryIds by rememberUpdatedState(storyIds)
     LaunchedEffect(
         listState, searchMode, settings.markScrolledPostsRead,
         controller.presentation.selectedTypeIndex, controller.mainListGeneration,
@@ -235,7 +238,7 @@ internal fun StoriesList(
         if (!settings.markScrolledPostsRead || searchMode != controller.searching) return@LaunchedEffect
         val tracker = ScrolledPastStoriesTracker()
         snapshotFlow {
-            Triple(currentStories.map { it.id }, listState.firstVisibleItemIndex,
+            Triple(currentStoryIds, listState.firstVisibleItemIndex,
                 listState.isScrollInProgress && !controller.isStoryPreviewShowing())
         }.distinctUntilChanged().collect { (ids, first, scrolling) ->
             val passed = tracker.update(ids, first, scrolling)

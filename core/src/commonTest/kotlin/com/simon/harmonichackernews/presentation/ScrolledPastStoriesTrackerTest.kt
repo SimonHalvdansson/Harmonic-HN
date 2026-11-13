@@ -28,4 +28,26 @@ class ScrolledPastStoriesTrackerTest {
         assertTrue(tracker.update(listOf(10, 30, 40), 2, true).isEmpty())
         assertTrue(tracker.update(emptyList(), 0, false).isEmpty())
     }
+
+    @Test
+    fun equalSnapshotsAndChangesBeyondThePassedPrefixStillMarkRows() {
+        val tracker = ScrolledPastStoriesTracker()
+        tracker.update(listOf(1, 2, 3, 4), 1, false)
+        assertEquals(listOf(2), tracker.update(listOf(1, 2, 3, 4), 2, true))
+        assertEquals(listOf(3), tracker.update(listOf(1, 2, 3, 40), 3, true))
+        // Reordering the prefix is a new baseline even when its size is unchanged.
+        assertTrue(tracker.update(listOf(2, 1, 3, 40), 4, true).isEmpty())
+    }
+
+    @Test
+    fun clampedAndNonScrollingUpdatesAlwaysMoveTheBaseline() {
+        val tracker = ScrolledPastStoriesTracker()
+        val ids = listOf(1, 2, 3)
+        tracker.update(ids, -20, false)
+        assertEquals(ids, tracker.update(ids, 20, true))
+        assertTrue(tracker.update(ids, 1, false).isEmpty())
+        assertEquals(listOf(2), tracker.update(ids, 2, true))
+        // A jump past the previously known list cannot infer newly appended rows were read.
+        assertTrue(tracker.update(ids + listOf(4, 5), 5, true).isEmpty())
+    }
 }
