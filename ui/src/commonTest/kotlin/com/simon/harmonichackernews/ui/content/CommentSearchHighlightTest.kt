@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -8,8 +9,35 @@ import androidx.compose.ui.text.font.FontWeight
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
+import kotlin.random.Random
 
 class CommentSearchHighlightTest {
+    @Test
+    fun retargetMatchesReferenceWithDuplicateEmptyAndOverlappingStyleRanges() {
+        val random = Random(823)
+        repeat(100) {
+            val body = buildAnnotatedString {
+                append("Banana needle İx and repeated needle. ".repeat(8))
+                repeat(32) { span ->
+                    val start = random.nextInt(length + 1)
+                    val end = if (span % 4 == 0) start else random.nextInt(start, length + 1)
+                    val style = if (span % 3 == 0) SpanStyle(color = Color.Red)
+                        else SpanStyle(fontWeight = if (span % 2 == 0) FontWeight.Light else FontWeight.Medium)
+                    addStyle(style, start, end)
+                    if (span % 5 == 0) addStyle(style, start, end)
+                }
+            }
+            var transition = SearchHighlightTransition()
+            for (query in listOf("an", "needle", "İx", " missing ", "", "a")) {
+                val progress = random.nextFloat()
+                val expected = referenceRetarget(transition.runs, body, query, progress)
+                val actual = transition.retarget(body, query, progress)
+                assertEquals(expected.runs, actual.runs, "Query: $query")
+                transition = actual
+            }
+        }
+    }
+
     @Test
     fun inactiveSearchDoesNotCreateHighlightRunsFromFormatting() {
         val body = buildAnnotatedString {
@@ -139,4 +167,40 @@ class CommentSearchHighlightTest {
         assertEquals(body.getStringAnnotations(0, body.length), finished.getStringAnnotations(0, finished.length))
     }
 
+}
+
+/** Pre-optimization interval construction, kept as an independent differential oracle. */
+private fun referenceRetarget(
+    runs: List<SearchHighlightRun>,
+    body: AnnotatedString,
+    searchTerm: String,
+    progress: Float,
+): SearchHighlightTransition {
+    val matches = searchMatchRanges(body.text, searchTerm)
+    if (runs.isEmpty() && matches.isEmpty()) return SearchHighlightTransition()
+    val boundaries = buildSet {
+        runs.forEach { add(it.start); add(it.end) }
+        matches.forEach { add(it.start); add(it.end) }
+        body.spanStyles.forEach { span ->
+            if (span.item.fontWeight != null) { add(span.start); add(span.end) }
+        }
+    }.sorted()
+    var previousIndex = 0
+    var matchIndex = 0
+    return SearchHighlightTransition(buildList {
+        for (index in 0 until boundaries.lastIndex) {
+            val start = boundaries[index]
+            val end = boundaries[index + 1]
+            while (previousIndex < runs.size && runs[previousIndex].end <= start) previousIndex++
+            while (matchIndex < matches.size && matches[matchIndex].end <= start) matchIndex++
+            val from = runs.getOrNull(previousIndex)?.takeIf { start >= it.start }?.amount(progress) ?: 0f
+            val to = if (matches.getOrNull(matchIndex)?.let { start >= it.start } == true) 1f else 0f
+            if (from > 0.001f || to > 0f) {
+                val weight = body.spanStyles.lastOrNull {
+                    start >= it.start && start < it.end && it.item.fontWeight != null
+                }?.item?.fontWeight ?: FontWeight.Normal
+                add(SearchHighlightRun(start, end, from, to, weight))
+            }
+        }
+    })
 }

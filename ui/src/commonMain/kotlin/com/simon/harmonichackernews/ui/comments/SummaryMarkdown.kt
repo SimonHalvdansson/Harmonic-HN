@@ -738,8 +738,16 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
             }
 
             else -> {
-                append(source[index])
-                index++
+                // Copy ordinary prose in one operation; only syntax characters need the
+                // formatting checks above. Keep malformed delimiters on the same path.
+                val start = index++
+                while (index < source.length) {
+                    when (source[index]) {
+                        '<', '!', '\\', '*', '_', '`', '[' -> break
+                    }
+                    index++
+                }
+                append(source, start, index)
             }
         }
     }

@@ -98,19 +98,28 @@ internal class SearchHighlightTransition(val runs: List<SearchHighlightRun> = em
         val matches = searchMatchRanges(body.text, searchTerm)
         // Ordinary comments have no search animation. Their formatting cannot create a run.
         if (runs.isEmpty() && matches.isEmpty()) return SearchHighlightTransition()
-        val boundaries = buildSet {
-            runs.forEach { add(it.start); add(it.end) }
-            matches.forEach { add(it.start); add(it.end) }
-            body.spanStyles.forEach { span ->
-                if (span.item.fontWeight != null) { add(span.start); add(span.end) }
+        // Sorting primitive offsets avoids boxing and a set entry for every boundary.
+        // Repeated offsets are skipped below, preserving the original distinct intervals.
+        val spans = body.spanStyles
+        val weightedSpanCount = spans.count { it.item.fontWeight != null }
+        val boundaries = IntArray((runs.size + matches.size + weightedSpanCount) * 2)
+        var boundaryCount = 0
+        runs.forEach { boundaries[boundaryCount++] = it.start; boundaries[boundaryCount++] = it.end }
+        matches.forEach { boundaries[boundaryCount++] = it.start; boundaries[boundaryCount++] = it.end }
+        spans.forEach { span ->
+            if (span.item.fontWeight != null) {
+                boundaries[boundaryCount++] = span.start
+                boundaries[boundaryCount++] = span.end
             }
-        }.sorted()
+        }
+        boundaries.sort(0, boundaryCount)
         var previousIndex = 0
         var matchIndex = 0
         return SearchHighlightTransition(buildList {
-            for (index in 0 until boundaries.lastIndex) {
+            for (index in 0 until boundaryCount - 1) {
                 val start = boundaries[index]
                 val end = boundaries[index + 1]
+                if (start == end) continue
                 while (previousIndex < runs.size && runs[previousIndex].end <= start) previousIndex++
                 while (matchIndex < matches.size && matches[matchIndex].end <= start) matchIndex++
                 val from = runs.getOrNull(previousIndex)?.takeIf { start >= it.start }?.amount(progress) ?: 0f

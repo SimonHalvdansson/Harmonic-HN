@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.random.Random
@@ -10,6 +11,31 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SummaryMarkdownTest {
+    @Test
+    fun plainTextRunsPreserveEveryInlineSyntaxBoundaryAndAnnotationOffset() {
+        val prefix = "Ordinary prose with Unicode å and \uD83D\uDE00 repeated. ".repeat(32)
+        val suffix = " followed by another plain sentence \uD83D\uDE01."
+        val tokens = listOf(
+            "**bold**", "__bold__", "*italic*", "_italic_", "`code`",
+            "[label](https://example.org)", "![image](https://example.org/image)",
+            "<https://example.org>", "\\*escaped*", "\\[literal]", "\\q", "!ordinary",
+            "**unfinished", "__unfinished", "*unfinished", "_unfinished", "`unfinished",
+            "[unfinished", "<", "!", "\\", "[", "`", "*", "_",
+        )
+        for (token in tokens) for (bold in listOf(false, true)) {
+            val expected = buildAnnotatedString {
+                append(prefix)
+                append(summaryMarkdownAnnotatedString(token, enableBoldFormatting = bold))
+                append(suffix)
+            }
+            assertEquals(
+                expected,
+                summaryMarkdownAnnotatedString(prefix + token + suffix, enableBoldFormatting = bold),
+                "Token: $token, bold: $bold",
+            )
+        }
+    }
+
     @Test
     fun htmlRemovalPreservesLiteralAnglesAndIncompleteComments() {
         assertEquals(
