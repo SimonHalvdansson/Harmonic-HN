@@ -106,6 +106,13 @@ internal object StackExchangeLinkPreview {
     private fun cleanHtmlText(text: String?): String? =
         text?.takeUnless(String::isEmpty)?.let { Ksoup.parse(it).text() }
 
+    // URL classification does not need these; initialize them only when a body is cleaned.
+    private object BodyPatterns {
+        val horizontalWhitespace = Regex("[ \\t\\x0B\\f\\r]+")
+        val spacesAroundNewline = Regex(" *\\n *")
+        val repeatedNewlines = Regex("\\n{3,}")
+    }
+
     private fun cleanHtmlBody(html: String?): String? {
         if (html.isNullOrEmpty()) return null
         val document = Ksoup.parse(html)
@@ -115,9 +122,9 @@ internal object StackExchangeLinkPreview {
         document.select("li").before("\\n")
         return document.wholeText()
             .replace("\\n", "\n")
-            .replace("[ \\t\\x0B\\f\\r]+".toRegex(), " ")
-            .replace(" *\\n *".toRegex(), "\n")
-            .replace("\\n{3,}".toRegex(), "\n\n")
+            .replace(BodyPatterns.horizontalWhitespace, " ")
+            .replace(BodyPatterns.spacesAroundNewline, "\n")
+            .replace(BodyPatterns.repeatedNewlines, "\n\n")
             .trim()
     }
 

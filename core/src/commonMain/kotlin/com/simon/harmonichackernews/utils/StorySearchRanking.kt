@@ -18,14 +18,18 @@ object StorySearchRanking {
             )
         }
 
-        scoredStories.sortWith(
-            compareByDescending<ScoredStory> { it.relevanceScore }
-                .thenByDescending { it.story.score }
-                .thenByDescending { it.story.descendants }
-                .thenByDescending { it.story.createdAtEpochSeconds }
-                .thenBy { it.originalIndex },
-        )
+        scoredStories.sortWith(relevanceOrder)
         scoredStories.forEachIndexed { index, scored -> stories[index] = scored.story }
+    }
+
+    // Compare primitive values directly: selector-based comparators box each score on the JVM.
+    private val relevanceOrder = Comparator<ScoredStory> { first, second ->
+        var order = second.relevanceScore.compareTo(first.relevanceScore)
+        if (order == 0) order = second.story.score.compareTo(first.story.score)
+        if (order == 0) order = second.story.descendants.compareTo(first.story.descendants)
+        if (order == 0) order = second.story.createdAtEpochSeconds.compareTo(first.story.createdAtEpochSeconds)
+        if (order == 0) order = first.originalIndex.compareTo(second.originalIndex)
+        order
     }
 
     private fun score(story: Story, normalizedQuery: String): Int {
