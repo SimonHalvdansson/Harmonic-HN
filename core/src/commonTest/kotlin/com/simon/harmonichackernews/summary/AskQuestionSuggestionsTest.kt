@@ -26,6 +26,31 @@ class AskQuestionSuggestionsTest {
     }
 
     @Test
+    fun validationKeepsTheFirstTwoDistinctQuestionsWithExactLegacyExclusions() {
+        val candidates = listOf(
+            "short?", "  ${questions[0]}  ", questions[0].uppercase(),
+            "Why is this\ninvalid?", "What changes in the algorithm??", questions[1],
+            "x".repeat(181) + "?", "Why café or CAFÉ?",
+        )
+        for (existing in listOf(emptyList(), listOf(questions[0]),
+            listOf("What changes in the algorithm?"), listOf(" WHY CAFÉ OR CAFÉ??? "))) {
+            for (end in 0..candidates.size) {
+                val source = candidates.take(end)
+                val excluded = existing.map { it.trim().lowercase().trimEnd('?') }.toSet()
+                val expected = source.map(String::trim)
+                    .filter { it.length in 8..180 && it.endsWith('?') && '\n' !in it &&
+                        it.lowercase().trimEnd('?') !in excluded }
+                    .distinctBy { it.lowercase() }.take(2).takeIf { it.size == 2 }.orEmpty()
+                assertEquals(expected, AskQuestionSuggestions.validate(source, existing))
+            }
+        }
+        for (prefix in listOf("- ", "* ", "• ", "1. ", "2)\t")) {
+            assertEquals(questions,
+                AskQuestionSuggestions.parse("$prefix${questions[0]}\r\n$prefix${questions[1]}", emptyList()))
+        }
+    }
+
+    @Test
     fun onlyBuiltInLocalModelsGenerateSuggestions() = runTest {
         for ((mode, builtIn) in listOf(AiSummaryMode.CLOUD to true, AiSummaryMode.LOCAL to false)) {
             val engine = Engine { error("Must not run automatic inference") }

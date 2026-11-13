@@ -131,6 +131,108 @@ class HtmlTextUtilsTest {
         assertEquals("alpha beta gamma…", HtmlTextUtils.normalizeAndTruncatePlainText(input, 18))
     }
 
+    @Test
+    fun boundedNormalizationDistinguishesTrimmedTailsFromContentPastTheLimit() {
+        val whitespace = " \t\r\n\u00a0\u2003\u2028".repeat(300)
+        val inputs = listOf(
+            "alpha beta gamma delta".repeat(1500),
+            whitespace + "alpha beta" + whitespace,
+            "alpha beta" + whitespace + "omega",
+            "alpha beta " + "\u2003".repeat(3000),
+            "alpha beta " + "\u2003".repeat(3000) + "omega",
+            "café 中文 😀\n\nmore text".repeat(100),
+        )
+        for (input in inputs) {
+            for (limit in listOf(-1, 0, 1, 5, 9, 10, 11, 18, 1200)) {
+                assertEquals(legacyNormalizeAndTruncate(input, limit),
+                    HtmlTextUtils.normalizeAndTruncatePlainText(input, limit),
+                    "length=${input.length}, maximumChars=$limit")
+            }
+        }
+    }
+
+    @Test
+    fun boundedNormalizationMatchesPreviousSinglePassImplementation() {
+        val alphabet = charArrayOf('a', 'B', '3', ' ', '\t', '\n', '\r', '\u000B',
+            '\u000C', '\u00A0', '\u2003', '\u2028', '\u2029', '\u0085', '\uD83D', '\uDE00', '.')
+        var state = 0x2468ACE
+        repeat(600) { sample ->
+            val input = buildString {
+                repeat(1 + sample % 193) {
+                    state = state * 1_103_515_245 + 12_345
+                    append(alphabet[(state ushr 1) % alphabet.size])
+                }
+            }
+            for (limit in listOf(-1, 0, 1, 2, 3, 7, 23, 24, 25, 64, 193)) {
+                assertEquals(PreviousPreviewNormalizer.normalizeAndTruncatePlainText(input, limit),
+                    HtmlTextUtils.normalizeAndTruncatePlainText(input, limit),
+                    "sample=$sample, maximumChars=$limit, input=${input.debugValue()}")
+            }
+        }
+    }
+
+    private object PreviousPreviewNormalizer {
+        fun normalizeAndTruncatePlainText(value: String, maximumChars: Int): String {
+            val normalized = normalizePlainText(value)
+            if (maximumChars <= 0 || normalized.length <= maximumChars) return normalized
+            val minimumBoundary = (maximumChars * 0.75f).toInt()
+            val end = (maximumChars - 1 downTo minimumBoundary)
+                .firstOrNull { normalized[it].isWhitespace() }
+                ?: maximumChars
+            return normalized.substring(0, end).trim() + "…"
+        }
+
+        private fun normalizePlainText(value: String): String {
+            if (value.isEmpty()) return value
+            val normalized = StringBuilder(value.length)
+            var pendingSpace = false
+            var pendingNewlines = 0
+            var index = 0
+
+            fun flushPending() {
+                if (pendingNewlines > 0) {
+                    repeat(minOf(pendingNewlines, 2)) { normalized.append('\n') }
+                } else if (pendingSpace) {
+                    normalized.append(' ')
+                }
+                pendingSpace = false
+                pendingNewlines = 0
+            }
+
+            while (index < value.length) {
+                val character = value[index++]
+                when {
+                    character == '\r' -> {
+                        if (index < value.length && value[index] == '\n') index++
+                        pendingSpace = false
+                        pendingNewlines++
+                    }
+
+                    character == '\n' -> {
+                        pendingSpace = false
+                        pendingNewlines++
+                    }
+
+                    character.isCollapsibleHorizontalWhitespace() -> {
+                        if (pendingNewlines == 0) pendingSpace = true
+                    }
+
+                    else -> {
+                        flushPending()
+                        normalized.append(character)
+                    }
+                }
+            }
+
+            // Pending ASCII whitespace would be removed by the final trim, so avoid materializing it.
+            return normalized.toString().trim()
+        }
+
+        private fun Char.isCollapsibleHorizontalWhitespace(): Boolean =
+            this == ' ' || this == '\t' || this == '\u000B' || this == '\u000C' ||
+                this == '\u00A0'
+    }
+
     private fun legacyNormalizeAndTruncate(value: String, maximumChars: Int): String {
         val normalized = value
             .replace('\u00A0', ' ')

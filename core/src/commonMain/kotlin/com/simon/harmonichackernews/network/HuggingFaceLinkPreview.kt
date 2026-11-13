@@ -110,22 +110,30 @@ internal object HuggingFaceLinkPreview {
     }
 
     private fun selectHuggingFaceLogoPath(json: JsonObject): String? {
-        val candidates = json.optJSONArray("siblings")?.let { siblings ->
-            (0..<siblings.length()).mapNotNull { index ->
-                siblings.optJSONObject(index)
-                    ?.optString("rfilename")
-                    ?.takeUnless(String::isBlank)
-                    ?.takeIf(::isSupportedPreviewImage)
+        val siblings = json.optJSONArray("siblings") ?: return null
+        var best: String? = null
+        var bestPriority = Int.MAX_VALUE
+        for (index in 0..<siblings.length()) {
+            val path = siblings.optJSONObject(index)?.optString("rfilename") ?: continue
+            if (path.isBlank() || !isSupportedPreviewImage(path)) continue
+            val priority = huggingFaceImagePriority(path)
+            val previous = best
+            // Keep the first image on ties, just as minWithOrNull does.
+            if (previous == null || priority < bestPriority ||
+                (priority == bestPriority && path.length < previous.length)
+            ) {
+                best = path
+                bestPriority = priority
             }
-        }.orEmpty()
-        return candidates.minWithOrNull(
-            compareBy<String>({ huggingFaceImagePriority(it) }, String::length),
-        )
+        }
+        return best
     }
 
     private fun isSupportedPreviewImage(path: String): Boolean =
-        path.substringAfterLast('.', missingDelimiterValue = "").lowercase() in
-            setOf("png", "webp", "jpg", "jpeg")
+        when (path.substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
+            "png", "webp", "jpg", "jpeg" -> true
+            else -> false
+        }
 
     private fun huggingFaceImagePriority(path: String): Int {
         val normalized = path.lowercase()

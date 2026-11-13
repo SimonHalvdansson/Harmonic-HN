@@ -44,14 +44,67 @@ object HtmlTextUtils {
         val anchorsWithHref = Selector.evaluatorOf("a[href]")
     }
 
-    fun normalizeAndTruncatePlainText(value: String, maximumChars: Int): String {
-        val normalized = normalizePlainText(value)
-        if (maximumChars <= 0 || normalized.length <= maximumChars) return normalized
-        val minimumBoundary = (maximumChars * 0.75f).toInt()
-        val end = (maximumChars - 1 downTo minimumBoundary)
-            .firstOrNull { normalized[it].isWhitespace() }
-            ?: maximumChars
-        return normalized.substring(0, end).trim() + "…"
+    fun normalizeAndTruncatePlainText(value: String, maximumChars: Int): String =
+        // Normalization only removes characters, so these inputs cannot require truncation.
+        if (maximumChars <= 0 || value.length <= maximumChars) normalizePlainText(value)
+        else normalizeBoundedPlainText(value, maximumChars)
+
+    private fun normalizeBoundedPlainText(value: String, maximumChars: Int): String {
+        if (value.isEmpty()) return value
+        val limit = maximumChars
+        val normalized = StringBuilder(minOf(value.length, limit))
+        var pendingSpace = false
+        var pendingNewlines = 0
+        var index = 0
+
+        fun flushPending() {
+            if (pendingNewlines > 0) {
+                repeat(minOf(pendingNewlines, 2, limit - normalized.length)) { normalized.append('\n') }
+            } else if (pendingSpace && normalized.length < limit) {
+                normalized.append(' ')
+            }
+            pendingSpace = false
+            pendingNewlines = 0
+        }
+
+        while (index < value.length) {
+            val character = value[index++]
+            // The final trim would discard all leading Unicode whitespace as well.
+            if (normalized.isEmpty() && character.isWhitespace()) continue
+            when {
+                character == '\r' -> {
+                    if (index < value.length && value[index] == '\n') index++
+                    pendingSpace = false
+                    pendingNewlines++
+                }
+
+                character == '\n' -> {
+                    pendingSpace = false
+                    pendingNewlines++
+                }
+
+                character.isCollapsibleHorizontalWhitespace() -> {
+                    if (pendingNewlines == 0) pendingSpace = true
+                }
+
+                else -> {
+                    flushPending()
+                    // A non-whitespace character beyond the prefix proves that the final trim
+                    // cannot make it fit. Whitespace alone still needs a lookahead to EOF.
+                    if (normalized.length == limit && !character.isWhitespace()) {
+                        val minimumBoundary = (limit * 0.75f).toInt()
+                        val end = (limit - 1 downTo minimumBoundary)
+                            .firstOrNull { normalized[it].isWhitespace() }
+                            ?: limit
+                        return normalized.substring(0, end).trim() + "…"
+                    }
+                    if (normalized.length < limit) normalized.append(character)
+                }
+            }
+        }
+
+        // Pending ASCII whitespace would be removed by the final trim, so avoid materializing it.
+        return normalized.toString().trim()
     }
 
     private fun normalizePlainText(value: String): String {

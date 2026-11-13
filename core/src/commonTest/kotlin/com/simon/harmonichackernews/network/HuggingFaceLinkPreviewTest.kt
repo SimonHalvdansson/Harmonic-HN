@@ -127,4 +127,23 @@ class HuggingFaceLinkPreviewTest {
             info.logoUrl,
         )
     }
+
+    @Test
+    fun logoSelectionPreservesPriorityLengthAndFirstTieAcrossMalformedSiblings() {
+        val cases = listOf(
+            listOf("b.jpg", "a.jpg") to "b.jpg",
+            listOf("long.jpg", "a.jpg") to "a.jpg",
+            listOf("x.png", "IMAGES/long.PNG") to "IMAGES/long.PNG",
+            listOf("assets/x.webp", "some/avatar.JPEG") to "some/avatar.JPEG",
+            listOf("icon.png", "long/path/LOGO.png") to "long/path/LOGO.png",
+            listOf("logo-one.jpg", "logo-two.jpg") to "logo-one.jpg",
+            listOf("README.md", "LOGO.svg", "png", "image.png?raw=1", " ") to null,
+        )
+        for ((paths, expected) in cases) {
+            val siblings = paths.joinToString(",") { """{"rfilename":"$it"}""" }
+            val response = """{"id":"example/model","siblings":[null,{},7,$siblings]}"""
+            val actual = LinkPreviewParsers.parseHuggingFace(response).logoUrl
+            assertEquals(expected?.let { "https://huggingface.co/example/model/resolve/main/$it" }, actual)
+        }
+    }
 }
