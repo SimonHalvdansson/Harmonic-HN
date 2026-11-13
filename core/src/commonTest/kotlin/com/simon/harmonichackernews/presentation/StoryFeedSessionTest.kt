@@ -2,6 +2,8 @@ package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.settings.TitleFilterMatchMode
+import com.simon.harmonichackernews.settings.TitleFilterRule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,6 +11,26 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StoryFeedSessionTest {
+    @Test
+    fun titleRuleBatchesMatchIndividualRulesAcrossModesAndUnicodeBoundaries() {
+        val needles = listOf("AI", "machine learning", "C++", "café", "cafe\u0301", "can't", "İ", "ΟΣ",
+            "机器学习", "\uD801\uDC00", "", " ", "unrelated")
+        val rules = needles.flatMap { needle -> TitleFilterMatchMode.entries.map { TitleFilterRule(needle, it) } }
+        val titles = listOf("chair", "AI's tools", "‘AI’", "AI\u203ftools", "🚀AI🚀", "machine  learning",
+            "Machine\u00a0Learning: a guide", "machine-learning", "C++Builder", "C++: compiler", "CAFÉ news",
+            "cafe\u0301 news", "can't", "can’t", "İSTANBUL", "ΟΣ", "机器学习：入门", "研究机器学习方法",
+            "\uD801\uDC28!", "AI\uD800", "Ordinary story", "")
+        val policy = StoryVisibilityPolicy()
+        val batches = rules.map(::listOf) + listOf(rules, rules.reversed(), rules.takeLast(4))
+        for (batch in batches) {
+            policy.config = StoryVisibilityConfig(titleRules = batch)
+            for (title in titles) {
+                assertEquals(batch.any { it.matches(title) }, policy.shouldHide(story(title = title), StoryType.TOP_STORIES),
+                    "$batch: $title")
+            }
+        }
+    }
+
     @Test
     fun visibilityPolicyNormalizesFiltersAndHidesJobsOutsideJobsFeed() {
         val policy = StoryVisibilityPolicy(

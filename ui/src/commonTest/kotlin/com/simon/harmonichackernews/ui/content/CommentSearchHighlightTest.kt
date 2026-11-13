@@ -11,6 +11,38 @@ import kotlin.test.assertSame
 
 class CommentSearchHighlightTest {
     @Test
+    fun inactiveSearchDoesNotCreateHighlightRunsFromFormatting() {
+        val body = buildAnnotatedString {
+            append("A formatted comment")
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold), 2, 11)
+            addStyle(SpanStyle(fontWeight = FontWeight.Light), 6, length)
+            addStringAnnotation("source", "comment", 0, length)
+        }
+        for (query in listOf("", "  ", "missing")) {
+            val transition = SearchHighlightTransition().retarget(body, query, 0.5f)
+            assertEquals(emptyList(), transition.runs)
+            assertSame(body, highlightSearchMatches(body, transition, 0.5f, Color.Black, Color.Yellow))
+        }
+    }
+
+    @Test
+    fun clearingSearchRetainsItsFadeUntilItFinishes() {
+        val body = buildAnnotatedString {
+            append("A formatted comment")
+            addStyle(SpanStyle(fontWeight = FontWeight.Light), 2, 11)
+        }
+        val active = SearchHighlightTransition().retarget(body, "formatted", 0f)
+        for (query in listOf("", "missing")) {
+            val clearing = active.retarget(body, query, 0.5f)
+            assertEquals(
+                highlightSearchMatches(body, active, 0.5f, Color.Black, Color.Yellow),
+                highlightSearchMatches(body, clearing, 0f, Color.Black, Color.Yellow),
+            )
+            assertSame(body, highlightSearchMatches(body, clearing, 1f, Color.Black, Color.Yellow))
+        }
+    }
+
+    @Test
     fun unmatchedSearchRetainsTheOriginalTextAndAnnotations() {
         val body = buildAnnotatedString {
             append("A formatted comment")

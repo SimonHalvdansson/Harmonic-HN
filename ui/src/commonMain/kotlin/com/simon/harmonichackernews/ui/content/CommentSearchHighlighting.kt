@@ -96,6 +96,8 @@ internal data class SearchHighlightRun(
 internal class SearchHighlightTransition(val runs: List<SearchHighlightRun> = emptyList()) {
     fun retarget(body: AnnotatedString, searchTerm: String, progress: Float): SearchHighlightTransition {
         val matches = searchMatchRanges(body.text, searchTerm)
+        // Ordinary comments have no search animation. Their formatting cannot create a run.
+        if (runs.isEmpty() && matches.isEmpty()) return SearchHighlightTransition()
         val boundaries = buildSet {
             runs.forEach { add(it.start); add(it.end) }
             matches.forEach { add(it.start); add(it.end) }

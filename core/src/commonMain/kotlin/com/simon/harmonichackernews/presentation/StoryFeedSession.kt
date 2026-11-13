@@ -64,7 +64,7 @@ class StoryVisibilityPolicy(
 
         if (current.titleRules.isNotEmpty()) {
             val title = story.title.orEmpty()
-            if (current.titleRules.any { it.matches(title) }) return true
+            if (TitleFilterRule.matchesAny(title, current.titleRules)) return true
         }
 
         if (current.domainRules.isNotEmpty()) {

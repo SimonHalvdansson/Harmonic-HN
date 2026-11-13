@@ -1,8 +1,14 @@
 package com.simon.harmonichackernews.ui.content
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.em
 import com.simon.harmonichackernews.data.Comment
 import com.simon.harmonichackernews.network.LinkPreviewParsers
@@ -13,6 +19,56 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CommentHtmlTest {
+    @Test
+    fun bindingMultipleLinksPreservesDestinationsRangesAndScreenCallbacks() {
+        val source = prepareCommentHtml(
+            "<b>Read</b> <a href='https://example.com/one'>first</a> and " +
+                "<a href='https://example.com/two'><i>second</i></a>.",
+        )
+        val clicked = mutableListOf<String>()
+        val listener = LinkInteractionListener { clicked += (it as LinkAnnotation.Url).url }
+        val result = bindCommentLinks(source, Color.Blue, listener)
+        assertEquals(source.text, result.text)
+        assertEquals(source.spanStyles, result.spanStyles)
+        assertEquals(source.getStringAnnotations(0, source.length), result.getStringAnnotations(0, result.length))
+        val links = result.getLinkAnnotations(0, result.length)
+        assertEquals(listOf("first", "second"), links.map { result.text.substring(it.start, it.end) })
+        for (range in links) {
+            val link = range.item as LinkAnnotation.Url
+            assertEquals(Color.Blue, link.styles?.style?.color)
+            assertEquals(TextDecoration.Underline, link.styles?.style?.textDecoration)
+            assertSame(listener, link.linkInteractionListener)
+            link.linkInteractionListener?.onClick(link)
+        }
+        assertEquals(listOf("https://example.com/one", "https://example.com/two"), clicked)
+    }
+
+    @Test
+    fun trimmingRetainsCodeWhitespaceRegardlessOfSpanOrderOrOverlap() {
+        val body = buildAnnotatedString {
+            append("  first middle last  ")
+            addStyle(SpanStyle(fontFamily = FontFamily.Monospace), 15, length)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold), 2, 7)
+            addStyle(SpanStyle(fontFamily = FontFamily.Monospace), 0, 7)
+            addStyle(SpanStyle(fontFamily = FontFamily.Monospace), 4, 17)
+            addStringAnnotation("source", "comment", 0, length)
+        }
+        assertEquals(body, body.trimmedCommentText())
+        assertEquals("first", AnnotatedString(" \tfirst\n ").trimmedCommentText().text)
+        assertEquals("", AnnotatedString(" \t\n ").trimmedCommentText().text)
+        assertEquals("", AnnotatedString("").trimmedCommentText().text)
+    }
+
+    @Test
+    fun emptyCodeSpansStillBoundWhitespaceTrimming() {
+        val body = buildAnnotatedString {
+            append("          ")
+            addStyle(SpanStyle(fontFamily = FontFamily.Monospace), 7, 7)
+            addStyle(SpanStyle(fontFamily = FontFamily.Monospace), 3, 3)
+        }
+        assertEquals(body.subSequence(3, 7), body.trimmedCommentText())
+    }
+
     @Test
     fun paddingSeparatesQuotesFromAdjacentReplyLinesAndPreservesLinks() {
         val source = prepareCommentHtml("Intro<br>&gt; <b>Quoted</b> <a href='https://example.com'>link</a><br>Reply")

@@ -34,11 +34,14 @@ data class TitleFilterRule(
      * contiguous Han text is one word, and accents are neither removed nor normalized away.
      */
     fun matches(title: String): Boolean {
-        val needle = normalizedText
-        if (needle.isEmpty()) return false
-        if (mode == TitleFilterMatchMode.CONTAINS_TEXT) return title.lowercase().contains(needle)
+        if (normalizedText.isEmpty()) return false
+        val candidate = title.lowercase()
+        if (mode == TitleFilterMatchMode.CONTAINS_TEXT) return candidate.contains(normalizedText)
+        return matchesPhrase(collapseFilterWhitespace(candidate))
+    }
+
+    private fun matchesPhrase(candidate: String): Boolean {
         val phrase = normalizedPhrase
-        val candidate = collapseFilterWhitespace(title.lowercase())
         var start = candidate.indexOf(phrase)
         while (start >= 0) {
             val end = start + phrase.length
@@ -49,6 +52,27 @@ data class TitleFilterRule(
         }
         return false
     }
+
+    internal companion object {
+        /** A feed title needs each normalization at most once, even with several filter rules. */
+        fun matchesAny(title: String, rules: List<TitleFilterRule>): Boolean {
+            var normalizedTitle: String? = null
+            var normalizedPhrase: String? = null
+            for (rule in rules) {
+                if (rule.normalizedText.isEmpty()) continue
+                val candidate = normalizedTitle ?: title.lowercase().also { normalizedTitle = it }
+                val matches = if (rule.mode == TitleFilterMatchMode.CONTAINS_TEXT) {
+                    candidate.contains(rule.normalizedText)
+                } else {
+                    val phrase = normalizedPhrase ?: collapseFilterWhitespace(candidate)
+                        .also { normalizedPhrase = it }
+                    rule.matchesPhrase(phrase)
+                }
+                if (matches) return true
+            }
+            return false
+        }
+    }
 }
 
 data class DomainFilterRule(
@@ -57,6 +81,9 @@ data class DomainFilterRule(
     val legacyContainsText: Boolean = false,
 ) {
     private val normalizedDomain = if (legacyContainsText) null else DomainFilterHostPolicy.normalize(domain)
+    private val subdomainSuffix = normalizedDomain
+        ?.takeIf { includeSubdomains && !DomainFilterHostPolicy.isIpv4(it) }
+        ?.let { ".$it" }
 
     fun matches(url: String): Boolean = if (legacyContainsText) {
         matchesLegacyDomain(DomainNamePolicy.fromUrl(url).orEmpty())
@@ -69,8 +96,7 @@ data class DomainFilterRule(
         if (legacyContainsText) return matchesLegacyDomain(normalizedHost)
         val configured = normalizedDomain ?: return false
         return normalizedHost == configured ||
-            (includeSubdomains && !DomainFilterHostPolicy.isIpv4(configured) &&
-                normalizedHost.endsWith(".$configured"))
+            (subdomainSuffix != null && normalizedHost.endsWith(subdomainSuffix))
     }
 
     /** Older domain filters matched the displayed domain (which omits a leading www.). */

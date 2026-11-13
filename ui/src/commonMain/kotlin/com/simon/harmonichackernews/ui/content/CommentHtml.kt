@@ -53,13 +53,16 @@ internal fun bindCommentLinks(
     if (links.isEmpty()) {
         return prepared
     }
+    val linkStyles = TextLinkStyles(
+        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+    )
     return buildAnnotatedString {
         append(prepared)
         links.forEach { link ->
             addLink(
                 LinkAnnotation.Url(
                     url = link.item,
-                    styles = TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                    styles = linkStyles,
                     linkInteractionListener = linkListener,
                 ),
                 link.start,
@@ -361,14 +364,23 @@ private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
 
 internal fun AnnotatedString.trimmedCommentText(): AnnotatedString {
     // Do not trim indentation or trailing whitespace belonging to preformatted code.
-    val codeSpans = spanStyles.filter { it.item.fontFamily == FontFamily.Monospace }
+    var codeStart = length
+    var codeEnd = 0
+    val spans = spanStyles
+    for (index in spans.indices) {
+        val span = spans[index]
+        if (span.item.fontFamily == FontFamily.Monospace) {
+            codeStart = minOf(codeStart, span.start)
+            codeEnd = maxOf(codeEnd, span.end)
+        }
+    }
     val start = minOf(
         text.indexOfFirst { !it.isWhitespace() }.takeIf { it >= 0 } ?: length,
-        codeSpans.minOfOrNull { it.start } ?: length,
+        codeStart,
     )
     val end = maxOf(
         text.indexOfLast { !it.isWhitespace() } + 1,
-        codeSpans.maxOfOrNull { it.end } ?: 0,
+        codeEnd,
     )
     if (start >= end) return AnnotatedString("")
     return subSequence(start, end)
