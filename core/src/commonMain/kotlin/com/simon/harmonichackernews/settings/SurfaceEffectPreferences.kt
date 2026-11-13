@@ -40,7 +40,7 @@ enum class GlassParameter(
     WhitePoint(0f, -1f..1f),
     ChromaMultiplier(1f, 0f..2f);
 
-    internal val storageKey get() = "pref_debug_glass_${name}"
+    internal val storageKey: String = "pref_debug_glass_${name}"
 
     fun sanitize(value: Float): Float = if (value.isFinite()) value.coerceIn(range) else default
 }
@@ -51,7 +51,7 @@ enum class GlassSwitch(val default: Boolean) {
     ChromaticAberration(false),
     FullChromaticAberration(false);
 
-    internal val storageKey get() = "pref_debug_glass_${name}_enabled"
+    internal val storageKey: String = "pref_debug_glass_${name}_enabled"
 }
 
 enum class GlassSurfaceProfile {
