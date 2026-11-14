@@ -32,6 +32,7 @@ enum class DataSettingsAction {
     AddBookmarksToFavorites,
     ExportBookmarks,
     ImportBookmarks,
+    ExportReadingHistory,
     ClearHistory,
     ClearHiddenPosts,
     ClearPostCache,
@@ -48,6 +49,7 @@ fun DataSettingsRuntime.handleDataSettingsAction(action: DataSettingsAction) {
         DataSettingsAction.AddBookmarksToFavorites -> addBookmarksToFavorites()
         DataSettingsAction.ExportBookmarks -> exportBookmarks()
         DataSettingsAction.ImportBookmarks -> showDialog(DataSettingsDialogState.IMPORT)
+        DataSettingsAction.ExportReadingHistory -> exportReadingHistory()
         DataSettingsAction.ClearHistory -> clearHistory()
         DataSettingsAction.ClearHiddenPosts -> clearHiddenPosts()
         DataSettingsAction.ClearPostCache -> clearPostCache()
@@ -121,6 +123,14 @@ fun DataSettingsScreen(
         }
         item {
             SettingsCategory("Storage") {
+                SettingRow(
+                    title = "Export reading history",
+                    summary = if (state.historyCount > 0) "Save IDs, recorded times and HN links as CSV" else "No reading history",
+                    icon = Res.drawable.ic_history,
+                    enabled = state.historyCount > 0,
+                    onClick = { onAction(DataSettingsAction.ExportReadingHistory) },
+                )
+                SettingsDivider()
                 SettingRow(
                     title = "Clear reading history (${state.historyCount})",
                     icon = Res.drawable.ic_close,

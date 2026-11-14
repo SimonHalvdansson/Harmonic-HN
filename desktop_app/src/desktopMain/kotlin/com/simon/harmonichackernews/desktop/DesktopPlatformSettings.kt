@@ -298,10 +298,15 @@ private fun DesktopDataSettings(
                         save = true,
                         settings = effect.mimeType == "application/json",
                         suggestedName = effect.filename,
+                        history = effect.mimeType == "text/csv",
                     )
                     if (file == null) return@collect
                     runCatching { withContext(Dispatchers.IO) { file.writeText(effect.content) } }
-                        .onSuccess { scene.userMessages.show(if (effect.mimeType == "application/json") "Settings exported" else "Bookmarks exported") }
+                        .onSuccess { scene.userMessages.show(when (effect.mimeType) {
+                            "application/json" -> "Settings exported"
+                            "text/csv" -> "Reading history exported"
+                            else -> "Bookmarks exported"
+                        }) }
                         .onFailure { scene.userMessages.show("Write error") }
                 }
                 DataSettingsRuntimeEffect.OpenImportDocument,
@@ -385,10 +390,16 @@ private fun DesktopDataSettings(
     }
 }
 
-private fun chooseTextFile(save: Boolean, settings: Boolean, suggestedName: String? = null): File? {
+private fun chooseTextFile(save: Boolean, settings: Boolean, suggestedName: String? = null, history: Boolean = false): File? {
     val chooser = JFileChooser().apply {
-        dialogTitle = "${if (save) "Export" else "Import"} Harmonic ${if (settings) "settings" else "bookmarks"}"
-        fileFilter = FileNameExtensionFilter("Text and JSON files", "txt", "json")
+        val subject = when {
+            history -> "reading history"
+            settings -> "settings"
+            else -> "bookmarks"
+        }
+        dialogTitle = "${if (save) "Export" else "Import"} Harmonic $subject"
+        fileFilter = if (history) FileNameExtensionFilter("CSV files", "csv")
+            else FileNameExtensionFilter("Text and JSON files", "txt", "json")
         suggestedName?.let { selectedFile = File(it) }
     }
     if (!save) {

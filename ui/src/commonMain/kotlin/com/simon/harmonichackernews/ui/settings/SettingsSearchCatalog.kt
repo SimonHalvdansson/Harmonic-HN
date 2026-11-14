@@ -268,6 +268,7 @@ internal fun settingsSearchCatalog(
     if (availability.loggedIn) group(SettingsSection.Data, "Bookmarks",
         "Add all bookmarks to HN favorites" to "sync synchronize favourites account saved")
     group(SettingsSection.Data, "Storage",
+        "Export reading history" to "csv backup save file ids timestamps read stories analysis",
         "Clear reading history" to "delete remove viewed read stories storage",
         "Clear hidden posts" to "unhide reset restore hidden stories",
         "Clear post cache" to "delete cached articles comments storage space",
