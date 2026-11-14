@@ -9,11 +9,33 @@ private extension XCUIApplication {
         buttons.matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", label, label + ",")).firstMatch
     }
 
-    func tapVisibleButton(_ label: String) {
+    func tapVisibleButton(_ label: String, scrollX: CGFloat? = nil) {
         let target = labeledButton(label)
-        for _ in 0..<7 where !target.isHittable { swipeUp(velocity: .slow) }
+        let window = windows.firstMatch
+        func reachable() -> Bool {
+            target.exists && target.isHittable && target.frame.midY < window.frame.maxY - 44
+        }
+        for _ in 0..<10 where !reachable() {
+            let bounds = window.frame
+            let keyboard = keyboards.firstMatch
+            let bottom = keyboard.exists && keyboard.frame.height > 150
+                ? keyboard.frame.minY - bounds.minY : bounds.height - 44
+            let top = min(100.0, bottom * 0.3)
+            let height = max(1, bottom - top)
+            let x = target.exists && target.frame.width > 0
+                ? target.frame.midX - bounds.minX : (scrollX ?? bounds.width / 2)
+            let down = target.exists && target.frame.midY < bounds.minY + top
+            let origin = window.coordinate(withNormalizedOffset: .zero)
+            // Full-window swipes can start inside the protected Home-indicator area,
+            // especially in landscape. Keep drags inside the available content.
+            origin.withOffset(CGVector(dx: x, dy: top + height * (down ? 0.3 : 0.8))).press(
+                forDuration: 0.1,
+                thenDragTo: origin.withOffset(CGVector(dx: x, dy: top + height * (down ? 0.8 : 0.3))),
+                withVelocity: .slow, thenHoldForDuration: 0.2
+            )
+        }
         XCTAssertTrue(target.waitForExistence(timeout: 10), label)
-        XCTAssertTrue(target.isHittable, label)
+        XCTAssertTrue(reachable(), label)
         target.tapCenter()
     }
 
@@ -355,7 +377,7 @@ final class HarmonicIosUITests: XCTestCase {
     func testOfflineCachingDoesNotOfferWebsiteSnapshots() throws {
         app.labeledButton("More options").tapCenter()
         app.labeledButton("Cache stories").tapCenter()
-        XCTAssertTrue(app.staticTexts["Cache stories"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["Cache stories"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Download website content"].exists)
         keepScreenshot("Comments-only offline caching")
         app.labeledButton("Cancel").tapCenter()
@@ -363,45 +385,18 @@ final class HarmonicIosUITests: XCTestCase {
 
     private func openDebugSettings() {
         openSettings()
-        let debug = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Debug")).firstMatch
-        if !debug.isHittable {
-            // A retained settings list can already be scrolled. Resolve a visible row's
-            // column now; a lazy coordinate tied to Appearance disappears after a swipe.
-            let visibleRow = ["Appearance", "Stories", "Comments", "Post header", "Web and links",
-                              "Filters and tags", "AI features", "Behavior", "Data", "About"]
-                .map { app.labeledButton($0) }.first { $0.isHittable }
-            XCTAssertNotNil(visibleRow)
-            let window = app.windows.firstMatch
-            let origin = window.coordinate(withNormalizedOffset: .zero)
-            let x = visibleRow?.frame.midX ?? window.frame.midX
-            for _ in 0..<6 where !debug.isHittable {
-                origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.75)).press(
-                    forDuration: 0.1,
-                    thenDragTo: origin.withOffset(CGVector(dx: x, dy: window.frame.height * 0.30)),
-                    withVelocity: .slow, thenHoldForDuration: 0.2
-                )
-            }
-        }
-        XCTAssertTrue(debug.waitForExistence(timeout: 5))
-        debug.tapCenter()
+        // Keep scrolling in the settings-list column on expanded layouts.
+        let visibleRow = ["Appearance", "Stories", "Comments", "Post header", "Web and links",
+                          "Filters and tags", "AI features", "Behavior", "Data", "About"]
+            .map { app.labeledButton($0) }.first { $0.isHittable }
+        let x = visibleRow.map { $0.frame.midX - app.windows.firstMatch.frame.minX }
+        app.tapVisibleButton("Debug", scrollX: x)
         XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 5))
     }
 
     private func openLinkPostFromDebugSettings() {
         openDebugSettings()
-        let link = app.labeledButton("Link post")
-        let detailX = app.staticTexts.matching(identifier: "Debug").allElementsBoundByIndex.map { $0.frame.minX }.max()! + 8
-        let bounds = app.windows.firstMatch.frame
-        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
-        for _ in 0..<8 where !link.isHittable {
-            origin.withOffset(CGVector(dx: detailX, dy: bounds.height * 0.75)).press(
-                forDuration: 0.1,
-                thenDragTo: origin.withOffset(CGVector(dx: detailX, dy: bounds.height * 0.30)),
-                withVelocity: .slow, thenHoldForDuration: 0.2
-            )
-        }
-        XCTAssertTrue(link.waitForExistence(timeout: 5))
-        link.tapCenter()
+        app.tapVisibleButton("Link post")
     }
 
     func testDebugWelcomeSurvivesDuoFolding() throws {
@@ -491,10 +486,10 @@ final class HarmonicIosUITests: XCTestCase {
         let frame = preview.frame
         let content = app.otherElements["stories-header-preview-content"]
         XCTAssertTrue(content.waitForExistence(timeout: 5))
-        func assertFixedCenteredPreview() {
+        func assertFixedTopAlignedPreview() {
             XCTAssertEqual(preview.frame.height, frame.height, accuracy: 1)
             XCTAssertEqual(preview.frame.minY, frame.minY, accuracy: 1)
-            XCTAssertEqual(content.frame.midY, preview.frame.midY, accuracy: 1)
+            XCTAssertEqual(content.frame.minY, preview.frame.minY, accuracy: 1)
         }
         let standardHeight = content.frame.height
         compact.tapCenter()
@@ -502,14 +497,14 @@ final class HarmonicIosUITests: XCTestCase {
             predicate: NSPredicate { _, _ in content.frame.height < standardHeight - 8 }, object: nil
         )], timeout: 5), .completed)
         keepScreenshot("Stories header - dropdown, compact header")
-        assertFixedCenteredPreview()
+        assertFixedTopAlignedPreview()
         let compactHeight = content.frame.height
         app.labeledButton("Chips").tapCenter()
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in content.frame.height > compactHeight + 24 }, object: nil
         )], timeout: 5), .completed)
         keepScreenshot("Stories header - chips, compact header")
-        assertFixedCenteredPreview()
+        assertFixedTopAlignedPreview()
         let chips = app.otherElements["stories-header-preview-chips"]
         XCTAssertTrue(chips.waitForExistence(timeout: 5))
         XCTAssertEqual(chips.frame.minX, preview.frame.minX, accuracy: 1)
@@ -522,7 +517,7 @@ final class HarmonicIosUITests: XCTestCase {
             predicate: NSPredicate { _, _ in content.frame.height > chipHeight + 8 }, object: nil
         )], timeout: 5), .completed)
         keepScreenshot("Stories header - chips, standard header")
-        assertFixedCenteredPreview()
+        assertFixedTopAlignedPreview()
         XCTAssertTrue(compact.isHittable, "Controls must remain clear of the preview")
         let back = app.buttons.matching(NSPredicate(format: "label == %@", "Navigate up")).allElementsBoundByIndex.last!
         back.tapCenter()
@@ -592,19 +587,25 @@ final class HarmonicIosUITests: XCTestCase {
             }
         }
         let commentsX = articleHeader.frame.midX
+        func isVisible(_ element: XCUIElement) -> Bool {
+            // Compose can retain offscreen accessibility elements as hittable.
+            element.exists && element.isHittable &&
+                element.frame.intersects(window.frame.insetBy(dx: 0, dy: 32))
+        }
         scrollPane(x: originalFirst.frame.midX)
         scrollPane(x: commentsX)
-        XCTAssertFalse(originalFirst.isHittable)
-        XCTAssertFalse(articleHeader.isHittable)
+        XCTAssertFalse(isVisible(originalFirst))
+        XCTAssertFalse(isVisible(articleHeader))
         tapStatusBar(relativeX: commentsX / window.frame.width)
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in self.articleHeader.isHittable }, object: nil
+            predicate: NSPredicate { _, _ in isVisible(self.articleHeader) }, object: nil
         )], timeout: 10), .completed)
-        XCTAssertFalse(originalFirst.isHittable, "The other pane must retain its reading position")
+        XCTAssertFalse(isVisible(originalFirst), "The other pane must retain its reading position")
         tapStatusBar(relativeX: 0.2)
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in originalFirst.isHittable }, object: nil
+            predicate: NSPredicate { _, _ in isVisible(originalFirst) }, object: nil
         )], timeout: 10), .completed)
+        keepScreenshot("Status bar taps restored each iPad pane independently")
     }
 
     private func tapStatusBar(relativeX: CGFloat = 0.5) {
@@ -955,13 +956,15 @@ final class HarmonicIosUITests: XCTestCase {
     func testTypedTitleRulePreviewAndCancelledModeEdit() throws {
         openFilterRules("Filter by story title")
         app.tapVisibleButton("Add rule")
-        let field = app.textViews["Word or phrase"]
+        let field = app.textViews["title-filter-rule-input"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tapCenter()
         showSoftwareKeyboardIfNeeded()
         field.typeText("AI")
         XCTAssertTrue(app.labeledButton("Save rule").isEnabled)
-        XCTAssertTrue(elementWithLabelContaining("ignoring capitalization").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "How ai changes search", "Hidden"
+        )).firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Preview"].exists)
         let visibleExample = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ AND label CONTAINS %@", "A better office chair", "Visible"
@@ -1005,7 +1008,10 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(subdomains.waitForExistence(timeout: 5))
         for _ in 0..<5 where !subdomains.isHittable { app.swipeUp(velocity: .slow) }
         subdomains.tapCenter()
-        XCTAssertTrue(elementWithLabelContaining("Matches only this exact hostname").waitForExistence(timeout: 5))
+        XCTAssertEqual(subdomains.value as? String, "0")
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "news.www.example.com", "Visible"
+        )).firstMatch.waitForExistence(timeout: 5))
         keepScreenshot("iOS normalized domain rule with exact-host matching")
         app.tapVisibleButton("Save rule")
         waitUntilGone(field, "Saving a domain rule must restore its list after the keyboard closes")
@@ -1024,13 +1030,24 @@ final class HarmonicIosUITests: XCTestCase {
         func revealPreviewElement(_ element: XCUIElement, scrollUp: Bool = true) {
             let body = app.descendants(matching: .any).matching(identifier: "category-inspector-preview-scroll").firstMatch
             XCTAssertTrue(body.waitForExistence(timeout: 5))
-            for _ in 0..<16 where !element.isHittable {
+            func viewport() -> CGRect {
                 let window = app.windows.firstMatch
                 let header = elementWithLabelContaining("Category inspector preview").frame
                 let footer = app.labeledButton("Close").frame
-                let viewport = body.frame.intersection(window.frame).intersection(CGRect(
+                return body.frame.intersection(window.frame).intersection(CGRect(
                     x: body.frame.minX, y: header.maxY, width: body.frame.width,
                     height: max(1, footer.minY - 8 - header.maxY)))
+            }
+            func centerIsVisible() -> Bool {
+                guard element.exists && element.isHittable else { return false }
+                // Compose can report a clipped chip as hittable even when its center
+                // lies behind the fixed dialog title, especially at accessibility sizes.
+                return viewport().insetBy(dx: 0, dy: 8).contains(
+                    CGPoint(x: element.frame.midX, y: element.frame.midY))
+            }
+            for _ in 0..<16 where !centerIsVisible() {
+                let window = app.windows.firstMatch
+                let viewport = viewport()
                 XCTAssertGreaterThan(viewport.height, 32)
                 var up = scrollUp
                 if element.exists && element.frame.height > 0 {
@@ -1043,7 +1060,7 @@ final class HarmonicIosUITests: XCTestCase {
                 start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
             }
             XCTAssertTrue(element.waitForExistence(timeout: 5))
-            XCTAssertTrue(element.isHittable, "Preview body: \(body.frame), target: \(element.frame)")
+            XCTAssertTrue(centerIsVisible(), "Preview body: \(body.frame), target: \(element.frame)")
         }
         func revealInspectorProvenance(_ text: String) {
             let value = elementWithLabelContaining(text)
@@ -1138,7 +1155,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(app.staticTexts["No story title rules"].frame.height, standardTextHeight * 1.75,
                                    "The per-process content-size override must actually enlarge Compose text")
         app.tapVisibleButton("Add rule")
-        let field = app.textViews["Word or phrase"]
+        let field = app.textViews["title-filter-rule-input"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tapCenter()
         showSoftwareKeyboardIfNeeded()
@@ -1419,11 +1436,14 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("Scrolled before switching preview samples")
         for index in 0..<8 {
             next.tapCenter()
+            // UIKit accessibility can briefly expose the old translated bounds while
+            // Compose crossfades samples of different heights. Check the settled layout.
+            let previewIsOffscreen = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                !preview.exists || preview.frame.intersection(self.app.frame).height <= 1
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [previewIsOffscreen], timeout: 3), .completed,
+                           "A scrolled-away preview must stay offscreen after selecting another sample")
             XCTAssertEqual(user.frame.minY, original.minY, accuracy: 1)
-            if preview.exists {
-                XCTAssertEqual(preview.frame.intersection(app.frame).height, 0, accuracy: 1,
-                    "A scrolled-away preview must not reappear when selecting another sample")
-            }
             keepScreenshot("Scrolled sample change \(index + 1)")
         }
     }
@@ -1578,15 +1598,16 @@ final class HarmonicIosUITests: XCTestCase {
         )], timeout: 10), .completed)
     }
 
-    func testDuoReaderModeAndAvailabilityAfterRefresh() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true)
+    func testReaderModeAndAvailabilityAfterRefresh() throws {
         openDebugSettings()
         app.tapVisibleButton("Link post")
         XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
         articleHeader.tapCenter()
         let reader = app.labeledButton("Reader mode")
         XCTAssertTrue(reader.waitForExistence(timeout: 30))
-        XCTAssertEqual(reader.frame.midX, app.labeledButton("Navigate up").frame.midX, accuracy: 1)
+        if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.contains("Duo") == true {
+            XCTAssertEqual(reader.frame.midX, app.labeledButton("Navigate up").frame.midX, accuracy: 1)
+        }
         reader.tapCenter()
         let enabledReader = app.labeledButton("Reader mode on")
         XCTAssertTrue(enabledReader.waitForExistence(timeout: 15))
@@ -1597,7 +1618,7 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(reader.waitForExistence(timeout: 30))
         reader.tapCenter()
         XCTAssertTrue(enabledReader.waitForExistence(timeout: 15))
-        keepScreenshot("Duo reader mode after website refresh")
+        keepScreenshot("Reader mode after website refresh")
         enabledReader.tapCenter()
         XCTAssertTrue(reader.waitForExistence(timeout: 15))
     }
@@ -1876,11 +1897,16 @@ final class HarmonicIosUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         openSettings()
         app.tapVisibleButton("AI features")
-        for label in ["System prompt", "Base URL", "API Key"] {
+        // Cloud credentials are intentionally unavailable on iOS. Exercise the
+        // supported text editor in both window shapes instead.
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            let label = "System prompt"
             app.tapVisibleButton(label)
             let field = app.textViews.firstMatch
             XCTAssertTrue(field.waitForExistence(timeout: 5), label)
             field.tapCenter()
+            showSoftwareKeyboardIfNeeded()
             let keyboard = app.keyboards.firstMatch
             XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
                 predicate: NSPredicate { _, _ in keyboard.exists && keyboard.frame.height > 1 }, object: nil
@@ -1899,10 +1925,10 @@ final class HarmonicIosUITests: XCTestCase {
             XCTAssertEqual(field.frame.width, focusedWidth, accuracy: 1,
                            "\(label) must keep its width when focus changes")
             field.tapCenter()
+            showSoftwareKeyboardIfNeeded()
             XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
             XCTAssertEqual(field.frame.width, focusedWidth, accuracy: 1)
             app.labeledButton("Cancel").tapCenter()
-            if label == "System prompt" { XCUIDevice.shared.orientation = .portrait }
         }
     }
 
@@ -1998,7 +2024,7 @@ final class HarmonicIosUITests: XCTestCase {
             XCTAssertTrue(app.labeledButton("Appearance").exists)
         }
 
-        app.labeledButton("Data").tapCenter()
+        app.tapVisibleButton("Data")
         XCTAssertTrue(app.staticTexts["Data"].waitForExistence(timeout: 10))
         XCTAssertFalse(
             app.descendants(matching: .any)["Open Hacker News links in Harmonic"].exists,
@@ -2099,11 +2125,7 @@ final class HarmonicIosUITests: XCTestCase {
         openDebugSettings()
         for label in ["Link post", "Reference links post", "YouTube comment",
                       "Very long comment", "Poll", "Internal HN link"] {
-            let sample = app.labeledButton(label)
-            for _ in 0..<5 where !sample.isHittable { app.swipeUp(velocity: .slow) }
-            XCTAssertTrue(sample.waitForExistence(timeout: 5), label)
-            Thread.sleep(forTimeInterval: 1) // A tap during a fling only stops the scroll.
-            sample.tapCenter()
+            app.tapVisibleButton(label)
             XCTAssertTrue(app.labeledButton("User").waitForExistence(timeout: 20), label)
             keepScreenshot("Sample content - " + label)
             app.swipeUp()
@@ -2145,12 +2167,16 @@ final class HarmonicIosUITests: XCTestCase {
         articleHeader.tapCenter()
         XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 15))
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 10))
+        // Expanded layouts use a different browser toolbar. Check the native page itself.
+        let articleWebView = app.webViews["Article web view"]
+        XCTAssertTrue(articleWebView.waitForExistence(timeout: 10))
+        XCTAssertTrue(articleWebView.isHittable)
         Thread.sleep(forTimeInterval: 4) // Allow simulator rotation and the native browser to settle.
         keepScreenshot("Article after expanding landscape")
         XCUIDevice.shared.press(.home)
         app.activate()
-        XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 10))
+        XCTAssertTrue(articleWebView.waitForExistence(timeout: 10))
+        XCTAssertTrue(articleWebView.isHittable)
         XCUIDevice.shared.orientation = .portrait
         XCTAssertTrue(app.labeledButton("Show comments").waitForExistence(timeout: 10))
         app.labeledButton("Show comments").tapCenter()
@@ -2179,6 +2205,8 @@ final class HarmonicIosPresentationTests: XCTestCase {
         app.launch()
         app.completeWelcomeIfNeeded()
         XCTAssertTrue(app.labeledButton("More options").waitForExistence(timeout: 15))
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 2) { hint.tapCenter() }
     }
 
     private func keepScreenshot(_ name: String) {
@@ -2192,7 +2220,6 @@ final class HarmonicIosPresentationTests: XCTestCase {
         app.labeledButton("More options").tapCenter()
         XCTAssertTrue(app.labeledButton("Settings").waitForExistence(timeout: 5))
         app.labeledButton("Settings").tapCenter()
-        XCTAssertTrue(app.labeledButton("About").waitForExistence(timeout: 10))
         app.tapVisibleButton("About")
         XCTAssertTrue(app.images["Harmonic app icon"].waitForExistence(timeout: 10))
         keepScreenshot("About Harmonic icon")
@@ -2200,7 +2227,7 @@ final class HarmonicIosPresentationTests: XCTestCase {
         app.labeledButton("Navigate up").tapCenter()
         XCTAssertTrue(app.staticTexts["Settings"].waitForExistence(timeout: 10))
         app.tapVisibleButton("Debug")
-        let welcome = app.labeledButton("Welcome dialog")
+        let welcome = app.labeledButton("Welcome screen")
         for _ in 0..<4 where !welcome.isHittable { app.swipeUp() }
         XCTAssertTrue(welcome.waitForExistence(timeout: 5))
         let getStarted = app.labeledButton("Get started")
@@ -2231,8 +2258,10 @@ final class HarmonicIosPresentationTests: XCTestCase {
         ).element(boundBy: storyIndex)
         XCTAssertTrue(comments.waitForExistence(timeout: 15))
         comments.tapCenter()
-        XCTAssertTrue(app.labeledButton("User").waitForExistence(timeout: 15))
-        app.labeledButton("User").tapCenter()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open article"))
+            .firstMatch.waitForExistence(timeout: 15))
+        // Link previews can push the profile action below the first viewport.
+        app.tapVisibleButton("User")
         let submissions = app.labeledButton("Submissions")
         if !submissions.waitForExistence(timeout: 5) {
             for _ in 0..<8 where !submissions.exists {
@@ -2362,19 +2391,18 @@ final class HarmonicIosSettingsTests: XCTestCase {
         settings("Data")
         let export = dataRow("Export bookmarks")
         XCTAssertTrue(export.waitForExistence(timeout: 10)); export.tapCenter()
-        Thread.sleep(forTimeInterval: 3)
-        record("Native bookmark export picker")
         let filename = app.textFields["DOCPicker.filenameTextField"]
-        XCTAssertTrue(filename.waitForExistence(timeout: 10))
+        // Files starts its document-provider services on the first launch of a clean simulator.
+        XCTAssertTrue(filename.waitForExistence(timeout: 30))
+        record("Native bookmark export picker")
         XCTAssertTrue((filename.value as? String ?? "").hasPrefix("HarmonicBookmarks"))
         dismissFiles()
         let importRow = dataRow("Import bookmarks")
         XCTAssertTrue(importRow.waitForExistence(timeout: 10)); importRow.tapCenter()
         let add = dataRow("Add to bookmarks")
         XCTAssertTrue(add.waitForExistence(timeout: 5)); add.tapCenter()
-        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(app.collectionViews["File View"].waitForExistence(timeout: 30))
         record("Native bookmark import picker")
-        XCTAssertTrue(app.collectionViews["File View"].waitForExistence(timeout: 10))
         tap("Cancel")
 
         debugLink()
@@ -2459,6 +2487,22 @@ final class HarmonicBrowserIntegrationTests: XCTestCase {
         let browser = try await browserWithPage()
         defer { browser.dispose() }
         let view = try XCTUnwrap(browser.view)
+        // WebKit suppresses JavaScript dialogs for hidden or detached pages.
+        // Exercise the same visible, window-backed state as the article browser.
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let previousKeyWindow = scene?.windows.first(where: \.isKeyWindow)
+        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds)
+        let host = UIViewController()
+        window.rootViewController = host
+        browser.visible = true
+        view.frame = window.bounds
+        host.view.addSubview(view)
+        window.makeKeyAndVisible()
+        defer {
+            view.removeFromSuperview()
+            window.isHidden = true
+            previousKeyWindow?.makeKey()
+        }
         let confirmation = Task { try await view.evaluateJavaScript("String(confirm('Continue?'))") as? String }
         try await waitUntil { browser.dialog != nil }
         XCTAssertEqual(browser.dialog?.message, "Continue?")
