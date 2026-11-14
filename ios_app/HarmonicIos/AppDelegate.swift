@@ -1,4 +1,5 @@
 import UIKit
+import UserNotifications
 import HarmonicKit
 
 @main
@@ -9,6 +10,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         prepareUiTestStateIfNeeded()
         _ = IosBackgroundModelTransfers.shared
+        IosReplyNotifications.shared.registerBackgroundChecks { HarmonicProcess.shared.bootstrap.replyChecks }
         return true
     }
 
@@ -18,6 +20,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationSignificantTimeChange(_ application: UIApplication) {
+        IosReplyNotifications.shared.rescheduleChecks()
         for scene in application.connectedScenes {
             (scene.delegate as? HarmonicSceneDelegate)?.refreshAppearance()
         }
@@ -52,24 +55,14 @@ var harmonicFilesDirectory: URL {
     return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
 }
 
-/// Keep the same application and navigation graph as this window resizes or changes displays.
-final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
-    private var harmonic: IosHarmonicApplication?
-    private var services: IosNativeServices?
-    var window: UIWindow?
+/// The background scheduler and every scene share one account, preferences and reply checkpoint.
+final class HarmonicProcess {
+    static let shared = HarmonicProcess()
+    let services: IosNativeServices
+    let bootstrap: IosHarmonicAppBootstrap
 
-    func scene(
-        _ scene: UIScene,
-        willConnectTo session: UISceneSession,
-        options connectionOptions: UIScene.ConnectionOptions
-    ) {
-        guard let windowScene = scene as? UIWindowScene else { return }
-        if let window {
-            window.windowScene = windowScene
-            window.makeKeyAndVisible()
-            return
-        }
-        let services = IosNativeServices()
+    private init() {
+        services = IosNativeServices()
 #if DEBUG
         let buildType = "debug"
         let debugBuild = true
@@ -121,11 +114,10 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
                     int: Int32((components.hour ?? 0) * 60 + (components.minute ?? 0))
                 )
             },
-            systemDark: { [weak self, weak windowScene] in
+            systemDark: {
                 let readAppearance = {
-                    let style = self?.window?.traitCollection.userInterfaceStyle
-                        ?? windowScene?.traitCollection.userInterfaceStyle
-                        ?? .light
+                    let style = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                        .first?.traitCollection.userInterfaceStyle ?? .light
                     return KotlinBoolean(bool: style == .dark)
                 }
                 // Settings updates can resolve the appearance on a Kotlin worker thread.
@@ -145,14 +137,37 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
             timeFormatting: services.timeFormatting,
             appearance: services.appearance,
             textDocuments: services.textDocuments,
-            replyNotifications: nil,
+            replyNotifications: IosReplyNotifications.shared,
             localSummary: nil,
             nativeLocalSummary: services.localSummary,
             nativeLiteRt: services.liteRt,
             nativeArticleEmbeddings: services.articleEmbeddings,
             modelTransfers: IosBackgroundModelTransfers.shared
         )
-        let harmonic = IosHarmonicApplication(bindings: bindings, runtime: runtime)
+        bootstrap = IosHarmonicAppBootstrap(userAgent: "Harmonic-HN-iOS/\(metadata.versionName)", bindings: bindings, runtime: runtime)
+    }
+}
+
+/// Keep the same application and navigation graph as this window resizes or changes displays.
+final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    private var harmonic: IosHarmonicApplication?
+    private var services: IosNativeServices?
+    var window: UIWindow?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        if let window {
+            window.windowScene = windowScene
+            window.makeKeyAndVisible()
+            return
+        }
+        let process = HarmonicProcess.shared
+        let services = process.services
+        let harmonic = IosHarmonicApplication(bootstrap: process.bootstrap, appearance: services.appearance)
         let root = HarmonicRootViewController(
             content: harmonic.makeViewController()
         )
@@ -172,10 +187,19 @@ final class HarmonicSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         self.services = services
         self.harmonic = harmonic
+        IosReplyNotifications.shared.attachReplyOpener { [weak harmonic] url in
+            guard let harmonic else { return false }
+            harmonic.openReply(url: url)
+            return true
+        }
+        if let response = connectionOptions.notificationResponse {
+            IosReplyNotifications.shared.openResponse(response)
+        }
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         harmonic?.setForeground(active: true)
+        IosReplyNotifications.shared.rescheduleChecks()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {

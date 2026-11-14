@@ -10,9 +10,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import com.simon.harmonichackernews.ui.theme.pageBackground
-import com.simon.harmonichackernews.app.IosHostRuntimeBindings
 import com.simon.harmonichackernews.platform.IosAppearanceController
-import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -123,6 +121,7 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
+import com.simon.harmonichackernews.ui.settings.LocalSettingsDialogsVisible
 import com.simon.harmonichackernews.ui.stories.LocalStoriesSearchInHeader
 import org.jetbrains.compose.resources.painterResource
 
@@ -144,15 +143,9 @@ private class IosBackSettle(
  * the returned controller; Compose dispatches iOS edge gestures through Navigation Event.
  */
 class IosHarmonicApplication(
-    bindings: IosPlatformBindings,
-    runtime: IosHostRuntimeBindings,
+    private val bootstrap: IosHarmonicAppBootstrap,
+    private val appearance: IosAppearanceController,
 ) {
-    private val appearance = bindings.appearance
-    private val bootstrap = IosHarmonicAppBootstrap(
-        userAgent = "Harmonic-HN-iOS/${runtime.metadata.versionName}",
-        bindings = bindings,
-        runtime = runtime,
-    )
     private val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     private val scene = sceneOwner.scene
     private var closed = false
@@ -175,6 +168,11 @@ class IosHarmonicApplication(
 
     fun refreshAppearance() {
         if (!closed) bootstrap.app.appearance.refreshSelection()
+    }
+
+    /** Notification links use the same parent/reply routing as the activity inbox. */
+    fun openReply(url: String) {
+        if (!closed) scene.links.open(url)
     }
 
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -203,7 +201,6 @@ class IosHarmonicApplication(
         if (closed) return
         closed = true
         sceneOwner.close()
-        bootstrap.close()
     }
 }
 
@@ -563,17 +560,20 @@ private fun IosAppContent(
             }
         },
         settings = { request ->
-            IosSettingsShell(
-                focusHideComments = request.initialSectionRoute ==
-                    com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
-                app = app,
-                scene = scene,
-                requestSerial = request.serial,
-                controllers = settingsControllers,
-                initialSection = SettingsSection.fromRoute(
-                    request.initialSectionRoute.orEmpty(),
-                ),
-            )
+            CompositionLocalProvider(LocalSettingsDialogsVisible provides
+                (navigation.currentDestination == MainDestination.SETTINGS && navigation.settingsRequest?.serial == request.serial)) {
+                IosSettingsShell(
+                    focusHideComments = request.initialSectionRoute ==
+                        com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
+                    app = app,
+                    scene = scene,
+                    requestSerial = request.serial,
+                    controllers = settingsControllers,
+                    initialSection = SettingsSection.fromRoute(
+                        request.initialSectionRoute.orEmpty(),
+                    ),
+                )
+            }
         },
         submissions = { request, detail, paneComments ->
             if (isTwoPane) {

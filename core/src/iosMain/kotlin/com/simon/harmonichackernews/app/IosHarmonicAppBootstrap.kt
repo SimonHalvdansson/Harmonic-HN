@@ -111,7 +111,15 @@ class IosHarmonicAppBootstrap(
     /** Creates independent navigation and screen state for one UIWindowScene. */
     fun createScene(): HarmonicSceneComposition = app.createScene()
 
+    val replyChecks = com.simon.harmonichackernews.platform.IosReplyNotificationChecks(
+        runtime = checkNotNull(app.replyNotifications),
+        awaitAccount = { platform.accounts.awaitAccount() },
+        accountUsername = { app.accountActivityUsername },
+        persist = { appData.awaitPersisted() },
+    )
+
     fun close() {
+        replyChecks.close()
         localAi?.close()
         network.close()
         runBlocking(Dispatchers.Default) {

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C10000000000000000000005 /* IosReplyNotificationsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000005; };
+		A10000000000000000000014 /* IosReplyNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014; };
 		C10000000000000000000004 /* IosBackgroundModelTransfersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000004 /* IosBackgroundModelTransfersTests.swift */; };
 		A10000000000000000000013 /* IosBackgroundModelTransfers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* IosBackgroundModelTransfers.swift */; };
 		A10000000000000000000012 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* PrivacyInfo.xcprivacy */; };
@@ -37,6 +39,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C20000000000000000000005 /* IosReplyNotificationsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosReplyNotificationsTests.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* IosReplyNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosReplyNotifications.swift; sourceTree = "<group>"; };
 		C20000000000000000000004 /* IosBackgroundModelTransfersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBackgroundModelTransfersTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000013 /* IosBackgroundModelTransfers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBackgroundModelTransfers.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -93,6 +97,7 @@
 				A20000000000000000000001 /* AppDelegate.swift */,
 				A20000000000000000000002 /* IosNativeServices.swift */,
 				A20000000000000000000013 /* IosBackgroundModelTransfers.swift */,
+				A20000000000000000000014 /* IosReplyNotifications.swift */,
 				A20000000000000000000008 /* IosTextDocumentService.swift */,
 				A20000000000000000000009 /* IosLiteRtSummaryService.swift */,
 				A20000000000000000000011 /* IosArticleEmbeddingService.swift */,
@@ -126,7 +131,7 @@
 
 		C40000000000000000000001 /* HarmonicIosTests */ = {
 			isa = PBXGroup;
-			children = (C20000000000000000000001 /* IosLocalAiTests.swift */, C20000000000000000000003 /* IosSystemGestureTests.swift */, C20000000000000000000004 /* IosBackgroundModelTransfersTests.swift */);
+			children = (C20000000000000000000005, C20000000000000000000001 /* IosLocalAiTests.swift */, C20000000000000000000003 /* IosSystemGestureTests.swift */, C20000000000000000000004 /* IosBackgroundModelTransfersTests.swift */);
 			path = HarmonicIosTests;
 			sourceTree = "<group>";
 		};
@@ -313,6 +318,7 @@
 				A10000000000000000000001 /* AppDelegate.swift in Sources */,
 				A10000000000000000000002 /* IosNativeServices.swift in Sources */,
 				A10000000000000000000013 /* IosBackgroundModelTransfers.swift in Sources */,
+				A10000000000000000000014 /* IosReplyNotifications.swift in Sources */,
 				A10000000000000000000008 /* IosTextDocumentService.swift in Sources */,
 				A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */,
 				A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */,
@@ -329,7 +335,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C70000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000001, C10000000000000000000003, C10000000000000000000004); runOnlyForDeploymentPostprocessing = 0; };
+		C70000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000005, C10000000000000000000001, C10000000000000000000003, C10000000000000000000004); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

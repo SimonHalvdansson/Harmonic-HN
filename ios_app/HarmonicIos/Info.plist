@@ -32,6 +32,16 @@
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.simon.harmonichackernews.ios.replies</string>
+        <string>com.simon.harmonichackernews.ios.replies.catchup</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>

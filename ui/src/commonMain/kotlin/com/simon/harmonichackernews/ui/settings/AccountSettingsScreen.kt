@@ -416,7 +416,7 @@ fun AccountSettingsScreen(
                     SettingRow("Checking hours", summary = "${AccountAlertPreferences.timeLabel(preferences.startMinute)}–${AccountAlertPreferences.timeLabel(preferences.endMinute)} · Local time", icon = Res.drawable.ic_schedule,
                         enabled = state.backgroundSupported && !busy && preferences.limitedHours, onClick = { dialog = "hours" })
                 }
-                Text("Your device may delay automatic checks to save battery. Activity covers replies to comments and submissions from the last 14 days; the latest 100 replies are kept on this device.",
+                Text("The frequency is a minimum interval. Your device decides when automatic checks run and may delay them to save battery. Activity covers replies to comments and submissions from the last 14 days; the latest 100 replies are kept on this device.",
                     Modifier.padding(horizontal = 24.dp, vertical = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = AppUiFontFamily, fontSize = 13.sp, lineHeight = 18.sp)
             }

@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 
+/** Retained Settings screens keep their drafts without displaying windows above another screen. */
+val LocalSettingsDialogsVisible = compositionLocalOf { true }
+
 @Composable
 fun SettingsAlertDialog(
     onDismissRequest: () -> Unit,
@@ -75,6 +79,7 @@ fun SettingsAlertDialog(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
+    if (!LocalSettingsDialogsVisible.current) return
     val dialogMaxWidth = settingsDialogMaxWidth()
     SynchronizedSettingsDialogs {
         PredictiveBackDialog(

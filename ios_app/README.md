@@ -29,13 +29,24 @@ interactive system left-edge back gesture through the KMP navigation hierarchy. 
 and the rest of the UI remain in the KMP modules.
 
 Account activity, read state, discussion muting, and Debug → Account's public-username preview are
-shared and work without native notifications. A preview never changes Keychain credentials or
-the account used to post and vote. For native alerts, supply `ReplyNotificationPlatform` through
-`IosPlatformBindings.replyNotifications`; its optional `settingsHost: NotificationSettingsHost`
-connects authorization refresh, permission requests, and the system notification-settings link.
-The shared Account route refreshes authorization on resume. Until that adapter is supplied,
-foreground checking stays available and native alert/background controls remain disabled.
-Verify the native adapter, permission changes, and background scheduling on an iOS simulator/device.
+shared and work without notification permission. A preview never changes Keychain credentials or
+uses the account to post or vote. The native `IosReplyNotifications` adapter supplies notification
+permission/settings, grouped local alerts, and `BGAppRefreshTask` scheduling. Notification taps open
+the parent discussion at the reply through shared navigation, including on a cold launch. The
+process-owned app graph supports refreshes without an open scene; expiration cancels the scanner,
+and checkpoints are flushed before normal completion. Checks respect account changes, muted discussions,
+Wi-Fi-only mode and local checking hours. iOS chooses the actual wakeup time: the selected frequency
+is a minimum interval, not a delivery guarantee. A scan that cannot finish in a short refresh
+queues a `BGProcessingTask` catch-up; iOS runs that longer task when the device is idle. Both paths
+honor Wi-Fi and checking hours, and expiration never advances an incomplete scan's checkpoint.
+Background App Refresh must be enabled, and
+force-quitting prevents automatic checks until the app is opened again. No push server is used.
+The Account route refreshes notification authorization on resume. Native unit tests cover delivery,
+permission changes, scheduling, cancellation and cold-launch links; iOS Kotlin tests cover account
+ownership, Wi-Fi/checking hours, persistence, expiry and the longer catch-up budget. The opt-in
+`IosReplyNotificationUITests` smoke test uses `TEST_RUNNER_HARMONIC_REPLY_TEST_USER=<public username>`
+to send a local alert for an existing public reply and tap it into the discussion. It never logs in
+or performs public actions.
 
 Cloud AI is intentionally disabled on iOS. `IosHarmonicAppBootstrap` sets
 `HarmonicHostConfiguration.cloudAiSupported = false`: cloud provider settings and search entries

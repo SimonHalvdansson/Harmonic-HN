@@ -2710,3 +2710,47 @@ final class IosCaptchaBrowserIntegrationTests: XCTestCase {
         XCTAssertNil(browser.error)
     }
 }
+
+final class IosReplyNotificationUITests: XCTestCase {
+    func testPublicReplyNotificationOpensComments() throws {
+        // Opt-in live, read-only smoke test. No credentials, votes, or public posts are used.
+        let username = ProcessInfo.processInfo.environment["HARMONIC_REPLY_TEST_USER"]
+        try XCTSkipUnless(username?.isEmpty == false, "Set TEST_RUNNER_HARMONIC_REPLY_TEST_USER to a public HN username")
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["HARMONIC_UI_TESTING"] = "1"
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        app.completeWelcomeIfNeeded()
+        let hint = app.labeledButton("Got it")
+        if hint.waitForExistence(timeout: 3) { hint.tapCenter() }
+        app.labeledButton("More options").tapCenter()
+        app.labeledButton("Settings").tapCenter()
+        app.tapVisibleButton("Debug")
+        app.tapVisibleButton("Debug notifications")
+        let field = app.textViews["Username"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tapCenter()
+        field.typeText(username!)
+        app.labeledButton("Test notification").tapCenter()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow"]
+        if allow.waitForExistence(timeout: 3) { allow.tap() }
+        let banner = springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "New reply from ")).firstMatch
+        XCTAssertTrue(banner.waitForExistence(timeout: 240), "The public scan should deliver a native reply notification")
+        let notification = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        notification.name = "Native iOS reply notification"
+        notification.lifetime = .keepAlways
+        add(notification)
+        banner.tapCenter()
+        XCTAssertTrue(app.otherElements["comment-row"].firstMatch.waitForExistence(timeout: 30),
+                      "Tapping the native notification should open its parent discussion")
+        XCTAssertFalse(app.labeledButton("Test notification").isHittable,
+                       "A retained Settings dialog must not cover the reply discussion")
+        let destination = XCTAttachment(screenshot: app.screenshot())
+        destination.name = "Notification opened the reply discussion"
+        destination.lifetime = .keepAlways
+        add(destination)
+    }
+}
