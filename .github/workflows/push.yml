@@ -328,8 +328,45 @@ jobs:
           ONLY_ACTIVE_ARCH=YES
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
-      # Keep native download fixtures compiled above and available for local runs. Their
-      # loopback-server and cancellation timing is unreliable on hosted simulators.
+      - name: Run deterministic native iOS tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          simulator=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [device for runtime, entries in devices.items() if ".iOS-" in runtime
+                    for device in entries if device["name"].startswith("iPhone")]
+          if not phones:
+              sys.exit("No available iPhone simulator")
+          print(phones[0]["udid"])
+          ')
+          xcodebuild \
+            -project ios_app/HarmonicIos.xcodeproj \
+            -scheme HarmonicIos \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$simulator" \
+            -parallel-testing-enabled NO \
+            -maximum-concurrent-test-simulator-destinations 1 \
+            -resultBundlePath "$RUNNER_TEMP/harmonic-ios-native.xcresult" \
+            -only-testing:HarmonicIosTests \
+            -skip-testing:HarmonicIosTests/IosBackgroundModelTransfersTests \
+            -skip-testing:HarmonicIosTests/IosArticleTransportTests \
+            -skip-testing:HarmonicIosTests/IosLocalAiTests/testGemmaProducesRealSummariesOnSimulator \
+            -skip-testing:HarmonicIosTests/IosLocalAiTests/testCancellationStopsNativeStreamAndAllowsAnotherRequest \
+            -skip-testing:HarmonicIosTests/IosArticleEmbeddingTests/testEmbeddingGemmaProducesNormalizedSemanticVectorsAndReloads \
+            CODE_SIGNING_ALLOWED=NO \
+            test-without-building
+      # Download timing, live websites and multi-GB inference fixtures are covered locally.
+      # Keep those tests compiled above without depending on them on hosted simulators.
+      - name: Upload native iOS test result
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-native-test-result
+          path: ${{ runner.temp }}/harmonic-ios-native.xcresult
+          if-no-files-found: ignore
       - name: Upload iOS test reports
         if: always()
         continue-on-error: true

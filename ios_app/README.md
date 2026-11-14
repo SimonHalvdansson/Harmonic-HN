@@ -21,6 +21,22 @@ The tag must match the app version in `gradle.properties`. The GitHub release in
 symbols and the Xcode build result. These artifacts are unsigned and require signing and provisioning
 before installation or distribution. This job does not upload to TestFlight or the App Store.
 
+For App Store distribution, assign the app target to the intended Apple Developer Program team
+and register `com.simon.harmonichackernews.ios` in that team's App Store Connect account. Use Xcode's
+Archive/Distribute workflow to sign and validate the build. Complete the store listing, iPhone/iPad
+screenshots, privacy details, age rating, export-compliance answers, support URL and review contact
+before submission. The in-app privacy policy URL is
+`https://simonhalvdansson.github.io/harmonic_privacy.html`.
+
+Review notes should explain the App Transport Security exception: users open arbitrary third-party
+Hacker News articles, including HTTP-only sites, in the browser and reader extraction. Authentication
+and account actions use HTTPS. Explain that reply alerts are local notifications from periodic
+background checks, not remote push. Browsing does not require an account; sign-in uses an existing
+Hacker News account. Profile menus provide blocking and reporting, and About provides developer
+contact and the privacy policy. Verify signed-device background refresh/download recovery and
+available on-device AI before releasing; simulator fixtures cannot validate OS wakeup timing or
+Apple Intelligence hardware availability.
+
 The native shell owns Keychain credentials, the atomic Hacker News account record, system URL
 routing, sharing, clipboard access, connectivity, locale-aware time formatting, the app icon, and
 status-bar appearance. The comments scene embeds `WKWebView` with Compose UIKit interop so its
@@ -70,7 +86,9 @@ installation copy for legacy partials. A fallback to a fresh download checks ava
 The `HarmonicIosTests` target checks catalog/selection and the Kotlin-to-native summary bridge.
 Its background-transfer tests use a loopback HTTP server and isolated ephemeral sessions to cover
 file delivery, HTTP errors, size validation, legacy partials, duplicate requests, cancellation, and
-reloading interrupted transfer state. iOS CI executes this suite after building the test host.
+reloading interrupted transfer state. iOS CI runs the deterministic native tests for reply notifications,
+packaging, model storage/selection, summary bridges and system gestures. It compiles the download,
+live-website and real-inference tests but leaves their execution to local verification.
 OS suspension and relaunch delivery still need device verification with the production background session.
 Its real Gemma tests check consecutive summaries and cancellation when `litert-test-fixture.litertlm`
 (the catalog's Gemma E2B file) is present in the test host's Application Support directory; otherwise
