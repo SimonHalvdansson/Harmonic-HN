@@ -158,6 +158,7 @@ data class ReadingPreferences(
     val readerModeLineHeight: ReaderLineHeight = ReaderLineHeight.STANDARD,
     val linkPreviewsEnabled: Boolean = true,
     val pullToOpenBrowser: Boolean = false,
+    val readAloudMiniPlayer: Boolean = false,
 ) {
     val activeLinkPreviews: Set<LinkPreviewType>
         get() = if (linkPreviewsEnabled) enabledLinkPreviews else emptySet()

@@ -81,6 +81,7 @@ class DesktopCommentsWebViewTest {
             val capabilities = desktopWebLinksSettingsCapabilities(desktopEmbeddedBrowserBackend(os))
             assertTrue(capabilities.integratedWebView)
             assertTrue(capabilities.readerMode)
+            assertFalse(capabilities.readAloudMiniPlayer)
             assertFalse(capabilities.adBlocking)
             assertFalse(capabilities.preloadWebsites)
             assertFalse(capabilities.closeWebViewOnBack)

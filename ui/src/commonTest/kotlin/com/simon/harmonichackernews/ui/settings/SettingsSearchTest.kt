@@ -8,6 +8,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsSearchTest {
+    @Test fun miniPlayerSettingIsOnlyIndexedForMobileHosts() {
+        assertEquals(SettingsSection.ReaderMode.route, target("Show mini-player").screenRoute)
+        val desktop = SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(
+            webLinks = WebLinksSettingsCapabilities(readAloudMiniPlayer = false),
+        ))
+        assertFalse(entries(desktop).any { it.title == "Show mini-player" })
+    }
+
     private val labels = SettingsSection.entries.associateWith { it.name }
     private fun entries(availability: SettingsSearchAvailability = SettingsSearchAvailability()) =
         settingsSearchCatalog(labels, availability)

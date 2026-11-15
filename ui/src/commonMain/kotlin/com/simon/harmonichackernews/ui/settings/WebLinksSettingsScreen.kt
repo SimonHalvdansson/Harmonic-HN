@@ -47,6 +47,7 @@ data class WebLinksSettingsCapabilities(
     val closeWebViewOnBack: Boolean = true,
     val integratedWebView: Boolean = true,
     val preloadWebsites: Boolean = true,
+    val readAloudMiniPlayer: Boolean = true,
 )
 
 enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {

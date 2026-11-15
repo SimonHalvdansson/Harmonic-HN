@@ -272,10 +272,10 @@ fun main() {
                                             DesktopWindowsTitleBar(window, windowIcon)
                                         }
                                     }
-                                    if (WindowsReadAloud.supported) {
-                                        val speech by WindowsReadAloud.controller.state.collectAsState()
+                                    if (DesktopReadAloud.supported) {
+                                        val speech by DesktopReadAloud.controller.state.collectAsState()
                                         com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech) { action ->
-                                            WindowsReadAloud.controller.command(buildJsonObject { put("action", action) })
+                                            DesktopReadAloud.controller.command(buildJsonObject { put("action", action) })
                                         }
                                     }
                                 }
@@ -286,7 +286,7 @@ fun main() {
             }
         }
     } finally {
-        if (WindowsReadAloud.supported) WindowsReadAloud.controller.close()
+        if (DesktopReadAloud.supported) DesktopReadAloud.controller.close()
         sceneOwner.close()
         bootstrap.close()
         connectivity?.close()

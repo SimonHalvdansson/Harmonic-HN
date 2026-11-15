@@ -5,7 +5,8 @@ import kotlin.test.*
 
 class WindowsSpeechEngineTest {
     @Test fun installedVoiceCompletesAndCanBeStopped() = runBlocking {
-        if (System.getenv("HARMONIC_TEST_SPEECH") != "1") return@runBlocking
+        if (System.getenv("HARMONIC_TEST_SPEECH") != "1" ||
+            !System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) return@runBlocking
         val engine = WindowsSpeechEngine(this)
         try {
             val result = CompletableDeferred<String?>()

@@ -366,7 +366,7 @@ internal fun DesktopCommentsWebViewScaffold(
     }
     val colors = MaterialTheme.colorScheme
     LaunchedEffect(session, session.currentPageUrl, session.isLoading, reading, colors, dark) {
-        if (WindowsReadAloud.supported && !session.isLoading && session.loadError == null &&
+        if (DesktopReadAloud.supported && !session.isLoading && session.loadError == null &&
             com.simon.harmonichackernews.presentation.WebContentPagePolicy.isReaderEligible(
                 session.currentPageUrl,
                 com.simon.harmonichackernews.presentation.WebContentPlatformUrls("about:harmonic-pdf", "about:harmonic-error"),
@@ -375,7 +375,7 @@ internal fun DesktopCommentsWebViewScaffold(
                 script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
                     ReaderModeResources.script(), ReaderModeResources.theme(colors, !dark, reading),
                 ), evaluate = session::evaluateResult,
-                state = { WindowsReadAloud.controller.state.value }, command = WindowsReadAloud.controller::command,
+                state = { DesktopReadAloud.controller.state.value }, command = DesktopReadAloud.controller::command,
             )
         }
     }

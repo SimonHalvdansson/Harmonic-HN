@@ -19,6 +19,7 @@ fun ReaderModeSettingsRoute(
     repository: AppSettingsRepository,
     onBack: () -> Unit,
     preview: @Composable (ReadingPreferences, Boolean) -> Unit,
+    miniPlayerSettingVisible: Boolean = true,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
@@ -50,6 +51,16 @@ fun ReaderModeSettingsRoute(
                     enabled = controlsEnabled,
                     onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, it) },
                 )
+                if (miniPlayerSettingVisible) {
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Show mini-player",
+                        icon = Res.drawable.ic_book_ribbon,
+                        summary = "Keep read-aloud controls visible after leaving an article",
+                        checked = reading.readAloudMiniPlayer,
+                        onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, it) },
+                    )
+                }
                 SettingsDivider()
                 SettingRow(title = "Font", summary = reading.readerModeFont.label,
                     icon = Res.drawable.ic_font_download, enabled = controlsEnabled, onClick = { showFontPicker = true })

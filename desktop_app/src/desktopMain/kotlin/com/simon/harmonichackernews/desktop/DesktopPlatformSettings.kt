@@ -104,6 +104,7 @@ internal fun desktopWebLinksSettingsCapabilities(
     readerMode = backend != DesktopEmbeddedBrowserBackend.UNSUPPORTED,
     closeWebViewOnBack = false,
     preloadWebsites = false,
+    readAloudMiniPlayer = false,
 )
 
 @Composable

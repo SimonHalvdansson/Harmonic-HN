@@ -127,7 +127,10 @@ fun PortableSettingsDetail(
             onBack = onBack,
             onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
         )
-        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(app.settings, onBack, readerPreview)
+        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(
+            app.settings, onBack, readerPreview,
+            miniPlayerSettingVisible = webLinksCapabilities.readAloudMiniPlayer,
+        )
         SettingsSection.FiltersTags -> FiltersTagsSettingsRoute(
             settings = app.settings,
             filters = app.contentFilters,

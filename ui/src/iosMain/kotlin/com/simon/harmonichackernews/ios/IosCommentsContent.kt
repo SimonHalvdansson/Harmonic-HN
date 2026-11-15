@@ -307,6 +307,26 @@ internal fun IosCommentsContent(
     val appearance by app.appearance.selections.collectAsState(app.appearance.selection())
     val readerState = host.webView?.reader?.state?.collectAsState()?.value
     val readerColors = MaterialTheme.colorScheme
+    val readAloud = LocalIosReadAloud.current
+    val browser = host.webView
+    LaunchedEffect(browser, browser?.loading, browser?.failure, reading, readerColors, appearance.dark, foreground) {
+        if (browser != null && browser.view != null && !browser.loading && browser.failure == null &&
+            reading != null && readAloud != null && foreground &&
+            com.simon.harmonichackernews.presentation.WebContentPagePolicy.isReaderEligible(
+                browser.currentUrl(),
+                com.simon.harmonichackernews.presentation.WebContentPlatformUrls("about:harmonic-pdf", "about:harmonic-error"),
+            )) {
+            com.simon.harmonichackernews.presentation.ReadAloudWebSession.run(
+                script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
+                    ReaderModeResources.script(), ReaderModeResources.theme(readerColors, !appearance.dark, reading),
+                ),
+                evaluate = browser::evaluate,
+                state = { readAloud.state.value },
+                command = readAloud::command,
+                visible = { browser.visible },
+            )
+        }
+    }
     LaunchedEffect(host.webView, reading, readerColors, appearance.dark) {
         if (reading != null) host.webView?.reader?.configure(reading) {
             ReaderModeResources.theme(readerColors, !appearance.dark, reading)

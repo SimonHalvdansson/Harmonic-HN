@@ -1623,6 +1623,54 @@ final class HarmonicIosUITests: XCTestCase {
         XCTAssertTrue(reader.waitForExistence(timeout: 15))
     }
 
+    func testReadAloudSurvivesBackgroundAndArticleNavigation() throws {
+        openSettings()
+        app.tapVisibleButton("Web and links")
+        app.tapVisibleButton("Reader mode")
+        let miniPlayer = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Show mini-player")).firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 10))
+        for _ in 0..<3 where !miniPlayer.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertEqual(miniPlayer.value as? String, "0", "The mobile mini-player defaults to off")
+        miniPlayer.tapCenter()
+        XCTAssertEqual(miniPlayer.value as? String, "1")
+        closeSettings()
+        openDebugSettings()
+        app.tapVisibleButton("Link post")
+        XCTAssertTrue(articleHeader.waitForExistence(timeout: 20))
+        articleHeader.tapCenter()
+        let reader = app.labeledButton("Reader mode")
+        XCTAssertTrue(reader.waitForExistence(timeout: 30))
+        reader.tapCenter()
+        let listen = app.buttons["Listen"]
+        XCTAssertTrue(listen.waitForExistence(timeout: 15))
+        listen.tapCenter()
+        let web = app.webViews.firstMatch
+        let pause = web.buttons["Pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 15))
+        pause.tapCenter()
+        XCTAssertTrue(web.buttons["Resume"].waitForExistence(timeout: 10))
+        web.buttons["Next sentence"].tapCenter()
+        web.buttons["Previous sentence"].tapCenter()
+        web.buttons["Resume"].tapCenter()
+        XCTAssertTrue(pause.waitForExistence(timeout: 10))
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 3)
+        app.activate()
+        XCTAssertTrue(pause.waitForExistence(timeout: 10), "Playback remains active after backgrounding")
+        // Closing the document leaves the process-owned mini-player available.
+        let back = app.labeledButton("Navigate up").exists
+            ? app.labeledButton("Navigate up") : app.labeledButton("Back")
+        back.tapCenter()
+        XCTAssertTrue(app.staticTexts["Debug"].waitForExistence(timeout: 10))
+        let miniPause = app.buttons["Pause"].firstMatch
+        XCTAssertTrue(miniPause.waitForExistence(timeout: 10))
+        miniPause.tapCenter()
+        XCTAssertTrue(app.buttons["Resume"].firstMatch.waitForExistence(timeout: 10))
+        keepScreenshot("Read aloud after leaving the article")
+        app.buttons["Stop"].firstMatch.tapCenter()
+        XCTAssertTrue(app.buttons["Stop"].firstMatch.waitForNonExistence(timeout: 10))
+    }
+
     func testPreloadPreferenceSurvivesRelaunchAndArticleOpening() throws {
         openSettings()
         app.labeledButton("Web and links").tapCenter()

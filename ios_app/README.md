@@ -44,6 +44,14 @@ Compose comments sheet remains available above the article. Compose Navigation E
 interactive system left-edge back gesture through the KMP navigation hierarchy. Application logic
 and the rest of the UI remain in the KMP modules.
 
+Reader mode's Listen action uses the system speech synthesizer and shared sentence queue, with
+pause/resume, sentence skipping and speed controls. Playback belongs to the process graph, so it
+continues after leaving the article or backgrounding the app. iOS Now Playing controls keep it
+accessible. Reader mode settings also offer an optional mini-player, disabled by default. Audio
+interruptions and disconnected headphones pause playback.
+The native speech tests exercise installed voices in Simulator, and the read-aloud UI test covers
+backgrounding and navigation. Lock-screen audio behavior on physical hardware still merits release QA.
+
 Account activity, read state, discussion muting, and Debug → Account's public-username preview are
 shared and work without notification permission. A preview never changes Keychain credentials or
 uses the account to post or vote. The native `IosReplyNotifications` adapter supplies notification

@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.app
 import com.simon.harmonichackernews.network.IosNetworkComponent
 import com.simon.harmonichackernews.network.PreviewCachePolicy
 import com.simon.harmonichackernews.platform.IosPlatformBindings
+import com.simon.harmonichackernews.platform.IosReadAloudSession
 import com.simon.harmonichackernews.platform.IosArticleEmbeddingEngine
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.platform.createIosPlatformDependencies
@@ -44,6 +45,7 @@ class IosHarmonicAppBootstrap(
     bindings: IosPlatformBindings,
     runtime: IosHostRuntimeBindings,
 ) {
+    val readAloud = bindings.readAloud?.let(::IosReadAloudSession)
     private fun openStore(root: String, name: String): DataStoreKeyValueStore =
         runBlocking(Dispatchers.Default) {
             ProcessPreferenceStores.open(
@@ -119,6 +121,7 @@ class IosHarmonicAppBootstrap(
     )
 
     fun close() {
+        readAloud?.close()
         replyChecks.close()
         localAi?.close()
         network.close()

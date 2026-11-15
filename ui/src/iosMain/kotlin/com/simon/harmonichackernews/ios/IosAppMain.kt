@@ -6,6 +6,12 @@ import androidx.compose.animation.core.spring
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.simon.harmonichackernews.presentation.ReadAloudController
+import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -126,6 +132,7 @@ import com.simon.harmonichackernews.ui.stories.LocalStoriesSearchInHeader
 import org.jetbrains.compose.resources.painterResource
 
 internal val LocalIosForeground = staticCompositionLocalOf { false }
+internal val LocalIosReadAloud = staticCompositionLocalOf<ReadAloudController?> { null }
 
 private data object IosApplicationBackInfo : NavigationEventInfo()
 
@@ -341,20 +348,38 @@ private fun IosApp(
     ) {
         HarmonicTheme(palette.colorScheme, palette.dark, appearance = fontSettings.appearance) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.pageBackground) {
-                IosAppContent(
-                    app = bootstrap.app,
-                    scene = scene,
-                    storiesController = storiesController,
-                    commentsController = commentsController,
-                    editorBackRequestVersion = editorBackRequestVersion,
-                    onStoriesControllerChanged = { storiesController = it },
-                    commentsControllers = commentsControllers,
-                    settingsControllers = settingsControllers,
-                    backVisualTarget = backSettle?.visualTarget ?: visualTarget,
-                    backProgress = backSettle?.progress?.value ?: backProgress,
-                    backInProgress = activeBack != null || backSettle != null,
-                    completedBackTarget = completedBackTarget,
-                )
+                CompositionLocalProvider(LocalIosReadAloud provides bootstrap.readAloud?.controller) {
+                    val readAloud = bootstrap.readAloud?.controller
+                    val speech = readAloud?.state?.collectAsState()?.value
+                    val playerVisible = fontSettings.reading.readAloudMiniPlayer && speech != null && speech.count > 0
+                    Column(
+                        Modifier.fillMaxSize().then(
+                            if (playerVisible) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
+                        ),
+                    ) {
+                        Box(Modifier.weight(1f)) {
+                            IosAppContent(
+                                app = bootstrap.app,
+                                scene = scene,
+                                storiesController = storiesController,
+                                commentsController = commentsController,
+                                editorBackRequestVersion = editorBackRequestVersion,
+                                onStoriesControllerChanged = { storiesController = it },
+                                commentsControllers = commentsControllers,
+                                settingsControllers = settingsControllers,
+                                backVisualTarget = backSettle?.visualTarget ?: visualTarget,
+                                backProgress = backSettle?.progress?.value ?: backProgress,
+                                backInProgress = activeBack != null || backSettle != null,
+                                completedBackTarget = completedBackTarget,
+                            )
+                        }
+                        if (playerVisible && speech != null && readAloud != null) {
+                            ReadAloudMiniPlayer(speech) { action ->
+                                readAloud.command(buildJsonObject { put("action", action) })
+                            }
+                        }
+                    }
+                }
             }
         }
     }

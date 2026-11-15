@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.desktop
 
 import com.simon.harmonichackernews.platform.ReadAloudEngine
-import com.simon.harmonichackernews.presentation.ReadAloudController
 import com.sun.jna.platform.win32.Ole32
 import com.sun.jna.platform.win32.COM.util.ObjectFactory
 import com.sun.jna.platform.win32.COM.util.IDispatch
@@ -72,10 +71,4 @@ internal class WindowsSpeechEngine(private val callbackScope: CoroutineScope) : 
             }
         }
     }
-}
-
-internal object WindowsReadAloud {
-    val supported = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val controller by lazy { ReadAloudController(WindowsSpeechEngine(scope)) }
 }
