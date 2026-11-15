@@ -5,6 +5,9 @@
 -keep class * extends com.sun.jna.Structure { *; }
 -keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*,SourceFile,LineNumberTable
 
+# SAPI dispatch resolves annotated interface methods and property names reflectively.
+-keep interface com.simon.harmonichackernews.desktop.WindowsSpeechVoice { *; }
+
 # Enum.valueOf reads values() reflectively (for example Haze's SurfaceProfile in Settings).
 # Keep these methods public: ProGuard 7.10 can privatize them with allowoptimization.
 -keepclassmembers enum * {

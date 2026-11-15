@@ -19,6 +19,9 @@ data class ReaderModeTheme(
 
 /** Shared reader-mode JavaScript protocol and theme serialization. */
 object ReaderModeScriptProtocol {
+    fun readAloudCommand(script: String, theme: ReaderModeTheme): String =
+        script + "\nHarmonicReaderMode.setReadAloudTheme(${themeJson(theme, includeFont = false)});"
+
     fun applyCommand(
         script: String,
         theme: ReaderModeTheme,

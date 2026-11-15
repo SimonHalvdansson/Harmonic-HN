@@ -455,3 +455,81 @@ for (const useReadability of [false, true]) {
         } finally { await page.close(); }
     });
 }
+
+
+test('read aloud only appears in reader mode and restores playback controls on return', async () => {
+    const page = await article(true);
+    const idle = {count:0,rate:1};
+    try {
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await enable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        await page.getByRole('button', {name:'Listen',exact:true}).click();
+        const command = await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)), idle);
+        assert.equal(command.action, 'start');
+        assert.equal(command.title, 'Article title');
+        assert.ok(command.text.includes('substantive article'));
+        assert.ok(!command.text.includes('Listen'));
+        const playing = {count:30,index:2,playing:true,rate:1.5,title:command.title};
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
+        await page.getByRole('button', {name:'Pause',exact:true}).click();
+        assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)).action, playing), 'pause');
+        await disable(page);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await enable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), {...playing,playing:false});
+        await page.getByRole('button', {name:'Resume',exact:true}).click();
+        assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)).action, playing), 'play');
+        await disable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), {...playing,playing:false});
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+    } finally { await page.close(); }
+});
+
+
+test('read aloud matches the reader theme and fits one control row on phones', async () => {
+    const page = await article(true);
+    try {
+        await page.setViewportSize({width:393,height:750});
+        const font = fs.readFileSync(path.resolve(web, '../../font/google_sans_flex_rounded_regular.ttf')).toString('base64');
+        await page.evaluate(font => HarmonicReaderMode.setTheme({
+            isLight:true,backgroundColor:'#ececf5',textColor:'#303038',headingColor:'#303038',
+            secondaryTextColor:'#5b5d68',linkColor:'#50618f',dividerColor:'#c6c8d4',codeBackgroundColor:'#dedfe9',
+            fontFamily:'HarmonicReaderFont, sans-serif',headingFontFamily:'HarmonicReaderFont, sans-serif',
+            fontFaceCss:'@font-face{font-family:HarmonicReaderFont;src:url(data:font/ttf;base64,' + font + ') format("truetype");}',fontSizePx:17
+        }),font);
+        await enable(page);
+        await page.evaluate(() => HarmonicReaderMode.readAloudTick({count:30,index:2,playing:true,rate:1,url:location.href,title:document.title}));
+        await page.evaluate(() => document.fonts.ready);
+        const metrics = await page.evaluate(() => {
+            const host=document.querySelector('harmonic-listen');
+            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.hidden);
+            return {tops:controls.map(el=>Math.round(el.getBoundingClientRect().top)),
+                color:getComputedStyle(host.shadowRoot.querySelector('.bar')).backgroundColor,
+                overflow:document.documentElement.scrollWidth>window.innerWidth,
+                left:host.getBoundingClientRect().left,
+                articleLeft:document.getElementById('harmonic-reader-article').getBoundingClientRect().left,
+                right:host.getBoundingClientRect().right,
+                articleRight:document.getElementById('harmonic-reader-article').getBoundingClientRect().right,
+                headerGap:host.getBoundingClientRect().top-document.getElementById('harmonic-reader-byline').getBoundingClientRect().bottom,
+                articleGap:document.getElementById('harmonic-reader-article').getBoundingClientRect().top-host.getBoundingClientRect().bottom};
+        });
+        assert.ok(Math.max(...metrics.tops)-Math.min(...metrics.tops)<=3, JSON.stringify(metrics));
+        assert.equal(metrics.color,'rgb(222, 223, 233)');
+        assert.equal(metrics.overflow,false);
+        assert.equal(metrics.left,metrics.articleLeft);
+        assert.equal(metrics.right,metrics.articleRight);
+        assert.equal(metrics.headerGap,12);
+        assert.equal(metrics.articleGap,24);
+        if(process.env.PLAYWRIGHT_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PLAYWRIGHT_SCREENSHOT_DIR,'reader-player-light.png')});
+        await page.evaluate(() => HarmonicReaderMode.setTheme({...window.__harmonicReaderModeTheme,isLight:false,backgroundColor:'#171821',textColor:'#e3e2ed',headingColor:'#e3e2ed',secondaryTextColor:'#c4c5d2',linkColor:'#b4c5f9',dividerColor:'#444652',codeBackgroundColor:'#2d2e39',fontFamily:'HarmonicReaderFont, sans-serif',fontSizePx:17}));
+        await page.evaluate(() => HarmonicReaderMode.readAloudTick({count:30,index:2,playing:false,rate:1,url:location.href,title:document.title}));
+        await page.waitForTimeout(250); // Let the control's theme transition finish.
+        if(process.env.PLAYWRIGHT_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PLAYWRIGHT_SCREENSHOT_DIR,'reader-player-dark.png')});
+    } finally { await page.close(); }
+});

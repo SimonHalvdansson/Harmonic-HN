@@ -200,6 +200,35 @@ class CommentsWebViewLifecycleTest {
     }
 
     @Test
+    fun readAloudAppearsWhenAnArticleIsOpenedFromComments() {
+        // The fixture starts with showWebsite=false, just like opening a story's comments.
+        fixture(coveredByComments = true, readerMode = true).use { browser ->
+            val paragraphs = "<p>A substantial article about reading and listening. " +
+                "Each paragraph contains enough prose and punctuation for article extraction.</p>"
+            onMain {
+                browser.controller.initializeForVisibleWebsite()
+                browser.webView.loadDataWithBaseURL(
+                    "https://example.invalid/listen-test",
+                    "<html><head><title>Listen regression</title></head><body>" +
+                        "<article><h1>Listen regression</h1>${paragraphs.repeat(20)}</article></body></html>",
+                    "text/html", "UTF-8", null,
+                )
+            }
+            awaitTitle(browser.webView, "Listen regression")
+            assertEquals("true", evaluate(browser.webView, "document.querySelector('harmonic-listen') === null"))
+            val listenVisible = "(() => { const button = document.querySelector('harmonic-listen')" +
+                "?.shadowRoot.querySelector('[data-action=\"start\"]'); return !!button && !button.hidden; })()"
+            onMain { browser.controller.toggleReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') !== null")
+            onMain { browser.controller.setCoveredByComments(false) }
+            awaitJavascript(browser.webView, listenVisible)
+            onMain { browser.controller.disableReaderMode() }
+            awaitJavascript(browser.webView, "document.getElementById('harmonic-reader-mode') === null")
+            awaitJavascript(browser.webView, "document.querySelector('harmonic-listen') === null")
+        }
+    }
+
+    @Test
     fun readerModeLoadsResourcesAndRestoresTheOriginalPage() {
         fixture(readerMode = true).use { browser ->
             val paragraphs = (1..20).joinToString("") {

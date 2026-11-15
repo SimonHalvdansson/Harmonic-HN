@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 13) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 15) {
         return;
     }
 
@@ -41,6 +41,7 @@
     var POSITIVE_CLASS_RE = /article|body|content|entry|hentry|main|page|post|read|story|text/i;
     var NEGATIVE_CLASS_RE = /ad-|ads|advert|banner|breadcrumb|comment|combx|contact|cookie|footer|masthead|menu|meta|modal|nav|outbrain|promo|related|scroll|share|shoutbox|sidebar|sponsor|subscribe|tag|tool|widget/i;
     var REMOVE_SELECTOR = [
+        "harmonic-listen",
         "script",
         "style",
         "noscript",
@@ -605,6 +606,7 @@
             "#harmonic-reader-kicker{font:600 13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:" + theme.linkColor + "!important;margin-bottom:14px!important;}",
             "#harmonic-reader-mode h1{overflow-wrap:anywhere!important;font:700 " + titleFontSize + "px/1.15 " + theme.headingFontFamily + "!important;margin:0 0 12px!important;color:" + theme.headingColor + "!important;}",
             "#harmonic-reader-byline{font:500 " + bylineFontSize + "px/1.5 " + theme.fontFamily + "!important;color:" + theme.secondaryTextColor + "!important;margin:0 0 28px!important;}",
+            "#harmonic-reader-byline[data-harmonic-listen-header]{margin-bottom:0!important;}",
             "#harmonic-reader-article,#harmonic-reader-article section,#harmonic-reader-article div,#harmonic-reader-article figure{overflow-wrap:anywhere!important;background:transparent!important;color:" + theme.textColor + "!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-article *{background:transparent!important;visibility:visible!important;opacity:1!important;}",
             "#harmonic-reader-article p,#harmonic-reader-article li{font-size:" + bodyFontSize + "px!important;line-height:" + theme.lineHeight + "!important;color:" + theme.textColor + "!important;}",
@@ -980,8 +982,112 @@
         }
     }
 
+    // Host-driven controls: speech survives document changes and app backgrounding.
+    var speechCommand = null;
+    var speechTheme = null;
+    // Material Symbols Rounded, fill 0, weight 400, optical size 24 (official Android vectors).
+    var speechIcons = {"listen":"<svg viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M760,479Q760,396 716,327.5Q672,259 598,225Q583,218 576,203.5Q569,189 574,174Q580,158 595.5,151Q611,144 627,151Q724,194 782,282.5Q840,371 840,479Q840,587 782,675.5Q724,764 627,807Q611,814 595.5,807Q580,800 574,784Q569,769 576,754.5Q583,740 598,733Q672,699 716,630.5Q760,562 760,479ZM280,600L160,600Q143,600 131.5,588.5Q120,577 120,560L120,400Q120,383 131.5,371.5Q143,360 160,360L280,360L412,228Q431,209 455.5,219.5Q480,230 480,257L480,703Q480,730 455.5,740.5Q431,751 412,732L280,600ZM660,480Q660,522 641,559.5Q622,597 591,621Q581,627 570.5,621.5Q560,616 560,604L560,354Q560,342 570.5,336.5Q581,331 591,337Q622,362 641,400Q660,438 660,480ZM400,354L314,440L200,440L200,520L314,520L400,606L400,354ZM300,480L300,480L300,480L300,480L300,480L300,480L300,480Z\"/></svg>","play":"<svg viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M320,687L320,273Q320,256 332,244.5Q344,233 360,233Q365,233 370.5,234.5Q376,236 381,239L707,446Q716,452 720.5,461Q725,470 725,480Q725,490 720.5,499Q716,508 707,514L381,721Q376,724 370.5,725.5Q365,727 360,727Q344,727 332,715.5Q320,704 320,687ZM400,480L400,480L400,480L400,480ZM400,614L610,480L400,346L400,614Z\"/></svg>","pause":"<svg viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M600,760Q567,760 543.5,736.5Q520,713 520,680L520,280Q520,247 543.5,223.5Q567,200 600,200L680,200Q713,200 736.5,223.5Q760,247 760,280L760,680Q760,713 736.5,736.5Q713,760 680,760L600,760ZM280,760Q247,760 223.5,736.5Q200,713 200,680L200,280Q200,247 223.5,223.5Q247,200 280,200L360,200Q393,200 416.5,223.5Q440,247 440,280L440,680Q440,713 416.5,736.5Q393,760 360,760L280,760ZM600,680L680,680L680,280L600,280L600,680ZM280,680L360,680L360,280L280,280L280,680ZM280,280L280,280L280,680L280,680L280,280ZM600,280L600,280L600,680L600,680L600,280Z\"/></svg>","previous":"<svg viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M220,680L220,280Q220,263 231.5,251.5Q243,240 260,240Q277,240 288.5,251.5Q300,263 300,280L300,680Q300,697 288.5,708.5Q277,720 260,720Q243,720 231.5,708.5Q220,697 220,680ZM678,679L430,513Q421,507 416.5,498.5Q412,490 412,480Q412,470 416.5,461.5Q421,453 430,447L678,281Q683,277 689,276Q695,275 700,275Q716,275 728,286Q740,297 740,315L740,645Q740,663 728,674Q716,685 700,685Q695,685 689,684Q683,683 678,679ZM660,480L660,480L660,480L660,480ZM660,570L660,390L524,480L660,570Z\"/></svg>","stop":"<svg viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M240,640L240,320Q240,287 263.5,263.5Q287,240 320,240L640,240Q673,240 696.5,263.5Q720,287 720,320L720,640Q720,673 696.5,696.5Q673,720 640,720L320,720Q287,720 263.5,696.5Q240,673 240,640ZM320,640L640,640Q640,640 640,640Q640,640 640,640L640,320Q640,320 640,320Q640,320 640,320L320,320Q320,320 320,320Q320,320 320,320L320,640Q320,640 320,640Q320,640 320,640ZM480,480Q480,480 480,480Q480,480 480,480L480,480Q480,480 480,480Q480,480 480,480L480,480Q480,480 480,480Q480,480 480,480L480,480Q480,480 480,480Q480,480 480,480L480,480Z\"/></svg>","next":"<svg style=\"transform:scaleX(-1)\" viewBox=\"0 0 960 960\" aria-hidden=\"true\"><path d=\"M220,680L220,280Q220,263 231.5,251.5Q243,240 260,240Q277,240 288.5,251.5Q300,263 300,280L300,680Q300,697 288.5,708.5Q277,720 260,720Q243,720 231.5,708.5Q220,697 220,680ZM678,679L430,513Q421,507 416.5,498.5Q412,490 412,480Q412,470 416.5,461.5Q421,453 430,447L678,281Q683,277 689,276Q695,275 700,275Q716,275 728,286Q740,297 740,315L740,645Q740,663 728,674Q716,685 700,685Q695,685 689,684Q683,683 678,679ZM660,480L660,480L660,480L660,480ZM660,570L660,390L524,480L660,570Z\"/></svg>"};
+    function readAloudTick(state) {
+        var host = document.querySelector("harmonic-listen");
+        var reader = document.getElementById("harmonic-reader-mode");
+        if (!reader) {
+            if (host) host.remove();
+            var pendingCommand = speechCommand;
+            speechCommand = null;
+            return JSON.stringify(pendingCommand);
+        }
+        if (!host) {
+            var heading = reader.querySelector("h1");
+            if (heading && document.getElementById("harmonic-reader-article")) {
+                host = document.createElement("harmonic-listen");
+                host.style.cssText = "display:block!important;position:sticky!important;top:0!important;z-index:20!important;margin:12px 0 24px!important;";
+                var shadow = host.attachShadow({mode:"open"});
+                shadow.innerHTML = '<style>' +
+                    ':host{font-size:14px}*{box-sizing:border-box}[hidden]{display:none!important}' +
+                    '.bar{font:500 14px/1.4 var(--font);color:var(--text);display:flex;gap:4px;align-items:center;flex-wrap:wrap;width:fit-content;max-width:100%}' +
+                    '.bar.active{width:100%;padding:8px;border-radius:24px;background:var(--surface)}' +
+                    'button,select{font:inherit;color:inherit;border:0;background:transparent;border-radius:50%;height:44px;min-width:44px;padding:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent}' +
+                    'svg{width:24px;height:24px;fill:currentColor;pointer-events:none}' +
+                    'button:hover,select:hover{background:var(--page)}button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}' +
+                    'button:disabled{opacity:.35;cursor:default}.toggle{width:48px;height:48px;border-radius:18px;background:var(--accent);color:var(--page)}.toggle:hover{background:var(--accent);filter:brightness(.94)}' +
+                    '.start{gap:8px;padding:0 16px 0 12px;border-radius:22px;background:var(--surface);color:var(--accent)}' +
+                    'select{margin-left:auto;appearance:none;text-align:center;border-radius:16px;min-width:58px;background:var(--page);padding:8px}' +
+                    '.status{flex:1 1 100%;padding:3px 12px 2px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}' +
+                    '@media(prefers-reduced-motion:no-preference){button{transition:background .15s,filter .15s}}' +
+                    '</style><div class="bar" role="group" aria-label="Read aloud">' +
+                    '<button class="start" data-action="start">' + speechIcons.listen + '<span>Listen</span></button>' +
+                    '<button data-action="previous" aria-label="Previous sentence" title="Previous sentence" hidden>' + speechIcons.previous + '</button>' +
+                    '<button class="toggle" data-action="pause" aria-label="Pause" hidden>' + speechIcons.pause + '</button>' +
+                    '<button data-action="next" aria-label="Next sentence" title="Next sentence" hidden>' + speechIcons.next + '</button>' +
+                    '<select aria-label="Reading speed" title="Reading speed" hidden><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>' +
+                    '<button data-action="stop" aria-label="Stop" title="Stop reading" hidden>' + speechIcons.stop + '</button>' +
+                    '<div class="status" role="status" hidden></div></div>';
+                shadow.addEventListener("click", function(event) {
+                    var button = event.target.closest("button");
+                    var action = button && button.getAttribute("data-action");
+                    if (!event.isTrusted || !action || speechCommand) return;
+                    if (action === "start") {
+                        var root = document.getElementById("harmonic-reader-article");
+                        var article = root ? {root:root,title:document.title} : preparedArticle(true);
+                        if (!article) return;
+                        var clone = article.root.cloneNode(true);
+                        separateBlockText(clone);
+                        var text = getText(clone);
+                        if (text.length > 250000) {
+                            shadow.querySelector(".status").hidden = false;
+                            shadow.querySelector(".status").textContent = "This article is too long to read aloud.";
+                            return;
+                        }
+                        speechCommand = {action:action,text:text,title:article.title || document.title,url:location.href};
+                    } else speechCommand = {action:action};
+                });
+                shadow.querySelector("select").addEventListener("change", function(event) {
+                    if (event.isTrusted) speechCommand = {action:"rate",rate:Number(event.target.value)};
+                });
+                var byline = document.getElementById("harmonic-reader-byline");
+                if (byline) byline.setAttribute("data-harmonic-listen-header", "true");
+                (byline || heading).insertAdjacentElement("afterend", host);
+            }
+        }
+        if (host && host.shadowRoot) {
+            var theme = document.getElementById("harmonic-reader-mode") ? getReaderTheme() : (speechTheme || getReaderTheme());
+            host.style.colorScheme = theme.isLight ? "light" : "dark";
+            host.style.setProperty("--surface", theme.codeBackgroundColor);
+            host.style.setProperty("--page", theme.backgroundColor);
+            host.style.setProperty("--text", theme.textColor);
+            host.style.setProperty("--muted", theme.secondaryTextColor);
+            host.style.setProperty("--accent", theme.linkColor);
+            host.style.setProperty("--font", theme.fontFamily || "system-ui,sans-serif");
+            var ui = host.shadowRoot;
+            var active = state.count > 0;
+            ui.querySelector(".bar").classList.toggle("active", active);
+            ui.querySelectorAll("button,select").forEach(function(el) {
+                el.hidden = el.getAttribute("data-action") === "start" ? active : !active;
+            });
+            var toggle = ui.querySelector('[data-action="pause"],[data-action="play"]');
+            toggle.setAttribute("data-action", state.playing ? "pause" : "play");
+            var toggleLabel = state.playing ? "Pause" : "Resume";
+            if (toggle.getAttribute("aria-label") !== toggleLabel) {
+                toggle.setAttribute("aria-label", toggleLabel);
+                toggle.innerHTML = state.playing ? speechIcons.pause : speechIcons.play;
+            }
+            ui.querySelector('[data-action="previous"]').disabled = state.index === 0;
+            ui.querySelector('[data-action="next"]').disabled = state.index >= state.count - 1;
+            ui.querySelector("select").value = String(state.rate || 1);
+            var status = ui.querySelector(".status");
+            status.hidden = !active && !state.error;
+            var statusText = state.error || (active ? (state.playing ? "Reading" : "Paused") + " · Sentence " + (state.index + 1) + " of " + state.count + (state.url === location.href ? "" : " · " + state.title) : "");
+            if (status.textContent !== statusText) status.textContent = statusText;
+        }
+        var command = speechCommand;
+        speechCommand = null;
+        return JSON.stringify(command);
+    }
+
     window.HarmonicReaderMode = {
-        version: 13,
+        version: 15,
+        readAloudTick: readAloudTick,
+        setReadAloudTheme: function(theme) { speechTheme = theme; },
         setTheme: setTheme,
         updateTheme: updateTheme,
         isAvailable: isAvailable,

@@ -12,6 +12,9 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
@@ -252,20 +255,28 @@ fun main() {
                                     DesktopWindowAppearance.usesIntegratedTitleBar &&
                                     windowState.placement != WindowPlacement.Fullscreen
                                 ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
-                                Box(Modifier.fillMaxSize()) {
-                                    DesktopAppContent(
-                                        app = bootstrap.app,
-                                        scene = sceneOwner.scene,
-                                        storiesController = storiesController,
-                                        commentsController = commentsController,
-                                        editorBackRequestVersion = editorBackRequestVersion,
-                                        onStoriesControllerChanged = { storiesController = it },
-                                        commentsControllers = commentsControllers,
-                                        settingsControllers = settingsControllers,
-                                        titleBarInset = titleBarInset,
-                                    )
-                                    if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
-                                        DesktopWindowsTitleBar(window, windowIcon)
+                                Column(Modifier.fillMaxSize()) {
+                                    Box(Modifier.weight(1f)) {
+                                        DesktopAppContent(
+                                            app = bootstrap.app,
+                                            scene = sceneOwner.scene,
+                                            storiesController = storiesController,
+                                            commentsController = commentsController,
+                                            editorBackRequestVersion = editorBackRequestVersion,
+                                            onStoriesControllerChanged = { storiesController = it },
+                                            commentsControllers = commentsControllers,
+                                            settingsControllers = settingsControllers,
+                                            titleBarInset = titleBarInset,
+                                        )
+                                        if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
+                                            DesktopWindowsTitleBar(window, windowIcon)
+                                        }
+                                    }
+                                    if (WindowsReadAloud.supported) {
+                                        val speech by WindowsReadAloud.controller.state.collectAsState()
+                                        com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech) { action ->
+                                            WindowsReadAloud.controller.command(buildJsonObject { put("action", action) })
+                                        }
                                     }
                                 }
                             }
@@ -275,6 +286,7 @@ fun main() {
             }
         }
     } finally {
+        if (WindowsReadAloud.supported) WindowsReadAloud.controller.close()
         sceneOwner.close()
         bootstrap.close()
         connectivity?.close()
