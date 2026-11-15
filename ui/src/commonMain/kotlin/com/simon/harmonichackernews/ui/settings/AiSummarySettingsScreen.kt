@@ -129,8 +129,7 @@ fun AiSummarySettingsScreen(
         }
         if (onArticleCategoriesRequested != null) item {
             SettingsCard(Modifier.padding(top = 16.dp)) {
-                SettingRow(title = "Article categories", summary = "Tag stories using embeddings",
-                    icon = Res.drawable.ic_label, onClick = onArticleCategoriesRequested)
+                ArticleCategoryNavigationSetting(onClick = onArticleCategoriesRequested)
             }
         }
         item {
