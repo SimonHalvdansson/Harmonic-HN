@@ -506,11 +506,12 @@ test('read aloud matches the reader theme and fits one control row on phones', a
         await enable(page);
         await page.evaluate(() => HarmonicReaderMode.readAloudTick({count:30,index:2,playing:true,rate:1,url:location.href,title:document.title}));
         await page.evaluate(() => document.fonts.ready);
+        await page.waitForTimeout(300); // Measure settled spacing after the Listen entrance.
         const metrics = await page.evaluate(() => {
             const host=document.querySelector('harmonic-listen');
-            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.hidden);
+            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.closest('[inert]'));
             return {tops:controls.map(el=>Math.round(el.getBoundingClientRect().top)),
-                color:getComputedStyle(host.shadowRoot.querySelector('.bar')).backgroundColor,
+                color:getComputedStyle(host.shadowRoot.querySelector('.controls')).backgroundColor,
                 overflow:document.documentElement.scrollWidth>window.innerWidth,
                 left:host.getBoundingClientRect().left,
                 articleLeft:document.getElementById('harmonic-reader-article').getBoundingClientRect().left,
@@ -533,3 +534,60 @@ test('read aloud matches the reader theme and fits one control row on phones', a
         if(process.env.PLAYWRIGHT_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PLAYWRIGHT_SCREENSHOT_DIR,'reader-player-dark.png')});
     } finally { await page.close(); }
 });
+
+for (const reducedMotion of ['no-preference', 'reduce']) {
+    test(`Listen transitions preserve controls and focus (${reducedMotion})`, async () => {
+        const page = await article(true);
+        const idle = {count:0,index:0,playing:false,rate:1};
+        const playing = {count:30,index:2,playing:true,rate:1,url:'https://reader.test/article',title:'Article title'};
+        const tick = state => page.evaluate(state => HarmonicReaderMode.readAloudTick(state), state);
+        const metrics = () => page.locator('harmonic-listen').evaluate(host => ({
+            height:host.getBoundingClientRect().height,
+            active:host.shadowRoot.activeElement?.getAttribute('data-action'),
+            animations:[...host.shadowRoot.querySelectorAll('*')].flatMap(el => el.getAnimations()).filter(a => a.playState === 'running').length,
+        }));
+        try {
+            await page.emulateMedia({reducedMotion});
+            await page.setViewportSize({width:393,height:750});
+            await enable(page);
+            await tick(idle);
+            await page.getByRole('button', {name:'Listen',exact:true}).focus();
+            await page.waitForTimeout(300);
+            const collapsed = await metrics();
+            await tick(playing);
+            assert.equal(await page.getByRole('button', {name:'Listen',exact:true}).count(), 0);
+            assert.equal(await page.getByRole('button', {name:'Pause',exact:true}).count(), 1);
+            assert.equal((await metrics()).active, 'pause');
+            await page.waitForTimeout(70);
+            const opening = await metrics();
+            await page.waitForTimeout(300);
+            const expanded = await metrics();
+            assert.ok(expanded.height > collapsed.height);
+            if (reducedMotion === 'reduce') {
+                assert.equal(opening.height, expanded.height);
+                assert.equal(opening.animations, 0);
+            } else {
+                assert.ok(opening.height < expanded.height, 'The article should move gradually as the controls expand');
+                assert.ok(opening.animations > 0);
+            }
+            // Routine host polling must not restart the animation.
+            await tick(playing);
+            assert.equal((await metrics()).animations, 0);
+            await tick({...playing,playing:false});
+            assert.equal(await page.getByRole('button', {name:'Resume',exact:true}).count(), 1);
+            await page.getByRole('button', {name:'Stop',exact:true}).focus();
+            await tick(idle);
+            assert.equal((await metrics()).active, 'start');
+            assert.equal(await page.getByRole('button', {name:'Stop',exact:true}).count(), 0);
+            // Reverse the animation before it completes, then stop again.
+            await tick(playing);
+            await tick(idle);
+            await page.waitForTimeout(350);
+            assert.equal((await metrics()).height, collapsed.height);
+            await page.getByRole('button', {name:'Listen',exact:true}).click();
+            assert.equal(JSON.parse(await tick(idle)).action, 'start');
+            await tick({...idle,error:'Audio is unavailable'});
+            assert.equal(await page.getByRole('status').textContent(), 'Audio is unavailable');
+        } finally { await page.close(); }
+    });
+}

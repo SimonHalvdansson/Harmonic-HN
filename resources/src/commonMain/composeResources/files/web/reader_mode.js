@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 15) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 16) {
         return;
     }
 
@@ -1004,24 +1004,41 @@
                 var shadow = host.attachShadow({mode:"open"});
                 shadow.innerHTML = '<style>' +
                     ':host{font-size:14px}*{box-sizing:border-box}[hidden]{display:none!important}' +
-                    '.bar{font:500 14px/1.4 var(--font);color:var(--text);display:flex;gap:4px;align-items:center;flex-wrap:wrap;width:fit-content;max-width:100%}' +
-                    '.bar.active{width:100%;padding:8px;border-radius:24px;background:var(--surface)}' +
+                    '.bar{font:500 14px/1.4 var(--font);color:var(--text);display:grid;width:100%;max-width:100%}' +
+                    '.start,.playback{grid-area:1/1;align-self:start}.start{justify-self:start}' +
+                    '.playback{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;transform:translateY(4px);pointer-events:none}' +
+                    '.playback-clip{min-height:0;overflow:hidden;border-radius:24px}' +
+                    '.controls{display:flex;gap:4px;align-items:center;flex-wrap:wrap;width:100%;padding:8px;border-radius:24px;background:var(--surface)}' +
+                    '.active .playback{grid-template-rows:1fr;opacity:1;visibility:visible;transform:none;pointer-events:auto}' +
+                    '.active .start{opacity:0;visibility:hidden;transform:translateY(-3px);pointer-events:none}' +
                     'button,select{font:inherit;color:inherit;border:0;background:transparent;border-radius:50%;height:44px;min-width:44px;padding:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent}' +
                     'svg{width:24px;height:24px;fill:currentColor;pointer-events:none}' +
                     'button:hover,select:hover{background:var(--page)}button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}' +
                     'button:disabled{opacity:.35;cursor:default}.toggle{width:48px;height:48px;border-radius:18px;background:var(--accent);color:var(--page)}.toggle:hover{background:var(--accent);filter:brightness(.94)}' +
                     '.start{gap:8px;padding:0 16px 0 12px;border-radius:22px;background:var(--surface);color:var(--accent)}' +
+                    '.toggle{display:grid}.toggle svg{grid-area:1/1}.toggle[data-action="pause"] .play-icon,.toggle[data-action="play"] .pause-icon{opacity:0;transform:scale(.85)}' +
                     'select{margin-left:auto;appearance:none;text-align:center;border-radius:16px;min-width:58px;background:var(--page);padding:8px}' +
-                    '.status{flex:1 1 100%;padding:3px 12px 2px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}' +
-                    '@media(prefers-reduced-motion:no-preference){button{transition:background .15s,filter .15s}}' +
+                    '.status,.notice{flex:1 1 100%;padding:3px 12px 2px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}' +
+                    '@media(prefers-reduced-motion:no-preference){' +
+                    ':host{animation:listen-appear .18s ease-out both}' +
+                    '@keyframes listen-appear{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}' +
+                    'button{transition:background .15s,filter .15s}' +
+                    '.start{transition:opacity .14s ease,transform .18s ease,visibility 0s .18s}' +
+                    '.bar:not(.active) .start{transition-delay:.06s,.06s,0s}' +
+                    '.playback{transition:grid-template-rows .24s cubic-bezier(.2,0,0,1),opacity .16s ease,transform .22s ease,visibility 0s .24s}' +
+                    '.active .playback{transition-delay:0s,.04s,0s,0s}' +
+                    '.toggle svg{transition:opacity .14s ease,transform .18s ease}' +
+                    '}' +
                     '</style><div class="bar" role="group" aria-label="Read aloud">' +
                     '<button class="start" data-action="start">' + speechIcons.listen + '<span>Listen</span></button>' +
-                    '<button data-action="previous" aria-label="Previous sentence" title="Previous sentence" hidden>' + speechIcons.previous + '</button>' +
-                    '<button class="toggle" data-action="pause" aria-label="Pause" hidden>' + speechIcons.pause + '</button>' +
-                    '<button data-action="next" aria-label="Next sentence" title="Next sentence" hidden>' + speechIcons.next + '</button>' +
-                    '<select aria-label="Reading speed" title="Reading speed" hidden><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>' +
-                    '<button data-action="stop" aria-label="Stop" title="Stop reading" hidden>' + speechIcons.stop + '</button>' +
-                    '<div class="status" role="status" hidden></div></div>';
+                    '<div class="playback" inert aria-hidden="true"><div class="playback-clip"><div class="controls">' +
+                    '<button data-action="previous" aria-label="Previous sentence" title="Previous sentence">' + speechIcons.previous + '</button>' +
+                    '<button class="toggle" data-action="pause" aria-label="Pause">' + speechIcons.pause.replace('<svg ', '<svg class="pause-icon" ') + speechIcons.play.replace('<svg ', '<svg class="play-icon" ') + '</button>' +
+                    '<button data-action="next" aria-label="Next sentence" title="Next sentence">' + speechIcons.next + '</button>' +
+                    '<select aria-label="Reading speed" title="Reading speed"><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>' +
+                    '<button data-action="stop" aria-label="Stop" title="Stop reading">' + speechIcons.stop + '</button>' +
+                    '<div class="status" role="status" hidden></div></div></div></div>' +
+                    '<div class="notice" role="status" hidden></div></div>';
                 shadow.addEventListener("click", function(event) {
                     var button = event.target.closest("button");
                     var action = button && button.getAttribute("data-action");
@@ -1034,8 +1051,8 @@
                         separateBlockText(clone);
                         var text = getText(clone);
                         if (text.length > 250000) {
-                            shadow.querySelector(".status").hidden = false;
-                            shadow.querySelector(".status").textContent = "This article is too long to read aloud.";
+                            shadow.querySelector(".notice").hidden = false;
+                            shadow.querySelector(".notice").textContent = "This article is too long to read aloud.";
                             return;
                         }
                         speechCommand = {action:action,text:text,title:article.title || document.title,url:location.href};
@@ -1060,24 +1077,38 @@
             host.style.setProperty("--font", theme.fontFamily || "system-ui,sans-serif");
             var ui = host.shadowRoot;
             var active = state.count > 0;
+            var start = ui.querySelector(".start");
+            var playback = ui.querySelector(".playback");
+            // Keep both views mounted for reversible transitions, but only the current controls
+            // participate in focus, accessibility and input while the old view fades away.
+            var previousFocus = ui.activeElement;
+            start.inert = active;
+            start.setAttribute("aria-hidden", String(active));
+            playback.inert = !active;
+            playback.setAttribute("aria-hidden", String(!active));
             ui.querySelector(".bar").classList.toggle("active", active);
-            ui.querySelectorAll("button,select").forEach(function(el) {
-                el.hidden = el.getAttribute("data-action") === "start" ? active : !active;
-            });
             var toggle = ui.querySelector('[data-action="pause"],[data-action="play"]');
             toggle.setAttribute("data-action", state.playing ? "pause" : "play");
             var toggleLabel = state.playing ? "Pause" : "Resume";
             if (toggle.getAttribute("aria-label") !== toggleLabel) {
                 toggle.setAttribute("aria-label", toggleLabel);
-                toggle.innerHTML = state.playing ? speechIcons.pause : speechIcons.play;
             }
+            if (active && previousFocus === start) toggle.focus({preventScroll:true});
+            if (!active && previousFocus && playback.contains(previousFocus)) start.focus({preventScroll:true});
             ui.querySelector('[data-action="previous"]').disabled = state.index === 0;
             ui.querySelector('[data-action="next"]').disabled = state.index >= state.count - 1;
             ui.querySelector("select").value = String(state.rate || 1);
-            var status = ui.querySelector(".status");
+            ui.querySelector(".notice").hidden = active || !state.error;
+            var status = ui.querySelector(active ? ".status" : ".notice");
             status.hidden = !active && !state.error;
             var statusText = state.error || (active ? (state.playing ? "Reading" : "Paused") + " · Sentence " + (state.index + 1) + " of " + state.count + (state.url === location.href ? "" : " · " + state.title) : "");
-            if (status.textContent !== statusText) status.textContent = statusText;
+            if (status.textContent !== statusText) {
+                status.textContent = statusText;
+                if (status.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    if (status.readingAnimation) status.readingAnimation.cancel();
+                    status.readingAnimation = status.animate([{opacity:.55}, {opacity:1}], {duration:160,easing:"ease-out"});
+                }
+            }
         }
         var command = speechCommand;
         speechCommand = null;
@@ -1085,7 +1116,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 15,
+        version: 16,
         readAloudTick: readAloudTick,
         setReadAloudTheme: function(theme) { speechTheme = theme; },
         setTheme: setTheme,

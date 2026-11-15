@@ -1,6 +1,11 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.draw.clipToBounds
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,7 +13,6 @@ import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import com.simon.harmonichackernews.AndroidReadAloud
 import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
 import kotlinx.serialization.json.buildJsonObject
@@ -156,11 +160,20 @@ private fun AndroidReadAloudHost(activity: MainActivity, content: @Composable ()
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val speech by AndroidReadAloud.state.collectAsStateWithLifecycle()
     val visible = settings.reading.readAloudMiniPlayer && speech.count > 0
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground).then(
-        if (visible) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
-    )) {
-        Box(Modifier.weight(1f)) { content() }
-        if (visible) ReadAloudMiniPlayer(speech) { action ->
+    val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val playerBottomInset by animateDpAsState(
+        targetValue = if (visible) navigationBottom else 0.dp,
+        animationSpec = tween(if (visible) 300 else 240),
+        label = "Player navigation inset",
+    )
+    val playerInsets = PaddingValues(bottom = playerBottomInset)
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
+            .padding(playerInsets).consumeWindowInsets(playerInsets),
+    ) {
+        // AndroidView may draw beyond its resized bounds while Chromium catches up.
+        Box(Modifier.weight(1f).clipToBounds()) { content() }
+        ReadAloudMiniPlayer(speech, enabled = settings.reading.readAloudMiniPlayer) { action ->
             AndroidReadAloud.command(activity.applicationContext, buildJsonObject { put("action", action) })
         }
     }
