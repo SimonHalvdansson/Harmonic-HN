@@ -148,7 +148,7 @@ class KtorCloudSummaryRepository(
                 if (!response.isSuccessful) {
                     val errorBody = response.body.readText(MAX_ERROR_BODY_BYTES)
                     throw CloudSummaryException(
-                        "API error: ${apiErrorMessage(errorBody, response.message)}",
+                        "API error (HTTP ${response.code}): ${apiErrorMessage(errorBody, response.message.ifBlank { "Request failed" })}",
                     )
                 }
                 if (config.streamResponses) {
@@ -289,17 +289,26 @@ class KtorCloudSummaryRepository(
     private fun apiErrorMessage(body: String?, fallback: String): String {
         if (body.isNullOrBlank()) return fallback
         return runCatching {
-            val responseJson = jsonParser.parseToJsonElement(body).jsonObject
-            when (val error = responseJson["error"]) {
-                is JsonObject -> error.string("message") ?: fallback
-                is JsonPrimitive -> error.contentOrNull ?: fallback
-                else -> responseJson.string("message") ?: fallback
+            val parsed = jsonParser.parseToJsonElement(body)
+            val objects = when (parsed) {
+                is JsonObject -> listOf(parsed)
+                is JsonArray -> parsed.mapNotNull { it as? JsonObject }
+                else -> emptyList()
             }
+            objects.firstNotNullOfOrNull { responseJson ->
+                val message = when (val error = responseJson["error"]) {
+                    is JsonObject -> error.string("message")
+                    is JsonPrimitive -> error.contentOrNull
+                    else -> null
+                }
+                message?.trim()?.takeIf(String::isNotEmpty)
+                    ?: responseJson.string("message")?.trim()?.takeIf(String::isNotEmpty)
+            } ?: fallback
         }.getOrDefault(fallback)
     }
 
     private companion object {
-        const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 1000
+        const val CLOUD_SUMMARY_MAX_OUTPUT_TOKENS = 6000
         const val MAX_MODEL_CATALOG_BYTES = 2 * 1024 * 1024
         const val MAX_ARTICLE_BYTES = 4 * 1024 * 1024
         const val MAX_ERROR_BODY_BYTES = 128 * 1024
