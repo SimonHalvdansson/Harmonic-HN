@@ -68,6 +68,7 @@ internal fun DesktopSettingsDetail(
     singlePane: Boolean,
     onBack: () -> Unit,
     onNavigate: (SettingsSection, Boolean) -> Unit,
+    peekStoryHeaderSupported: Boolean,
 ) {
     val appIcon = rememberDesktopAppIconPainter()
     PortableSettingsDetail(
@@ -75,6 +76,7 @@ internal fun DesktopSettingsDetail(
         app = app,
         scene = scene,
         singlePane = singlePane,
+        peekStoryHeaderSupported = peekStoryHeaderSupported,
         onBack = onBack,
         onNavigate = onNavigate,
         appIcon = appIcon,

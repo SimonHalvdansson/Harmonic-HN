@@ -528,6 +528,7 @@ fun CommentsSettingsRoute(
     onQuoteHighlightingRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     volumeNavigationSupported: Boolean = true,
+    peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
     twoPane: Boolean = false,
 ) {
@@ -538,6 +539,7 @@ fun CommentsSettingsRoute(
     CommentsSettingsScreen(
         state = state,
         volumeNavigationSupported = volumeNavigationSupported,
+        peekStoryHeaderSupported = peekStoryHeaderSupported,
         swipeBackSupported = swipeBackSupported,
         twoPane = twoPane,
         showNavigation = showNavigation,

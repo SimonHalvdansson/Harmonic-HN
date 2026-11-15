@@ -122,6 +122,7 @@ fun CommentsSettingsScreen(
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
     volumeNavigationSupported: Boolean = true,
+    peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
     twoPane: Boolean = false,
     focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
@@ -275,7 +276,7 @@ fun CommentsSettingsScreen(
             }
         }
         settingsCategory("Navigation") {
-            row {
+            if (peekStoryHeaderSupported) row {
                 BooleanRow(
                     "Peek story header",
                     Res.drawable.ic_arrow_upward,

@@ -449,6 +449,7 @@ private fun DesktopAppContent(
             DesktopCommentsContent(
                 app = app, scene = scene, request = request,
                 showNavigation = showNavigation,
+                twoPane = isTwoPane,
                 webViewForegroundAllowed = webViewForegroundAllowed,
                 onClose = scene.navigation::detailRemovedFromBackStack,
                 controllers = commentsControllers,
@@ -799,6 +800,7 @@ private fun DesktopSettingsShell(
             webLinks = desktopWebLinksSettingsCapabilities(),
             notifications = false, systemSettings = false, volumeNavigation = false,
             transparentStatusBar = false, twoPane = true,
+            peekStoryHeader = !isTwoPane,
         ),
         renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
             SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
@@ -822,6 +824,7 @@ private fun DesktopSettingsShell(
                     singlePane,
                     onBack,
                     onNavigate,
+                    peekStoryHeaderSupported = !isTwoPane,
                 )
             }
         },

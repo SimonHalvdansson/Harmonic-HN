@@ -106,6 +106,7 @@ internal fun DesktopCommentsContent(
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
     showNavigation: Boolean,
+    twoPane: Boolean,
     webViewForegroundAllowed: Boolean,
     onClose: () -> Unit,
     controllers: RetainedDestinationControllers<CommentsScreenController>,
@@ -175,13 +176,14 @@ internal fun DesktopCommentsContent(
             host.binding.close()
         }
     }
-    LaunchedEffect(featureState, host.controller, contentInsetRightPx, readerState) {
+    LaunchedEffect(featureState, host.controller, contentInsetRightPx, readerState, twoPane) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
                 readerModeAvailable = readerState?.available == true,
                 readerModeEnabled = readerState?.enabled == true,
                 showSheetControls = false,
+                peekStoryHeaderSupported = !twoPane,
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = contentInsetRightPx,

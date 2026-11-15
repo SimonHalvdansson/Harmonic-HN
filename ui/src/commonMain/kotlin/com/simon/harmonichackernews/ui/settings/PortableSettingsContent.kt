@@ -60,6 +60,7 @@ fun PortableSettingsDetail(
     dataSettings: @Composable () -> Unit,
     readerPreview: @Composable (ReadingPreferences, Boolean) -> Unit,
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
+    peekStoryHeaderSupported: Boolean = true,
     debugPlatformLabel: String = "Android version",
     debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
 ) {
@@ -107,6 +108,7 @@ fun PortableSettingsDetail(
         SettingsSection.Comments -> CommentsSettingsRoute(
             repository = app.settings,
             volumeNavigationSupported = false,
+            peekStoryHeaderSupported = peekStoryHeaderSupported,
             showNavigation = singlePane,
             onBack = onBack,
             onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },

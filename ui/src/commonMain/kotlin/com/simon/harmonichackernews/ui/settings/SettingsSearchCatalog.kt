@@ -11,6 +11,7 @@ data class SettingsSearchCapabilities(
     val transparentStatusBar: Boolean = true,
     val twoPane: Boolean = false,
     val commentsSwipeBack: Boolean = false,
+    val peekStoryHeader: Boolean = true,
 )
 
 internal data class SettingsSearchAvailability(
@@ -160,9 +161,10 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.Comments, "Navigation",
         "Show navigation buttons" to "next previous top level threads jump",
         "Show scrollbar" to "scroll bar position indicator",
-        "Peek story header" to "title scroll up top compact header",
         "Smooth scroll comments" to "scrolling animation navigation",
         "Animate comment expand/collapse" to "motion animations transitions reduce motion")
+    if (capabilities.peekStoryHeader) group(SettingsSection.Comments, "Navigation",
+        "Peek story header" to "title scroll up top compact header")
     if (capabilities.volumeNavigation) group(SettingsSection.Comments, "Navigation",
         "Volume buttons for navigation" to "volume keys rocker hardware up down jump threads")
     if (capabilities.commentsSwipeBack) group(SettingsSection.Comments, "Navigation",
