@@ -19,8 +19,8 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function article(useReadability = false) {
-    const page = await browser.newPage();
+async function article(useReadability = false, options = {}) {
+    const page = await browser.newPage(options);
     await page.route('https://reader.test/article', route => route.fulfill({
         contentType: 'text/html',
         body: `<!doctype html><title>Article title</title><base href="https://cdn.test/assets/">
@@ -64,6 +64,111 @@ async function countDocumentClones(page) {
             documentClones++;
             return original.call(this, deep);
         };
+    });
+}
+
+for (const viewport of [[], ['width=980'], ['width=device-width, initial-scale=1'],
+    ['width=980', 'width=1200, initial-scale=0.5'], [null]]) {
+    test(`mobile reader normalizes and restores viewport ${JSON.stringify(viewport)}`, async () => {
+        const page = await article(true, {viewport: {width: 393, height: 852}, isMobile: true});
+        try {
+            await page.addStyleTag({content: 'body { min-height: 5000px }'});
+            const original = await page.evaluate(contents => {
+                window.sourceViewports = contents.map(content => {
+                    const meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    if (content !== null) meta.content = content;
+                    document.head.appendChild(meta);
+                    return meta;
+                });
+                window.scrollTo(0, 450);
+                return {width: innerWidth, scroll: scrollY};
+            }, viewport);
+            for (let cycle = 0; cycle < 2; cycle++) {
+                await enable(page);
+                const dimensions = await page.evaluate(() => ({
+                    width: innerWidth,
+                    scale: visualViewport.scale,
+                    font: getComputedStyle(document.querySelector('#harmonic-reader-article p')).fontSize,
+                    article: document.getElementById('harmonic-reader-article').getBoundingClientRect().toJSON(),
+                }));
+                assert.equal(dimensions.width, 393);
+                assert.equal(dimensions.scale, 1);
+                assert.equal(dimensions.font, '17px');
+                assert.equal(dimensions.article.x, 20);
+                assert.equal(dimensions.article.width, 353);
+                await disable(page);
+                assert.deepEqual(await page.evaluate(() => ({width: innerWidth, scroll: scrollY})), original);
+                assert.deepEqual(await page.locator('meta[name="viewport"]').evaluateAll(nodes =>
+                    nodes.map(node => node.getAttribute('content'))), viewport);
+                assert.equal(await page.evaluate(() => sourceViewports.every(node => node.isConnected)), true);
+            }
+            await page.evaluate(() => { HarmonicReaderMode.enable(); HarmonicReaderMode.disable(); });
+            await page.waitForTimeout(800);
+            assert.deepEqual(await page.locator('meta[name="viewport"]').evaluateAll(nodes =>
+                nodes.map(node => node.getAttribute('content'))), viewport);
+            assert.deepEqual(await page.evaluate(() => ({width: innerWidth, scroll: scrollY})), original);
+        } finally { await page.close(); }
+    });
+}
+
+for (const useReadability of [false, true]) {
+    for (const dialogMarkup of ['<dialog open>', '<div role="dialog">',
+        '<div role="alertdialog">', '<div aria-modal="true">']) {
+        test(`exclude ${dialogMarkup} before article selection (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+            const page = await article(useReadability);
+            try {
+                await page.evaluate(markup => {
+                    const closingTag = markup.startsWith('<dialog') ? '</dialog>' : '</div>';
+                    const notice = '<p>' + 'Consent notice: choose how partners store personal data. '.repeat(70) + '</p>';
+                    document.body.insertAdjacentHTML('afterbegin', markup + '<main>' + notice.repeat(8) + '</main>' + closingTag);
+                    window.originalDialog = document.body.firstElementChild;
+                    document.querySelector('article p').textContent =
+                        'This article discusses cookie consent, privacy policy, and browser storage in detail. '.repeat(30);
+                }, dialogMarkup);
+                assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'available');
+                assert.equal(await page.evaluate(() => originalDialog.isConnected), true,
+                    'Availability must not dismiss or change source dialogs');
+                await enable(page);
+                const text = await page.locator('#harmonic-reader-article').textContent();
+                assert.match(text, /This article discusses cookie consent/);
+                assert.doesNotMatch(text, /Consent notice:/);
+                await disable(page);
+                assert.equal(await page.evaluate(() => originalDialog === document.body.firstElementChild), true);
+            } finally { await page.close(); }
+        });
+    }
+
+    test(`dialog-only pages are unavailable (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.evaluate(() => {
+                document.body.innerHTML = '<div role="dialog"><article><p>' +
+                    'A lengthy consent notice is not an article to read. '.repeat(100) + '</p></article></div>';
+            });
+            assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'unavailable');
+            assert.equal(await page.evaluate(() => HarmonicReaderMode.enable()), 'no_article');
+            assert.equal(await page.locator('[role="dialog"]').count(), 1);
+        } finally { await page.close(); }
+    });
+
+    test(`short content outranks forms and secondary comments (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.evaluate(() => {
+                document.querySelector('article').outerHTML = `<div role="main">
+                    <h1>Why measure underground vibrations?</h1>
+                    <p>What can scientists learn from small explosions?</p>
+                    <div><p>${'Seismic measurements reveal underground structure by measuring the propagation of shockwaves. '.repeat(5)}</p></div>
+                    <div itemprop="comment"><p>${'Moderator notice about keeping the discussion on topic. '.repeat(30)}</p></div>
+                    <form><p>${'Sign up or log in to submit your response to this discussion. '.repeat(50)}</p></form>
+                </div>`;
+            });
+            await enable(page);
+            const text = await page.locator('#harmonic-reader-article').textContent();
+            assert.match(text, /Seismic measurements reveal underground structure/);
+            assert.doesNotMatch(text, /Moderator notice|Sign up or log in/);
+        } finally { await page.close(); }
     });
 }
 

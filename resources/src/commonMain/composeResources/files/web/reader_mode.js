@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 16) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 17) {
         return;
     }
 
@@ -40,6 +40,7 @@
     };
     var POSITIVE_CLASS_RE = /article|body|content|entry|hentry|main|page|post|read|story|text/i;
     var NEGATIVE_CLASS_RE = /ad-|ads|advert|banner|breadcrumb|comment|combx|contact|cookie|footer|masthead|menu|meta|modal|nav|outbrain|promo|related|scroll|share|shoutbox|sidebar|sponsor|subscribe|tag|tool|widget/i;
+    var NON_ARTICLE_SELECTOR = "dialog,form,[role~='dialog' i],[role~='alertdialog' i],[aria-modal='true' i],[itemprop~='comment']";
     var REMOVE_SELECTOR = [
         "harmonic-listen",
         "script",
@@ -53,12 +54,11 @@
         "header",
         "footer",
         "aside",
-        "form",
         "button",
         "input",
         "select",
         "textarea",
-        "dialog",
+        NON_ARTICLE_SELECTOR,
         "[aria-hidden='true']",
         "[hidden]"
     ].join(",");
@@ -134,19 +134,26 @@
         return score;
     }
 
-    function findArticle() {
-        if (!document.body || getText(document.body).length < MIN_ARTICLE_TEXT_LENGTH) {
+    function removeNonArticleContent(root) {
+        var nodes = root.querySelectorAll(NON_ARTICLE_SELECTOR);
+        for (var i = nodes.length - 1; i >= 0; i--) {
+            nodes[i].remove();
+        }
+    }
+
+    function findArticle(root) {
+        if (!root || getText(root).length < MIN_ARTICLE_TEXT_LENGTH) {
             return null;
         }
 
-        var preferred = document.querySelector("article, main, [role='main']");
+        var preferred = root.querySelector("article, main, [role='main']");
         if (preferred && getText(preferred).length >= MIN_ARTICLE_TEXT_LENGTH && linkDensity(preferred) < 0.45) {
             return preferred;
         }
 
         var selectors = "article, main, section, div, td, [role='main']";
-        var candidates = [document.body];
-        var nodes = document.body.querySelectorAll(selectors);
+        var candidates = [root];
+        var nodes = root.querySelectorAll(selectors);
         for (var i = 0; i < nodes.length; i++) {
             candidates.push(nodes[i]);
         }
@@ -172,6 +179,9 @@
 
         try {
             var documentClone = document.cloneNode(true);
+            // Dialogs, forms and secondary comments can outweigh a short article. Exclude
+            // them before scoring, on the clone only, preserving the source's live state.
+            removeNonArticleContent(documentClone);
             var bylines = documentClone.querySelectorAll(
                 "[rel~='author'],[itemprop~='author'],[class*='byline' i],[id*='byline' i],[class*='author' i],[id*='author' i]"
             );
@@ -229,7 +239,9 @@
             return parsedArticle;
         }
 
-        var article = findArticle();
+        var source = document.body.cloneNode(true);
+        removeNonArticleContent(source);
+        var article = findArticle(source);
         if (!article) {
             return null;
         }
@@ -523,6 +535,38 @@
             if (Object.prototype.hasOwnProperty.call(attrs, name)) {
                 element.setAttribute(name, attrs[name]);
             }
+        }
+    }
+
+    function setReaderViewport() {
+        var nodes = document.querySelectorAll("meta[name='viewport' i]");
+        var originals = [];
+        for (var i = 0; i < nodes.length; i++) {
+            originals.push({node: nodes[i], content: nodes[i].getAttribute("content")});
+            nodes[i].setAttribute("content", "width=device-width, initial-scale=1");
+        }
+        var added = null;
+        if (!nodes.length) {
+            added = document.createElement("meta");
+            added.name = "viewport";
+            added.content = "width=device-width, initial-scale=1";
+            document.head.appendChild(added);
+        }
+        return {originals: originals, added: added};
+    }
+
+    function restoreViewport(viewport) {
+        if (!viewport) return;
+        // Chromium retains the last viewport when a tag/content attribute is removed.
+        // An empty content value first restores the browser's default viewport policy.
+        if (viewport.added) {
+            viewport.added.content = "";
+            viewport.added.remove();
+        }
+        for (var i = 0; i < viewport.originals.length; i++) {
+            var original = viewport.originals[i];
+            original.node.setAttribute("content", original.content || "");
+            if (original.content === null) original.node.removeAttribute("content");
         }
     }
 
@@ -893,6 +937,7 @@
             window[STATE_KEY] = {
                 enabled: true,
                 bodyNodes: null,
+                viewport: null,
                 bodyAttrs: getAttributes(document.body),
                 htmlAttrs: getAttributes(document.documentElement),
                 title: originalTitle,
@@ -927,6 +972,8 @@
                 document.body.innerHTML = html;
                 document.documentElement.setAttribute("data-harmonic-reader", "true");
                 restoreAttributes(document.body, {"data-harmonic-reader": "true"});
+                // Desktop-width or absent viewport metadata otherwise scales down the entire reader.
+                state.viewport = setReaderViewport();
                 correctReaderContrast(document.getElementById("harmonic-reader-mode"));
                 document.title = title || originalTitle;
                 window.scrollTo(0, 0);
@@ -958,6 +1005,7 @@
                 }
                 restoreAttributes(document.body, currentState.bodyAttrs || {});
                 restoreAttributes(document.documentElement, currentState.htmlAttrs || {});
+                restoreViewport(currentState.viewport);
                 document.title = currentState.title || document.title;
                 var scrollX = currentState.scrollX || 0;
                 var scrollY = currentState.scrollY || 0;
@@ -1116,7 +1164,7 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 16,
+        version: 17,
         readAloudTick: readAloudTick,
         setReadAloudTheme: function(theme) { speechTheme = theme; },
         setTheme: setTheme,
