@@ -49,8 +49,10 @@ pause/resume, sentence skipping and speed controls. Playback belongs to the proc
 continues after leaving the article or backgrounding the app. iOS Now Playing controls keep it
 accessible. Reader mode settings also offer an optional mini-player, disabled by default. Audio
 interruptions and disconnected headphones pause playback.
-The native speech tests exercise installed voices in Simulator, and the read-aloud UI test covers
-backgrounding and navigation. Lock-screen audio behavior on physical hardware still merits release QA.
+The native speech tests use fake speech and audio adapters in CI to verify completion, cancellation,
+stale callbacks and audio-session failures. The real-voice integration test remains compiled in CI
+and runs locally with working Simulator voices; the read-aloud UI test covers backgrounding and
+navigation. Lock-screen audio behavior on physical hardware still merits release QA.
 
 Account activity, read state, discussion muting, and Debug → Account's public-username preview are
 shared and work without notification permission. A preview never changes Keychain credentials or

@@ -2,9 +2,58 @@ import AVFoundation
 import MediaPlayer
 import HarmonicKit
 
+protocol IosSpeechSynthesizing: AnyObject {
+    var onFinish: ((AVSpeechUtterance) -> Void)? { get set }
+    var onCancel: ((AVSpeechUtterance) -> Void)? { get set }
+    func speak(_ utterance: AVSpeechUtterance)
+    func stop()
+}
+
+private final class SystemSpeechSynthesizer: NSObject, IosSpeechSynthesizing, AVSpeechSynthesizerDelegate {
+    var onFinish: ((AVSpeechUtterance) -> Void)?
+    var onCancel: ((AVSpeechUtterance) -> Void)?
+    private let synthesizer = AVSpeechSynthesizer()
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+        synthesizer.usesApplicationAudioSession = true
+    }
+
+    func speak(_ utterance: AVSpeechUtterance) { synthesizer.speak(utterance) }
+    func stop() { synthesizer.stopSpeaking(at: .immediate) }
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        onFinish?(utterance)
+    }
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        onCancel?(utterance)
+    }
+}
+
+// Called only on the host's serial audio queue.
+protocol IosSpeechAudioSession {
+    func activate() throws
+    func deactivate() throws
+}
+
+private struct SystemSpeechAudioSession: IosSpeechAudioSession {
+    func activate() throws {
+        let audio = AVAudioSession.sharedInstance()
+        try audio.setCategory(.playback, mode: .spokenAudio)
+        try audio.setActive(true)
+    }
+
+    func deactivate() throws {
+        try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
 /// Owned by the process graph, independently of the article's WKWebView or UIWindowScene.
-final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegate {
-    private var synthesizer = AVSpeechSynthesizer()
+final class IosReadAloud: NSObject, IosReadAloudHost {
+    private var synthesizer: IosSpeechSynthesizing
+    private let makeSynthesizer: () -> IosSpeechSynthesizing
+    private let audioSession: IosSpeechAudioSession
+    private let audioQueue: DispatchQueue
     private var utterance: AVSpeechUtterance?
     private var completion: ((String?) -> Void)?
     private var commandHandler: ((String) -> Void)?
@@ -12,16 +61,25 @@ final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegat
     private var observations: [NSObjectProtocol] = []
     private var playing = false
     private var hasArticle = false
-    private static let audioQueue = DispatchQueue(label: "Harmonic speech audio session")
+    private static let systemAudioQueue = DispatchQueue(label: "Harmonic speech audio session")
     // Access only on audioQueue; activation can block while negotiating an output route.
     private var audioActive = false
     private var generation: UInt64 = 0
     private var closed = false
 
-    override init() {
+    override convenience init() {
+        self.init(makeSynthesizer: { SystemSpeechSynthesizer() },
+                  audioSession: SystemSpeechAudioSession(), audioQueue: Self.systemAudioQueue)
+    }
+
+    init(makeSynthesizer: @escaping () -> IosSpeechSynthesizing,
+         audioSession: IosSpeechAudioSession, audioQueue: DispatchQueue) {
+        self.makeSynthesizer = makeSynthesizer
+        self.synthesizer = makeSynthesizer()
+        self.audioSession = audioSession
+        self.audioQueue = audioQueue
         super.init()
-        synthesizer.delegate = self
-        synthesizer.usesApplicationAudioSession = true
+        configureSynthesizer()
         let center = MPRemoteCommandCenter.shared()
         register(center.playCommand, action: "play")
         register(center.pauseCommand, action: "pause")
@@ -55,12 +113,11 @@ final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegat
             forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            Self.audioQueue.async { self.audioActive = false }
+            self.audioQueue.async { self.audioActive = false }
             self.send(["action": "pause"])
             self.stop()
-            self.synthesizer = AVSpeechSynthesizer()
-            self.synthesizer.delegate = self
-            self.synthesizer.usesApplicationAudioSession = true
+            self.synthesizer = self.makeSynthesizer()
+            self.configureSynthesizer()
         })
     }
 
@@ -77,13 +134,11 @@ final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegat
                         max(AVSpeechUtteranceMinimumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * rate))
         utterance = next
         completion = completed
-        Self.audioQueue.async { [self] in
+        audioQueue.async { [self] in
             var activationError: String?
             do {
-                let audio = AVAudioSession.sharedInstance()
                 if !audioActive {
-                    try audio.setCategory(.playback, mode: .spokenAudio)
-                    try audio.setActive(true)
+                    try audioSession.activate()
                     audioActive = true
                 }
             } catch {
@@ -103,15 +158,14 @@ final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegat
         generation &+= 1
         utterance = nil
         completion = nil
-        synthesizer.stopSpeaking(at: .immediate)
+        synthesizer.stop()
     }
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        finish(utterance, error: nil)
-    }
-
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        finish(utterance, error: "Speech was interrupted. Tap Resume to continue.")
+    private func configureSynthesizer() {
+        synthesizer.onFinish = { [weak self] in self?.finish($0, error: nil) }
+        synthesizer.onCancel = { [weak self] in
+            self?.finish($0, error: "Speech was interrupted. Tap Resume to continue.")
+        }
     }
 
     private func finish(_ finished: AVSpeechUtterance, error: String?) {
@@ -170,9 +224,9 @@ final class IosReadAloud: NSObject, IosReadAloudHost, AVSpeechSynthesizerDelegat
     }
 
     private func deactivateAudio() {
-        Self.audioQueue.async { [self] in
+        audioQueue.async { [self] in
             guard audioActive else { return }
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            try? audioSession.deactivate()
             audioActive = false
         }
     }

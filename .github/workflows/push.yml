@@ -355,9 +355,10 @@ jobs:
             -skip-testing:HarmonicIosTests/IosLocalAiTests/testGemmaProducesRealSummariesOnSimulator \
             -skip-testing:HarmonicIosTests/IosLocalAiTests/testCancellationStopsNativeStreamAndAllowsAnotherRequest \
             -skip-testing:HarmonicIosTests/IosArticleEmbeddingTests/testEmbeddingGemmaProducesNormalizedSemanticVectorsAndReloads \
+            -skip-testing:HarmonicIosTests/IosReadAloudTests/testSystemVoiceCompletesAndIgnoresCancelledUtterances \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building
-      # Download timing, live websites and multi-GB inference fixtures are covered locally.
+      # Download timing, live websites, real system speech and multi-GB inference fixtures are covered locally.
       # Keep those tests compiled above without depending on them on hosted simulators.
       - name: Upload native iOS test result
         if: always()
