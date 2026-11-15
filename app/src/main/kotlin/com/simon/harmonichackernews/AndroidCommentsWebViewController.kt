@@ -688,7 +688,8 @@ internal class AndroidCommentsWebViewController(
         webView = currentWebView
         initializedWebView = true
 
-        currentWebView.webViewClient = MyWebViewClient(AndroidPdfWebViewAssets.loader(context))
+        val client = MyWebViewClient(AndroidPdfWebViewAssets.loader(context))
+        currentWebView.webViewClient = client
 
         currentWebView.settings.apply {
             builtInZoomControls = true
@@ -716,10 +717,14 @@ internal class AndroidCommentsWebViewController(
                 contentDisposition: String?, mimetype: String?,
                 contentLength: Long
             ) {
+                if (!isCurrentWebViewCallback(currentWebView)) return
                 if (!TextUtils.isEmpty(mimetype) && mimetype == PDF_MIME_TYPE && (url.startsWith("http://") || url.startsWith(
                         "https://"
                     ))
                 ) {
+                    // WebView also reports PDFs loaded by iframes as downloads. Only a
+                    // top-level navigation may replace the article with our PDF viewer.
+                    if (!client.isMainFrameDownload(url)) return
                     downloadPdf(url, contentDisposition, mimetype, currentWebView.context)
                 } else {
                     showDownloadButton(url, contentDisposition, mimetype)
@@ -1449,6 +1454,13 @@ internal class AndroidCommentsWebViewController(
     private inner class MyWebViewClient(
         private val pdfAssets: WebViewAssetLoader,
     ) : WebViewClient() {
+        // shouldInterceptRequest runs off the UI thread; download callbacks run on it.
+        @Volatile
+        private var mainFrameRequestUrl: String? = null
+
+        fun isMainFrameDownload(url: String): Boolean =
+            mainFrameRequestUrl == url.substringBefore('#')
+
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             val currentView = view
@@ -1567,7 +1579,11 @@ internal class AndroidCommentsWebViewController(
             view: WebView,
             request: WebResourceRequest?
         ): Boolean {
-            if (request?.isForMainFrame == true) cancelPdfDownload()
+            if (request?.isForMainFrame == true) {
+                // Includes redirect destinations, which shouldInterceptRequest does not see.
+                mainFrameRequestUrl = request.url.toString().substringBefore('#')
+                cancelPdfDownload()
+            }
             return request != null && request.getUrl() != null && shouldOverrideUrlLoading(
                 view,
                 request.getUrl().toString()
@@ -1578,6 +1594,10 @@ internal class AndroidCommentsWebViewController(
             view: WebView?,
             request: WebResourceRequest
         ): WebResourceResponse? {
+            if (request.isForMainFrame) {
+                // Includes app-initiated loadUrl and POST requests, which bypass override.
+                mainFrameRequestUrl = request.url.toString().substringBefore('#')
+            }
             pdfAssets.shouldInterceptRequest(request.url)?.let { return it }
             if (!this@AndroidCommentsWebViewController.isBlockingAds) {
                 return super.shouldInterceptRequest(view, request)

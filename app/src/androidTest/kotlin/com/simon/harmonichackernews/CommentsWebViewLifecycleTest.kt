@@ -555,6 +555,39 @@ class CommentsWebViewLifecycleTest {
     }
 
     @Test
+    fun embeddedPdfDoesNotReplaceArticleAndExplicitLinkStillOpens() {
+        verifyEmbeddedPdfAndExplicitLink("/embedded-pdf")
+    }
+
+    @Test
+    fun redirectedEmbeddedPdfDoesNotReplaceArticleAndExplicitLinkStillOpens() {
+        verifyEmbeddedPdfAndExplicitLink("/embedded-pdf-redirect")
+    }
+
+    private fun verifyEmbeddedPdfAndExplicitLink(path: String) {
+        TestServer().use { server ->
+            server.releasePdf.countDown()
+            fixture().use { browser ->
+                val articleUrl = server.url(path)
+                onMain { browser.webView.loadUrl(articleUrl) }
+                assertTrue("WebView must request the embedded PDF",
+                    server.pdfResponseSent.await(15, TimeUnit.SECONDS))
+                // Allow a download callback/transfer to replace the article if routing regresses.
+                assertFalse("An embedded PDF must not start the app's PDF downloader",
+                    server.pdfDownloadStarted.await(2, TimeUnit.SECONDS))
+                assertEquals(articleUrl, onMain { browser.webView.url })
+                assertFalse(onMain { browser.controller.isPdfPage })
+                assertNull(onMain { browser.host.overlayState.onDownload })
+                awaitJavascript(browser.webView, "document.body.innerText.includes('Article remains visible')")
+
+                evaluate(browser.webView, "document.getElementById('open-pdf').click()")
+                awaitJavascript(browser.webView, paintedPage(1))
+                assertTrue(onMain { browser.controller.isPdfPage })
+            }
+        }
+    }
+
+    @Test
     fun subframeNavigationDoesNotCancelPendingPdf() {
         TestServer().use { server ->
             fixture().use { browser ->
@@ -901,6 +934,7 @@ class CommentsWebViewLifecycleTest {
         val challengeRequests = AtomicInteger()
         private val pdfRequests = AtomicInteger()
         val pdfDownloadStarted = CountDownLatch(1)
+        val pdfResponseSent = CountDownLatch(1)
         val releasePdf = CountDownLatch(1)
 
         init {
@@ -913,6 +947,12 @@ class CommentsWebViewLifecycleTest {
                             val request = reader.readLine().orEmpty()
                             while (!reader.readLine().isNullOrEmpty()) Unit
                             val path = request.substringAfter(' ').substringBefore(' ')
+                            if (path == "/pdf-redirect") {
+                                socket.getOutputStream().write(
+                                    "HTTP/1.1 302 Found\r\nLocation: /document.pdf\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()
+                                )
+                                return@use
+                            }
                             val pdf = path == "/document.pdf"
                             if (path == "/challenge") challengeRequests.incrementAndGet()
                             if (pdf && pdfRequests.incrementAndGet() > 1) {
@@ -922,6 +962,12 @@ class CommentsWebViewLifecycleTest {
                                 pageRequests.incrementAndGet()
                             }
                             val bytes = if (pdf) pdfBytes else when (path) {
+                                "/embedded-pdf", "/embedded-pdf-redirect" -> {
+                                    val pdfUrl = if (path.endsWith("-redirect")) "/pdf-redirect" else "/document.pdf"
+                                    "<html><head><title>$PAGE_TITLE</title></head><body>Article remains visible" +
+                                        "<iframe src='$pdfUrl'></iframe>" +
+                                        "<a id='open-pdf' href='$pdfUrl'>Open PDF</a></body></html>"
+                                }
                                 "/summary-check" -> "<html><head><title>Vercel Security Checkpoint</title></head>" +
                                     "<body>We're verifying your browser<script>setTimeout(function(){" +
                                     "document.title='Article';document.body.innerText='Article rendered after verification. The browser ran JavaScript while covered by comments.';},1500);</script></body></html>"
@@ -954,6 +1000,7 @@ class CommentsWebViewLifecycleTest {
                                 write(bytes)
                                 flush()
                             }
+                            if (pdf) pdfResponseSent.countDown()
                         }
                     }
                 }
