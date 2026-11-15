@@ -41,9 +41,9 @@ Save the JSON, instrumentation output, APK, R8 mapping and representative Perfet
 outside the repository before installing another version. Instrumentation prints the trace paths. Check for
 `OK (1 test)` and both metric arrays: ADB's process exit code alone does not establish success.
 
-The existing benchmark build is unminified by default, which is useful for other performance
-tests. `harmonic.benchmark.minify=true` enables R8 and resource shrinking for startup tests;
-Startup Profile DEX layout optimization requires R8. Both versions must use the same setting.
+The benchmark build enables R8 and resource shrinking by default. Use
+`harmonic.benchmark.minify=false` while collecting profiles. Startup Profile DEX layout
+optimization requires R8. Both measured versions must use the same setting.
 The two annotation warnings suppressed in `app/benchmark-rules.pro` are compile-time-only
 Tink annotations missing from the benchmark's classpath.
 
@@ -55,11 +55,12 @@ kill the app process; they do not mean fresh installation or cleared HTTP caches
 
 ## Profiles
 
-`BaselineProfileGenerator` has four independent, deterministic journeys:
+`BaselineProfileGenerator` has five independent, deterministic journeys:
 
 - `startup`: launch the fixed Stories host and wait for its first story, with
   `includeInStartupProfile = true`.
 - `stories`: scroll the fixed feed down and back up.
+- `settings`: open the settings list from the fixed feed.
 - `comments`: seed and reopen the large cached thread, collapse/expand its first subtree three
   times (asserting the reply disappears/reappears), scroll, and return.
 - `reader`: open a local article from the feed, enable reader mode, verify site navigation is
@@ -82,6 +83,11 @@ with default reading/comment settings; the normal Harmonic package and its conte
 `app/src/main/baseline-prof.txt` and `app/src/main/baselineProfiles/startup-prof.txt`,
 where Android build tools consume them. Run profile generation with the
 unminified benchmark build, then rebuild the R8 measurement APK.
+
+Keep observed dependency rules, including Compose, resource loading and coroutines, as well as
+application rules. Filtering to the application package drops launch code from startup DEX layout
+and from the generated baseline profile. Only the benchmark fixture activity and its nested classes
+are excluded because they are absent from distributable builds.
 
 For a full refresh, run `:app:installBenchmarkBaselineProfile` with the desired connected device
 selected through `ANDROID_SERIAL`. Use `-PbenchmarkRunner=androidx.test.runner.AndroidJUnitRunner`.

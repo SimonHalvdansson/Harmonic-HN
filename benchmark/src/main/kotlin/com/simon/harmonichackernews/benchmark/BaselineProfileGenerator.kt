@@ -82,4 +82,6 @@ class BaselineProfileGenerator {
 }
 
 private fun isProductionProfileRule(rule: String): Boolean =
-    rule.contains("com/simon/harmonichackernews") && !rule.contains("StoriesScrollBenchmarkActivity")
+    // Launch also executes Compose, resource loading, and coroutine code. Keep those observed
+    // dependency paths in the app profile; only the fixture activity is absent from releases.
+    !rule.contains("StoriesScrollBenchmarkActivity")

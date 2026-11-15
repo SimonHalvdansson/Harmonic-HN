@@ -262,8 +262,8 @@ tasks.register("installBenchmarkBaselineProfile") {
         def readRules = { String kind ->
             files.findAll { it.name.contains("-${kind}-prof-") && it.name.endsWith(".txt") }
                     .collectMany { it.readLines("UTF-8") }
-                    .findAll { it.contains("com/simon/harmonichackernews") &&
-                            !it.contains("StoriesScrollBenchmarkActivity") }
+                    // Preserve observed dependency paths as well as application code.
+                    .findAll { !it.contains("StoriesScrollBenchmarkActivity") }
                     .unique().sort()
         }
         def startupRules = readRules("startup")
