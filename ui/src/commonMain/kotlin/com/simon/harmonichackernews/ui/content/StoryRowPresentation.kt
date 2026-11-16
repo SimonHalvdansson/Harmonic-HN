@@ -29,10 +29,10 @@ import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 private const val ContentAnimationDuration = 220
 internal val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-private const val ReadContentLightAlpha = 0.79f
-private const val ReadContentLightTintedAlpha = 0.825f
-private const val ReadContentDarkAlpha = 0.685f
-private const val ReadContentDarkTintedAlpha = 0.755f
+private const val ReadContentLightAlpha = 0.70f
+private const val ReadContentLightTintedAlpha = 0.75f
+private const val ReadContentDarkAlpha = 0.65f
+private const val ReadContentDarkTintedAlpha = 0.67f
 
 /** Shared read opacity for story content; surfaces retain their normal color. */
 internal fun storyContentAlpha(
