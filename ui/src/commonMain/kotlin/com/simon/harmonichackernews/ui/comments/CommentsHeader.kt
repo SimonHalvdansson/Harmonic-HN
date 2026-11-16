@@ -48,6 +48,7 @@ import androidx.compose.material3.ButtonDefaults
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -915,7 +916,7 @@ private fun SheetButtonContent(
     tint: Color,
     onClick: () -> Unit,
 ) {
-    CommentsTooltip(description) {
+    HarmonicTooltip(description) {
         IconButton(onClick = onClick, modifier = Modifier.size(CommentsSheetButtonSize)) {
             Icon(
                 painter = painterResource(icon),

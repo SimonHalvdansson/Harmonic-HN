@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.PopupPositionProvider
 import com.simon.harmonichackernews.ui.common.TextButton
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationTransitionDurationMillis
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import kotlinx.coroutines.delay
@@ -137,7 +138,7 @@ internal fun StoriesMenuWelcomeHint(
             }
         },
     ) {
-        StoriesTooltip("More options", enabled = !visible) { content(state.isVisible) }
+        HarmonicTooltip("More options", enabled = !visible) { content(state.isVisible) }
     }
 }
 

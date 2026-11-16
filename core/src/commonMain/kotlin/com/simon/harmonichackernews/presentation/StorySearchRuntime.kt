@@ -44,7 +44,7 @@ class StorySearchRuntime {
         }
 
         if (state.failure != null) {
-            store.setFailure(state.failure)
+            store.fail(state.failure)
             clearLoadMoreState(store)
             return StorySearchApplication(consumed = true, completed = true)
         }

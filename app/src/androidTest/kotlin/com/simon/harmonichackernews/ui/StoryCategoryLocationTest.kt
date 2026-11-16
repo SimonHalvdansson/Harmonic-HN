@@ -44,7 +44,7 @@ class StoryCategoryLocationTest {
                     repository = settings, categorySettings = categories,
                     previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
                     showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {},
-                    onManageFrontpages = {}, onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> },
+                    onManageFrontpages = {}, onPaletteTintRequested = {},
                 )
             }
         }

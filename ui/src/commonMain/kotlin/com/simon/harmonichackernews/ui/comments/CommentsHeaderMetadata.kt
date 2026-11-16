@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.selected
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import com.simon.harmonichackernews.utils.AgePolicy
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.foundation.layout.Arrangement
@@ -212,7 +213,7 @@ private fun HeaderDetailButton(
         tween(180), label = "header detail button content",
     )
     Box(modifier) {
-        CommentsTooltip(description) {
+        HarmonicTooltip(description) {
             FilledTonalButton(
                 onClick = onClick, enabled = enabled && !loading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)

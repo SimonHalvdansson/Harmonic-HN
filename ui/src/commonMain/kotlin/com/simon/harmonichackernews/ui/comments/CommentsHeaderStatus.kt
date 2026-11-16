@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -90,7 +91,7 @@ fun OpFilterBanner(controller: CommentsScreenController) {
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
             )
-            CommentsTooltip("Show all comments") {
+            HarmonicTooltip("Show all comments") {
                 IconButton(
                     onClick = {
                         controller.listener.onMoreAction(

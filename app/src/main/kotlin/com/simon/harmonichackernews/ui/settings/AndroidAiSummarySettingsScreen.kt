@@ -11,9 +11,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 
 @Composable
@@ -80,39 +78,6 @@ fun AndroidAiSummarySettingsScreen(
                 },
             )
         },
-        dialogContent = { dialog, onDismiss ->
-            when (dialog) {
-                AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(onDismiss = onDismiss)
-                AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.API_KEY,
-                    title = "API Key",
-                    hint = "API Key",
-                    defaultValue = "",
-                    minLines = 1,
-                    maxLines = 1,
-                    textSizeSp = 16,
-                    trimValue = true,
-                    allowEmpty = true,
-                    showReset = false,
-                    onDismiss = onDismiss,
-                    onSaved = { localRefresh++ },
-                )
-                AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = onDismiss)
-                AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.SYSTEM_PROMPT,
-                    title = "System prompt",
-                    hint = "System prompt",
-                    defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
-                    minLines = 5,
-                    maxLines = 10,
-                    textSizeSp = 15,
-                    trimValue = false,
-                    allowEmpty = true,
-                    showReset = true,
-                    onDismiss = onDismiss,
-                    onSaved = { localRefresh++ },
-                )
-            }
-        },
+        onTextSettingSaved = { localRefresh++ },
     )
 }

@@ -138,7 +138,14 @@ fun PortableSettingsDetail(
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onProfileAccepted = { scene.userProfiles.open(it) },
             profileDialog = { userName, dismiss, onTagChanged ->
-                PortableUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
+                UserProfileDialog(
+                    scene = scene,
+                    settingsRepository = app.settings,
+                    userTags = app.userTags,
+                    userName = userName,
+                    onDismiss = dismiss,
+                    onTagChanged = onTagChanged,
+                )
             },
         )
         SettingsSection.AiSummary -> aiSettings()
@@ -270,9 +277,6 @@ private fun PortableStoriesSettings(
                 SettingsPlatformEffect.RefreshStoryWidgets -> Unit
                 SettingsPlatformEffect.ThemeChanged -> app.appearance.refreshSelection()
             }
-        },
-        faviconDialog = { selected, _, onSelected, dismiss ->
-            FaviconProviderRoute(selected, onSelected, dismiss)
         },
     )
 }

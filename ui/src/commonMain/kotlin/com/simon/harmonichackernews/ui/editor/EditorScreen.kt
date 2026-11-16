@@ -45,20 +45,15 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.verticalScroll
 import com.simon.harmonichackernews.ui.common.ScrollableTextDecorations
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,10 +71,8 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -729,7 +722,7 @@ private fun ComposeEditorActionBar(
                 )
             }
         }
-        EditorTooltip("Submit") {
+        HarmonicTooltip("Submit") {
             SubmitButton(
                 enabled = submitEnabled,
                 submitting = submitting,
@@ -748,7 +741,7 @@ private fun FormattingButton(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    EditorTooltip(description) {
+    HarmonicTooltip(description) {
         IconButton(
             onClick = onClick,
             enabled = enabled,
@@ -764,28 +757,6 @@ private fun FormattingButton(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditorTooltip(
-    description: String,
-    content: @Composable () -> Unit,
-) {
-    val tooltipState = rememberTooltipState()
-    val hapticFeedback = LocalHapticFeedback.current
-    LaunchedEffect(tooltipState.isVisible) {
-        if (tooltipState.isVisible) {
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            TooltipAnchorPosition.Above,
-        ),
-        tooltip = { PlainTooltip { Text(description) } },
-        state = tooltipState,
-        content = content,
-    )
-}
 
 @Composable
 private fun SubmitButton(

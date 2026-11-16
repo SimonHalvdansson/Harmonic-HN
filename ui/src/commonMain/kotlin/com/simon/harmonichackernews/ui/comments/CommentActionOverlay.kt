@@ -59,6 +59,7 @@ import com.simon.harmonichackernews.ui.common.rememberGraphicsLayerSnapshot
 import com.simon.harmonichackernews.ui.common.shouldUpdateRestingTargetGeometry
 import androidx.compose.material3.ButtonDefaults
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -827,7 +828,7 @@ private fun RowScope.CommentActionIcon(
         contentAlignment = Alignment.Center,
     ) {
         if (iconContent != null) {
-            CommentsTooltip(description) {
+            HarmonicTooltip(description) {
                 IconButton(onClick = onClick, enabled = enabled) { iconContent() }
             }
             return@Box
@@ -861,7 +862,7 @@ private fun RowScope.CommentActionIcon(
             if (visual.loading) {
                 HarmonicLoadingIndicator(Modifier.size(28.dp))
             } else {
-                CommentsTooltip(visual.description) {
+                HarmonicTooltip(visual.description) {
                     IconButton(onClick = onClick, enabled = enabled) {
                         Icon(
                             painterResource(visual.icon),

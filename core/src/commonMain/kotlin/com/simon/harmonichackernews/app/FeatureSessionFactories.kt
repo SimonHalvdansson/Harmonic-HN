@@ -107,34 +107,7 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
     val featureScope = host.scope.childFeatureScope()
     val storyCacheRuntime = createStoryCacheRuntime(featureScope)
     val captchaActions = host.captchaResponder?.let { CaptchaAwareHackerNewsActions(hackerNewsUser, it) }
-    val actions = SavedItemActionUseCase(
-        repository = savedItems,
-        nowMillis = nowMillis,
-        voteRequest = { id, direction ->
-            captchaActions?.vote(id.toString(), direction) ?: hackerNewsUser.vote(id.toString(), direction)
-        },
-        favoriteRequest = { id, favorite ->
-            captchaActions?.setFavorite(id, favorite) ?: hackerNewsUser.setFavorite(id, favorite)
-        },
-        accountRequest = { action ->
-            when (action.kind) {
-                SavedItemActionKind.VOTE -> if (captchaActions != null) captchaActions.voteForAccount(
-                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                ) else hackerNewsUser.voteForAccount(
-                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                )
-                SavedItemActionKind.FAVORITE -> if (captchaActions != null) captchaActions.setFavoriteForAccount(
-                    action.accountName, action.itemId, action.targetPresent,
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                ) else hackerNewsUser.setFavoriteForAccount(
-                    action.accountName, action.itemId, action.targetPresent,
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                )
-            }
-        },
-    )
+    val actions = createSavedItemActions(captchaActions)
     val requests = StoryRequests(
         scope = featureScope,
         sessionState = host.sessionState,
@@ -191,34 +164,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
 ): CommentsFeatureStore {
     val featureScope = host.scope.childFeatureScope()
     val captchaActions = host.captchaResponder?.let { CaptchaAwareHackerNewsActions(hackerNewsUser, it) }
-    val actions = SavedItemActionUseCase(
-        repository = savedItems,
-        nowMillis = nowMillis,
-        voteRequest = { id, direction ->
-            captchaActions?.vote(id.toString(), direction) ?: hackerNewsUser.vote(id.toString(), direction)
-        },
-        favoriteRequest = { id, favorite ->
-            captchaActions?.setFavorite(id, favorite) ?: hackerNewsUser.setFavorite(id, favorite)
-        },
-        accountRequest = { action ->
-            when (action.kind) {
-                SavedItemActionKind.VOTE -> if (captchaActions != null) captchaActions.voteForAccount(
-                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                ) else hackerNewsUser.voteForAccount(
-                    action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                )
-                SavedItemActionKind.FAVORITE -> if (captchaActions != null) captchaActions.setFavoriteForAccount(
-                    action.accountName, action.itemId, action.targetPresent,
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                ) else hackerNewsUser.setFavoriteForAccount(
-                    action.accountName, action.itemId, action.targetPresent,
-                    isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
-                )
-            }
-        },
-    )
+    val actions = createSavedItemActions(captchaActions)
     val presenter = CommentsPresenter(
         featureScope,
         host.sessionState,
@@ -273,6 +219,37 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         commentedStoryIds = commentedStories.ids,
     )
 }
+
+private fun HarmonicAppComposition.createSavedItemActions(
+    captchaActions: CaptchaAwareHackerNewsActions?,
+): SavedItemActionUseCase = SavedItemActionUseCase(
+    repository = savedItems,
+    nowMillis = nowMillis,
+    voteRequest = { id, direction ->
+        captchaActions?.vote(id.toString(), direction) ?: hackerNewsUser.vote(id.toString(), direction)
+    },
+    favoriteRequest = { id, favorite ->
+        captchaActions?.setFavorite(id, favorite) ?: hackerNewsUser.setFavorite(id, favorite)
+    },
+    accountRequest = { action ->
+        when (action.kind) {
+            SavedItemActionKind.VOTE -> if (captchaActions != null) captchaActions.voteForAccount(
+                action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+            ) else hackerNewsUser.voteForAccount(
+                action.accountName, action.itemId.toString(), requireNotNull(action.voteDirection),
+                isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+            )
+            SavedItemActionKind.FAVORITE -> if (captchaActions != null) captchaActions.setFavoriteForAccount(
+                action.accountName, action.itemId, action.targetPresent,
+                isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+            ) else hackerNewsUser.setFavoriteForAccount(
+                action.accountName, action.itemId, action.targetPresent,
+                isAccountCurrent = { savedItems.currentAccountRevision == action.accountRevision },
+            )
+        }
+    },
+)
 
 private fun CoroutineScope.childFeatureScope(): CoroutineScope = CoroutineScope(
     coroutineContext + SupervisorJob(coroutineContext[Job]),

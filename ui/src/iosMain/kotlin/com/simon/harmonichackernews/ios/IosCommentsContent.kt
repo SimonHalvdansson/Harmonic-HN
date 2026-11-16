@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ios
 import com.simon.harmonichackernews.ui.session.commentsViewModel
 import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
 import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -44,9 +42,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
-import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
-import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
@@ -64,23 +60,19 @@ import com.simon.harmonichackernews.ui.comments.LocalSideBySideCommentsPortal
 import com.simon.harmonichackernews.ui.comments.rememberSideBySideCommentsContent
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
-import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
-import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
 import com.simon.harmonichackernews.ui.comments.referenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
-import com.simon.harmonichackernews.ui.comments.CommentsHeader
+import com.simon.harmonichackernews.ui.comments.PortableCommentsHeader
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.rememberCommentsListState
 import com.simon.harmonichackernews.ui.comments.CommentsRoute
 import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.SearchLinkPreviewBackHandler
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
-import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
-import com.simon.harmonichackernews.utils.HtmlTextUtils
 import platform.UIKit.UIDevice
 import platform.UIKit.UIUserInterfaceIdiomPhone
 import kotlinx.coroutines.CompletableDeferred
@@ -373,14 +365,23 @@ internal fun IosCommentsContent(
                     reserveUpButtonInset = showFloatingUpButton && !backInTopInset && !browserActionsOnRight,
                     listState = listState,
                     headerContent = { settings ->
-                        IosCommentsHeader(app, scene, host.controller,
-                            settings.copy(showUpButton = settings.showUpButton && !browserActionsOnRight),
-                            !browserActionsOnRight) {
-                            val browser = host.webView
-                            if (browser?.canGoBack() == true) browser.goBack()
-                            else if (isTwoPane) host.controller.requestExpandSheet()
-                            else scene.navigation.returnToStories()
-                        }
+                        PortableCommentsHeader(
+                            app = app,
+                            scene = scene,
+                            controller = host.controller,
+                            settings = settings.copy(
+                                showUpButton = settings.showUpButton && !browserActionsOnRight,
+                            ),
+                            headerTopPadding = if (settings.isTablet) 32.dp else 24.dp,
+                            horizontalContentInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                            sheetActionsInHeader = !browserActionsOnRight,
+                            onBrowserBack = {
+                                val browser = host.webView
+                                if (browser?.canGoBack() == true) browser.goBack()
+                                else if (isTwoPane) host.controller.requestExpandSheet()
+                                else scene.navigation.returnToStories()
+                            },
+                        )
                     },
                     searchDialog = { settings ->
                         CommentsSearchDialog(
@@ -573,110 +574,6 @@ private fun handleIosCommentsPlatformEffect(
             host.webView?.reader?.toggle()
         CommentsPlatformEffect.ToggleDarkMode -> host.webView?.toggleInversion()
     }
-}
-
-@Composable
-private fun IosCommentsHeader(
-    app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
-    controller: CommentsScreenController,
-    settings: CommentDisplaySettings,
-    sheetActionsInHeader: Boolean,
-    onBrowserBack: () -> Unit,
-) {
-    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
-    val presentation = remember(
-        controller.story,
-        controller.contentVersion,
-        controller.headerPreviewResource,
-        settings,
-        tintBase,
-    ) {
-        CommentsHeaderPresentationFactory.create(
-            story = controller.story,
-            previewResource = controller.headerPreviewResource,
-            faviconProvider = settings.faviconProvider,
-            paletteTintMode = settings.paletteTintMode,
-            tintBaseColor = tintBase,
-            tintStore = app.storyResourceTints,
-            userTags = app.userTags,
-            lastRefreshedMillis = controller.lastRefreshed,
-            formatTime = app.platform.timeFormatting::time,
-        )
-    }
-    val previewPlatform = remember(scene) {
-        CommentsPreviewPlatform(
-            textStyle = TextStyle.Default,
-            openLink = { it?.let(scene.links::open) },
-            downloadPdf = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
-            openCustomTab = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
-            plainText = HtmlTextUtils::plainText,
-        )
-    }
-
-    CommentsHeader(
-        controller = controller,
-        settings = settings,
-        contentVersion = controller.contentVersion,
-        storyPosterTag = presentation.posterTag,
-        storyPosterTagColor = presentation.posterTagColor,
-        tintBaseColor = tintBase,
-        initialTint = presentation.tint.initialTintArgb,
-        headerTopPadding = if (settings.isTablet) 32.dp else 24.dp,
-        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
-        lastRefreshedText = presentation.lastRefreshedText,
-        textStyle = TextStyle.Default,
-        previewPlatform = previewPlatform,
-        includeStatusBarSpacer = true,
-        horizontalContentInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-        sheetActionsInHeader = sheetActionsInHeader,
-        onBrowserBack = onBrowserBack,
-        linkPreviewsEnabled = app.userSettings.reading.linkPreviewsEnabled,
-        headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
-            presentation.tint.previewImageAvailable,
-        headerPreviewImage = { imageModifier, _, onTintLoaded ->
-            val imageUrl = presentation.tint.previewImageUrl
-            HeaderPreviewImage(
-                modifier = imageModifier,
-                imageUrl = imageUrl,
-                initiallyFailed = controller.headerPreviewResource?.imageLoadFailed == true,
-                visible = settings.showHeaderPreviewImage,
-                suppressed = controller.headerPreviewSuppressed,
-                tintBaseColorArgb = tintBase,
-                paletteTintConfigKey = presentation.tint.paletteMode,
-                extractTint = settings.tintHeader,
-                onTintExtracted = { tint ->
-                    val canonical = imageUrl?.let { sourceUrl ->
-                        controller.listener.onHeaderPreviewTintExtracted(
-                            sourceUrl,
-                            tintBase,
-                            presentation.tint.paletteMode,
-                            tint,
-                        )
-                    } ?: tint
-                    onTintLoaded(canonical)
-                },
-                onImageResult = { success ->
-                    imageUrl?.let {
-                        controller.listener.onHeaderPreviewImageResult(it, success)
-                    }
-                },
-                onClick = controller.listener::onHeaderClick,
-                onLongClick = { bounds, sourceContentLayer, imageAspectRatio ->
-                    imageUrl?.let { url ->
-                        controller.showImagePreview(
-                            imageUrl = url,
-                            description = "Preview image for ${controller.story.title.orEmpty()}",
-                            sourceBounds = bounds,
-                            sourceContentLayer = sourceContentLayer,
-                            imageAspectRatio = imageAspectRatio,
-                            backgroundColor = tintBase,
-                        )
-                    }
-                },
-            )
-        },
-    )
 }
 
 @Composable

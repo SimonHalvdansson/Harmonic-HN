@@ -36,12 +36,5 @@ fun AndroidStoriesSettingsScreen(
                 SettingsPlatformEffect.ThemeChanged -> Unit
             }
         },
-        faviconDialog = { selected, _, onSelected, dismiss ->
-            FaviconProviderRoute(
-                selected = selected,
-                onProviderSelected = onSelected,
-                onDismiss = dismiss,
-            )
-        },
     )
 }

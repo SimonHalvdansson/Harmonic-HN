@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 
 import com.simon.harmonichackernews.network.AiSummaryProviders
+import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.settings.GeneralBooleanPreference
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
@@ -22,6 +23,7 @@ import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
+import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.ContentFilterRepository
@@ -102,10 +104,7 @@ fun AiSummarySettingsRoute(
     onLocalModeUnavailable: () -> Unit,
     onArticleCategoriesRequested: (() -> Unit)? = null,
     localModelsContent: @Composable () -> Unit,
-    dialogContent: @Composable (
-        dialog: AiSummarySettingsDialog,
-        onDismiss: () -> Unit,
-    ) -> Unit,
+    onTextSettingSaved: () -> Unit,
 ) {
     val persistedSettings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
@@ -219,7 +218,41 @@ fun AiSummarySettingsRoute(
     )
     dialog?.takeIf {
         repository.cloudAiSupported || it == AiSummarySettingsDialog.SystemPrompt
-    }?.let { dialogContent(it) { dialog = null } }
+    }?.let { activeDialog ->
+        val dismiss = { dialog = null }
+        when (activeDialog) {
+            AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(onDismiss = dismiss)
+            AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
+                setting = AiSummaryTextSetting.API_KEY,
+                title = "API Key",
+                hint = "API Key",
+                defaultValue = "",
+                minLines = 1,
+                maxLines = 1,
+                textSizeSp = 16,
+                trimValue = true,
+                allowEmpty = true,
+                showReset = false,
+                onDismiss = dismiss,
+                onSaved = onTextSettingSaved,
+            )
+            AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
+            AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
+                setting = AiSummaryTextSetting.SYSTEM_PROMPT,
+                title = "System prompt",
+                hint = "System prompt",
+                defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
+                minLines = 5,
+                maxLines = 10,
+                textSizeSp = 15,
+                trimValue = false,
+                allowEmpty = true,
+                showReset = true,
+                onDismiss = dismiss,
+                onSaved = onTextSettingSaved,
+            )
+        }
+    }
 }
 
 @Composable
@@ -444,12 +477,6 @@ fun StoriesSettingsRoute(
     onPaletteTintRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit = {},
     categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
-    faviconDialog: @Composable (
-        selected: String,
-        presenter: StoriesSettingsPresenter,
-        onSelected: (String) -> Unit,
-        onDismiss: () -> Unit,
-    ) -> Unit,
 ) {
     var refresh by remember { mutableIntStateOf(0) }
     var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
@@ -504,14 +531,13 @@ fun StoriesSettingsRoute(
             { dialog = null },
             presenter::setHotness,
         )
-        StoriesSettingsDialog.FaviconProvider -> faviconDialog(
-            story.faviconProvider,
-            presenter,
-            {
+        StoriesSettingsDialog.FaviconProvider -> FaviconProviderDialog(
+            selected = story.faviconProvider,
+            onProviderSelected = {
                 presenter.setFaviconProvider(it)
                 refresh++
             },
-            { dialog = null },
+            onDismiss = { dialog = null },
         )
         null -> Unit
     }

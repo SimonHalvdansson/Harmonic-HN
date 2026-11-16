@@ -25,22 +25,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_algolia
+import com.simon.harmonichackernews.resources.ic_favicon_provider_duckduckgo
+import com.simon.harmonichackernews.resources.ic_favicon_provider_google
+import com.simon.harmonichackernews.resources.ic_favicon_provider_twenty
 import com.simon.harmonichackernews.settings.CommentsProvider
+import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.FaviconProviderCatalog
 import com.simon.harmonichackernews.ui.theme.AppTechnicalFontFamily
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
-data class FaviconProviderUiOption(
-    val value: String,
-    val label: String,
-    val urlTemplate: String,
-    val icon: Painter,
+@Composable
+fun faviconProviderPainter(provider: String): Painter = painterResource(
+    when (FaviconPreferences.sanitizeProvider(provider)) {
+        FaviconPreferences.DUCK_DUCK_GO -> Res.drawable.ic_favicon_provider_duckduckgo
+        FaviconPreferences.TWENTY -> Res.drawable.ic_favicon_provider_twenty
+        else -> Res.drawable.ic_favicon_provider_google
+    },
 )
 
 @Composable
-fun FaviconProviderDialog(
+internal fun FaviconProviderDialog(
     selected: String,
-    options: List<FaviconProviderUiOption>,
     onProviderSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -55,7 +61,7 @@ fun FaviconProviderDialog(
                     .padding(top = 4.dp, bottom = 8.dp)
                     .selectableGroup(),
             ) {
-                options.forEach { provider ->
+                FaviconProviderCatalog.options.forEach { provider ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -72,7 +78,7 @@ fun FaviconProviderDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Image(
-                            painter = provider.icon,
+                            painter = faviconProviderPainter(provider.value),
                             contentDescription = null,
                             modifier = Modifier.size(32.dp),
                         )

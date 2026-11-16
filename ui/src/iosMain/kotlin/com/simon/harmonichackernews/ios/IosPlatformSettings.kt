@@ -11,16 +11,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
-import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.platform.TextDocumentCallback
-import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
-import com.simon.harmonichackernews.ui.settings.AiModelSelectorRoute
-import com.simon.harmonichackernews.ui.settings.AiSummaryBaseUrlDialog
-import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsRoute
-import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
 import com.simon.harmonichackernews.ui.settings.DataSettingsRuntimeContent
 import com.simon.harmonichackernews.ui.settings.ManagedLocalModelPanel
 import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
@@ -139,40 +133,7 @@ private fun IosAiSettings(
                 )
             }
         },
-        dialogContent = { dialog, dismiss ->
-            when (dialog) {
-                AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(dismiss)
-                AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.API_KEY,
-                    title = "API Key",
-                    hint = "API Key",
-                    defaultValue = "",
-                    minLines = 1,
-                    maxLines = 1,
-                    textSizeSp = 16,
-                    trimValue = true,
-                    allowEmpty = true,
-                    showReset = false,
-                    onDismiss = dismiss,
-                    onSaved = { refresh++ },
-                )
-                AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
-                AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.SYSTEM_PROMPT,
-                    title = "System prompt",
-                    hint = "System prompt",
-                    defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
-                    minLines = 5,
-                    maxLines = 10,
-                    textSizeSp = 15,
-                    trimValue = false,
-                    allowEmpty = true,
-                    showReset = true,
-                    onDismiss = dismiss,
-                    onSaved = { refresh++ },
-                )
-            }
-        },
+        onTextSettingSaved = { refresh++ },
     )
 }
 

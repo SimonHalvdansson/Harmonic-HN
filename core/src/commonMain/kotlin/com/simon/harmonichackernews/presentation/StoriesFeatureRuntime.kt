@@ -1192,7 +1192,7 @@ class StoriesFeatureRuntime(
     fun showCachedStories(cachedStories: List<Story>) {
         beginGeneration()
         activeStore.setShowingCached(true)
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         refreshIndicatorShowing = false
         rateLimited = false
         sessionState.hiddenStoryRows.reset()
@@ -1233,7 +1233,7 @@ class StoriesFeatureRuntime(
         activeStore.setPaginationEnabled(shouldUsePagination(currentType))
         activeStore.setVisibleStoryCount(initialVisibleCount(activeStore))
         activeStore.setCanLoadMore(false)
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         refreshIndicatorShowing = false
         rateLimited = false
         changed()
@@ -1634,7 +1634,7 @@ class StoriesFeatureRuntime(
         syncUserItemStories(effect.snapshot.itemIds, effect.snapshot.commentIds)
         userItemsInitialLoadInProgress = false
         refreshIndicatorShowing = false
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         changed()
     }
 

@@ -220,18 +220,8 @@ class StoryListStore(
         )
     }
 
-    fun setFailure(failure: StoryLoadFailure?) {
-        if (failure == null) {
-            publish(failure = null, refreshItems = false)
-        } else {
-            publish(
-                loading = false,
-                refreshing = false,
-                loadMoreInProgress = false,
-                failure = failure,
-                refreshItems = false,
-            )
-        }
+    fun clearFailure() {
+        publish(failure = null, refreshItems = false)
     }
 
     fun cancelTransientLoads() {
