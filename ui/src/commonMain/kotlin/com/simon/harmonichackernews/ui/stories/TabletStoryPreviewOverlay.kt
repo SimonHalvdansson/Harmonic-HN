@@ -1,4 +1,4 @@
-package com.simon.harmonichackernews.desktop
+package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -9,16 +9,13 @@ import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.platform.accountOrNull
-import com.simon.harmonichackernews.ui.stories.StoryPreviewCard
-import com.simon.harmonichackernews.ui.stories.StoryPreviewOverlay
-import com.simon.harmonichackernews.ui.stories.StoriesScreenController
-import com.simon.harmonichackernews.ui.stories.StoryPreviewSummaryState
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 
 @Composable
-internal fun DesktopStoryPreviewOverlay(
+fun TabletStoryPreviewOverlay(
     app: HarmonicAppComposition,
     controller: StoriesScreenController,
+    pageOnScrollWheel: Boolean = false,
 ) {
     val fallbackSettings = remember(app.userSettings.story) {
         StoryDisplaySettings.from(app.userSettings.story)
@@ -32,7 +29,7 @@ internal fun DesktopStoryPreviewOverlay(
     StoryPreviewOverlay(
         controller = controller,
         tablet = true,
-        pageOnScrollWheel = true,
+        pageOnScrollWheel = pageOnScrollWheel,
     ) { story, page, cardColor, modifier ->
         val previewResource = controller.previewResource(story.id)
             ?.takeIf { it.pageUrl == story.url }

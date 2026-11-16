@@ -9,11 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
@@ -28,14 +25,12 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
 import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
-import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_android
 import org.jetbrains.compose.resources.DrawableResource
@@ -122,12 +117,13 @@ fun PortableSettingsDetail(
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
-        SettingsSection.WebLinks -> PortableWebLinksSettings(
-            app = app,
-            capabilities = webLinksCapabilities,
+        SettingsSection.WebLinks -> WebLinksSettingsRoute(
+            repository = app.settings,
             showNavigation = singlePane,
             onBack = onBack,
             onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
+            capabilities = webLinksCapabilities,
+            archiveDomainsSubtitle = "Choose domains where Harmonic should redirect links to archive.is.",
         )
         SettingsSection.ReaderMode -> ReaderModeSettingsRoute(
             app.settings, onBack, readerPreview,
@@ -179,79 +175,6 @@ fun PortableSettingsDetail(
             licenses = CommonLicenseCatalog.entries,
             onBack = onBack,
             onOpenLicense = { scene.links.open(it) },
-        )
-    }
-}
-
-@Composable
-private fun PortableWebLinksSettings(
-    app: HarmonicAppComposition,
-    capabilities: WebLinksSettingsCapabilities,
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-    onReaderModeRequested: () -> Unit,
-) {
-    var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
-    val presenter = remember(app.settings) { WebLinksSettingsPresenter(app.settings) }
-    val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
-    val reading = settings.reading
-
-    WebLinksSettingsScreen(
-        state = presenter.state(reading.readerModeFont.label, settings),
-        capabilities = capabilities,
-        showNavigation = showNavigation,
-        onBack = onBack,
-        onBooleanChanged = presenter::setBoolean,
-        onReaderModeRequested = onReaderModeRequested,
-        onDialogRequested = { requested ->
-            if (
-                requested == WebLinksSettingsDialog.Preload ||
-                requested == WebLinksSettingsDialog.ArchiveDomains ||
-                requested == WebLinksSettingsDialog.LinkPreviews ||
-                requested == WebLinksSettingsDialog.NitterInstance
-            ) {
-                dialog = requested
-            }
-        },
-        contentVersion = settings.hashCode(),
-    )
-
-    if (dialog == WebLinksSettingsDialog.Preload) {
-        PreloadWebViewDialog(
-            initialMode = reading.preloadWebViewMode,
-            initialBattery = reading.preloadWebViewMinimumBattery,
-            onSave = presenter::setPreload,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.ArchiveDomains) {
-        StringListEditorDialog(
-            title = "Redirect to archive version",
-            subtitle = "Choose domains where Harmonic should redirect links to archive.is.",
-            inputLabel = "Domain",
-            initialItems = reading.archiveRedirectDomains,
-            emptyMessage = "No archive redirect domains",
-            suggestedItems = ArchiveRedirectDomainCatalog.suggested,
-            suggestionsLabel = "Suggested domains",
-            parseInput = ArchiveRedirectPolicy::parseDomains,
-            emptyInputError = "Enter a domain",
-            onItemsChanged = presenter::setArchiveDomains,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.NitterInstance) {
-        NitterInstanceDialog(
-            initialValue = reading.nitterInstanceUrl,
-            onSave = presenter::setNitterInstanceUrl,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.LinkPreviews) {
-        LinkPreviewsSettingsDialog(
-            enabledTypes = reading.enabledLinkPreviews,
-            previewsEnabled = reading.linkPreviewsEnabled,
-            onEnabledChanged = presenter::setLinkPreview,
-            onDismiss = { dialog = null },
         )
     }
 }

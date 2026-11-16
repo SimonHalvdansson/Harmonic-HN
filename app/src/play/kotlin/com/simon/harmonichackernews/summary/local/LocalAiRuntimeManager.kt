@@ -392,55 +392,32 @@ internal class LocalAiRuntimeManager(
             synchronized(LOCK) { CONFIRMATION_REQUESTED.remove(installState.sessionId()) }
         }
         val pendingModel = getPendingModel(runtime)
+        fun publishSessionStatus(state: LocalRuntimeInstallState) {
+            setStatus(
+                status(
+                    runtime,
+                    state,
+                    installState.bytesDownloaded(),
+                    installState.totalBytesToDownload(),
+                    "",
+                    pendingModel,
+                    installState.sessionId(),
+                ),
+            )
+        }
+
         when (installState.status()) {
-            SplitInstallSessionStatus.PENDING -> setStatus(
-                status(
-                    runtime,
-                    LocalRuntimeInstallState.PENDING,
-                    installState.bytesDownloaded(),
-                    installState.totalBytesToDownload(),
-                    "",
-                    pendingModel,
-                    installState.sessionId()
-                )
-            )
+            SplitInstallSessionStatus.PENDING, SplitInstallSessionStatus.CANCELING ->
+                publishSessionStatus(LocalRuntimeInstallState.PENDING)
 
-            SplitInstallSessionStatus.DOWNLOADING -> setStatus(
-                status(
-                    runtime,
-                    LocalRuntimeInstallState.DOWNLOADING,
-                    installState.bytesDownloaded(),
-                    installState.totalBytesToDownload(),
-                    "",
-                    pendingModel,
-                    installState.sessionId()
-                )
-            )
+            SplitInstallSessionStatus.DOWNLOADING ->
+                publishSessionStatus(LocalRuntimeInstallState.DOWNLOADING)
 
-            SplitInstallSessionStatus.DOWNLOADED, SplitInstallSessionStatus.INSTALLING -> setStatus(
-                status(
-                    runtime,
-                    LocalRuntimeInstallState.INSTALLING,
-                    installState.bytesDownloaded(),
-                    installState.totalBytesToDownload(),
-                    "",
-                    pendingModel,
-                    installState.sessionId()
-                )
-            )
+            SplitInstallSessionStatus.DOWNLOADED, SplitInstallSessionStatus.INSTALLING ->
+                publishSessionStatus(LocalRuntimeInstallState.INSTALLING)
 
             SplitInstallSessionStatus.REQUIRES_USER_CONFIRMATION -> {
-                setStatus(
-                    status(
-                        runtime,
-                        LocalRuntimeInstallState.PENDING,
-                        installState.bytesDownloaded(),
-                        installState.totalBytesToDownload(),
-                        "",
-                        pendingModel,
-                        installState.sessionId()
-                    )
-                )
+                publishSessionStatus(LocalRuntimeInstallState.PENDING)
                 requestConfirmation(runtime, installState)
             }
 
@@ -456,31 +433,9 @@ internal class LocalAiRuntimeManager(
                 installState.sessionId()
             )
 
-            SplitInstallSessionStatus.CANCELING -> setStatus(
-                status(
-                    runtime,
-                    LocalRuntimeInstallState.PENDING,
-                    installState.bytesDownloaded(),
-                    installState.totalBytesToDownload(),
-                    "",
-                    pendingModel,
-                    installState.sessionId()
-                )
-            )
-
             SplitInstallSessionStatus.CANCELED -> {
                 clearPendingModel(runtime)
-                setStatus(
-                    status(
-                        runtime,
-                        LocalRuntimeInstallState.CANCELED,
-                        installState.bytesDownloaded(),
-                        installState.totalBytesToDownload(),
-                        "",
-                        pendingModel,
-                        installState.sessionId()
-                    )
-                )
+                publishSessionStatus(LocalRuntimeInstallState.CANCELED)
             }
 
             else -> {}

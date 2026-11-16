@@ -63,7 +63,7 @@ enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPrefere
     RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
 }
 
-enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews, NitterInstance }
+enum class WebLinksSettingsDialog { Preload, ArchiveDomains, LinkPreviews, NitterInstance }
 
 @Composable
 fun WebLinksSettingsScreen(

@@ -44,18 +44,14 @@ class StoryHeaderTintPresentationTest {
                 previewTint = saved.copy(tintColorArgb = sample),
             )
             assertEquals(imageTint, storyHeaderTintPresentation(
-                story, resource, provider, mode, base, store,
-            ).initialTintArgb)
-            assertEquals(imageTint, storyHeaderTintPresentation(
                 snapshot, resource, provider, mode, base, store,
             ).initialTintArgb)
-            assertEquals(imageTint, storyRowModel(story, 0, settings, resource, base, store).previewImageTintArgb)
             assertEquals(imageTint, storyRowModel(snapshot, 0, settings, resource, base, store).previewImageTintArgb)
         }
     }
 
     @Test
-    fun mutableAndSnapshotHeadersKeepFaviconUntilPreviewPaletteArrives() {
+    fun headerKeepsFaviconUntilPreviewPaletteArrives() {
         val story = Story("Tint transition", 42, true, false).apply {
             url = "https://example.com/story"
         }
@@ -74,25 +70,19 @@ class StoryHeaderTintPresentationTest {
             paletteConfigKey = StoryPreviewTintState.storedMode(mode),
             tintColorArgb = imageTint,
         ))
-        for (snapshot in listOf(false, true)) {
-            fun presentation(resource: StoryPreviewResourceState?) = if (snapshot) {
-                storyHeaderTintPresentation(
-                    StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot()),
-                    resource, provider, mode, base, StoryResourceTintStore.None,
-                )
-            } else {
-                storyHeaderTintPresentation(story, resource, provider, mode, base, StoryResourceTintStore.None)
-            }
-            assertEquals(faviconTint, presentation(null).initialTintArgb)
-            assertEquals(faviconTint, presentation(pending).initialTintArgb)
-            assertEquals(StoryResourceTintKind.FAVICON, presentation(pending).initialTintKind)
-            assertEquals(imageTint, presentation(ready).initialTintArgb)
-            assertEquals(StoryResourceTintKind.PREVIEW_IMAGE, presentation(ready).initialTintKind)
-            assertEquals(faviconTint, presentation(ready.copy(imageLoadFailed = true)).initialTintArgb)
+        val snapshot = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+        fun presentation(resource: StoryPreviewResourceState?) = storyHeaderTintPresentation(
+            snapshot, resource, provider, mode, base, StoryResourceTintStore.None,
+        )
+        assertEquals(faviconTint, presentation(null).initialTintArgb)
+        assertEquals(faviconTint, presentation(pending).initialTintArgb)
+        assertEquals(StoryResourceTintKind.FAVICON, presentation(pending).initialTintKind)
+        assertEquals(imageTint, presentation(ready).initialTintArgb)
+        assertEquals(StoryResourceTintKind.PREVIEW_IMAGE, presentation(ready).initialTintKind)
+        assertEquals(faviconTint, presentation(ready.copy(imageLoadFailed = true)).initialTintArgb)
 
-            // An old preview palette must not displace the favicon while a replacement loads.
-            assertEquals(faviconTint, presentation(ready.copy(imageUrl = "$imageUrl?new")).initialTintArgb)
-        }
+        // An old preview palette must not displace the favicon while a replacement loads.
+        assertEquals(faviconTint, presentation(ready.copy(imageUrl = "$imageUrl?new")).initialTintArgb)
     }
 
     @Test
@@ -104,8 +94,9 @@ class StoryHeaderTintPresentationTest {
         StoryPreviewTintState.applyFavicon(
             story, FaviconUrlBuilder.faviconUrl(story.url!!, provider), base + 1, mode, faviconTint,
         )
+        val snapshot = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
         assertNull(storyHeaderTintPresentation(
-            story, null, provider, mode, base, StoryResourceTintStore.None,
+            snapshot, null, provider, mode, base, StoryResourceTintStore.None,
         ).initialTintArgb)
     }
 }

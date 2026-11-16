@@ -15,25 +15,18 @@ import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.platform.TextDocumentCallback
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
-import com.simon.harmonichackernews.settings.DataSettingsCounts
-import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
-import com.simon.harmonichackernews.ui.settings.AddBookmarksToFavoritesDialog
 import com.simon.harmonichackernews.ui.settings.AiModelSelectorRoute
 import com.simon.harmonichackernews.ui.settings.AiSummaryBaseUrlDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsRoute
 import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
-import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
-import com.simon.harmonichackernews.ui.settings.DataSettingsRoute
-import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
+import com.simon.harmonichackernews.ui.settings.DataSettingsRuntimeContent
 import com.simon.harmonichackernews.ui.settings.ManagedLocalModelPanel
 import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
-import com.simon.harmonichackernews.ui.settings.ResetSettingsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.SettingsSection
-import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_smartphone
@@ -235,45 +228,17 @@ private fun IosDataSettings(
         }
     }
 
-    DataSettingsRoute(
+    DataSettingsRuntimeContent(
         repository = app.settings,
-        counts = DataSettingsCounts(
-            state.snapshot.bookmarkCount,
-            state.snapshot.historyCount,
-            state.snapshot.postCacheCount,
-            state.snapshot.tintCacheCount,
-            state.snapshot.aiModelBytes,
-            hiddenPostCount = state.snapshot.hiddenPostCount,
-        ),
-        loggedIn = state.snapshot.loggedIn,
+        runtime = runtime,
+        state = state,
         showNavigation = showNavigation,
         showAppLinkSettings = false,
         onBack = onBack,
-        contentVersion = state.revision,
-        onAction = runtime::handleDataSettingsAction,
-    )
-
-    when (state.dialog) {
-        DataSettingsDialogState.IMPORT -> ImportBookmarksDialog(
-            onDismiss = { runtime.showDialog(null) },
-            onImport = runtime::requestImport,
-        )
-        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
-            onReset = runtime::resetSettings,
-            onDismiss = { runtime.showDialog(null) },
-        )
-        DataSettingsDialogState.LINKS -> MessageActionDialog(
+    ) { onDismiss ->
+        MessageActionDialog(
             message = "iOS link handling is configured in your operating system and browser.",
-            onDismiss = { runtime.showDialog(null) },
+            onDismiss = onDismiss,
         )
-        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
-            modelNames = state.snapshot.aiModelNames,
-            onClear = runtime::clearAiModels,
-            onDismiss = { runtime.showDialog(null) },
-        )
-        null -> Unit
-    }
-    state.favoriteIds?.let { ids ->
-        AddBookmarksToFavoritesDialog(ids.toIntArray(), runtime::dismissFavorites)
     }
 }

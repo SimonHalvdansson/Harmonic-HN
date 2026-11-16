@@ -24,6 +24,9 @@ internal fun String.titleCase(): String = humanize().replaceFirstChar(Char::uppe
 
 internal fun String.humanize(): String = replace('_', ' ')
 
+internal fun JsonObject.nonEmptyString(key: String): String? =
+    (opt(key) as? String)?.takeUnless(String::isEmpty)
+
 internal fun JsonObject.nonBlankString(key: String): String? =
     (opt(key) as? String)?.takeUnless(String::isBlank)
 

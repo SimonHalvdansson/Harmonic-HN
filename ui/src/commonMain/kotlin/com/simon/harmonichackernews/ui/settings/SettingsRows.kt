@@ -40,7 +40,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -84,24 +83,6 @@ fun SettingsRadioButton(
         RadioButton(
             selected = selected,
             onClick = null,
-        )
-    }
-}
-
-@Composable
-internal fun SettingsCheckbox(
-    checked: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.size(
-            HarmonicDimens.compose_settings_dialog_option_control_size,
-        ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
         )
     }
 }

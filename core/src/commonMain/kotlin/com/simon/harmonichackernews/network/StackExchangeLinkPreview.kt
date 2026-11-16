@@ -127,9 +127,6 @@ internal object StackExchangeLinkPreview {
             .replace(BodyPatterns.repeatedNewlines, "\n\n")
             .trim()
     }
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }
 
 internal suspend fun HttpClient.loadStackExchangeInfo(url: String): StackExchangeInfo {

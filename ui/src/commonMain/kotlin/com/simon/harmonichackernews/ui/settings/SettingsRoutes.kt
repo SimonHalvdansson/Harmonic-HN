@@ -18,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummaryMode
@@ -600,6 +599,9 @@ fun WebLinksSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onReaderModeRequested: () -> Unit,
+    capabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
+    archiveDomainsSubtitle: String = "Choose domains where Harmonic should automatically redirect the " +
+        "embedded browser to the archive.is version.",
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(repository) { WebLinksSettingsPresenter(repository) }
@@ -613,6 +615,7 @@ fun WebLinksSettingsRoute(
         onReaderModeRequested = onReaderModeRequested,
         onDialogRequested = { dialog = it },
         contentVersion = settings.hashCode(),
+        capabilities = capabilities,
     )
     when (dialog) {
         WebLinksSettingsDialog.Preload -> PreloadWebViewDialog(
@@ -621,17 +624,9 @@ fun WebLinksSettingsRoute(
             onSave = presenter::setPreload,
             onDismiss = { dialog = null },
         )
-        WebLinksSettingsDialog.ReaderFont -> FontSelectionDialog(
-            readerMode = true,
-            selected = reading.readerModeFont,
-            options = AppFont.entries.map { it.label to it },
-            onSelected = presenter::setReaderFont,
-            onDismiss = { dialog = null },
-        )
         WebLinksSettingsDialog.ArchiveDomains -> StringListEditorDialog(
             title = "Redirect to archive version",
-            subtitle = "Choose domains where Harmonic should automatically redirect the " +
-                "embedded browser to the archive.is version.",
+            subtitle = archiveDomainsSubtitle,
             inputLabel = "Domain",
             initialItems = reading.archiveRedirectDomains,
             emptyMessage = "No archive redirect domains",

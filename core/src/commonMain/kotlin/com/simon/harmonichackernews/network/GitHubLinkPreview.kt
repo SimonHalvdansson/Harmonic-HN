@@ -84,15 +84,15 @@ internal object GitHubLinkPreview {
         val json = JsonObject(response)
         val ownerJson = json.optJSONObject("owner")
         return RepoInfo(
-            owner = ownerJson?.nullableString("login"),
-            avatarUrl = ownerJson?.nullableString("avatar_url"),
+            owner = ownerJson?.nonEmptyString("login"),
+            avatarUrl = ownerJson?.nonEmptyString("avatar_url"),
             name = json.optString("name"),
-            about = json.nullableString("description"),
-            website = json.nullableString("homepage"),
+            about = json.nonEmptyString("description"),
+            website = json.nonEmptyString("homepage"),
             license = json.optJSONObject("license")?.let {
-                if (it.optString("name") == "Other") "Other" else it.nullableString("spdx_id")
+                if (it.optString("name") == "Other") "Other" else it.nonEmptyString("spdx_id")
             },
-            language = json.nullableString("language"),
+            language = json.nonEmptyString("language"),
             stars = (json.opt("stargazers_count") as? Number)?.toInt(),
             watching = (json.opt("subscribers_count") as? Number)?.toInt(),
             forks = (json.opt("forks_count") as? Number)?.toInt(),
@@ -378,9 +378,6 @@ internal object GitHubLinkPreview {
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         else -> "${bytes / (1024 * 1024)} MB"
     }
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 
     private fun JsonObject.repositoryCount(key: String): Int? {
         val value = opt(key) as? Number ?: return null

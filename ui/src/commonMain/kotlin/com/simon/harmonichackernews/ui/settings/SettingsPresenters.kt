@@ -244,7 +244,6 @@ class WebLinksSettingsPresenter(
         repository.setLinkPreviewEnabled(type, enabled)
 
     fun setReaderFontSize(value: Int) = repository.setReaderModeFontSize(value)
-    fun setReaderFont(value: AppFont) = repository.setReaderModeFont(value)
     fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         repository.setWebViewPreload(mode, minimumBattery)
 

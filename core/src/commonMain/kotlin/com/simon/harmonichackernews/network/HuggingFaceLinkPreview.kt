@@ -249,9 +249,6 @@ internal object HuggingFaceLinkPreview {
     private fun JsonArray?.objectStrings(key: String): List<String> = this?.let { values ->
         (0..<values.length()).mapNotNull { values.optJSONObject(it)?.nonBlankString(key) }
     }.orEmpty()
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }
 
 internal suspend fun HttpClient.loadHuggingFaceInfo(url: String): HuggingFaceModelInfo {

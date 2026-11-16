@@ -104,10 +104,12 @@ import com.simon.harmonichackernews.ui.settings.SettingsSearchCapabilities
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
+import com.simon.harmonichackernews.ui.editor.EditorRoute
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
+import com.simon.harmonichackernews.ui.stories.TabletStoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import java.awt.Taskbar
@@ -518,7 +520,7 @@ private fun DesktopAppContent(
         },
         editor = { request ->
             DesktopInsetContent(titleBarInset) {
-                DesktopEditorContent(
+                EditorRoute(
                     app = app, scene = scene, request = request,
                     backRequestVersion = editorBackRequestVersion,
                 )
@@ -750,7 +752,7 @@ private fun DesktopStoriesContent(
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
         if (controller.isStoryPreviewShowing()) {
-            DesktopStoryPreviewOverlay(app, controller)
+            TabletStoryPreviewOverlay(app, controller, pageOnScrollWheel = true)
         }
     }
 }

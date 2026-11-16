@@ -143,11 +143,8 @@ object LinkPreviewParsers {
     fun parseArchiveUrl(response: String): String? {
         val snapshots = JsonObject(response).getJSONObject("archived_snapshots")
         val closest = snapshots.optJSONObject("closest") ?: return null
-        return closest.takeIf { it.optBoolean("available") }?.nullableString("url")
+        return closest.takeIf { it.optBoolean("available") }?.nonEmptyString("url")
     }
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }
 
 /** URL classification shared by provider selection, settings fixtures and tests. */
