@@ -2,9 +2,12 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -219,8 +222,15 @@ private fun StoriesHeaderPreviewContent(
         )
         AnimatedVisibility(
             visible = settings.listSelector == StoryListSelector.CHIPS,
-            enter = expandVertically(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Top),
-            exit = shrinkVertically(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Top),
+            // Make room before showing the complete chips. On exit, start moving the story
+            // immediately but accelerate gently so the chips fade before it reaches them.
+            enter = expandVertically(
+                tween(160, easing = FastOutSlowInEasing), expandFrom = Alignment.Top, clip = false,
+            ) + fadeIn(tween(160, delayMillis = 160)),
+            exit = fadeOut(tween(120)) + shrinkVertically(
+                tween(320, easing = FastOutLinearInEasing),
+                shrinkTowards = Alignment.Top, clip = false,
+            ),
         ) {
             StoryTypeChips(
                 labels = labels,
