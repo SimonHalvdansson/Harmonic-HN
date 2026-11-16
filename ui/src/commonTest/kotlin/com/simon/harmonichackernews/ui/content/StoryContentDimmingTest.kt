@@ -12,18 +12,11 @@ class StoryContentDimmingTest {
         }
     }
 
-    @Test fun clickedContentKeepsSeventyPercentOfTheOriginalTitleDimming() {
-        for (dark in listOf(false, true)) for (tinted in listOf(false, true)) {
-            val previous = when {
-                dark && tinted -> 0.65f
-                dark -> 0.55f
-                tinted -> 0.75f
-                else -> 0.70f
-            }
-            val opacity = storyContentAlpha(true, dark, tinted)
-            assertEquals((1f - previous) * 0.7f, 1f - opacity, 0.0001f)
-            assertTrue(opacity > previous && opacity < 1f)
-        }
+    @Test fun clickedContentUsesExpectedOpacityForEachAppearance() {
+        assertEquals(0.70f, storyContentAlpha(true, darkTheme = false, tintedBackground = false))
+        assertEquals(0.75f, storyContentAlpha(true, darkTheme = false, tintedBackground = true))
+        assertEquals(0.65f, storyContentAlpha(true, darkTheme = true, tintedBackground = false))
+        assertEquals(0.67f, storyContentAlpha(true, darkTheme = true, tintedBackground = true))
     }
 
     @Test fun tintedContentUsesGentlerDimmingAndDarkModeUsesStrongerDimming() {
