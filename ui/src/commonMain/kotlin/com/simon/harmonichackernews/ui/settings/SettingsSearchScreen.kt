@@ -45,7 +45,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -80,7 +79,6 @@ import com.simon.harmonichackernews.settings.SettingsSearchIndex
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.ui.theme.pageBackground
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import com.simon.harmonichackernews.summary.LocalModelCatalog
@@ -181,7 +179,6 @@ internal fun SettingsSearchScreen(
     val queryEmpty = state.searchQuery.isBlank()
     val displayed = if (queryEmpty) recent else results
     val listState = rememberSettingsListState()
-    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -196,7 +193,9 @@ internal fun SettingsSearchScreen(
         snapshotFlow { textFieldState.text.toString() }.distinctUntilChanged().collect { query ->
             if (query != navigation.state.value.searchQuery) {
                 navigation.updateSearchQuery(query)
-                listState.scrollToItem(0)
+                // Empty states have no lazy list. Do not suspend query collection
+                // waiting for a first layout that only a later query can produce.
+                listState.requestScrollToItem(0)
             }
         }
     }
@@ -214,7 +213,7 @@ internal fun SettingsSearchScreen(
     fun changeQuery(query: String) {
         textFieldState.edit { replace(0, length, query) }
         navigation.updateSearchQuery(query)
-        scope.launch { listState.scrollToItem(0) }
+        listState.requestScrollToItem(0)
     }
     fun hideKeyboard() {
         focusManager.clearFocus()
