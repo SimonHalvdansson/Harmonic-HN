@@ -689,8 +689,8 @@ internal fun FrontpageHeaderControls(
                             }
                             AnimatedVisibility(
                                 visible = useDropdown,
-                                enter = expandHorizontally(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
-                                exit = shrinkHorizontally(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                                enter = fadeIn(tween(160, easing = LinearEasing)),
+                                exit = fadeOut(tween(160, easing = LinearEasing)),
                             ) {
                                 Icon(
                                     painterResource(Res.drawable.ic_keyboard_arrow_down),
