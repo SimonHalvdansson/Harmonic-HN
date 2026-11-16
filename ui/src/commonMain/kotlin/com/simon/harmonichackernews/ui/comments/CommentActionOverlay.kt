@@ -609,7 +609,7 @@ private fun CommentActionCardContent(
                         CommentAuthorBadge("OP", LocalContentColor.current, AppUiFontFamily)
                     }
                 }
-                if (settings.canAsk) {
+                if (settings.canAsk && comment.text?.trim() !in setOf("[flagged]", "[dead]", "[delayed]")) {
                     TextButton(
                         onClick = onAsk,
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
