@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -55,8 +55,8 @@ import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_arrow_back
 import com.simon.harmonichackernews.resources.ic_close
-import com.simon.harmonichackernews.resources.ic_history
 import com.simon.harmonichackernews.presentation.StorySearchOption
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 
 data class StorySearchPresentationState(
@@ -71,7 +71,7 @@ data class StorySearchPresentationState(
     val dateLabels: List<String>,
     val pointsLabels: List<String>,
     val commentsLabels: List<String>,
-    val onlyRead: Boolean,
+    val source: StorySearchSource,
 )
 
 @Composable
@@ -88,12 +88,20 @@ fun StorySearchHeader(
     onClose: () -> Unit,
     consumeFocusRequest: () -> Boolean,
     onOptionSelected: (kind: StorySearchOption, index: Int) -> Unit,
-    onToggleOnlyRead: () -> Unit,
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val chipListState = rememberLazyListState()
+    var previousSource by remember { mutableStateOf(state.source) }
+    LaunchedEffect(state.source) {
+        if (previousSource != state.source) {
+            previousSource = state.source
+            // Let the chip finish resizing before revealing its full trailing edge.
+            delay(180)
+            chipListState.animateScrollToItem(4)
+        }
+    }
     val submission = remember(state.active) { SearchQuerySubmission(state.draft) }
     SideEffect { submission.synchronizeDraft(state.draft) }
     val colorScheme = MaterialTheme.colorScheme
@@ -122,7 +130,13 @@ fun StorySearchHeader(
                 onDraftChanged(value)
                 correctedQuery?.let(onSearch)
             },
-            placeholder = { Text("Search posts") },
+            placeholder = {
+                Text(when (state.source) {
+                    StorySearchSource.ALL -> "Search posts"
+                    StorySearchSource.BOOKMARKS -> "Search bookmarks"
+                    StorySearchSource.HISTORY -> "Search history"
+                })
+            },
             leadingIcon = {
                 IconButton(
                     onClick = {
@@ -187,13 +201,10 @@ fun StorySearchHeader(
             item { SearchOptionChip(state.pointsLabel, state.pointsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.POINTS, it) } }
             item { SearchOptionChip(state.commentsLabel, state.commentsLabels, iconColor, menuColor, menuTextColor, fontFamily) { onOptionSelected(StorySearchOption.COMMENTS, it) } }
             item {
-                FilterChip(
-                    selected = state.onlyRead,
-                    onClick = onToggleOnlyRead,
-                    elevation = FilterChipDefaults.filterChipElevation(hoveredElevation = 0.dp),
-                    label = { Text("From history") },
-                    leadingIcon = { Icon(painterResource(Res.drawable.ic_history), null, Modifier.size(18.dp)) },
-                )
+                SearchOptionChip(
+                    state.source.label, StorySearchSource.entries.map { it.label },
+                    iconColor, menuColor, menuTextColor, fontFamily,
+                ) { onOptionSelected(StorySearchOption.SOURCE, it) }
             }
         }
     }

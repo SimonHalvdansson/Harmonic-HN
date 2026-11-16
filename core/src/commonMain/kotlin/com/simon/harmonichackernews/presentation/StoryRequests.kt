@@ -82,6 +82,7 @@ class StoryRequests(
         algoliaRepository = algoliaRepository,
         hackerNewsRepository = hackerNewsRepository,
         readStoryIds = readStoryIds,
+        bookmarkedStoryIds = { savedItemsRepository.loadItemsByDescendingId(SavedItemSource.BOOKMARKS).map { it.id } },
         isStoryRead = isStoryRead,
         shouldFilterStory = { story ->
             storyVisibilityPolicy.shouldHide(

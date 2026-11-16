@@ -834,7 +834,7 @@ private fun SearchHeader(
             dateLabels = controller.presentation.searchDateLabels,
             pointsLabels = controller.presentation.searchPointsLabels,
             commentsLabels = controller.presentation.searchCommentsLabels,
-            onlyRead = controller.presentation.searchOnlyRead,
+            source = controller.presentation.searchSource,
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
@@ -847,7 +847,6 @@ private fun SearchHeader(
         onClose = controller.listener::onCloseSearch,
         consumeFocusRequest = controller.listener::consumeSearchFocusRequest,
         onOptionSelected = controller.listener::onSearchOption,
-        onToggleOnlyRead = controller.listener::onToggleOnlyRead,
     )
 }
 

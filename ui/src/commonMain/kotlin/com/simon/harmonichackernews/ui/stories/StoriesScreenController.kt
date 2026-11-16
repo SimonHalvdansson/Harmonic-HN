@@ -694,7 +694,6 @@ class StoriesScreenController private constructor(
         fun onCloseSearch()
         fun onSearch(query: String)
         fun onSearchOption(kind: StorySearchOption, index: Int)
-        fun onToggleOnlyRead()
         fun onRefresh(showMainLoadingIndicator: Boolean = false)
         fun onShowCached()
         fun onLoadMore()

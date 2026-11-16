@@ -35,7 +35,6 @@ class StoriesFeatureListener(
     override fun onSearch(query: String) = store.accept(StoriesIntent.Search(query))
     override fun onSearchOption(kind: StorySearchOption, index: Int) =
         store.accept(StoriesIntent.SelectSearchOption(kind, index))
-    override fun onToggleOnlyRead() = store.accept(StoriesIntent.ToggleOnlyRead)
     override fun onRefresh(showMainLoadingIndicator: Boolean) = store.accept(
         StoriesIntent.Refresh(showMainLoadingIndicator),
     )

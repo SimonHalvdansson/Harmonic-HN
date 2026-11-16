@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_history
@@ -95,13 +96,13 @@ class HeaderChipScrollingTest {
                                 sortLabel = "Relevance", dateLabel = "All time", pointsLabel = "Any points",
                                 commentsLabel = "Any comments", sortLabels = listOf("Relevance", "Date"),
                                 dateLabels = listOf("All time"), pointsLabels = listOf("Any points"),
-                                commentsLabels = listOf("Any comments"), onlyRead = false,
+                                commentsLabels = listOf("Any comments"), source = StorySearchSource.ALL,
                             ),
                             sideStart = 16.dp, sideEnd = 16.dp,
                             iconColor = colors.onSurfaceVariant, menuColor = colors.surface,
                             menuTextColor = colors.onSurface, fontFamily = FontFamily.Default,
                             onDraftChanged = {}, onSearch = {}, onClose = {}, consumeFocusRequest = { false },
-                            onOptionSelected = { _, _ -> selections++ }, onToggleOnlyRead = { selections++ },
+                            onOptionSelected = { _, _ -> selections++ },
                         )
                     } else {
                         StoryTypeChips(

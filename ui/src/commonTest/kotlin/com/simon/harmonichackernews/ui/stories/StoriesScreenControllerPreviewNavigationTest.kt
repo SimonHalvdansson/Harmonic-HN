@@ -532,7 +532,6 @@ class StoriesScreenControllerPreviewNavigationTest {
         override fun onCloseSearch() = Unit
         override fun onSearch(query: String) = Unit
         override fun onSearchOption(kind: StorySearchOption, index: Int) = Unit
-        override fun onToggleOnlyRead() = Unit
         override fun onRefresh(showMainLoadingIndicator: Boolean) {
             refreshLoadingModes += showMainLoadingIndicator
         }

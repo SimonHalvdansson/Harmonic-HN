@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
@@ -32,7 +33,7 @@ data class StorySearchOptions(
     val dateRangeIndex: Int = 0,
     val minimumPointsIndex: Int = 0,
     val minimumCommentsIndex: Int = 0,
-    val onlyRead: Boolean = false,
+    val source: StorySearchSource = StorySearchSource.ALL,
 )
 
 enum class StorySearchMode {
@@ -55,7 +56,7 @@ data class StorySearchUiState(
     val revision: Long = 0,
 )
 
-/** Executes the complete portable Algolia/read-history search workflow. */
+/** Executes the complete portable Algolia/bookmark/history search workflow. */
 class StorySearchStore(
     private val scope: CoroutineScope,
     private val algoliaRepository: AlgoliaRepository,
@@ -64,6 +65,7 @@ class StorySearchStore(
     private val isStoryRead: (Int) -> Boolean,
     private val shouldFilterStory: (Story) -> Boolean,
     private val shouldHideReadStories: () -> Boolean,
+    private val bookmarkedStoryIds: () -> List<Int> = { emptyList() },
     private val controller: StorySearchController = StorySearchController(),
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
@@ -75,10 +77,10 @@ class StorySearchStore(
     private var generation = 0L
     // Keep filtered records too: read/hidden state can change before the next page arrives.
     private var fetchedStories: List<Story> = emptyList()
-    private val readStoryRequests = Semaphore(MAX_CONCURRENT_HISTORY_REQUESTS)
+    private val collectionStoryRequests = Semaphore(MAX_CONCURRENT_COLLECTION_REQUESTS)
     // Query/options changes reuse immutable metadata; never retain mutable result rows.
-    private val readMetadata = mutableMapOf<Int, CachedReadStory>()
-    private var readMetadataBytes = 0L
+    private val collectionMetadata = mutableMapOf<Int, CachedCollectionStory>()
+    private var collectionMetadataBytes = 0L
 
     val sortLabel: String get() = controller.sortLabel
     val dateRangeLabel: String get() = controller.dateRangeLabel
@@ -95,7 +97,7 @@ class StorySearchStore(
         controller.dateRangeIndex = options.dateRangeIndex.coerceIn(StorySearchController.dateRangeLabels.indices)
         controller.minimumPointsIndex = options.minimumPointsIndex.coerceIn(StorySearchController.minimumPointsLabels.indices)
         controller.minimumCommentsIndex = options.minimumCommentsIndex.coerceIn(StorySearchController.minimumCommentsLabels.indices)
-        if (controller.isOnlyRead != options.onlyRead) controller.toggleOnlyRead()
+        controller.source = options.source
     }
 
     fun selectSort(index: Int) = updateOption {
@@ -114,10 +116,10 @@ class StorySearchStore(
         controller.minimumCommentsIndex = index.coerceIn(StorySearchController.minimumCommentsLabels.indices)
     }
 
-    fun toggleOnlyRead() = updateOption(controller::toggleOnlyRead)
+    fun selectSource(source: StorySearchSource) = updateOption { controller.source = source }
 
     fun search(query: String?, forceRefresh: Boolean = false) {
-        if (forceRefresh) clearReadMetadata()
+        if (forceRefresh) clearCollectionMetadata()
         request = Request.Query(
             query.orEmpty(),
             controller.buildSearchUrl(query, StorySearchController.ALGOLIA_PAGE_SIZE),
@@ -152,7 +154,7 @@ class StorySearchStore(
 
     fun cancel(clearResults: Boolean = false) {
         cancelLoad()
-        clearReadMetadata()
+        clearCollectionMetadata()
         request = null
         fetchedStories = emptyList()
         publish {
@@ -235,8 +237,8 @@ class StorySearchStore(
         loadJob = scope.launch {
             val result = try {
                 when {
-                    activeRequest is Request.Query && controller.isOnlyRead ->
-                        loadOnlyReadStories(activeRequest.query)
+                    activeRequest is Request.Query && controller.source != StorySearchSource.ALL ->
+                        loadCollectionStories(activeRequest.query, controller.source)
                     else -> loadAlgoliaStories(activeRequest, page, retainedFetchedStories)
                 }
             } catch (error: CancellationException) {
@@ -291,13 +293,18 @@ class StorySearchStore(
         )
     }
 
-    private suspend fun loadOnlyReadStories(query: String): SearchResult = coroutineScope {
-        val ids = readStoryIds()
+    private suspend fun loadCollectionStories(query: String, source: StorySearchSource): SearchResult = coroutineScope {
+        val ids = when (source) {
+            StorySearchSource.BOOKMARKS -> bookmarkedStoryIds()
+            StorySearchSource.HISTORY -> readStoryIds()
+            StorySearchSource.ALL -> error("All stories use Algolia search")
+        }.distinct()
+        fun isRead(id: Int) = source == StorySearchSource.HISTORY || isStoryRead(id)
         val retainedIds = ids.toSet()
         val now = nowMillis()
-        readMetadata.entries.removeAll { (id, cached) ->
-            val expired = id !in retainedIds || now < cached.loadedAt || now - cached.loadedAt >= READ_METADATA_TTL_MILLIS
-            if (expired) readMetadataBytes -= cached.estimatedBytes
+        collectionMetadata.entries.removeAll { (id, cached) ->
+            val expired = id !in retainedIds || now < cached.loadedAt || now - cached.loadedAt >= COLLECTION_METADATA_TTL_MILLIS
+            if (expired) collectionMetadataBytes -= cached.estimatedBytes
             expired
         }
         if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
@@ -305,14 +312,14 @@ class StorySearchStore(
         val normalizedQuery = controller.normalizeQuery(query)
         val requestGeneration = generation
         // Capture this query's hits: admitting new records may evict some of them from the cache.
-        val cachedForQuery = readMetadata.toMap()
+        val cachedForQuery = collectionMetadata.toMap()
         val missing = ids.filter { it !in cachedForQuery }
-        val loaded = arrayOfNulls<ReadStoryLoad>(missing.size)
+        val loaded = arrayOfNulls<CollectionStoryLoad>(missing.size)
         val nextIndexMutex = Mutex()
         var nextIndex = 0
-        // A semaphore alone leaves one suspended coroutine per history item. Use a fixed
+        // A semaphore alone leaves one suspended coroutine per collection item. Use a fixed
         // worker pool and retain the semaphore to share the request limit across generations.
-        List(minOf(MAX_CONCURRENT_HISTORY_REQUESTS, missing.size)) {
+        List(minOf(MAX_CONCURRENT_COLLECTION_REQUESTS, missing.size)) {
             async {
                 while (true) {
                     currentCoroutineContext().ensureActive()
@@ -320,22 +327,22 @@ class StorySearchStore(
                         if (nextIndex < missing.size) nextIndex++ else null
                     } ?: break
                     val id = missing[index]
-                    loaded[index] = readStoryRequests.withPermit {
+                    loaded[index] = collectionStoryRequests.withPermit {
                         try {
-                            val story = hackerNewsRepository.getStory(id)?.also { it.isRead = true }
+                            val story = hackerNewsRepository.getStory(id)?.also { it.isRead = isRead(id) }
                             if (story != null && requestGeneration == generation) {
-                                rememberReadStory(id, CachedReadStory(
+                                rememberCollectionStory(id, CachedCollectionStory(
                                     story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle, nowMillis(),
                                 ))
                             }
-                            ReadStoryLoad(
+                            CollectionStoryLoad(
                                 story = story,
                                 failed = false,
                             )
                         } catch (error: CancellationException) {
                             throw error
                         } catch (_: Exception) {
-                            ReadStoryLoad(story = null, failed = true)
+                            CollectionStoryLoad(story = null, failed = true)
                         }
                     }
                 }
@@ -346,26 +353,26 @@ class StorySearchStore(
         }
         val outcomes = ids.map { id ->
             byId[id] ?: cachedForQuery[id]?.let {
-                ReadStoryLoad(Story().applySnapshot(it.story).apply {
+                CollectionStoryLoad(Story().applySnapshot(it.story).apply {
                     this.loaded = true
-                    isRead = true
+                    isRead = isRead(id)
                     isLink = it.isLink
                     pdfTitle = it.pdfTitle
                     videoTitle = it.videoTitle
                 }, failed = false)
-            } ?: ReadStoryLoad(null, failed = false)
+            } ?: CollectionStoryLoad(null, failed = false)
         }
         val filter = StorySearchController.StoryFilter(shouldFilterStory)
-        val stories = outcomes.mapNotNull(ReadStoryLoad::story)
+        val stories = outcomes.mapNotNull(CollectionStoryLoad::story)
             .filter { story ->
-                controller.shouldIncludeOnlyReadStory(story, normalizedQuery, filter)
+                controller.shouldIncludeCollectionStory(story, normalizedQuery, filter)
             }
             .toMutableList()
-        controller.sortOnlyReadResults(stories, query)
+        controller.sortCollectionResults(stories, query)
         SearchResult(
             stories = stories,
             canLoadMore = false,
-            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(ReadStoryLoad::failed) },
+            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(CollectionStoryLoad::failed) },
         )
     }
 
@@ -399,7 +406,7 @@ class StorySearchStore(
         dateRangeIndex = controller.dateRangeIndex,
         minimumPointsIndex = controller.minimumPointsIndex,
         minimumCommentsIndex = controller.minimumCommentsIndex,
-        onlyRead = controller.isOnlyRead,
+        source = controller.source,
     )
 
     private inline fun publish(update: StorySearchUiState.() -> StorySearchUiState) {
@@ -437,25 +444,25 @@ class StorySearchStore(
         val fetchedStories: List<Story>? = null,
     )
 
-    private data class ReadStoryLoad(val story: Story?, val failed: Boolean)
+    private data class CollectionStoryLoad(val story: Story?, val failed: Boolean)
 
-    private fun clearReadMetadata() {
-        readMetadata.clear()
-        readMetadataBytes = 0L
+    private fun clearCollectionMetadata() {
+        collectionMetadata.clear()
+        collectionMetadataBytes = 0L
     }
 
-    private fun rememberReadStory(id: Int, cached: CachedReadStory) {
-        if (cached.estimatedBytes > MAX_READ_METADATA_BYTES) return
-        readMetadata.remove(id)?.let { readMetadataBytes -= it.estimatedBytes }
-        while (readMetadataBytes + cached.estimatedBytes > MAX_READ_METADATA_BYTES && readMetadata.isNotEmpty()) {
-            val oldest = readMetadata.keys.first()
-            readMetadataBytes -= readMetadata.remove(oldest)!!.estimatedBytes
+    private fun rememberCollectionStory(id: Int, cached: CachedCollectionStory) {
+        if (cached.estimatedBytes > MAX_COLLECTION_METADATA_BYTES) return
+        collectionMetadata.remove(id)?.let { collectionMetadataBytes -= it.estimatedBytes }
+        while (collectionMetadataBytes + cached.estimatedBytes > MAX_COLLECTION_METADATA_BYTES && collectionMetadata.isNotEmpty()) {
+            val oldest = collectionMetadata.keys.first()
+            collectionMetadataBytes -= collectionMetadata.remove(oldest)!!.estimatedBytes
         }
-        readMetadata[id] = cached
-        readMetadataBytes += cached.estimatedBytes
+        collectionMetadata[id] = cached
+        collectionMetadataBytes += cached.estimatedBytes
     }
 
-    private data class CachedReadStory(
+    private data class CachedCollectionStory(
         val story: StorySnapshot,
         val isLink: Boolean,
         val pdfTitle: String?,
@@ -469,8 +476,8 @@ class StorySearchStore(
     }
 
     private companion object {
-        const val MAX_CONCURRENT_HISTORY_REQUESTS = 8
-        const val READ_METADATA_TTL_MILLIS = 60_000L
-        const val MAX_READ_METADATA_BYTES = 8L * 1024 * 1024
+        const val MAX_CONCURRENT_COLLECTION_REQUESTS = 8
+        const val COLLECTION_METADATA_TTL_MILLIS = 60_000L
+        const val MAX_COLLECTION_METADATA_BYTES = 8L * 1024 * 1024
     }
 }

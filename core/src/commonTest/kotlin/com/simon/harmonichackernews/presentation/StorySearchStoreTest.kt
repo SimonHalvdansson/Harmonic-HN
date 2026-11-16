@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.network.AlgoliaSearchPage
@@ -35,6 +36,65 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySearchStoreTest {
     @Test
+    fun bookmarkSearchUsesCurrentMembershipAndPreservesReadState() = runTest {
+        val bookmarks = mutableListOf(1, 2, 3, 4)
+        val requested = mutableListOf<Int>()
+        val store = store(
+            backgroundScope, bookmarkIds = bookmarks, readIds = listOf(9),
+            read = { it == 2 }, hideRead = { true }, filter = { it.id == 4 },
+            getStory = { id ->
+                requested += id
+                story(id).apply { title = if (id == 3) "Unrelated" else "Kotlin $id" }
+            },
+        )
+        store.selectSource(StorySearchSource.BOOKMARKS)
+        store.search(" kotlin ")
+        runCurrent()
+        assertEquals(listOf(1, 2), store.state.value.stories.map(Story::id))
+        assertFalse(store.state.value.stories[0].isRead)
+        assertTrue(store.state.value.stories[1].isRead)
+        assertFalse(store.state.value.canLoadMore)
+        bookmarks.remove(1)
+        bookmarks.add(5)
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(2, 5), store.state.value.stories.map(Story::id))
+        assertEquals(listOf(1, 2, 3, 4, 5), requested)
+    }
+
+    @Test
+    fun switchingSourcesKeepsResultsWithinTheSelectedCollection() = runTest {
+        val store = store(
+            backgroundScope, bookmarkIds = listOf(1, 2), readIds = listOf(2, 3),
+            getStory = ::story, search = { page(0, 1, 4) },
+        )
+        store.selectSource(StorySearchSource.HISTORY)
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(2, 3), store.state.value.stories.map(Story::id))
+        store.selectSource(StorySearchSource.BOOKMARKS)
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(1, 2), store.state.value.stories.map(Story::id))
+        assertTrue(store.state.value.stories.none { it.isRead }, "Cached history must not mark unread bookmarks read")
+        store.selectSource(StorySearchSource.ALL)
+        store.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(4), store.state.value.stories.map(Story::id))
+    }
+
+    @Test
+    fun emptyBookmarksDoNotRequestTheNetwork() = runTest {
+        val store = store(backgroundScope)
+        store.selectSource(StorySearchSource.BOOKMARKS)
+        store.search("")
+        runCurrent()
+        assertTrue(store.state.value.stories.isEmpty())
+        assertNull(store.state.value.failure)
+        assertFalse(store.state.value.canLoadMore)
+    }
+
+    @Test
     fun cancelledHistoryResponseCannotReplaceFreshMetadata() = runTest {
         lateinit var oldResponse: Continuation<Story>
         var calls = 0
@@ -43,7 +103,7 @@ class StorySearchStoreTest {
             if (calls == 1) suspendCoroutine { oldResponse = it }
             else story(1).apply { title = "Fresh" }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("Old")
         runCurrent()
         store.search("Fresh", forceRefresh = true)
@@ -64,7 +124,7 @@ class StorySearchStoreTest {
             calls++
             story(id).apply { text = "x".repeat(1_500_000) }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         assertEquals(2, calls)
@@ -88,7 +148,7 @@ class StorySearchStoreTest {
             calls++
             story(id).apply { isLink = true; pdfTitle = "Document $id" }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         assertEquals(2, calls)
@@ -122,7 +182,7 @@ class StorySearchStoreTest {
             if (id == 2 && requested.size == 2) error("Temporary failure")
             story(id)
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         store.search("")
@@ -254,7 +314,7 @@ class StorySearchStoreTest {
                 active--
             }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         assertTrue(active in 1..8, "Expected at most eight active requests, found $active")
@@ -283,7 +343,7 @@ class StorySearchStoreTest {
             response.await()
             story(id)
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
 
@@ -310,7 +370,7 @@ class StorySearchStoreTest {
             responses.getValue(id).await()
             story(id)
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("Kotlin")
         runCurrent()
         assertEquals(ids.take(8), requested)
@@ -349,7 +409,7 @@ class StorySearchStoreTest {
                 active--
             }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("Old")
         runCurrent()
         assertEquals(8, oldResponses.size)
@@ -397,7 +457,7 @@ class StorySearchStoreTest {
                 }
             }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         assertEquals(8, requests)
@@ -421,7 +481,7 @@ class StorySearchStoreTest {
                 else -> error("Network unavailable")
             }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.search("")
         runCurrent()
         assertEquals(listOf(1), store.state.value.stories.map(Story::id))
@@ -432,7 +492,7 @@ class StorySearchStoreTest {
         val failed = store(backgroundScope, readIds = listOf(1, 2), getStory = {
             error("Network unavailable")
         })
-        failed.toggleOnlyRead()
+        failed.selectSource(StorySearchSource.HISTORY)
         failed.search("")
         runCurrent()
         assertEquals(StoryLoadFailure.GENERAL, failed.state.value.failure)
@@ -444,7 +504,7 @@ class StorySearchStoreTest {
         val store = store(backgroundScope, readIds = listOf(1, 2, 3), getStory = { id ->
             story(id).apply { createdAtEpochSeconds = listOf(100, 300, 200)[id - 1] }
         })
-        store.toggleOnlyRead()
+        store.selectSource(StorySearchSource.HISTORY)
         store.selectSort(1)
         store.search("")
         runCurrent()
@@ -681,6 +741,7 @@ class StorySearchStoreTest {
         scope: CoroutineScope,
         search: suspend (String) -> AlgoliaSearchPage = { error("Unexpected Algolia request") },
         readIds: List<Int> = emptyList(),
+        bookmarkIds: List<Int> = emptyList(),
         getStory: suspend (Int) -> Story? = { error("Unexpected story request") },
         filter: (Story) -> Boolean = { false },
         read: (Int) -> Boolean = { false },
@@ -700,6 +761,7 @@ class StorySearchStoreTest {
             override suspend fun getStoryIds(type: StoryType): List<Int> = error("Not used")
         },
         readStoryIds = { readIds },
+        bookmarkedStoryIds = { bookmarkIds },
         isStoryRead = read,
         shouldFilterStory = filter,
         shouldHideReadStories = hideRead,

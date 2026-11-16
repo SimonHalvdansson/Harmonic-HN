@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.cache.StoryCacheRequest
@@ -659,6 +660,11 @@ class StoriesFeatureRuntime(
             !currentType.isBookmarks && !currentType.isUserItemList
         beginGeneration()
         searchOptions.resetOptions()
+        searchOptions.selectSource(when (sessionState.mainStoryType) {
+            StoryType.BOOKMARKS -> StorySearchSource.BOOKMARKS
+            StoryType.HISTORY -> StorySearchSource.HISTORY
+            else -> StorySearchSource.ALL
+        })
         retainSearchOptions()
         sessionState.searching = true
         sessionState.searchFocusPending = true
@@ -705,13 +711,10 @@ class StoriesFeatureRuntime(
             StorySearchOption.DATE -> searchOptions.selectDateRange(index)
             StorySearchOption.POINTS -> searchOptions.selectMinimumPoints(index)
             StorySearchOption.COMMENTS -> searchOptions.selectMinimumComments(index)
+            StorySearchOption.SOURCE -> searchOptions.selectSource(
+                StorySearchSource.entries.getOrElse(index) { StorySearchSource.ALL },
+            )
         }
-        retainSearchOptions()
-        retrySearch()
-    }
-
-    fun toggleOnlyRead() {
-        searchOptions.toggleOnlyRead()
         retainSearchOptions()
         retrySearch()
     }
@@ -1252,7 +1255,7 @@ class StoriesFeatureRuntime(
         historyChangeVersion = history.changeVersion
         val result = activeStore.syncHistory(
             readStoryIds = history.ids,
-            searchingOnlyRead = searching && searchOptions.state.value.options.onlyRead,
+            searchingOnlyRead = searching && searchOptions.state.value.options.source == StorySearchSource.HISTORY,
             showingHistory = currentType.isHistory,
             hideRead = hideRead,
         )
@@ -1858,7 +1861,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun markRead(story: Story) {
-        if (!searchOptions.state.value.options.onlyRead) updateStoryReadState(story, true)
+        if (searchOptions.state.value.options.source != StorySearchSource.HISTORY) updateStoryReadState(story, true)
         scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 

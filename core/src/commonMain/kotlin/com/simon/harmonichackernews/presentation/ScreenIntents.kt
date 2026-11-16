@@ -32,7 +32,7 @@ data class ActionFailurePresentation(
 }
 
 /** Typed user intents shared by every stories screen implementation. */
-enum class StorySearchOption { SORT, DATE, POINTS, COMMENTS }
+enum class StorySearchOption { SORT, DATE, POINTS, COMMENTS, SOURCE }
 
 enum class StoriesMenuAction {
     SETTINGS,
