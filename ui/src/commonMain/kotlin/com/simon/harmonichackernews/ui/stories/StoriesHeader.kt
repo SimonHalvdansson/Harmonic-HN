@@ -268,7 +268,11 @@ internal fun StoriesHeader(
                 }
             }
 
-            AnimatedVisibility(visible = !searchMode && controller.presentation.showSavedFilter) {
+            AnimatedVisibility(
+                visible = !searchMode && controller.presentation.showSavedFilter,
+                enter = expandVertically() + fadeIn(tween(220, delayMillis = 80)),
+                exit = shrinkVertically() + fadeOut(tween(100)),
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
