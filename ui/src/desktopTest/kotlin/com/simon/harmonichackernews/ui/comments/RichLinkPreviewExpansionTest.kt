@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.comments
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
@@ -22,6 +23,52 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class RichLinkPreviewExpansionTest {
+    @Test
+    fun fastPreviewKeepsItsHeadingAtTheTopWhileTheCardAppears() = SwingUtilities.invokeAndWait {
+        val app = DesktopHarmonicAppBootstrap.inMemory("FastPreviewEntrance")
+        val settings = CommentDisplaySettings.from(app.app.userSettings.comments, false, false, false, false)
+        val presentation = mutableStateOf(StoryPresentationSnapshot(loaded = true))
+        val platform = CommentsPreviewPlatform(TextStyle.Default, {}, {}, {}, { it })
+        val scene = ImageComposeScene(400, 900) {
+            MaterialTheme {
+                CommentsPreviewPlatformProvider(platform) {
+                    Column {
+                        LinkPreviewContent(StoryListItemSnapshot(StorySnapshot(42), presentation.value), 0, settings)
+                    }
+                }
+            }
+        }
+        var time = 0L
+        fun frame() = scene.render(time.also { time += 16_666_667L }).close()
+        try {
+            repeat(2) { frame() }
+            presentation.value = presentation.value.copy(linkPreviewLoading = true)
+            repeat(3) { frame() }
+            // The result arrives before the spinner's entrance has finished.
+            presentation.value = presentation.value.copy(
+                linkPreviewLoading = false,
+                linkPreviewInfo = LinkPreviewInfo(
+                    LinkPreviewType.SUBSTACK_ARTICLE,
+                    "Publication heading",
+                    description = "A description long enough to grow beyond the loading card. ".repeat(12),
+                    url = "https://example.substack.com/p/geometry",
+                ),
+            )
+            val headingPositions = mutableListOf<Float>()
+            repeat(40) {
+                frame()
+                nodes(scene).singleOrNull { node ->
+                    node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == "PUBLICATION HEADING" } == true
+                }?.let { headingPositions += it.positionInRoot.y }
+            }
+            assertTrue(headingPositions.size > 30, "The loaded heading must be present during the transition")
+            val settledTop = headingPositions.last()
+            headingPositions.forEach { top ->
+                assertEquals(settledTop, top, 1f, "The heading must not slide above the card during a fast load")
+            }
+        } finally { scene.close(); app.close() }
+    }
+
     @Test
     fun expandAndCollapseMoveTheToggleThroughIntermediateHeights() = SwingUtilities.invokeAndWait {
         val app = DesktopHarmonicAppBootstrap.inMemory("RichPreviewExpansion")

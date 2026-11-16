@@ -91,23 +91,31 @@ fun LinkPreviewContent(
     val fontFamily = rememberContentTypography(settings.font).family
     CompositionLocalProvider(LocalPreviewFontFamily provides fontFamily) {
         val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
+        val colors = MaterialTheme.colorScheme
+        val shape = RoundedCornerShape(16.dp)
         AnimatedVisibility(
             visible = enabled && (previewType != null || story.linkPreviewLoading),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            // Draw the frame around the currently visible size, not the full-size
+            // child that the entrance animation is still revealing.
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(shape)
+                .border(2.dp, colors.onSurfaceVariant, shape),
+            // A fast response can resize the card while it is still appearing. Keep
+            // its heading anchored instead of revealing the bottom of the new content.
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
         ) {
-            val colors = MaterialTheme.colorScheme
             AnimatedContent(
                 targetState = previewType,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(2.dp, colors.onSurfaceVariant, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 transitionSpec = {
                     (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
-                        SizeTransform(clip = false) { _, _ -> tween(220) },
+                        // Clip inside the padding as well as at the rounded border.
+                        SizeTransform(clip = true) { _, _ -> tween(220) },
                     )
                 },
                 label = "comments link preview",
