@@ -1,5 +1,14 @@
 package com.simon.harmonichackernews.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -171,8 +180,6 @@ internal fun SettingsSearchScreen(
     }
     val queryEmpty = state.searchQuery.isBlank()
     val displayed = if (queryEmpty) recent else results
-    val recentTitle = stringResource(Res.string.settings_search_recent)
-    val groups = if (queryEmpty) mapOf(recentTitle to displayed) else displayed.groupBy { it.path.first() }
     val listState = rememberSettingsListState()
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -185,10 +192,6 @@ internal fun SettingsSearchScreen(
     val colorScheme = MaterialTheme.colorScheme
     val backLabel = stringResource(Res.string.settings_search_back)
     val topInset = WindowInsets.safeDrawing.getTop(LocalDensity.current)
-    val resultCount = stringResource(
-        if (results.size == 1) Res.string.settings_search_one_result else Res.string.settings_search_results,
-        results.size,
-    )
     LaunchedEffect(textFieldState) {
         snapshotFlow { textFieldState.text.toString() }.distinctUntilChanged().collect { query ->
             if (query != navigation.state.value.searchQuery) {
@@ -284,59 +287,100 @@ internal fun SettingsSearchScreen(
                 12.dp.toPx()) * (1f - motion.expansion())
         }) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            if (displayed.isEmpty()) {
-                Column(
-                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 32.dp).testTag("settings-search-list-empty"),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_search), null, Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(20.dp))
+            SettingsSearchResults(queryEmpty, displayed, listState) { entry ->
+                hideKeyboard()
+                navigation.openSearchResult(entry)
+            }
+        }
+    }
+}
+
+private data class SearchResultsContent(val queryEmpty: Boolean, val entries: List<SettingsSearchEntry>) {
+    // Keep one lazy list alive while filtering, so stable entry keys can animate placement.
+    val kind: Int get() = if (entries.isNotEmpty()) 0 else if (queryEmpty) 1 else 2
+}
+
+private fun LazyItemScope.searchResultMotion() = Modifier.animateItem(
+    fadeInSpec = tween(180),
+    placementSpec = tween(260, easing = FastOutSlowInEasing),
+    fadeOutSpec = tween(120),
+)
+
+@Composable
+internal fun SettingsSearchResults(
+    queryEmpty: Boolean,
+    entries: List<SettingsSearchEntry>,
+    listState: LazyListState,
+    onResultClick: (SettingsSearchEntry) -> Unit,
+) {
+    val recentTitle = stringResource(Res.string.settings_search_recent)
+    val enterOffset = with(LocalDensity.current) { 12.dp.roundToPx() }
+    AnimatedContent(
+        targetState = SearchResultsContent(queryEmpty, entries),
+        contentKey = { it.kind },
+        modifier = Modifier.fillMaxSize(),
+        transitionSpec = {
+            (fadeIn(tween(220, delayMillis = 60)) +
+                slideInVertically(tween(280, easing = FastOutSlowInEasing)) { enterOffset })
+                .togetherWith(fadeOut(tween(120)))
+                .using(null)
+        },
+        label = "settings search results",
+    ) { content ->
+        if (content.entries.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = 32.dp).testTag("settings-search-list-empty"),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_search), null, Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    stringResource(if (content.queryEmpty) Res.string.settings_search_hint else Res.string.settings_search_empty),
+                    fontFamily = AppUiFontFamily, fontSize = 20.sp, fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                Text(
+                    stringResource(if (content.queryEmpty) Res.string.settings_search_hint_detail else Res.string.settings_search_empty_detail),
+                    Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize(), state = listState,
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                if (!content.queryEmpty) item(key = "search-result-count") {
                     Text(
-                        stringResource(if (queryEmpty) Res.string.settings_search_hint else Res.string.settings_search_empty),
-                        fontFamily = AppUiFontFamily, fontSize = 20.sp, fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                    Text(
-                        stringResource(if (queryEmpty) Res.string.settings_search_hint_detail else Res.string.settings_search_empty_detail),
-                        Modifier.padding(top = 8.dp),
+                        stringResource(
+                            if (content.entries.size == 1) Res.string.settings_search_one_result else Res.string.settings_search_results,
+                            content.entries.size,
+                        ),
+                        searchResultMotion().padding(start = 24.dp, top = 16.dp, end = 24.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
-                        textAlign = TextAlign.Center,
+                        fontFamily = AppUiFontFamily, fontSize = 13.sp,
                     )
                 }
-            } else {
-                LazyColumn(
-                    Modifier.weight(1f).fillMaxWidth(), state = listState,
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                ) {
-                    if (!queryEmpty) item(key = "search-result-count") {
-                        Text(
-                            resultCount,
-                            Modifier.padding(start = 24.dp, top = 16.dp, end = 24.dp)
-                                .semantics { liveRegion = LiveRegionMode.Polite },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = AppUiFontFamily, fontSize = 13.sp,
-                        )
-                    }
-                    groups.forEach { (heading, group) ->
-                        settingsCategory(heading) {
-                            group.forEach { entry ->
-                                row(key = entry.id) {
-                                    SettingRow(
-                                        title = entry.title,
-                                        summary = entry.path.joinToString(" › "),
-                                        icon = null,
-                                        onClick = {
-                                            hideKeyboard()
-                                            navigation.openSearchResult(entry)
-                                        },
-                                    )
-                                }
+                val groups = if (content.queryEmpty) mapOf(recentTitle to content.entries)
+                    else content.entries.groupBy { it.path.first() }
+                groups.forEach { (heading, group) ->
+                    settingsCategory(heading, itemModifier = { searchResultMotion() }) {
+                        group.forEach { entry ->
+                            row(key = entry.id) {
+                                SettingRow(
+                                    title = entry.title,
+                                    summary = entry.path.joinToString(" › "),
+                                    icon = null,
+                                    onClick = { onResultClick(entry) },
+                                )
                             }
                         }
                     }
