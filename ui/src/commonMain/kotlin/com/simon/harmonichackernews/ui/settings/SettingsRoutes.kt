@@ -475,6 +475,7 @@ fun StoriesSettingsRoute(
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit = {},
     categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
 ) {
@@ -504,6 +505,7 @@ fun StoriesSettingsRoute(
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         onCategorizationEnabledChanged = { value ->
             if (mockCategories) DebugStoryCategoryPreview.showTags = value

@@ -96,6 +96,7 @@ fun StoriesSettingsScreen(
     onDialogRequested: (StoriesSettingsDialog) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit = {},
     onCategorizationEnabledChanged: (Boolean) -> Unit = {},
     contentVersion: Int = 0,
@@ -295,7 +296,12 @@ fun StoriesSettingsScreen(
                     summary = if (state.markScrolledPostsRead) "Turn off scroll marking first" else null)
             }
             row {
-                BooleanRow("Gray out clicked posts", Res.drawable.ic_visibility, state.dimReadStories, StoriesBooleanSetting.DimReadStories, onBooleanChanged, enabled = !state.hideRead)
+                NavigationSwitchSettingRow(
+                    title = "Gray out clicked posts", icon = Res.drawable.ic_visibility,
+                    checked = state.dimReadStories, switchEnabled = !state.hideRead,
+                    onClick = onClickedPostsRequested,
+                    onCheckedChange = { onBooleanChanged(StoriesBooleanSetting.DimReadStories, it) },
+                )
             }
             row {
                 BooleanRow("Mark scrolled posts as read", Res.drawable.ic_swipe_vertical, state.markScrolledPostsRead,

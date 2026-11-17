@@ -121,4 +121,5 @@
     <string name="settings_section_user_avatars">User profile images</string>
     <string name="settings_section_spacing">Spacing</string>
     <string name="settings_section_quote_highlighting">Quote highlighting</string>
+    <string name="settings_section_clicked_posts">Gray out clicked posts</string>
 </resources>

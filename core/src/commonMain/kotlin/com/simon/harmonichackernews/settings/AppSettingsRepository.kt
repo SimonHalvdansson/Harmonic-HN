@@ -297,5 +297,8 @@ class AppSettingsRepository(
         avoidBackgroundColor: Boolean = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
     ): Boolean = mutator.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
 
+    fun setClickedOpacity(value: Int) = mutator.setClickedOpacity(value)
+    fun setDimClickedBackground(value: Boolean) = mutator.setDimClickedBackground(value)
+
     fun clearPaletteTint(): Boolean = mutator.clearPaletteTint()
 }

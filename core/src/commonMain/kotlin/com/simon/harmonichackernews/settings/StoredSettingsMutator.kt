@@ -414,6 +414,14 @@ class StoredSettingsMutator(
         store.putString(UserPreferenceKeys.USER_AVATAR_OPTIONS, value.encode())
     }
 
+    fun setClickedOpacity(value: Int) {
+        store.putInt(UserPreferenceKeys.CLICKED_OPACITY, value.coerceIn(-100, 100))
+    }
+
+    fun setDimClickedBackground(value: Boolean) {
+        store.putBoolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, value)
+    }
+
     fun setUserAvatarsEnabled(value: Boolean) {
         store.putBoolean(UserPreferenceKeys.USER_AVATARS_ENABLED, value)
     }

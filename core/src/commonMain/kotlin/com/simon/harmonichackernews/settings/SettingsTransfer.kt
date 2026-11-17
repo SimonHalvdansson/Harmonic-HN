@@ -177,6 +177,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
                     UserPreferenceKeys.EXPAND_COLLECTED_LINKS, UserPreferenceKeys.USER_AVATARS_ENABLED,
                     UserPreferenceKeys.MONOCHROME_COMMENT_DEPTH,
                     UserPreferenceKeys.PALETTE_TINT_AVOID_BACKGROUND_COLOR,
+                    UserPreferenceKeys.DIM_CLICKED_BACKGROUND,
                     ThemePreferences.FOLLOW_SYSTEM_KEY, ThemePreferences.MANUAL_DARK_KEY,
                     ColorSchemePreferences.COUPLED_KEY,
                     AiSummaryPreferenceKeys.STREAM_RESPONSES, AiSummaryPreferenceKeys.AUTO_SUMMARIZE_ARTICLES,
@@ -189,6 +190,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             put(UserPreferenceKeys.COMMENTS_HEADER_EDGE, choice(CommentsHeaderEdge.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_LINE_HEIGHT, choice(ReaderLineHeight.entries.map { it.storedValue }))
             put(UserPreferenceKeys.READER_MODE_FONT, choice(AppFont.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.CLICKED_OPACITY, intRule(-100..100))
             put(UserPreferenceKeys.STORY_SPACING, intRule(RowSpacingPreferences.MIN..RowSpacingPreferences.MAX))
             put(UserPreferenceKeys.COMMENT_SPACING, intRule(RowSpacingPreferences.MIN..RowSpacingPreferences.MAX))
             put(UserPreferenceKeys.STORY_TEXT_SIZE, numberString(TextPreferences.MIN_STORY_TEXT_SIZE..TextPreferences.MAX_STORY_TEXT_SIZE))

@@ -38,7 +38,7 @@ class CategoryLocationSettingsTest {
                     StoriesSettingsRoute(repository = app.app.settings, categorySettings = app.app.articleCategorySettings,
                         previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
                         showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {}, onManageFrontpages = {},
-                        onPaletteTintRequested = {},
+                        onPaletteTintRequested = {}, onClickedPostsRequested = {},
                         categoryAvailability = availability,
                         onArticleCategoriesRequested = { categoryNavigationCount++ })
                 }

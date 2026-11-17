@@ -37,6 +37,8 @@ internal fun StoryDisplaySettings.toStoryRowStyle(
     preferredFont = font,
     textSize = storyTextSize,
     dimmed = dimReadStories && context.isRead,
+    clickedOpacity = clickedOpacity,
+    dimClickedBackground = dimClickedBackground,
     commented = context.commented,
     paletteTintConfigKey = paletteTintMode,
 )

@@ -45,6 +45,8 @@ data class StoryPreferences(
     val tintCardsFromImages: Boolean,
     val paletteTintConfigKey: String,
     val dimReadStories: Boolean,
+    val clickedOpacity: Int = 0,
+    val dimClickedBackground: Boolean = false,
     val hotnessThreshold: Int,
     val faviconProvider: String,
     val font: String,

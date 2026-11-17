@@ -94,6 +94,7 @@ fun PortableSettingsDetail(
             onSpacingRequested = { onNavigate(SettingsSection.StoriesSpacing, true) },
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
+            onClickedPostsRequested = { onNavigate(SettingsSection.ClickedPosts, true) },
             onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
         )
         SettingsSection.Frontpages -> {
@@ -115,6 +116,7 @@ fun PortableSettingsDetail(
         SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(app.settings, onBack)
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
+        SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(app.settings, onBack, app.articleCategorySettings)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
         SettingsSection.WebLinks -> WebLinksSettingsRoute(
@@ -254,6 +256,7 @@ private fun PortableStoriesSettings(
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
     onSpacingRequested: () -> Unit,
 ) {
@@ -267,6 +270,7 @@ private fun PortableStoriesSettings(
         faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         onSpacingRequested = onSpacingRequested,
         categoryAvailability = storyCategoryAvailability(),

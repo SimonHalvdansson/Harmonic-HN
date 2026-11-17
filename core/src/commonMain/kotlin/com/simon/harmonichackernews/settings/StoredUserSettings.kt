@@ -43,6 +43,8 @@ object UserPreferenceKeys {
     const val PALETTE_TINT_AVOID_BACKGROUND_COLOR = "pref_palette_tint_avoid_background_color"
     const val MARK_SCROLLED_POSTS_READ = "pref_mark_scrolled_posts_read"
     const val GRAY_OUT_CLICKED = "pref_gray_out_clicked"
+    const val CLICKED_OPACITY = "pref_clicked_opacity"
+    const val DIM_CLICKED_BACKGROUND = "pref_dim_clicked_background"
     const val HOTNESS = "pref_hotness"
     const val FAVICON_PROVIDER = "pref_favicon_provider"
     const val FONT = "pref_font"
@@ -186,6 +188,8 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
                 dimReadStories = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
+                clickedOpacity = integer(UserPreferenceKeys.CLICKED_OPACITY, 0).coerceIn(-100, 100),
+                dimClickedBackground = boolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, false),
                 markScrolledPostsRead = boolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, false) &&
                     !boolean(UserPreferenceKeys.HIDE_CLICKED, false),
                 hotnessThreshold = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,

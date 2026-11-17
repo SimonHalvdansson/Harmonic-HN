@@ -160,6 +160,8 @@ data class StoryRowStyle(
     val preferredFont: String,
     val textSize: Float,
     val dimmed: Boolean = false,
+    val clickedOpacity: Int = 0,
+    val dimClickedBackground: Boolean = false,
     /** The signed-in user has commented on this story. */
     val commented: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,

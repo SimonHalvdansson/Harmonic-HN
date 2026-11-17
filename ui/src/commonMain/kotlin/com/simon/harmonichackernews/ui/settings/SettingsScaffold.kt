@@ -212,6 +212,7 @@ fun SettingsListScreen(
                                 selectedSection == SettingsSection.ReaderMode ||
                                 entry.section == SettingsSection.Stories &&
                                 (selectedSection == SettingsSection.Frontpages ||
+                                    selectedSection == SettingsSection.ClickedPosts ||
                                     selectedSection == SettingsSection.StoriesSpacing) ||
                                 entry.section == SettingsSection.About &&
                                 selectedSection == SettingsSection.Licenses

@@ -13,6 +13,7 @@ fun AndroidStoriesSettingsScreen(
     onSpacingRequested: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -28,6 +29,7 @@ fun AndroidStoriesSettingsScreen(
         onSpacingRequested = onSpacingRequested,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         categoryAvailability = storyCategoryAvailability(),
         onPlatformEffect = { effect ->

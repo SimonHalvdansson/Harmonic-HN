@@ -40,7 +40,7 @@ internal fun settingsSearchCatalog(
         SettingsSection.ReaderMode -> listOf(labels.getValue(SettingsSection.WebLinks))
         SettingsSection.ArticleCategories -> listOf(labels.getValue(SettingsSection.AiSummary))
         SettingsSection.CategoryExploration -> listOf(labels.getValue(SettingsSection.AiSummary), labels.getValue(SettingsSection.ArticleCategories))
-        SettingsSection.StoriesSpacing, SettingsSection.Frontpages -> listOf(labels.getValue(SettingsSection.Stories))
+        SettingsSection.StoriesSpacing, SettingsSection.Frontpages, SettingsSection.ClickedPosts -> listOf(labels.getValue(SettingsSection.Stories))
         SettingsSection.Licenses -> listOf(labels.getValue(SettingsSection.About))
         SettingsSection.Glass, SettingsSection.DebugLinkPreviews -> listOf(labels.getValue(SettingsSection.Debug))
         else -> emptyList()
@@ -65,6 +65,10 @@ internal fun settingsSearchCatalog(
         aliases = listOf("font", "fonts", "typeface"))
     page(SettingsSection.PaletteTint, "image color colour vibrant muted saturation")
     page(SettingsSection.StoriesHeader, "frontpage selector tabs dropdown compact")
+    page(SettingsSection.ClickedPosts, "grey dim fade read stories viewed opacity")
+    group(SettingsSection.ClickedPosts, "Appearance",
+        "Opacity multiplier" to "dim fade transparency alpha clicked read",
+        "Apply to background" to "dim fade filled tinted clicked read")
     page(SettingsSection.Stories, "posts frontpage feed articles")
     page(SettingsSection.Comments, "discussion threads replies")
     page(SettingsSection.StoriesSpacing, "stories whitespace padding margins density compact dividers")
