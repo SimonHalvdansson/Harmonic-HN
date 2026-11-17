@@ -54,6 +54,7 @@ import com.simon.harmonichackernews.resources.library_logo_compose_multiplatform
 import com.simon.harmonichackernews.resources.library_logo_compose_latex
 import com.simon.harmonichackernews.resources.library_logo_katex
 import com.simon.harmonichackernews.resources.library_logo_coroutines
+import com.simon.harmonichackernews.resources.library_logo_flatbuffers
 import com.simon.harmonichackernews.resources.library_logo_haze
 import com.simon.harmonichackernews.resources.library_logo_kmpalette
 import com.simon.harmonichackernews.resources.library_logo_kotlin
@@ -294,6 +295,7 @@ internal fun licenseIconResource(name: String): DrawableResource? = when (name) 
     "Kotlin standard library" -> Res.drawable.library_logo_kotlin
     "kotlinx.coroutines" -> Res.drawable.library_logo_coroutines
     "kotlinx.serialization" -> Res.drawable.library_logo_kotlin
+    "FlatBuffers" -> Res.drawable.library_logo_flatbuffers
     "kotlinx.io" -> Res.drawable.library_logo_kotlin
     "kotlinx.collections.immutable" -> Res.drawable.library_logo_kotlin
     "Ktor" -> Res.drawable.library_logo_ktor

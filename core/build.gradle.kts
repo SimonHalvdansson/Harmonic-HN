@@ -7,6 +7,9 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        optIn.add("kotlin.ExperimentalUnsignedTypes")
+    }
     android {
         namespace = "com.simon.harmonichackernews.core"
         compileSdk {
@@ -26,6 +29,10 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
+        commonMain { kotlin.srcDir("third_party/flatbuffers/commonMain") }
+        getByName("androidMain") { kotlin.srcDir("third_party/flatbuffers/jvmMain") }
+        getByName("desktopMain") { kotlin.srcDir("third_party/flatbuffers/jvmMain") }
+        iosMain { kotlin.srcDir("third_party/flatbuffers/nativeMain") }
         commonMain.dependencies {
             api(libs.androidx.datastore.preferences.core)
             api(libs.kotlinx.coroutines.core)

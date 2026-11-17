@@ -169,7 +169,7 @@ class PreparedCommentThreadTest {
         }
     }
 
-    @Test fun bothEncodingsPreserveContentAndCurrentPreferences() = runTest {
+    @Test fun allEncodingsPreserveContentAndCurrentPreferences() = runTest {
         val prepared = parser.prepare(raw, listOf(8, 7))
         for (encoding in PreparedCommentCodec.Encoding.entries) {
             val cached = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(prepared, encoding)))
@@ -264,6 +264,8 @@ class PreparedCommentThreadTest {
         val original = parser.parse(raw, listOf(8, 7))
         assertTrue(repository.storeStory(42, raw, 1_000, original.cacheSummary))
         val prepared = assertNotNull(service.loadPreparedThread(42))
+        assertEquals(PreparedCommentCodec.Encoding.FLATBUFFERS.wireId,
+            assertNotNull(files.read(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin"))[0].toInt())
         assertEquals(listOf(8, 7), prepared.rankedIds)
         val rawReads = files.rawReads
         assertEquals(prepared, service.loadPreparedThread(42))
@@ -274,6 +276,23 @@ class PreparedCommentThreadTest {
             files.write(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin", invalid)
             assertEquals(prepared, service.loadPreparedThread(42))
             assertEquals(raw, repository.loadStoryPayload(42))
+            assertEquals(PreparedCommentCodec.Encoding.FLATBUFFERS.wireId,
+                assertNotNull(files.read(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin"))[0].toInt())
+        }
+    }
+
+    @Test fun validLegacyCachesRemainReadableWithoutReparsingJson() = runTest {
+        val files = RecordingFiles()
+        val repository = StoryCacheRepository(files, InMemoryStoryCacheMetadataStore())
+        val service = StoryCacheService(repository,
+            ArticleSnapshotService(KtorHttpClient(client = { error("Offline") }), null), { 0L })
+        assertTrue(repository.storeStory(42, raw, 1_000))
+        val prepared = parser.prepare(raw)
+        for (encoding in listOf(PreparedCommentCodec.Encoding.PROTOBUF, PreparedCommentCodec.Encoding.JSON)) {
+            files.write(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin", PreparedCommentCodec.encode(prepared, encoding))
+            val reads = files.rawReads
+            assertEquals(prepared, service.loadPreparedThread(42))
+            assertEquals(reads, files.rawReads)
         }
     }
 

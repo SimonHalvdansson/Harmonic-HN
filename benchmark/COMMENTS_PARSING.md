@@ -3,8 +3,9 @@
 ## Prepared comment cache
 
 `PreparedCommentsBenchmark` compares the retained raw-JSON parser with the prepared cache on
-the same device and in the same APK. `rawReadMedium/Large`, `jsonReadMedium/Large`, and
-`protobufReadMedium/Large` include production filesystem reads, decoding, filtering, sorting,
+the same device and in the same APK. `rawReadMedium/Large`, `jsonReadMedium/Large`,
+`protobufReadSmall/Medium/2000/Large`, and `flatbuffersReadSmall/Medium/2000/Large`
+include production filesystem reads, decoding, filtering, sorting,
 expanded-link HTML and initial immutable snapshots. Prepared reads also include checksum and
 schema/structure validation. Network and screen rendering are excluded. Files are read on every
 operation, with a warm OS filesystem cache; this is not a cold-storage benchmark.
@@ -13,7 +14,10 @@ The corresponding `*PrepareAndWriteMedium/Large` tests start with an in-memory A
 include parsing/preparation, snapshots, raw JSON and summary writes, plus the additional prepared
 encoding/write where applicable. `reportSizes` reports actual bytes for each encoding; add raw
 and prepared sizes to obtain the retained payload footprint (compact summaries are additional).
-Prepared JSON is a comparison format; production writes ProtoBuf.
+Production writes FlatBuffers using the shared KMP runtime. Protobuf and prepared JSON remain
+comparison formats and readable legacy caches. The small fixture contains 28 comments; the
+2,000-comment fixture is a deterministic prefix of the large fixture, derived outside timing.
+Checksums use the same native CRC-32 implementation as the Android host.
 
 Use the default microbenchmark runner and full AOT compilation after installing the test APK:
 
@@ -32,9 +36,11 @@ separate method-tracing phase is not a timed sample. Never suppress `DEBUGGABLE`
 powered, then restore the original setting; leave the normal app's data intact.
 
 For CPU sampling, select only `PreparedCommentsBenchmark#profileLarge` and pass
-`-e prepared.profile.mode raw` or `-e prepared.profile.mode protobuf`. It runs a separate
+`-e prepared.profile.mode raw`, `-e prepared.profile.mode protobuf`, or
+`-e prepared.profile.mode flatbuffers`. It runs a separate
 15-second workload after a two-second setup pause, marking iterations as `PreparedCache.raw`
-or `PreparedCache.protobuf`. Record all process threads using Perfetto's `linux.perf` source;
+or `PreparedCache.protobuf`/`PreparedCache.flatbuffers`.
+Record all process threads using Perfetto's `linux.perf` source;
 sampling only the instrumentation thread misses coroutine workers. Do not use profiled
 durations as benchmark results.
 

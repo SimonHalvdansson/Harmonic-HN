@@ -8,7 +8,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
 
-/** Eager, user-independent content. Field order is part of the versioned ProtoBuf schema. */
+/** Eager, user-independent content. Preserve field order for legacy Protobuf cache decoding. */
 @Serializable
 data class PreparedCommentThread(
     val schemaVersion: Int,
