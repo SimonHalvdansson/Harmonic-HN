@@ -8,6 +8,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+def benchmarkLocalAi = providers.gradleProperty("harmonic.benchmark.localAi")
+        .map { it.toBoolean() }.getOrElse(false)
+
 android {
     namespace = "com.simon.harmonichackernews"
     compileSdk {
@@ -118,7 +121,7 @@ android {
             kotlin.srcDirs += "src/play/kotlin"
         }
         benchmark {
-            kotlin.srcDirs += "src/foss/kotlin"
+            kotlin.srcDirs += benchmarkLocalAi ? "src/play/kotlin" : "src/foss/kotlin"
         }
         fossRelease {
             kotlin.srcDirs += "src/foss/kotlin"
@@ -205,6 +208,13 @@ dependencies {
     playReleaseImplementation(libs.mlkit.genai.embedding)
     kspPlayRelease(libs.mlkit.genai.schema.compiler)
     playReleaseImplementation(libs.play.feature.delivery)
+    if (benchmarkLocalAi) {
+        benchmarkImplementation(libs.mlkit.genai.summarization)
+        benchmarkImplementation(libs.mlkit.genai.prompt)
+        benchmarkImplementation(libs.mlkit.genai.embedding)
+        kspBenchmark(libs.mlkit.genai.schema.compiler)
+        benchmarkImplementation(libs.play.feature.delivery)
+    }
     implementation(libs.androidx.work)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.profileinstaller)

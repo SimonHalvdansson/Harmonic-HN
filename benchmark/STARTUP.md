@@ -44,6 +44,8 @@ outside the repository before installing another version. Instrumentation prints
 The benchmark build enables R8 and resource shrinking by default. Use
 `harmonic.benchmark.minify=false` while collecting profiles. Startup Profile DEX layout
 optimization requires R8. Both measured versions must use the same setting.
+Use `-Pharmonic.benchmark.localAi=true` on both builds when comparing Play startup.
+Install the base benchmark APK to measure delivery initialization with no local runtime installed.
 The two annotation warnings suppressed in `app/benchmark-rules.pro` are compile-time-only
 Tink annotations missing from the benchmark's classpath.
 
@@ -124,3 +126,11 @@ the phone unlocked without changing its lock policy. The harness rejects a locke
 a harmless Shift key press in iteration setup (outside timed measurements) to reset idle timers
 that can otherwise ignore UiAutomator gestures. For direct emulator instrumentation, explicitly pass
 `-e androidx.benchmark.suppressErrors EMULATOR`; do not suppress mirroring or thermal errors.
+
+If all emulator runs fail with missing `slice` or `expected_frame_timeline_slice` tables, check
+the capture separately. Run `adb -s <serial> shell perfetto -o /data/misc/perfetto-traces/check.pftrace -t 3s sched am wm gfx view`,
+pull the trace, and query `SELECT count(*) FROM slice` with Trace Processor. A
+`FTRACE_STATUS_PARTIAL_PAGE_READ` error on a 16 KB emulator indicates a kernel with incompatible
+ftrace ring-buffer sizing. Use an emulator image with the Android kernel fix for 16 KB
+ftrace sub-buffers and repeat the capture check before timing either build.
+[Android kernel fix](https://android.googlesource.com/kernel/common/+/66e97080dfaa246d68d21ee8f48c05c693463d6e)
