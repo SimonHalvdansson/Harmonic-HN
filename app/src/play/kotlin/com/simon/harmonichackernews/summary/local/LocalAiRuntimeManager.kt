@@ -16,6 +16,7 @@ import com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListene
 import com.google.android.play.core.splitinstall.model.SplitInstallErrorCode
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
@@ -67,7 +68,7 @@ internal class LocalAiRuntimeManager(
     private val requestGenerations = mutableMapOf<LocalModelRuntime, Int>()
     private val deferredInstallStates = mutableMapOf<Int, SplitInstallSessionState>()
     @Volatile private var initialized = false
-    private var modelDownloadStarter: (suspend (String) -> String?)? = null
+    @Volatile private var modelDownloadStarter: (suspend (String) -> String?)? = null
     private val handoffScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handoffJobs = mutableMapOf<LocalModelRuntime, Job>()
 
@@ -90,8 +91,10 @@ internal class LocalAiRuntimeManager(
             getRuntimeForModules(state.moduleNames())?.let { requestConfirmation(it, state) }
         }
         // A confirmation destroyed without a choice can still be waiting in Play.
-        installManager?.sessionStates?.addOnSuccessListener { states ->
-            states.forEach(::handleInstallState)
+        if (initialized) {
+            installManager?.sessionStates?.addOnSuccessListener { states ->
+                states.forEach(::handleInstallState)
+            }
         }
     }
 
@@ -124,7 +127,6 @@ internal class LocalAiRuntimeManager(
     fun isLocalAiIncluded(): Boolean = true
 
     fun addStatusListener(context: Context, listener: StatusListener) {
-        requirePreloaded()
         LISTENERS.add(listener)
         listener.onRuntimeStatusChanged()
     }
@@ -134,7 +136,6 @@ internal class LocalAiRuntimeManager(
     }
 
     fun getStatus(context: Context, runtime: LocalModelRuntime): LocalRuntimeInstallStatus {
-        requirePreloaded()
         if (runtime == LocalModelRuntime.GEMINI_NANO) {
             return status(
                 runtime,
@@ -180,8 +181,7 @@ internal class LocalAiRuntimeManager(
             return true
         }
         if (getModuleName(runtime) == null) return false
-        requirePreloaded()
-        return runtimeModuleInstalled
+        return initialized && runtimeModuleInstalled
     }
 
     fun requestRuntimeAndModelDownload(context: Context, model: LocalModelDefinition): String? {
@@ -319,37 +319,41 @@ internal class LocalAiRuntimeManager(
             throw IllegalArgumentException("System models do not use a feature runtime")
     }
 
-    /** Complete all cold storage/package work before publishing the application graph. */
-    suspend fun preload(context: Context) = withContext(Dispatchers.IO) {
-        initializationMutex.withLock {
-            if (initialized) return@withLock
-            val applicationContext = context.applicationContext
-            val preferences = AndroidKeyValueStore.named(applicationContext, preferencesName)
-            preferences.awaitLoaded()
-            // A queued GGUF request must not become an implicit multi-GB LiteRT download.
-            preferences.remove("pending_model_LLAMA_CPP")
-            val pendingKey = KEY_PENDING_MODEL_PREFIX + LocalModelRuntime.LITERT_LM.name
-            val pendingModel = preferences.getString(pendingKey, "").orEmpty()
-            if (pendingModel.isNotEmpty() && LocalModelCatalog.models.none {
-                    it.id == pendingModel && it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
+    /** Resume pending delivery after opening its storage and checking installed splits on IO. */
+    suspend fun preload(context: Context) {
+        if (initialized) return
+        withContext(Dispatchers.IO) {
+            initializationMutex.withLock {
+                if (initialized) return@withLock
+                val applicationContext = context.applicationContext
+                val preferences = AndroidKeyValueStore.named(applicationContext, preferencesName)
+                preferences.awaitLoaded()
+                // A queued GGUF request must not become an implicit multi-GB LiteRT download.
+                preferences.remove("pending_model_LLAMA_CPP")
+                val pendingKey = KEY_PENDING_MODEL_PREFIX + LocalModelRuntime.LITERT_LM.name
+                val pendingModel = preferences.getString(pendingKey, "").orEmpty()
+                if (pendingModel.isNotEmpty() && LocalModelCatalog.models.none {
+                        it.id == pendingModel && it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
+                    }
+                ) {
+                    preferences.remove(pendingKey)
                 }
-            ) {
-                preferences.remove(pendingKey)
-            }
-            val manager = installManagerFactory(applicationContext)
-            val installed = manager.installedModules.contains(MODULE_RUNTIME)
-            appContext = applicationContext
-            deliveryPreferences = preferences
-            runtimeModuleInstalled = installed
-            installManager = manager
-            manager.registerListener(INSTALL_LISTENER)
-            initialized = true
+                val manager = installManagerFactory(applicationContext)
+                val installed = manager.installedModules.contains(MODULE_RUNTIME)
+                appContext = applicationContext
+                deliveryPreferences = preferences
+                runtimeModuleInstalled = installed
+                installManager = manager
+                manager.registerListener(INSTALL_LISTENER)
+                initialized = true
+                notifyListeners()
 
-            manager.sessionStates.addOnSuccessListener { states ->
-                states.forEach(::handleInstallState)
+                manager.sessionStates.addOnSuccessListener { states ->
+                    states.forEach(::handleInstallState)
+                    resumeInstalledPendingDownloads()
+                }
                 resumeInstalledPendingDownloads()
             }
-            resumeInstalledPendingDownloads()
         }
     }
 
@@ -693,14 +697,14 @@ internal class LocalAiRuntimeManager(
 
 }
 
-internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRuntimeDelivery {
+internal fun createAndroidLocalRuntimeDelivery(context: Context): LocalModelRuntimeDelivery {
     val manager = LocalAiRuntimeManager().also { it.bindActivityLifecycle(context) }
-    return object : AndroidLocalRuntimeDelivery {
+    return object : LocalModelRuntimeDelivery {
         private var listener: LocalAiRuntimeManager.StatusListener? = null
 
         override val included: Boolean get() = manager.isLocalAiIncluded()
 
-        override suspend fun preload() = manager.preload(context)
+        override suspend fun awaitReady() = manager.preload(context)
 
         override fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus =
             manager.getStatus(context, runtime)

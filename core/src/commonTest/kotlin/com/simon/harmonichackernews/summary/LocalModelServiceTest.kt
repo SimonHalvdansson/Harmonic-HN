@@ -10,11 +10,44 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalModelServiceTest {
+    @Test
+    fun downloadWaitsForDeliveryBeforeChoosingBetweenRuntimeAndModel() = runTest {
+        val ready = CompletableDeferred<Unit>()
+        val transfers = RecordingTransfers()
+        val delivery = object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
+            override suspend fun awaitReady() = ready.await()
+            override fun isInstalled(runtime: LocalModelRuntime) = ready.isCompleted
+            override suspend fun request(model: LocalModelDefinition): String? =
+                error("The request should use the already installed runtime")
+        }
+        val storage = object : LocalModelStorage by EmptyStorage {
+            override fun prepareDownload(model: LocalModelDefinition) =
+                LocalModelStoragePreparation.Ready(LocalModelStorageSnapshot(usableSpaceBytes = Long.MAX_VALUE))
+        }
+        val service = LocalModelService(
+            TestKeyValueStore(), storage, transfers, delivery,
+            LocalModelDeviceCapabilities(true, true), listOf(BuiltInModel, DownloadableModel),
+            scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        val download = async { service.requestRuntimeAndModelDownload(DownloadableModel.id) }
+        runCurrent()
+        assertFalse(download.isCompleted)
+        assertTrue(transfers.enqueued.isEmpty())
+
+        ready.complete(Unit)
+        assertNull(download.await())
+        assertEquals(listOf(DownloadableModel.id), transfers.enqueued)
+    }
+
     @Test
     fun thirtyTwoBitModelsAreBlockedBeforeRuntimeDeliveryEvenOnOlderAndroid() = runTest {
         for (supportsPlatform in listOf(false, true)) {

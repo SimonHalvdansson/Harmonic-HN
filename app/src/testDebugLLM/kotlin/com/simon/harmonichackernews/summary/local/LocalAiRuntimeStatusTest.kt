@@ -17,6 +17,8 @@ import java.lang.reflect.Proxy
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,6 +34,30 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class, sdk = [35])
 class LocalAiRuntimeStatusTest {
+    @Test
+    fun statusAndObservationCanBeUsedBeforeDeliveryIsReady() {
+        val context = RuntimeEnvironment.getApplication()
+        val play = PlayTransport(installed = true)
+        val manager = LocalAiRuntimeManager({ play.manager }, "runtime_delivery_test_" + UUID.randomUUID())
+        val runtime = LocalModelRuntime.LITERT_LM
+        val states = mutableListOf<LocalRuntimeInstallState>()
+        try {
+            manager.addStatusListener(context) { states += manager.getStatus(context, runtime).state }
+            assertEquals(listOf(LocalRuntimeInstallState.NOT_INSTALLED), states)
+            assertFalse(manager.isRuntimeInstalled(context, runtime))
+            assertEquals(0, play.packageQueries)
+
+            runBlocking {
+                awaitAll(async { manager.preload(context) }, async { manager.preload(context) })
+            }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(listOf(LocalRuntimeInstallState.NOT_INSTALLED, LocalRuntimeInstallState.INSTALLED), states)
+            assertEquals(1, play.packageQueries)
+        } finally {
+            manager.close()
+        }
+    }
+
     @Test
     fun retiredLiteRtModelRequestIsDiscardedBeforeResumingDownloads() {
         withManager(installed = true, pendingModel = "lfm-2.5-1.2b") { _, manager, play, preferences ->

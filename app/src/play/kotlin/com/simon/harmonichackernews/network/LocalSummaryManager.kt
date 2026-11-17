@@ -407,6 +407,7 @@ internal class AndroidLocalSummaryBackend(
         check(models.isDownloaded(selected)) {
             "Download the selected local model before using it"
         }
+        models.awaitRuntimeDelivery()
         check(models.isRuntimeInstalled(selected.runtime)) {
             "Install the selected model runtime before using it"
         }

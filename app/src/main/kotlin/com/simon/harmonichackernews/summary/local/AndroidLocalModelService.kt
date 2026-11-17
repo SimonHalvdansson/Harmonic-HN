@@ -31,7 +31,7 @@ import kotlinx.io.files.Path
 /** Android storage and WorkManager adapters for the shared local-model service. */
 internal fun createAndroidLocalModelService(
     context: Context,
-    runtimeDelivery: AndroidLocalRuntimeDelivery,
+    runtimeDelivery: LocalModelRuntimeDelivery,
 ): LocalModelService {
     val appContext = context.applicationContext
     val modelsRoot = androidLocalModelsRoot(appContext)
@@ -153,11 +153,6 @@ private class AndroidLocalModelTransferScheduler(
     }
 
     private fun workName(modelId: String): String = "$WORK_NAME_PREFIX$modelId"
-}
-
-internal interface AndroidLocalRuntimeDelivery : LocalModelRuntimeDelivery {
-    /** Await platform delivery storage and package inspection before publishing the app graph. */
-    suspend fun preload() = Unit
 }
 
 private const val WORK_NAME_PREFIX = "local_ai_model_download_"

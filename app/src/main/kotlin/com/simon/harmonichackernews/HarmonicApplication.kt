@@ -73,7 +73,6 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         startup = AndroidAppStartup(preloadScope) {
             localAiSupport.install(this@HarmonicApplication)
             coroutineScope {
-                if (runtimeDelivery.included) launch { runtimeDelivery.preload() }
                 listOf(
                     AndroidKeyValueStore.defaults(this@HarmonicApplication),
                     AndroidKeyValueStore.global(this@HarmonicApplication),
@@ -124,7 +123,7 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
             appComposition.aiModelDefaults.ensureInitialDefault()
         }
         appComposition.localModels?.takeIf { it.isIncluded }?.let { models ->
-            // Resume transfer observation without waiting for Gemini Nano IPC or a cloud request.
+            // Initialize delivery and resume transfers after the feed draws, independently of Gemini Nano.
             preloadScope.launch {
                 models.preload()
                 withContext(Dispatchers.Main.immediate) { models.startMonitoring() }
