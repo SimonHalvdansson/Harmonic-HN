@@ -9,6 +9,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 /** FlatBuffers production storage, with legacy Protobuf/JSON readers and a CRC-32 envelope. */
 @OptIn(ExperimentalSerializationApi::class)
 object PreparedCommentCodec {
+    private const val ENVELOPE_SIZE = 5
     // These IDs are persisted. Never derive them from enum order or reuse a retired ID.
     enum class Encoding(val wireId: Int) { PROTOBUF(0), JSON(1), FLATBUFFERS(2) }
     private val json = Json
@@ -25,23 +26,26 @@ object PreparedCommentCodec {
             Encoding.FLATBUFFERS -> PreparedCommentFlatBuffer.encode(thread)
         }
         val checksum = crc32.compute(payload, 0)
-        return ByteArray(payload.size + 5).also { result ->
+        return ByteArray(payload.size + ENVELOPE_SIZE).also { result ->
             result[0] = encoding.wireId.toByte()
             repeat(4) { result[it + 1] = (checksum ushr (it * 8)).toByte() }
-            payload.copyInto(result, 5)
+            payload.copyInto(result, ENVELOPE_SIZE)
         }
     }
 
     fun decode(bytes: ByteArray, crc32: Crc32 = KotlinCrc32): PreparedCommentThread? = runCatching {
-        if (bytes.size < 5) return null
+        if (bytes.size < ENVELOPE_SIZE) return null
         var checksum = 0
         repeat(4) { checksum = checksum or ((bytes[it + 1].toInt() and 255) shl (it * 8)) }
-        if (checksum != crc32.compute(bytes, 5)) return null
-        val payload = bytes.copyOfRange(5, bytes.size)
+        if (checksum != crc32.compute(bytes, ENVELOPE_SIZE)) return null
         val decoded = when (bytes[0].toInt()) {
-            Encoding.PROTOBUF.wireId -> ProtoBuf.decodeFromByteArray(PreparedCommentThread.serializer(), payload)
-            Encoding.JSON.wireId -> json.decodeFromString(PreparedCommentThread.serializer(), payload.decodeToString())
-            Encoding.FLATBUFFERS.wireId -> PreparedCommentFlatBuffer.decode(payload)
+            Encoding.PROTOBUF.wireId -> ProtoBuf.decodeFromByteArray(
+                PreparedCommentThread.serializer(), bytes.copyOfRange(ENVELOPE_SIZE, bytes.size),
+            )
+            Encoding.JSON.wireId -> json.decodeFromString(
+                PreparedCommentThread.serializer(), bytes.decodeToString(startIndex = ENVELOPE_SIZE),
+            )
+            Encoding.FLATBUFFERS.wireId -> PreparedCommentFlatBuffer.decode(bytes, ENVELOPE_SIZE)
             else -> return null
         }
         decoded.takeIf { it.isCompatible() }

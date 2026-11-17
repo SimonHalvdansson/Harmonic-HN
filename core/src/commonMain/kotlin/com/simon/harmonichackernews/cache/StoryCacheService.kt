@@ -163,7 +163,10 @@ class StoryCacheService(
 
     fun itemCount(): Int = repository.cachedItemIds().size
 
-    suspend fun clear(): Int = removeWithArticles(null) { repository.clear() }
+    suspend fun clear(): Int {
+        repository.savedStorySearchCache.clear()
+        return removeWithArticles(null) { repository.clear() }
+    }
 
     suspend fun remove(storyId: Int) = removeWithArticles(storyId) { repository.remove(storyId) }
 

@@ -925,6 +925,7 @@ class StoriesFeatureRuntime(
         }
         if (passed.isEmpty()) return
         passed.forEach { updateStoryReadState(it, true) }
+        requests.rememberSavedStories(passed)
         scope.launch {
             val timestamp = nowMillis()
             passed.forEach { historyStore.recordHistory(it.id, timestamp) }
@@ -1070,6 +1071,7 @@ class StoriesFeatureRuntime(
     private fun toggleRead(story: Story) {
         val read = !story.isRead
         updateStoryReadState(story, read)
+        if (read) requests.rememberSavedStories(listOf(story))
         scope.launch {
             if (read) {
                 historyStore.recordHistory(story.id, nowMillis())
@@ -1084,6 +1086,7 @@ class StoriesFeatureRuntime(
         val bookmarksList = currentType.isBookmarks
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val bookmarked = savedItemActions.toggleBookmarkAtomic(story.id)
+            if (bookmarked) requests.rememberSavedStories(listOf(story))
             if (!bookmarked && bookmarksList) {
                 sessionState.bookmarkStories.remove(story)
                 removeStory(story, loadReplacement = true)
@@ -1543,6 +1546,7 @@ class StoriesFeatureRuntime(
     private fun applyRowLoaded(effect: StoryRequestEvent.StoryRowLoaded) {
         val story = effect.story
         if (!isCurrentRow(story, effect.generation)) return
+        if (currentType.isBookmarks || currentType.isHistory) requests.rememberSavedStories(listOf(story))
         activeStore.finishNextPageStory(story.id, effect.generation)
         if (story.isComment && currentType.usesCommentRows()) {
             resolveRootStory(story, effect.generation)
@@ -1560,7 +1564,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun applySearchState(state: StorySearchUiState) {
-        if (state.loading && !state.loadingMore) activeLoadedThrough = -1
+        if (state.loading && !state.loadingMore && state.stories.isEmpty()) activeLoadedThrough = -1
         val targetStore = when (state.mode) {
             StorySearchMode.QUERY -> searchStore
             StorySearchMode.TOP_STORIES -> mainStore
@@ -1862,6 +1866,7 @@ class StoriesFeatureRuntime(
 
     private fun markRead(story: Story) {
         if (searchOptions.state.value.options.source != StorySearchSource.HISTORY) updateStoryReadState(story, true)
+        requests.rememberSavedStories(listOf(story))
         scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 

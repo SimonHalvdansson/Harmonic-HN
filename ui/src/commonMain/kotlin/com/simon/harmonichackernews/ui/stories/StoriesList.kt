@@ -67,6 +67,9 @@ import com.simon.harmonichackernews.presentation.ScrolledPastStoriesTracker
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.structuralEqualityPolicy
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
+import com.simon.harmonichackernews.presentation.toCommentPreloadCandidate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.categorization.ArticleCategoryPreferences
 import com.simon.harmonichackernews.categorization.ArticleCategoryRuntime
@@ -149,7 +152,7 @@ internal fun StoriesList(
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean,
     showRefreshMenuItem: Boolean,
-    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
+    onVisibleStoriesChanged: ((List<CommentPreloadCandidate>) -> Unit)?,
     modifier: Modifier = Modifier,
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
@@ -263,14 +266,25 @@ internal fun StoriesList(
             }
     }
 
-    LaunchedEffect(listState, stories, visibleCount, onVisibleStoriesChanged) {
-        snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.mapNotNull { item ->
-                item.index.takeIf { it in 0 until visibleCount }?.let(stories::getOrNull)
+    if (onVisibleStoriesChanged != null) {
+        val currentStories by rememberUpdatedState(stories)
+        val currentVisibleCount by rememberUpdatedState(visibleCount)
+        val submitCandidates by rememberUpdatedState(onVisibleStoriesChanged)
+        val visibleIndices by remember(listState) {
+            derivedStateOf(structuralEqualityPolicy()) {
+                val visible = listState.layoutInfo.visibleItemsInfo
+                (visible.firstOrNull()?.index ?: 0)..(visible.lastOrNull()?.index ?: -1)
             }
         }
-            .distinctUntilChanged()
-            .collect(onVisibleStoriesChanged)
+        LaunchedEffect(listState) {
+            snapshotFlow {
+                val rows = currentStories
+                val count = currentVisibleCount
+                visibleIndices.mapNotNull { index ->
+                    if (index < count) rows.getOrNull(index)?.toCommentPreloadCandidate() else null
+                }
+            }.collect { submitCandidates(it) }
+        }
     }
 
     val paneInsetsHandled = LocalSplitPaneLayout.current.supportsTwoPane

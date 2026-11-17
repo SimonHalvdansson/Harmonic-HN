@@ -1,15 +1,16 @@
 package com.simon.harmonichackernews.data
 
 /** Bounds checks for prepared_comments.fbs. Unknown appended fields remain forward-compatible. */
-internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray) {
+internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray, private val payloadOffset: Int = 0) {
+    private val payloadSize = bytes.size - payloadOffset
     // A valid writer stores each referenced string/table in the payload. Bound repeated references
     // too, so a tiny forged vector cannot expand one large string into unbounded allocations.
-    private var remainingReferencedBytes = bytes.size.toLong() * 4
+    private var remainingReferencedBytes = payloadSize.toLong() * 4
 
     fun verify() {
         range(0, 8)
-        require(bytes[4] == 'H'.code.toByte() && bytes[5] == 'N'.code.toByte() &&
-            bytes[6] == 'P'.code.toByte() && bytes[7] == 'C'.code.toByte())
+        require(byte(4) == 'H'.code.toByte() && byte(5) == 'N'.code.toByte() &&
+            byte(6) == 'P'.code.toByte() && byte(7) == 'C'.code.toByte())
         val root = table(target(0))
         root.scalar(0)
         root.scalar(1)
@@ -34,7 +35,7 @@ internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray) {
         require(position >= 8 && position % 4 == 0)
         // Vtable deduplication can produce a negative distance: use signed, wide arithmetic.
         val vtable = position.toLong() - int(position)
-        require(vtable in 8L..(bytes.size - 4).toLong())
+        require(vtable in 8L..(payloadSize - 4).toLong())
         val start = vtable.toInt()
         val length = ushort(start)
         val objectSize = ushort(start + 2)
@@ -75,8 +76,8 @@ internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray) {
             }
             val position = target(field)
             val length = int(position)
-            require(length >= 0 && length < bytes.size - position - 4)
-            require(bytes[position + 4 + length] == 0.toByte())
+            require(length >= 0 && length < payloadSize - position - 4)
+            require(byte(position + 4 + length) == 0.toByte())
             spend(length)
             return length
         }
@@ -86,14 +87,14 @@ internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray) {
 
     private fun vector(position: Int): Vector {
         val count = int(position)
-        require(count >= 0 && count <= (bytes.size - position - 4) / 4)
+        require(count >= 0 && count <= (payloadSize - position - 4) / 4)
         spend(count * 4)
         return Vector(position + 4, count)
     }
 
     private fun target(offset: Int): Int {
         val relative = int(offset)
-        require(relative > 0 && relative <= bytes.size - offset - 4)
+        require(relative > 0 && relative <= payloadSize - offset - 4)
         val position = offset + relative
         require(position % 4 == 0)
         return position
@@ -101,17 +102,19 @@ internal class PreparedCommentFlatBufferVerifier(private val bytes: ByteArray) {
 
     private fun int(offset: Int): Int {
         range(offset, 4)
-        return (bytes[offset].toInt() and 255) or
-            ((bytes[offset + 1].toInt() and 255) shl 8) or
-            ((bytes[offset + 2].toInt() and 255) shl 16) or
-            (bytes[offset + 3].toInt() shl 24)
+        return (byte(offset).toInt() and 255) or
+            ((byte(offset + 1).toInt() and 255) shl 8) or
+            ((byte(offset + 2).toInt() and 255) shl 16) or
+            (byte(offset + 3).toInt() shl 24)
     }
 
     private fun ushort(offset: Int): Int =
-        (bytes[offset].toInt() and 255) or ((bytes[offset + 1].toInt() and 255) shl 8)
+        (byte(offset).toInt() and 255) or ((byte(offset + 1).toInt() and 255) shl 8)
+
+    private fun byte(offset: Int): Byte = bytes[payloadOffset + offset]
 
     private fun range(offset: Int, length: Int) {
-        require(offset >= 0 && length >= 0 && offset <= bytes.size - length)
+        require(offset >= 0 && length >= 0 && offset <= payloadSize - length)
     }
 
     private fun spend(size: Int) {

@@ -22,7 +22,7 @@ import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColor
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.TextPreferences
-import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
 
 /**
  * Compose presentation bridge for the stories screen. The coordinator remains the data/network
@@ -32,7 +32,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 internal fun AndroidStoriesScreen(
     controller: StoriesScreenController,
     mainListState: LazyListState,
-    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
+    onVisibleStoriesChanged: (List<CommentPreloadCandidate>) -> Unit,
 ) {
     val tintStore = LocalHarmonicUiDependencies.current.storyResourceTints
     StoriesRoute(

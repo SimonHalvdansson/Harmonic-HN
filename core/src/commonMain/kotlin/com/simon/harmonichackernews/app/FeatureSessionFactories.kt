@@ -125,6 +125,7 @@ fun HarmonicAppComposition.createStoriesFeatureStore(
         isStoryRead = host.platform.history::contains,
         shouldHideReadStories = { host.userSettings.story.hideRead },
         storyLoadFailurePercent = { host.userSettings.debug.storyLoadFailurePercent },
+        savedSearchCache = this.host.storyCacheRepository.savedStorySearchCache,
     )
     val runtime = StoriesFeatureRuntime(
         scope = featureScope,

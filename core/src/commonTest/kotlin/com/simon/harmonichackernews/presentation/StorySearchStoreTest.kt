@@ -5,6 +5,8 @@ import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.data.Comment
+import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
+import com.simon.harmonichackernews.data.SavedStorySearchCache
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.AlgoliaSubmissionType
@@ -19,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.Continuation
@@ -172,6 +175,51 @@ class StorySearchStoreTest {
         store.search("")
         runCurrent()
         assertEquals(7, calls)
+    }
+
+    @Test
+    fun savedSearchPublishesLocalMatchesWhileBackfillingAndReusesThemAfterRecreation() = runTest {
+        val files = InMemoryStoryCacheFileStore()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val requested = mutableListOf<Int>()
+        val secondStory = CompletableDeferred<Story>()
+        val ids = mutableListOf(1)
+        fun recreate() = store(
+            backgroundScope,
+            bookmarkIds = ids,
+            savedSearchCache = SavedStorySearchCache(files, dispatcher),
+            getStory = { id ->
+                requested += id
+                if (id == 1) story(1) else secondStory.await()
+            },
+        ).also { it.selectSource(StorySearchSource.BOOKMARKS) }
+
+        recreate().search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(1), requested)
+
+        ids += 2
+        val search = recreate()
+        search.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(1, 2), requested)
+        assertTrue(search.state.value.loading)
+        assertEquals(listOf(1), search.state.value.stories.map(Story::id))
+
+        secondStory.complete(story(2))
+        runCurrent()
+        assertFalse(search.state.value.loading)
+        assertEquals(listOf(1, 2), search.state.value.stories.map(Story::id))
+
+        ids.remove(1)
+        val reopened = recreate()
+        reopened.search("Kotlin")
+        runCurrent()
+        assertEquals(listOf(1, 2), requested)
+        assertEquals(listOf(2), reopened.state.value.stories.map(Story::id))
+        reopened.search("Kotlin", forceRefresh = true)
+        runCurrent()
+        assertEquals(listOf(1, 2, 2), requested)
     }
 
     @Test
@@ -748,6 +796,7 @@ class StorySearchStoreTest {
         hideRead: () -> Boolean = { false },
         controller: StorySearchController = StorySearchController(),
         nowMillis: () -> Long = { 0L },
+        savedSearchCache: SavedStorySearchCache? = null,
     ) = StorySearchStore(
         scope = scope,
         algoliaRepository = object : AlgoliaRepository {
@@ -767,6 +816,7 @@ class StorySearchStoreTest {
         shouldHideReadStories = hideRead,
         controller = controller,
         nowMillis = nowMillis,
+        savedSearchCache = savedSearchCache,
     )
 
     private fun story(id: Int) = Story("Kotlin", id, true, false)

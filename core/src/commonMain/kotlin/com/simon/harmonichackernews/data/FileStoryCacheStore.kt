@@ -104,6 +104,7 @@ class FileStoryCacheStore(
         StoryCacheKeys.FULL_NAMESPACE,
         StoryCacheKeys.SUMMARY_NAMESPACE,
         StoryCacheKeys.PREPARED_NAMESPACE,
+        StoryCacheKeys.SAVED_SEARCH_NAMESPACE,
         StoryCacheKeys.ARTICLE_NAMESPACE -> Path(root, namespace)
         else -> error("Unknown story-cache namespace: $namespace")
     }

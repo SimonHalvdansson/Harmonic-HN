@@ -40,11 +40,12 @@ internal object PreparedCommentFlatBuffer {
         return builder.sizedByteArray()
     }
 
-    fun decode(bytes: ByteArray): PreparedCommentThread {
+    fun decode(bytes: ByteArray, payloadOffset: Int): PreparedCommentThread {
         // The upstream KMP runtime has no verifier. Check offsets/counts before native reads or
         // allocating lists/strings, even if a malformed file happens to have a valid checksum.
-        PreparedCommentFlatBufferVerifier(bytes).verify()
-        val root = CachedThread.asRoot(ArrayReadWriteBuffer(bytes))
+        PreparedCommentFlatBufferVerifier(bytes, payloadOffset).verify()
+        val buffer = ArrayReadWriteBuffer(bytes, offset = payloadOffset, writePosition = 0)
+        val root = CachedThread.asRoot(buffer)
         val story = requireNotNull(root.story)
         val cursor = CachedComment()
         return PreparedCommentThread(

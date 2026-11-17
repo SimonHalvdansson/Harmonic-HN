@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
 import com.simon.harmonichackernews.ui.content.StoryRowModel
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
@@ -91,7 +92,7 @@ fun StoriesScreen(
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
-    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
+    onVisibleStoriesChanged: ((List<CommentPreloadCandidate>) -> Unit)? = null,
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
     categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
@@ -265,7 +266,7 @@ fun StoriesScreen(
                 filterColors = filterColors,
                 pullToRefreshEnabled = pullToRefreshEnabled,
                 showRefreshMenuItem = showRefreshMenuItem,
-                onVisibleStoriesChanged = {},
+                onVisibleStoriesChanged = null,
             )
         },
         overlay = {

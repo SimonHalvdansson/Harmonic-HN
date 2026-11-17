@@ -149,6 +149,7 @@ object StoryCacheKeys {
     const val FULL_NAMESPACE = "story_cache/full"
     const val SUMMARY_NAMESPACE = "story_cache/summary"
     const val PREPARED_NAMESPACE = "story_cache/prepared"
+    internal const val SAVED_SEARCH_NAMESPACE = "saved_story_search"
     const val ARTICLE_NAMESPACE = "article_cache"
 
     fun commentsViewedKey(storyId: Int): String = COMMENTS_VIEWED + storyId
@@ -179,6 +180,8 @@ class StoryCacheRepository(
     private val maximumStories: Int = DEFAULT_MAXIMUM_STORIES,
     private val crc32: Crc32 = KotlinCrc32,
 ) {
+    internal val savedStorySearchCache = SavedStorySearchCache(files)
+
     @Volatile
     private var recentStoryAvailability: RecentStoryAvailability? = null
     @Volatile

@@ -34,7 +34,7 @@ class StorySearchRuntime {
             return StorySearchApplication(false)
         }
 
-        if (state.loading) {
+        if (state.loading && (state.loadingMore || state.stories.isEmpty())) {
             if (state.loadingMore) {
                 if (!loadMoreInProgress) beginLoadMore(store)
             } else if (state.mode == StorySearchMode.QUERY && store.stories.isNotEmpty()) {
@@ -65,7 +65,8 @@ class StorySearchRuntime {
         requestedVisibleCount = -1
         return StorySearchApplication(
             consumed = true,
-            completed = true,
+            loading = state.loading,
+            completed = !state.loading,
             contentApplied = true,
         )
     }

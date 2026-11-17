@@ -20,6 +20,9 @@ data class PreparedCommentThread(
     val summaryJson: String,
     val rankedIds: List<Int>,
 ) {
+    // Each thread owns immutable records. A copy or a deserialization gets its own validation.
+    private val contentCompatible by lazy { validateContent() }
+
     /** Complete identity only when persistence or an existing-cache comparison needs it. */
     internal fun withSourceDigest(response: String): PreparedCommentThread =
         if (sourceDigest.isEmpty()) copy(sourceDigest = StableHash.sha256Hex(response)) else this
@@ -38,7 +41,7 @@ data class PreparedCommentThread(
         topLevelCommentIds: List<Int>,
         filteredUsers: Set<String>,
     ): AlgoliaCommentsResponse {
-        require(isContentCompatible()) { "Incompatible prepared comment cache" }
+        require(contentCompatible) { "Incompatible prepared comment cache" }
         val blocked = filteredUsers.mapNotNullTo(mutableSetOf()) {
             it.trim().takeIf(String::isNotEmpty)
         }
@@ -95,9 +98,9 @@ data class PreparedCommentThread(
         )
     }
 
-    internal fun isCompatible(): Boolean = sourceDigest.length == 64 && isContentCompatible()
+    internal fun isCompatible(): Boolean = sourceDigest.length == 64 && contentCompatible
 
-    private fun isContentCompatible(): Boolean {
+    private fun validateContent(): Boolean {
         if (schemaVersion != SCHEMA_VERSION || textPreparationVersion != TEXT_PREPARATION_VERSION) return false
         // Validate subtree boundaries before any indexed traversal. IDs may be absent/duplicated in
         // permissive API payloads; structural depth, rather than ID uniqueness, defines subtrees.

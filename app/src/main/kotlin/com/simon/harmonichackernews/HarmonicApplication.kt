@@ -72,8 +72,8 @@ class HarmonicApplication : Application(), Configuration.Provider, SingletonImag
         val runtimeDelivery = createAndroidLocalRuntimeDelivery(this)
         startup = AndroidAppStartup(preloadScope) {
             localAiSupport.install(this@HarmonicApplication)
-            runtimeDelivery.preload()
             coroutineScope {
+                if (runtimeDelivery.included) launch { runtimeDelivery.preload() }
                 listOf(
                     AndroidKeyValueStore.defaults(this@HarmonicApplication),
                     AndroidKeyValueStore.global(this@HarmonicApplication),

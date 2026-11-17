@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.data
 
 import com.simon.harmonichackernews.platform.KotlinCrc32
+import kotlinx.coroutines.test.runTest
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.test.Test
@@ -50,6 +51,14 @@ class PreparedCommentCodecTest {
         val decoded = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(thread)))
         assertNull(decoded.comments[0].expandedHtml)
         assertEquals("", decoded.comments[1].expandedHtml)
+    }
+
+    @Test fun validatedDecodeCanRestoreAndCopiesStillValidateTheirOwnStructure() = runTest {
+        val decoded = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(thread)))
+        assertEquals(listOf(7, 8), decoded.restore().comments.map { it.id })
+        val invalidCopy = decoded.copy(comments = listOf(decoded.comments.first()))
+        assertFailsWith<IllegalArgumentException> { invalidCopy.restore() }
+        assertNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(invalidCopy)))
     }
 
     @Test fun rejectsUnknownTagsAndIdentifiers() {

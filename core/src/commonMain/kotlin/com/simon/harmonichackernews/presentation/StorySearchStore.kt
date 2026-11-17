@@ -4,9 +4,8 @@ import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StorySearchController
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Story
-import com.simon.harmonichackernews.data.StorySnapshot
-import com.simon.harmonichackernews.data.applySnapshot
-import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.data.SavedStorySearchCache
+import com.simon.harmonichackernews.data.SavedStorySearchMetadata
 import kotlin.time.Clock
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
@@ -17,7 +16,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,6 +66,7 @@ class StorySearchStore(
     private val bookmarkedStoryIds: () -> List<Int> = { emptyList() },
     private val controller: StorySearchController = StorySearchController(),
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    private val savedSearchCache: SavedStorySearchCache? = null,
 ) {
     private val mutableState = MutableStateFlow(StorySearchUiState())
     val state: StateFlow<StorySearchUiState> = mutableState.asStateFlow()
@@ -125,7 +124,7 @@ class StorySearchStore(
             controller.buildSearchUrl(query, StorySearchController.ALGOLIA_PAGE_SIZE),
         )
         resetPagination()
-        execute(loadMore = false)
+        execute(loadMore = false, forceCollectionRefresh = forceRefresh)
     }
 
     fun loadTopStories(
@@ -216,7 +215,7 @@ class StorySearchStore(
         loadJob = null
     }
 
-    private fun execute(loadMore: Boolean) {
+    private fun execute(loadMore: Boolean, forceCollectionRefresh: Boolean = false) {
         val activeRequest = request ?: return
         cancelLoad()
         val requestGeneration = generation
@@ -238,7 +237,7 @@ class StorySearchStore(
             val result = try {
                 when {
                     activeRequest is Request.Query && controller.source != StorySearchSource.ALL ->
-                        loadCollectionStories(activeRequest.query, controller.source)
+                        loadCollectionStories(activeRequest.query, controller.source, forceCollectionRefresh)
                     else -> loadAlgoliaStories(activeRequest, page, retainedFetchedStories)
                 }
             } catch (error: CancellationException) {
@@ -293,13 +292,18 @@ class StorySearchStore(
         )
     }
 
-    private suspend fun loadCollectionStories(query: String, source: StorySearchSource): SearchResult = coroutineScope {
+    private suspend fun loadCollectionStories(
+        query: String,
+        source: StorySearchSource,
+        forceRefresh: Boolean,
+    ): SearchResult = coroutineScope {
         val ids = when (source) {
             StorySearchSource.BOOKMARKS -> bookmarkedStoryIds()
             StorySearchSource.HISTORY -> readStoryIds()
             StorySearchSource.ALL -> error("All stories use Algolia search")
         }.distinct()
-        fun isRead(id: Int) = source == StorySearchSource.HISTORY || isStoryRead(id)
+        if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
+
         val retainedIds = ids.toSet()
         val now = nowMillis()
         collectionMetadata.entries.removeAll { (id, cached) ->
@@ -307,72 +311,87 @@ class StorySearchStore(
             if (expired) collectionMetadataBytes -= cached.estimatedBytes
             expired
         }
-        if (ids.isEmpty()) return@coroutineScope SearchResult(emptyList(), canLoadMore = false)
 
+        fun isRead(id: Int) = source == StorySearchSource.HISTORY || isStoryRead(id)
         val normalizedQuery = controller.normalizeQuery(query)
+        val filter = StorySearchController.StoryFilter(shouldFilterStory)
         val requestGeneration = generation
-        // Capture this query's hits: admitting new records may evict some of them from the cache.
-        val cachedForQuery = collectionMetadata.toMap()
-        val missing = ids.filter { it !in cachedForQuery }
-        val loaded = arrayOfNulls<CollectionStoryLoad>(missing.size)
-        val nextIndexMutex = Mutex()
-        var nextIndex = 0
-        // A semaphore alone leaves one suspended coroutine per collection item. Use a fixed
-        // worker pool and retain the semaphore to share the request limit across generations.
-        List(minOf(MAX_CONCURRENT_COLLECTION_REQUESTS, missing.size)) {
-            async {
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val index = nextIndexMutex.withLock {
-                        if (nextIndex < missing.size) nextIndex++ else null
-                    } ?: break
-                    val id = missing[index]
-                    loaded[index] = collectionStoryRequests.withPermit {
-                        try {
-                            val story = hackerNewsRepository.getStory(id)?.also { it.isRead = isRead(id) }
-                            if (story != null && requestGeneration == generation) {
-                                rememberCollectionStory(id, CachedCollectionStory(
-                                    story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle, nowMillis(),
-                                ))
+        val cached = if (forceRefresh) emptyMap() else {
+            savedSearchCache?.load(ids.filter { it !in collectionMetadata }).orEmpty()
+        }
+        ensureActive()
+        if (requestGeneration != generation) throw CancellationException("Search was superseded")
+
+        val matches = mutableMapOf<Int, Story>()
+        val missing = ArrayList<IndexedValue<Int>>()
+        fun addMatch(index: Int, story: Story) {
+            if (controller.shouldIncludeCollectionStory(story, normalizedQuery, filter)) matches[index] = story
+        }
+        fun sortedMatches(): List<Story> = matches.entries.sortedBy { it.key }
+            .mapTo(ArrayList(matches.size)) { it.value }
+            .also { controller.sortCollectionResults(it, query) }
+
+        ids.forEachIndexed { index, id ->
+            val metadata = collectionMetadata[id]?.metadata ?: cached[id]
+            if (metadata == null) {
+                missing.add(IndexedValue(index, id))
+            } else if (metadata.story.title?.lowercase()?.contains(normalizedQuery) == true) {
+                addMatch(index, metadata.toStory(isRead(id)))
+            }
+        }
+        for ((id, metadata) in cached) rememberCollectionStory(id, CachedCollectionStory(metadata, now))
+        var publishedMatches = matches.size
+        if (matches.isNotEmpty() && missing.isNotEmpty()) publish { copy(stories = sortedMatches()) }
+
+        var failed = 0
+        for ((batchNumber, batch) in missing.asSequence().chunked(COLLECTION_BATCH_SIZE).withIndex()) {
+            val loaded = arrayOfNulls<CollectionStoryLoad>(batch.size)
+            val nextIndexMutex = Mutex()
+            var nextIndex = 0
+            List(minOf(MAX_CONCURRENT_COLLECTION_REQUESTS, batch.size)) {
+                async {
+                    while (true) {
+                        ensureActive()
+                        val index = nextIndexMutex.withLock {
+                            if (nextIndex < batch.size) nextIndex++ else null
+                        } ?: break
+                        loaded[index] = collectionStoryRequests.withPermit {
+                            try {
+                                CollectionStoryLoad(hackerNewsRepository.getStory(batch[index].value), failed = false)
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: Exception) {
+                                CollectionStoryLoad(null, failed = true)
                             }
-                            CollectionStoryLoad(
-                                story = story,
-                                failed = false,
-                            )
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Exception) {
-                            CollectionStoryLoad(story = null, failed = true)
                         }
                     }
                 }
+            }.awaitAll()
+            val records = ArrayList<SavedStorySearchMetadata>()
+            batch.forEachIndexed { batchIndex, (index, id) ->
+                val outcome = checkNotNull(loaded[batchIndex])
+                if (outcome.failed) failed++
+                outcome.story?.let { story ->
+                    story.isRead = isRead(id)
+                    val metadata = SavedStorySearchMetadata.from(story)
+                    rememberCollectionStory(id, CachedCollectionStory(metadata, nowMillis()))
+                    records += metadata
+                    addMatch(index, story)
+                }
             }
-        }.awaitAll()
-        val byId = buildMap {
-            missing.forEachIndexed { index, id -> put(id, checkNotNull(loaded[index])) }
-        }
-        val outcomes = ids.map { id ->
-            byId[id] ?: cachedForQuery[id]?.let {
-                CollectionStoryLoad(Story().applySnapshot(it.story).apply {
-                    this.loaded = true
-                    isRead = isRead(id)
-                    isLink = it.isLink
-                    pdfTitle = it.pdfTitle
-                    videoTitle = it.videoTitle
-                }, failed = false)
-            } ?: CollectionStoryLoad(null, failed = false)
-        }
-        val filter = StorySearchController.StoryFilter(shouldFilterStory)
-        val stories = outcomes.mapNotNull(CollectionStoryLoad::story)
-            .filter { story ->
-                controller.shouldIncludeCollectionStory(story, normalizedQuery, filter)
+            if (matches.size != publishedMatches && batch.last() != missing.last() &&
+                (publishedMatches == 0 || batchNumber % COLLECTION_BATCHES_PER_UPDATE == 0)
+            ) {
+                publish { copy(stories = sortedMatches()) }
+                publishedMatches = matches.size
             }
-            .toMutableList()
-        controller.sortCollectionResults(stories, query)
+            savedSearchCache?.store(records)
+        }
+
         SearchResult(
-            stories = stories,
+            stories = sortedMatches(),
             canLoadMore = false,
-            failure = StoryLoadFailure.GENERAL.takeIf { outcomes.all(CollectionStoryLoad::failed) },
+            failure = StoryLoadFailure.GENERAL.takeIf { failed == ids.size },
         )
     }
 
@@ -463,20 +482,20 @@ class StorySearchStore(
     }
 
     private data class CachedCollectionStory(
-        val story: StorySnapshot,
-        val isLink: Boolean,
-        val pdfTitle: String?,
-        val videoTitle: String?,
+        val metadata: SavedStorySearchMetadata,
         val loadedAt: Long,
     ) {
+        private val story get() = metadata.story
         val estimatedBytes = 512L + 2L * ((story.title?.length ?: 0) + (story.text?.length ?: 0) +
             (story.url?.length ?: 0) + (story.author?.length ?: 0) +
-            (pdfTitle?.length ?: 0) + (videoTitle?.length ?: 0)) +
+            (metadata.pdfTitle?.length ?: 0) + (metadata.videoTitle?.length ?: 0)) +
             24L * (story.childIds.size + story.pollOptionIds.size)
     }
 
     private companion object {
         const val MAX_CONCURRENT_COLLECTION_REQUESTS = 8
+        const val COLLECTION_BATCH_SIZE = 64
+        const val COLLECTION_BATCHES_PER_UPDATE = 4
         const val COLLECTION_METADATA_TTL_MILLIS = 60_000L
         const val MAX_COLLECTION_METADATA_BYTES = 8L * 1024 * 1024
     }
