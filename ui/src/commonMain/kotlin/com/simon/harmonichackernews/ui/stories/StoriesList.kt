@@ -1,5 +1,6 @@
 @file:OptIn(
     androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
 )
 
 package com.simon.harmonichackernews.ui.stories
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.ui.common.MeasuredHeaderState
@@ -325,6 +327,7 @@ internal fun StoriesList(
                     items = stories,
                     itemCount = visibleCount,
                     state = listState,
+                    cacheWindow = remember { LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 1f) },
                     key = { story -> story.id },
                     contentType = { story -> if (story.isComment) "comment" else "story" },
                     modifier = Modifier
