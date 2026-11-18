@@ -32,7 +32,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -240,7 +243,8 @@ fun TitleFilterRuleEditor(
     onSave: (TitleFilterRule) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var text by rememberSaveable(initialRule) { mutableStateOf(initialRule?.text.orEmpty()) }
+    val fieldState = key(initialRule) { rememberTextFieldState(initialRule?.text.orEmpty()) }
+    val text = fieldState.text.toString()
     var modeValue by rememberSaveable(initialRule) {
         mutableStateOf((initialRule?.mode ?: TitleFilterMatchMode.WORDS_PHRASE).storedValue)
     }
@@ -264,7 +268,7 @@ fun TitleFilterRuleEditor(
             CompleteSettingsDialogDismissal(dismissal)
             RequestSettingsDialogFocus(focus, enabled = !dismissal.isClosing)
             TitleFilterRuleEditorContent(
-                text = text, mode = mode, onTextChanged = { text = it },
+                fieldState = fieldState, mode = mode,
                 onModeChanged = { modeValue = it.storedValue }, enabled = !dismissal.isClosing,
                 focusRequester = focus, onSave = ::save,
             )
@@ -320,14 +324,14 @@ fun DomainFilterRuleEditor(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun TitleFilterRuleEditorContent(
-    text: String,
+    fieldState: TextFieldState,
     mode: TitleFilterMatchMode,
-    onTextChanged: (String) -> Unit,
     onModeChanged: (TitleFilterMatchMode) -> Unit,
     enabled: Boolean,
     focusRequester: FocusRequester,
     onSave: () -> Unit,
 ) {
+    val text = fieldState.text.toString()
     val rule = remember(text, mode) { TitleFilterRule(text.trim(), mode) }
     val examples = remember(rule) { titleFilterPreviewExamples(rule) }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -338,7 +342,7 @@ internal fun TitleFilterRuleEditorContent(
             val interactionSource = remember { MutableInteractionSource() }
             val focused by interactionSource.collectIsFocusedAsState()
             BasicTextField(
-                value = text, onValueChange = { if (enabled) onTextChanged(it) },
+                state = fieldState,
                 enabled = enabled,
                 interactionSource = interactionSource,
                 modifier = Modifier.fillMaxWidth().heightIn(min = if (inlineHint) 48.dp else 64.dp)
@@ -352,23 +356,20 @@ internal fun TitleFilterRuleEditorContent(
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp,
                     lineHeight = 24.sp, fontFamily = AppUiFontFamily),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onSave() }),
-                decorationBox = { input ->
-                    if (inlineHint) {
-                        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
-                            if (text.isEmpty()) Text("Word or phrase", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 16.sp, lineHeight = 24.sp, fontFamily = AppUiFontFamily)
-                            input()
-                        }
-                    } else OutlinedTextFieldDefaults.DecorationBox(
-                        value = text, innerTextField = input, enabled = enabled, singleLine = true,
-                        visualTransformation = VisualTransformation.None,
-                        interactionSource = interactionSource,
-                        label = { Text("Word or phrase") },
-                    )
-                },
+                onKeyboardAction = { onSave() },
+                decorator = if (inlineHint) TextFieldDecorator { input ->
+                    Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
+                        if (text.isEmpty()) Text("Word or phrase", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 16.sp, lineHeight = 24.sp, fontFamily = AppUiFontFamily)
+                        input()
+                    }
+                } else OutlinedTextFieldDefaults.decorator(
+                    state = fieldState, enabled = enabled, lineLimits = TextFieldLineLimits.SingleLine,
+                    outputTransformation = null, interactionSource = interactionSource,
+                    label = { Text("Word or phrase") },
+                ),
             )
             Column {
                 Text("Match", fontFamily = AppUiFontFamily, fontWeight = FontWeight.Medium)

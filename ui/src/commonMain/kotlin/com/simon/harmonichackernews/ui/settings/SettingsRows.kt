@@ -2,6 +2,14 @@ package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.ui.theme.themeBackground
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.MaterialTheme
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.resources.*
@@ -9,8 +17,6 @@ import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,8 +24,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,7 +40,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,8 +50,6 @@ import com.simon.harmonichackernews.ui.common.HarmonicSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -437,92 +438,64 @@ private fun <T> SegmentedSettingOption(
     val outerCorner = HarmonicDimens.compose_settings_segmented_button_corner_radius
     val defaultInnerCorner = HarmonicDimens.compose_settings_segmented_button_inner_corner_radius
     val pressedInnerCorner = HarmonicDimens.compose_settings_segmented_button_pressed_inner_corner_radius
-    val interactionSource = remember(value) { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val innerCorner by animateDpAsState(
-        targetValue = when {
-            isPressed -> pressedInnerCorner
-            isSelected -> outerCorner
-            else -> defaultInnerCorner
-        },
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 800f,
-        ),
-        label = "settings segmented button corners",
+    val first = index == 0
+    val last = index == lastIndex
+    val shapes = ToggleButtonShapes(
+        shape = segmentedSettingShape(first, last, outerCorner, defaultInnerCorner, buttonHeight),
+        pressedShape = segmentedSettingShape(first, last, outerCorner, pressedInnerCorner, buttonHeight),
+        checkedShape = RoundedCornerShape(outerCorner),
     )
-    val shape = remember(index, lastIndex, innerCorner, buttonHeight) {
-        segmentedSettingShape(
-            first = index == 0,
-            last = index == lastIndex,
-            outerCorner = outerCorner,
-            animatedInnerCorner = innerCorner,
-            buttonHeight = buttonHeight,
-        )
-    }
-    val selectedBackground = colors.secondaryContainer
-    Row(
-        modifier = modifier
-            .alpha(if (disabled) 0.38f else 1f)
-            .heightIn(min = buttonHeight)
-            .background(
-                if (isSelected) {
-                    selectedBackground
-                } else {
-                    androidx.compose.ui.graphics.Color.Transparent
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        ToggleButton(
+            checked = isSelected,
+            onCheckedChange = { onSelected(value) },
+            enabled = optionEnabled,
+            modifier = modifier.heightIn(min = buttonHeight)
+                .alpha(if (disabled) 0.38f else 1f)
+                .semantics {
+                    role = Role.RadioButton
+                    selected = isSelected
                 },
-                shape,
-            )
-            .border(
-                1.dp,
-                if (isSelected) {
-                    selectedBackground
-                } else {
-                    colors.outlineVariant
-                },
-                shape,
-            )
-            .clip(shape)
-            .selectable(
-                selected = isSelected,
-                enabled = optionEnabled,
-                role = Role.RadioButton,
-                interactionSource = interactionSource,
-                onClick = { onSelected(value) },
-            )
-            .padding(horizontal = 6.dp, vertical = if (LocalDensity.current.fontScale > 1f) 4.dp else 0.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (optionContent != null) {
-            optionContent(value, isSelected)
-        } else {
-            icon?.let { icon ->
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = if (isSelected) {
+            shapes = shapes,
+            colors = ToggleButtonDefaults.colors(
+                containerColor = Color.Transparent,
+                checkedContainerColor = colors.secondaryContainer,
+                disabledContainerColor = if (isSelected) colors.secondaryContainer else Color.Transparent,
+            ),
+            border = BorderStroke(1.dp, if (isSelected) colors.secondaryContainer else colors.outlineVariant),
+            elevation = null,
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = if (LocalDensity.current.fontScale > 1f) 4.dp else 0.dp),
+        ) {
+            if (optionContent != null) {
+                optionContent(value, isSelected)
+            } else {
+                icon?.let { icon ->
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isSelected) {
+                            colors.onSecondaryContainer
+                        } else {
+                            colors.onSurfaceVariant
+                        },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text = label,
+                    color = if (isSelected) {
                         colors.onSecondaryContainer
                     } else {
-                        colors.onSurfaceVariant
+                        colors.onSurface
                     },
+                    fontFamily = AppUiFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    textAlign = TextAlign.Center,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
             }
-            Text(
-                text = label,
-                color = if (isSelected) {
-                    colors.onSecondaryContainer
-                } else {
-                    colors.onSurface
-                },
-                fontFamily = AppUiFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -598,15 +571,15 @@ fun SliderSetting(
     }
 }
 
-/** Keep spring overshoot from making RoundedCornerShape rescale the opposite, fixed corners. */
+/** Bound each inner corner to half the height so the outside corners keep their radius. */
 internal fun segmentedSettingShape(
     first: Boolean,
     last: Boolean,
     outerCorner: Dp,
-    animatedInnerCorner: Dp,
+    innerRadius: Dp,
     buttonHeight: Dp,
 ): RoundedCornerShape {
-    val innerCorner = animatedInnerCorner.coerceIn(0.dp, buttonHeight / 2)
+    val innerCorner = innerRadius.coerceIn(0.dp, buttonHeight / 2)
     return RoundedCornerShape(
         topStart = if (first) outerCorner else innerCorner,
         topEnd = if (last) outerCorner else innerCorner,

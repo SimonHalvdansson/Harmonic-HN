@@ -1,17 +1,11 @@
 package com.simon.harmonichackernews.ui.stories
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenuItem
+import com.simon.harmonichackernews.ui.content.HarmonicSelectableMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -36,11 +30,8 @@ internal fun StoryTypeDropdownMenu(
 ) {
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss, modifier = Modifier.width(240.dp)) {
         types.forEach { type ->
-            val isSelected = type == selectedType
-            DropdownMenuItem(
-                modifier = Modifier.padding(horizontal = 8.dp).clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent)
-                    .semantics { selected = isSelected },
+            HarmonicSelectableMenuItem(
+                selected = type == selectedType,
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 text = {
                     HarmonicMenuText(type.label, color = MaterialTheme.colorScheme.onSurface,

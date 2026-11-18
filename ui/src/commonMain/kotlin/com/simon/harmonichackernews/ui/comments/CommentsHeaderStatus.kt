@@ -6,7 +6,7 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.CapturedAnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
@@ -66,14 +66,12 @@ fun OpFilterBanner(controller: CommentsScreenController) {
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
     val contentColor = if (HarmonicTheme.isDark) colors.onSurface else colors.onSecondaryContainer
     val active = controller.opThreadFilterEnabled || controller.userThreadFilterEnabled
-    // Keep the last filter's copy while the banner animates out.
-    var showingUserFilter by remember { mutableStateOf(controller.userThreadFilterEnabled) }
-    if (active) showingUserFilter = controller.userThreadFilterEnabled
-    AnimatedVisibility(
+    CapturedAnimatedVisibility(
         visible = active,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
+        val showingUserFilter = controller.userThreadFilterEnabled
         Row(
             modifier = Modifier
                 .fillMaxWidth()

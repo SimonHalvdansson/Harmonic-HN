@@ -104,10 +104,8 @@ class SettingsModalLayoutTest {
                     edgeToEdgeContent = true, scrollableContent = true,
                     text = {
                         com.simon.harmonichackernews.ui.comments.CommentSearchScreen(
-                            fieldValue = androidx.compose.ui.text.input.TextFieldValue("match"),
-                            onFieldValueChanged = {},
+                            fieldState = androidx.compose.foundation.text.input.rememberTextFieldState("match"),
                             listState = androidx.compose.foundation.lazy.rememberLazyListState(),
-                            scrollState = androidx.compose.foundation.rememberScrollState(),
                             visibleComments = listOf(comment), mutedColor = androidx.compose.ui.graphics.Color.Gray,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Default, requestFocus = false,
                         ) { Text("Matching comment") }

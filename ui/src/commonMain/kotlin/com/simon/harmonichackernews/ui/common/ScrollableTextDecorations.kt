@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.ui.common
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollIndicatorState
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,11 +13,11 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.HarmonicDimens
 
@@ -55,9 +57,24 @@ internal fun Modifier.fadingScrollEdges(
         }
 
 @Composable
+internal fun Modifier.harmonicScrollbar(state: ScrollIndicatorState?, inset: Dp = 0.dp): Modifier {
+    if (state == null) return this
+    return nonInteractiveScrollbar(
+        state = state,
+        orientation = Orientation.Vertical,
+        thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        thickness = 3.dp,
+        thumbMinLength = 24.dp,
+        thumbMaxLengthFraction = 1f,
+        isFadeEnabled = false,
+        mainAxisTrackInset = inset,
+        crossAxisTrackInset = 1.dp,
+    )
+}
+
+@Composable
 internal fun ScrollableTextScrollbar(state: ScrollState, modifier: Modifier = Modifier) {
-    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    Canvas(modifier) { drawScrollThumb(state, thumbColor) }
+    Box(modifier.harmonicScrollbar(state.scrollIndicatorState, 8.dp))
 }
 
 @Composable
@@ -66,8 +83,7 @@ internal fun ScrollableTextDecorations(
     containerColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    Box(modifier.drawWithCache {
+    Box(modifier.harmonicScrollbar(state.scrollIndicatorState, 8.dp).drawWithCache {
         val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
             .coerceAtMost(size.height / 2f)
         val opaque = containerColor.copy(alpha = 1f)
@@ -98,34 +114,7 @@ internal fun ScrollableTextDecorations(
                     }) { drawRect(rising, size = strip) }
                     drawRect(opaque, topLeft = Offset(0f, size.height - solid), size = Size(size.width, solid))
                 }
-                drawScrollThumb(state, thumbColor)
             }
         }
     })
-}
-
-private fun DrawScope.drawScrollThumb(state: ScrollState, thumbColor: Color) {
-    val maxValue = state.maxValue
-    val viewportSize = state.viewportSize
-    if (maxValue <= 0 || viewportSize <= 0) return
-    val widthPx = 3.dp.toPx()
-    val endPaddingPx = 1.dp.toPx()
-    val verticalPaddingPx = 8.dp.toPx()
-    val minimumHeightPx = 24.dp.toPx()
-    val trackHeight = (size.height - verticalPaddingPx * 2f).coerceAtLeast(0f)
-    val contentHeight = viewportSize + maxValue
-    val visibleFraction = viewportSize.toFloat() / contentHeight
-    val thumbHeight = (trackHeight * visibleFraction)
-        .coerceIn(minimumHeightPx.coerceAtMost(trackHeight), trackHeight)
-    val scrollFraction = state.value.toFloat() / maxValue
-    val top = verticalPaddingPx + (trackHeight - thumbHeight) * scrollFraction
-    drawRoundRect(
-        color = thumbColor,
-        topLeft = androidx.compose.ui.geometry.Offset(
-            size.width - widthPx - endPaddingPx,
-            top,
-        ),
-        size = androidx.compose.ui.geometry.Size(widthPx, thumbHeight),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(widthPx / 2f),
-    )
 }

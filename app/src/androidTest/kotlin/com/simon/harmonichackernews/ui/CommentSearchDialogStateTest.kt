@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -29,18 +30,7 @@ class CommentSearchDialogStateTest {
         val query = mutableStateOf("")
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            val palette = HarmonicThemeCatalog.resolve("light", false)
-            HarmonicTheme(palette.colorScheme, palette.dark) {
-                CommentsSearchDialog(
-                    searchTerm = query.value, visibleComments = emptyList(),
-                    settings = settings, storyAuthor = null, accountUser = null,
-                    maxDialogHeight = 800.dp,
-                    onSearchTermChanged = { query.value = it },
-                    onDismiss = {}, onCommentSelected = {}, onOpenLink = {},
-                    onLinkLongClick = { _, _, _, _ -> },
-                    onReferenceLongClick = { _, _, _, _ -> },
-                )
-            }
+            TestSearchDialog(query.value) { query.value = it }
         }
         compose.onNode(hasSetTextAction()).performTextReplacement("Keep this comment search")
         compose.onNode(hasSetTextAction()).performTextInputSelection(TextRange(5, 9))
@@ -53,6 +43,33 @@ class CommentSearchDialogStateTest {
             SemanticsMatcher.expectValue(SemanticsProperties.TextSelectionRange, TextRange(5, 9)),
         )
         compose.runOnIdle { assertEquals("Keep this comment search", query.value) }
+    }
+
+    @Test
+    fun revertingAnEditPublishesTheDraftWhileSearchResultsAreStillPending() {
+        val edits = mutableListOf<String>()
+        compose.setContent { TestSearchDialog("reader") { edits.add(it) } }
+        val field = compose.onNode(hasSetTextAction())
+        field.performTextReplacement("reader mode")
+        compose.runOnIdle { assertEquals(listOf("reader mode"), edits) }
+        field.performTextReplacement("reader")
+        compose.runOnIdle { assertEquals(listOf("reader mode", "reader"), edits) }
+    }
+
+    @Composable
+    private fun TestSearchDialog(query: String, onQueryChanged: (String) -> Unit) {
+        val palette = HarmonicThemeCatalog.resolve("light", false)
+        HarmonicTheme(palette.colorScheme, palette.dark) {
+            CommentsSearchDialog(
+                searchTerm = query, visibleComments = emptyList(),
+                settings = settings, storyAuthor = null, accountUser = null,
+                maxDialogHeight = 800.dp,
+                onSearchTermChanged = onQueryChanged,
+                onDismiss = {}, onCommentSelected = {}, onOpenLink = {},
+                onLinkLongClick = { _, _, _, _ -> },
+                onReferenceLongClick = { _, _, _, _ -> },
+            )
+        }
     }
 
     private val settings = CommentDisplaySettings(

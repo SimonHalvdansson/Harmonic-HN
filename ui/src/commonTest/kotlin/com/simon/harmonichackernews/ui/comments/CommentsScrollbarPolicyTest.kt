@@ -1,41 +1,38 @@
 package com.simon.harmonichackernews.ui.comments
 
+import androidx.compose.foundation.ScrollIndicatorState
+import androidx.compose.foundation.gestures.ScrollableState
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class CommentsScrollbarPolicyTest {
-    @Test
-    fun equalHeightRowsFillTheTrackAtStartMiddleAndEnd() {
-        val top = commentsScrollbarMetrics(0, 10_000, 2_000, false, true)!!
-        val middle = commentsScrollbarMetrics(4_000, 10_000, 2_000, true, true)!!
-        val bottom = commentsScrollbarMetrics(8_000, 10_000, 2_000, true, false)!!
-        assertEquals(0.2f, middle.visibleFraction)
-        assertEquals(0f, top.scrollPosition)
-        assertEquals(0.5f, middle.scrollPosition)
-        assertEquals(1f, bottom.scrollPosition)
+    private fun indicator(offset: Int, size: Int, viewport: Int, back: Boolean, forward: Boolean): ScrollIndicatorState {
+        val estimates = object : ScrollIndicatorState {
+            override val scrollOffset = offset
+            override val contentSize = size
+            override val viewportSize = viewport
+        }
+        val list = object : ScrollableState by ScrollableState({ it }) {
+            override val canScrollBackward = back
+            override val canScrollForward = forward
+        }
+        return CommentsScrollIndicator(estimates, list)
     }
 
     @Test
-    fun inaccurateEstimatesStillReachBothEnds() {
-        assertEquals(0f, commentsScrollbarMetrics(50, 8_000, 2_300, false, true)!!.scrollPosition)
-        assertEquals(1f, commentsScrollbarMetrics(6_700, 8_000, 1_000, true, false)!!.scrollPosition)
+    fun estimatedOffsetsAreClampedAndReachBothEndpoints() {
+        assertEquals(0, indicator(50, 8000, 2300, false, true).scrollOffset)
+        assertEquals(7000, indicator(6700, 8000, 1000, true, false).scrollOffset)
+        assertEquals(4000, indicator(4000, 10000, 2000, true, true).scrollOffset)
+        assertEquals(0, indicator(-20, 4000, 1000, true, true).scrollOffset)
+        assertEquals(3000, indicator(5000, 4000, 1000, true, true).scrollOffset)
     }
 
     @Test
-    fun oneTallCommentStillHasAScrollbarButContentThatFitsDoesNot() {
-        val single = commentsScrollbarMetrics(3_000, 4_000, 1_000, true, false)!!
-        assertEquals(0.25f, single.visibleFraction)
-        assertEquals(1f, single.scrollPosition)
-        assertNull(commentsScrollbarMetrics(0, 1_000, 1_000, false, false))
-    }
-
-    @Test
-    fun unknownAndEmptyMeasurementsAreHiddenAndOffsetsAreClamped() {
-        assertNull(commentsScrollbarMetrics(Int.MAX_VALUE, 4_000, 1_000, true, true))
-        assertNull(commentsScrollbarMetrics(0, Int.MAX_VALUE, 1_000, false, true))
-        assertNull(commentsScrollbarMetrics(0, 0, 0, false, true))
-        assertEquals(0f, commentsScrollbarMetrics(-20, 4_000, 1_000, true, true)!!.scrollPosition)
-        assertEquals(1f, commentsScrollbarMetrics(5_000, 4_000, 1_000, true, true)!!.scrollPosition)
+    fun fittingAndUnknownContentAreHiddenWhileOneTallRowStillScrolls() {
+        assertEquals(0, indicator(0, 1100, 1000, false, false).contentSize)
+        assertEquals(0, indicator(Int.MAX_VALUE, 4000, 1000, true, true).contentSize)
+        assertEquals(0, indicator(0, Int.MAX_VALUE, 1000, true, true).contentSize)
+        assertEquals(4000, indicator(3000, 4000, 1000, true, false).contentSize)
     }
 }

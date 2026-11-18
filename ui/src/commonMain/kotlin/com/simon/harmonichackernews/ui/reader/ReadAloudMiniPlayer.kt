@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.reader
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.CapturedAnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -39,12 +39,8 @@ fun ReadAloudMiniPlayer(
     enabled: Boolean = true,
     onAction: (String) -> Unit,
 ) {
-    // Stop clears the article immediately. Retain its presentation until the exit finishes.
-    var lastArticle by remember { mutableStateOf(state) }
-    if (state.count > 0) SideEffect { lastArticle = state }
-    val article = if (state.count > 0) state else lastArticle
     val visible = enabled && state.count > 0
-    AnimatedVisibility(
+    CapturedAnimatedVisibility(
         visible = visible,
         modifier = modifier,
         enter = expandVertically(animationSpec = tween(300), expandFrom = Alignment.Bottom),
@@ -61,13 +57,13 @@ fun ReadAloudMiniPlayer(
                 ) {
                     Column(Modifier.weight(1f).padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            article.title.ifBlank { "Read aloud" },
+                            state.title.ifBlank { "Read aloud" },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleSmall,
                         )
                         AnimatedContent(
-                            targetState = article.error ?: if (article.playing) "Reading aloud" else "Paused",
+                            targetState = state.error ?: if (state.playing) "Reading aloud" else "Paused",
                             transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
                             label = "Reading status",
                         ) { status ->
@@ -76,18 +72,18 @@ fun ReadAloudMiniPlayer(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (article.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (state.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         val progress by animateFloatAsState(
-                            targetValue = (article.index.toFloat() / article.count.coerceAtLeast(1)).coerceIn(0f, 1f),
+                            targetValue = (state.index.toFloat() / state.count.coerceAtLeast(1)).coerceIn(0f, 1f),
                             animationSpec = tween(300),
                             label = "Reading progress",
                         )
                         LinearProgressIndicator(
                             progress = { progress },
                             modifier = Modifier.fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp))
-                                .semantics { contentDescription = "Section ${article.index + 1} of ${article.count}" },
+                                .semantics { contentDescription = "Section ${state.index + 1} of ${state.count}" },
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                             gapSize = 0.dp,
@@ -95,11 +91,11 @@ fun ReadAloudMiniPlayer(
                         )
                     }
                     val buttonColor by animateColorAsState(
-                        if (article.playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        if (state.playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
                         tween(200), label = "Playback button background",
                     )
                     val iconColor by animateColorAsState(
-                        if (article.playing) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                        if (state.playing) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
                         tween(200), label = "Playback button foreground",
                     )
                     FilledIconButton(
@@ -115,7 +111,7 @@ fun ReadAloudMiniPlayer(
                         ),
                     ) {
                         AnimatedContent(
-                            targetState = article.playing,
+                            targetState = state.playing,
                             transitionSpec = {
                                 (fadeIn(tween(160)) + scaleIn(tween(200), initialScale = 0.75f)) togetherWith
                                     (fadeOut(tween(100)) + scaleOut(tween(160), targetScale = 0.75f))

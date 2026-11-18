@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -26,7 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,10 +37,8 @@ import com.simon.harmonichackernews.ui.settings.RequestSettingsDialogFocus
 /** Stateless comment-search surface backed by the shared comment-thread store. */
 @Composable
 fun CommentSearchScreen(
-    fieldValue: TextFieldValue,
-    onFieldValueChanged: (TextFieldValue) -> Unit,
+    fieldState: TextFieldState,
     listState: LazyListState,
-    scrollState: ScrollState,
     visibleComments: List<PortableCommentItem>,
     mutedColor: Color,
     fontFamily: FontFamily,
@@ -78,8 +75,7 @@ fun CommentSearchScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 com.simon.harmonichackernews.ui.common.DialogSearchField(
-                    value = fieldValue,
-                    onValueChange = onFieldValueChanged,
+                    state = fieldState,
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp).focusRequester(focusRequester),
                     placeholder = "Search comments",
                 )

@@ -117,7 +117,7 @@ class FilterRuleDialogsTest {
             }
         }
         compose.onNodeWithTag("domain-filter-rule-input").performTextInput("https://WWW.BÜCHER.de.:8080/read?x=1")
-        compose.onNodeWithTag("normalized-filter-host").assertTextEquals("www.xn--bcher-kva.de")
+        compose.onNodeWithTag("normalized-filter-host", useUnmergedTree = true).assertTextEquals("www.xn--bcher-kva.de")
         compose.onNode(hasText("news.www.xn--bcher-kva.de") and hasText("Hidden")).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("include-filter-subdomains").performScrollTo().performClick()
         compose.onNode(hasText("news.www.xn--bcher-kva.de") and hasText("Visible")).performScrollTo().assertIsDisplayed()
