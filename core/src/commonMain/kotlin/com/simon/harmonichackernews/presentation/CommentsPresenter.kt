@@ -475,7 +475,8 @@ class CommentsPresenter(
         publish(usingOfficialApiFallback = false, failure = null)
         // Only HTTP starts here. Cache reads, parsing and publication stay in their existing
         // scheduled load job; a navigation lease may already have started the same transfer.
-        val request = if (action.useAlgolia) {
+        val useAlgoliaPreloads = action.useAlgolia && !action.userInitiated
+        val request = if (useAlgoliaPreloads) {
             action.openingRequest ?: commentThreadRepository.acquireAlgoliaRequest(storyId)
         } else {
             action.openingRequest?.close()
@@ -486,7 +487,7 @@ class CommentsPresenter(
             // not turn the rest of the same initial load into a refresh.
             var extendInitialBaseline = !thread.hasLoadedComments
             var topLevelCommentIds = knownTopLevelCommentIds
-            val preloadedAlgolia = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
+            val preloadedAlgolia = if (useAlgoliaPreloads && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId,
                     topLevelCommentIds,
@@ -499,7 +500,7 @@ class CommentsPresenter(
             preloadedAlgolia?.let { prepared ->
                 val original = CommentThreadLoadResult.Algolia(prepared.response, prepared.parsed)
                 var partialApplied = false
-                val reconciled = reconcileAlgoliaThread(action, requestId, original, topLevelCommentIds, extendInitialBaseline) {
+                val reconciled = reconcileAlgoliaThread(action, requestId, original, extendInitialBaseline) {
                     partialApplied = true
                 }
                 if (threadLoadSession.isCurrent(requestId, storyId)) applyAlgoliaThread(
@@ -606,7 +607,7 @@ class CommentsPresenter(
             }
             // Display disk-cached comments before joining an unfinished network preload. Large
             // discussions can take seconds to download even when their cached thread is ready.
-            val pendingPreload = if (action.useAlgolia && topLevelCommentIds.isNotEmpty()) {
+            val pendingPreload = if (useAlgoliaPreloads && topLevelCommentIds.isNotEmpty()) {
                 commentThreadRepository.takePreloadedAlgolia(
                     storyId, topLevelCommentIds, action.filteredUsers,
                 )
@@ -625,6 +626,7 @@ class CommentsPresenter(
                     )
                 },
                 algoliaRequest = request,
+                refreshTopLevelOrder = action.userInitiated,
                 onAlgoliaFallback = {
                     if (threadLoadSession.isCurrent(requestId, storyId)) {
                         publish(usingOfficialApiFallback = true)
@@ -634,7 +636,7 @@ class CommentsPresenter(
             if (!threadLoadSession.isCurrent(requestId, storyId)) return@launch
             when (result) {
                 is CommentThreadLoadResult.Algolia -> {
-                    val reconciled = reconcileAlgoliaThread(action, requestId, result, topLevelCommentIds, extendInitialBaseline)
+                    val reconciled = reconcileAlgoliaThread(action, requestId, result, extendInitialBaseline)
                     // A joined preload may publish before its cache hash is ready. Only a screen
                     // with an existing prepared cache needs to complete that comparison now.
                     val pending = reconciled.parsed.cacheSummary?.preparedThread
@@ -647,10 +649,8 @@ class CommentsPresenter(
                     val sameResponse = if (cachedPrepared != null) {
                         cachedPrepared.sourceDigest == parsed.cacheSummary?.preparedThread?.sourceDigest
                     } else previousResponse == reconciled.response
-                    if (!thread.hasLoadedComments || cachedParsed == null || !sameResponse ||
-                        (topLevelCommentIds.isEmpty() &&
-                            !parsed.cacheSummary?.topLevelCommentIds.isNullOrEmpty())
-                    ) {
+                    val orderChanged = topLevelCommentIds != parsed.cacheSummary?.topLevelCommentIds.orEmpty()
+                    if (!thread.hasLoadedComments || cachedParsed == null || !sameResponse || orderChanged) {
                         applyAlgoliaThread(
                             action = action,
                             requestId = requestId,
@@ -714,11 +714,10 @@ class CommentsPresenter(
         action: CommentsAction.LoadThread,
         requestId: Int,
         result: CommentThreadLoadResult.Algolia,
-        topLevelCommentIds: List<Int>,
         extendInitialBaseline: Boolean,
         onPartialApplied: () -> Unit = {},
     ): CommentThreadLoadResult.Algolia = commentThreadRepository.reconcileMissingTopLevelComments(
-        result, topLevelCommentIds, action.filteredUsers,
+        result, action.filteredUsers,
     ) {
         if (threadLoadSession.isCurrent(requestId, action.story.id) && result.parsed.comments.isNotEmpty()) {
             applyAlgoliaThread(
