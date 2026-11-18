@@ -46,7 +46,7 @@ data class StoryPreferences(
     val paletteTintConfigKey: String,
     val dimReadStories: Boolean,
     val clickedOpacity: Int = 0,
-    val dimClickedBackground: Boolean = false,
+    val dimClickedBackground: Boolean = true,
     val hotnessThreshold: Int,
     val faviconProvider: String,
     val font: String,

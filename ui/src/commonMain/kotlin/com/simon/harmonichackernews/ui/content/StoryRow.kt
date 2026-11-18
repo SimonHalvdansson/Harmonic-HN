@@ -161,7 +161,7 @@ data class StoryRowStyle(
     val textSize: Float,
     val dimmed: Boolean = false,
     val clickedOpacity: Int = 0,
-    val dimClickedBackground: Boolean = false,
+    val dimClickedBackground: Boolean = true,
     /** The signed-in user has commented on this story. */
     val commented: Boolean = false,
     val paletteTintConfigKey: String = PaletteTintPreferences.DEFAULT,

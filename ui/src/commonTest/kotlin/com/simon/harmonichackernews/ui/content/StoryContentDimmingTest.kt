@@ -31,10 +31,10 @@ class StoryContentDimmingTest {
     }
 
     @Test fun clickedContentUsesExpectedOpacityForEachAppearance() {
-        assertEquals(0.70f, storyContentAlpha(true, darkTheme = false, tintedBackground = false))
-        assertEquals(0.75f, storyContentAlpha(true, darkTheme = false, tintedBackground = true))
-        assertEquals(0.65f, storyContentAlpha(true, darkTheme = true, tintedBackground = false))
-        assertEquals(0.67f, storyContentAlpha(true, darkTheme = true, tintedBackground = true))
+        assertEquals(0.65f, storyContentAlpha(true, darkTheme = false, tintedBackground = false))
+        assertEquals(0.70f, storyContentAlpha(true, darkTheme = false, tintedBackground = true))
+        assertEquals(0.60f, storyContentAlpha(true, darkTheme = true, tintedBackground = false))
+        assertEquals(0.62f, storyContentAlpha(true, darkTheme = true, tintedBackground = true))
     }
 
     @Test fun tintedContentUsesGentlerDimmingAndDarkModeUsesStrongerDimming() {

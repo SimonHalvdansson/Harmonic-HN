@@ -15,15 +15,15 @@ class StoredSettingsMutatorTest {
         val store = TestKeyValueStore()
         val repository = AppSettingsRepository(store, kotlinx.coroutines.flow.emptyFlow())
         assertEquals(0, repository.snapshot().story.clickedOpacity)
-        assertFalse(repository.snapshot().story.dimClickedBackground)
-        repository.setClickedOpacity(150)
-        repository.setDimClickedBackground(true)
-        assertEquals(100, repository.snapshot().story.clickedOpacity)
         assertTrue(repository.snapshot().story.dimClickedBackground)
+        repository.setClickedOpacity(150)
+        repository.setDimClickedBackground(false)
+        assertEquals(100, repository.snapshot().story.clickedOpacity)
+        assertFalse(repository.snapshot().story.dimClickedBackground)
         repository.setClickedOpacity(-150)
         assertEquals(-100, repository.snapshot().story.clickedOpacity)
         assertEquals(-100, com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(repository.snapshot().story).clickedOpacity)
-        assertTrue(com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(repository.snapshot().story).dimClickedBackground)
+        assertFalse(com.simon.harmonichackernews.presentation.StoryDisplaySettings.from(repository.snapshot().story).dimClickedBackground)
     }
 
     @Test

@@ -189,7 +189,7 @@ class StoredUserSettings(
                 paletteTintConfigKey = paletteConfig,
                 dimReadStories = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
                 clickedOpacity = integer(UserPreferenceKeys.CLICKED_OPACITY, 0).coerceIn(-100, 100),
-                dimClickedBackground = boolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, false),
+                dimClickedBackground = boolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, true),
                 markScrolledPostsRead = boolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, false) &&
                     !boolean(UserPreferenceKeys.HIDE_CLICKED, false),
                 hotnessThreshold = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,
