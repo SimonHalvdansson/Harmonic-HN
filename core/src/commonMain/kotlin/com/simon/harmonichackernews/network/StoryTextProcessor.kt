@@ -39,7 +39,7 @@ object StoryTextProcessor {
         story.videoTitle = null
 
         val mayHaveSuffix = title.last() == ']' || title.last() == ')'
-        val year = trailingYear.find(title)
+        val year = if (')' in title) trailingYear.find(title) else null
         val pdfTitle = if (year != null) {
             stripSuffix(title.substring(0, year.range.first), pdfSuffixes)
                 ?.plus(year.value.trimEnd())

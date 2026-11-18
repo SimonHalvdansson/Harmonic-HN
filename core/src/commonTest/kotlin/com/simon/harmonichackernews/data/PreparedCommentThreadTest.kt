@@ -70,6 +70,17 @@ class PreparedCommentThreadTest {
         assertEquals("Updated [pdf]", updated.title)
     }
 
+    @Test fun firstWriteDigestMatchesExistingCacheAcrossUtf8ChunkBoundaries() = runTest {
+        val repository = StoryCacheRepository(InMemoryStoryCacheFileStore(), InMemoryStoryCacheMetadataStore())
+        for (length in listOf(8170, 8171, 8172, 8191, 8192, 8193, 16_384)) {
+            val response = """{"id":42,"title":"${"a".repeat(length)}😀漢","children":[]}"""
+            val display = parser.parseForDisplay(response)
+            assertTrue(repository.storeStory(42, response, 1000, display.cacheSummary))
+            assertEquals(parser.prepare(response), repository.loadPreparedThread(42))
+            assertEquals(response, repository.loadStoryPayload(42))
+        }
+    }
+
     @Test fun displayWithPreparedCacheStillHashesAndReusesOnlyMatchingContent() = runTest {
         val cached = parser.prepare(raw)
         var hashes = 0

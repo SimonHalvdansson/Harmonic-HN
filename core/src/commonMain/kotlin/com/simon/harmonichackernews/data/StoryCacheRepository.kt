@@ -6,6 +6,10 @@ import com.simon.harmonichackernews.network.JSONParser
 import com.simon.harmonichackernews.platform.Crc32
 import com.simon.harmonichackernews.platform.KotlinCrc32
 import kotlin.concurrent.Volatile
+import okio.HashingSink
+import okio.blackholeSink
+import okio.buffer
+import okio.use
 
 data class CacheFileInfo(
     val key: String,
@@ -202,10 +206,11 @@ class StoryCacheRepository(
         if (!files.remove(StoryCacheKeys.PREPARED_NAMESPACE, preparedKey) &&
             files.read(StoryCacheKeys.PREPARED_NAMESPACE, preparedKey) != null
         ) return false
+        val payloadBytes = payload.encodeToByteArray()
         if (!files.write(
                 StoryCacheKeys.FULL_NAMESPACE,
                 StoryCacheKeys.storyFile(storyId),
-                payload.encodeToByteArray(),
+                payloadBytes,
             )
         ) {
             return false
@@ -239,7 +244,8 @@ class StoryCacheRepository(
             parsedSummary?.preparedThread?.let { prepared ->
                 // First display deliberately defers hashing. Complete the immutable cache entry
                 // here, under the same write ordering as its raw response, without parsing again.
-                storePreparedThread(storyId, prepared.withSourceDigest(payload).copy(
+                storePreparedThread(storyId, prepared.copy(
+                    sourceDigest = prepared.sourceDigest.ifEmpty { sha256Hex(payloadBytes) },
                     rankedIds = parsedSummary.topLevelCommentIds.toList(),
                 ))
             }
@@ -250,6 +256,20 @@ class StoryCacheRepository(
 
     fun loadStoryPayload(storyId: Int): String? = storyId.takeIf { it > 0 }?.let {
         files.readText(StoryCacheKeys.FULL_NAMESPACE, StoryCacheKeys.storyFile(it))
+    }
+
+    private fun sha256Hex(bytes: ByteArray): String {
+        val digest = HashingSink.sha256(blackholeSink())
+        // Bound scratch space while hashing the exact bytes written to the raw cache.
+        digest.buffer().use { sink ->
+            var offset = 0
+            while (offset < bytes.size) {
+                val length = minOf(8192, bytes.size - offset)
+                sink.write(bytes, offset, length)
+                offset += length
+            }
+        }
+        return digest.hash.hex()
     }
 
     // Downloading/preloading a thread does not mean its comments have been displayed.

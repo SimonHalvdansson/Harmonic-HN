@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
-import com.fleeksoft.ksoup.Ksoup
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,7 +16,7 @@ internal class CommentSearchSession(
     private val scope: CoroutineScope,
     private val thread: CommentThreadStore,
     private val dispatcher: CoroutineDispatcher,
-    private val parseText: suspend (String) -> String = { Ksoup.parse(it).text().lowercase() },
+    private val parseText: suspend (String) -> String = { HtmlTextUtils.plainText(it).lowercase() },
 ) {
     private var job: Job? = null
     private var index: Map<Int, SearchableCommentText> = emptyMap()
