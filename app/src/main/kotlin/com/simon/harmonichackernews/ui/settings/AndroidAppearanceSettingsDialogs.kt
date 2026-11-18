@@ -18,35 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.R
-import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.common.rememberAndroidHarmonicFilterColors
-
-@Composable
-fun AndroidNighttimeRangeDialog(
-    onDismiss: () -> Unit,
-    onRangeSelected: () -> Unit,
-) {
-    val appearance = LocalHarmonicUiDependencies.current.appearance
-    val current = remember(appearance) { appearance.schedule.toIntArray() }
-    NighttimeRangeDialog(
-        initialHours = current,
-        is24Hour = LocalHarmonicUiDependencies.current.platform.timeFormatting
-            .uses24HourClock(),
-        onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-            appearance.saveSchedule(
-                NighttimeSchedule(
-                    fromHour,
-                    fromMinute,
-                    toHour,
-                    toMinute,
-                ),
-            )
-            onRangeSelected()
-        },
-        onDismiss = onDismiss,
-    )
-}
 
 @Composable
 fun AndroidWelcomeScreen(

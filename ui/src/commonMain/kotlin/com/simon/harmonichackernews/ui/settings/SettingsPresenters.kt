@@ -293,7 +293,6 @@ class AppearanceSettingsPresenter(
     }
 
     fun themeState(
-        nighttimeRangeLabel: String,
         activeDark: Boolean,
         dynamicColorAvailable: Boolean,
         settings: AppSettings = repository.snapshot(),
@@ -303,7 +302,6 @@ class AppearanceSettingsPresenter(
         schemes = settings.appearance.colorSchemes,
         activeDark = activeDark,
         specialNighttime = settings.general.specialNighttimeTheme,
-        nighttimeRangeLabel = nighttimeRangeLabel,
         dynamicColorAvailable = dynamicColorAvailable,
     )
 

@@ -66,11 +66,8 @@ data class ThemeSettingsUiState(
     val schemes: ColorSchemeSelection,
     val activeDark: Boolean,
     val specialNighttime: Boolean,
-    val nighttimeRangeLabel: String,
     val dynamicColorAvailable: Boolean,
 )
-
-enum class ThemeSettingsDialog { NighttimeRange }
 
 fun themeSettingsSummary(appearance: AppearancePreferences): String {
     if (!appearance.followSystem && appearance.manualDark && appearance.colorSchemes.pureBlackDarkMode) {
@@ -93,7 +90,7 @@ fun ThemeSettingsScreen(
     onNighttimeColorSchemeSelected: (String) -> Unit,
     onNighttimeColorStyleSelected: (ColorSchemeStyle) -> Unit,
     onSpecialNighttimeChanged: (Boolean) -> Unit,
-    onDialogRequested: (ThemeSettingsDialog) -> Unit,
+    nighttimeRangeSetting: @Composable () -> Unit,
     resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette,
     previewStyle: StoryRowStyle,
     commentPreviewStyle: CommentRowStyle,
@@ -154,9 +151,7 @@ fun ThemeSettingsScreen(
                 )
                 ThemeSettingsVisibility(visible = state.specialNighttime) {
                     SettingsDivider()
-                    SettingRow(title = "Timed range", summary = state.nighttimeRangeLabel,
-                        icon = Res.drawable.ic_schedule,
-                        onClick = { onDialogRequested(ThemeSettingsDialog.NighttimeRange) })
+                    nighttimeRangeSetting()
                 }
             }
         }

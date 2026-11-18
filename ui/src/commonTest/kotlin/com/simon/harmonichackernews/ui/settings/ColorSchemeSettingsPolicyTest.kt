@@ -49,8 +49,8 @@ class ColorSchemeSettingsPolicyTest {
         kotlin.test.assertTrue(stories.pureBlackDarkMode)
         assertEquals(com.simon.harmonichackernews.settings.DisplayStyle.FLAT, comments.displayStyle)
         kotlin.test.assertTrue(comments.pureBlackDarkMode)
-        assertEquals("blue", appearance.themeState("21:00 - 06:00", true, true, active).schemes.light)
-        assertEquals(ColorSchemeStyle.Vibrant, appearance.themeState("21:00 - 06:00", true, true, active).schemes.lightStyle)
+        assertEquals("blue", appearance.themeState(true, true, active).schemes.light)
+        assertEquals(ColorSchemeStyle.Vibrant, appearance.themeState(true, true, active).schemes.lightStyle)
         assertEquals(stored, repository.snapshot())
         assertEquals(stored.comments.displayStyle, CommentsSettingsPresenter(repository).state(stored).displayStyle)
     }

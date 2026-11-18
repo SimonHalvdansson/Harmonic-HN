@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 
 import com.simon.harmonichackernews.network.AiSummaryProviders
@@ -321,7 +322,7 @@ data class AppearanceRouteLabels(
 )
 
 data class ThemeRouteLabels(
-    val nighttimeRange: String,
+    val is24Hour: Boolean,
     val activeDark: Boolean,
     val dynamicColorAvailable: Boolean = true,
 )
@@ -411,19 +412,14 @@ fun PaletteTintSettingsRoute(
 @Composable
 fun ThemeSettingsRoute(
     repository: AppSettingsRepository,
+    appearance: AppearanceRuntime,
     labels: ThemeRouteLabels,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThemeChanged: () -> Unit,
     resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette =
         HarmonicThemeCatalog::scheme,
-    dialogContent: @Composable (
-        dialog: ThemeSettingsDialog,
-        presenter: AppearanceSettingsPresenter,
-        onDismiss: () -> Unit,
-    ) -> Unit,
 ) {
-    var dialog by rememberSaveable { mutableStateOf<ThemeSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
 
@@ -433,7 +429,6 @@ fun ThemeSettingsRoute(
 
     ThemeSettingsScreen(
         state = presenter.themeState(
-            nighttimeRangeLabel = labels.nighttimeRange,
             activeDark = labels.activeDark,
             dynamicColorAvailable = labels.dynamicColorAvailable,
             settings = settings,
@@ -451,7 +446,7 @@ fun ThemeSettingsRoute(
         onSpecialNighttimeChanged = { value ->
             applyThemeChange { presenter.setSpecialNighttime(value) }
         },
-        onDialogRequested = { dialog = it },
+        nighttimeRangeSetting = { NighttimeRangeSetting(appearance, labels.is24Hour, onThemeChanged) },
         resolvePreviewScheme = resolvePreviewScheme,
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
@@ -460,7 +455,6 @@ fun ThemeSettingsRoute(
             .state(settings.copy(pureBlackDarkMode = false)).toPreviewCommentRowStyle().copy(animateChanges = false),
         contentVersion = settings.hashCode(),
     )
-    dialog?.let { dialogContent(it, presenter) { dialog = null } }
 }
 
 @Composable

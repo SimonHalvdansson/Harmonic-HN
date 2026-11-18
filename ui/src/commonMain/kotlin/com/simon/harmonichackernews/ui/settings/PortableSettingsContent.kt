@@ -25,8 +25,6 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.settings.NighttimeSchedule
-import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
@@ -220,32 +218,15 @@ private fun PortableThemeSettings(
     fun themeChanged() = app.appearance.refreshSelection()
     ThemeSettingsRoute(
         repository = app.settings,
+        appearance = app.appearance,
         labels = ThemeRouteLabels(
-            nighttimeRange = ThemeSelectionPolicy.formatSchedule(
-                app.appearance.schedule,
-                app.platform.timeFormatting.uses24HourClock(),
-            ),
+            is24Hour = app.platform.timeFormatting.uses24HourClock(),
             activeDark = app.appearance.selection().dark,
             dynamicColorAvailable = false,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onThemeChanged = ::themeChanged,
-        dialogContent = { dialog, presenter, dismiss ->
-            when (dialog) {
-                ThemeSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
-                    initialHours = app.appearance.schedule.toIntArray(),
-                    is24Hour = app.platform.timeFormatting.uses24HourClock(),
-                    onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-                        app.appearance.saveSchedule(
-                            NighttimeSchedule(fromHour, fromMinute, toHour, toMinute),
-                        )
-                        themeChanged()
-                    },
-                    onDismiss = dismiss,
-                )
-            }
-        },
     )
 }
 

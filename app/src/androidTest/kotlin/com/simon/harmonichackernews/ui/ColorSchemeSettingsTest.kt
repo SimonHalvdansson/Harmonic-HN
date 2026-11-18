@@ -43,12 +43,12 @@ class ColorSchemeSettingsTest {
                     LocalRippleConfiguration provides null,
                 ) {
                     HarmonicTheme(palette.colorScheme, dark) {
-                        ThemeSettingsRoute(repository,
-                            labels = ThemeRouteLabels("21:00 - 06:00", dark, true),
+                        ThemeSettingsRoute(repository, appearance = app.appearance,
+                            labels = ThemeRouteLabels(is24Hour = true, activeDark = dark),
                             showNavigation = false, onBack = {}, onThemeChanged = {},
                             resolvePreviewScheme = { scheme, previewDark, style ->
                                 harmonicThemePalette(compose.activity, ThemeSelection.forScheme(scheme, previewDark, style))
-                            }, dialogContent = { _, _, _ -> })
+                            })
                     }
                 }
             }
