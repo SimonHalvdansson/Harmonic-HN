@@ -23,6 +23,8 @@ import com.simon.harmonichackernews.resources.ic_schedule
 import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.settings.NighttimeSchedule
+import com.simon.harmonichackernews.ui.common.Button
+import com.simon.harmonichackernews.ui.common.TextButton
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.themeBackground
 import org.jetbrains.compose.resources.painterResource
@@ -91,15 +93,12 @@ private fun NighttimeRangeEditor(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            listOf("Start time", "End time").forEachIndexed { index, label ->
-                SegmentedButton(
-                    selected = editingEnd == (index == 1),
-                    onClick = { editingEnd = index == 1 },
-                    shape = SegmentedButtonDefaults.itemShape(index, 2),
-                ) { Text(label) }
-            }
-        }
+        SegmentedSetting(
+            options = listOf(false to "Start time", true to "End time"),
+            selected = editingEnd,
+            contentPadding = PaddingValues(top = 8.dp),
+            onSelected = { editingEnd = it },
+        )
         Spacer(Modifier.height(12.dp))
         key(editingEnd) {
             TimeScroll(state = if (editingEnd) end else start, shapes = TimePickerDefaults.shapes())

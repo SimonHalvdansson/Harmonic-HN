@@ -162,8 +162,14 @@ fun ThemeSettingsScreen(
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
                         enabled = !state.schemes.nighttimePureBlackDarkMode,
                         onSelected = onNighttimeColorSchemeSelected, onStyleSelected = onNighttimeColorStyleSelected)
-                    PureBlackSetting("Nighttime color scheme", state.schemes.nighttimePureBlackDarkMode, state.followSystem || state.manualDark,
-                        onNighttimePureBlackDarkModeChanged, title = "Pure black")
+                    PureBlackSetting(
+                        tag = "Nighttime color scheme",
+                        checked = state.schemes.nighttimePureBlackDarkMode,
+                        enabled = state.followSystem || state.manualDark,
+                        onCheckedChange = onNighttimePureBlackDarkModeChanged,
+                        title = "Pure black",
+                        summary = null,
+                    )
                 }
             }
         }
@@ -189,12 +195,13 @@ private fun PureBlackSetting(
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     title: String = "Pure black dark mode",
+    summary: String? = "Overrides dark mode to pure black",
 ) {
     Column(Modifier.testTag("$tag pure black")) {
         SettingsDivider()
         SwitchSettingRow(
             title = title,
-            summary = "Overrides dark mode to pure black",
+            summary = summary,
             icon = Res.drawable.ic_dark_mode,
             checked = checked,
             enabled = enabled,
