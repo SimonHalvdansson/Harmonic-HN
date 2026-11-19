@@ -53,7 +53,7 @@ class StoryContentDimmingRenderingTest {
                                 compactPoints = false, includeTopLevelDomain = true, showCommentCount = true,
                                 showIndex = true, commentsOnLeft = false, tintCard = false, displayStyle = DisplayStyle.STANDARD,
                                 useHotnessIcon = false, preferredFont = "devicedefault", textSize = 16f,
-                                dimmed = clicked.value, categoryTagLocation = location),
+                                dimmed = clicked.value, dimClickedBackground = false, categoryTagLocation = location),
                             listItem = true, animateChanges = false, capturePreviewSourceGeometry = true,
                             onPreviewSourceGeometryChanged = { geometry = it })
                     }
