@@ -139,6 +139,7 @@ class CommentsSettingsPresenter(
             depthMode = comments.depthIndicatorMode,
             indicatorThickness = comments.indicatorThickness,
             highlightQuotes = comments.highlightQuotes,
+            scrollMonoBlocks = comments.scrollMonoBlocks,
             quoteSpacing = comments.quoteSpacing,
             quoteHighlightColor = comments.quoteHighlightColor,
             quoteHighlightStyle = comments.quoteHighlightStyle,

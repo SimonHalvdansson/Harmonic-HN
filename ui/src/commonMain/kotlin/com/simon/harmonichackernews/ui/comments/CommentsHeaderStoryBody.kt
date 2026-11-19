@@ -67,6 +67,7 @@ import com.simon.harmonichackernews.ui.content.detectAnnotatedLinkLongPress
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.ReferenceLinkRow
 import com.simon.harmonichackernews.ui.content.rememberReferenceLinkLabel
+import com.simon.harmonichackernews.ui.content.MonoBlockContent
 import com.simon.harmonichackernews.ui.content.trimmedCommentText
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.hasCommentLinks
@@ -271,6 +272,7 @@ fun HeaderStoryBody(
                     HeaderStoryTextBlock(
                         bodyHtml = block.bodyHtml.orEmpty(),
                         trimParagraphEdges = interleaved,
+                        scrollMonoBlocks = story.isComment && settings.scrollMonoBlocks,
                         fontFamily = typography.family,
                         fontSize = typography.commentTextSize,
                         onLinkLongClick = onLinkLongClick,
@@ -295,6 +297,7 @@ fun HeaderStoryBody(
 internal fun HeaderStoryTextBlock(
     bodyHtml: String,
     trimParagraphEdges: Boolean,
+    scrollMonoBlocks: Boolean,
     fontFamily: FontFamily,
     fontSize: Float,
     onLinkLongClick: (String, String, androidx.compose.ui.geometry.Rect) -> Unit,
@@ -324,23 +327,24 @@ internal fun HeaderStoryTextBlock(
             }
         }
     } else prepared
-    val geometry = if (hasLinks) remember(annotated) { HeaderTextLinkGeometry() } else null
-    val linkModifier = if (geometry != null && linkGestureState != null) {
-        Modifier.onPlaced { geometry.coordinates = it }
-            .detectAnnotatedLinkLongPress(
-                text = annotated,
-                layoutResult = { geometry.layout },
-                coordinates = { geometry.coordinates },
-                linkGestureState = linkGestureState,
-                hapticFeedback = LocalHapticFeedback.current,
-                onLongPress = onLinkLongClick,
-            )
-    } else Modifier
+    if (annotated.isEmpty()) return
+    MonoBlockContent(annotated, scrollMonoBlocks) { part, modifier ->
+        val geometry = if (hasLinks && part.hasCommentLinks()) remember(part) { HeaderTextLinkGeometry() } else null
+        val linkModifier = if (geometry != null && linkGestureState != null) {
+            Modifier.onPlaced { geometry.coordinates = it }
+                .detectAnnotatedLinkLongPress(
+                    text = part,
+                    layoutResult = { geometry.layout },
+                    coordinates = { geometry.coordinates },
+                    linkGestureState = linkGestureState,
+                    hapticFeedback = LocalHapticFeedback.current,
+                    onLongPress = onLinkLongClick,
+                )
+        } else Modifier
 
-    if (annotated.isNotEmpty()) {
         Text(
-            text = annotated,
-            modifier = linkModifier,
+            text = part,
+            modifier = modifier.then(linkModifier),
             color = colors.onSurface,
             fontFamily = fontFamily,
             fontSize = fontSize.sp,

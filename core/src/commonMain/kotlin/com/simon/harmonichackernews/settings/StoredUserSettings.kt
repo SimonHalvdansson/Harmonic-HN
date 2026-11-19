@@ -82,6 +82,7 @@ object UserPreferenceKeys {
     const val QUOTE_HIGHLIGHT_COLOR = "pref_quote_highlight_color"
     const val QUOTE_HIGHLIGHT_STYLE = "pref_quote_highlight_style"
     const val QUOTE_PADDING = "pref_quote_padding"
+    const val SCROLL_MONO_BLOCKS = "pref_scroll_mono_blocks"
     const val HIGHLIGHT_QUOTES = "pref_highlight_quotes"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
@@ -262,6 +263,7 @@ class StoredUserSettings(
                 indicatorThickness = CommentIndicatorThickness.fromStored(
                     string(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "standard"),
                 ),
+                scrollMonoBlocks = boolean(UserPreferenceKeys.SCROLL_MONO_BLOCKS, true),
                 highlightQuotes = boolean(UserPreferenceKeys.HIGHLIGHT_QUOTES, false),
                 quotePadding = boolean(UserPreferenceKeys.QUOTE_PADDING, true),
                 quoteSpacing = QuoteSpacing.fromStored(string(UserPreferenceKeys.QUOTE_SPACING, "comfortable")),

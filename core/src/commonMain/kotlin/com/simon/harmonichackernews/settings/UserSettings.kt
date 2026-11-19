@@ -109,6 +109,7 @@ data class CommentPreferences(
     val volumeNavigationMode: CommentVolumeNavigationMode,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val highlightQuotes: Boolean = false,
+    val scrollMonoBlocks: Boolean = true,
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,

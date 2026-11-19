@@ -107,6 +107,7 @@ import com.simon.harmonichackernews.presentation.CommentMenuAction
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute
 import com.simon.harmonichackernews.ui.content.UserAvatar
+import com.simon.harmonichackernews.ui.content.MonoBlockContent
 import com.simon.harmonichackernews.ui.content.htmlAnnotatedString
 import com.simon.harmonichackernews.ui.content.commentSurfaceColor
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -650,14 +651,17 @@ private fun CommentActionCardContent(
                                 .verticalScroll(bodyScrollState)
                                 .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
                         ) {
-                            Text(
-                                text = body,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = typography.family,
-                                fontSize = commentTextSize.sp,
-                                lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
-                                style = textStyle,
-                            )
+                            MonoBlockContent(body, settings.scrollMonoBlocks) { part, modifier ->
+                                Text(
+                                    text = part,
+                                    modifier = modifier,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontFamily = typography.family,
+                                    fontSize = commentTextSize.sp,
+                                    lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
+                                    style = textStyle,
+                                )
+                            }
                         }
                         ScrollableTextScrollbar(
                             state = bodyScrollState,

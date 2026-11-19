@@ -31,6 +31,7 @@ internal fun CommentsSettingsUiState.toPreviewCommentRowStyle(): CommentRowStyle
     CommentRowStyle(
         spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
+        scrollMonoBlocks = scrollMonoBlocks,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,

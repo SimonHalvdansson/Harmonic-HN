@@ -60,6 +60,7 @@ data class CommentsSettingsUiState(
     val smoothScroll: Boolean,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val highlightQuotes: Boolean = false,
+    val scrollMonoBlocks: Boolean = true,
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
@@ -78,6 +79,7 @@ data class CommentsSettingsUiState(
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
     HighlightQuotes(CommentBooleanPreference.HIGHLIGHT_QUOTES),
+    ScrollMonoBlocks(CommentBooleanPreference.SCROLL_MONO_BLOCKS),
     RoundedDepthIndicators(CommentBooleanPreference.ROUNDED_DEPTH_INDICATORS),
     ContinuousDepthIndicators(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS),
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
@@ -117,6 +119,7 @@ fun CommentsSettingsScreen(
     onThreadDepthRequested: () -> Unit,
     onThreadDepthEnabledChanged: (Boolean) -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
+    onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     onUserAvatarsEnabledChanged: (Boolean) -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
@@ -213,6 +216,15 @@ fun CommentsSettingsScreen(
                     onClick = onQuoteHighlightingRequested,
                     checked = state.highlightQuotes,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.HighlightQuotes, it) },
+                )
+            }
+            row {
+                NavigationSwitchSettingRow(
+                    title = stringResource(Res.string.settings_section_mono_blocks),
+                    icon = Res.drawable.ic_code_blocks,
+                    onClick = onMonoBlocksRequested,
+                    checked = state.scrollMonoBlocks,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.ScrollMonoBlocks, it) },
                 )
             }
             row {

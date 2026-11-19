@@ -134,9 +134,11 @@ fun SettingsShell(
                     onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
                     onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
+                    onMonoBlocksRequested = { onNavigate(SettingsSection.MonoBlocks, true) },
                     onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
+                SettingsSection.MonoBlocks -> MonoBlocksSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(dependencies.settings, dependencies.articleCategorySettings, onBack)
                 SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(

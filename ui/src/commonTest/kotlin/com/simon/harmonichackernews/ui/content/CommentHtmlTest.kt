@@ -20,6 +20,19 @@ import kotlin.test.assertTrue
 
 class CommentHtmlTest {
     @Test
+    fun monoBlocksKeepAuthoredWhitespaceAndAnnotationsSeparateFromSurroundingProse() {
+        val input = "Before<p><pre><code>  a   b\n  c</code></pre>" +
+            "<pre><code>d  e</code></pre>After <a href='https://example.com'>link</a>"
+        for (html in listOf(input, StoryTextProcessor.preprocessHtml(input)!!)) {
+            val parts = prepareCommentHtml(html).monoBlockParts()
+            assertEquals(listOf(false, true, true, false), parts.map { it.monoBlock })
+            assertEquals(listOf("Before", "  a   b\n  c", "d  e", "After link"), parts.map { it.text.text })
+            assertTrue(parts.last().text.hasCommentLinks())
+        }
+        assertTrue(prepareCommentHtml("See <tt>inline</tt> here.").monoBlockParts().isEmpty())
+    }
+
+    @Test
     fun bindingMultipleLinksPreservesDestinationsRangesAndScreenCallbacks() {
         val source = prepareCommentHtml(
             "<b>Read</b> <a href='https://example.com/one'>first</a> and " +

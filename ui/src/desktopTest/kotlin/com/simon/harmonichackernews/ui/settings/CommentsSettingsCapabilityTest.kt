@@ -34,7 +34,7 @@ class CommentsSettingsCapabilityTest {
                                 readerPreview = { _, _ -> },
                             ) else CommentsSettingsRoute(
                                 repository = bootstrap.app.settings, showNavigation = true, onBack = {}, onSpacingRequested = {},
-                                onThreadDepthRequested = {}, onQuoteHighlightingRequested = {}, onUserAvatarsRequested = {},
+                                onThreadDepthRequested = {}, onQuoteHighlightingRequested = {}, onMonoBlocksRequested = {}, onUserAvatarsRequested = {},
                             )
                         }
                     }

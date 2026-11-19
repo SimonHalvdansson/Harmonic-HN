@@ -35,7 +35,7 @@ internal fun settingsSearchCatalog(
     fun path(section: SettingsSection): List<String> = when (section) {
         SettingsSection.Theme, SettingsSection.Font, SettingsSection.PaletteTint,
         SettingsSection.StoriesHeader -> listOf(labels.getValue(SettingsSection.Appearance))
-        SettingsSection.CommentsSpacing, SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting,
+        SettingsSection.CommentsSpacing, SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting, SettingsSection.MonoBlocks,
         SettingsSection.UserAvatars -> listOf(labels.getValue(SettingsSection.Comments))
         SettingsSection.ReaderMode -> listOf(labels.getValue(SettingsSection.WebLinks))
         SettingsSection.ArticleCategories -> listOf(labels.getValue(SettingsSection.AiSummary))
@@ -80,6 +80,7 @@ internal fun settingsSearchCatalog(
     }
     page(SettingsSection.HeaderDisplay, "comments header toolbar post details buttons")
     page(SettingsSection.ThreadDepth, "indent indentation nesting rainbow lines")
+    page(SettingsSection.MonoBlocks, "monospace horizontal scroll code blocks tables ASCII diagrams wrap")
     page(SettingsSection.QuoteHighlighting, "blockquote quotations quoted text")
     page(SettingsSection.UserAvatars, "avatar avatars identicon profile pictures images",
         aliases = listOf("avatars", "profile pictures"))

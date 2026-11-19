@@ -123,6 +123,7 @@ private fun parseCommentHtml(html: String): AnnotatedString {
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
+internal const val COMMENT_MONO_BLOCK_TAG = "harmonic-comment-mono-block"
 internal const val COMMENT_QUOTE_TAG = "harmonic-comment-quote"
 
 /** Mark HN's leading > quote paragraphs without altering links or inline formatting. */
@@ -316,7 +317,12 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                 if (tag == "a" && url.isNotEmpty() && start < end) {
                     addStringAnnotation(COMMENT_URL_TAG, url, start, end)
                 }
-                if (codeBlock) pendingCodeBoundary = true
+                if (codeBlock) {
+                    if (start < end && !preformatted && !convertedCode) {
+                        addStringAnnotation(COMMENT_MONO_BLOCK_TAG, "", start, end)
+                    }
+                    pendingCodeBoundary = true
+                }
             }
         }
     }

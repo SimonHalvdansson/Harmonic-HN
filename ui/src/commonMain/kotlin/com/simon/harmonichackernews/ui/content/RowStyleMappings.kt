@@ -54,6 +54,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     is CommentRowStyleContext.Thread -> CommentRowStyle(
         spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
+        scrollMonoBlocks = scrollMonoBlocks,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,
@@ -77,6 +78,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     CommentRowStyleContext.Search -> CommentRowStyle(
         spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
+        scrollMonoBlocks = scrollMonoBlocks,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,

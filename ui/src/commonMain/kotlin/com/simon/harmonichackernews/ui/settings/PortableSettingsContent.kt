@@ -108,12 +108,14 @@ fun PortableSettingsDetail(
             onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
             onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
+            onMonoBlocksRequested = { onNavigate(SettingsSection.MonoBlocks, true) },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
         SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(app.settings, app.articleCategorySettings, onBack)
         SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(app.settings, onBack)
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
+        SettingsSection.MonoBlocks -> MonoBlocksSettingsRoute(app.settings, onBack)
         SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(app.settings, onBack, app.articleCategorySettings)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
