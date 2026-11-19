@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 private const val FILE_PICKER_UNAVAILABLE = "No system file picker is available."
 
@@ -84,10 +85,6 @@ fun AndroidDataSettingsScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain"), writeExport,
     )
-    val historyExportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/csv"), writeExport,
-    )
-
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -142,15 +139,18 @@ fun AndroidDataSettingsScreen(
                         if (effect.mimeType == "application/json") {
                             pendingSettingsExport = effect.content
                             settingsExportLauncher.launch(effect.filename)
+                        } else if (effect.mimeType == "text/csv") {
+                            HistoryExportActivity.start(context, effect.filename, effect.content)
                         } else {
                             pendingExport.replace(effect.content)
-                            if (effect.mimeType == "text/csv") historyExportLauncher.launch(effect.filename)
-                            else exportLauncher.launch(effect.filename)
+                            exportLauncher.launch(effect.filename)
                         }
                     } catch (_: ActivityNotFoundException) {
                         pendingExport.clear()
                         pendingSettingsExport = null
                         appComposition.userMessages.show(FILE_PICKER_UNAVAILABLE)
+                    } catch (_: IOException) {
+                        appComposition.userMessages.show(PresentationCopy.WRITE_ERROR)
                     }
                 }
                 DataSettingsRuntimeEffect.OpenSettingsImportDocument -> {
