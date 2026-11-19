@@ -22,6 +22,11 @@ Builds:
     versionCode: 89
     commit: 0e819a7fd47921ae786d9e3a27a61576f626c50c
     subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y build-essential cmake pkg-config libssl-dev
+    patch:
+      - rebuild-pdf-wasm.patch
     gradle:
       - foss
     output: build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
@@ -29,22 +34,14 @@ Builds:
       - reproducible-apk-tools@ca728486d42a79f1c9ec0c6ec755c39f251911a8
     rm:
       - gradle/gradle-daemon-jvm.properties
+      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/*.wasm
     prebuild:
       - sed -i '/foojay/d' ../settings.gradle
-      - pushd 
-        ../resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm
-      - echo 'e6bee67724a7b5436fe8162638e3708cfc8d52b6342db69a49715e30ff27cfdc  jbig2.wasm'
-        | sha256sum -c -
-      - echo '004a0e62db930ba9ff2a22212f4554d0bb57a0635a8287caf70f98117cee14ba  openjpeg.wasm'
-        | sha256sum -c -
-      - echo '663d86126d5f5fcb1c61490f94353e2a8375660b8c5498ab3ebab5a34b08800e  qcms_bg.wasm'
-        | sha256sum -c -
-      - popd
+      - bash ../fdroid-wasm.sh prepare
+      - rm ../fdroid-pdf-sources/qcms/{build.js,package.json}
     scanignore:
       - resources/src/commonMain/composeResources/files/article_categories.bin
-      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/jbig2.wasm
-      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/openjpeg.wasm
-      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/qcms_bg.wasm
+    build: bash ../fdroid-wasm.sh build
     ndk: 29.0.13113456
     preassemble:
       - verifyFossDependencies
@@ -58,7 +55,7 @@ AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a55
 MaintainerNotes: |-
   article_categories.bin contains training data for the article classifier. The generator and corpus are in tools/article_categories.
 
-  The three PDF.js decoders match the WebAssembly assets in Maven Central's org.webjars.npm:pdfjs-dist:6.3.289. The recipe checks their SHA-256 hashes before scanning. Their source is maintained by Mozilla in the pdf.js, pdf.js.openjpeg, pdf.js.jbig2 and qcms projects.
+  The build removes the three bundled PDF.js WebAssembly modules before scanning. For pdfjs-dist 6.3.289, JBIG2 requires Emscripten 5.0.0, OpenJPEG requires Emscripten 5.0.6, and QCMS requires Rust 1.97.1 with wasm-bindgen 0.2.126. The QCMS lockfile pins the crates resolved by the upstream release build. rebuild-pdf-wasm.patch verifies all three SHA-256 digests before packaging.
 
   The release APK uses apksigner alignment fields with 16 KiB native library alignment.
 
