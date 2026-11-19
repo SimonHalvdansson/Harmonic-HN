@@ -57,6 +57,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+      - name: Cache Robolectric Android runtimes
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric/android-all-instrumented
+          # Tests can request additional SDKs through @Config.
+          key: robolectric-sdk-v1-${{ hashFiles('gradle/libs.versions.toml', 'app/build.gradle', 'app/src/test*/**') }}
+          restore-keys: robolectric-sdk-v1-
       - name: Run KMP, Android host, and desktop tests
         run: >-
           ./gradlew
