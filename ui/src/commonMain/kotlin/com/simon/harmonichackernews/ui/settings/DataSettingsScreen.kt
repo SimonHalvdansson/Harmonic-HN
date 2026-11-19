@@ -126,7 +126,7 @@ fun DataSettingsScreen(
                 SettingRow(
                     title = "Export reading history",
                     summary = if (state.historyCount > 0) "Save IDs, recorded times and HN links as CSV" else "No reading history",
-                    icon = Res.drawable.ic_history,
+                    icon = Res.drawable.ic_system_update_alt,
                     enabled = state.historyCount > 0,
                     onClick = { onAction(DataSettingsAction.ExportReadingHistory) },
                 )
