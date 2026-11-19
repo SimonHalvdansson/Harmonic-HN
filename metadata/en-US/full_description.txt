@@ -1,1 +1,13 @@
-<p><i>Harmonic</i> is a beautifully designed, open-source and fully featured client for Hacker News. It has a Material You design, a wide feature set and many customization options.</p><p><b><u>Highlights</u></b></p><ul><li>Dark theme material design</li><li>Log in to comment, vote and submit posts</li><li>Customizable UI</li><li>Search</li><li>Smart link previews</li><li>Optional AdBlock</li><li>Tablet support</li><li>Switch between Top/Best/New categories</li><li>Fast comment loading</li><li>Share and bookmarks posts</li><li>Import/export bookmarks</li><li>AMOLED dark mode</li><li>Filter posts</li><li>Hide jobs posts</li><li>Optional thumbnails</li></ul><p><i>Harmonic</i> for Hacker News is <u>not</u> affiliated with Y Combinator.</p>
+Harmonic is a fully-featured, open-source, mature Hacker News client with a focus on (material) design, polish, and customization.
+
+<b><u>Highlights</u></b>
+• Material 3 Expressive design with smooth animations
+• Full login functionality (vote, comment, submit, favorite, etc.)
+• Strong theming support
+• Quality of life features such as reader mode, adblock, link previews
+• Excellent performance
+• A large collection of settings for customizability
+
+Harmonic has been developed over a long time and its main feature is the relentless polish and feature completeness it has accumulated.
+
+Harmonic for Hacker News is <u>not</u> affiliated with Y Combinator.

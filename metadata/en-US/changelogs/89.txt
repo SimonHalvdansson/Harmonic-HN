@@ -1,0 +1,3 @@
+Version 3.2 is a full rewrite of Harmonic from the ground up. You should notice improved performance, better animations, and (optional, revertible) layout changes. Take a look at the settings to configure all the new features.
+
+3.2.7 contains a pure black dark mode fix and a link opening fix
