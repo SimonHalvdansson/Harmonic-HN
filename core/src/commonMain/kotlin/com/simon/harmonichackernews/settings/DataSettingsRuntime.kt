@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.settings
 import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +83,26 @@ class DataSettingsRuntime(
             ))
         } catch (_: Exception) {
             emitMessage("Could not export settings")
+        }
+    }
+
+    fun exportReadingHistory() {
+        scope.launch {
+            try {
+                val content = withContext(storageDispatcher) { service.exportReadingHistory() }
+                if (content == null) {
+                    emitMessage("No reading history")
+                    return@launch
+                }
+                val date = today()
+                mutableEffects.emit(DataSettingsRuntimeEffect.CreateExportDocument(
+                    ReadingHistoryExport.filename(date.year, date.month, date.day), content, "text/csv",
+                ))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                emitMessage("Could not export reading history")
+            }
         }
     }
 
@@ -181,6 +202,7 @@ class DataSettingsRuntime(
     fun refresh() {
         refreshJob?.cancel()
         refreshJob = scope.launch {
+            service.initializeHistory()
             service.initializeHiddenPosts()
             storageCounts = withContext(storageDispatcher) { service.storageCounts() }
             publish()

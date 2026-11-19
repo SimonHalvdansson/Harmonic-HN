@@ -64,6 +64,8 @@ data class HistoryStoreSnapshot(
 /** Suspend-friendly observable history storage for new shared feature code. */
 interface ObservableHistoryStore : HistoryStore {
     val historyState: StateFlow<HistoryStoreSnapshot>
+    /** Returns a stable snapshot after any asynchronous initialization has finished. */
+    suspend fun awaitHistories(): List<History> = load()
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
@@ -98,6 +100,11 @@ class StoredHistoryStore(
     override fun initialize() = Unit
 
     override fun load(): List<History> = historyState.value.histories
+
+    override suspend fun awaitHistories(): List<History> {
+        initialization.await()
+        return load()
+    }
 
     /** Legacy synchronous mutations are queued; shared feature code uses the suspend variants. */
     override fun record(id: Int, createdAtMillis: Long) {
