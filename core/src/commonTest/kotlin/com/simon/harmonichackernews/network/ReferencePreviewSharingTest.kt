@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.network
 
+import com.simon.harmonichackernews.data.RepoInfo
 import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.settings.TestKeyValueStore
 import kotlinx.coroutines.CompletableDeferred
@@ -20,6 +21,32 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReferencePreviewSharingTest {
+    @Test
+    fun dialogEnrichesResolvedUrlAndKeepsPageSummaryWhenProviderFails() = runTest {
+        val repoUrl = "https://github.com/data-desk-eco/sift"
+        val summary = LinkSummary(title = "Repository", finalUrl = repoUrl, imageUrl = "$PAGE/image.png")
+        val github = LinkPreviewData.GitHub(RepoInfo(owner = "data-desk-eco", name = "sift"))
+        var fail = false
+        val requested = mutableListOf<String>()
+        val overlay = runtime(repository { summary }) { url ->
+            requested += url
+            if (fail) error("Rate limited")
+            github
+        }
+        overlay.load(PAGE, "Fallback", null)
+        runCurrent()
+        assertEquals(listOf(repoUrl), requested)
+        assertEquals(summary, overlay.state.value.summary)
+        assertEquals(github, overlay.state.value.providerPreview)
+
+        fail = true
+        overlay.load(PAGE, "Fallback", null)
+        runCurrent()
+        assertNull(overlay.state.value.providerPreview)
+        assertNull(overlay.state.value.error)
+        assertEquals(summary, overlay.state.value.summary)
+    }
+
     @Test
     fun referenceTitleAndOverlaySharePreloadAndDismissalReleasesOnlyOneConsumer() = runTest {
         val response = CompletableDeferred<LinkSummary>()
@@ -156,11 +183,15 @@ class ReferencePreviewSharingTest {
         }, storage, dispatcher = StandardTestDispatcher(testScheduler),
     )
 
-    private fun TestScope.runtime(repository: StoryPreviewRepository, online: Boolean = true) =
+    private fun TestScope.runtime(
+        repository: StoryPreviewRepository,
+        online: Boolean = true,
+        loadProvider: suspend (String) -> LinkPreviewData? = { null },
+    ) =
         ReferenceLinkPreviewRuntime(backgroundScope, repository, object : ConnectivityService {
             override fun isOnline() = online
             override fun isUnmetered() = online
-        })
+        }, loadProvider)
 
     companion object { private const val PAGE = "https://example.com/article" }
 }

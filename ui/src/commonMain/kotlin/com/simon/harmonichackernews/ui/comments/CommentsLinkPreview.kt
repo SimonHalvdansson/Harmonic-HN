@@ -120,27 +120,36 @@ fun LinkPreviewContent(
                 },
                 label = "comments link preview",
             ) {
-                when (it) {
-                    LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
-                    LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
-                    LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
-                    LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
-                    LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
-                    LinkPreviewType.ARXIV -> ArxivPreview(story, settings, background)
-                    LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
-                    LinkPreviewType.TWITTER_X -> NitterPreview(story)
-                    null -> Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp, bottom = 8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        HarmonicLoadingIndicator(Modifier.size(44.dp))
-                    }
-                    else -> RichLinkPreview(story)
+                if (it != null) {
+                    ProviderPreviewContent(it, story, settings.font, background)
+                } else Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HarmonicLoadingIndicator(Modifier.size(44.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ProviderPreviewContent(
+    type: LinkPreviewType,
+    story: StoryListItemSnapshot,
+    font: String,
+    background: Color,
+) {
+    when (type) {
+        LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
+        LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
+        LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
+        LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
+        LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
+        LinkPreviewType.ARXIV -> ArxivPreview(story, font, background)
+        LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
+        LinkPreviewType.TWITTER_X -> NitterPreview(story)
+        else -> RichLinkPreview(story)
     }
 }
 

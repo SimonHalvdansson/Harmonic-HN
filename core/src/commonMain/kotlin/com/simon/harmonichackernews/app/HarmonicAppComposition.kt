@@ -18,6 +18,9 @@ import com.simon.harmonichackernews.network.OfficialCommentThreadLoader
 import com.simon.harmonichackernews.network.PdfDownloadService
 import com.simon.harmonichackernews.network.WidgetConfigurationService
 import com.simon.harmonichackernews.network.WidgetRefreshRuntime
+import com.simon.harmonichackernews.data.LinkPreviewType
+import com.simon.harmonichackernews.network.LinkPreviewPreferences
+import com.simon.harmonichackernews.network.LinkPreviewUseCase
 import com.simon.harmonichackernews.network.ReferenceLinkPreviewRuntime
 import com.simon.harmonichackernews.network.StoryPreviewRepository
 import com.simon.harmonichackernews.network.ReplyNotificationRuntime
@@ -317,12 +320,20 @@ class HarmonicAppComposition(
         )
     }
 
-    fun createReferenceLinkPreviewRuntime(scope: CoroutineScope): ReferenceLinkPreviewRuntime =
-        ReferenceLinkPreviewRuntime(
+    fun createReferenceLinkPreviewRuntime(scope: CoroutineScope): ReferenceLinkPreviewRuntime {
+        val providers = LinkPreviewUseCase(network.linkPreviewRepository)
+        return ReferenceLinkPreviewRuntime(
             scope = scope,
             previews = previewResources,
             connectivity = platform.connectivity,
+            loadProviderPreview = { url ->
+                val preferences = LinkPreviewPreferences(userSettings.reading.activeLinkPreviews)
+                providers.selectProvider(url, preferences)
+                    ?.takeUnless { it == LinkPreviewType.TWITTER_X }
+                    ?.let { providers.load(it, url) }
+            },
         )
+    }
 
     fun createLocalSummarySettingsRuntime(scope: CoroutineScope): LocalSummarySettingsRuntime =
         LocalSummarySettingsRuntime(scope, localSummaryEngine, localModels) {

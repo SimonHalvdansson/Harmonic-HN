@@ -72,6 +72,13 @@ import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.data.Story
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
+import com.simon.harmonichackernews.network.LinkPreviewData
+import com.simon.harmonichackernews.network.applyTo
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.utils.HtmlTextUtils
+import androidx.compose.runtime.CompositionLocalProvider
 import com.simon.harmonichackernews.network.StoryTextProcessor
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
@@ -196,6 +203,7 @@ data class ReferenceSummaryUiState(
     val showFallback: Boolean = false,
     val result: LinkSummary? = null,
     val error: String? = null,
+    val providerPreview: LinkPreviewData? = null,
 )
 
 fun referenceSummaryUiState(
@@ -210,15 +218,9 @@ fun referenceSummaryUiState(
         showFallback = runtime.showFallback,
         result = displayedSummary,
         error = runtime.error,
+        providerPreview = runtime.providerPreview,
     )
 }
-
-private data class ReferenceSummaryContentState(
-    val loading: Boolean,
-    val showFallback: Boolean,
-    val result: LinkSummary?,
-    val error: String?,
-)
 
 @Composable
 fun ReferenceCardContent(
@@ -240,6 +242,7 @@ fun ReferenceCardContent(
         onClick: () -> Unit,
         modifier: Modifier,
     ) -> Unit,
+    onOpenUrl: (String) -> Unit = {},
     onOpen: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -247,16 +250,10 @@ fun ReferenceCardContent(
         preferredFont = preferredFont,
         commentTextSize = commentTextSize,
     )
-    val requestedSummaryContent = ReferenceSummaryContentState(
-        loading = summary.loading,
-        showFallback = summary.showFallback,
-        result = summary.result,
-        error = summary.error,
-    )
-    var summaryContent by remember(url) { mutableStateOf(requestedSummaryContent) }
+    var summaryContent by remember(url) { mutableStateOf(summary) }
     val summaryContentAlpha = remember(url) { Animatable(1f) }
-    LaunchedEffect(requestedSummaryContent) {
-        if (requestedSummaryContent == summaryContent) return@LaunchedEffect
+    LaunchedEffect(summary) {
+        if (summary == summaryContent) return@LaunchedEffect
         summaryContentAlpha.animateTo(
             0f,
             tween(
@@ -264,7 +261,7 @@ fun ReferenceCardContent(
                 easing = FastOutSlowInEasing,
             ),
         )
-        summaryContent = requestedSummaryContent
+        summaryContent = summary
         summaryContentAlpha.animateTo(
             1f,
             tween(
@@ -289,7 +286,7 @@ fun ReferenceCardContent(
     }
     // Loading -> content: create the eventual painter now, behind the existing content fade.
     // Retain the current image when replacing already visible content.
-    val imageUrl = (result ?: requestedSummaryContent.result)?.imageUrl?.takeIf(String::isNotBlank)
+    val imageUrl = (result ?: summary.result)?.imageUrl?.takeIf(String::isNotBlank)
     val directImage = result?.contentType?.startsWith("image/", ignoreCase = true) == true
     val expandImageInitially = directImage ||
         result?.contentType == LinkSummaryParser.XKCD_COMIC_CONTENT_TYPE
@@ -424,6 +421,14 @@ fun ReferenceCardContent(
                 ) {
                     Box(Modifier.graphicsLayer { alpha = summaryContentAlpha.value }) {
                         when {
+                            summaryContent.providerPreview != null -> ReferenceProviderContent(
+                                preview = checkNotNull(summaryContent.providerPreview),
+                                url = url,
+                                font = preferredFont,
+                                fontFamily = typography.family,
+                                textStyle = textStyle,
+                                onOpenUrl = onOpenUrl,
+                            )
                             !description.isNullOrBlank() -> SelectionContainer {
                                 Text(
                                     text = description,
@@ -472,6 +477,29 @@ fun ReferenceCardContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReferenceProviderContent(
+    preview: LinkPreviewData,
+    url: String,
+    font: String,
+    fontFamily: FontFamily,
+    textStyle: TextStyle,
+    onOpenUrl: (String) -> Unit,
+) {
+    val story = remember(url, preview) {
+        val story = Story().also { it.url = url }
+        preview.applyTo(story)
+        StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
+    }
+    val platform = remember(textStyle, onOpenUrl) {
+        val open: (String?) -> Unit = { link -> if (link != null) onOpenUrl(link) }
+        CommentsPreviewPlatform(textStyle, open, open, open, HtmlTextUtils::plainText)
+    }
+    CompositionLocalProvider(LocalCommentsPreviewPlatform provides platform, LocalPreviewFontFamily provides fontFamily) {
+        ProviderPreviewContent(preview.type, story, font, MaterialTheme.colorScheme.surfaceContainerHigh)
     }
 }
 

@@ -21,6 +21,7 @@ data class ReferenceLinkPreviewState(
     val retrying: Boolean = false,
     val offline: Boolean = false,
     val generation: Long = 0,
+    val providerPreview: LinkPreviewData? = null,
 )
 
 /**
@@ -31,6 +32,7 @@ class ReferenceLinkPreviewRuntime(
     private val scope: CoroutineScope,
     private val previews: StoryPreviewRepository,
     private val connectivity: ConnectivityService,
+    private val loadProviderPreview: suspend (String) -> LinkPreviewData? = { null },
 ) {
     private val mutableState = MutableStateFlow(ReferenceLinkPreviewState())
     private var loadJob: Job? = null
@@ -85,6 +87,18 @@ class ReferenceLinkPreviewRuntime(
                     ),
                 )
             }
+
+            currentCoroutineContext().ensureActive()
+            val page = mutableState.value
+            if (page.generation != generation) return@launch
+            val provider = try {
+                loadProviderPreview(page.url)
+            } catch (e: Exception) {
+                // Keep the page preview on provider failure, including request timeouts.
+                currentCoroutineContext().ensureActive()
+                null
+            }
+            if (provider != null) publish(generation, page.copy(providerPreview = provider, error = null))
         }
     }
 

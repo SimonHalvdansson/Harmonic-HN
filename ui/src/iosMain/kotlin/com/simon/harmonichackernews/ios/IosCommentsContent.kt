@@ -648,6 +648,7 @@ private fun IosReferencePreview(
                 )
             }
         },
+        onOpenUrl = { scene.links.open(it) },
         onOpen = { scene.links.open(currentUrl) },
     )
 }

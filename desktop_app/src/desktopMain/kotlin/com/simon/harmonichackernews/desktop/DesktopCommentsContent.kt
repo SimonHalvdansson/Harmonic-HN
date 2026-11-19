@@ -48,7 +48,7 @@ import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
-import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
+import com.simon.harmonichackernews.ui.comments.referenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
 import com.simon.harmonichackernews.ui.comments.PortableCommentsHeader
@@ -448,12 +448,7 @@ private fun DesktopReferencePreview(
     ReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
-        summary = ReferenceSummaryUiState(
-            loading = runtimeState.loading,
-            showFallback = runtimeState.showFallback,
-            result = runtimeState.summary,
-            error = runtimeState.error,
-        ),
+        summary = referenceSummaryUiState(runtimeState, state.resolvedSummary),
         preferredFont = settings?.font ?: app.userSettings.story.font,
         commentTextSize = settings?.preferredTextSize ?: app.userSettings.comments.textSize,
         favicon = favicon,
@@ -483,6 +478,7 @@ private fun DesktopReferencePreview(
                 )
             }
         },
+        onOpenUrl = { scene.links.open(it) },
         onOpen = { scene.links.open(currentUrl) },
     )
 }
