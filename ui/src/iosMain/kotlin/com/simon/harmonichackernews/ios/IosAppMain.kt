@@ -252,7 +252,7 @@ private fun IosApp(
     LaunchedEffect(bootstrap.app.launchState) {
         when (
             bootstrap.app.launchState.consumeLaunchDialog(
-                currentVersion = bootstrap.app.metadata.versionCode,
+                metadata = bootstrap.app.metadata,
                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
             )
         ) {

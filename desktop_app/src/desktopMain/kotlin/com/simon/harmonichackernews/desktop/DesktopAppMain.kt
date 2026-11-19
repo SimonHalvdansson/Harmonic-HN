@@ -233,7 +233,7 @@ fun main() {
                         if (trainingRun) return@LaunchedEffect
                         when (
                             bootstrap.app.launchState.consumeLaunchDialog(
-                                currentVersion = bootstrap.app.metadata.versionCode,
+                                metadata = bootstrap.app.metadata,
                                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
                             )
                         ) {

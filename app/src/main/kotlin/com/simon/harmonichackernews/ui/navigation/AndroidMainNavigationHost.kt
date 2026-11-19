@@ -104,7 +104,7 @@ object AndroidMainNavigationHost {
         )
         when (
             appComposition.launchState.consumeLaunchDialog(
-                currentVersion = appComposition.metadata.versionCode,
+                metadata = appComposition.metadata,
                 showChangelog = appComposition.userSettings.general.showChangelog,
             )
         ) {
