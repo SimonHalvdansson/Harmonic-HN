@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.computedStateOf
@@ -36,11 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -66,6 +75,13 @@ internal class CommentsPeekHeaderState(
     private val topInsetPx: Int,
     private val directionThresholdPx: Float,
 ) : NestedScrollConnection {
+    var layer: GraphicsLayer? = null
+    var layerBounds by mutableStateOf(Rect.Zero)
+    var peekSurfaceCoordinates: LayoutCoordinates? = null
+    fun visibleBottomInWindow(): Float? = peekSurfaceCoordinates
+        ?.takeIf { it.isAttached && visible }
+        ?.boundsInWindow()?.bottom
+
     var headerCoordinates: LayoutCoordinates? = null
     var titleBounds by mutableStateOf<Rect?>(null)
     private var surfaceBottom by mutableStateOf<Float?>(null)
@@ -114,13 +130,20 @@ internal class CommentsPeekHeaderState(
         // Only actual user scrolling can reveal the peek. Restoring a reading position,
         // search results, row resizing and navigation animations must not summon it.
         if (source != NestedScrollSource.UserInput || consumed.y == 0f) return Offset.Zero
+        val titleProgress = handoff
+        if (titleProgress > 0f) {
+            // While the real title is returning, either scroll direction scrubs the same
+            // crossfade. Count fresh travel for a timed hide only after it leaves view.
+            directionTravel = 0f
+            if (titleProgress >= 1f) requested = false
+            return Offset.Zero
+        }
         if (directionTravel * consumed.y < 0f) directionTravel = 0f
         directionTravel += consumed.y
         if (directionTravel <= -directionThresholdPx) requested = false
         if (directionTravel >= directionThresholdPx) {
             val item = header
             if (item == null || item.offset + item.size <= topInsetPx) requested = true
-            if (handoff >= 1f) requested = false
         }
         return Offset.Zero
     }
@@ -182,9 +205,28 @@ internal fun CommentsPeekHeader(
     if (title.text.isBlank()) return
     val edgeStyle = rememberCommentsHeaderEdgeStyle(settings.tintHeader, settings.headerEdge)
     val background = { controller.statusBarHeaderColor ?: colors.pageBackground }
+    val capture = if (controller.commentActionOverlay != null) {
+        val layer = rememberGraphicsLayer()
+        DisposableEffect(controller, state, layer) {
+            state.layer = layer
+            controller.actionPeekHeader = state
+            onDispose {
+                if (controller.actionPeekHeader === state) controller.actionPeekHeader = null
+                state.layer = null
+                state.layerBounds = Rect.Zero
+            }
+        }
+        Modifier.onGloballyPositioned {
+            state.layerBounds = Rect(it.positionInWindow(), it.size.toSize())
+        }.drawWithContent {
+            layer.record { this@drawWithContent.drawContent() }
+            drawLayer(layer)
+        }
+    } else Modifier
     Column(
         Modifier.fillMaxWidth()
             .testTag("comments-peek-header")
+            .then(capture)
             .graphicsLayer {
                 val reveal = state.reveal
                 alpha = reveal * (1f - state.handoff)
@@ -193,6 +235,7 @@ internal fun CommentsPeekHeader(
     ) {
         Box(
             Modifier.fillMaxWidth()
+                .onPlaced { state.peekSurfaceCoordinates = it }
                 .commentsHeaderSurface(edgeStyle, background) { height ->
                     val translation = -(1f - state.reveal) *
                         (height + with(density) { edgeStyle.edgeHeight.toPx() })

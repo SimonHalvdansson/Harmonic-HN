@@ -71,6 +71,43 @@ class CommentsPeekHeaderGeometryTest {
     }
 
     @Test
+    fun reversingPartwayThroughTitleHandoffRetracesTheFade() = SwingUtilities.invokeAndWait {
+        val list = LazyListState()
+        val peek = CommentsPeekHeaderState(list, topInsetPx = 24, directionThresholdPx = 8f)
+        peek.titleBounds = Rect(16f, 100f, 380f, 200f)
+        val scene = ImageComposeScene(400, 700, Density(1f)) {
+            LazyColumn(state = list) {
+                item { Box(Modifier.fillMaxWidth().height(400.dp)) }
+                items(10) { Box(Modifier.fillMaxWidth().height(100.dp)) }
+            }
+        }
+        var frame = 0L
+        fun scroll(delta: Float) {
+            val consumed = list.dispatchRawDelta(delta)
+            scene.render(frame++ * 16_666_667L).close()
+            peek.onPostScroll(Offset(0f, -consumed), Offset.Zero, NestedScrollSource.UserInput)
+        }
+        try {
+            scene.render(0L).close()
+            scroll(500f)
+            scroll(-20f)
+            assertTrue(peek.requested)
+            scroll(-354f) // Real title halfway across the top inset.
+            assertEquals(0.5f, peek.handoff)
+
+            scroll(20f) // A reversal larger than the normal direction threshold.
+            assertEquals(0.3f, peek.handoff)
+            assertTrue(peek.requested, "Direction changes must not start a timed hide during the handoff")
+            scroll(-20f)
+            assertEquals(0.5f, peek.handoff)
+            assertTrue(peek.requested)
+            scroll(-50f)
+            assertEquals(1f, peek.handoff)
+            assertFalse(peek.requested, "The real title takes over once it is fully visible")
+        } finally { scene.close() }
+    }
+
+    @Test
     fun commentNavigationImmediatelyDismissesPeekAndResetsDirectionTravel() = runBlocking {
         val peek = CommentsPeekHeaderState(LazyListState(20), 24, 8f)
         peek.onPostScroll(Offset(0f, 100f), Offset.Zero, NestedScrollSource.UserInput)

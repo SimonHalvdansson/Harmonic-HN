@@ -318,12 +318,14 @@ fun CommentActionOverlay(
         snapshotFlow { scrimAlpha() }.collect { currentOnScrimAlphaChanged(it) }
     }
     val shape = RoundedCornerShape(HarmonicDimens.compose_comment_action_corner_radius)
+    val peekHeader = controller.actionPeekHeader
     val sharedTransition = CommentActionSharedTransitionState(
         progress = { transformProgress.value },
         active = overlayActive,
         hideTargetContent = hideTargetContent,
         drawOverlayShadows = drawOverlayShadows,
         source = transitionSource,
+        sourceViewportTop = peekHeader?.visibleBottomInWindow() ?: rootBounds.top,
         sourceSnapshot = sourceCapture.image,
         targetContainer = targetContainer,
         predictiveBackProgress = { controller.commentActionPredictiveBackProgress },
@@ -484,7 +486,7 @@ fun CommentActionOverlay(
                 }
             }
         }
-        CommentActionTransitionOverlay(sharedTransition, cardColor)
+        CommentActionTransitionOverlay(sharedTransition, cardColor, peekHeader, scrimAlpha)
         if (discussionCreated) {
             AskSurface(
                 controller = controller,

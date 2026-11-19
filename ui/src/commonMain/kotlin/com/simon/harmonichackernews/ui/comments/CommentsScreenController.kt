@@ -215,6 +215,7 @@ class CommentsScreenController private constructor(
     private var commentActionSourceGeometry: CommentActionSourceGeometry? = null
     private var pendingCommentActionAfterDismiss:
         Pair<PortableCommentItem, CommentMenuAction>? = null
+    internal var actionPeekHeader by mutableStateOf<CommentsPeekHeaderState?>(null)
     private var sourceCoveredByCommentActionTransition by mutableStateOf(false)
     private var linkPreviewSourceBounds by
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
