@@ -152,12 +152,7 @@ fun ThemeSettingsScreen(
                 ThemeSettingsVisibility(visible = state.specialNighttime) {
                     SettingsDivider()
                     nighttimeRangeSetting()
-                }
-            }
-        }
-        item(key = "nighttime-color-scheme") {
-            ThemeSettingsVisibility(visible = state.specialNighttime) {
-                SettingsCategory("Nighttime color scheme") {
+                    SettingsDivider()
                     ColorSchemePicker(state.schemes.nighttime, dynamicColorAvailable = state.dynamicColorAvailable, dark = true, style = state.schemes.nighttimeStyle,
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
                         enabled = !state.schemes.nighttimePureBlackDarkMode,

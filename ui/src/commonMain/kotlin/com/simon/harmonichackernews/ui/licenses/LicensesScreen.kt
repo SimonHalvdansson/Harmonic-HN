@@ -80,6 +80,8 @@ typealias LicenseEntryUi = LicenseEntry
 private val LicenseCardShape = RoundedCornerShape(24.dp)
 private val LicenseIconShape = RoundedCornerShape(9.dp)
 private val InsetLicenseIcons = setOf(
+    "FlatBuffers",
+    "kuri",
     "Kotlin standard library",
     "kotlinx.coroutines",
     "kotlinx.serialization",
