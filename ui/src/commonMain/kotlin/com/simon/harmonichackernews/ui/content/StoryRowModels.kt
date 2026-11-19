@@ -18,6 +18,10 @@ import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import kotlin.time.Clock
 
+internal fun StoryListItemSnapshot.linkPreviewDescription(resolved: String?): String? =
+    resolved?.takeIf(String::isNotBlank) ?: presentation.linkSummaryDescription
+        ?.takeIf { presentation.linkSummaryLoaded && it.isNotBlank() }
+
 data class StoryHeaderTintPresentation(
     val previewImageUrl: String?,
     val previewImageAvailable: Boolean,

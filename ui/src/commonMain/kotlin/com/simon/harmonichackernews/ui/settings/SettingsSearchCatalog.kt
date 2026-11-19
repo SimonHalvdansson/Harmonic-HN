@@ -193,6 +193,7 @@ internal fun settingsSearchCatalog(
         "Post details" to "metadata title author points time score row",
         "Minimalistic" to "compact post header expand collapse buttons preview image",
         "Domain" to "website url host",
+        "Summary" to "article description excerpt post header link preview",
         "Article category tags" to "categorization labels post header",
         "Thumbnail" to "favicon website logo icon",
         "Points" to "score votes post header indicator")

@@ -109,6 +109,8 @@ import com.simon.harmonichackernews.settings.CommentsHeaderMetaInfo
 import com.simon.harmonichackernews.settings.CommentsHeaderLayout
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
+import com.simon.harmonichackernews.ui.content.linkPreviewDescription
+import com.simon.harmonichackernews.utils.HtmlTextUtils
 import com.simon.harmonichackernews.ui.content.StoryTitleText
 import com.simon.harmonichackernews.ui.content.storyTitlePresentation
 import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
@@ -518,6 +520,35 @@ fun CommentsHeader(
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                                if (story.isLink) {
+                                    val resource = controller.headerPreviewResource
+                                    val description = if (settings.showHeaderSummary) story.linkPreviewDescription(
+                                        resource?.takeIf { it.pageUrl == story.url }?.summary?.description,
+                                    ) else null
+                                    AnimatedContent(
+                                        targetState = description,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.TopStart,
+                                        transitionSpec = {
+                                            (fadeIn(tween(180, delayMillis = 60)) togetherWith fadeOut(tween(90)))
+                                                .using(SizeTransform { _, _ -> tween(260, easing = ContentMotionEasing) })
+                                        },
+                                        label = "post header summary",
+                                    ) { excerpt ->
+                                        if (excerpt != null) {
+                                            Text(
+                                                text = remember(excerpt) { HtmlTextUtils.decodeEntities(excerpt) },
+                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                                                    .padding(top = 8.dp, bottom = 4.dp),
+                                                style = textStyle,
+                                                fontFamily = headerTypography.family,
+                                                fontSize = headerTypography.commentTextSize.sp,
+                                                lineHeight = (headerTypography.commentTextSize * 1.4f).sp,
+                                                color = colors.onSurfaceVariant,
+                                            )
                                         }
                                     }
                                 }

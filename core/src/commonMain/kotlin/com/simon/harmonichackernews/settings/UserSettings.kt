@@ -127,6 +127,7 @@ data class CommentPreferences(
     val showHeaderDomain: Boolean = true,
     val showHeaderPoints: Boolean = true,
     val showHeaderCategories: Boolean = true,
+    val showHeaderSummary: Boolean = false,
     val minimalisticHeader: Boolean = false,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val swipeBack: Boolean = false,

@@ -9,6 +9,22 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CommentsHeaderPreferencesTest {
+    @Test fun headerSummaryIsOptInAndSurvivesBackupWithThePreviewImageOff() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, emptyFlow())
+        assertFalse(repository.snapshot().comments.showHeaderSummary)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_SUMMARY, true)
+        repository.setCommentBoolean(CommentBooleanPreference.HEADER_PREVIEW_IMAGE, false)
+
+        val destination = InMemoryKeyValueStore()
+        val backup = SettingsTransfer(store, InMemoryKeyValueStore()).export()
+        assertIs<SettingsImportResult.Imported>(SettingsTransfer(destination, InMemoryKeyValueStore()).import(backup))
+        val restored = AppSettingsRepository(destination, emptyFlow()).snapshot().comments
+        val display = CommentDisplaySettings.from(restored, false, false, false, false)
+        assertTrue(display.showHeaderSummary)
+        assertFalse(display.showHeaderPreviewImage)
+    }
+
     @Test fun headerPointsDefaultOnAndSurviveRecreationAndBackupIndependentlyOfStories() {
         val source = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(source, emptyFlow())

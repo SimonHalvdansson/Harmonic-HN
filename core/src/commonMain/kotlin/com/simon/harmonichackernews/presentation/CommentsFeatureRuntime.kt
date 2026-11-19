@@ -319,15 +319,14 @@ class CommentsFeatureRuntime(
     fun requestHeaderPreview() {
         val currentStory = story ?: return
         val settings = settingsState.value?.displaySettings ?: return
-        if (!settings.showHeaderPreviewImage || !currentStory.isLink ||
-            currentStory.url.isNullOrBlank()
-        ) return
+        if (!currentStory.isLink || currentStory.url.isNullOrBlank()) return
+        if (!settings.showHeaderPreviewImage && !settings.showHeaderSummary) return
         previewResourceRuntime?.request(
             StoryPreviewResourceRequest(
                 storyId = currentStory.id,
                 pageUrl = currentStory.url.orEmpty(),
-                loadImage = true,
-                loadSummary = false,
+                loadImage = settings.showHeaderPreviewImage,
+                loadSummary = settings.showHeaderSummary,
                 knownImageUrl = currentStory.previewImageUrl,
                 imageUrlAlreadyResolved = currentStory.previewImageUrlResolved,
                 knownSummary = currentStory.linkSummaryDescription

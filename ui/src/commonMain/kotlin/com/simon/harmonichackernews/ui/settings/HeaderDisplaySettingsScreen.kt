@@ -290,6 +290,13 @@ fun HeaderDisplaySettingsRoute(
                     )
                     SettingsDivider()
                     SwitchSettingRow(
+                        title = "Summary",
+                        icon = Res.drawable.ic_subject,
+                        checked = settings.comments.showHeaderSummary,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_SUMMARY, it) },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
                         title = "Article category tags",
                         icon = Res.drawable.ic_label,
                         enabled = categoryPreferences.enabled,
@@ -598,6 +605,12 @@ private fun HeaderDisplayPreviewContent(
                 ),
                 presentation = StoryPresentationSnapshot(
                     loaded = true, isLink = sample != HeaderPreviewSample.TEXT_POST,
+                    linkSummaryLoaded = sample != HeaderPreviewSample.TEXT_POST,
+                    linkSummaryDescription = when (sample) {
+                        HeaderPreviewSample.TEXT_POST -> null
+                        HeaderPreviewSample.LINK_PREVIEW -> "Save articles for later and read them offline on any device."
+                        else -> SettingsStoryPreviewModel.previewText
+                    },
                     gitHubRepoInfo = if (sample == HeaderPreviewSample.LINK_PREVIEW) RepoInfo(
                         owner = "willow", name = "reading-list",
                         about = "A small, offline-first home for articles you want to come back to.",
