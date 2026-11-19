@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.stories
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.presentation.SavedItemFilter
 import org.jetbrains.compose.resources.DrawableResource
 import com.simon.harmonichackernews.presentation.SavedListKind
@@ -37,7 +38,7 @@ data class StoriesScreenPresentation(
     val searchDateLabels: List<String> = emptyList(),
     val searchPointsLabels: List<String> = emptyList(),
     val searchCommentsLabels: List<String> = emptyList(),
-    val searchOnlyRead: Boolean = false,
+    val searchSource: StorySearchSource = StorySearchSource.ALL,
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val loadingFailed: Boolean = false,
@@ -124,7 +125,7 @@ internal fun storiesScreenPresentation(
         searchDateLabels = StorySearchController.dateRangeLabels,
         searchPointsLabels = StorySearchController.minimumPointsLabels,
         searchCommentsLabels = StorySearchController.minimumCommentsLabels,
-        searchOnlyRead = state.search.options.onlyRead,
+        searchSource = state.search.options.source,
         loading = shell.showLoading,
         refreshing = state.refreshIndicatorShowing,
         loadingFailed = listState.failure != null,

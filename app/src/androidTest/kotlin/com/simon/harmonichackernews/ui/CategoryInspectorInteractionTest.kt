@@ -70,7 +70,8 @@ class CategoryInspectorInteractionTest {
                             items((0 until 40).toList(), key = { it }) { index ->
                                 if (index == 12) StoryRow(model,
                                     settings.toStoryRowStyle(StoryRowStyleContext(model.points, model.commentCount, false)),
-                                    listItem = true, onLinkClick = { storyOpens++ }, onCommentClick = { storyOpens++ })
+                                    listItem = true, inspectCategories = true,
+                                    onLinkClick = { storyOpens++ }, onCommentClick = { storyOpens++ })
                                 else Text("Retained story $index", Modifier.fillMaxWidth().padding(24.dp))
                             }
                         }

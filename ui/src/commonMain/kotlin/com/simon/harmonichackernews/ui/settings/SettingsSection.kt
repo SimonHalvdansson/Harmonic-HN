@@ -2,7 +2,9 @@ package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.resources.settings_section_user_avatars
 import com.simon.harmonichackernews.resources.settings_section_quote_highlighting
+import com.simon.harmonichackernews.resources.settings_section_mono_blocks
 import com.simon.harmonichackernews.resources.settings_section_spacing
+import com.simon.harmonichackernews.resources.settings_section_clicked_posts
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.settings_search_title
 import com.simon.harmonichackernews.resources.settings_section_about
@@ -43,12 +45,14 @@ enum class SettingsSection(
     PaletteTint("palette_tint", Res.string.settings_section_palette_tint),
     StoriesSpacing("stories_spacing", Res.string.settings_section_spacing),
     CommentsSpacing("comments_spacing", Res.string.settings_section_spacing),
+    ClickedPosts("clicked_posts", Res.string.settings_section_clicked_posts),
     Stories("stories", Res.string.settings_section_stories),
     StoriesHeader("stories_header", Res.string.settings_section_stories_header),
     Frontpages("frontpages", Res.string.settings_section_frontpages),
     Comments("comments", Res.string.settings_section_comments),
     HeaderDisplay("header_display", Res.string.settings_section_header_display),
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
+    MonoBlocks("mono_blocks", Res.string.settings_section_mono_blocks),
     QuoteHighlighting("quote_highlighting", Res.string.settings_section_quote_highlighting),
     UserAvatars("user_avatars", Res.string.settings_section_user_avatars),
     WebLinks("web_links", Res.string.settings_section_web_links),

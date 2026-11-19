@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.platform
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,7 +18,9 @@ import com.simon.harmonichackernews.utils.isInvalidViewHandlerPackage
 object AndroidExternalLinkLauncher {
     fun openCustomTab(context: Context, request: ExternalLinkRequest): Boolean {
         if (!isCustomTabSupported(context)) return openExternalBrowser(context, request)
-        val customTabsIntent = createCustomTabsIntent(context, request.shareable)
+        val customTabsIntent = createCustomTabsIntent(
+            context, request.shareable, AndroidActivityTheme.getPageBackgroundColor(context),
+        )
         val opened = ExternalLinkPolicy.openCandidates(request.url).any { candidate ->
             try {
                 customTabsIntent.launchUrl(context, candidate.toUri())
@@ -39,12 +42,13 @@ object AndroidExternalLinkLauncher {
             }
         }
 
-    private fun createCustomTabsIntent(
+    internal fun createCustomTabsIntent(
         context: Context,
         shareable: Boolean,
+        toolbarColor: Int,
     ): CustomTabsIntent {
         val colorScheme = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(AndroidActivityTheme.getPageBackgroundColor(context))
+            .setToolbarColor(toolbarColor)
             .build()
         return CustomTabsIntent.Builder()
             .setShareState(
@@ -53,7 +57,11 @@ object AndroidExternalLinkLauncher {
             )
             .setDefaultColorSchemeParams(colorScheme)
             .build()
-            .apply { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            .apply {
+                // Keep UI launches in the caller's task so Back returns to Harmonic. A launch
+                // without an Activity still needs NEW_TASK to avoid a context launch failure.
+                if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
     }
 
     private fun openExternalUrl(context: Context, url: String) {

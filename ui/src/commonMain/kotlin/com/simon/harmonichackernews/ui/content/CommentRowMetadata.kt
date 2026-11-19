@@ -151,6 +151,7 @@ internal fun CommentMeta(
                     " • $userTag",
                     color = userTagColor(tagColor),
                     fontFamily = fontFamily,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
                 )

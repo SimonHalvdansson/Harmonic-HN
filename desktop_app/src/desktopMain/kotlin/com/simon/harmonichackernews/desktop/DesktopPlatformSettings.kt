@@ -13,35 +13,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
-import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_edit
 import com.simon.harmonichackernews.resources.ic_hard_drive
 import com.simon.harmonichackernews.resources.ic_info
-import com.simon.harmonichackernews.settings.AiSummaryTextSetting
-import com.simon.harmonichackernews.settings.DataSettingsCounts
-import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.summary.LocalModelRuntime
-import com.simon.harmonichackernews.ui.settings.AddBookmarksToFavoritesDialog
-import com.simon.harmonichackernews.ui.settings.AiModelSelectorRoute
-import com.simon.harmonichackernews.ui.settings.AiSummaryBaseUrlDialog
-import com.simon.harmonichackernews.ui.settings.AiSummarySettingsDialog
 import com.simon.harmonichackernews.ui.settings.AiSummarySettingsRoute
-import com.simon.harmonichackernews.ui.settings.AiSummaryTextDialog
-import com.simon.harmonichackernews.ui.settings.ClearAiModelsConfirmationDialog
-import com.simon.harmonichackernews.ui.settings.DataSettingsRoute
-import com.simon.harmonichackernews.ui.settings.ImportBookmarksDialog
+import com.simon.harmonichackernews.ui.settings.DataSettingsRuntimeContent
 import com.simon.harmonichackernews.ui.settings.LocalModelsRoute
 import com.simon.harmonichackernews.ui.settings.MessageActionDialog
 import com.simon.harmonichackernews.ui.settings.PortableSettingsDetail
-import com.simon.harmonichackernews.ui.settings.ResetSettingsConfirmationDialog
 import com.simon.harmonichackernews.ui.settings.SettingRow
 import com.simon.harmonichackernews.ui.settings.SettingsDivider
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.settings.WebLinksSettingsCapabilities
-import com.simon.harmonichackernews.ui.settings.handleDataSettingsAction
 import java.awt.Desktop
 import com.simon.harmonichackernews.resources.harmonic_app_icon
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,6 +55,7 @@ internal fun DesktopSettingsDetail(
     singlePane: Boolean,
     onBack: () -> Unit,
     onNavigate: (SettingsSection, Boolean) -> Unit,
+    peekStoryHeaderSupported: Boolean,
 ) {
     val appIcon = rememberDesktopAppIconPainter()
     PortableSettingsDetail(
@@ -75,6 +63,7 @@ internal fun DesktopSettingsDetail(
         app = app,
         scene = scene,
         singlePane = singlePane,
+        peekStoryHeaderSupported = peekStoryHeaderSupported,
         onBack = onBack,
         onNavigate = onNavigate,
         appIcon = appIcon,
@@ -104,6 +93,7 @@ internal fun desktopWebLinksSettingsCapabilities(
     readerMode = backend != DesktopEmbeddedBrowserBackend.UNSUPPORTED,
     closeWebViewOnBack = false,
     preloadWebsites = false,
+    readAloudMiniPlayer = false,
 )
 
 @Composable
@@ -189,40 +179,7 @@ private fun DesktopAiSettings(
                 )
             }
         },
-        dialogContent = { dialog, dismiss ->
-            when (dialog) {
-                AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(dismiss)
-                AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.API_KEY,
-                    title = "API Key",
-                    hint = "API Key",
-                    defaultValue = "",
-                    minLines = 1,
-                    maxLines = 1,
-                    textSizeSp = 16,
-                    trimValue = true,
-                    allowEmpty = true,
-                    showReset = false,
-                    onDismiss = dismiss,
-                    onSaved = { refresh++ },
-                )
-                AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
-                AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
-                    setting = AiSummaryTextSetting.SYSTEM_PROMPT,
-                    title = "System prompt",
-                    hint = "System prompt",
-                    defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
-                    minLines = 5,
-                    maxLines = 10,
-                    textSizeSp = 15,
-                    trimValue = false,
-                    allowEmpty = true,
-                    showReset = true,
-                    onDismiss = dismiss,
-                    onSaved = { refresh++ },
-                )
-            }
-        },
+        onTextSettingSaved = { refresh++ },
     )
 }
 
@@ -347,46 +304,18 @@ private fun DesktopDataSettings(
         }
     }
 
-    DataSettingsRoute(
+    DataSettingsRuntimeContent(
         repository = app.settings,
-        counts = DataSettingsCounts(
-            state.snapshot.bookmarkCount,
-            state.snapshot.historyCount,
-            state.snapshot.postCacheCount,
-            state.snapshot.tintCacheCount,
-            state.snapshot.aiModelBytes,
-            hiddenPostCount = state.snapshot.hiddenPostCount,
-        ),
-        loggedIn = state.snapshot.loggedIn,
+        runtime = runtime,
+        state = state,
         showNavigation = showNavigation,
         showAppLinkSettings = false,
         onBack = onBack,
-        contentVersion = state.revision,
-        onAction = runtime::handleDataSettingsAction,
-    )
-
-    when (state.dialog) {
-        DataSettingsDialogState.IMPORT -> ImportBookmarksDialog(
-            onDismiss = { runtime.showDialog(null) },
-            onImport = runtime::requestImport,
-        )
-        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
-            onReset = runtime::resetSettings,
-            onDismiss = { runtime.showDialog(null) },
-        )
-        DataSettingsDialogState.LINKS -> MessageActionDialog(
+    ) { onDismiss ->
+        MessageActionDialog(
             message = "Desktop link handling is configured in your operating system and browser.",
-            onDismiss = { runtime.showDialog(null) },
+            onDismiss = onDismiss,
         )
-        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
-            modelNames = state.snapshot.aiModelNames,
-            onClear = runtime::clearAiModels,
-            onDismiss = { runtime.showDialog(null) },
-        )
-        null -> Unit
-    }
-    state.favoriteIds?.let { ids ->
-        AddBookmarksToFavoritesDialog(ids.toIntArray(), runtime::dismissFavorites)
     }
 }
 

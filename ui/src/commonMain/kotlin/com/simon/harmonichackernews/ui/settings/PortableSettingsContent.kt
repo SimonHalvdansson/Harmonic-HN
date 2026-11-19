@@ -9,11 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
@@ -28,14 +25,10 @@ import com.simon.harmonichackernews.navigation.StoryDestination
 import com.simon.harmonichackernews.navigation.toDestination
 import com.simon.harmonichackernews.platform.accountOrNull
 import com.simon.harmonichackernews.network.LinkPreviewUseCase
-import com.simon.harmonichackernews.settings.ArchiveRedirectDomainCatalog
-import com.simon.harmonichackernews.settings.NighttimeSchedule
-import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.about.AboutScreen
 import com.simon.harmonichackernews.ui.common.harmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel
 import com.simon.harmonichackernews.ui.licenses.LicensesScreen
-import com.simon.harmonichackernews.utils.ArchiveRedirectPolicy
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_android
 import org.jetbrains.compose.resources.DrawableResource
@@ -60,6 +53,7 @@ fun PortableSettingsDetail(
     dataSettings: @Composable () -> Unit,
     readerPreview: @Composable (ReadingPreferences, Boolean) -> Unit,
     webLinksCapabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
+    peekStoryHeaderSupported: Boolean = true,
     debugPlatformLabel: String = "Android version",
     debugPlatformIcon: DrawableResource = Res.drawable.ic_android,
 ) {
@@ -98,6 +92,7 @@ fun PortableSettingsDetail(
             onSpacingRequested = { onNavigate(SettingsSection.StoriesSpacing, true) },
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
+            onClickedPostsRequested = { onNavigate(SettingsSection.ClickedPosts, true) },
             onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
         )
         SettingsSection.Frontpages -> {
@@ -107,27 +102,35 @@ fun PortableSettingsDetail(
         SettingsSection.Comments -> CommentsSettingsRoute(
             repository = app.settings,
             volumeNavigationSupported = false,
+            peekStoryHeaderSupported = peekStoryHeaderSupported,
             showNavigation = singlePane,
             onBack = onBack,
             onSpacingRequested = { onNavigate(SettingsSection.CommentsSpacing, true) },
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
             onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
+            onMonoBlocksRequested = { onNavigate(SettingsSection.MonoBlocks, true) },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
         SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(app.settings, app.articleCategorySettings, onBack)
         SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(app.settings, onBack)
         SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(app.settings, onBack)
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
+        SettingsSection.MonoBlocks -> MonoBlocksSettingsRoute(app.settings, onBack)
+        SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(app.settings, onBack, app.articleCategorySettings)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
-        SettingsSection.WebLinks -> PortableWebLinksSettings(
-            app = app,
-            capabilities = webLinksCapabilities,
+        SettingsSection.WebLinks -> WebLinksSettingsRoute(
+            repository = app.settings,
             showNavigation = singlePane,
             onBack = onBack,
             onReaderModeRequested = { onNavigate(SettingsSection.ReaderMode, true) },
+            capabilities = webLinksCapabilities,
+            archiveDomainsSubtitle = "Choose domains where Harmonic should redirect links to archive.is.",
         )
-        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(app.settings, onBack, readerPreview)
+        SettingsSection.ReaderMode -> ReaderModeSettingsRoute(
+            app.settings, onBack, readerPreview,
+            miniPlayerSettingVisible = webLinksCapabilities.readAloudMiniPlayer,
+        )
         SettingsSection.FiltersTags -> FiltersTagsSettingsRoute(
             settings = app.settings,
             filters = app.contentFilters,
@@ -137,7 +140,14 @@ fun PortableSettingsDetail(
             onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
             onProfileAccepted = { scene.userProfiles.open(it) },
             profileDialog = { userName, dismiss, onTagChanged ->
-                PortableUserProfileDialog(app, scene, userName, dismiss, onTagChanged)
+                UserProfileDialog(
+                    scene = scene,
+                    settingsRepository = app.settings,
+                    userTags = app.userTags,
+                    userName = userName,
+                    onDismiss = dismiss,
+                    onTagChanged = onTagChanged,
+                )
             },
         )
         SettingsSection.AiSummary -> aiSettings()
@@ -179,79 +189,6 @@ fun PortableSettingsDetail(
 }
 
 @Composable
-private fun PortableWebLinksSettings(
-    app: HarmonicAppComposition,
-    capabilities: WebLinksSettingsCapabilities,
-    showNavigation: Boolean,
-    onBack: () -> Unit,
-    onReaderModeRequested: () -> Unit,
-) {
-    var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
-    val presenter = remember(app.settings) { WebLinksSettingsPresenter(app.settings) }
-    val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
-    val reading = settings.reading
-
-    WebLinksSettingsScreen(
-        state = presenter.state(reading.readerModeFont.label, settings),
-        capabilities = capabilities,
-        showNavigation = showNavigation,
-        onBack = onBack,
-        onBooleanChanged = presenter::setBoolean,
-        onReaderModeRequested = onReaderModeRequested,
-        onDialogRequested = { requested ->
-            if (
-                requested == WebLinksSettingsDialog.Preload ||
-                requested == WebLinksSettingsDialog.ArchiveDomains ||
-                requested == WebLinksSettingsDialog.LinkPreviews ||
-                requested == WebLinksSettingsDialog.NitterInstance
-            ) {
-                dialog = requested
-            }
-        },
-        contentVersion = settings.hashCode(),
-    )
-
-    if (dialog == WebLinksSettingsDialog.Preload) {
-        PreloadWebViewDialog(
-            initialMode = reading.preloadWebViewMode,
-            initialBattery = reading.preloadWebViewMinimumBattery,
-            onSave = presenter::setPreload,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.ArchiveDomains) {
-        StringListEditorDialog(
-            title = "Redirect to archive version",
-            subtitle = "Choose domains where Harmonic should redirect links to archive.is.",
-            inputLabel = "Domain",
-            initialItems = reading.archiveRedirectDomains,
-            emptyMessage = "No archive redirect domains",
-            suggestedItems = ArchiveRedirectDomainCatalog.suggested,
-            suggestionsLabel = "Suggested domains",
-            parseInput = ArchiveRedirectPolicy::parseDomains,
-            emptyInputError = "Enter a domain",
-            onItemsChanged = presenter::setArchiveDomains,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.NitterInstance) {
-        NitterInstanceDialog(
-            initialValue = reading.nitterInstanceUrl,
-            onSave = presenter::setNitterInstanceUrl,
-            onDismiss = { dialog = null },
-        )
-    }
-    if (dialog == WebLinksSettingsDialog.LinkPreviews) {
-        LinkPreviewsSettingsDialog(
-            enabledTypes = reading.enabledLinkPreviews,
-            previewsEnabled = reading.linkPreviewsEnabled,
-            onEnabledChanged = presenter::setLinkPreview,
-            onDismiss = { dialog = null },
-        )
-    }
-}
-
-@Composable
 private fun PortableAppearanceSettings(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
@@ -283,32 +220,15 @@ private fun PortableThemeSettings(
     fun themeChanged() = app.appearance.refreshSelection()
     ThemeSettingsRoute(
         repository = app.settings,
+        appearance = app.appearance,
         labels = ThemeRouteLabels(
-            nighttimeRange = ThemeSelectionPolicy.formatSchedule(
-                app.appearance.schedule,
-                app.platform.timeFormatting.uses24HourClock(),
-            ),
+            is24Hour = app.platform.timeFormatting.uses24HourClock(),
             activeDark = app.appearance.selection().dark,
             dynamicColorAvailable = false,
         ),
         showNavigation = showNavigation,
         onBack = onBack,
         onThemeChanged = ::themeChanged,
-        dialogContent = { dialog, presenter, dismiss ->
-            when (dialog) {
-                ThemeSettingsDialog.NighttimeRange -> NighttimeRangeDialog(
-                    initialHours = app.appearance.schedule.toIntArray(),
-                    is24Hour = app.platform.timeFormatting.uses24HourClock(),
-                    onRangeSelected = { fromHour, fromMinute, toHour, toMinute ->
-                        app.appearance.saveSchedule(
-                            NighttimeSchedule(fromHour, fromMinute, toHour, toMinute),
-                        )
-                        themeChanged()
-                    },
-                    onDismiss = dismiss,
-                )
-            }
-        },
     )
 }
 
@@ -319,19 +239,19 @@ private fun PortableStoriesSettings(
     onBack: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
     onSpacingRequested: () -> Unit,
 ) {
-    val story = app.settings.snapshot().story
     StoriesSettingsRoute(
         repository = app.settings,
         categorySettings = app.articleCategorySettings,
         previewModel = SettingsStoryPreviewModel.copy(
             tintFallbackArgb = HarmonicTheme.targetColorScheme.cardBackground.toArgb(),
         ),
-        faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         onSpacingRequested = onSpacingRequested,
         categoryAvailability = storyCategoryAvailability(),
@@ -342,9 +262,6 @@ private fun PortableStoriesSettings(
                 SettingsPlatformEffect.RefreshStoryWidgets -> Unit
                 SettingsPlatformEffect.ThemeChanged -> app.appearance.refreshSelection()
             }
-        },
-        faviconDialog = { selected, _, onSelected, dismiss ->
-            FaviconProviderRoute(selected, onSelected, dismiss)
         },
     )
 }

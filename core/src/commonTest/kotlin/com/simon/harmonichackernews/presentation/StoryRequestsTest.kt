@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
@@ -63,6 +64,32 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun openingSearchDefaultsToTheCurrentTabAndResetsPreviousSource() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val runtime = cacheRuntime(
+            backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
+            QueuedCacheDispatcher(),
+        )
+        runtime.mainStore.replace(listOf(Story("Retained", 42, true, false)))
+        for ((tab, source) in listOf(
+            StoryType.HISTORY to StorySearchSource.HISTORY,
+            StoryType.BOOKMARKS to StorySearchSource.BOOKMARKS,
+            StoryType.TOP_STORIES to StorySearchSource.ALL,
+        )) {
+            runtime.selectType(StoryListTarget.MAIN, tab)
+            runtime.openSearch()
+            assertEquals(source, session.searchOptions.source)
+            assertEquals(source, runtime.searchOptions.state.value.options.source)
+            runtime.selectSearchOption(StorySearchOption.SOURCE, StorySearchSource.ALL.ordinal)
+            runtime.closeSearch()
+            runtime.openSearch()
+            assertEquals(source, runtime.searchOptions.state.value.options.source)
+            runtime.closeSearch()
+        }
+    }
+
     @Test
     fun previewActionsPreserveOutcomeMessagesAndClearLoading() = runTest {
         val rejected = HackerNewsActionResult.Failure("Rejected")
@@ -193,7 +220,7 @@ class StoryRequestsTest {
         val saved = SavedItemsRepository(MemoryKeyValueStore())
         val history = MemoryHistoryStore()
         val requests = storyRequests(session, saved, backgroundScope)
-        requests.searchStore.restoreOptions(StorySearchOptions(onlyRead = true))
+        requests.searchStore.restoreOptions(StorySearchOptions(source = StorySearchSource.HISTORY))
         val runtime = cacheRuntime(backgroundScope, session, saved, requests,
             QueuedCacheDispatcher(), history = history)
         val story = Story("Search", 42, true, false)
@@ -649,7 +676,7 @@ class StoryRequestsTest {
         runtime.selectSearchOption(StorySearchOption.DATE, 2)
         runtime.selectSearchOption(StorySearchOption.POINTS, 3)
         runtime.selectSearchOption(StorySearchOption.COMMENTS, 2)
-        runtime.toggleOnlyRead()
+        runtime.selectSearchOption(StorySearchOption.SOURCE, StorySearchSource.HISTORY.ordinal)
 
         val restored = cacheRuntime(
             backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
@@ -657,7 +684,7 @@ class StoryRequestsTest {
         )
         assertTrue(restored.searching)
         assertEquals(
-            StorySearchOptions(1, 2, 3, 2, onlyRead = true),
+            StorySearchOptions(1, 2, 3, 2, source = StorySearchSource.HISTORY),
             restored.searchOptions.state.value.options,
         )
         assertEquals(listOf(42), restored.mainStore.state.value.items.map { it.id })

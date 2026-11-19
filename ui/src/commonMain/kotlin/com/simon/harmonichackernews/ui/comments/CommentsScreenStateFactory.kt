@@ -14,6 +14,7 @@ data class CommentsPlatformPresentation(
     val contentInsetRightPx: Int,
     val integratedWebViewAvailable: Boolean = true,
     val backButtonRequired: Boolean = false,
+    val peekStoryHeaderSupported: Boolean = true,
 )
 
 /** Builds the portable comments rendering snapshot from the common feature state. */
@@ -40,6 +41,7 @@ object CommentsScreenStateFactory {
             accountUser = feature.accountUser,
             comments = comments,
             displaySettings = settings.displaySettings.copy(
+                peekStoryHeader = platform.peekStoryHeaderSupported && settings.displaySettings.peekStoryHeader,
                 showUpButton = platform.backButtonRequired || settings.displaySettings.showUpButton,
                 markNewComments = feature.debugMarkAllCommentsNew || settings.displaySettings.markNewComments,
             ),

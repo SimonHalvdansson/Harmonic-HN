@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.desktop
 import com.simon.harmonichackernews.ui.session.commentsViewModel
 import com.simon.harmonichackernews.ui.navigation.RegisterDestinationController
 import com.simon.harmonichackernews.ui.navigation.RetainedDestinationControllers
-import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,15 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
-import com.simon.harmonichackernews.ui.theme.cardBackground
-import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicSceneComposition
 import com.simon.harmonichackernews.app.createStoryLinkPreviewSession
@@ -51,24 +47,20 @@ import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlayState
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.ui.comments.CommentsFeatureBinding
-import com.simon.harmonichackernews.ui.comments.CommentsHeaderPresentationFactory
 import com.simon.harmonichackernews.ui.comments.CommentsPlatformPresentation
-import com.simon.harmonichackernews.ui.comments.CommentsPreviewPlatform
-import com.simon.harmonichackernews.ui.comments.ReferenceSummaryUiState
+import com.simon.harmonichackernews.ui.comments.referenceSummaryUiState
 import com.simon.harmonichackernews.ui.comments.CommentActionOverlay
 import com.simon.harmonichackernews.ui.comments.CommentLinkPreviewOverlay
-import com.simon.harmonichackernews.ui.comments.CommentsHeader
+import com.simon.harmonichackernews.ui.comments.PortableCommentsHeader
 import com.simon.harmonichackernews.ui.comments.CommentsHazeHost
 import com.simon.harmonichackernews.ui.comments.rememberCommentsListState
 import com.simon.harmonichackernews.ui.comments.CommentsRoute
 import com.simon.harmonichackernews.ui.comments.CommentsSearchDialog
 import com.simon.harmonichackernews.ui.comments.SearchLinkPreviewBackHandler
 import com.simon.harmonichackernews.ui.comments.CommentsUpButton
-import com.simon.harmonichackernews.ui.comments.HeaderPreviewImage
 import com.simon.harmonichackernews.ui.comments.LinkPreviewShimmer
 import com.simon.harmonichackernews.ui.comments.ReferenceCardContent
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
-import com.simon.harmonichackernews.utils.HtmlTextUtils
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -106,6 +98,7 @@ internal fun DesktopCommentsContent(
     scene: HarmonicSceneComposition,
     request: MainStoryRequest,
     showNavigation: Boolean,
+    twoPane: Boolean,
     webViewForegroundAllowed: Boolean,
     onClose: () -> Unit,
     controllers: RetainedDestinationControllers<CommentsScreenController>,
@@ -175,13 +168,14 @@ internal fun DesktopCommentsContent(
             host.binding.close()
         }
     }
-    LaunchedEffect(featureState, host.controller, contentInsetRightPx, readerState) {
+    LaunchedEffect(featureState, host.controller, contentInsetRightPx, readerState, twoPane) {
         host.binding.updateContent(
             CommentsPlatformPresentation(
                 adBlockActive = false,
                 readerModeAvailable = readerState?.available == true,
                 readerModeEnabled = readerState?.enabled == true,
                 showSheetControls = false,
+                peekStoryHeaderSupported = !twoPane,
                 topInsetPx = 0,
                 contentInsetLeftPx = 0,
                 contentInsetRightPx = contentInsetRightPx,
@@ -229,7 +223,13 @@ internal fun DesktopCommentsContent(
                     reserveUpButtonInset = showFloatingUpButton,
                     pullToRefreshEnabled = false,
                     headerContent = { settings ->
-                        DesktopCommentsHeader(app, scene, host.controller, settings)
+                        PortableCommentsHeader(
+                            app = app,
+                            scene = scene,
+                            controller = host.controller,
+                            settings = settings,
+                            headerTopPadding = 32.dp,
+                        )
                     },
                     searchDialog = { settings ->
                         CommentsSearchDialog(
@@ -277,6 +277,7 @@ internal fun DesktopCommentsContent(
                             bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
                             textStyle = TextStyle.Default,
                             onOpenLink = { scene.links.open(it) },
+                            userTags = app.userTags,
                         )
                     },
                 )
@@ -402,104 +403,6 @@ private fun handleDesktopCommentsPlatformEffect(
 }
 
 @Composable
-private fun DesktopCommentsHeader(
-    app: HarmonicAppComposition,
-    scene: HarmonicSceneComposition,
-    controller: CommentsScreenController,
-    settings: CommentDisplaySettings,
-) {
-    val tintBase = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
-    val presentation = remember(
-        controller.story,
-        controller.contentVersion,
-        controller.headerPreviewResource,
-        settings,
-        tintBase,
-    ) {
-        CommentsHeaderPresentationFactory.create(
-            story = controller.story,
-            previewResource = controller.headerPreviewResource,
-            faviconProvider = settings.faviconProvider,
-            paletteTintMode = settings.paletteTintMode,
-            tintBaseColor = tintBase,
-            tintStore = app.storyResourceTints,
-            userTags = app.userTags,
-            lastRefreshedMillis = controller.lastRefreshed,
-            formatTime = app.platform.timeFormatting::time,
-        )
-    }
-    val previewPlatform = remember(scene) {
-        CommentsPreviewPlatform(
-            textStyle = TextStyle.Default,
-            openLink = { it?.let(scene.links::open) },
-            downloadPdf = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
-            openCustomTab = { it?.let { url -> scene.links.open(url, preferInApp = false) } },
-            plainText = HtmlTextUtils::plainText,
-        )
-    }
-
-    CommentsHeader(
-        controller = controller,
-        settings = settings,
-        contentVersion = controller.contentVersion,
-        storyPosterTag = presentation.posterTag,
-        storyPosterTagColor = presentation.posterTagColor,
-        tintBaseColor = tintBase,
-        initialTint = presentation.tint.initialTintArgb,
-        headerTopPadding = 32.dp,
-        bookmarksEnabled = app.userSettings.general.bookmarksEnabled,
-        lastRefreshedText = presentation.lastRefreshedText,
-        textStyle = TextStyle.Default,
-        previewPlatform = previewPlatform,
-        linkPreviewsEnabled = app.userSettings.reading.linkPreviewsEnabled,
-        headerPreviewImageDisplayed = settings.showHeaderPreviewImage &&
-            presentation.tint.previewImageAvailable,
-        headerPreviewImage = { imageModifier, _, onTintLoaded ->
-            val imageUrl = presentation.tint.previewImageUrl
-            HeaderPreviewImage(
-                modifier = imageModifier,
-                imageUrl = imageUrl,
-                initiallyFailed = controller.headerPreviewResource?.imageLoadFailed == true,
-                visible = settings.showHeaderPreviewImage,
-                suppressed = controller.headerPreviewSuppressed,
-                tintBaseColorArgb = tintBase,
-                paletteTintConfigKey = presentation.tint.paletteMode,
-                extractTint = settings.tintHeader,
-                onTintExtracted = { tint ->
-                    val canonical = imageUrl?.let { sourceUrl ->
-                        controller.listener.onHeaderPreviewTintExtracted(
-                            sourceUrl,
-                            tintBase,
-                            presentation.tint.paletteMode,
-                            tint,
-                        )
-                    } ?: tint
-                    onTintLoaded(canonical)
-                },
-                onImageResult = { success ->
-                    imageUrl?.let {
-                        controller.listener.onHeaderPreviewImageResult(it, success)
-                    }
-                },
-                onClick = controller.listener::onHeaderClick,
-                onLongClick = { bounds, sourceContentLayer, imageAspectRatio ->
-                    imageUrl?.let { url ->
-                        controller.showImagePreview(
-                            imageUrl = url,
-                            description = "Preview image for ${controller.story.title.orEmpty()}",
-                            sourceBounds = bounds,
-                            sourceContentLayer = sourceContentLayer,
-                            imageAspectRatio = imageAspectRatio,
-                            backgroundColor = tintBase,
-                        )
-                    }
-                },
-            )
-        },
-    )
-}
-
-@Composable
 internal fun DesktopCommentLinkPreview(
     app: HarmonicAppComposition,
     scene: HarmonicSceneComposition,
@@ -545,12 +448,7 @@ private fun DesktopReferencePreview(
     ReferenceCardContent(
         url = currentUrl,
         fallbackTitle = state.fallbackTitle,
-        summary = ReferenceSummaryUiState(
-            loading = runtimeState.loading,
-            showFallback = runtimeState.showFallback,
-            result = runtimeState.summary,
-            error = runtimeState.error,
-        ),
+        summary = referenceSummaryUiState(runtimeState, state.resolvedSummary),
         preferredFont = settings?.font ?: app.userSettings.story.font,
         commentTextSize = settings?.preferredTextSize ?: app.userSettings.comments.textSize,
         favicon = favicon,
@@ -580,6 +478,7 @@ private fun DesktopReferencePreview(
                 )
             }
         },
+        onOpenUrl = { scene.links.open(it) },
         onOpen = { scene.links.open(currentUrl) },
     )
 }

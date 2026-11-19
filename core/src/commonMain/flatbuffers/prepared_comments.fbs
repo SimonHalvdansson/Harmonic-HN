@@ -1,0 +1,42 @@
+// Persistent prepared-comment content. Append fields; never reorder or reuse IDs.
+// Bump PreparedCommentThread's versions when content or text preparation changes.
+namespace com.simon.harmonichackernews.data.flatbuffers;
+
+table CachedStory {
+  id:int (id: 0);
+  title:string (required, id: 1);
+  points:int (id: 2);
+  created_at_epoch_seconds:int (id: 3);
+  type:string (required, id: 4);
+  author:string (required, id: 5);
+  story_id:int (id: 6);
+  parent_id:int (id: 7);
+  story_title:string (required, id: 8);
+  url:string (required, id: 9);
+  text:string (required, id: 10);
+}
+
+table CachedComment {
+  id:int (id: 0);
+  parent_id:int (id: 1);
+  author:string (required, id: 2);
+  created_at_epoch_seconds:int (id: 3);
+  html:string (required, id: 4);
+  expanded_html:string (id: 5);
+  depth:int (id: 6);
+  child_count:int (id: 7);
+  subtree_end_exclusive:int (id: 8);
+}
+
+table CachedThread {
+  schema_version:int (id: 0);
+  text_preparation_version:int (id: 1);
+  source_digest:string (required, id: 2);
+  story:CachedStory (required, id: 3);
+  comments:[CachedComment] (required, id: 4);
+  summary_json:string (required, id: 5);
+  ranked_ids:[int] (required, id: 6);
+}
+
+root_type CachedThread;
+file_identifier "HNPC";

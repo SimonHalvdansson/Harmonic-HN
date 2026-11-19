@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.platform
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -163,11 +164,12 @@ class AndroidTimeFormatter(context: Context) : PlatformTimeFormatter {
 
 class AndroidExternalLinkOpener(
     context: Context,
+    private val currentActivity: () -> Activity?,
 ) : ExternalLinkOpener {
     private val appContext = context.applicationContext
 
     override fun open(request: ExternalLinkRequest): Boolean = if (request.preferInApp) {
-        AndroidExternalLinkLauncher.openCustomTab(appContext, request)
+        AndroidExternalLinkLauncher.openCustomTab(currentActivity() ?: appContext, request)
     } else {
         AndroidExternalLinkLauncher.openExternalBrowser(appContext, request)
     }
@@ -189,6 +191,7 @@ class AndroidShareService(context: Context) : ShareService {
 fun createAndroidPlatformDependencies(
     context: Context,
     localModels: LocalModelService,
+    currentActivity: () -> Activity?,
 ): AppPlatformDependencies {
     val accounts = ObservableAccountRepositoryAdapter(
         AndroidHackerNewsAccountRepository(context),
@@ -199,7 +202,7 @@ fun createAndroidPlatformDependencies(
         credentials = credentials,
         accounts = accounts,
         history = AndroidHistoryStore(context),
-        externalLinks = AndroidExternalLinkOpener(context),
+        externalLinks = AndroidExternalLinkOpener(context, currentActivity),
         sharing = AndroidShareService(context),
         clipboard = AndroidClipboardService(context),
         connectivity = AndroidConnectivityService(context),

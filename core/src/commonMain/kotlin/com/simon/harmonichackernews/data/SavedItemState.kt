@@ -35,6 +35,25 @@ object SavedItemCodec {
     private fun decode(value: String?, sortedByCreated: Boolean, strict: Boolean): List<TimestampedItem> {
         if (value.isNullOrEmpty()) return emptyList()
         val items = ArrayList<TimestampedItem>()
+        if (!decodeInto(value, strict, items, ::TimestampedItem)) return emptyList()
+        if (sortedByCreated) items.sortByDescending(TimestampedItem::created)
+        return items
+    }
+
+    internal fun decodeHistories(value: String?, sorted: Boolean): MutableList<History> {
+        val histories = ArrayList<History>()
+        if (!value.isNullOrEmpty()) decodeInto(value, strict = false, histories, ::History)
+        if (sorted) histories.sortByDescending(History::created)
+        return histories
+    }
+
+    // History uses the same persisted format, without first allocating a second model per entry.
+    private inline fun <T> decodeInto(
+        value: String,
+        strict: Boolean,
+        items: MutableList<T>,
+        create: (Int, Long) -> T,
+    ): Boolean {
         var segmentStart = 0
         while (segmentStart <= value.length) {
             val segmentEnd = value.indexOf('-', segmentStart).let {
@@ -56,14 +75,13 @@ object SavedItemCodec {
                 val id = parseInt(value, segmentStart, separator)
                 val created = parseLong(value, separator + 1, segmentEnd)
                 if (id != null && created != null && (!strict || id > 0)) {
-                    items += TimestampedItem(id, created)
-                } else if (strict) return emptyList()
-            } else if (strict) return emptyList()
+                    items += create(id, created)
+                } else if (strict) return false
+            } else if (strict) return false
             if (segmentEnd == value.length) break
             segmentStart = segmentEnd + 1
         }
-        if (sortedByCreated) items.sortByDescending(TimestampedItem::created)
-        return items
+        return true
     }
 
     private fun parseInt(value: String, start: Int, end: Int): Int? {
@@ -230,8 +248,7 @@ class HistoryLedger(
         const val DEFAULT_MAXIMUM_ENTRIES = 10_000
 
         fun decodeHistories(serialized: String?, sorted: Boolean): MutableList<History> =
-            SavedItemCodec.decode(serialized, sorted)
-                .mapTo(mutableListOf()) { History(it.id, it.created) }
+            SavedItemCodec.decodeHistories(serialized, sorted)
     }
 }
 

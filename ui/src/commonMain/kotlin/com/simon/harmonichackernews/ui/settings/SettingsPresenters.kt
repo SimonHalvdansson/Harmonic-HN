@@ -3,7 +3,6 @@ package com.simon.harmonichackernews.ui.settings
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 import com.simon.harmonichackernews.settings.forPureBlackDarkMode
 
-import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.CollectedLinksMode
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
@@ -36,7 +35,6 @@ class StoriesSettingsPresenter(
     fun state(
         settings: AppSettings = repository.snapshot(),
         previewModel: StoryRowModel,
-        faviconIcon: Painter,
     ): StoriesSettingsUiState {
         val story = settings.story.forPureBlackDarkMode(settings.pureBlackDarkMode)
         return StoriesSettingsUiState(
@@ -74,7 +72,6 @@ class StoriesSettingsPresenter(
             dimReadStories = story.dimReadStories,
             markScrolledPostsRead = story.markScrolledPostsRead,
             faviconProvider = story.faviconProvider,
-            faviconIcon = faviconIcon,
         )
     }
 
@@ -139,6 +136,7 @@ class CommentsSettingsPresenter(
             depthMode = comments.depthIndicatorMode,
             indicatorThickness = comments.indicatorThickness,
             highlightQuotes = comments.highlightQuotes,
+            scrollMonoBlocks = comments.scrollMonoBlocks,
             quoteSpacing = comments.quoteSpacing,
             quoteHighlightColor = comments.quoteHighlightColor,
             quoteHighlightStyle = comments.quoteHighlightStyle,
@@ -244,7 +242,6 @@ class WebLinksSettingsPresenter(
         repository.setLinkPreviewEnabled(type, enabled)
 
     fun setReaderFontSize(value: Int) = repository.setReaderModeFontSize(value)
-    fun setReaderFont(value: AppFont) = repository.setReaderModeFont(value)
     fun setPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         repository.setWebViewPreload(mode, minimumBattery)
 
@@ -294,7 +291,6 @@ class AppearanceSettingsPresenter(
     }
 
     fun themeState(
-        nighttimeRangeLabel: String,
         activeDark: Boolean,
         dynamicColorAvailable: Boolean,
         settings: AppSettings = repository.snapshot(),
@@ -304,7 +300,6 @@ class AppearanceSettingsPresenter(
         schemes = settings.appearance.colorSchemes,
         activeDark = activeDark,
         specialNighttime = settings.general.specialNighttimeTheme,
-        nighttimeRangeLabel = nighttimeRangeLabel,
         dynamicColorAvailable = dynamicColorAvailable,
     )
 

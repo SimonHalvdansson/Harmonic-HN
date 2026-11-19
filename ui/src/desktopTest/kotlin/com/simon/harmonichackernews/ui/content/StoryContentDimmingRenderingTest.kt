@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.content
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +24,6 @@ import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.ui.stories.StoryPreviewSourceGeometry
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
-import com.simon.harmonichackernews.ui.theme.pageBackground
 import javax.swing.SwingUtilities
 import kotlin.math.abs
 import kotlin.test.Test
@@ -36,7 +34,6 @@ import kotlin.test.assertTrue
 class StoryContentDimmingRenderingTest {
     @Test fun contentFadesOnceWithExtraCategoryDimmingWhileTheCardSurfaceStaysOpaque() = SwingUtilities.invokeAndWait {
         val palette = HarmonicThemeCatalog.scheme("classic", dark = true)
-        val paper = palette.colorScheme.pageBackground
         for (location in CategoryTagLocation.entries) for (mode in listOf(StoryPreviewMode.OFF, StoryPreviewMode.SMALL, StoryPreviewMode.LARGE)) {
             val clicked = mutableStateOf(false)
             var geometry: StoryPreviewSourceGeometry? = null
@@ -45,7 +42,8 @@ class StoryContentDimmingRenderingTest {
                     Canvas(it).drawRect(Rect(0f, 0f, 8f, 8f), Paint().apply { color = Color.Cyan })
                 } }
                 HarmonicTheme(palette.colorScheme, true) {
-                    Box(Modifier.fillMaxSize().background(paper)) {
+                    // A transparent backdrop exposes the rounded card edges in the pixel alpha.
+                    Box(Modifier.fillMaxSize()) {
                         StoryRow(SettingsStoryPreviewModel.copy(title = "Sample title", previewText = "Sample summary",
                             previewImageFallback = null, previewImageBitmap = image,
                             categoryLabels = listOf("Science"), authorName = "sample", authorTag = "Researcher",
@@ -55,7 +53,7 @@ class StoryContentDimmingRenderingTest {
                                 compactPoints = false, includeTopLevelDomain = true, showCommentCount = true,
                                 showIndex = true, commentsOnLeft = false, tintCard = false, displayStyle = DisplayStyle.STANDARD,
                                 useHotnessIcon = false, preferredFont = "devicedefault", textSize = 16f,
-                                dimmed = clicked.value, categoryTagLocation = location),
+                                dimmed = clicked.value, dimClickedBackground = false, categoryTagLocation = location),
                             listItem = true, animateChanges = false, capturePreviewSourceGeometry = true,
                             onPreviewSourceGeometryChanged = { geometry = it })
                     }
@@ -83,6 +81,7 @@ class StoryContentDimmingRenderingTest {
                 val sampleX = (container.left + 8).toInt()
                 val sampleY = (container.top + 8).toInt()
                 val background = before[sampleX, sampleY]
+                assertEquals(1f, background.alpha, "Card background must be opaque")
                 assertEquals(background, after[sampleX, sampleY], "Card background must retain its color")
                 val sections = listOf("index" to bounds.index, "title" to title, "category tag" to category,
                     "summary" to bounds.summary, "metadata and site icon" to metadata,
@@ -98,6 +97,8 @@ class StoryContentDimmingRenderingTest {
                     for (y in rect.top.toInt() until rect.bottom.toInt())
                         for (x in rect.left.toInt() until rect.right.toInt()) {
                             val old = before[x, y]
+                            // Rectangular content bounds can include pixels outside the card.
+                            if (old.alpha < 1f) continue
                             val next = after[x, y]
                             if (abs(old.red - background.red) + abs(old.green - background.green) + abs(old.blue - background.blue) < 0.08f) continue
                             ink++

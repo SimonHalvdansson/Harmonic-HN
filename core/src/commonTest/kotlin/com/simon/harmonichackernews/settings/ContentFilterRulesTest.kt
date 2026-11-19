@@ -203,6 +203,27 @@ class ContentFilterRulesTest {
     }
 
     @Test
+    fun repeatedHostMatchingAndCopiesPreserveDomainRuleSemantics() {
+        val original = DomainFilterRule("example.com")
+        val rules = listOf(original, original.copy(includeSubdomains = false),
+            original.copy(domain = "192.168.1.1"), original.copy(domain = "bad host"),
+            original.copy(domain = "bücher.example"), original.copy(domain = " EXAMPLE ", legacyContainsText = true))
+        val hosts = listOf("example.com", "news.example.com", "notexample.com", "example.com.other.test",
+            "192.168.1.1", "news.192.168.1.1", "xn--bcher-kva.example", "news.xn--bcher-kva.example", "")
+        repeat(3) {
+            for (rule in rules) for (host in hosts) {
+                val configured = if (rule.legacyContainsText) null else DomainFilterHostPolicy.normalize(rule.domain)
+                val expected = if (rule.legacyContainsText) {
+                    val needle = rule.domain.trim().lowercase()
+                    needle.isNotEmpty() && host.lowercase().contains(needle)
+                } else configured != null && (host == configured ||
+                    (rule.includeSubdomains && !DomainFilterHostPolicy.isIpv4(configured) && host.endsWith(".$configured")))
+                assertEquals(expected, rule.matchesHost(host), "$rule: $host")
+            }
+        }
+    }
+
+    @Test
     fun legacyDomainRulesRetainDisplayDomainSubstringMatchingUntilEdited() {
         val legacy = DomainFilterRule("example", legacyContainsText = true)
         assertTrue(legacy.matches("https://notexample.com"))

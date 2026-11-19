@@ -45,6 +45,8 @@ data class StoryPreferences(
     val tintCardsFromImages: Boolean,
     val paletteTintConfigKey: String,
     val dimReadStories: Boolean,
+    val clickedOpacity: Int = 0,
+    val dimClickedBackground: Boolean = true,
     val hotnessThreshold: Int,
     val faviconProvider: String,
     val font: String,
@@ -107,6 +109,7 @@ data class CommentPreferences(
     val volumeNavigationMode: CommentVolumeNavigationMode,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val highlightQuotes: Boolean = false,
+    val scrollMonoBlocks: Boolean = true,
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
@@ -124,6 +127,8 @@ data class CommentPreferences(
     val showHeaderDomain: Boolean = true,
     val showHeaderPoints: Boolean = true,
     val showHeaderCategories: Boolean = true,
+    val showHeaderSummary: Boolean = false,
+    val minimalisticHeader: Boolean = false,
     val headerButtons: CommentsHeaderButtons = CommentsHeaderButtons(),
     val swipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
@@ -157,6 +162,7 @@ data class ReadingPreferences(
     val readerModeLineHeight: ReaderLineHeight = ReaderLineHeight.STANDARD,
     val linkPreviewsEnabled: Boolean = true,
     val pullToOpenBrowser: Boolean = false,
+    val readAloudMiniPlayer: Boolean = false,
 ) {
     val activeLinkPreviews: Set<LinkPreviewType>
         get() = if (linkPreviewsEnabled) enabledLinkPreviews else emptySet()

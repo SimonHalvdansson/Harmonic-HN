@@ -20,6 +20,10 @@ internal object PackageLinkPreview {
 
     internal fun packageTarget(parsed: NetworkUrl): PackagePreviewTarget? {
         val host = parsed.host.lowercase().removePrefix("www.")
+        when (host) {
+            "npmjs.com", "pypi.org", "crates.io", "pkg.go.dev", "formulae.brew.sh" -> Unit
+            else -> return null
+        }
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
         return when {
             host == "npmjs.com" && segments.firstOrNull() == "package" && segments.size >= 2 ->
@@ -39,7 +43,7 @@ internal object PackageLinkPreview {
             host == "pkg.go.dev" && segments.isNotEmpty() && segments.first() != "vuln" ->
                 PackagePreviewTarget(LinkPreviewType.GO_PACKAGE, segments.joinToString("/"))
             host == "formulae.brew.sh" && segments.size >= 2 &&
-                segments[0] in setOf("formula", "cask") -> PackagePreviewTarget(
+                (segments[0] == "formula" || segments[0] == "cask") -> PackagePreviewTarget(
                     LinkPreviewType.HOMEBREW_PACKAGE,
                     segments[1],
                     variant = segments[0],

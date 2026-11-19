@@ -1,7 +1,7 @@
 package com.simon.harmonichackernews.ui.common
 
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
@@ -22,12 +22,12 @@ import org.jetbrains.compose.resources.painterResource
 
 /** Shared filled, rounded search input for comment search and selection dialogs. */
 @Composable
-internal fun DialogSearchField(value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit,
+internal fun DialogSearchField(state: TextFieldState,
     placeholder: String, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val keyboard = LocalSoftwareKeyboardController.current
     val background = if (HarmonicTheme.isDark) MaterialTheme.colorScheme.surfaceContainerHigh
         else MaterialTheme.colorScheme.surfaceContainerHighest
-    TextField(value, onValueChange, modifier = modifier, enabled = enabled,
+    TextField(state = state, modifier = modifier, enabled = enabled,
         placeholder = { Text(placeholder, fontFamily = AppUiFontFamily) },
         textStyle = TextStyle(fontFamily = AppUiFontFamily, fontSize = 16.sp),
         leadingIcon = { Icon(painterResource(Res.drawable.ic_search), null) },
@@ -36,5 +36,5 @@ internal fun DialogSearchField(value: TextFieldValue, onValueChange: (TextFieldV
             disabledContainerColor = background, focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent, disabledIndicatorColor = Color.Transparent),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }), singleLine = true)
+        onKeyboardAction = { keyboard?.hide() }, lineLimits = TextFieldLineLimits.SingleLine)
 }

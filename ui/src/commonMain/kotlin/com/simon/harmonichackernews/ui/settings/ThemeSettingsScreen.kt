@@ -66,11 +66,8 @@ data class ThemeSettingsUiState(
     val schemes: ColorSchemeSelection,
     val activeDark: Boolean,
     val specialNighttime: Boolean,
-    val nighttimeRangeLabel: String,
     val dynamicColorAvailable: Boolean,
 )
-
-enum class ThemeSettingsDialog { NighttimeRange }
 
 fun themeSettingsSummary(appearance: AppearancePreferences): String {
     if (!appearance.followSystem && appearance.manualDark && appearance.colorSchemes.pureBlackDarkMode) {
@@ -93,7 +90,7 @@ fun ThemeSettingsScreen(
     onNighttimeColorSchemeSelected: (String) -> Unit,
     onNighttimeColorStyleSelected: (ColorSchemeStyle) -> Unit,
     onSpecialNighttimeChanged: (Boolean) -> Unit,
-    onDialogRequested: (ThemeSettingsDialog) -> Unit,
+    nighttimeRangeSetting: @Composable () -> Unit,
     resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette,
     previewStyle: StoryRowStyle,
     commentPreviewStyle: CommentRowStyle,
@@ -154,21 +151,20 @@ fun ThemeSettingsScreen(
                 )
                 ThemeSettingsVisibility(visible = state.specialNighttime) {
                     SettingsDivider()
-                    SettingRow(title = "Timed range", summary = state.nighttimeRangeLabel,
-                        icon = Res.drawable.ic_schedule,
-                        onClick = { onDialogRequested(ThemeSettingsDialog.NighttimeRange) })
-                }
-            }
-        }
-        item(key = "nighttime-color-scheme") {
-            ThemeSettingsVisibility(visible = state.specialNighttime) {
-                SettingsCategory("Nighttime color scheme") {
+                    nighttimeRangeSetting()
+                    SettingsDivider()
                     ColorSchemePicker(state.schemes.nighttime, dynamicColorAvailable = state.dynamicColorAvailable, dark = true, style = state.schemes.nighttimeStyle,
                         tag = "Nighttime color scheme", resolveScheme = resolvePreviewScheme,
                         enabled = !state.schemes.nighttimePureBlackDarkMode,
                         onSelected = onNighttimeColorSchemeSelected, onStyleSelected = onNighttimeColorStyleSelected)
-                    PureBlackSetting("Nighttime color scheme", state.schemes.nighttimePureBlackDarkMode, state.followSystem || state.manualDark,
-                        onNighttimePureBlackDarkModeChanged, title = "Pure black")
+                    PureBlackSetting(
+                        tag = "Nighttime color scheme",
+                        checked = state.schemes.nighttimePureBlackDarkMode,
+                        enabled = state.followSystem || state.manualDark,
+                        onCheckedChange = onNighttimePureBlackDarkModeChanged,
+                        title = "Pure black",
+                        summary = null,
+                    )
                 }
             }
         }
@@ -194,12 +190,13 @@ private fun PureBlackSetting(
     enabled: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     title: String = "Pure black dark mode",
+    summary: String? = "Overrides dark mode to pure black",
 ) {
     Column(Modifier.testTag("$tag pure black")) {
         SettingsDivider()
         SwitchSettingRow(
             title = title,
-            summary = "Overrides dark mode to pure black",
+            summary = summary,
             icon = Res.drawable.ic_dark_mode,
             checked = checked,
             enabled = enabled,
@@ -303,10 +300,10 @@ private fun ColorSchemeSwatch(
     val colors = HarmonicTheme.colors
     val target = remember(value, dark, style, resolveScheme) { resolveScheme(value, dark, style).colorScheme }
     // Read animated swatch colors while drawing; they do not change its text or layout.
-    val primary = animateColorAsState(target.primary, tween(250))
-    val secondary = animateColorAsState(target.secondary, tween(250))
-    val tertiary = animateColorAsState(target.tertiary, tween(250))
-    val onPrimary = animateColorAsState(target.onPrimary, tween(250))
+    val primary = animateColorAsState(if (dark) target.primary else target.primaryContainer, tween(250))
+    val secondary = animateColorAsState(if (dark) target.secondary else target.tertiaryContainer, tween(250))
+    val tertiary = animateColorAsState(if (dark) target.tertiary else target.secondaryContainer, tween(250))
+    val onPrimary = animateColorAsState(if (dark) target.onPrimary else target.onPrimaryContainer, tween(250))
     Column(
         modifier = Modifier.width(ColorSchemeSwatchWidth).clip(RoundedCornerShape(16.dp))
             .selectable(selected = checked, enabled = enabled, role = Role.RadioButton, onClick = { onSelected(value) })
@@ -323,7 +320,7 @@ private fun ColorSchemeSwatch(
                 }
             }
             .padding(5.dp)) {
-            // Primary occupies the top half; secondary and tertiary share the bottom.
+            // The top half represents reading. In light mode, the lower sectors show tools and app settings.
             Canvas(Modifier.fillMaxSize().testTag("Swatch-$tag-$value")) {
                 drawArc(primary.value, 180f, 180f, useCenter = true)
                 drawArc(secondary.value, 0f, 90f, useCenter = true)

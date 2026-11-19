@@ -93,7 +93,7 @@ fun QuoteHighlightingSettingsRoute(
         item {
             SettingsCategory("Appearance", titleTopPadding = 8.dp) {
                 SwitchSettingRow(
-                    title = "Padding",
+                    title = "Extra padding",
                     icon = Res.drawable.ic_format_quote,
                     checked = state.quotePadding,
                     enabled = state.highlightQuotes,

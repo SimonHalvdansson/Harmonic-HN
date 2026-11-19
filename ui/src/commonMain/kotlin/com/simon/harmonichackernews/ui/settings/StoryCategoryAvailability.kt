@@ -2,11 +2,29 @@ package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.simon.harmonichackernews.resources.Res
+import com.simon.harmonichackernews.resources.ic_label
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.summary.LocalModelTransferState
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 data class StoryCategoryAvailability(val canEnable: Boolean = true, val reason: String? = null)
+
+@Composable
+internal fun ArticleCategoryNavigationSetting(onClick: () -> Unit) {
+    val repository = LocalHarmonicUiDependencies.current.articleCategorySettings
+    val preferences = repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot()).value
+    val availability = storyCategoryAvailability()
+    NavigationSwitchSettingRow(
+        title = "Article categories",
+        summary = availability.reason ?: "Tag stories using embeddings",
+        icon = Res.drawable.ic_label,
+        checked = preferences.enabled && availability.canEnable,
+        switchEnabled = availability.canEnable,
+        onClick = onClick,
+        onCheckedChange = repository::setEnabled,
+    )
+}
 
 @Composable
 fun storyCategoryAvailability(): StoryCategoryAvailability {

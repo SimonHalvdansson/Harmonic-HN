@@ -127,6 +127,7 @@ data class CommentRowStyle(
     val transparentNonCardBackground: Boolean = false,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val highlightQuotes: Boolean = false,
+    val scrollMonoBlocks: Boolean = true,
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
@@ -276,6 +277,7 @@ fun CommentRow(
         )
         CommentBodyText(
             highlightQuotes = style.highlightQuotes,
+            scrollMonoBlocks = style.scrollMonoBlocks,
             quoteSpacing = style.quoteSpacing,
             quoteHighlightColor = style.quoteHighlightColor,
             quoteHighlightStyle = style.quoteHighlightStyle,
@@ -326,6 +328,7 @@ fun CommentRow(
                 } else {
                     CommentBodyText(
                         highlightQuotes = style.highlightQuotes,
+                        scrollMonoBlocks = style.scrollMonoBlocks,
                         quoteSpacing = style.quoteSpacing,
                         quoteHighlightColor = style.quoteHighlightColor,
                         quoteHighlightStyle = style.quoteHighlightStyle,
@@ -590,6 +593,7 @@ fun CommentRow(
                         if (link == null) {
                             CommentBodyText(
                                 highlightQuotes = style.highlightQuotes,
+                                scrollMonoBlocks = style.scrollMonoBlocks,
                                 quoteSpacing = style.quoteSpacing,
                                 quoteHighlightColor = style.quoteHighlightColor,
                                 quoteHighlightStyle = style.quoteHighlightStyle,
@@ -684,6 +688,7 @@ private fun CommentRowLayout(
 
 @Composable
 internal fun CommentBodyText(
+    scrollMonoBlocks: Boolean = true,
     highlightQuotes: Boolean,
     quoteSpacing: QuoteSpacing,
     quoteHighlightColor: QuoteHighlightColor,
@@ -761,11 +766,10 @@ internal fun CommentBodyText(
         with(density) { (paragraphGap * quotePresentation.gapFraction.value).toDp() }
     }
     QuoteSpacedContent(segments, gap, modifier) { paragraph, paragraphModifier ->
-        // Keep the same text nodes while padding animates in either direction.
         val paddedSegments = remember(paragraph, decorateQuotes) {
             if (decorateQuotes) paragraph.quotePaddingSegments() else listOf(paragraph)
         }
-        QuoteSpacedContent(paddedSegments, { 0.dp }, paragraphModifier) { segment, textModifier ->
+        CommentParagraphContent(paddedSegments, paragraphModifier, scrollMonoBlocks) { segment, textModifier ->
             // Most comments contain no links. Keep their text free of gesture nodes and geometry
             // callbacks; quoted text still receives the layout callback needed for its decoration.
             val segmentHasLinks = hasLinks && remember(segment) { segment.hasCommentLinks() }
@@ -842,6 +846,18 @@ internal fun CommentBodyText(
                 style = animatedCommentTextStyle,
             )
         }
+    }
+}
+
+@Composable
+private fun CommentParagraphContent(
+    segments: List<AnnotatedString>,
+    modifier: Modifier,
+    scrollMonoBlocks: Boolean,
+    content: @Composable (AnnotatedString, Modifier) -> Unit,
+) {
+    QuoteSpacedContent(segments, { 0.dp }, modifier) { segment, textModifier ->
+        MonoBlockContent(segment, scrollMonoBlocks, textModifier, content)
     }
 }
 

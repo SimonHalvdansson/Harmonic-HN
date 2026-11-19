@@ -91,48 +91,65 @@ fun LinkPreviewContent(
     val fontFamily = rememberContentTypography(settings.font).family
     CompositionLocalProvider(LocalPreviewFontFamily provides fontFamily) {
         val previewType = remember(story, contentVersion) { story.loadedLinkPreviewType() }
+        val colors = MaterialTheme.colorScheme
+        val shape = RoundedCornerShape(16.dp)
         AnimatedVisibility(
             visible = enabled && (previewType != null || story.linkPreviewLoading),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            // Draw the frame around the currently visible size, not the full-size
+            // child that the entrance animation is still revealing.
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(shape)
+                .border(2.dp, colors.onSurfaceVariant, shape),
+            // A fast response can resize the card while it is still appearing. Keep
+            // its heading anchored instead of revealing the bottom of the new content.
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
         ) {
-            val colors = MaterialTheme.colorScheme
             AnimatedContent(
                 targetState = previewType,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(2.dp, colors.onSurfaceVariant, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 transitionSpec = {
                     (fadeIn(tween(160)) togetherWith fadeOut(tween(160))).using(
-                        SizeTransform(clip = false) { _, _ -> tween(220) },
+                        // Clip inside the padding as well as at the rounded border.
+                        SizeTransform(clip = true) { _, _ -> tween(220) },
                     )
                 },
                 label = "comments link preview",
             ) {
-                when (it) {
-                    LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
-                    LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
-                    LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
-                    LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
-                    LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
-                    LinkPreviewType.ARXIV -> ArxivPreview(story, settings, background)
-                    LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
-                    LinkPreviewType.TWITTER_X -> NitterPreview(story)
-                    null -> Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp, bottom = 8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        HarmonicLoadingIndicator(Modifier.size(44.dp))
-                    }
-                    else -> RichLinkPreview(story)
+                if (it != null) {
+                    ProviderPreviewContent(it, story, settings.font, background)
+                } else Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HarmonicLoadingIndicator(Modifier.size(44.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ProviderPreviewContent(
+    type: LinkPreviewType,
+    story: StoryListItemSnapshot,
+    font: String,
+    background: Color,
+) {
+    when (type) {
+        LinkPreviewType.GITHUB_REPOSITORY -> GitHubPreview(story)
+        LinkPreviewType.GITLAB_PROJECT -> GitLabPreview(story)
+        LinkPreviewType.HUGGING_FACE_MODEL -> HuggingFacePreview(story)
+        LinkPreviewType.OPENROUTER_MODEL -> OpenRouterPreview(story)
+        LinkPreviewType.STACK_EXCHANGE -> StackExchangePreview(story)
+        LinkPreviewType.ARXIV -> ArxivPreview(story, font, background)
+        LinkPreviewType.WIKIPEDIA -> WikipediaPreview(story)
+        LinkPreviewType.TWITTER_X -> NitterPreview(story)
+        else -> RichLinkPreview(story)
     }
 }
 

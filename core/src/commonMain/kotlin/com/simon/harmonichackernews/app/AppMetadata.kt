@@ -32,6 +32,7 @@ object CommonLicenseCatalog {
         LicenseEntry("Kotlin standard library", "JetBrains", "Apache License 2.0", "https://kotlinlang.org/"),
         LicenseEntry("kotlinx.coroutines", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
         LicenseEntry("kotlinx.serialization", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.serialization"),
+        LicenseEntry("FlatBuffers", "Google", "Apache License 2.0", "https://github.com/google/flatbuffers/blob/v25.2.10/LICENSE"),
         LicenseEntry("kotlinx.io", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx-io"),
         LicenseEntry("kotlinx.collections.immutable", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.collections.immutable"),
         LicenseEntry("Ktor", "JetBrains", "Apache License 2.0", "https://ktor.io/"),

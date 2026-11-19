@@ -54,14 +54,21 @@ class StoryPreviewRemovalTest {
 
     private fun assertPaging(action: StoryPreviewActionKind, openedId: Int, expectedId: Int) {
         val controller = showPreview(action, listOf(1, 2, 3), openedId)
-        val originalTop = compose.onNodeWithText("Story $openedId").fetchSemanticsNode().boundsInRoot.top
+        val originalTop = outgoingCardTop()
         compose.mainClock.autoAdvance = false
         try {
             compose.onNodeWithText("Remove $openedId").performClick()
-            compose.mainClock.advanceTimeBy(120)
+            // Draw the first animation frame before advancing to the middle of the transition.
+            // Android dispatches drawing separately from the Compose test clock.
+            compose.mainClock.advanceTimeByFrame()
+            compose.onRoot().captureToImage()
+            compose.mainClock.advanceTimeBy(96)
             assertNotNull("Keep the outgoing card during paging", controller.storyPreviewRemovalRequest)
-            val movingTop = compose.onNodeWithText("Story $openedId").fetchSemanticsNode().boundsInRoot.top
-            assertTrue("The removed card must animate away", kotlin.math.abs(movingTop - originalTop) > 10f)
+            val movingTop = outgoingCardTop()
+            assertTrue(
+                "The removed card must move toward the page edge (top moved from $originalTop to $movingTop)",
+                if (expectedId > openedId) movingTop < originalTop - 10 else movingTop > originalTop + 10,
+            )
             compose.mainClock.advanceTimeBy(1_000)
             compose.onNodeWithText("Story $expectedId").assertIsDisplayed()
             compose.onNodeWithText("Story $openedId").assertDoesNotExist()
@@ -73,6 +80,15 @@ class StoryPreviewRemovalTest {
         } finally {
             compose.mainClock.autoAdvance = true
         }
+    }
+
+    private fun outgoingCardTop(): Int {
+        val pixels = compose.onRoot().captureToImage().toPixelMap()
+        val x = pixels.width / 2
+        return (0 until pixels.height).firstOrNull { y ->
+            val color = pixels[x, y]
+            color.red > 0.9f && color.green < 0.1f && color.blue < 0.1f
+        } ?: error("The outgoing red card is outside the viewport")
     }
 
     private fun assertLastItem(action: StoryPreviewActionKind) {
@@ -139,7 +155,7 @@ class StoryPreviewRemovalTest {
                             tablet = false,
                             onScrimAlphaChanged = { previewScrimAlpha = it },
                         ) { story, page, _, modifier ->
-                            Box(modifier.height(200.dp).background(Color.Red)) {
+                            Box(modifier.height(200.dp).background(if (story.id == openedId) Color.Red else Color.Blue)) {
                                 BasicText(story.title.orEmpty(), Modifier.padding(16.dp))
                                 Button(
                                     onClick = { controller.onStoryPreviewAction(page, action) },
@@ -163,7 +179,6 @@ class StoryPreviewRemovalTest {
         override fun onCloseSearch() = Unit
         override fun onSearch(query: String) = Unit
         override fun onSearchOption(kind: StorySearchOption, index: Int) = Unit
-        override fun onToggleOnlyRead() = Unit
         override fun onRefresh(showMainLoadingIndicator: Boolean) = Unit
         override fun onShowCached() = Unit
         override fun onLoadMore() = Unit

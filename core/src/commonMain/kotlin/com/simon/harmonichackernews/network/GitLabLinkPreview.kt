@@ -24,19 +24,16 @@ internal object GitLabLinkPreview {
     fun parseGitLab(response: String): GitLabInfo {
         val json = JsonObject(response)
         return GitLabInfo(
-            name = json.nullableString("name"),
-            namespace = json.optJSONObject("namespace")?.nullableString("full_path")
-                ?: json.nullableString("namespace"),
-            description = json.nullableString("description"),
-            website = json.nullableString("web_url"),
-            visibility = json.nullableString("visibility"),
+            name = json.nonEmptyString("name"),
+            namespace = json.optJSONObject("namespace")?.nonEmptyString("full_path")
+                ?: json.nonEmptyString("namespace"),
+            description = json.nonEmptyString("description"),
+            website = json.nonEmptyString("web_url"),
+            visibility = json.nonEmptyString("visibility"),
             stars = json.optInt("star_count"),
             forks = json.optInt("forks_count"),
         )
     }
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }
 
 internal suspend fun HttpClient.loadGitLabInfo(url: String): GitLabInfo {

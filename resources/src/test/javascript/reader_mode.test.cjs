@@ -19,8 +19,8 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function article(useReadability = false) {
-    const page = await browser.newPage();
+async function article(useReadability = false, options = {}) {
+    const page = await browser.newPage(options);
     await page.route('https://reader.test/article', route => route.fulfill({
         contentType: 'text/html',
         body: `<!doctype html><title>Article title</title><base href="https://cdn.test/assets/">
@@ -64,6 +64,111 @@ async function countDocumentClones(page) {
             documentClones++;
             return original.call(this, deep);
         };
+    });
+}
+
+for (const viewport of [[], ['width=980'], ['width=device-width, initial-scale=1'],
+    ['width=980', 'width=1200, initial-scale=0.5'], [null]]) {
+    test(`mobile reader normalizes and restores viewport ${JSON.stringify(viewport)}`, async () => {
+        const page = await article(true, {viewport: {width: 393, height: 852}, isMobile: true});
+        try {
+            await page.addStyleTag({content: 'body { min-height: 5000px }'});
+            const original = await page.evaluate(contents => {
+                window.sourceViewports = contents.map(content => {
+                    const meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    if (content !== null) meta.content = content;
+                    document.head.appendChild(meta);
+                    return meta;
+                });
+                window.scrollTo(0, 450);
+                return {width: innerWidth, scroll: scrollY};
+            }, viewport);
+            for (let cycle = 0; cycle < 2; cycle++) {
+                await enable(page);
+                const dimensions = await page.evaluate(() => ({
+                    width: innerWidth,
+                    scale: visualViewport.scale,
+                    font: getComputedStyle(document.querySelector('#harmonic-reader-article p')).fontSize,
+                    article: document.getElementById('harmonic-reader-article').getBoundingClientRect().toJSON(),
+                }));
+                assert.equal(dimensions.width, 393);
+                assert.equal(dimensions.scale, 1);
+                assert.equal(dimensions.font, '17px');
+                assert.equal(dimensions.article.x, 20);
+                assert.equal(dimensions.article.width, 353);
+                await disable(page);
+                assert.deepEqual(await page.evaluate(() => ({width: innerWidth, scroll: scrollY})), original);
+                assert.deepEqual(await page.locator('meta[name="viewport"]').evaluateAll(nodes =>
+                    nodes.map(node => node.getAttribute('content'))), viewport);
+                assert.equal(await page.evaluate(() => sourceViewports.every(node => node.isConnected)), true);
+            }
+            await page.evaluate(() => { HarmonicReaderMode.enable(); HarmonicReaderMode.disable(); });
+            await page.waitForTimeout(800);
+            assert.deepEqual(await page.locator('meta[name="viewport"]').evaluateAll(nodes =>
+                nodes.map(node => node.getAttribute('content'))), viewport);
+            assert.deepEqual(await page.evaluate(() => ({width: innerWidth, scroll: scrollY})), original);
+        } finally { await page.close(); }
+    });
+}
+
+for (const useReadability of [false, true]) {
+    for (const dialogMarkup of ['<dialog open>', '<div role="dialog">',
+        '<div role="alertdialog">', '<div aria-modal="true">']) {
+        test(`exclude ${dialogMarkup} before article selection (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+            const page = await article(useReadability);
+            try {
+                await page.evaluate(markup => {
+                    const closingTag = markup.startsWith('<dialog') ? '</dialog>' : '</div>';
+                    const notice = '<p>' + 'Consent notice: choose how partners store personal data. '.repeat(70) + '</p>';
+                    document.body.insertAdjacentHTML('afterbegin', markup + '<main>' + notice.repeat(8) + '</main>' + closingTag);
+                    window.originalDialog = document.body.firstElementChild;
+                    document.querySelector('article p').textContent =
+                        'This article discusses cookie consent, privacy policy, and browser storage in detail. '.repeat(30);
+                }, dialogMarkup);
+                assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'available');
+                assert.equal(await page.evaluate(() => originalDialog.isConnected), true,
+                    'Availability must not dismiss or change source dialogs');
+                await enable(page);
+                const text = await page.locator('#harmonic-reader-article').textContent();
+                assert.match(text, /This article discusses cookie consent/);
+                assert.doesNotMatch(text, /Consent notice:/);
+                await disable(page);
+                assert.equal(await page.evaluate(() => originalDialog === document.body.firstElementChild), true);
+            } finally { await page.close(); }
+        });
+    }
+
+    test(`dialog-only pages are unavailable (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.evaluate(() => {
+                document.body.innerHTML = '<div role="dialog"><article><p>' +
+                    'A lengthy consent notice is not an article to read. '.repeat(100) + '</p></article></div>';
+            });
+            assert.equal(await page.evaluate(() => HarmonicReaderMode.isAvailable()), 'unavailable');
+            assert.equal(await page.evaluate(() => HarmonicReaderMode.enable()), 'no_article');
+            assert.equal(await page.locator('[role="dialog"]').count(), 1);
+        } finally { await page.close(); }
+    });
+
+    test(`short content outranks forms and secondary comments (${useReadability ? 'Readability' : 'fallback'})`, async () => {
+        const page = await article(useReadability);
+        try {
+            await page.evaluate(() => {
+                document.querySelector('article').outerHTML = `<div role="main">
+                    <h1>Why measure underground vibrations?</h1>
+                    <p>What can scientists learn from small explosions?</p>
+                    <div><p>${'Seismic measurements reveal underground structure by measuring the propagation of shockwaves. '.repeat(5)}</p></div>
+                    <div itemprop="comment"><p>${'Moderator notice about keeping the discussion on topic. '.repeat(30)}</p></div>
+                    <form><p>${'Sign up or log in to submit your response to this discussion. '.repeat(50)}</p></form>
+                </div>`;
+            });
+            await enable(page);
+            const text = await page.locator('#harmonic-reader-article').textContent();
+            assert.match(text, /Seismic measurements reveal underground structure/);
+            assert.doesNotMatch(text, /Moderator notice|Sign up or log in/);
+        } finally { await page.close(); }
     });
 }
 
@@ -452,6 +557,142 @@ for (const useReadability of [false, true]) {
             assert.equal(await content.locator('#figure-video').evaluate(node => node.parentElement.tagName), 'FIGURE');
             assert.equal(await content.locator('#source-video source').count(), 1);
             assert.equal(await content.locator('.empty-wrapper').count(), 0);
+        } finally { await page.close(); }
+    });
+}
+
+
+test('read aloud only appears in reader mode and restores playback controls on return', async () => {
+    const page = await article(true);
+    const idle = {count:0,rate:1};
+    try {
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await enable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        await page.getByRole('button', {name:'Listen',exact:true}).click();
+        const command = await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)), idle);
+        assert.equal(command.action, 'start');
+        assert.equal(command.title, 'Article title');
+        assert.ok(command.text.includes('substantive article'));
+        assert.ok(!command.text.includes('Listen'));
+        const playing = {count:30,index:2,playing:true,rate:1.5,title:command.title};
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
+        await page.getByRole('button', {name:'Pause',exact:true}).click();
+        assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)).action, playing), 'pause');
+        await disable(page);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await enable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), {...playing,playing:false});
+        await page.getByRole('button', {name:'Resume',exact:true}).click();
+        assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)).action, playing), 'play');
+        await disable(page);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), {...playing,playing:false});
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+    } finally { await page.close(); }
+});
+
+
+test('read aloud matches the reader theme and fits one control row on phones', async () => {
+    const page = await article(true);
+    try {
+        await page.setViewportSize({width:393,height:750});
+        const font = fs.readFileSync(path.resolve(web, '../../font/google_sans_flex_rounded_regular.ttf')).toString('base64');
+        await page.evaluate(font => HarmonicReaderMode.setTheme({
+            isLight:true,backgroundColor:'#ececf5',textColor:'#303038',headingColor:'#303038',
+            secondaryTextColor:'#5b5d68',linkColor:'#50618f',dividerColor:'#c6c8d4',codeBackgroundColor:'#dedfe9',
+            fontFamily:'HarmonicReaderFont, sans-serif',headingFontFamily:'HarmonicReaderFont, sans-serif',
+            fontFaceCss:'@font-face{font-family:HarmonicReaderFont;src:url(data:font/ttf;base64,' + font + ') format("truetype");}',fontSizePx:17
+        }),font);
+        await enable(page);
+        await page.evaluate(() => HarmonicReaderMode.readAloudTick({count:30,index:2,playing:true,rate:1,url:location.href,title:document.title}));
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForTimeout(300); // Measure settled spacing after the Listen entrance.
+        const metrics = await page.evaluate(() => {
+            const host=document.querySelector('harmonic-listen');
+            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.closest('[inert]'));
+            return {tops:controls.map(el=>Math.round(el.getBoundingClientRect().top)),
+                color:getComputedStyle(host.shadowRoot.querySelector('.controls')).backgroundColor,
+                overflow:document.documentElement.scrollWidth>window.innerWidth,
+                left:host.getBoundingClientRect().left,
+                articleLeft:document.getElementById('harmonic-reader-article').getBoundingClientRect().left,
+                right:host.getBoundingClientRect().right,
+                articleRight:document.getElementById('harmonic-reader-article').getBoundingClientRect().right,
+                headerGap:host.getBoundingClientRect().top-document.getElementById('harmonic-reader-byline').getBoundingClientRect().bottom,
+                articleGap:document.getElementById('harmonic-reader-article').getBoundingClientRect().top-host.getBoundingClientRect().bottom};
+        });
+        assert.ok(Math.max(...metrics.tops)-Math.min(...metrics.tops)<=3, JSON.stringify(metrics));
+        assert.equal(metrics.color,'rgb(222, 223, 233)');
+        assert.equal(metrics.overflow,false);
+        assert.equal(metrics.left,metrics.articleLeft);
+        assert.equal(metrics.right,metrics.articleRight);
+        assert.equal(metrics.headerGap,12);
+        assert.equal(metrics.articleGap,24);
+        if(process.env.PLAYWRIGHT_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PLAYWRIGHT_SCREENSHOT_DIR,'reader-player-light.png')});
+        await page.evaluate(() => HarmonicReaderMode.setTheme({...window.__harmonicReaderModeTheme,isLight:false,backgroundColor:'#171821',textColor:'#e3e2ed',headingColor:'#e3e2ed',secondaryTextColor:'#c4c5d2',linkColor:'#b4c5f9',dividerColor:'#444652',codeBackgroundColor:'#2d2e39',fontFamily:'HarmonicReaderFont, sans-serif',fontSizePx:17}));
+        await page.evaluate(() => HarmonicReaderMode.readAloudTick({count:30,index:2,playing:false,rate:1,url:location.href,title:document.title}));
+        await page.waitForTimeout(250); // Let the control's theme transition finish.
+        if(process.env.PLAYWRIGHT_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PLAYWRIGHT_SCREENSHOT_DIR,'reader-player-dark.png')});
+    } finally { await page.close(); }
+});
+
+for (const reducedMotion of ['no-preference', 'reduce']) {
+    test(`Listen transitions preserve controls and focus (${reducedMotion})`, async () => {
+        const page = await article(true);
+        const idle = {count:0,index:0,playing:false,rate:1};
+        const playing = {count:30,index:2,playing:true,rate:1,url:'https://reader.test/article',title:'Article title'};
+        const tick = state => page.evaluate(state => HarmonicReaderMode.readAloudTick(state), state);
+        const metrics = () => page.locator('harmonic-listen').evaluate(host => ({
+            height:host.getBoundingClientRect().height,
+            active:host.shadowRoot.activeElement?.getAttribute('data-action'),
+            animations:[...host.shadowRoot.querySelectorAll('*')].flatMap(el => el.getAnimations()).filter(a => a.playState === 'running').length,
+        }));
+        try {
+            await page.emulateMedia({reducedMotion});
+            await page.setViewportSize({width:393,height:750});
+            await enable(page);
+            await tick(idle);
+            await page.getByRole('button', {name:'Listen',exact:true}).focus();
+            await page.waitForTimeout(300);
+            const collapsed = await metrics();
+            await tick(playing);
+            assert.equal(await page.getByRole('button', {name:'Listen',exact:true}).count(), 0);
+            assert.equal(await page.getByRole('button', {name:'Pause',exact:true}).count(), 1);
+            assert.equal((await metrics()).active, 'pause');
+            await page.waitForTimeout(70);
+            const opening = await metrics();
+            await page.waitForTimeout(300);
+            const expanded = await metrics();
+            assert.ok(expanded.height > collapsed.height);
+            if (reducedMotion === 'reduce') {
+                assert.equal(opening.height, expanded.height);
+                assert.equal(opening.animations, 0);
+            } else {
+                assert.ok(opening.height < expanded.height, 'The article should move gradually as the controls expand');
+                assert.ok(opening.animations > 0);
+            }
+            // Routine host polling must not restart the animation.
+            await tick(playing);
+            assert.equal((await metrics()).animations, 0);
+            await tick({...playing,playing:false});
+            assert.equal(await page.getByRole('button', {name:'Resume',exact:true}).count(), 1);
+            await page.getByRole('button', {name:'Stop',exact:true}).focus();
+            await tick(idle);
+            assert.equal((await metrics()).active, 'start');
+            assert.equal(await page.getByRole('button', {name:'Stop',exact:true}).count(), 0);
+            // Reverse the animation before it completes, then stop again.
+            await tick(playing);
+            await tick(idle);
+            await page.waitForTimeout(350);
+            assert.equal((await metrics()).height, collapsed.height);
+            await page.getByRole('button', {name:'Listen',exact:true}).click();
+            assert.equal(JSON.parse(await tick(idle)).action, 'start');
+            await tick({...idle,error:'Audio is unavailable'});
+            assert.equal(await page.getByRole('status').textContent(), 'Audio is unavailable');
         } finally { await page.close(); }
     });
 }

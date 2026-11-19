@@ -53,13 +53,16 @@ internal fun bindCommentLinks(
     if (links.isEmpty()) {
         return prepared
     }
+    val linkStyles = TextLinkStyles(
+        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+    )
     return buildAnnotatedString {
         append(prepared)
         links.forEach { link ->
             addLink(
                 LinkAnnotation.Url(
                     url = link.item,
-                    styles = TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                    styles = linkStyles,
                     linkInteractionListener = linkListener,
                 ),
                 link.start,
@@ -120,6 +123,7 @@ private fun parseCommentHtml(html: String): AnnotatedString {
 }
 
 private const val COMMENT_URL_TAG = "harmonic-comment-url"
+internal const val COMMENT_MONO_BLOCK_TAG = "harmonic-comment-mono-block"
 internal const val COMMENT_QUOTE_TAG = "harmonic-comment-quote"
 
 /** Mark HN's leading > quote paragraphs without altering links or inline formatting. */
@@ -176,22 +180,26 @@ private fun AnnotatedString.withHighlightedQuotedLines(
 /** Split only at blank lines adjacent to quotes, preserving inline annotations. */
 internal fun AnnotatedString.quoteSpacedSegments(): List<AnnotatedString> {
     val quotes = getStringAnnotations(COMMENT_QUOTE_TAG, 0, length)
-    val blankLines = mutableSetOf<Int>()
+    if (quotes.isEmpty()) return listOf(this)
+    val blankLines = IntArray(quotes.size * 2)
+    var boundaryCount = 0
     quotes.forEach { quote ->
-        if (quote.start >= 2 && text.substring(quote.start - 2, quote.start) == "\n\n") {
-            blankLines += quote.start - 2
+        if (quote.start >= 2 && text[quote.start - 2] == '\n' && text[quote.start - 1] == '\n') {
+            blankLines[boundaryCount++] = quote.start - 2
         }
-        if (quote.end + 1 < length && text.substring(quote.end, quote.end + 2) == "\n\n") {
-            blankLines += quote.end
+        if (quote.end + 1 < length && text[quote.end] == '\n' && text[quote.end + 1] == '\n') {
+            blankLines[boundaryCount++] = quote.end
         }
     }
-    if (blankLines.isEmpty()) return listOf(this)
+    if (boundaryCount == 0) return listOf(this)
+    blankLines.sort(0, boundaryCount)
     return buildList {
         var copiedThrough = 0
-        blankLines.sorted().forEach { index ->
+        for (boundaryIndex in 0 until boundaryCount) {
+            val index = blankLines[boundaryIndex]
             // With three newlines, the separators beside two quotes overlap. Keep the extra
             // authored newline in the next segment rather than slicing backwards over it.
-            if (index < copiedThrough) return@forEach
+            if (index < copiedThrough) continue
             add(this@quoteSpacedSegments.subSequence(copiedThrough, index))
             copiedThrough = index + 2
         }
@@ -201,18 +209,25 @@ internal fun AnnotatedString.quoteSpacedSegments(): List<AnnotatedString> {
 
 /** Isolate quote lines so padding never indents an adjacent unquoted reply. */
 internal fun AnnotatedString.quotePaddingSegments(): List<AnnotatedString> {
-    val boundaries = mutableSetOf<Int>()
-    getStringAnnotations(COMMENT_QUOTE_TAG, 0, length).forEach { quote ->
-        for (index in listOf(quote.start - 1, quote.end)) {
+    val quotes = getStringAnnotations(COMMENT_QUOTE_TAG, 0, length)
+    if (quotes.isEmpty()) return listOf(this)
+    val boundaries = IntArray(quotes.size * 2)
+    var boundaryCount = 0
+    quotes.forEach { quote ->
+        repeat(2) { side ->
+            val index = if (side == 0) quote.start - 1 else quote.end
             if (index > 0 && index < length - 1 && text[index] == '\n' &&
                 text[index - 1] != '\n' && text[index + 1] != '\n'
-            ) boundaries += index
+            ) boundaries[boundaryCount++] = index
         }
     }
-    if (boundaries.isEmpty()) return listOf(this)
+    if (boundaryCount == 0) return listOf(this)
+    boundaries.sort(0, boundaryCount)
     return buildList {
         var start = 0
-        boundaries.sorted().forEach { end ->
+        for (boundaryIndex in 0 until boundaryCount) {
+            val end = boundaries[boundaryIndex]
+            if (end < start) continue // Adjacent/overlapping quote annotations share boundaries.
             add(this@quotePaddingSegments.subSequence(start, end))
             start = end + 1
         }
@@ -302,7 +317,12 @@ private class CommentHtmlRenderer(private val builder: AnnotatedString.Builder) 
                 if (tag == "a" && url.isNotEmpty() && start < end) {
                     addStringAnnotation(COMMENT_URL_TAG, url, start, end)
                 }
-                if (codeBlock) pendingCodeBoundary = true
+                if (codeBlock) {
+                    if (start < end && !preformatted && !convertedCode) {
+                        addStringAnnotation(COMMENT_MONO_BLOCK_TAG, "", start, end)
+                    }
+                    pendingCodeBoundary = true
+                }
             }
         }
     }
@@ -361,14 +381,23 @@ private fun htmlSpanStyle(tag: String): SpanStyle? = when (tag) {
 
 internal fun AnnotatedString.trimmedCommentText(): AnnotatedString {
     // Do not trim indentation or trailing whitespace belonging to preformatted code.
-    val codeSpans = spanStyles.filter { it.item.fontFamily == FontFamily.Monospace }
+    var codeStart = length
+    var codeEnd = 0
+    val spans = spanStyles
+    for (index in spans.indices) {
+        val span = spans[index]
+        if (span.item.fontFamily == FontFamily.Monospace) {
+            codeStart = minOf(codeStart, span.start)
+            codeEnd = maxOf(codeEnd, span.end)
+        }
+    }
     val start = minOf(
         text.indexOfFirst { !it.isWhitespace() }.takeIf { it >= 0 } ?: length,
-        codeSpans.minOfOrNull { it.start } ?: length,
+        codeStart,
     )
     val end = maxOf(
         text.indexOfLast { !it.isWhitespace() } + 1,
-        codeSpans.maxOfOrNull { it.end } ?: 0,
+        codeEnd,
     )
     if (start >= end) return AnnotatedString("")
     return subSequence(start, end)

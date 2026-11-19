@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -206,11 +207,13 @@ fun SettingsListScreen(
                                 (selectedSection == SettingsSection.CommentsSpacing ||
                                     selectedSection == SettingsSection.ThreadDepth ||
                                     selectedSection == SettingsSection.QuoteHighlighting ||
+                                    selectedSection == SettingsSection.MonoBlocks ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||
                                 entry.section == SettingsSection.Stories &&
                                 (selectedSection == SettingsSection.Frontpages ||
+                                    selectedSection == SettingsSection.ClickedPosts ||
                                     selectedSection == SettingsSection.StoriesSpacing) ||
                                 entry.section == SettingsSection.About &&
                                 selectedSection == SettingsSection.Licenses
@@ -469,17 +472,20 @@ fun SettingsCategory(
 /** Keep long groups lazy at row granularity, with the same continuous card and dividers. */
 internal fun LazyListScope.settingsCategory(
     title: String,
+    itemModifier: LazyItemScope.() -> Modifier = { Modifier },
     content: SettingsCategoryScope.() -> Unit,
 ) {
     val rows = SettingsCategoryScope().apply(content).rows
     item(key = "settings-category-$title", contentType = "settings-category-heading") {
-        SettingsCategoryHeading(title, HarmonicDimens.compose_settings_category_padding_top)
+        Box(itemModifier()) {
+            SettingsCategoryHeading(title, HarmonicDimens.compose_settings_category_padding_top)
+        }
     }
     rows.forEachIndexed { index, row ->
         item(key = row.key ?: "settings-category-$title-$index", contentType = "settings-category-row") {
             val radius = HarmonicDimens.settings_list_segment_corner_radius
             Column(
-                Modifier.fillMaxWidth()
+                itemModifier().fillMaxWidth()
                     .padding(horizontal = HarmonicDimens.settings_list_segment_horizontal_margin)
                     .clip(RoundedCornerShape(
                         topStart = if (index == 0) radius else 0.dp,

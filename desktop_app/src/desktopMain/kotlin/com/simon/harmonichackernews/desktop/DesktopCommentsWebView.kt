@@ -364,8 +364,22 @@ internal fun DesktopCommentsWebViewScaffold(
             )
         }
     }
-    SideEffect { session.navigation = navigation }
     val colors = MaterialTheme.colorScheme
+    LaunchedEffect(session, session.currentPageUrl, session.isLoading, reading, colors, dark) {
+        if (DesktopReadAloud.supported && !session.isLoading && session.loadError == null &&
+            com.simon.harmonichackernews.presentation.WebContentPagePolicy.isReaderEligible(
+                session.currentPageUrl,
+                com.simon.harmonichackernews.presentation.WebContentPlatformUrls("about:harmonic-pdf", "about:harmonic-error"),
+            )) {
+            com.simon.harmonichackernews.presentation.ReadAloudWebSession.run(
+                script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
+                    ReaderModeResources.script(), ReaderModeResources.theme(colors, !dark, reading),
+                ), evaluate = session::evaluateResult,
+                state = { DesktopReadAloud.controller.state.value }, command = DesktopReadAloud.controller::command,
+            )
+        }
+    }
+    SideEffect { session.navigation = navigation }
     LaunchedEffect(session, reading, colors, dark) {
         session.reader?.configure(reading) {
             ReaderModeResources.theme(colors, !dark, reading)

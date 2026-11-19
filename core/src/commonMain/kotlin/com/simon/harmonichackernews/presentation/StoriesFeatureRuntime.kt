@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.StoryTypeMenuPolicy
 import com.simon.harmonichackernews.cache.StoryCacheRequest
@@ -659,6 +660,11 @@ class StoriesFeatureRuntime(
             !currentType.isBookmarks && !currentType.isUserItemList
         beginGeneration()
         searchOptions.resetOptions()
+        searchOptions.selectSource(when (sessionState.mainStoryType) {
+            StoryType.BOOKMARKS -> StorySearchSource.BOOKMARKS
+            StoryType.HISTORY -> StorySearchSource.HISTORY
+            else -> StorySearchSource.ALL
+        })
         retainSearchOptions()
         sessionState.searching = true
         sessionState.searchFocusPending = true
@@ -705,13 +711,10 @@ class StoriesFeatureRuntime(
             StorySearchOption.DATE -> searchOptions.selectDateRange(index)
             StorySearchOption.POINTS -> searchOptions.selectMinimumPoints(index)
             StorySearchOption.COMMENTS -> searchOptions.selectMinimumComments(index)
+            StorySearchOption.SOURCE -> searchOptions.selectSource(
+                StorySearchSource.entries.getOrElse(index) { StorySearchSource.ALL },
+            )
         }
-        retainSearchOptions()
-        retrySearch()
-    }
-
-    fun toggleOnlyRead() {
-        searchOptions.toggleOnlyRead()
         retainSearchOptions()
         retrySearch()
     }
@@ -922,6 +925,7 @@ class StoriesFeatureRuntime(
         }
         if (passed.isEmpty()) return
         passed.forEach { updateStoryReadState(it, true) }
+        requests.rememberSavedStories(passed)
         scope.launch {
             val timestamp = nowMillis()
             passed.forEach { historyStore.recordHistory(it.id, timestamp) }
@@ -1067,6 +1071,7 @@ class StoriesFeatureRuntime(
     private fun toggleRead(story: Story) {
         val read = !story.isRead
         updateStoryReadState(story, read)
+        if (read) requests.rememberSavedStories(listOf(story))
         scope.launch {
             if (read) {
                 historyStore.recordHistory(story.id, nowMillis())
@@ -1081,6 +1086,7 @@ class StoriesFeatureRuntime(
         val bookmarksList = currentType.isBookmarks
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val bookmarked = savedItemActions.toggleBookmarkAtomic(story.id)
+            if (bookmarked) requests.rememberSavedStories(listOf(story))
             if (!bookmarked && bookmarksList) {
                 sessionState.bookmarkStories.remove(story)
                 removeStory(story, loadReplacement = true)
@@ -1189,7 +1195,7 @@ class StoriesFeatureRuntime(
     fun showCachedStories(cachedStories: List<Story>) {
         beginGeneration()
         activeStore.setShowingCached(true)
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         refreshIndicatorShowing = false
         rateLimited = false
         sessionState.hiddenStoryRows.reset()
@@ -1230,7 +1236,7 @@ class StoriesFeatureRuntime(
         activeStore.setPaginationEnabled(shouldUsePagination(currentType))
         activeStore.setVisibleStoryCount(initialVisibleCount(activeStore))
         activeStore.setCanLoadMore(false)
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         refreshIndicatorShowing = false
         rateLimited = false
         changed()
@@ -1252,7 +1258,7 @@ class StoriesFeatureRuntime(
         historyChangeVersion = history.changeVersion
         val result = activeStore.syncHistory(
             readStoryIds = history.ids,
-            searchingOnlyRead = searching && searchOptions.state.value.options.onlyRead,
+            searchingOnlyRead = searching && searchOptions.state.value.options.source == StorySearchSource.HISTORY,
             showingHistory = currentType.isHistory,
             hideRead = hideRead,
         )
@@ -1540,6 +1546,7 @@ class StoriesFeatureRuntime(
     private fun applyRowLoaded(effect: StoryRequestEvent.StoryRowLoaded) {
         val story = effect.story
         if (!isCurrentRow(story, effect.generation)) return
+        if (currentType.isBookmarks || currentType.isHistory) requests.rememberSavedStories(listOf(story))
         activeStore.finishNextPageStory(story.id, effect.generation)
         if (story.isComment && currentType.usesCommentRows()) {
             resolveRootStory(story, effect.generation)
@@ -1557,7 +1564,7 @@ class StoriesFeatureRuntime(
     }
 
     private fun applySearchState(state: StorySearchUiState) {
-        if (state.loading && !state.loadingMore) activeLoadedThrough = -1
+        if (state.loading && !state.loadingMore && state.stories.isEmpty()) activeLoadedThrough = -1
         val targetStore = when (state.mode) {
             StorySearchMode.QUERY -> searchStore
             StorySearchMode.TOP_STORIES -> mainStore
@@ -1631,7 +1638,7 @@ class StoriesFeatureRuntime(
         syncUserItemStories(effect.snapshot.itemIds, effect.snapshot.commentIds)
         userItemsInitialLoadInProgress = false
         refreshIndicatorShowing = false
-        activeStore.setFailure(null)
+        activeStore.clearFailure()
         changed()
     }
 
@@ -1858,7 +1865,8 @@ class StoriesFeatureRuntime(
     }
 
     private fun markRead(story: Story) {
-        if (!searchOptions.state.value.options.onlyRead) updateStoryReadState(story, true)
+        if (searchOptions.state.value.options.source != StorySearchSource.HISTORY) updateStoryReadState(story, true)
+        requests.rememberSavedStories(listOf(story))
         scope.launch { historyStore.recordHistory(story.id, nowMillis()) }
     }
 

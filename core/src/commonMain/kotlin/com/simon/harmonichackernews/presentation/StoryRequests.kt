@@ -6,6 +6,8 @@ import com.simon.harmonichackernews.data.SavedItemSnapshot
 import com.simon.harmonichackernews.data.SavedItemSnapshots
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.SavedItemsRepository
+import com.simon.harmonichackernews.data.SavedStorySearchCache
+import com.simon.harmonichackernews.data.SavedStorySearchMetadata
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsApi
 import com.simon.harmonichackernews.network.HackerNewsUserItemsLoader
@@ -75,6 +77,7 @@ class StoryRequests(
     isStoryRead: (Int) -> Boolean,
     shouldHideReadStories: () -> Boolean,
     storyLoadFailurePercent: () -> Int = { 0 },
+    private val savedSearchCache: SavedStorySearchCache? = null,
 ) {
     private val storyVisibilityPolicy = StoryVisibilityPolicy()
     val searchStore = StorySearchStore(
@@ -82,6 +85,7 @@ class StoryRequests(
         algoliaRepository = algoliaRepository,
         hackerNewsRepository = hackerNewsRepository,
         readStoryIds = readStoryIds,
+        bookmarkedStoryIds = { savedItemsRepository.loadItemsByDescendingId(SavedItemSource.BOOKMARKS).map { it.id } },
         isStoryRead = isStoryRead,
         shouldFilterStory = { story ->
             storyVisibilityPolicy.shouldHide(
@@ -94,10 +98,19 @@ class StoryRequests(
             )
         },
         shouldHideReadStories = shouldHideReadStories,
+        savedSearchCache = savedSearchCache,
     )
 
     private val mutableEffects = MutableSharedFlow<StoryRequestEvent>(extraBufferCapacity = 16)
     val effects: SharedFlow<StoryRequestEvent> = mutableEffects.asSharedFlow()
+
+    fun rememberSavedStories(stories: List<Story>) {
+        val cache = savedSearchCache ?: return
+        val metadata = stories.mapNotNull { story ->
+            if (story.loaded && story.id > 0 && story.title != null) SavedStorySearchMetadata.from(story) else null
+        }
+        if (metadata.isNotEmpty()) scope.launch { cache.store(metadata) }
+    }
 
     fun configureVisibility(filters: ContentFilters, hideJobs: Boolean): Boolean =
         storyVisibilityPolicy.update(filters, hideJobs)

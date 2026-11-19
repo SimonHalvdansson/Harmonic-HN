@@ -50,13 +50,18 @@ object StoryCacheIndex {
         return StoryCacheIndexUpdate(validEntries.values.mapTo(linkedSetOf(), ::encode), evicted)
     }
 
-    fun remove(encodedEntries: Set<String>, storyId: Int): Set<String> =
-        encodedEntries.mapNotNull(::parse)
-            .filterNot { it.storyId == storyId }
-            .mapTo(linkedSetOf(), ::encode)
+    fun remove(encodedEntries: Set<String>, storyId: Int): Set<String> {
+        val retained = linkedSetOf<String>()
+        for (value in encodedEntries) {
+            parse(value) { id, cachedAt ->
+                if (id != storyId) retained.add("$id-$cachedAt")
+            }
+        }
+        return retained
+    }
 
     fun storyIds(encodedEntries: Set<String>): Set<Int> =
-        encodedEntries.mapNotNullTo(linkedSetOf()) { parse(it)?.storyId }
+        encodedEntries.mapNotNullTo(linkedSetOf()) { value -> parse(value) { id, _ -> id } }
 
     fun entries(encodedEntries: Set<String>): List<StoryCacheEntry> =
         encodedEntries.mapNotNull(::parse)
@@ -76,7 +81,10 @@ object StoryCacheIndex {
         return recent
     }
 
-    private fun parse(value: String): StoryCacheEntry? {
+    private fun parse(value: String): StoryCacheEntry? = parse(value, ::StoryCacheEntry)
+
+    // Both callers validate the complete entry, but ID-only reads need no intermediate object.
+    private inline fun <T> parse(value: String, result: (Int, Long) -> T): T? {
         if (value.isEmpty()) return null
 
         var index = 0
@@ -106,7 +114,7 @@ object StoryCacheIndex {
             index++
         }
         if (timeDigits == 0) return null
-        return StoryCacheEntry(id, time)
+        return result(id, time)
     }
 
     private fun encode(entry: StoryCacheEntry): String = "${entry.storyId}-${entry.cachedAtMillis}"

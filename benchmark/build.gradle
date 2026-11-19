@@ -48,6 +48,7 @@ dependencies {
     implementation(project(":ui"))
     implementation(libs.coil)
     implementation(libs.compose.multiplatform.ui)
+    implementation(libs.compose.multiplatform.material3)
     implementation(libs.ksoup)
     implementation(libs.androidx.benchmark.junit4)
     implementation(libs.androidx.benchmark.macro.junit4)

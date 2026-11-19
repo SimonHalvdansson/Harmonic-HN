@@ -51,7 +51,7 @@ class CommentsPreloadCoordinatorTest {
             preloadDispatcher = StandardTestDispatcher(testScheduler),
         )
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories((1..5).map { story(it) })
+        coordinator.updateVisibleStoriesFromRows((1..5).map { story(it) })
         runCurrent()
         assertEquals(listOf(1, 2), requested)
         val jobs = scope.coroutineContext.job.children.toList()
@@ -85,11 +85,11 @@ class CommentsPreloadCoordinatorTest {
             preloadDispatcher = StandardTestDispatcher(testScheduler),
         )
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(listOf(story(1), story(2), story(3)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1), story(2), story(3)))
         runCurrent()
         assertEquals(listOf(1), requested)
 
-        coordinator.updateVisibleStories(listOf(story(4)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(4)))
         runCurrent()
         assertEquals(listOf(1), requested)
         release.complete(Unit)
@@ -114,10 +114,10 @@ class CommentsPreloadCoordinatorTest {
             preloadDispatcher = StandardTestDispatcher(testScheduler),
         )
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(listOf(story(1), story(2)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1), story(2)))
         advanceTimeBy(300.milliseconds)
         runCurrent()
-        coordinator.updateVisibleStories(emptyList())
+        coordinator.updateVisibleStoriesFromRows(emptyList())
         release.complete(Unit)
         runCurrent()
         assertEquals(listOf(1), requested)
@@ -139,7 +139,7 @@ class CommentsPreloadCoordinatorTest {
         )
 
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(
+        coordinator.updateVisibleStoriesFromRows(
             listOf(
                 story(id = 1, kids = listOf(11, 12)),
                 story(id = 2, kids = listOf(21)),
@@ -175,7 +175,7 @@ class CommentsPreloadCoordinatorTest {
         )
 
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(listOf(story(1)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1)))
         coordinator.setEnabled(false)
         advanceTimeBy(300L.milliseconds)
         runCurrent()
@@ -198,13 +198,13 @@ class CommentsPreloadCoordinatorTest {
         )
         coordinator.setEnabled(true)
 
-        coordinator.updateVisibleStories(listOf(story(1)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1)))
         advanceTimeBy(100L.milliseconds)
         runCurrent()
         assertEquals(emptyList(), requested)
 
         allowed = true
-        coordinator.updateVisibleStories(listOf(story(1)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1)))
         advanceTimeBy(100L.milliseconds)
         runCurrent()
         assertEquals(listOf(1), requested)
@@ -233,7 +233,7 @@ class CommentsPreloadCoordinatorTest {
             preloadDispatcher = StandardTestDispatcher(testScheduler),
         )
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(listOf(story(1), story(2)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1), story(2)))
         runCurrent()
         firstPreloadStarted.await()
 
@@ -262,12 +262,15 @@ class CommentsPreloadCoordinatorTest {
         )
 
         coordinator.setEnabled(true)
-        coordinator.updateVisibleStories(listOf(story(1)))
+        coordinator.updateVisibleStoriesFromRows(listOf(story(1)))
         runCurrent()
 
         assertEquals(listOf(CommentThreadSource.OFFICIAL), checkedSources)
         assertEquals(listOf(CommentThreadSource.OFFICIAL), requestedSources)
     }
+
+    private fun CommentsPreloadCoordinator.updateVisibleStoriesFromRows(stories: List<StoryListItemSnapshot>) =
+        updateVisibleStories(stories.mapNotNull(StoryListItemSnapshot::toCommentPreloadCandidate))
 
     private fun story(
         id: Int,

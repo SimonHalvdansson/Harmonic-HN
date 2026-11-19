@@ -13,6 +13,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.StorySearchSource
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.theme.pageBackground
@@ -38,14 +39,14 @@ class SearchFilterHoverTest {
                             sortLabel = "Relevance", dateLabel = "All time", pointsLabel = "Any points",
                             commentsLabel = "Any comments", sortLabels = listOf("Relevance", "Date"),
                             dateLabels = listOf("All time"), pointsLabels = listOf("Any points"),
-                            commentsLabels = listOf("Any comments"), onlyRead = false,
+                            commentsLabels = listOf("Any comments"), source = StorySearchSource.ALL,
                         ),
                         sideStart = 16.dp, sideEnd = 16.dp,
                         iconColor = colors.onSurfaceVariant, menuColor = colors.surface,
                         menuTextColor = colors.onSurface, fontFamily = FontFamily.Default,
                         onDraftChanged = {}, onSearch = {}, onClose = {},
                         consumeFocusRequest = { false },
-                        onOptionSelected = { _, _ -> }, onToggleOnlyRead = {},
+                        onOptionSelected = { _, _ -> },
                     )
                 }
             }

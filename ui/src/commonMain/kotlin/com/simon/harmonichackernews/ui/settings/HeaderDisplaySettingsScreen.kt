@@ -82,6 +82,7 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AppSettings
+import com.simon.harmonichackernews.settings.forPureBlackDarkMode
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.settings.CommentsHeaderButton
 import com.simon.harmonichackernews.ui.comments.icon
@@ -141,7 +142,7 @@ fun HeaderDisplaySettingsRoute(
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val state = presenter.state(settings)
     val displaySettings = CommentDisplaySettings.from(
-        preferences = settings.comments,
+        preferences = settings.comments.forPureBlackDarkMode(settings.pureBlackDarkMode),
         showInvert = false,
         isTablet = false,
         hasAccountDetails = account.accountOrNull != null,
@@ -240,19 +241,29 @@ fun HeaderDisplaySettingsRoute(
                     SegmentedSetting(
                         title = "Preview image",
                         options = CommentsHeaderImage.entries.map { it to it.label },
-                        selected = CommentsHeaderImage.from(state.headerPreviewImage, settings.comments.headerLayout),
-                        enabled = state.storyPreviewEnabled,
+                        selected = CommentsHeaderImage.from(
+                            state.headerPreviewImage && !displaySettings.minimalisticHeader, displaySettings.headerLayout,
+                        ),
+                        enabled = state.storyPreviewEnabled && !displaySettings.minimalisticHeader,
                         onSelected = repository::setCommentsHeaderImage,
                     )
                     SettingsDivider()
                     SegmentedSetting(
                         title = "Post details",
                         options = CommentsHeaderMetaInfo.entries.map { it to it.label },
-                        selected = settings.comments.headerMetaInfo,
+                        selected = if (displaySettings.minimalisticHeader) CommentsHeaderMetaInfo.SMALL else settings.comments.headerMetaInfo,
+                        enabled = !displaySettings.minimalisticHeader,
                         disabledOptions = buildSet {
                             if (!displaySettings.hasAccountDetails) add(CommentsHeaderMetaInfo.BUTTONS)
                         },
                         onSelected = repository::setCommentsHeaderMetaInfo,
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Minimalistic",
+                        icon = Res.drawable.ic_keyboard_arrow_down,
+                        checked = displaySettings.minimalisticHeader,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_MINIMALISTIC, it) },
                     )
                     SettingsDivider()
                     SwitchSettingRow(
@@ -276,6 +287,13 @@ fun HeaderDisplaySettingsRoute(
                         icon = Res.drawable.ic_thumb_up,
                         checked = settings.comments.showHeaderPoints,
                         onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_POINTS, it) },
+                    )
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Summary",
+                        icon = Res.drawable.ic_subject,
+                        checked = settings.comments.showHeaderSummary,
+                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_SUMMARY, it) },
                     )
                     SettingsDivider()
                     SwitchSettingRow(
@@ -310,8 +328,10 @@ fun HeaderDisplaySettingsRoute(
                 SettingsCategory("Background") {
                     SegmentedSetting(
                         title = "Background tint",
+                        summary = if (state.pureBlackDarkMode) "Forced to Off in pure black mode" else null,
                         options = CommentsHeaderTint.entries.map { it to it.label },
-                        selected = settings.comments.headerTint,
+                        selected = displaySettings.headerTint,
+                        enabled = !state.pureBlackDarkMode,
                         onSelected = repository::setCommentsHeaderTint,
                     )
                     SettingsDivider()
@@ -585,6 +605,12 @@ private fun HeaderDisplayPreviewContent(
                 ),
                 presentation = StoryPresentationSnapshot(
                     loaded = true, isLink = sample != HeaderPreviewSample.TEXT_POST,
+                    linkSummaryLoaded = sample != HeaderPreviewSample.TEXT_POST,
+                    linkSummaryDescription = when (sample) {
+                        HeaderPreviewSample.TEXT_POST -> null
+                        HeaderPreviewSample.LINK_PREVIEW -> "Save articles for later and read them offline on any device."
+                        else -> SettingsStoryPreviewModel.previewText
+                    },
                     gitHubRepoInfo = if (sample == HeaderPreviewSample.LINK_PREVIEW) RepoInfo(
                         owner = "willow", name = "reading-list",
                         about = "A small, offline-first home for articles you want to come back to.",

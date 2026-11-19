@@ -7,6 +7,27 @@ import com.simon.harmonichackernews.data.Story
 
 class StoryTextProcessorTest {
     @Test
+    fun reusingStoryClearsOldBadgesAndPreservesYearWhitespace() {
+        val story = Story().apply { url = "https://example.com/item" }
+        for ((title, expected) in listOf(
+            "Study [PDF]\t(2025)  " to "Study\t(2025)",
+            "Ordinary (parenthetical) title" to null,
+            "Paper (PDF)" to "Paper",
+            "No closing parenthesis (" to null,
+        )) {
+            story.title = title
+            story.videoTitle = "previous video"
+            StoryTextProcessor.applyTitleBadges(story)
+            assertEquals(expected, story.pdfTitle)
+            assertNull(story.videoTitle)
+        }
+        story.url = "https://example.com/PAPER.PDF"
+        story.title = "Ordinary title"
+        StoryTextProcessor.applyTitleBadges(story)
+        assertEquals(story.title, story.pdfTitle)
+    }
+
+    @Test
     fun pdfMarkerBeforePublicationYearIsRemovedWithoutRemovingTheYear() {
         for (marker in listOf("[pdf]", "[PDF]", "(pdf)")) {
             for (url in listOf("https://example.com/paper.pdf", "https://example.com/paper")) {

@@ -21,6 +21,22 @@ The tag must match the app version in `gradle.properties`. The GitHub release in
 symbols and the Xcode build result. These artifacts are unsigned and require signing and provisioning
 before installation or distribution. This job does not upload to TestFlight or the App Store.
 
+For App Store distribution, assign the app target to the intended Apple Developer Program team
+and register `com.simon.harmonichackernews.ios` in that team's App Store Connect account. Use Xcode's
+Archive/Distribute workflow to sign and validate the build. Complete the store listing, iPhone/iPad
+screenshots, privacy details, age rating, export-compliance answers, support URL and review contact
+before submission. The in-app privacy policy URL is
+`https://simonhalvdansson.github.io/harmonic_privacy.html`.
+
+Review notes should explain the App Transport Security exception: users open arbitrary third-party
+Hacker News articles, including HTTP-only sites, in the browser and reader extraction. Authentication
+and account actions use HTTPS. Explain that reply alerts are local notifications from periodic
+background checks, not remote push. Browsing does not require an account; sign-in uses an existing
+Hacker News account. Profile menus provide blocking and reporting, and About provides developer
+contact and the privacy policy. Verify signed-device background refresh/download recovery and
+available on-device AI before releasing; simulator fixtures cannot validate OS wakeup timing or
+Apple Intelligence hardware availability.
+
 The native shell owns Keychain credentials, the atomic Hacker News account record, system URL
 routing, sharing, clipboard access, connectivity, locale-aware time formatting, the app icon, and
 status-bar appearance. The comments scene embeds `WKWebView` with Compose UIKit interop so its
@@ -28,14 +44,35 @@ Compose comments sheet remains available above the article. Compose Navigation E
 interactive system left-edge back gesture through the KMP navigation hierarchy. Application logic
 and the rest of the UI remain in the KMP modules.
 
+Reader mode's Listen action uses the system speech synthesizer and shared sentence queue, with
+pause/resume, sentence skipping and speed controls. Playback belongs to the process graph, so it
+continues after leaving the article or backgrounding the app. iOS Now Playing controls keep it
+accessible. Reader mode settings also offer an optional mini-player, disabled by default. Audio
+interruptions and disconnected headphones pause playback.
+The native speech tests use fake speech and audio adapters in CI to verify completion, cancellation,
+stale callbacks and audio-session failures. The real-voice integration test remains compiled in CI
+and runs locally with working Simulator voices; the read-aloud UI test covers backgrounding and
+navigation. Lock-screen audio behavior on physical hardware still merits release QA.
+
 Account activity, read state, discussion muting, and Debug → Account's public-username preview are
-shared and work without native notifications. A preview never changes Keychain credentials or
-the account used to post and vote. For native alerts, supply `ReplyNotificationPlatform` through
-`IosPlatformBindings.replyNotifications`; its optional `settingsHost: NotificationSettingsHost`
-connects authorization refresh, permission requests, and the system notification-settings link.
-The shared Account route refreshes authorization on resume. Until that adapter is supplied,
-foreground checking stays available and native alert/background controls remain disabled.
-Verify the native adapter, permission changes, and background scheduling on an iOS simulator/device.
+shared and work without notification permission. A preview never changes Keychain credentials or
+uses the account to post or vote. The native `IosReplyNotifications` adapter supplies notification
+permission/settings, grouped local alerts, and `BGAppRefreshTask` scheduling. Notification taps open
+the parent discussion at the reply through shared navigation, including on a cold launch. The
+process-owned app graph supports refreshes without an open scene; expiration cancels the scanner,
+and checkpoints are flushed before normal completion. Checks respect account changes, muted discussions,
+Wi-Fi-only mode and local checking hours. iOS chooses the actual wakeup time: the selected frequency
+is a minimum interval, not a delivery guarantee. A scan that cannot finish in a short refresh
+queues a `BGProcessingTask` catch-up; iOS runs that longer task when the device is idle. Both paths
+honor Wi-Fi and checking hours, and expiration never advances an incomplete scan's checkpoint.
+Background App Refresh must be enabled, and
+force-quitting prevents automatic checks until the app is opened again. No push server is used.
+The Account route refreshes notification authorization on resume. Native unit tests cover delivery,
+permission changes, scheduling, cancellation and cold-launch links; iOS Kotlin tests cover account
+ownership, Wi-Fi/checking hours, persistence, expiry and the longer catch-up budget. The opt-in
+`IosReplyNotificationUITests` smoke test uses `TEST_RUNNER_HARMONIC_REPLY_TEST_USER=<public username>`
+to send a local alert for an existing public reply and tap it into the discussion. It never logs in
+or performs public actions.
 
 Cloud AI is intentionally disabled on iOS. `IosHarmonicAppBootstrap` sets
 `HarmonicHostConfiguration.cloudAiSupported = false`: cloud provider settings and search entries
@@ -59,7 +96,9 @@ installation copy for legacy partials. A fallback to a fresh download checks ava
 The `HarmonicIosTests` target checks catalog/selection and the Kotlin-to-native summary bridge.
 Its background-transfer tests use a loopback HTTP server and isolated ephemeral sessions to cover
 file delivery, HTTP errors, size validation, legacy partials, duplicate requests, cancellation, and
-reloading interrupted transfer state. iOS CI executes this suite after building the test host.
+reloading interrupted transfer state. iOS CI runs the deterministic native tests for reply notifications,
+packaging, model storage/selection, summary bridges and system gestures. It compiles the download,
+live-website and real-inference tests but leaves their execution to local verification.
 OS suspension and relaunch delivery still need device verification with the production background session.
 Its real Gemma tests check consecutive summaries and cancellation when `litert-test-fixture.litertlm`
 (the catalog's Gemma E2B file) is present in the test host's Application Support directory; otherwise

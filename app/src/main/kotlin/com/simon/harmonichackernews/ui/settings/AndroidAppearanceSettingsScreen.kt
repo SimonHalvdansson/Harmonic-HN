@@ -13,9 +13,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.R
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
-import com.simon.harmonichackernews.settings.NighttimeSchedule
 import com.simon.harmonichackernews.settings.ThemeSelection
-import com.simon.harmonichackernews.settings.ThemeSelectionPolicy
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicThemePalette
 import com.simon.harmonichackernews.ui.theme.harmonicThemePalette
@@ -60,11 +58,9 @@ fun AndroidThemeSettingsScreen(
     val dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     ThemeSettingsRoute(
         repository = app.settings,
+        appearance = app.appearance,
         labels = ThemeRouteLabels(
-            nighttimeRange = formatNighttimeRange(
-                app.appearance.schedule,
-                app.platform.timeFormatting.uses24HourClock(),
-            ),
+            is24Hour = app.platform.timeFormatting.uses24HourClock(),
             activeDark = app.appearance.selection().dark,
             dynamicColorAvailable = dynamicColorAvailable,
         ),
@@ -76,24 +72,8 @@ fun AndroidThemeSettingsScreen(
                 harmonicThemePalette(context, ThemeSelection.forScheme(scheme, dark, style))
             }
         },
-        dialogContent = { dialog, presenter, dismiss ->
-            when (dialog) {
-                ThemeSettingsDialog.NighttimeRange -> AndroidNighttimeRangeDialog(
-                    onDismiss = dismiss,
-                    onRangeSelected = onThemeChanged,
-                )
-            }
-        },
     )
 }
-
-private fun formatNighttimeRange(
-    schedule: NighttimeSchedule,
-    use24HourClock: Boolean,
-): String = ThemeSelectionPolicy.formatSchedule(
-    schedule = schedule,
-    use24HourClock = use24HourClock,
-)
 
 @Composable
 fun AndroidPaletteTintSettingsScreen(showNavigation: Boolean, onBack: () -> Unit) {

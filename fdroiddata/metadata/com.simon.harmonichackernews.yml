@@ -1,11 +1,9 @@
 AntiFeatures:
   NonFreeNet:
     en-US: Depends on Hacker News for story and comment data.
-
 Categories:
-  - Reading
-  - Internet
-
+  - Forum
+  - News
 License: Apache-2.0
 AuthorName: Simon Halvdansson
 SourceCode: https://github.com/SimonHalvdansson/Harmonic-HN
@@ -16,35 +14,56 @@ AutoName: Harmonic
 
 RepoType: git
 Repo: https://github.com/SimonHalvdansson/Harmonic-HN.git
-
-Binaries: https://github.com/SimonHalvdansson/Harmonic-HN/releases/download/v%v/app-release.apk
+Binaries: 
+  https://github.com/SimonHalvdansson/Harmonic-HN/releases/download/v%v/app-release.apk
 
 Builds:
-  - versionName: '2.4'
-    versionCode: 74
-    commit: v2.4
+  - versionName: 3.2.7
+    versionCode: 89
+    commit: 0e819a7fd47921ae786d9e3a27a61576f626c50c
     subdir: app
-    sudo:
-      - echo "deb https://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list
-      - apt-get update
-      - apt-get install -y -t trixie openjdk-21-jdk-headless
-      - update-alternatives --auto java
     gradle:
-      - yes
+      - foss
+    output: build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
+    srclibs:
+      - reproducible-apk-tools@ca728486d42a79f1c9ec0c6ec755c39f251911a8
     rm:
-      - app/release
       - gradle/gradle-daemon-jvm.properties
-    prebuild: sed -i -e '/foojay/d' ../settings.gradle
+    prebuild:
+      - sed -i '/foojay/d' ../settings.gradle
+      - pushd 
+        ../resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm
+      - echo 'e6bee67724a7b5436fe8162638e3708cfc8d52b6342db69a49715e30ff27cfdc  jbig2.wasm'
+        | sha256sum -c -
+      - echo '004a0e62db930ba9ff2a22212f4554d0bb57a0635a8287caf70f98117cee14ba  openjpeg.wasm'
+        | sha256sum -c -
+      - echo '663d86126d5f5fcb1c61490f94353e2a8375660b8c5498ab3ebab5a34b08800e  qcms_bg.wasm'
+        | sha256sum -c -
+      - popd
+    scanignore:
+      - resources/src/commonMain/composeResources/files/article_categories.bin
+      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/jbig2.wasm
+      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/openjpeg.wasm
+      - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/qcms_bg.wasm
+    ndk: 29.0.13113456
+    preassemble:
+      - verifyFossDependencies
+    postbuild:
+      - python3 $$reproducible-apk-tools$$/zipalign.py --replace --pad-like-apksigner
+        -P 16 4 $$OUT$$ aligned.apk
+      - mv aligned.apk $$OUT$$
 
 AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a552f88ec6
 
 MaintainerNotes: |-
-  The v2.4 release tree contains Play/GitHub release artifacts under app/release;
-  keep the removal rule for that historical build. Current sources no longer track
-  those artifacts. The Foojay toolchain resolver is removed because the buildserver
-  installs JDK 21 directly.
+  article_categories.bin contains training data for the article classifier. The generator and corpus are in tools/article_categories.
+
+  The three PDF.js decoders match the WebAssembly assets in Maven Central's org.webjars.npm:pdfjs-dist:6.3.289. The recipe checks their SHA-256 hashes before scanning. Their source is maintained by Mozilla in the pdf.js, pdf.js.openjpeg, pdf.js.jbig2 and qcms projects.
+
+  The release APK uses apksigner alignment fields with 16 KiB native library alignment.
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags v.*
-CurrentVersion: '2.4'
-CurrentVersionCode: 74
+UpdateCheckMode: Tags v[0-9.]+
+UpdateCheckData: gradle.properties|harmonic\.versionCode=(\d+)|.|harmonic\.versionName=([\d.]+)
+CurrentVersion: 3.2.7
+CurrentVersionCode: 89

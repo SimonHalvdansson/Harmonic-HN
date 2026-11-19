@@ -27,6 +27,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorPosition
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -179,6 +182,32 @@ private data class MenuRevealShape(val progress: Float, val pivotY: Float) : Sha
             RoundRect(0f, top, size.width, top + height, CornerRadius(radius)),
         )
     }
+}
+
+@Composable
+internal fun HarmonicSelectableMenuItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    text: @Composable () -> Unit,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    selectedLeadingIcon: (@Composable () -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp),
+) {
+    val shape = RoundedCornerShape(12.dp)
+    SelectableDropdownMenuItem(
+        selected = selected,
+        onClick = onClick,
+        text = text,
+        leadingIcon = leadingIcon,
+        selectedLeadingIcon = selectedLeadingIcon,
+        modifier = Modifier.padding(horizontal = 8.dp),
+        shapes = MenuDefaults.itemShapes(shape, shape),
+        colors = MenuDefaults.selectableItemColors(
+            containerColor = Color.Transparent,
+            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        ),
+        contentPadding = contentPadding,
+    )
 }
 
 @Composable

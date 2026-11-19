@@ -6,13 +6,17 @@ import androidx.compose.animation.core.spring
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.simon.harmonichackernews.presentation.ReadAloudController
+import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import com.simon.harmonichackernews.ui.theme.pageBackground
-import com.simon.harmonichackernews.app.IosHostRuntimeBindings
 import com.simon.harmonichackernews.platform.IosAppearanceController
-import com.simon.harmonichackernews.platform.IosPlatformBindings
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -93,10 +97,12 @@ import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.SettingsScrollPage
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
+import com.simon.harmonichackernews.ui.editor.EditorRoute
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
+import com.simon.harmonichackernews.ui.stories.TabletStoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import platform.UIKit.UIViewController
@@ -123,10 +129,12 @@ import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_search
 import com.simon.harmonichackernews.ui.settings.ProvideSettingsPlatformStyle
 import com.simon.harmonichackernews.ui.settings.SettingsPlatformStyle
+import com.simon.harmonichackernews.ui.settings.LocalSettingsDialogsVisible
 import com.simon.harmonichackernews.ui.stories.LocalStoriesSearchInHeader
 import org.jetbrains.compose.resources.painterResource
 
 internal val LocalIosForeground = staticCompositionLocalOf { false }
+internal val LocalIosReadAloud = staticCompositionLocalOf<ReadAloudController?> { null }
 
 private data object IosApplicationBackInfo : NavigationEventInfo()
 
@@ -144,15 +152,9 @@ private class IosBackSettle(
  * the returned controller; Compose dispatches iOS edge gestures through Navigation Event.
  */
 class IosHarmonicApplication(
-    bindings: IosPlatformBindings,
-    runtime: IosHostRuntimeBindings,
+    private val bootstrap: IosHarmonicAppBootstrap,
+    private val appearance: IosAppearanceController,
 ) {
-    private val appearance = bindings.appearance
-    private val bootstrap = IosHarmonicAppBootstrap(
-        userAgent = "Harmonic-HN-iOS/${runtime.metadata.versionName}",
-        bindings = bindings,
-        runtime = runtime,
-    )
     private val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     private val scene = sceneOwner.scene
     private var closed = false
@@ -175,6 +177,11 @@ class IosHarmonicApplication(
 
     fun refreshAppearance() {
         if (!closed) bootstrap.app.appearance.refreshSelection()
+    }
+
+    /** Notification links use the same parent/reply routing as the activity inbox. */
+    fun openReply(url: String) {
+        if (!closed) scene.links.open(url)
     }
 
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -203,7 +210,6 @@ class IosHarmonicApplication(
         if (closed) return
         closed = true
         sceneOwner.close()
-        bootstrap.close()
     }
 }
 
@@ -246,7 +252,7 @@ private fun IosApp(
     LaunchedEffect(bootstrap.app.launchState) {
         when (
             bootstrap.app.launchState.consumeLaunchDialog(
-                currentVersion = bootstrap.app.metadata.versionCode,
+                metadata = bootstrap.app.metadata,
                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
             )
         ) {
@@ -344,20 +350,38 @@ private fun IosApp(
     ) {
         HarmonicTheme(palette.colorScheme, palette.dark, appearance = fontSettings.appearance) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.pageBackground) {
-                IosAppContent(
-                    app = bootstrap.app,
-                    scene = scene,
-                    storiesController = storiesController,
-                    commentsController = commentsController,
-                    editorBackRequestVersion = editorBackRequestVersion,
-                    onStoriesControllerChanged = { storiesController = it },
-                    commentsControllers = commentsControllers,
-                    settingsControllers = settingsControllers,
-                    backVisualTarget = backSettle?.visualTarget ?: visualTarget,
-                    backProgress = backSettle?.progress?.value ?: backProgress,
-                    backInProgress = activeBack != null || backSettle != null,
-                    completedBackTarget = completedBackTarget,
-                )
+                CompositionLocalProvider(LocalIosReadAloud provides bootstrap.readAloud?.controller) {
+                    val readAloud = bootstrap.readAloud?.controller
+                    val speech = readAloud?.state?.collectAsState()?.value
+                    val playerVisible = fontSettings.reading.readAloudMiniPlayer && speech != null && speech.count > 0
+                    Column(
+                        Modifier.fillMaxSize().then(
+                            if (playerVisible) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
+                        ),
+                    ) {
+                        Box(Modifier.weight(1f)) {
+                            IosAppContent(
+                                app = bootstrap.app,
+                                scene = scene,
+                                storiesController = storiesController,
+                                commentsController = commentsController,
+                                editorBackRequestVersion = editorBackRequestVersion,
+                                onStoriesControllerChanged = { storiesController = it },
+                                commentsControllers = commentsControllers,
+                                settingsControllers = settingsControllers,
+                                backVisualTarget = backSettle?.visualTarget ?: visualTarget,
+                                backProgress = backSettle?.progress?.value ?: backProgress,
+                                backInProgress = activeBack != null || backSettle != null,
+                                completedBackTarget = completedBackTarget,
+                            )
+                        }
+                        if (playerVisible && speech != null && readAloud != null) {
+                            ReadAloudMiniPlayer(speech) { action ->
+                                readAloud.command(buildJsonObject { put("action", action) })
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -563,17 +587,20 @@ private fun IosAppContent(
             }
         },
         settings = { request ->
-            IosSettingsShell(
-                focusHideComments = request.initialSectionRoute ==
-                    com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
-                app = app,
-                scene = scene,
-                requestSerial = request.serial,
-                controllers = settingsControllers,
-                initialSection = SettingsSection.fromRoute(
-                    request.initialSectionRoute.orEmpty(),
-                ),
-            )
+            CompositionLocalProvider(LocalSettingsDialogsVisible provides
+                (navigation.currentDestination == MainDestination.SETTINGS && navigation.settingsRequest?.serial == request.serial)) {
+                IosSettingsShell(
+                    focusHideComments = request.initialSectionRoute ==
+                        com.simon.harmonichackernews.ui.settings.HideCommentsSettingsRoute,
+                    app = app,
+                    scene = scene,
+                    requestSerial = request.serial,
+                    controllers = settingsControllers,
+                    initialSection = SettingsSection.fromRoute(
+                        request.initialSectionRoute.orEmpty(),
+                    ),
+                )
+            }
         },
         submissions = { request, detail, paneComments ->
             if (isTwoPane) {
@@ -596,7 +623,7 @@ private fun IosAppContent(
             }
         },
         editor = { request ->
-            IosEditorContent(
+            EditorRoute(
                 app = app, scene = scene, request = request,
                 backRequestVersion = editorBackRequestVersion,
             )
@@ -830,7 +857,7 @@ private fun IosStoriesContent(
         }
         IosStatusBarProtection(MaterialTheme.colorScheme.pageBackground)
         if (controller.isStoryPreviewShowing()) {
-            IosStoryPreviewOverlay(app, controller)
+            TabletStoryPreviewOverlay(app, controller)
         }
     }
 }

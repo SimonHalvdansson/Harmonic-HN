@@ -14,9 +14,6 @@ import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
@@ -25,43 +22,31 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -71,9 +56,11 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import com.simon.harmonichackernews.presentation.CommentsMoreAction
 import com.simon.harmonichackernews.presentation.CommentsShareAction
+import com.simon.harmonichackernews.ui.content.HarmonicSelectableMenuItem
 import com.simon.harmonichackernews.ui.content.HarmonicDropdownMenu
 import com.simon.harmonichackernews.ui.content.HarmonicMenuText
 import com.simon.harmonichackernews.ui.common.AnimatedBookmarkIcon
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import com.simon.harmonichackernews.utils.AgePolicy
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
@@ -252,7 +239,7 @@ fun CommentsHeaderActions(
             animateDpAsState(position(inline.size), tween(220, delayMillis = 80, easing = ContentMotionEasing), label = "More position")
         }
         Box(Modifier.offset { IntOffset(moreX.roundToPx(), 0) }.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize)) {
-            CommentsTooltip("More options") {
+            HarmonicTooltip("More options") {
                 IconButton(onClick = {
                     sortExpanded = false
                     archiveExpanded = false
@@ -303,7 +290,7 @@ private fun HeaderActionButton(
     itemId: Int,
     onClick: () -> Unit,
 ) {
-    CommentsTooltip(action.label) {
+    HarmonicTooltip(action.label) {
         IconButton(
             onClick = onClick,
             enabled = !action.loading,
@@ -344,28 +331,6 @@ private fun HeaderActionButton(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CommentsTooltip(
-    description: String,
-    content: @Composable () -> Unit,
-) {
-    val tooltipState = rememberTooltipState()
-    val hapticFeedback = LocalHapticFeedback.current
-    LaunchedEffect(tooltipState.isVisible) {
-        if (tooltipState.isVisible) {
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            TooltipAnchorPosition.Above,
-        ),
-        tooltip = { PlainTooltip { Text(description) } },
-        state = tooltipState,
-        content = content,
-    )
-}
 
 @Composable
 private fun ShareMenu(
@@ -454,34 +419,14 @@ private fun MoreMenu(
                         Spacer(Modifier.height(8.dp))
                         val options = stringArrayResource(Res.array.comment_sorting)
                         options.forEach { option ->
-                            val isSelected = option == controller.currentSorting
-                            val selectionColor by animateColorAsState(
-                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                                else MaterialTheme.colorScheme.primary.copy(alpha = 0f),
-                                animationSpec = tween(180),
-                                label = "comment sort selection",
-                            )
-                            DropdownMenuItem(
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(selectionColor)
-                                    .semantics { selected = isSelected },
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        AnimatedVisibility(
-                                            visible = isSelected,
-                                            enter = fadeIn(tween(180)) + expandHorizontally(tween(180)),
-                                            exit = fadeOut(tween(180)) + shrinkHorizontally(tween(180)),
-                                        ) {
-                                            Icon(
-                                                painterResource(Res.drawable.ic_check),
-                                                contentDescription = null,
-                                                modifier = Modifier.padding(end = 12.dp).size(24.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                        CommentsMenuText(option)
-                                    }
+                            HarmonicSelectableMenuItem(
+                                selected = option == controller.currentSorting,
+                                text = { CommentsMenuText(option) },
+                                selectedLeadingIcon = {
+                                    Icon(
+                                        painterResource(Res.drawable.ic_check), null, Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 },
                                 onClick = {
                                     onDismiss()

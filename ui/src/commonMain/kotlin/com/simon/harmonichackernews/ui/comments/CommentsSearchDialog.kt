@@ -3,24 +3,21 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.ui.content.CommentRow
@@ -62,16 +59,17 @@ fun CommentsSearchDialog(
     val dismissal = remember { SettingsDialogDismissState() }
     // The native dialog has its own saveable registry. Keep its draft and scroll in the host's
     // registry so rebuilding the window on rotation does not discard an active search.
-    // Retain TextFieldValue rather than round-tripping an asynchronously published String:
-    // that would reset the desktop cursor between closely spaced key events.
-    var fieldValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(searchTerm, TextRange(searchTerm.length)))
-    }
+    val fieldState = rememberTextFieldState(initialText = searchTerm)
     val listState = rememberLazyListState()
-    val scrollState = rememberScrollState()
-    LaunchedEffect(Unit) {
-        // A recreated result store starts empty; restore its query from the saved field draft.
-        if (fieldValue.text != searchTerm) onSearchTermChanged(fieldValue.text)
+    val publishSearch by rememberUpdatedState(onSearchTermChanged)
+    LaunchedEffect(fieldState) {
+        var lastPublished = searchTerm
+        snapshotFlow { fieldState.text.toString() }.collect { draft ->
+            if (!dismissal.isClosing && draft != lastPublished) {
+                lastPublished = draft
+                publishSearch(draft)
+            }
+        }
     }
     SettingsAlertDialog(
         onDismissRequest = { dismissal.request(onDismiss) },
@@ -90,15 +88,8 @@ fun CommentsSearchDialog(
             Box {
                 CommentsSearchContent(
                     searchTerm = searchTerm,
-                    fieldValue = fieldValue,
-                    onFieldValueChanged = {
-                        if (!dismissal.isClosing) {
-                            fieldValue = it
-                            onSearchTermChanged(it.text)
-                        }
-                    },
+                    fieldState = fieldState,
                     listState = listState,
-                    scrollState = scrollState,
                     visibleComments = visibleComments,
                     settings = settings,
                     storyAuthor = storyAuthor,
@@ -122,10 +113,8 @@ fun CommentsSearchDialog(
 @Composable
 fun CommentsSearchContent(
     searchTerm: String,
-    fieldValue: TextFieldValue,
-    onFieldValueChanged: (TextFieldValue) -> Unit,
+    fieldState: TextFieldState,
     listState: LazyListState,
-    scrollState: ScrollState,
     visibleComments: List<PortableCommentItem>,
     settings: CommentDisplaySettings,
     storyAuthor: String?,
@@ -152,10 +141,8 @@ fun CommentsSearchContent(
     val resumedAt = rememberTimeOnResume()
 
     CommentSearchScreen(
-        fieldValue = fieldValue,
-        onFieldValueChanged = onFieldValueChanged,
+        fieldState = fieldState,
         listState = listState,
-        scrollState = scrollState,
         visibleComments = visibleComments,
         mutedColor = MaterialTheme.colorScheme.onSurfaceVariant,
         fontFamily = AppUiFontFamily,

@@ -20,6 +20,8 @@ import kotlinx.coroutines.withContext
 /** Platform delivery boundary for optional local-inference runtimes. */
 interface LocalModelRuntimeDelivery {
     val included: Boolean
+    /** Loads platform delivery state. Synchronous queries must only read cached state. */
+    suspend fun awaitReady() = Unit
     fun status(runtime: LocalModelRuntime): LocalRuntimeInstallStatus
     fun isInstalled(runtime: LocalModelRuntime): Boolean
     suspend fun request(model: LocalModelDefinition): String?
@@ -126,6 +128,8 @@ class LocalModelService(
     fun isRuntimeInstalled(runtime: LocalModelRuntime): Boolean =
         runtimeDelivery.isInstalled(runtime)
 
+    suspend fun awaitRuntimeDelivery() = runtimeDelivery.awaitReady()
+
     fun engineClassName(runtime: LocalModelRuntime): String? =
         runtimeDelivery.engineClassName(runtime)
 
@@ -148,6 +152,13 @@ class LocalModelService(
         if (!model.downloadable) return "${model.displayName} is system managed."
         if (!isSupported(model)) return unsupportedReason(model) + "."
 
+        try {
+            awaitRuntimeDelivery()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            return "Could not initialize local AI runtime delivery. Try again."
+        }
         val requestedRuntime = runtimeStatus(model.runtime)
         if (requestedRuntime.active) {
             return if (requestedRuntime.pendingModelId == model.id) null
@@ -178,6 +189,7 @@ class LocalModelService(
     }
 
     suspend fun cancel(modelId: String?) = operationMutex.withLock {
+        awaitRuntimeDelivery()
         ensureTransferMonitoring()
         val model = model(modelId)
         val runtime = runtimeStatus(model.runtime)
@@ -208,6 +220,7 @@ class LocalModelService(
         .toList()
 
     suspend fun clearStoredModels(): Boolean = operationMutex.withLock {
+        awaitRuntimeDelivery()
         ensureTransferMonitoring()
         models.filter(LocalModelDefinition::downloadable).map(LocalModelDefinition::runtime).distinct().forEach { runtime ->
             // Cancel a pending model handoff too, even if its runtime has just finished installing.
@@ -243,9 +256,12 @@ class LocalModelService(
         error
     }
 
-    suspend fun firstReadyDownloadableModel(): LocalModelDefinition? = models.firstOrNull { model ->
-        model.supportsSummarization && model.downloadable && isSupported(model) && lifecycle.isDownloaded(model) &&
-            isRuntimeInstalled(model.runtime)
+    suspend fun firstReadyDownloadableModel(): LocalModelDefinition? {
+        awaitRuntimeDelivery()
+        return models.firstOrNull { model ->
+            model.supportsSummarization && model.downloadable && isSupported(model) && lifecycle.isDownloaded(model) &&
+                isRuntimeInstalled(model.runtime)
+        }
     }
 
     suspend fun selectFirstReadyOrClear() {
@@ -309,6 +325,7 @@ class LocalModelService(
 
     private suspend fun refreshState() = refreshMutex.withLock {
         try {
+            awaitRuntimeDelivery()
             val statuses = models.associate { it.id to lifecycle.status(it) }
             mutableState.value = LocalModelManagerState(
                 selectedModelId = selectedModel.id,

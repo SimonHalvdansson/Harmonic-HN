@@ -32,6 +32,7 @@ class IosPlatformBindings(
     val nativeLiteRt: IosLiteRtSummaryBridge? = null,
     val nativeArticleEmbeddings: IosArticleEmbeddingBridge? = null,
     val modelTransfers: LocalModelTransferScheduler? = null,
+    val readAloud: IosReadAloudHost? = null,
 ) {
     val localSummary: LocalSummaryEngine? =
         localSummary ?: nativeLocalSummary?.let(::IosNativeLocalSummaryEngine)

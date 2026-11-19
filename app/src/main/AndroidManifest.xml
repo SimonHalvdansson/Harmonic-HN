@@ -11,7 +11,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
     <queries>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent>
             <action android:name="android.support.customtabs.action.CustomTabsService" />
         </intent>
@@ -125,6 +128,8 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_stories_info" />
         </receiver>
+
+        <service android:name=".ReadAloudService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
 
         <service
             android:name=".network.ReplyNotificationJobService"

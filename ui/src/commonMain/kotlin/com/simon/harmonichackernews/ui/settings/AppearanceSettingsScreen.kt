@@ -140,7 +140,7 @@ fun AppearanceSettingsScreen(
                 )
                 SettingsDivider()
                 SettingRow(
-                    title = "Header display settings",
+                    title = "Post header settings",
                     icon = Res.drawable.ic_open_in_new,
                     onClick = { onNavigate(SettingsSection.HeaderDisplay) },
                 )

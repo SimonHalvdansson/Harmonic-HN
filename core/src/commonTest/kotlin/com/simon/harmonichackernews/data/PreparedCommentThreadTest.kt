@@ -70,6 +70,17 @@ class PreparedCommentThreadTest {
         assertEquals("Updated [pdf]", updated.title)
     }
 
+    @Test fun firstWriteDigestMatchesExistingCacheAcrossUtf8ChunkBoundaries() = runTest {
+        val repository = StoryCacheRepository(InMemoryStoryCacheFileStore(), InMemoryStoryCacheMetadataStore())
+        for (length in listOf(8170, 8171, 8172, 8191, 8192, 8193, 16_384)) {
+            val response = """{"id":42,"title":"${"a".repeat(length)}😀漢","children":[]}"""
+            val display = parser.parseForDisplay(response)
+            assertTrue(repository.storeStory(42, response, 1000, display.cacheSummary))
+            assertEquals(parser.prepare(response), repository.loadPreparedThread(42))
+            assertEquals(response, repository.loadStoryPayload(42))
+        }
+    }
+
     @Test fun displayWithPreparedCacheStillHashesAndReusesOnlyMatchingContent() = runTest {
         val cached = parser.prepare(raw)
         var hashes = 0
@@ -169,7 +180,7 @@ class PreparedCommentThreadTest {
         }
     }
 
-    @Test fun bothEncodingsPreserveContentAndCurrentPreferences() = runTest {
+    @Test fun allEncodingsPreserveContentAndCurrentPreferences() = runTest {
         val prepared = parser.prepare(raw, listOf(8, 7))
         for (encoding in PreparedCommentCodec.Encoding.entries) {
             val cached = assertNotNull(PreparedCommentCodec.decode(PreparedCommentCodec.encode(prepared, encoding)))
@@ -264,6 +275,8 @@ class PreparedCommentThreadTest {
         val original = parser.parse(raw, listOf(8, 7))
         assertTrue(repository.storeStory(42, raw, 1_000, original.cacheSummary))
         val prepared = assertNotNull(service.loadPreparedThread(42))
+        assertEquals(PreparedCommentCodec.Encoding.FLATBUFFERS.wireId,
+            assertNotNull(files.read(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin"))[0].toInt())
         assertEquals(listOf(8, 7), prepared.rankedIds)
         val rawReads = files.rawReads
         assertEquals(prepared, service.loadPreparedThread(42))
@@ -274,6 +287,23 @@ class PreparedCommentThreadTest {
             files.write(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin", invalid)
             assertEquals(prepared, service.loadPreparedThread(42))
             assertEquals(raw, repository.loadStoryPayload(42))
+            assertEquals(PreparedCommentCodec.Encoding.FLATBUFFERS.wireId,
+                assertNotNull(files.read(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin"))[0].toInt())
+        }
+    }
+
+    @Test fun validLegacyCachesRemainReadableWithoutReparsingJson() = runTest {
+        val files = RecordingFiles()
+        val repository = StoryCacheRepository(files, InMemoryStoryCacheMetadataStore())
+        val service = StoryCacheService(repository,
+            ArticleSnapshotService(KtorHttpClient(client = { error("Offline") }), null), { 0L })
+        assertTrue(repository.storeStory(42, raw, 1_000))
+        val prepared = parser.prepare(raw)
+        for (encoding in listOf(PreparedCommentCodec.Encoding.PROTOBUF, PreparedCommentCodec.Encoding.JSON)) {
+            files.write(StoryCacheKeys.PREPARED_NAMESPACE, "42.bin", PreparedCommentCodec.encode(prepared, encoding))
+            val reads = files.rawReads
+            assertEquals(prepared, service.loadPreparedThread(42))
+            assertEquals(reads, files.rawReads)
         }
     }
 

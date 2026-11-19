@@ -15,4 +15,9 @@ fun StoryPreferences.forPureBlackDarkMode(active: Boolean): StoryPreferences =
     if (active) copy(displayStyle = DisplayStyle.FLAT, tintCardsFromImages = false) else this
 
 fun CommentPreferences.forPureBlackDarkMode(active: Boolean): CommentPreferences =
-    if (active) copy(displayStyle = DisplayStyle.FLAT) else this
+    if (active) copy(
+        displayStyle = DisplayStyle.FLAT,
+        headerTintEnabled = false,
+        tintHeader = false,
+        headerTint = CommentsHeaderTint.OFF,
+    ) else this

@@ -13,8 +13,9 @@ internal object StatusPageLinkPreview {
 
     internal fun statusPageIncident(parsed: NetworkUrl): Pair<String, String>? {
         val host = parsed.host.lowercase()
+        if (!host.endsWith(".statuspage.io")) return null
         val segments = parsed.pathSegments.filter(String::isNotEmpty)
-        if (!host.endsWith(".statuspage.io") || segments.size < 2 || segments[0] != "incidents") {
+        if (segments.size < 2 || segments[0] != "incidents") {
             return null
         }
         return host to segments[1]

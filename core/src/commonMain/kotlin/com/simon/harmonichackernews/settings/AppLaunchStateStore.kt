@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.app.AppMetadata
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -8,6 +9,7 @@ object AppLaunchPreferenceKeys {
     const val WELCOME_DIALOG_SHOWN =
         "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN"
     const val LAST_VERSION = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_LAST_VERSION"
+    const val LAST_RELEASE_SERIES = "last_release_series"
     const val STORIES_MENU_HINT_PENDING = "stories_menu_hint_pending"
 }
 
@@ -48,19 +50,27 @@ class AppLaunchStateStore(
         menuHintPending.value = false
     }
 
-    fun consumeVersionUpgrade(currentVersion: Int): Boolean {
-        val previousVersion = preferences.getInt(AppLaunchPreferenceKeys.LAST_VERSION, -1)
-        if (currentVersion <= previousVersion) return false
-        preferences.putInt(AppLaunchPreferenceKeys.LAST_VERSION, currentVersion)
-        return true
+    private fun consumeReleaseUpgrade(metadata: AppMetadata): Boolean {
+        val previousCode = preferences.getInt(AppLaunchPreferenceKeys.LAST_VERSION, -1)
+        if (metadata.versionCode <= previousCode) return false
+
+        val series = metadata.versionName.split('.').take(2).joinToString(".")
+        // Releases through 3.2.7 stored only the build number. 3.2 shipped as build 81.
+        val previousSeries = preferences.getString(AppLaunchPreferenceKeys.LAST_RELEASE_SERIES)
+            ?: if (previousCode in 81..89) "3.2" else null
+        preferences.update {
+            putInt(AppLaunchPreferenceKeys.LAST_VERSION, metadata.versionCode)
+            putString(AppLaunchPreferenceKeys.LAST_RELEASE_SERIES, series)
+        }
+        return previousCode >= 0 && series != previousSeries
     }
 
     fun consumeLaunchDialog(
-        currentVersion: Int,
+        metadata: AppMetadata,
         showChangelog: Boolean,
     ): AppLaunchDialog {
         val showWelcome = shouldShowWelcomeDialog
-        val upgraded = consumeVersionUpgrade(currentVersion)
+        val upgraded = consumeReleaseUpgrade(metadata)
         return when {
             showWelcome -> AppLaunchDialog.WELCOME
             upgraded && showChangelog -> AppLaunchDialog.CHANGELOG

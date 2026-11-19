@@ -100,6 +100,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.network.AlgoliaSubmissionCount
+import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.content.annotatedUserTagLabel
+import com.simon.harmonichackernews.ui.content.userTagColor
 import com.simon.harmonichackernews.utils.GroupedNumberFormatter
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.data.Story
@@ -136,6 +139,8 @@ fun SubmissionsScreen(
     pullToRefreshEnabled: Boolean = true,
     storyItemModel: @Composable (Story, StoryDisplaySettings) -> StoryRowModel,
     onOpenLink: (String) -> Unit,
+    userTag: String = "",
+    tagColor: UserTagColor = UserTagColor.Theme,
 ) {
     val listState = rememberLazyListState()
     val hazeState = currentSharedHazeState()
@@ -197,6 +202,8 @@ fun SubmissionsScreen(
             SubmissionsList(
                 overscrollEffect = overscrollEffect,
                 userName = userName,
+                userTag = userTag,
+                tagColor = tagColor,
                 submissions = state.items,
                 selectedFilter = state.filter,
                 showFilter = state.hasUnfilteredItems || state.loadedSuccessfully,
@@ -255,6 +262,8 @@ fun SubmissionsScreen(
 
 @Composable
 private fun BoxScope.SubmissionsList(
+    userTag: String,
+    tagColor: UserTagColor,
     overscrollEffect: OverscrollEffect?,
     userName: String,
     submissions: List<Story>,
@@ -512,6 +521,8 @@ private fun BoxScope.SubmissionsList(
     ) {
         SubmissionsHeader(
             userName = userName,
+            userTag = userTag,
+            tagColor = tagColor,
             selectedFilter = selectedFilter,
             showFilter = showFilter,
             storyCount = storyCount,
@@ -535,6 +546,8 @@ private fun BoxScope.SubmissionsList(
 @Composable
 private fun SubmissionsHeader(
     userName: String,
+    userTag: String,
+    tagColor: UserTagColor,
     selectedFilter: SubmissionFilter,
     showFilter: Boolean,
     storyCount: AlgoliaSubmissionCount?,
@@ -569,8 +582,10 @@ private fun SubmissionsHeader(
                 },
             ),
     ) {
+        val title = "$userName's submissions"
+        val taggedTitle = if (userTag.isBlank()) title else "$title ($userTag)"
         Text(
-            text = "$userName's submissions",
+            text = annotatedUserTagLabel(taggedTitle, userTag, userTagColor(tagColor)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(

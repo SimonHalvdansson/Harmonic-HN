@@ -120,6 +120,78 @@ class RichLinkPreviewUrlsTest {
     }
 
     @Test
+    fun hostGuardedClassifiersPreservePathAndHostMatching() {
+        val hosts = listOf(
+            "example.com", "npmjs.com", "WWW.NPMJS.COM", "pypi.org", "crates.io", "pkg.go.dev",
+            "formulae.brew.sh", "service.statuspage.io", "statuspage.io", "writer.substack.com",
+            "substack.com", "bsky.app", "www.bsky.app", "reddit.com", "OLD.REDDIT.COM",
+            "www.old.reddit.com", "old.www.reddit.com", "doi.org", "www.dx.doi.org",
+        )
+        val paths = listOf(
+            "/", "/package/name", "//package//%40scope//name/", "/project/name", "/crates/name",
+            "/golang.org/x/tools", "/vuln/GO-123", "/formula/name", "/cask/name", "/other/name",
+            "/incidents/123", "//incidents//123/", "/p/article", "/p/", "/profile/a/post/b",
+            "//profile//a//post//b/", "/r/kotlin/comments/id/title", "//comments//id/", "/Comments/id",
+            "/%63omments/id", "/@user/123", "/10.1234/example",
+        )
+        for (host in hosts) for (path in paths) {
+            val url = "https://$host$path"
+            val parsed = NetworkUrl.parse(url)
+            val normalizedHost = parsed.host.lowercase()
+            val segments = parsed.pathSegments.filter(String::isNotEmpty)
+            assertEquals(legacyPackageTarget(parsed), PackageLinkPreview.packageTarget(parsed), url)
+            assertEquals(
+                if (normalizedHost.endsWith(".statuspage.io") && segments.size >= 2 && segments[0] == "incidents") {
+                    normalizedHost to segments[1]
+                } else null,
+                StatusPageLinkPreview.statusPageIncident(parsed), url,
+            )
+            assertEquals(
+                normalizedHost.endsWith(".substack.com") && segments.size >= 2 && segments[0] == "p",
+                SubstackLinkPreview.isSubstackArticle(parsed), url,
+            )
+            assertEquals(
+                normalizedHost == "bsky.app" && segments.size >= 4 && segments[0] == "profile" && segments[2] == "post",
+                BlueskyLinkPreview.isBlueskyPost(parsed), url,
+            )
+            assertEquals(
+                normalizedHost.removePrefix("www.").removePrefix("old.") == "reddit.com" && "comments" in segments,
+                RedditLinkPreview.isRedditPost(parsed), url,
+            )
+            assertEquals(
+                if (normalizedHost.removePrefix("www.") in setOf("doi.org", "dx.doi.org")) {
+                    segments.joinToString("/").takeIf(String::isNotEmpty)
+                } else null,
+                CrossrefLinkPreview.crossrefDoi(parsed), url,
+            )
+        }
+    }
+
+    private fun legacyPackageTarget(parsed: NetworkUrl): PackagePreviewTarget? {
+        val host = parsed.host.lowercase().removePrefix("www.")
+        val segments = parsed.pathSegments.filter(String::isNotEmpty)
+        return when {
+            host == "npmjs.com" && segments.firstOrNull() == "package" && segments.size >= 2 ->
+                PackagePreviewTarget(
+                    LinkPreviewType.NPM_PACKAGE,
+                    if (segments[1].startsWith('@')) {
+                        if (segments.size < 3) return null
+                        segments.subList(1, 3).joinToString("/")
+                    } else segments[1],
+                )
+            host == "pypi.org" && segments.firstOrNull() == "project" && segments.size >= 2 ->
+                PackagePreviewTarget(LinkPreviewType.PYPI_PACKAGE, segments[1])
+            host == "crates.io" && segments.firstOrNull() == "crates" && segments.size >= 2 ->
+                PackagePreviewTarget(LinkPreviewType.CRATES_PACKAGE, segments[1])
+            host == "pkg.go.dev" && segments.isNotEmpty() && segments.first() != "vuln" ->
+                PackagePreviewTarget(LinkPreviewType.GO_PACKAGE, segments.joinToString("/"))
+            host == "formulae.brew.sh" && segments.size >= 2 && segments[0] in setOf("formula", "cask") ->
+                PackagePreviewTarget(LinkPreviewType.HOMEBREW_PACKAGE, segments[1], segments[0])
+            else -> null
+        }
+    }
+
+    @Test
     fun individualSwitchDisablesOnlyItsType() {
         val enabled = LinkPreviewType.entries.toMutableSet().apply {
             remove(LinkPreviewType.GITHUB_ISSUE)

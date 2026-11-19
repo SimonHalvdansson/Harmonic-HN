@@ -41,16 +41,15 @@ class ColorSchemeSettingsPolicyTest {
         val stored = repository.snapshot()
         val active = stored.copy(pureBlackDarkMode = true)
         val stories = StoriesSettingsPresenter(repository).state(active,
-            com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel,
-            androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Gray))
+            com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel)
         val comments = CommentsSettingsPresenter(repository).state(active)
         assertEquals("flat", stories.displayStyle)
         kotlin.test.assertFalse(stories.tint)
         kotlin.test.assertTrue(stories.pureBlackDarkMode)
         assertEquals(com.simon.harmonichackernews.settings.DisplayStyle.FLAT, comments.displayStyle)
         kotlin.test.assertTrue(comments.pureBlackDarkMode)
-        assertEquals("blue", appearance.themeState("21:00 - 06:00", true, true, active).schemes.light)
-        assertEquals(ColorSchemeStyle.Vibrant, appearance.themeState("21:00 - 06:00", true, true, active).schemes.lightStyle)
+        assertEquals("blue", appearance.themeState(true, true, active).schemes.light)
+        assertEquals(ColorSchemeStyle.Vibrant, appearance.themeState(true, true, active).schemes.lightStyle)
         assertEquals(stored, repository.snapshot())
         assertEquals(stored.comments.displayStyle, CommentsSettingsPresenter(repository).state(stored).displayStyle)
     }

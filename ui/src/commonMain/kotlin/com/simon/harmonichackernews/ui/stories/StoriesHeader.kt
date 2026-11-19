@@ -68,13 +68,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.simon.harmonichackernews.ui.common.Button
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -93,9 +89,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -268,7 +262,11 @@ internal fun StoriesHeader(
                 }
             }
 
-            AnimatedVisibility(visible = !searchMode && controller.presentation.showSavedFilter) {
+            AnimatedVisibility(
+                visible = !searchMode && controller.presentation.showSavedFilter,
+                enter = expandVertically() + fadeIn(tween(220, delayMillis = 80)),
+                exit = shrinkVertically() + fadeOut(tween(100)),
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -689,8 +687,8 @@ internal fun FrontpageHeaderControls(
                             }
                             AnimatedVisibility(
                                 visible = useDropdown,
-                                enter = expandHorizontally(tween(320, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
-                                exit = shrinkHorizontally(tween(320, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                                enter = fadeIn(tween(160, easing = LinearEasing)),
+                                exit = fadeOut(tween(160, easing = LinearEasing)),
                             ) {
                                 Icon(
                                     painterResource(Res.drawable.ic_keyboard_arrow_down),
@@ -713,7 +711,7 @@ internal fun FrontpageHeaderControls(
                             },
                         )
                     }
-                    if (searchInHeader && !sizing.searchInMenu) StoriesTooltip("Search") {
+                    if (searchInHeader && !sizing.searchInMenu) HarmonicTooltip("Search") {
                         IconButton(
                             onClick = onSearch,
                         ) {
@@ -729,7 +727,7 @@ internal fun FrontpageHeaderControls(
                         enter = expandHorizontally(tween(200), expandFrom = Alignment.End) + fadeIn(tween(150)),
                         exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.End) + fadeOut(tween(100)),
                     ) {
-                        StoriesTooltip("Refresh") {
+                        HarmonicTooltip("Refresh") {
                             IconButton(onClick = onRefresh, enabled = !refreshing) {
                                 Icon(painterResource(Res.drawable.ic_refresh), "Refresh",
                                     tint = iconColor)
@@ -791,30 +789,6 @@ internal fun StoriesMoreMenuControl(
 }
 
 @Composable
-internal fun StoriesTooltip(
-    description: String,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    val tooltipState = rememberTooltipState()
-    val hapticFeedback = LocalHapticFeedback.current
-    LaunchedEffect(tooltipState.isVisible) {
-        if (tooltipState.isVisible) {
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            TooltipAnchorPosition.Above,
-        ),
-        tooltip = { PlainTooltip { Text(description) } },
-        state = tooltipState,
-        enableUserInput = enabled,
-        content = content,
-    )
-}
-
-@Composable
 private fun SearchHeader(
     controller: StoriesScreenController,
     sideStart: androidx.compose.ui.unit.Dp,
@@ -834,7 +808,7 @@ private fun SearchHeader(
             dateLabels = controller.presentation.searchDateLabels,
             pointsLabels = controller.presentation.searchPointsLabels,
             commentsLabels = controller.presentation.searchCommentsLabels,
-            onlyRead = controller.presentation.searchOnlyRead,
+            source = controller.presentation.searchSource,
         ),
         sideStart = sideStart,
         sideEnd = sideEnd,
@@ -847,7 +821,6 @@ private fun SearchHeader(
         onClose = controller.listener::onCloseSearch,
         consumeFocusRequest = controller.listener::consumeSearchFocusRequest,
         onOptionSelected = controller.listener::onSearchOption,
-        onToggleOnlyRead = controller.listener::onToggleOnlyRead,
     )
 }
 

@@ -6,7 +6,7 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import com.simon.harmonichackernews.resources.*
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.CapturedAnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
+import com.simon.harmonichackernews.ui.common.HarmonicTooltip
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,14 +66,12 @@ fun OpFilterBanner(controller: CommentsScreenController) {
     val bannerColor = if (HarmonicTheme.isDark) colors.surfaceContainerHigh else colors.secondaryContainer
     val contentColor = if (HarmonicTheme.isDark) colors.onSurface else colors.onSecondaryContainer
     val active = controller.opThreadFilterEnabled || controller.userThreadFilterEnabled
-    // Keep the last filter's copy while the banner animates out.
-    var showingUserFilter by remember { mutableStateOf(controller.userThreadFilterEnabled) }
-    if (active) showingUserFilter = controller.userThreadFilterEnabled
-    AnimatedVisibility(
+    CapturedAnimatedVisibility(
         visible = active,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
+        val showingUserFilter = controller.userThreadFilterEnabled
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,7 +89,7 @@ fun OpFilterBanner(controller: CommentsScreenController) {
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
             )
-            CommentsTooltip("Show all comments") {
+            HarmonicTooltip("Show all comments") {
                 IconButton(
                     onClick = {
                         controller.listener.onMoreAction(

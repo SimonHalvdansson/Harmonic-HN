@@ -152,11 +152,12 @@ class IntegratedHeaderDetailsTest {
             fun metric(description: String) = nodes().single {
                 it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains(description) == true
             }.boundsInRoot
-            fun verifyMetrics(stacked: Boolean) {
+            fun verifyMetrics(stacked: Boolean, onImage: Boolean = false) {
                 val points = metric("${SettingsStoryPreviewModel.points} points")
                 val comments = metric("${SettingsStoryPreviewModel.commentCount} comments")
                 if (stacked) {
-                    assertEquals(points.left, comments.left)
+                    if (onImage) assertEquals(points.right, comments.right)
+                    else assertEquals(points.left, comments.left)
                     assertTrue(points.bottom <= comments.top, "Points and comments must be vertically stacked")
                 } else {
                     assertEquals(points.top, comments.top)
@@ -181,7 +182,7 @@ class IntegratedHeaderDetailsTest {
                 assertTrue(tagged("header-image-metrics").isNotEmpty())
                 frames(40, "image")
                 assertTrue(tagged("header-stacked-metrics").isEmpty())
-                verifyMetrics(stacked = false)
+                verifyMetrics(stacked = layout == CommentsHeaderLayout.BALANCED, onImage = true)
                 settings.value = settings.value.copy(showHeaderPreviewImage = false)
                 frames(40)
                 assertTrue(tagged("header-image-metrics").isEmpty())

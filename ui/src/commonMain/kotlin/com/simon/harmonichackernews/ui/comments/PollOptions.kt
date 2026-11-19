@@ -1,6 +1,5 @@
 package com.simon.harmonichackernews.ui.comments
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -13,18 +12,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,10 +33,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -68,14 +70,17 @@ fun PollOptions(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            items.forEach { option ->
+            items.forEachIndexed { index, option ->
                 key(option.id) {
+                    val top = if (index == 0) 16.dp else 4.dp
+                    val bottom = if (index == items.lastIndex) 16.dp else 4.dp
+                    val shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
                     AnimatedContent(
                         targetState = option,
                         modifier = Modifier.fillMaxWidth(),
-                        // Point updates retain the card and animate only its result bar.
+                        // Point updates keep the row in place and animate its fill.
                         contentKey = { it.loaded to it.loadFailed },
                         transitionSpec = {
                             (fadeIn(tween(180, delayMillis = 80)) togetherWith fadeOut(tween(90))).using(
@@ -86,8 +91,9 @@ fun PollOptions(
                         },
                         label = "poll option content",
                     ) { displayedOption ->
-                        PollOptionCard(
+                        PollOptionRow(
                             option = displayedOption,
+                            shape = shape,
                             totalPoints = totalPoints,
                             submitting = voteInFlightOptionId == displayedOption.id,
                             votingEnabled = voteInFlightOptionId == null,
@@ -102,8 +108,9 @@ fun PollOptions(
 }
 
 @Composable
-private fun PollOptionCard(
+private fun PollOptionRow(
     option: PollOptionUi,
+    shape: RoundedCornerShape,
     totalPoints: Long?,
     submitting: Boolean,
     votingEnabled: Boolean,
@@ -111,7 +118,7 @@ private fun PollOptionCard(
     onVote: (Int) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(14.dp)
+    val fill = lerp(colors.primaryContainer, colors.primary, 0.1f)
     val label = remember(option.text) { HtmlTextUtils.plainText(option.text) }
     val share = pollPointShare(option.points, totalPoints)
     var revealed by remember { mutableStateOf(false) }
@@ -121,13 +128,19 @@ private fun PollOptionCard(
         animationSpec = tween(450, easing = FastOutSlowInEasing),
         label = "poll result share",
     )
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .heightIn(min = 64.dp)
             .clip(shape)
             .background(colors.surfaceContainerHigh)
-            .border(1.dp, if (submitting) colors.primary else colors.outlineVariant, shape)
+            .drawBehind {
+                if (option.loaded && share != null) {
+                    val width = size.width * animatedShare
+                    val start = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
+                    drawRect(fill, topLeft = Offset(start, 0f), size = Size(width, size.height))
+                }
+            }
             .clickable(
                 enabled = option.loaded && votingEnabled,
                 role = Role.Button,
@@ -137,69 +150,46 @@ private fun PollOptionCard(
             .semantics(mergeDescendants = true) {
                 if (submitting) stateDescription = "Submitting vote"
             }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (option.loaded) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        label,
-                        fontFamily = typography.family,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = typography.commentTextSize.sp,
-                        lineHeight = (typography.commentTextSize * 1.25f).sp,
-                        color = colors.onSurface,
-                    )
-                    Text(
-                        pointCount(option.points.coerceAtLeast(0).toLong()),
-                        fontFamily = AppUiFontFamily,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (submitting) {
-                    HarmonicLoadingIndicator(Modifier.size(24.dp), color = colors.primary)
-                } else if (share != null) {
-                    Text(
-                        "${(share * 100).roundToInt()}%",
-                        fontFamily = AppUiFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = colors.onSurface,
-                    )
-                }
-            }
-            Box(
-                Modifier.fillMaxWidth().height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.onSurfaceVariant.copy(alpha = 0.12f)),
-            ) {
-                Box(
-                    Modifier.fillMaxWidth(animatedShare).height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(colors.primary),
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!option.loadFailed) HarmonicLoadingIndicator(Modifier.size(24.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    if (option.loadFailed) "Unable to load this option" else "Loading option…",
+                    label,
+                    fontFamily = typography.family,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = typography.commentTextSize.sp,
+                    lineHeight = (typography.commentTextSize * 1.3f).sp,
+                    color = colors.onSurface,
+                )
+                Text(
+                    pointCount(option.points.coerceAtLeast(0).toLong()),
+                    style = MaterialTheme.typography.bodySmall,
                     fontFamily = AppUiFontFamily,
-                    fontSize = 14.sp,
                     color = colors.onSurfaceVariant,
                 )
             }
+            if (submitting) {
+                HarmonicLoadingIndicator(Modifier.size(24.dp), color = colors.primary)
+            } else if (share != null) {
+                Text(
+                    "${(share * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = AppUiFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                )
+            }
+        } else {
+            if (!option.loadFailed) HarmonicLoadingIndicator(Modifier.size(24.dp))
+            Text(
+                if (option.loadFailed) "Unable to load this option" else "Loading option…",
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = AppUiFontFamily,
+                color = colors.onSurfaceVariant,
+            )
         }
     }
 }

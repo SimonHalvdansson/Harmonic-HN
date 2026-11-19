@@ -55,9 +55,19 @@ class SettingsSearchIndex(entries: List<SettingsSearchEntry>) {
         }.sortedByDescending { it.second }.map { it.first }
     }
 
-    private fun normalize(value: String): String =
-        value.lowercase().map { if (it.isLetterOrDigit()) it else ' ' }
-            .joinToString("").trim().split(Regex("\\s+")).joinToString(" ")
+    private fun normalize(value: String): String = buildString(value.length) {
+        var pendingSpace = false
+        // Lowercase the whole string first to retain expansions and contextual Unicode casing.
+        for (character in value.lowercase()) {
+            if (character.isLetterOrDigit()) {
+                if (pendingSpace) append(' ')
+                append(character)
+                pendingSpace = false
+            } else {
+                pendingSpace = isNotEmpty()
+            }
+        }
+    }
 
     private fun words(value: String): List<String> = value.split(' ').filter { it.isNotEmpty() }
 }

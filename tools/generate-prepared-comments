@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Regenerate or check the shared prepared-comment FlatBuffers bindings."""
+import argparse
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--flatc", default="flatc", help="Path to flatc 25.2.10")
+parser.add_argument("--check", action="store_true", help="Fail if checked-in bindings differ")
+args = parser.parse_args()
+root = Path(__file__).resolve().parents[1]
+schema = root / "core/src/commonMain/flatbuffers/prepared_comments.fbs"
+destination = root / "core/src/commonMain/kotlin"
+package = Path("com/simon/harmonichackernews/data/flatbuffers")
+version = subprocess.check_output([args.flatc, "--version"], text=True).strip()
+if version != "flatc version 25.2.10":
+    parser.error(f"Expected flatc version 25.2.10, found {version}")
+with tempfile.TemporaryDirectory(prefix="harmonic-flatbuffers-") as temporary:
+    output = Path(temporary)
+    subprocess.run([args.flatc, "--kotlin-kmp", "-o", str(output), str(schema)], check=True)
+    generated = sorted((output / package).glob("*.kt"))
+    if args.check:
+        stale = [p.name for p in generated if not (destination / package / p.name).exists()
+                 or p.read_bytes() != (destination / package / p.name).read_bytes()]
+        stale += sorted(p.name for p in (destination / package).glob("*.kt")
+                        if p.name not in {g.name for g in generated})
+        if stale:
+            parser.error("Stale bindings: " + ", ".join(stale))
+        print("Prepared-comment bindings match the schema and pinned compiler.")
+    else:
+        (destination / package).mkdir(parents=True, exist_ok=True)
+        for path in generated:
+            shutil.copyfile(path, destination / package / path.name)

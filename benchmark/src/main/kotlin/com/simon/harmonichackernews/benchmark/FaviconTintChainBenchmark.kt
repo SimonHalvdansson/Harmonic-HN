@@ -22,6 +22,8 @@ import coil3.asImage
 import coil3.memory.MemoryCache
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.StoryResourceTintRepository
+import com.simon.harmonichackernews.data.presentationSnapshot
+import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.network.FaviconUrlBuilder
 import com.simon.harmonichackernews.network.StoryPreviewResourceRuntime
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
@@ -36,6 +38,7 @@ import com.simon.harmonichackernews.settings.PreviewTintPolicy
 import com.simon.harmonichackernews.settings.StoryPreviewMode
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
+import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.PaletteTintCache
 import com.simon.harmonichackernews.ui.content.BitmapPaletteExtractor
 import com.simon.harmonichackernews.ui.content.toPainterPaletteSample
@@ -191,6 +194,7 @@ class FaviconTintChainBenchmark {
             descendants = 7
             createdAtEpochSeconds = 1_700_000_000
         }
+        val item = StoryListItemSnapshot(story.toSnapshot(), story.presentationSnapshot())
         val settings = StoryDisplaySettings(
             showPoints = true,
             compactPoints = false,
@@ -217,7 +221,7 @@ class FaviconTintChainBenchmark {
         benchmarkRule.measureRepeated {
             check(
                 storyRowModel(
-                    story = story,
+                    item = item,
                     position = 0,
                     settings = settings,
                     previewResource = null,

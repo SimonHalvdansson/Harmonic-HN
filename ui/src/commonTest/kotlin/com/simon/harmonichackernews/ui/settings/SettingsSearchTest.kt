@@ -8,6 +8,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsSearchTest {
+    @Test fun miniPlayerSettingIsOnlyIndexedForMobileHosts() {
+        assertEquals(SettingsSection.ReaderMode.route, target("Show mini-player").screenRoute)
+        val desktop = SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(
+            webLinks = WebLinksSettingsCapabilities(readAloudMiniPlayer = false),
+        ))
+        assertFalse(entries(desktop).any { it.title == "Show mini-player" })
+    }
+
     private val labels = SettingsSection.entries.associateWith { it.name }
     private fun entries(availability: SettingsSearchAvailability = SettingsSearchAvailability()) =
         settingsSearchCatalog(labels, availability)
@@ -58,10 +66,10 @@ class SettingsSearchTest {
             webLinks = WebLinksSettingsCapabilities(adBlocking = false, readerMode = false,
                 closeWebViewOnBack = false, preloadWebsites = false),
             notifications = false, systemSettings = false, volumeNavigation = false,
-            transparentStatusBar = false,
+            transparentStatusBar = false, peekStoryHeader = false,
         ), cloudAi = false)
         val unavailable = setOf("Block in-app browser ads", "Reader mode", "Hide browser on back",
-            "Preload websites", "Notifications", "Volume buttons for navigation", "Transparent status bar", "API Key")
+            "Peek story header", "Preload websites", "Notifications", "Volume buttons for navigation", "Transparent status bar", "API Key")
         assertFalse(entries(availability).any { it.title in unavailable || it.screenRoute == "debug" })
         assertFalse(entries().any { it.screenRoute == "notifications" })
         assertTrue(entries().any { it.screenRoute == "account" && it.title == "Account" })

@@ -13,8 +13,10 @@ data class StoryCategoryInspection(
     val preferences: ArticleCategoryPreferences,
     val sample: Boolean = false,
 ) {
-    val labelScores get() = ArticleCategories.labelScores(result.scores, preferences)
-    val labels get() = labelScores.mapNotNull { score ->
+    // Result and preferences are snapshots. Resolve once instead of filtering and sorting for
+    // every chip; copying the inspection with newer scores/settings rebuilds both projections.
+    val labelScores = ArticleCategories.labelScores(result.scores, preferences)
+    val labels = labelScores.mapNotNull { score ->
         preferences.categories.firstOrNull { it.id == score.categoryId }?.let(preferences::name)
     }
 }

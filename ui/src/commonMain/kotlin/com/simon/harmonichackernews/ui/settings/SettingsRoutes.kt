@@ -1,8 +1,10 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 
 import com.simon.harmonichackernews.network.AiSummaryProviders
+import com.simon.harmonichackernews.network.CloudSummaryDefaults
 import com.simon.harmonichackernews.settings.GeneralBooleanPreference
 import com.simon.harmonichackernews.summary.LocalModelCatalog
 import com.simon.harmonichackernews.ui.navigation.LocalSplitPaneLayout
@@ -15,15 +17,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
-import com.simon.harmonichackernews.settings.AppFont
 import com.simon.harmonichackernews.settings.AppSettingsRepository
 import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
-import com.simon.harmonichackernews.settings.CommentSortingPreference
+import com.simon.harmonichackernews.settings.AiSummaryTextSetting
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
@@ -103,10 +103,7 @@ fun AiSummarySettingsRoute(
     onLocalModeUnavailable: () -> Unit,
     onArticleCategoriesRequested: (() -> Unit)? = null,
     localModelsContent: @Composable () -> Unit,
-    dialogContent: @Composable (
-        dialog: AiSummarySettingsDialog,
-        onDismiss: () -> Unit,
-    ) -> Unit,
+    onTextSettingSaved: () -> Unit,
 ) {
     val persistedSettings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     var dialog by rememberSaveable { mutableStateOf<AiSummarySettingsDialog?>(null) }
@@ -220,7 +217,41 @@ fun AiSummarySettingsRoute(
     )
     dialog?.takeIf {
         repository.cloudAiSupported || it == AiSummarySettingsDialog.SystemPrompt
-    }?.let { dialogContent(it) { dialog = null } }
+    }?.let { activeDialog ->
+        val dismiss = { dialog = null }
+        when (activeDialog) {
+            AiSummarySettingsDialog.BaseUrl -> AiSummaryBaseUrlDialog(onDismiss = dismiss)
+            AiSummarySettingsDialog.ApiKey -> AiSummaryTextDialog(
+                setting = AiSummaryTextSetting.API_KEY,
+                title = "API Key",
+                hint = "API Key",
+                defaultValue = "",
+                minLines = 1,
+                maxLines = 1,
+                textSizeSp = 16,
+                trimValue = true,
+                allowEmpty = true,
+                showReset = false,
+                onDismiss = dismiss,
+                onSaved = onTextSettingSaved,
+            )
+            AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
+            AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
+                setting = AiSummaryTextSetting.SYSTEM_PROMPT,
+                title = "System prompt",
+                hint = "System prompt",
+                defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
+                minLines = 5,
+                maxLines = 10,
+                textSizeSp = 15,
+                trimValue = false,
+                allowEmpty = true,
+                showReset = true,
+                onDismiss = dismiss,
+                onSaved = onTextSettingSaved,
+            )
+        }
+    }
 }
 
 @Composable
@@ -289,7 +320,7 @@ data class AppearanceRouteLabels(
 )
 
 data class ThemeRouteLabels(
-    val nighttimeRange: String,
+    val is24Hour: Boolean,
     val activeDark: Boolean,
     val dynamicColorAvailable: Boolean = true,
 )
@@ -379,19 +410,14 @@ fun PaletteTintSettingsRoute(
 @Composable
 fun ThemeSettingsRoute(
     repository: AppSettingsRepository,
+    appearance: AppearanceRuntime,
     labels: ThemeRouteLabels,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onThemeChanged: () -> Unit,
     resolvePreviewScheme: (String, Boolean, ColorSchemeStyle) -> HarmonicThemePalette =
         HarmonicThemeCatalog::scheme,
-    dialogContent: @Composable (
-        dialog: ThemeSettingsDialog,
-        presenter: AppearanceSettingsPresenter,
-        onDismiss: () -> Unit,
-    ) -> Unit,
 ) {
-    var dialog by rememberSaveable { mutableStateOf<ThemeSettingsDialog?>(null) }
     val presenter = remember(repository) { AppearanceSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
 
@@ -401,7 +427,6 @@ fun ThemeSettingsRoute(
 
     ThemeSettingsScreen(
         state = presenter.themeState(
-            nighttimeRangeLabel = labels.nighttimeRange,
             activeDark = labels.activeDark,
             dynamicColorAvailable = labels.dynamicColorAvailable,
             settings = settings,
@@ -419,7 +444,7 @@ fun ThemeSettingsRoute(
         onSpecialNighttimeChanged = { value ->
             applyThemeChange { presenter.setSpecialNighttime(value) }
         },
-        onDialogRequested = { dialog = it },
+        nighttimeRangeSetting = { NighttimeRangeSetting(appearance, labels.is24Hour, onThemeChanged) },
         resolvePreviewScheme = resolvePreviewScheme,
         previewStyle = StoryDisplaySettings.from(settings.story).toStoryRowStyle(
             StoryRowStyleContext(score = 53, commentCount = 18, isRead = false),
@@ -428,7 +453,6 @@ fun ThemeSettingsRoute(
             .state(settings.copy(pureBlackDarkMode = false)).toPreviewCommentRowStyle().copy(animateChanges = false),
         contentVersion = settings.hashCode(),
     )
-    dialog?.let { dialogContent(it, presenter) { dialog = null } }
 }
 
 @Composable
@@ -436,24 +460,17 @@ fun StoriesSettingsRoute(
     repository: AppSettingsRepository,
     categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
     previewModel: StoryRowModel,
-    faviconIcon: Painter,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onSpacingRequested: () -> Unit,
     onPlatformEffect: (SettingsPlatformEffect) -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit = {},
     categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
-    faviconDialog: @Composable (
-        selected: String,
-        presenter: StoriesSettingsPresenter,
-        onSelected: (String) -> Unit,
-        onDismiss: () -> Unit,
-    ) -> Unit,
 ) {
-    var refresh by remember { mutableIntStateOf(0) }
-    var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
+    var showHotnessDialog by rememberSaveable { mutableStateOf(false) }
     val presenter = remember(repository) { StoriesSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
@@ -463,7 +480,7 @@ fun StoriesSettingsRoute(
     val previewCategories = if (categories?.enabled == true) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
     val state = presenter.state(settings, previewModel.copy(
         categoryLabels = if (mockCategories) { if (enabled) listOf("AI", "Programming") else emptyList() } else previewCategories.map { categories!!.name(it) },
-        categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }), faviconIcon)
+        categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }))
         .copy(categorizationEnabled = enabled,
             canEnableCategorization = mockCategories || categoryAvailability.canEnable,
             categorizationUnavailableReason = if (mockCategories) null else categoryAvailability.reason)
@@ -478,6 +495,7 @@ fun StoriesSettingsRoute(
         onPreviewImageModeChanged = presenter::setPreviewImageMode,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         onCategorizationEnabledChanged = { value ->
             if (mockCategories) DebugStoryCategoryPreview.showTags = value
@@ -488,11 +506,12 @@ fun StoriesSettingsRoute(
         onResetLayout = {
             presenter.resetLayout().forEach(onPlatformEffect)
         },
-        onDialogRequested = { dialog = it },
-        contentVersion = settings.hashCode() + refresh,
+        onFaviconProviderChanged = presenter::setFaviconProvider,
+        onHotnessRequested = { showHotnessDialog = true },
+        contentVersion = settings.hashCode(),
     )
-    when (dialog) {
-        StoriesSettingsDialog.Hotness -> SettingsChoiceDialog(
+    if (showHotnessDialog) {
+        SettingsChoiceDialog(
             "Highlight hot stories",
             listOf(
                 "-1" to "Never",
@@ -502,19 +521,9 @@ fun StoriesSettingsRoute(
                 "400" to "Points + comments > 400",
             ),
             story.hotnessThreshold.toString(),
-            { dialog = null },
+            { showHotnessDialog = false },
             presenter::setHotness,
         )
-        StoriesSettingsDialog.FaviconProvider -> faviconDialog(
-            story.faviconProvider,
-            presenter,
-            {
-                presenter.setFaviconProvider(it)
-                refresh++
-            },
-            { dialog = null },
-        )
-        null -> Unit
     }
 }
 
@@ -526,8 +535,10 @@ fun CommentsSettingsRoute(
     onSpacingRequested: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
+    onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     volumeNavigationSupported: Boolean = true,
+    peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
     twoPane: Boolean = false,
 ) {
@@ -538,12 +549,14 @@ fun CommentsSettingsRoute(
     CommentsSettingsScreen(
         state = state,
         volumeNavigationSupported = volumeNavigationSupported,
+        peekStoryHeaderSupported = peekStoryHeaderSupported,
         swipeBackSupported = swipeBackSupported,
         twoPane = twoPane,
         showNavigation = showNavigation,
         onBack = onBack,
         onSpacingRequested = onSpacingRequested,
         onDisplayStyleChanged = presenter::setDisplayStyle,
+        onSortingChanged = { presenter.setSorting(it.storedValue) },
         onCollectedLinksModeChanged = presenter::setCollectedLinksMode,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onBooleanChanged = presenter::setBoolean,
@@ -551,29 +564,24 @@ fun CommentsSettingsRoute(
         onThreadDepthRequested = onThreadDepthRequested,
         onThreadDepthEnabledChanged = repository::setCommentDepthIndicatorsEnabled,
         onQuoteHighlightingRequested = onQuoteHighlightingRequested,
+        onMonoBlocksRequested = onMonoBlocksRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
         onUserAvatarsEnabledChanged = repository::setUserAvatarsEnabled,
         contentVersion = settings.hashCode(),
     )
     when (dialog) {
-        CommentsSettingsDialog.Sorting -> SettingsChoiceDialog(
-            "Comment sorting",
-            CommentSortingPreference.entries.map { it.storedValue to it.label },
-            state.sorting.storedValue,
-            { dialog = null },
-            presenter::setSorting,
-        )
         CommentsSettingsDialog.Provider -> CommentsProviderDialog(
             selected = state.provider,
             onProviderSelected = { presenter.setProvider(it.storedValue) },
             onDismiss = { dialog = null },
         )
-        CommentsSettingsDialog.VolumeNavigation -> SettingsChoiceDialog(
-            "Volume buttons for navigation",
-            CommentVolumeNavigationMode.entries.map { it.storedValue to it.label },
-            state.volumeNavigation.storedValue,
-            { dialog = null },
-            presenter::setVolumeNavigation,
+        CommentsSettingsDialog.VolumeNavigation -> SingleChoiceDialog(
+            title = "Volume buttons for navigation",
+            options = CommentVolumeNavigationMode.entries.map { it.storedValue to it.label },
+            selected = state.volumeNavigation.storedValue,
+            onDismiss = { dialog = null },
+            showDoneButton = true,
+            onSelected = presenter::setVolumeNavigation,
         )
         CommentsSettingsDialog.HiddenComments -> HiddenCommentsDialog(
             hideFlaggedComments = state.hideFlaggedComments,
@@ -598,6 +606,9 @@ fun WebLinksSettingsRoute(
     showNavigation: Boolean,
     onBack: () -> Unit,
     onReaderModeRequested: () -> Unit,
+    capabilities: WebLinksSettingsCapabilities = WebLinksSettingsCapabilities(),
+    archiveDomainsSubtitle: String = "Choose domains where Harmonic should automatically redirect the " +
+        "embedded browser to the archive.is version.",
 ) {
     var dialog by rememberSaveable { mutableStateOf<WebLinksSettingsDialog?>(null) }
     val presenter = remember(repository) { WebLinksSettingsPresenter(repository) }
@@ -611,6 +622,7 @@ fun WebLinksSettingsRoute(
         onReaderModeRequested = onReaderModeRequested,
         onDialogRequested = { dialog = it },
         contentVersion = settings.hashCode(),
+        capabilities = capabilities,
     )
     when (dialog) {
         WebLinksSettingsDialog.Preload -> PreloadWebViewDialog(
@@ -619,17 +631,9 @@ fun WebLinksSettingsRoute(
             onSave = presenter::setPreload,
             onDismiss = { dialog = null },
         )
-        WebLinksSettingsDialog.ReaderFont -> FontSelectionDialog(
-            readerMode = true,
-            selected = reading.readerModeFont,
-            options = AppFont.entries.map { it.label to it },
-            onSelected = presenter::setReaderFont,
-            onDismiss = { dialog = null },
-        )
         WebLinksSettingsDialog.ArchiveDomains -> StringListEditorDialog(
             title = "Redirect to archive version",
-            subtitle = "Choose domains where Harmonic should automatically redirect the " +
-                "embedded browser to the archive.is version.",
+            subtitle = archiveDomainsSubtitle,
             inputLabel = "Domain",
             initialItems = reading.archiveRedirectDomains,
             emptyMessage = "No archive redirect domains",

@@ -93,6 +93,7 @@ private fun ReferencePreviewCard(
                 modifier = modifier,
             )
         },
+        onOpenUrl = { appComposition.links.open(it) },
         onOpen = { appComposition.links.open(currentUrl) },
     )
 }

@@ -109,4 +109,35 @@ class CommentsBrowserCapabilityTest {
         assertFalse(display.showUpButton, "Host requirements must not rewrite shared preferences")
     }
 
+    @Test
+    fun peekHeaderFollowsHostCapabilityAndRestoresTheSavedChoice() {
+        val settings = StoredUserSettings(InMemoryKeyValueStore(), emptyFlow())
+        val platform = CommentsPlatformPresentation(
+            adBlockActive = false, readerModeAvailable = false, readerModeEnabled = false,
+            topInsetPx = 0, contentInsetLeftPx = 0, contentInsetRightPx = 0,
+        )
+        for (savedChoice in listOf(false, true)) {
+            val feature = CommentsState(
+                story = StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()),
+                settings = CommentsSettingsState(
+                    displaySettings = CommentDisplaySettings.from(
+                        settings.comments.copy(peekStoryHeader = savedChoice),
+                        showInvert = false, isTablet = true,
+                        hasAccountDetails = false, canProvideSummary = false,
+                    ),
+                    reading = settings.reading, integratedWebView = true,
+                    smoothScroll = true, transparentStatusBar = false,
+                ),
+            )
+            for (supported in listOf(true, false, true)) {
+                val screen = assertNotNull(CommentsScreenStateFactory.create(
+                    feature, platform.copy(peekStoryHeaderSupported = supported),
+                ))
+                kotlin.test.assertEquals(savedChoice && supported,
+                    assertNotNull(screen.displaySettings).peekStoryHeader)
+                kotlin.test.assertEquals(savedChoice, feature.settings?.displaySettings?.peekStoryHeader)
+            }
+        }
+    }
+
 }

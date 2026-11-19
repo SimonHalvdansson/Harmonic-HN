@@ -8,6 +8,23 @@ import kotlin.test.assertTrue
 
 class StorySearchRuntimeTest {
     @Test
+    fun appliesLocalMatchesBeforeSavedSearchFinishesBackfilling() {
+        val store = StoryListStore()
+        val runtime = StorySearchRuntime()
+        val cached = listOf(story(1))
+        val applied = runtime.apply(
+            store,
+            StorySearchUiState(mode = StorySearchMode.QUERY, stories = cached, loading = true),
+            searching = true,
+            activeTypeIsAlgolia = false,
+        )
+        assertTrue(applied.loading)
+        assertTrue(applied.contentApplied)
+        assertFalse(applied.completed)
+        assertEquals(cached, store.stories)
+    }
+
+    @Test
     fun appliesLoadMoreAndPreservesRequestedPaginationWindow() {
         val store = StoryListStore()
         store.setPaginationEnabled(true)

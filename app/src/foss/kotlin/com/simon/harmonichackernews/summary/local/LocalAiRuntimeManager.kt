@@ -3,11 +3,12 @@ package com.simon.harmonichackernews.summary.local
 import android.content.Context
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
 
-internal fun createAndroidLocalRuntimeDelivery(context: Context): AndroidLocalRuntimeDelivery =
-    object : AndroidLocalRuntimeDelivery {
+internal fun createAndroidLocalRuntimeDelivery(context: Context): LocalModelRuntimeDelivery =
+    object : LocalModelRuntimeDelivery {
         private val unavailableMessage = "Local AI is not included in the FOSS distribution."
 
         override val included: Boolean = false

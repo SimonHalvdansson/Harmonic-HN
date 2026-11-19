@@ -18,6 +18,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlin.math.pow
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,22 +31,28 @@ import com.simon.harmonichackernews.ui.theme.rememberStoryTintColor
 private const val ContentAnimationDuration = 220
 internal val ContentMotionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-private const val ReadContentLightAlpha = 0.79f
-private const val ReadContentLightTintedAlpha = 0.825f
-private const val ReadContentDarkAlpha = 0.685f
-private const val ReadContentDarkTintedAlpha = 0.755f
+private const val ReadContentLightAlpha = 0.65f
+private const val ReadContentLightTintedAlpha = 0.70f
+private const val ReadContentDarkAlpha = 0.60f
+private const val ReadContentDarkTintedAlpha = 0.62f
 
-/** Shared read opacity for story content; surfaces retain their normal color. */
+/** Apply a reciprocal multiplier around the mode-specific default read opacity. */
 internal fun storyContentAlpha(
     dimmed: Boolean,
     darkTheme: Boolean,
     tintedBackground: Boolean,
-): Float = when {
-    !dimmed -> 1f
-    darkTheme && tintedBackground -> ReadContentDarkTintedAlpha
-    darkTheme -> ReadContentDarkAlpha
-    tintedBackground -> ReadContentLightTintedAlpha
-    else -> ReadContentLightAlpha
+    adjustment: Int = 0,
+): Float {
+    val base = when {
+        !dimmed -> 1f
+        darkTheme && tintedBackground -> ReadContentDarkTintedAlpha
+        darkTheme -> ReadContentDarkAlpha
+        tintedBackground -> ReadContentLightTintedAlpha
+        else -> ReadContentLightAlpha
+    }
+    // +100 closes 75% of the gap to full opacity; -100 uses the inverse multiplier.
+    val maximumMultiplier = (base + (1f - base) * 0.75f) / base
+    return base * maximumMultiplier.pow(adjustment.coerceIn(-100, 100) / 100f)
 }
 
 /** Category chips fade a little further, following the same animated read progress. */
@@ -81,7 +89,7 @@ internal fun rememberStoryRowPresentation(
     animatePreviewPlacement: Boolean = animate,
 ): StoryRowPresentation {
     val colors = MaterialTheme.colorScheme
-    val targetDimAlpha = storyContentAlpha(style.dimmed, HarmonicTheme.isDark, style.tintCard)
+    val targetDimAlpha = storyContentAlpha(style.dimmed, HarmonicTheme.isDark, style.tintCard, style.clickedOpacity)
     val dimAlpha = if (animate) {
         val animatedDimAlpha by animateFloatAsState(
             targetValue = targetDimAlpha,
@@ -183,13 +191,16 @@ internal fun rememberStoryRowPresentation(
         .takeIf { previewAvailable }
     val rawTint = previewTint ?: model.faviconTintArgb ?: extractedFaviconTint
     val tint = rememberStoryTintColor(rawTint, style.paletteTintConfigKey, pageBackground)
-    val targetBackground = when {
+    val normalBackground = when {
         style.tintCard -> tint ?: tintFallback
         style.hasBackground -> colors.cardBackground
         // Transparent black would darken the surface during the color interpolation.
         style.transparentNonCardBackground -> colors.cardBackground.copy(alpha = 0f)
         else -> pageBackground
     }
+    val targetBackground = if (style.dimClickedBackground && (style.hasBackground || style.tintCard)) {
+        lerp(pageBackground, normalBackground, targetDimAlpha)
+    } else normalBackground
     // Image palette extraction finishes after a list row is first composed. Preserve the old
     // blend so an arriving preview/favicon tint does not flash into place.
     val background = if (animate) {

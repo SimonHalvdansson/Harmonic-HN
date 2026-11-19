@@ -210,7 +210,7 @@ private fun AvatarCommentPreview(authors: List<String>, row: Int, style: Comment
             },
             referenceMarker = "", referenceUrl = "",
         ),
-        style = style,
+        style = style.copy(markNewComments = false),
         modifier = Modifier.testTag("avatar-comment-preview-$row"),
         verticalPadding = if (style.hasBackground) 0.dp else 8.dp,
     )

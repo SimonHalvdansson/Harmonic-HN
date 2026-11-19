@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews
 
+import android.app.Activity
 import android.content.Context
 import com.simon.harmonichackernews.app.HarmonicAppComposition
 import com.simon.harmonichackernews.app.HarmonicHostConfiguration
@@ -15,7 +16,7 @@ import com.simon.harmonichackernews.settings.AndroidKeyValueStore
 import com.simon.harmonichackernews.platform.StorageKeyPolicy
 import com.simon.harmonichackernews.utils.AndroidActivityTheme
 import com.simon.harmonichackernews.summary.local.createAndroidLocalModelService
-import com.simon.harmonichackernews.summary.local.AndroidLocalRuntimeDelivery
+import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
 import java.util.Calendar
 import kotlinx.io.files.Path
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,8 @@ internal suspend fun Context.awaitHarmonicAppComposition(): HarmonicAppCompositi
 internal fun createAndroidAppComposition(
     context: Context,
     cacheScope: CoroutineScope,
-    runtimeDelivery: AndroidLocalRuntimeDelivery,
+    runtimeDelivery: LocalModelRuntimeDelivery,
+    currentActivity: () -> Activity?,
 ): HarmonicAppComposition {
     val network = AndroidNetworkEnvironment(context)
     val settingsStore = AndroidKeyValueStore.defaults(context)
@@ -61,6 +63,7 @@ internal fun createAndroidAppComposition(
         platform = createAndroidPlatformDependencies(
             context,
             localModels = localModels,
+            currentActivity = currentActivity,
         ),
         host = HarmonicHostConfiguration(
             dynamicColorAvailable = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,

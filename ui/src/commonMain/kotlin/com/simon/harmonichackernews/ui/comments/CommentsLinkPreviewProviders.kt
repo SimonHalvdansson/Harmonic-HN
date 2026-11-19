@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.settings.TextPreferences
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -188,11 +187,11 @@ internal fun StackExchangePreview(story: StoryListItemSnapshot) {
 }
 
 @Composable
-internal fun ArxivPreview(story: StoryListItemSnapshot, settings: CommentDisplaySettings, background: Color) {
+internal fun ArxivPreview(story: StoryListItemSnapshot, font: String, background: Color) {
     val platform = LocalCommentsPreviewPlatform.current
     val info = story.arxivInfo ?: return
-    val typography = rememberContentTypography(preferredFont = settings.font)
-    val abstractTextSize = if (TextPreferences.sanitizeFont(settings.font) == "googlesansflexrounded") {
+    val typography = rememberContentTypography(preferredFont = font)
+    val abstractTextSize = if (TextPreferences.sanitizeFont(font) == "googlesansflexrounded") {
         13.5f
     } else {
         14f

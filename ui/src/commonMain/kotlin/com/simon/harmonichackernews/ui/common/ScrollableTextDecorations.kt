@@ -1,7 +1,9 @@
 package com.simon.harmonichackernews.ui.common
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollIndicatorState
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,16 +13,28 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.resources.HarmonicDimens
 
 /** Apply before verticalScroll, to the content viewport only, never its translucent background. */
-internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
+internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier = fadingScrollEdges(
+    topScroll = { if (state.viewportSize > 0 && state.maxValue > 0) state.value.toFloat() else 0f },
+    bottomScroll = {
+        if (state.viewportSize > 0 && state.maxValue > 0) {
+            (state.maxValue - state.value).toFloat()
+        } else 0f
+    },
+)
+
+internal fun Modifier.fadingScrollEdges(
+    topScroll: () -> Float,
+    bottomScroll: (() -> Float)? = null,
+): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
             val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
@@ -30,9 +44,9 @@ internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
                 startY = size.height - fadeLength, endY = size.height)
             onDrawWithContent {
                 drawContent()
-                if (fadeLength > 0f && state.viewportSize > 0 && state.maxValue > 0) {
-                    val topStrength = (state.value / fadeLength).coerceIn(0f, 1f)
-                    val bottomStrength = ((state.maxValue - state.value) / fadeLength).coerceIn(0f, 1f)
+                if (fadeLength > 0f) {
+                    val topStrength = (topScroll() / fadeLength).coerceIn(0f, 1f)
+                    val bottomStrength = ((bottomScroll?.invoke() ?: 0f) / fadeLength).coerceIn(0f, 1f)
                     if (topStrength > 0f) drawRect(topBrush, size = Size(size.width, fadeLength),
                         alpha = topStrength, blendMode = BlendMode.DstOut)
                     if (bottomStrength > 0f) drawRect(bottomBrush,
@@ -43,9 +57,24 @@ internal fun Modifier.fadingScrollEdges(state: ScrollState): Modifier =
         }
 
 @Composable
+internal fun Modifier.harmonicScrollbar(state: ScrollIndicatorState?, inset: Dp = 0.dp): Modifier {
+    if (state == null) return this
+    return nonInteractiveScrollbar(
+        state = state,
+        orientation = Orientation.Vertical,
+        thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        thickness = 3.dp,
+        thumbMinLength = 24.dp,
+        thumbMaxLengthFraction = 1f,
+        isFadeEnabled = false,
+        mainAxisTrackInset = inset,
+        crossAxisTrackInset = 1.dp,
+    )
+}
+
+@Composable
 internal fun ScrollableTextScrollbar(state: ScrollState, modifier: Modifier = Modifier) {
-    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    Canvas(modifier) { drawScrollThumb(state, thumbColor) }
+    Box(modifier.harmonicScrollbar(state.scrollIndicatorState, 8.dp))
 }
 
 @Composable
@@ -54,8 +83,7 @@ internal fun ScrollableTextDecorations(
     containerColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    Box(modifier.drawWithCache {
+    Box(modifier.harmonicScrollbar(state.scrollIndicatorState, 8.dp).drawWithCache {
         val fadeLength = HarmonicDimens.compose_comment_action_text_fade_length.toPx()
             .coerceAtMost(size.height / 2f)
         val opaque = containerColor.copy(alpha = 1f)
@@ -86,34 +114,7 @@ internal fun ScrollableTextDecorations(
                     }) { drawRect(rising, size = strip) }
                     drawRect(opaque, topLeft = Offset(0f, size.height - solid), size = Size(size.width, solid))
                 }
-                drawScrollThumb(state, thumbColor)
             }
         }
     })
-}
-
-private fun DrawScope.drawScrollThumb(state: ScrollState, thumbColor: Color) {
-    val maxValue = state.maxValue
-    val viewportSize = state.viewportSize
-    if (maxValue <= 0 || viewportSize <= 0) return
-    val widthPx = 3.dp.toPx()
-    val endPaddingPx = 1.dp.toPx()
-    val verticalPaddingPx = 8.dp.toPx()
-    val minimumHeightPx = 24.dp.toPx()
-    val trackHeight = (size.height - verticalPaddingPx * 2f).coerceAtLeast(0f)
-    val contentHeight = viewportSize + maxValue
-    val visibleFraction = viewportSize.toFloat() / contentHeight
-    val thumbHeight = (trackHeight * visibleFraction)
-        .coerceIn(minimumHeightPx.coerceAtMost(trackHeight), trackHeight)
-    val scrollFraction = state.value.toFloat() / maxValue
-    val top = verticalPaddingPx + (trackHeight - thumbHeight) * scrollFraction
-    drawRoundRect(
-        color = thumbColor,
-        topLeft = androidx.compose.ui.geometry.Offset(
-            size.width - widthPx - endPaddingPx,
-            top,
-        ),
-        size = androidx.compose.ui.geometry.Size(widthPx, thumbHeight),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(widthPx / 2f),
-    )
 }

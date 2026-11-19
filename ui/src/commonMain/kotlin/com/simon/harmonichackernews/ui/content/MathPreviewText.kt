@@ -47,12 +47,12 @@ internal fun previewMathSegments(text: String): List<PreviewMathSegment> {
         return slashes % 2 != 0
     }
     while (index < text.length) {
+        // Only delimiters need an escape check; scanning backwards at every character makes
+        // a run of ordinary backslashes quadratic.
         val opening = when {
-            escaped(index) -> null
-            text.startsWith("$$", index) -> "$$"
-            text[index] == '$' -> "$"
-            text.startsWith("\\(", index) -> "\\("
-            text.startsWith("\\[", index) -> "\\["
+            text[index] == '$' && !escaped(index) -> if (text.startsWith("$$", index)) "$$" else "$"
+            text.startsWith("\\(", index) && !escaped(index) -> "\\("
+            text.startsWith("\\[", index) && !escaped(index) -> "\\["
             else -> null
         }
         if (opening == null) {
@@ -67,14 +67,15 @@ internal fun previewMathSegments(text: String): List<PreviewMathSegment> {
         val start = index + opening.length
         var end = text.indexOf(closing, start)
         while (end >= 0 && escaped(end)) end = text.indexOf(closing, end + closing.length)
-        if (end < 0 || text.substring(start, end).isBlank()) {
+        val latex = if (end >= 0) text.substring(start, end) else null
+        if (latex.isNullOrBlank()) {
             index += opening.length
             continue
         }
         if (plainStart < index) segments += PreviewMathSegment(text.substring(plainStart, index))
         segments += PreviewMathSegment(
             source = text.substring(index, end + closing.length),
-            latex = text.substring(start, end),
+            latex = latex,
             display = opening == "$$" || opening == "\\[",
         )
         index = end + closing.length

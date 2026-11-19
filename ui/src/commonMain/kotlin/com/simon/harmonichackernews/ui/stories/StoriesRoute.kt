@@ -11,7 +11,10 @@ import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.data.StoryResourceTintStore
-import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.simon.harmonichackernews.ui.common.HarmonicFilterButtonColors
 import com.simon.harmonichackernews.ui.content.storyRowModel
 
@@ -25,11 +28,18 @@ fun StoriesRoute(
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean = true,
     showRefreshMenuItem: Boolean = false,
-    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit = {},
+    onVisibleStoriesChanged: ((List<CommentPreloadCandidate>) -> Unit)? = null,
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
     val menuHintPending by dependencies.launchState.storiesMenuHintPending.collectAsStateWithLifecycle()
     val navigation by dependencies.navigation.state.collectAsStateWithLifecycle()
+    val preloadEnabled = if (onVisibleStoriesChanged != null) {
+        val settings = dependencies.settings
+        val initialPreloadEnabled = remember(settings) { settings.snapshot().comments.preloadCommentsFromStories }
+        remember(settings) {
+            settings.updates.map { it.comments.preloadCommentsFromStories }.distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialPreloadEnabled).value
+    } else false
     val tintBaseColor = HarmonicTheme.targetColorScheme.cardBackground.toArgb()
     StoriesScreen(
         categorySettings = dependencies.articleCategorySettings,
@@ -53,7 +63,7 @@ fun StoriesRoute(
         filterColors = filterColors,
         pullToRefreshEnabled = pullToRefreshEnabled,
         showRefreshMenuItem = showRefreshMenuItem,
-        onVisibleStoriesChanged = onVisibleStoriesChanged,
+        onVisibleStoriesChanged = onVisibleStoriesChanged.takeIf { preloadEnabled },
         showWelcomeHint = menuHintPending && navigation.currentDestination == MainDestination.STORIES &&
             !controller.searching && !controller.headerMenuVisible,
         onDismissWelcomeHint = dependencies.launchState::dismissStoriesMenuHint,

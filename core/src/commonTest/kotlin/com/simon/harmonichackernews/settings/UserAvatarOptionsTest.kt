@@ -7,6 +7,21 @@ import kotlinx.coroutines.flow.emptyFlow
 
 class UserAvatarOptionsTest {
     @Test
+    fun everyStyleSubsetPreservesExistingUsernameAssignments() {
+        val authors = listOf("", "simon", "Simon", "_reader", "7bit", "café", "中文", "😀") +
+            List(100) { "reader_$it" }
+        for (mask in 0 until (1 shl UserAvatarStyle.entries.size)) {
+            val styles = UserAvatarStyle.entries.filterIndexed { index, _ -> mask and (1 shl index) != 0 }
+            val options = UserAvatarOptions(styles.reversed().toSet())
+            val choices = styles.ifEmpty { listOf(UserAvatarStyle.MOSAIC) }
+            for (author in authors) {
+                val expectedIndex = (userAvatarSeed("$author:style").toUInt() % choices.size.toUInt()).toInt()
+                assertEquals(choices[expectedIndex], options.styleFor(author), "mask=$mask author=$author")
+            }
+        }
+    }
+
+    @Test
     fun letterStylePersistsAndUsesTheUsernameInitial() {
         val options = UserAvatarOptions(setOf(UserAvatarStyle.LETTERS), UserAvatarShape.ROUNDED, UserAvatarColors.MUTED)
         assertEquals(options, UserAvatarOptions.decode(options.encode()))

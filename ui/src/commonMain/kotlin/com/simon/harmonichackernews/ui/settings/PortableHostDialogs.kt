@@ -20,6 +20,8 @@ import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
 import androidx.compose.runtime.key
 import com.simon.harmonichackernews.presentation.UserProfileLoadState
 import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
+import com.simon.harmonichackernews.settings.AppSettingsRepository
+import com.simon.harmonichackernews.settings.UserTagsRepository
 import com.simon.harmonichackernews.ui.common.FailureDetailDialog
 import com.simon.harmonichackernews.ui.common.LoginDialog
 import com.simon.harmonichackernews.ui.common.UserMessageSnackbarHost
@@ -77,9 +79,10 @@ fun BoxScope.PortableAppForeground(
         }
     }
     navigation.userRequest?.let { request ->
-        PortableUserProfileDialog(
-            app = app,
+        UserProfileDialog(
             scene = scene,
+            settingsRepository = app.settings,
+            userTags = app.userTags,
             userName = request.userName,
             onDismiss = scene.navigation::dismissUserDialog,
             onTagChanged = {},
@@ -107,19 +110,29 @@ fun BoxScope.PortableAppForeground(
 }
 
 @Composable
-fun PortableUserProfileDialog(
-    app: HarmonicAppComposition,
+fun UserProfileDialog(
     scene: HarmonicSceneComposition,
+    settingsRepository: AppSettingsRepository,
+    userTags: UserTagsRepository,
     userName: String,
     onDismiss: () -> Unit,
     onTagChanged: () -> Unit,
+    monthNames: List<String>? = null,
+    onReportEmail: (String) -> Unit = { username ->
+        val subject = "Reporting%20user%20${username}"
+        scene.links.open("mailto:hn@ycombinator.com?subject=$subject")
+    },
 ) {
-    val session = remember(scene, userName) { scene.userProfiles.open(userName) }
+    val session = remember(scene, userName, monthNames) {
+        scene.userProfiles.open(userName).also {
+            if (monthNames != null) it.runtime.updateMonthNames(monthNames)
+        }
+    }
     val runtimeState by session.runtime.state.collectAsStateWithLifecycle()
-    val settings by app.settings.updates.collectAsStateWithLifecycle(initialValue = app.settings.snapshot())
+    val settings by settingsRepository.updates.collectAsStateWithLifecycle(initialValue = settingsRepository.snapshot())
     var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
-    var currentTag by remember(userName) { mutableStateOf(app.userTags.tagFor(userName)) }
-    var currentTagColor by remember(userName) { mutableStateOf(app.userTags.colorFor(userName)) }
+    var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
+    var currentTagColor by remember(userName) { mutableStateOf(userTags.colorFor(userName)) }
 
     LaunchedEffect(session) {
         session.start()
@@ -129,10 +142,7 @@ fun PortableUserProfileDialog(
                     onDismiss()
                     scene.navigation.openSubmissions(effect.username)
                 }
-                is UserProfileSessionEffect.ComposeReportEmail -> {
-                    val subject = "Reporting%20user%20${effect.username}"
-                    scene.links.open("mailto:hn@ycombinator.com?subject=$subject")
-                }
+                is UserProfileSessionEffect.ComposeReportEmail -> onReportEmail(effect.username)
                 is UserProfileSessionEffect.Message -> scene.userMessages.show(effect.text)
                 UserProfileSessionEffect.Dismiss -> onDismiss()
             }
@@ -186,7 +196,7 @@ fun PortableUserProfileDialog(
                         onDismiss = { tagDialogOpen = false },
                         onSaved = { saved ->
                             currentTag = saved
-                            currentTagColor = app.userTags.colorFor(userName)
+                            currentTagColor = userTags.colorFor(userName)
                             tagDialogOpen = false
                             onTagChanged()
                         },

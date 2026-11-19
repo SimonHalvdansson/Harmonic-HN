@@ -36,7 +36,7 @@ internal object OpenRouterLinkPreview {
         if (idParts.size != 2 || idParts.any(String::isBlank)) {
             throw LinkPreviewException("OpenRouter model data not found")
         }
-        val apiName = json.nullableString("name")
+        val apiName = json.nonEmptyString("name")
         val provider = apiName
             ?.substringBefore(':')
             ?.trim()
@@ -55,14 +55,14 @@ internal object OpenRouterLinkPreview {
             website = "https://openrouter.ai/$id",
             providerIconUrl = "https://openrouter.ai/images/icons/" +
                 provider.encodeURLPathPart() + ".svg",
-            description = json.nullableString("description"),
-            promptPricePerToken = pricing?.nullableString("prompt"),
-            completionPricePerToken = pricing?.nullableString("completion"),
+            description = json.nonEmptyString("description"),
+            promptPricePerToken = pricing?.nonEmptyString("prompt"),
+            completionPricePerToken = pricing?.nonEmptyString("completion"),
             contextLength = json.optLong("context_length"),
             maxCompletionTokens = topProvider?.optLong("max_completion_tokens") ?: 0,
             inputModalities = architecture.stringList("input_modalities"),
             outputModalities = architecture.stringList("output_modalities"),
-            knowledgeCutoff = json.nullableString("knowledge_cutoff"),
+            knowledgeCutoff = json.nonEmptyString("knowledge_cutoff"),
         )
     }
 
@@ -72,9 +72,6 @@ internal object OpenRouterLinkPreview {
                 values.optString(index).takeUnless(String::isBlank)
             }
         }.orEmpty()
-
-    private fun JsonObject.nullableString(key: String): String? =
-        (opt(key) as? String)?.takeUnless(String::isEmpty)
 }
 
 internal suspend fun HttpClient.loadOpenRouterInfo(url: String): OpenRouterModelInfo {

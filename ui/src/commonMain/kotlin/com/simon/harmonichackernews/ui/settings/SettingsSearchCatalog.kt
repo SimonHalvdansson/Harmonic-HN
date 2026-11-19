@@ -11,6 +11,7 @@ data class SettingsSearchCapabilities(
     val transparentStatusBar: Boolean = true,
     val twoPane: Boolean = false,
     val commentsSwipeBack: Boolean = false,
+    val peekStoryHeader: Boolean = true,
 )
 
 internal data class SettingsSearchAvailability(
@@ -34,12 +35,12 @@ internal fun settingsSearchCatalog(
     fun path(section: SettingsSection): List<String> = when (section) {
         SettingsSection.Theme, SettingsSection.Font, SettingsSection.PaletteTint,
         SettingsSection.StoriesHeader -> listOf(labels.getValue(SettingsSection.Appearance))
-        SettingsSection.CommentsSpacing, SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting,
+        SettingsSection.CommentsSpacing, SettingsSection.ThreadDepth, SettingsSection.QuoteHighlighting, SettingsSection.MonoBlocks,
         SettingsSection.UserAvatars -> listOf(labels.getValue(SettingsSection.Comments))
         SettingsSection.ReaderMode -> listOf(labels.getValue(SettingsSection.WebLinks))
         SettingsSection.ArticleCategories -> listOf(labels.getValue(SettingsSection.AiSummary))
         SettingsSection.CategoryExploration -> listOf(labels.getValue(SettingsSection.AiSummary), labels.getValue(SettingsSection.ArticleCategories))
-        SettingsSection.StoriesSpacing, SettingsSection.Frontpages -> listOf(labels.getValue(SettingsSection.Stories))
+        SettingsSection.StoriesSpacing, SettingsSection.Frontpages, SettingsSection.ClickedPosts -> listOf(labels.getValue(SettingsSection.Stories))
         SettingsSection.Licenses -> listOf(labels.getValue(SettingsSection.About))
         SettingsSection.Glass, SettingsSection.DebugLinkPreviews -> listOf(labels.getValue(SettingsSection.Debug))
         else -> emptyList()
@@ -59,11 +60,15 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.Appearance, "look design layout customize")
     page(SettingsSection.Theme, "theme dark light black amoled oled dynamic material you colors colours",
         aliases = listOf("dark mode", "light mode", "theme"))
-    group(SettingsSection.Font, "", "Apply" to "everywhere posts comments font scope menus dialogs interface")
+    group(SettingsSection.Font, "", "Apply to" to "everywhere posts comments font scope menus dialogs interface")
     page(SettingsSection.Font, "typeface typography fonts letters text size comments stories",
         aliases = listOf("font", "fonts", "typeface"))
     page(SettingsSection.PaletteTint, "image color colour vibrant muted saturation")
     page(SettingsSection.StoriesHeader, "frontpage selector tabs dropdown compact")
+    page(SettingsSection.ClickedPosts, "grey dim fade read stories viewed opacity")
+    group(SettingsSection.ClickedPosts, "Appearance",
+        "Opacity multiplier" to "dim fade transparency alpha clicked read",
+        "Apply to background" to "dim fade filled tinted clicked read")
     page(SettingsSection.Stories, "posts frontpage feed articles")
     page(SettingsSection.Comments, "discussion threads replies")
     page(SettingsSection.StoriesSpacing, "stories whitespace padding margins density compact dividers")
@@ -75,6 +80,7 @@ internal fun settingsSearchCatalog(
     }
     page(SettingsSection.HeaderDisplay, "comments header toolbar post details buttons")
     page(SettingsSection.ThreadDepth, "indent indentation nesting rainbow lines")
+    page(SettingsSection.MonoBlocks, "monospace horizontal scroll code blocks tables ASCII diagrams wrap")
     page(SettingsSection.QuoteHighlighting, "blockquote quotations quoted text")
     page(SettingsSection.UserAvatars, "avatar avatars identicon profile pictures images",
         aliases = listOf("avatars", "profile pictures"))
@@ -141,13 +147,13 @@ internal fun settingsSearchCatalog(
         "Hide clicked posts" to "read stories viewed history hide read",
         "Gray out clicked posts" to "grey dim fade read stories viewed",
         "Mark scrolled posts as read" to "scroll past seen grey gray dim history automatic",
-        "Favicon provider" to "thumbnail logo website icon source google duckduckgo")
+        "Favicon provider" to "thumbnail logo website icon source google duckduckgo twenty icons")
 
     group(SettingsSection.Comments, "Comments display",
         "Display style" to "flat filled raised outlined cards border",
         "Text size" to "font bigger smaller accessibility zoom",
         "Collect links" to "reference links collect references urls expand collapse",
-        "Emphasize username and time" to "highlight metadata author date bold",
+        "Highlight author and time" to "highlight metadata author username date time timestamp bold",
         "Mark new comments" to "unread new replies highlight dot")
     group(SettingsSection.Comments, "Interactions",
         "Hide text of collapsed comments" to "collapse parent minimize minimize hide",
@@ -160,9 +166,10 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.Comments, "Navigation",
         "Show navigation buttons" to "next previous top level threads jump",
         "Show scrollbar" to "scroll bar position indicator",
-        "Peek story header" to "title scroll up top compact header",
         "Smooth scroll comments" to "scrolling animation navigation",
         "Animate comment expand/collapse" to "motion animations transitions reduce motion")
+    if (capabilities.peekStoryHeader) group(SettingsSection.Comments, "Navigation",
+        "Peek story header" to "title scroll up top compact header")
     if (capabilities.volumeNavigation) group(SettingsSection.Comments, "Navigation",
         "Volume buttons for navigation" to "volume keys rocker hardware up down jump threads")
     if (capabilities.commentsSwipeBack) group(SettingsSection.Comments, "Navigation",
@@ -174,7 +181,7 @@ internal fun settingsSearchCatalog(
         "Continuous thread lines" to "connected branches nesting indentation",
         "Show top level indicators" to "root thread depth indentation")
     group(SettingsSection.QuoteHighlighting, "Appearance",
-        "Padding" to "quote inset text left top bottom space",
+        "Extra padding" to "quote inset text left top bottom space",
         "Color" to "colour quotes palette material",
         "Style" to "background stripe both blockquote",
         "Quote spacing" to "compact comfortable padding margins")
@@ -183,8 +190,10 @@ internal fun settingsSearchCatalog(
         "Colors" to "colours profile images material original")
     group(SettingsSection.HeaderDisplay, "Layout",
         "Preview image" to "header photo cover picture",
-        "Post details" to "metadata title author points time score",
+        "Post details" to "metadata title author points time score row",
+        "Minimalistic" to "compact post header expand collapse buttons preview image",
         "Domain" to "website url host",
+        "Summary" to "article description excerpt post header link preview",
         "Article category tags" to "categorization labels post header",
         "Thumbnail" to "favicon website logo icon",
         "Points" to "score votes post header indicator")
@@ -215,6 +224,9 @@ internal fun settingsSearchCatalog(
         "Font" to "typeface typography serif sans reader",
         "Text size" to "font bigger smaller accessibility zoom",
         "Line height" to "line spacing leading readability")
+    if (capabilities.webLinks.readerMode && capabilities.webLinks.readAloudMiniPlayer) {
+        group(SettingsSection.ReaderMode, "Reading", "Show mini-player" to "read aloud speech audio playback controls listen")
+    }
     group(SettingsSection.FiltersTags, "Filters",
         "Filter by story title" to "keyword block mute hide words exclude blacklist",
         "Filter by domain" to "website block mute hide url exclude blacklist",

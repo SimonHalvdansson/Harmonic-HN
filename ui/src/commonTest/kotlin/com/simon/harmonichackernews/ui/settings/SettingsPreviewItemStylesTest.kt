@@ -1,8 +1,5 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
@@ -139,7 +136,6 @@ class SettingsPreviewItemStylesTest {
         hideRead = false,
         dimReadStories = false,
         faviconProvider = "example",
-        faviconIcon = TestPainter,
     )
 
     private fun commentsState() = CommentsSettingsUiState(
@@ -175,10 +171,4 @@ class SettingsPreviewItemStylesTest {
         volumeNavigation = CommentVolumeNavigationMode.DISABLED,
         smoothScroll = true,
     )
-
-    private object TestPainter : Painter() {
-        override val intrinsicSize: Size = Size.Unspecified
-
-        override fun DrawScope.onDraw() = Unit
-    }
 }

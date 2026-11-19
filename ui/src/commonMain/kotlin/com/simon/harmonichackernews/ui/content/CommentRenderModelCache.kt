@@ -225,9 +225,19 @@ internal suspend fun prefetchCommentRenderModels(
         // Snapshot cache lookups on their owner. Workers receive immutable models and strings only.
         val source = comment.expandedAnchorText.orEmpty()
         val cached = CommentRenderModelCache.peek(comment.id, source, collectLinks)
-        val missing = cached?.contentBlocks?.mapNotNull { it.bodyHtml }
-            ?.distinct()?.filterNot(CommentHtmlTextCache::contains)
-        if (cached != null && missing.isNullOrEmpty()) continue
+        // Overlapping scroll windows mostly revisit cached text. Allocate a deduplicated
+        // work list only when a text entry is actually missing (for example, after eviction).
+        var missing: MutableSet<String>? = null
+        if (cached != null) {
+            for (block in cached.contentBlocks) {
+                val html = block.bodyHtml ?: continue
+                if (!CommentHtmlTextCache.contains(html)) {
+                    if (missing == null) missing = linkedSetOf()
+                    missing.add(html)
+                }
+            }
+            if (missing == null) continue
+        }
         val prepared = withContext(Dispatchers.Default) {
             try {
                 val model = cached ?: CommentRenderModelCache.prepare(source, collectLinks)

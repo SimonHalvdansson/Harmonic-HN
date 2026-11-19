@@ -47,6 +47,7 @@ data class WebLinksSettingsCapabilities(
     val closeWebViewOnBack: Boolean = true,
     val integratedWebView: Boolean = true,
     val preloadWebsites: Boolean = true,
+    val readAloudMiniPlayer: Boolean = true,
 )
 
 enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPreference) {
@@ -62,7 +63,7 @@ enum class WebLinksBooleanSetting(internal val preference: ReadingBooleanPrefere
     RedirectNitter(ReadingBooleanPreference.REDIRECT_NITTER),
 }
 
-enum class WebLinksSettingsDialog { Preload, ReaderFont, ArchiveDomains, LinkPreviews, NitterInstance }
+enum class WebLinksSettingsDialog { Preload, ArchiveDomains, LinkPreviews, NitterInstance }
 
 @Composable
 fun WebLinksSettingsScreen(

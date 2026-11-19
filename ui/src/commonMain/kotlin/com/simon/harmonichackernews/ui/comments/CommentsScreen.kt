@@ -16,7 +16,6 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -40,7 +39,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyLayoutScrollScope
-import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
@@ -83,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.presentation.CommentNavigationEdge
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
+import com.simon.harmonichackernews.ui.common.harmonicScrollbar
 import com.simon.harmonichackernews.ui.common.LazyContentList
 import com.simon.harmonichackernews.ui.common.ModalControlScrim
 import com.simon.harmonichackernews.ui.common.consumeAllPointerGestures
@@ -109,9 +108,6 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val COMMENT_NAVIGATION_SPEED_STEP = 50
 private const val COMMENT_NAVIGATION_APPROACH_VIEWPORTS = 3f
-// Comment rows can be several viewports tall; prepare the next rows before they enter the screen.
-private const val COMMENTS_CACHE_AHEAD_FRACTION = 2f
-private const val COMMENTS_CACHE_BEHIND_FRACTION = 0.5f
 private val COMMENTS_UP_BUTTON_NAVIGATION_INSET = 64.dp
 private const val COMMENT_PLACEMENT_DURATION_MILLIS = 220
 
@@ -451,12 +447,6 @@ fun CommentsScreen(
                 }
                 .then(listModifier),
             state = listState,
-            cacheWindow = remember {
-                LazyLayoutCacheWindow(
-                    aheadFraction = COMMENTS_CACHE_AHEAD_FRACTION,
-                    behindFraction = COMMENTS_CACHE_BEHIND_FRACTION,
-                )
-            },
             contentPadding = PaddingValues(bottom = bottomPadding),
             headerKey = "header",
             header = {
@@ -826,30 +816,8 @@ private fun AlgoliaFallbackNotice() {
 @Composable
 private fun CommentsScrollbar(state: LazyListState, modifier: Modifier = Modifier) {
     val indicator = state.scrollIndicatorState ?: return
-    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-    val density = LocalDensity.current
-    Canvas(modifier = modifier) {
-        val currentMetrics = commentsScrollbarMetrics(
-            scrollOffset = indicator.scrollOffset,
-            contentSize = indicator.contentSize,
-            viewportSize = indicator.viewportSize,
-            canScrollBackward = state.canScrollBackward,
-            canScrollForward = state.canScrollForward,
-        ) ?: return@Canvas
-        val widthPx = with(density) { 3.dp.toPx() }
-        val endPaddingPx = with(density) { 1.dp.toPx() }
-        val minimumHeightPx = with(density) { 24.dp.toPx() }
-        val thumbHeight = (size.height * currentMetrics.visibleFraction)
-            .coerceAtLeast(minimumHeightPx).coerceAtMost(size.height)
-        val top = ((size.height - thumbHeight) * currentMetrics.scrollPosition)
-            .coerceIn(0f, size.height - thumbHeight)
-        drawRoundRect(
-            color = thumbColor,
-            topLeft = androidx.compose.ui.geometry.Offset(size.width - widthPx - endPaddingPx, top),
-            size = androidx.compose.ui.geometry.Size(widthPx, thumbHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(widthPx / 2f),
-        )
-    }
+    val bounded = remember(state, indicator) { CommentsScrollIndicator(indicator, state) }
+    Box(modifier.harmonicScrollbar(bounded))
 }
 
 @Composable

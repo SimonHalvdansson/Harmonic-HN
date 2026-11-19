@@ -93,7 +93,6 @@ sealed interface StoriesIntent {
     data object CloseSearch : StoriesIntent
     data class Search(val query: String) : StoriesIntent
     data class SelectSearchOption(val kind: StorySearchOption, val index: Int) : StoriesIntent
-    data object ToggleOnlyRead : StoriesIntent
     data class Refresh(val showMainLoadingIndicator: Boolean = false) : StoriesIntent
     data object ShowCached : StoriesIntent
     data object LoadMore : StoriesIntent
@@ -266,7 +265,6 @@ class StoriesFeatureStore internal constructor(
             is StoriesIntent.Search -> runtime.submitSearch(intent.query)
             is StoriesIntent.SelectSearchOption ->
                 runtime.selectSearchOption(intent.kind, intent.index)
-            StoriesIntent.ToggleOnlyRead -> runtime.toggleOnlyRead()
             is StoriesIntent.Refresh -> {
                 runtime.refresh(
                     showSwipeRefreshIndicator = true,

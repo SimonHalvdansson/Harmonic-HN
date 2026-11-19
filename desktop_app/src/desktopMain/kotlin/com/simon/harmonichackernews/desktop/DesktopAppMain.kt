@@ -12,6 +12,9 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
@@ -101,10 +104,12 @@ import com.simon.harmonichackernews.ui.settings.SettingsSearchCapabilities
 import com.simon.harmonichackernews.ui.settings.SettingsNavigationStore
 import com.simon.harmonichackernews.ui.settings.handleSettingsBack
 import com.simon.harmonichackernews.ui.settings.rememberSettingsNavigationStore
+import com.simon.harmonichackernews.ui.editor.EditorRoute
 import com.simon.harmonichackernews.ui.stories.StoriesRoute
 import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.ui.stories.StoriesFeatureListener
 import com.simon.harmonichackernews.ui.stories.StoriesPlatformPresentation
+import com.simon.harmonichackernews.ui.stories.TabletStoryPreviewOverlay
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import java.awt.Taskbar
@@ -228,7 +233,7 @@ fun main() {
                         if (trainingRun) return@LaunchedEffect
                         when (
                             bootstrap.app.launchState.consumeLaunchDialog(
-                                currentVersion = bootstrap.app.metadata.versionCode,
+                                metadata = bootstrap.app.metadata,
                                 showChangelog = bootstrap.app.userSettings.general.showChangelog,
                             )
                         ) {
@@ -252,20 +257,28 @@ fun main() {
                                     DesktopWindowAppearance.usesIntegratedTitleBar &&
                                     windowState.placement != WindowPlacement.Fullscreen
                                 ) DesktopWindowAppearance.integratedTitleBarHeight.dp else 0.dp
-                                Box(Modifier.fillMaxSize()) {
-                                    DesktopAppContent(
-                                        app = bootstrap.app,
-                                        scene = sceneOwner.scene,
-                                        storiesController = storiesController,
-                                        commentsController = commentsController,
-                                        editorBackRequestVersion = editorBackRequestVersion,
-                                        onStoriesControllerChanged = { storiesController = it },
-                                        commentsControllers = commentsControllers,
-                                        settingsControllers = settingsControllers,
-                                        titleBarInset = titleBarInset,
-                                    )
-                                    if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
-                                        DesktopWindowsTitleBar(window, windowIcon)
+                                Column(Modifier.fillMaxSize()) {
+                                    Box(Modifier.weight(1f)) {
+                                        DesktopAppContent(
+                                            app = bootstrap.app,
+                                            scene = sceneOwner.scene,
+                                            storiesController = storiesController,
+                                            commentsController = commentsController,
+                                            editorBackRequestVersion = editorBackRequestVersion,
+                                            onStoriesControllerChanged = { storiesController = it },
+                                            commentsControllers = commentsControllers,
+                                            settingsControllers = settingsControllers,
+                                            titleBarInset = titleBarInset,
+                                        )
+                                        if (DesktopWindowAppearance.isWindows && titleBarInset > 0.dp) {
+                                            DesktopWindowsTitleBar(window, windowIcon)
+                                        }
+                                    }
+                                    if (DesktopReadAloud.supported) {
+                                        val speech by DesktopReadAloud.controller.state.collectAsState()
+                                        com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech) { action ->
+                                            DesktopReadAloud.controller.command(buildJsonObject { put("action", action) })
+                                        }
                                     }
                                 }
                             }
@@ -275,6 +288,7 @@ fun main() {
             }
         }
     } finally {
+        if (DesktopReadAloud.supported) DesktopReadAloud.controller.close()
         sceneOwner.close()
         bootstrap.close()
         connectivity?.close()
@@ -437,6 +451,7 @@ private fun DesktopAppContent(
             DesktopCommentsContent(
                 app = app, scene = scene, request = request,
                 showNavigation = showNavigation,
+                twoPane = isTwoPane,
                 webViewForegroundAllowed = webViewForegroundAllowed,
                 onClose = scene.navigation::detailRemovedFromBackStack,
                 controllers = commentsControllers,
@@ -505,7 +520,7 @@ private fun DesktopAppContent(
         },
         editor = { request ->
             DesktopInsetContent(titleBarInset) {
-                DesktopEditorContent(
+                EditorRoute(
                     app = app, scene = scene, request = request,
                     backRequestVersion = editorBackRequestVersion,
                 )
@@ -737,7 +752,7 @@ private fun DesktopStoriesContent(
             onVisibleStoriesChanged = preloadCoordinator::updateVisibleStories,
         )
         if (controller.isStoryPreviewShowing()) {
-            DesktopStoryPreviewOverlay(app, controller)
+            TabletStoryPreviewOverlay(app, controller, pageOnScrollWheel = true)
         }
     }
 }
@@ -787,6 +802,7 @@ private fun DesktopSettingsShell(
             webLinks = desktopWebLinksSettingsCapabilities(),
             notifications = false, systemSettings = false, volumeNavigation = false,
             transparentStatusBar = false, twoPane = true,
+            peekStoryHeader = !isTwoPane,
         ),
         renderList = { selectedSection, showSelection, onBack, onSectionSelected ->
             SettingsScrollPage(scrollHistory, scrollLayout, "settings-list") {
@@ -810,6 +826,7 @@ private fun DesktopSettingsShell(
                     singlePane,
                     onBack,
                     onNavigate,
+                    peekStoryHeaderSupported = !isTwoPane,
                 )
             }
         },

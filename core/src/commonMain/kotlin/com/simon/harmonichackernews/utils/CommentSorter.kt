@@ -9,26 +9,35 @@ object CommentSorter {
     const val NEWEST_FIRST = "Newest first"
     const val OLDEST_FIRST = "Oldest first"
 
+    private val defaultOrder = Comparator<Comment> { first, second ->
+        first.sortOrder.compareTo(second.sortOrder)
+    }
+    private val replyCountOrder = Comparator<Comment> { first, second ->
+        second.totalReplies.compareTo(first.totalReplies)
+    }
+    private val newestOrder = Comparator<Comment> { first, second -> second.time.compareTo(first.time) }
+    private val oldestOrder = Comparator<Comment> { first, second -> first.time.compareTo(second.time) }
+
     fun sort(comments: MutableList<Comment>, sortType: String) {
         when (sortType) {
             DEFAULT -> {
                 if (isInDefaultOrder(comments)) return
-                sortComments(comments, compareBy(Comment::sortOrder), false)
+                sortComments(comments, defaultOrder, false)
             }
 
             REPLY_COUNT -> sortComments(
                 comments,
-                compareByDescending(Comment::totalReplies),
+                replyCountOrder,
                 true,
             )
 
             NEWEST_FIRST -> sortComments(
                 comments,
-                compareByDescending(Comment::time),
+                newestOrder,
                 false,
             )
 
-            OLDEST_FIRST -> sortComments(comments, compareBy(Comment::time), false)
+            OLDEST_FIRST -> sortComments(comments, oldestOrder, false)
         }
     }
 

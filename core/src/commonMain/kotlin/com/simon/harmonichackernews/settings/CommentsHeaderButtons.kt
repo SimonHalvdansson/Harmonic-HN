@@ -11,7 +11,7 @@ enum class CommentsHeaderButton(val label: String) {
 
     val configurable: Boolean get() = this != OPEN_PARENT && this != OPEN_TOP_LEVEL
 
-    internal val storageKey: String get() = "pref_comments_header_button_${name.lowercase()}"
+    internal val storageKey: String = "pref_comments_header_button_${name.lowercase()}"
 }
 
 /** Unset choices retain the original account-dependent toolbar defaults. */

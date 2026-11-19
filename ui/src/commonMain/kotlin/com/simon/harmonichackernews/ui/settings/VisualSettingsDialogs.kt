@@ -1,8 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,96 +13,64 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_algolia
+import com.simon.harmonichackernews.resources.ic_favicon_provider_duckduckgo
+import com.simon.harmonichackernews.resources.ic_favicon_provider_google
+import com.simon.harmonichackernews.resources.ic_favicon_provider_twenty
 import com.simon.harmonichackernews.settings.CommentsProvider
-import com.simon.harmonichackernews.ui.theme.AppTechnicalFontFamily
+import com.simon.harmonichackernews.settings.FaviconPreferences
+import com.simon.harmonichackernews.settings.FaviconProviderCatalog
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 
-data class FaviconProviderUiOption(
-    val value: String,
-    val label: String,
-    val urlTemplate: String,
-    val icon: Painter,
-)
-
 @Composable
-fun FaviconProviderDialog(
+internal fun FaviconProviderSetting(
     selected: String,
-    options: List<FaviconProviderUiOption>,
-    onProviderSelected: (String) -> Unit,
-    onDismiss: () -> Unit,
+    enabled: Boolean,
+    onSelected: (String) -> Unit,
 ) {
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle("Favicon provider") },
-        edgeToEdgeContent = true,
-        text = {
+    val providers = FaviconProviderCatalog.options
+    SegmentedSetting(
+        title = "Favicon provider",
+        options = providers.map { it to it.label },
+        selected = providers.first { it.value == FaviconPreferences.sanitizeProvider(selected) },
+        enabled = enabled,
+        buttonHeight = 68.dp,
+        optionContent = { provider, checked ->
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 8.dp)
-                    .selectableGroup(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                options.forEach { provider ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 76.dp)
-                            .selectable(
-                                selected = provider.value == selected,
-                                role = Role.RadioButton,
-                                onClick = {
-                                    onProviderSelected(provider.value)
-                                    onDismiss()
-                                },
-                            )
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Image(
-                            painter = provider.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                        )
-                        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
-                            Text(
-                                text = provider.label,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = AppUiFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                lineHeight = 20.sp,
-                            )
-                            Text(
-                                text = provider.urlTemplate,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = AppTechnicalFontFamily,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
-                            )
-                        }
-                        SettingsRadioButton(
-                            selected = provider.value == selected,
-                            modifier = Modifier.padding(start = 12.dp),
-                        )
-                    }
+                val icon = when (provider.value) {
+                    FaviconPreferences.DUCK_DUCK_GO -> Res.drawable.ic_favicon_provider_duckduckgo
+                    FaviconPreferences.TWENTY -> Res.drawable.ic_favicon_provider_twenty
+                    else -> Res.drawable.ic_favicon_provider_google
                 }
+                Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
+                Text(
+                    text = provider.label,
+                    color = if (checked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                    fontFamily = AppUiFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
         },
-        confirmButton = {},
-        showButtons = false,
+        onSelected = { onSelected(it.value) },
     )
 }
 
@@ -132,10 +100,7 @@ fun CommentsProviderDialog(
                             .selectable(
                                 selected = provider == selected,
                                 role = Role.RadioButton,
-                                onClick = {
-                                    onProviderSelected(provider)
-                                    onDismiss()
-                                },
+                                onClick = { onProviderSelected(provider) },
                             )
                             .padding(horizontal = 24.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -170,8 +135,7 @@ fun CommentsProviderDialog(
                 }
             }
         },
-        confirmButton = {},
-        showButtons = false,
+        confirmButton = { SettingsDialogTextButton(onClick = onDismiss) { Text("Done") } },
     )
 }
 

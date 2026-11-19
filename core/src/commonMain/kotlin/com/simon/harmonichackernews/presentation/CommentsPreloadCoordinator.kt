@@ -14,6 +14,11 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
+data class CommentPreloadCandidate(val id: Int, val kids: List<Int>)
+
+fun StoryListItemSnapshot.toCommentPreloadCandidate(): CommentPreloadCandidate? =
+    if (id > 0 && loaded && !isComment && descendantCount > 0) CommentPreloadCandidate(id, kids) else null
+
 /** Debounces scrolling and limits provider-aware preparation to visible discussions. */
 class CommentsPreloadCoordinator(
     private val scope: CoroutineScope,
@@ -60,7 +65,7 @@ class CommentsPreloadCoordinator(
     private val started = mutableSetOf<PreloadWorkKey>()
     private var submitJob: Job? = null
     private var enabled: Boolean = false
-    private var visibleStories: List<StoryListItemSnapshot> = emptyList()
+    private var visibleStories: List<CommentPreloadCandidate> = emptyList()
 
     fun setEnabled(value: Boolean) {
         if (enabled == value) {
@@ -75,7 +80,7 @@ class CommentsPreloadCoordinator(
         }
     }
 
-    fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
+    fun updateVisibleStories(stories: List<CommentPreloadCandidate>) {
         visibleStories = stories
         schedule()
     }
@@ -114,8 +119,7 @@ class CommentsPreloadCoordinator(
             val source = preloadSource()
             visibleStories
                 .asSequence()
-                .filter { it.id > 0 && it.loaded && !it.isComment && it.descendantCount > 0 }
-                .distinctBy(StoryListItemSnapshot::id)
+                .distinctBy(CommentPreloadCandidate::id)
                 .forEach { story ->
                     val workKey = PreloadWorkKey(story.id, source)
                     if (workKey in active) return@forEach
@@ -146,9 +150,7 @@ class CommentsPreloadCoordinator(
     }
 
     private fun isVisible(key: PreloadWorkKey): Boolean = key.source == preloadSource() &&
-        visibleStories.any {
-            it.id == key.storyId && it.loaded && !it.isComment && it.descendantCount > 0
-        }
+        visibleStories.any { it.id == key.storyId }
 
     private companion object {
         const val DEFAULT_MAX_CONCURRENT_PRELOADS = 2

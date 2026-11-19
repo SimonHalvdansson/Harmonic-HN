@@ -83,6 +83,7 @@ import com.simon.harmonichackernews.presentation.StoryDisplaySettings
 import com.simon.harmonichackernews.presentation.StoryPreviewActionKind
 import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.ui.content.linkPreviewDescription
 import com.simon.harmonichackernews.network.LinkSummary
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.content.rememberContentTypography
@@ -163,9 +164,7 @@ fun StoryPreviewCard(
     }
     val displayedImageUrl = imageUrl?.takeIf { !imageLoadFailed }
     val rawDescription = if (story.isLink) {
-        summaryState.result?.description?.takeIf(String::isNotBlank)
-            ?: story.presentation.linkSummaryDescription
-                ?.takeIf { story.presentation.linkSummaryLoaded && it.isNotBlank() }
+        story.linkPreviewDescription(summaryState.result?.description)
     } else {
         remember(story.id, story.text) {
             story.text

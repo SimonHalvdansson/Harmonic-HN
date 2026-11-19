@@ -30,7 +30,8 @@ fun detectUserProfileLinks(text: String): List<UserProfileLink> = buildList {
             candidate.startsWith("https://", ignoreCase = true)
         val url = if (explicitScheme) candidate else "https://$candidate"
         val parsed = url.toNetworkUrlOrNull() ?: return@forEach
-        if (parsed.scheme.lowercase() !in setOf("http", "https")) return@forEach
+        val scheme = parsed.scheme.lowercase()
+        if (scheme != "http" && scheme != "https") return@forEach
         val authority = url.substringAfter("://").substringBefore('/').substringBefore('?')
             .substringBefore('#')
         if ('@' in authority || '\\' in candidate || !PROFILE_HOST.matches(parsed.host)) {
@@ -47,16 +48,40 @@ fun detectUserProfileLinks(text: String): List<UserProfileLink> = buildList {
 
 private fun trimProfileLinkPunctuation(value: String): String {
     var end = value.length
+    var countedBrackets = false
+    var parentheses = 0
+    var squareBrackets = 0
+    var braces = 0
     while (end > 0) {
         val last = value[end - 1]
+        if (!countedBrackets && (last == ')' || last == ']' || last == '}')) {
+            // Count once, only when a closing bracket reaches the suffix. Removed punctuation
+            // cannot affect the balance, and each removed closer updates its own count below.
+            for (character in value) {
+                when (character) {
+                    '(' -> parentheses--
+                    ')' -> parentheses++
+                    '[' -> squareBrackets--
+                    ']' -> squareBrackets++
+                    '{' -> braces--
+                    '}' -> braces++
+                }
+            }
+            countedBrackets = true
+        }
         val trim = when (last) {
             '.', ',', ';', ':', '!', '?' -> true
-            ')' -> value.take(end).count { it == ')' } > value.take(end).count { it == '(' }
-            ']' -> value.take(end).count { it == ']' } > value.take(end).count { it == '[' }
-            '}' -> value.take(end).count { it == '}' } > value.take(end).count { it == '{' }
+            ')' -> parentheses > 0
+            ']' -> squareBrackets > 0
+            '}' -> braces > 0
             else -> false
         }
         if (!trim) break
+        when (last) {
+            ')' -> parentheses--
+            ']' -> squareBrackets--
+            '}' -> braces--
+        }
         end--
     }
     return value.substring(0, end)

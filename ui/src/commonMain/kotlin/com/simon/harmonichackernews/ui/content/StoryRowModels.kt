@@ -18,6 +18,10 @@ import com.simon.harmonichackernews.utils.DomainNamePolicy
 import com.simon.harmonichackernews.ui.common.rememberTimeOnResume
 import kotlin.time.Clock
 
+internal fun StoryListItemSnapshot.linkPreviewDescription(resolved: String?): String? =
+    resolved?.takeIf(String::isNotBlank) ?: presentation.linkSummaryDescription
+        ?.takeIf { presentation.linkSummaryLoaded && it.isNotBlank() }
+
 data class StoryHeaderTintPresentation(
     val previewImageUrl: String?,
     val previewImageAvailable: Boolean,
@@ -28,76 +32,6 @@ data class StoryHeaderTintPresentation(
 )
 
 /** Shared tint/source resolution used by every comments-header host. */
-fun storyHeaderTintPresentation(
-    story: Story,
-    previewResource: StoryPreviewResourceState?,
-    faviconProvider: String,
-    paletteTintMode: String,
-    tintBaseColor: Int,
-    tintStore: StoryResourceTintStore,
-): StoryHeaderTintPresentation {
-    val paletteMode = PaletteTintPreferences.normalizeConfigKey(paletteTintMode)
-    val faviconUrl = runCatching {
-        FaviconUrlBuilder.faviconUrl(story.url.orEmpty(), faviconProvider)
-    }.getOrNull()
-    val previewImageUrl = previewResource.resolvedImageUrl(story.previewImageUrl)
-    val previewFailed = previewResource?.imageLoadFailed == true
-    val previewAvailable = !previewImageUrl.isNullOrBlank() && !previewFailed
-    val persistedPreviewTint = previewImageUrl?.takeIf { previewAvailable }?.let { sourceUrl ->
-        tintStore.read(
-            story.id,
-            StoryResourceTintKind.PREVIEW_IMAGE,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteMode),
-        )?.tintColorArgb
-    }
-    val resourceTint = previewResource?.previewTint
-    val previewTint = when {
-        persistedPreviewTint != null -> persistedPreviewTint
-        resourceTint != null && resourceTint.sourceUrl == previewImageUrl &&
-            resourceTint.baseColorArgb == tintBaseColor &&
-            StoryPreviewTintState.isModeCurrent(resourceTint.paletteConfigKey, paletteMode) ->
-            resourceTint.tintColorArgb
-        story.previewImageUrl == previewImageUrl &&
-            StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode) ->
-            story.previewImageTintColor
-        else -> null
-    }
-    val persistedFaviconTint = faviconUrl?.let { sourceUrl ->
-        tintStore.read(
-            story.id,
-            StoryResourceTintKind.FAVICON,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteMode),
-        )?.tintColorArgb
-    }
-    val faviconTint = persistedFaviconTint ?: story.faviconTintColor.takeIf {
-        story.faviconTintColorLoaded && story.faviconTintBaseColor == tintBaseColor &&
-            StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteMode) &&
-            story.faviconTintSourceUrl == faviconUrl
-    }
-    val initialTintKind = when {
-        previewAvailable && previewTint != null -> StoryResourceTintKind.PREVIEW_IMAGE
-        faviconTint != null -> StoryResourceTintKind.FAVICON
-        else -> null
-    }
-    return StoryHeaderTintPresentation(
-        previewImageUrl = previewImageUrl,
-        previewImageAvailable = previewAvailable,
-        faviconUrl = faviconUrl,
-        paletteMode = paletteMode,
-        initialTintArgb = when (initialTintKind) {
-            StoryResourceTintKind.PREVIEW_IMAGE -> previewTint
-            StoryResourceTintKind.FAVICON -> faviconTint
-            null -> null
-        },
-        initialTintKind = initialTintKind,
-    )
-}
-
-/** Immutable-story overload used by portable comments hosts. */
 fun storyHeaderTintPresentation(
     story: StoryListItemSnapshot,
     previewResource: StoryPreviewResourceState?,
@@ -167,63 +101,6 @@ fun storyHeaderTintPresentation(
             null -> null
         },
         initialTintKind = initialTintKind,
-    )
-}
-
-/** Canonical KMP story-row mapping shared by stories, comments headers, and submissions. */
-fun storyRowModel(
-    story: Story,
-    position: Int,
-    settings: StoryDisplaySettings,
-    previewResource: StoryPreviewResourceState?,
-    tintBaseColor: Int,
-    tintStore: StoryResourceTintStore,
-    nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
-): StoryRowModel {
-    val domain = runCatching { story.getDisplayDomain(true) }.getOrNull().orEmpty()
-    val favicon = resolvedFaviconUrl(domain, story.url, settings.faviconProvider)
-    val paletteMode = PaletteTintPreferences.normalizeConfigKey(settings.paletteTintMode)
-    val previewUrl = previewResource.resolvedImageUrl(story.previewImageUrl)
-    val currentPreviewTint = story.previewImageUrl == previewUrl &&
-        StoryPreviewTintState.isPreviewCurrent(story, tintBaseColor, paletteMode)
-    val currentFaviconTint = story.faviconTintColorLoaded &&
-        story.faviconTintBaseColor == tintBaseColor &&
-        StoryPreviewTintState.isModeCurrent(story.faviconTintMode, paletteMode) &&
-        story.faviconTintSourceUrl == favicon
-    val persistedPreviewTint = previewUrl?.let { sourceUrl ->
-        tintStore.read(
-            story.id,
-            StoryResourceTintKind.PREVIEW_IMAGE,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteMode),
-        )?.tintColorArgb
-    }
-    val persistedFaviconTint = favicon?.let { sourceUrl ->
-        tintStore.read(
-            story.id,
-            StoryResourceTintKind.FAVICON,
-            sourceUrl,
-            tintBaseColor,
-            StoryPreviewTintState.storedMode(paletteMode),
-        )?.tintColorArgb
-    }
-    return StoryRowModelFactory.create(
-        story = story,
-        position = position,
-        resources = StoryRowResourcePresentation(
-            faviconUrl = favicon,
-            previewText = story.linkSummaryDescription,
-            previewImageUrl = previewUrl,
-            previewImageLoadFailed = previewResource?.imageLoadFailed == true,
-            faviconTintArgb = persistedFaviconTint
-                ?: story.faviconTintColor.takeIf { currentFaviconTint },
-            previewImageTintArgb = persistedPreviewTint
-                ?: story.previewImageTintColor.takeIf { currentPreviewTint },
-            tintFallbackArgb = tintBaseColor,
-        ).withPreviewResource(previewResource, paletteMode, persistedPreviewTint, persistedFaviconTint),
-        resolvedDomain = domain,
-        nowMillis = nowMillis,
     )
 }
 

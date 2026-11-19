@@ -1,11 +1,22 @@
 package com.simon.harmonichackernews.ui.navigation
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.draw.clipToBounds
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBars
+import com.simon.harmonichackernews.AndroidReadAloud
+import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -93,7 +104,7 @@ object AndroidMainNavigationHost {
         )
         when (
             appComposition.launchState.consumeLaunchDialog(
-                currentVersion = appComposition.metadata.versionCode,
+                metadata = appComposition.metadata,
                 showChangelog = appComposition.userSettings.general.showChangelog,
             )
         ) {
@@ -124,10 +135,12 @@ object AndroidMainNavigationHost {
                         androidx.compose.runtime.CompositionLocalProvider(
                             LocalPredictiveBackCompletion provides remember { PredictiveBackCompletion() },
                         ) {
-                            MainNavigation(
-                                activity = activity,
-                                controller = controller,
-                            )
+                            AndroidReadAloudHost(activity) {
+                                MainNavigation(
+                                    activity = activity,
+                                    controller = controller,
+                                )
+                            }
                             com.simon.harmonichackernews.ui.AndroidLocalNetworkPermissionHost(
                                 (activity.application as com.simon.harmonichackernews.HarmonicApplication).localNetworkAccess,
                             )
@@ -138,6 +151,31 @@ object AndroidMainNavigationHost {
         }
         activity.setContentView(composeView)
         return controller
+    }
+}
+
+@Composable
+private fun AndroidReadAloudHost(activity: MainActivity, content: @Composable () -> Unit) {
+    val repository = LocalHarmonicUiDependencies.current.settings
+    val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
+    val speech by AndroidReadAloud.state.collectAsStateWithLifecycle()
+    val visible = settings.reading.readAloudMiniPlayer && speech.count > 0
+    val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val playerBottomInset by animateDpAsState(
+        targetValue = if (visible) navigationBottom else 0.dp,
+        animationSpec = tween(if (visible) 300 else 240),
+        label = "Player navigation inset",
+    )
+    val playerInsets = PaddingValues(bottom = playerBottomInset)
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
+            .padding(playerInsets).consumeWindowInsets(playerInsets),
+    ) {
+        // AndroidView may draw beyond its resized bounds while Chromium catches up.
+        Box(Modifier.weight(1f).clipToBounds()) { content() }
+        ReadAloudMiniPlayer(speech, enabled = settings.reading.readAloudMiniPlayer) { action ->
+            AndroidReadAloud.command(activity.applicationContext, buildJsonObject { put("action", action) })
+        }
     }
 }
 

@@ -818,6 +818,53 @@ class CommentsPresenterTest {
     }
 
     @Test
+    fun manualRefreshUsesLiveRankingAndKeepsLoadingAlgoliaWhenRankingIsUnavailable() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val algolia = FakeAlgoliaRepository(sortingResponse)
+        val parser = AlgoliaCommentsParser(parsingDispatcher = dispatcher)
+        val preloads = CommentsPreloadRepository(algolia, parser = parser, nowMillis = { 0L }, requestDispatcher = dispatcher)
+        var rankingRequests = 0
+        val official = object : HackerNewsRepository by UnusedHackerNewsRepository {
+            override suspend fun getStory(id: Int): Story {
+                assertEquals(42, id)
+                rankingRequests++
+                if (rankingRequests > 1) error("Ranking unavailable")
+                return Story().apply { kids = intArrayOf(2, 1) }
+            }
+        }
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(
+            backgroundScope, session, CommentThreadRepository(algolia, official, parser, preloads, dispatcher),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService, threadPreparationDispatcher = dispatcher,
+        )
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter, nowMillis = { 0L })
+        val story = Story("Discussion", 42, true, false).apply { kids = intArrayOf(1, 2) }
+        runtime.initialize(story, false, -1, "Default", false)
+        runtime.loadInitial(false)
+        runCurrent()
+        fun displayedIds() = runtime.allComments.drop(1).map { it.id }
+        assertEquals(listOf(1, 2), displayedIds())
+        assertEquals(0, rankingRequests)
+
+        preloads.preload(42, listOf(1, 2))
+        val requestsBeforeRefresh = algolia.itemRequests
+        runtime.handleHeaderAction(CommentsHeaderAction.REFRESH)
+        runCurrent()
+        assertEquals(requestsBeforeRefresh + 1, algolia.itemRequests)
+        assertEquals(1, rankingRequests)
+        assertEquals(listOf(2, 1), displayedIds())
+        assertEquals(listOf(2, 1), story.kids?.toList())
+
+        algolia.response = sortingResponse.replace("Second", "Updated")
+        runtime.handleHeaderAction(CommentsHeaderAction.REFRESH)
+        runCurrent()
+        assertEquals(2, rankingRequests)
+        assertEquals(listOf(2, 1), displayedIds())
+        assertEquals("Updated", presenter.thread.findComment(2)?.text)
+        assertNull(runtime.state.failure)
+    }
+
+    @Test
     fun cachedThreadDisplaysBeforeRankingAndIdenticalNetworkJsonStillReordersIt() = runTest {
         val response = """{"id":42,"title":"Cached","children":[
             {"id":7,"text":"One"},{"id":8,"text":"Two"}

@@ -18,7 +18,7 @@ import com.simon.harmonichackernews.AndroidStoriesCoordinator
 import com.simon.harmonichackernews.ui.comments.CommentsScreenController
 import com.simon.harmonichackernews.presentation.CaptchaResultHandler
 import com.simon.harmonichackernews.presentation.CommentsSessionState
-import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
 import com.simon.harmonichackernews.ui.settings.SettingsSection
 import com.simon.harmonichackernews.ui.stories.StoriesScreenController
 import com.simon.harmonichackernews.network.HackerNewsCaptchaChallenge
@@ -303,7 +303,7 @@ class AndroidMainNavigationController internal constructor(
 
     fun applySettingsChanges() = storiesCoordinator?.onResume()
 
-    internal fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
+    internal fun updateVisibleStories(stories: List<CommentPreloadCandidate>) {
         storiesCoordinator?.updateVisibleStories(stories)
     }
 

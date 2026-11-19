@@ -348,7 +348,16 @@ internal fun streamingTextFadeRange(
     wasStreaming: Boolean,
 ): IntRange? {
     if ((!streaming && !wasStreaming) || current.isEmpty() || current == previous) return null
-    val commonPrefixLength = previous.commonPrefixWith(current).length
+    var commonPrefixLength = 0
+    val limit = minOf(previous.length, current.length)
+    while (commonPrefixLength < limit && previous[commonPrefixLength] == current[commonPrefixLength]) {
+        commonPrefixLength++
+    }
+    // Match commonPrefixWith's code-point boundary without allocating the prefix string.
+    if (commonPrefixLength > 0 && previous[commonPrefixLength - 1].isHighSurrogate() &&
+        ((commonPrefixLength < previous.length && previous[commonPrefixLength].isLowSurrogate()) ||
+            (commonPrefixLength < current.length && current[commonPrefixLength].isLowSurrogate()))
+    ) commonPrefixLength--
     if (commonPrefixLength >= current.length) return null
     return commonPrefixLength until current.length
 }
@@ -729,8 +738,16 @@ private fun AnnotatedString.Builder.appendSummaryMarkdownInline(
             }
 
             else -> {
-                append(source[index])
-                index++
+                // Copy ordinary prose in one operation; only syntax characters need the
+                // formatting checks above. Keep malformed delimiters on the same path.
+                val start = index++
+                while (index < source.length) {
+                    when (source[index]) {
+                        '<', '!', '\\', '*', '_', '`', '[' -> break
+                    }
+                    index++
+                }
+                append(source, start, index)
             }
         }
     }

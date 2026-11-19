@@ -1,5 +1,6 @@
 @file:OptIn(
     androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
 )
 
 package com.simon.harmonichackernews.ui.stories
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.ui.common.MeasuredHeaderState
@@ -67,6 +69,9 @@ import com.simon.harmonichackernews.presentation.ScrolledPastStoriesTracker
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.structuralEqualityPolicy
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
+import com.simon.harmonichackernews.presentation.toCommentPreloadCandidate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.categorization.ArticleCategoryPreferences
 import com.simon.harmonichackernews.categorization.ArticleCategoryRuntime
@@ -94,6 +99,7 @@ import com.simon.harmonichackernews.ui.content.CommentFeedItem
 import com.simon.harmonichackernews.ui.content.StoryRow
 import com.simon.harmonichackernews.ui.content.StoryRowStyleContext
 import com.simon.harmonichackernews.ui.content.StoryRowModel
+import com.simon.harmonichackernews.ui.content.rememberContentTypography
 import com.simon.harmonichackernews.ui.content.toStoryRowStyle
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.ui.common.LazyContentList
@@ -148,7 +154,7 @@ internal fun StoriesList(
     filterColors: HarmonicFilterButtonColors,
     pullToRefreshEnabled: Boolean,
     showRefreshMenuItem: Boolean,
-    onVisibleStoriesChanged: (List<StoryListItemSnapshot>) -> Unit,
+    onVisibleStoriesChanged: ((List<CommentPreloadCandidate>) -> Unit)?,
     modifier: Modifier = Modifier,
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
@@ -162,6 +168,11 @@ internal fun StoriesList(
         initialValue = categorySettings.snapshot(),
     )?.value ?: ArticleCategoryPreferences()
     val categoryRuntime = categoryRuntimeService?.state?.collectAsStateWithLifecycle()?.value ?: ArticleCategoryRuntimeState()
+    // Every story uses the same font and size. Retain their resources outside recycled rows.
+    val rowTypography = rememberContentTypography(
+        preferredFont = settings.font,
+        storyTextSize = settings.storyTextSize,
+    )
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
@@ -226,7 +237,10 @@ internal fun StoriesList(
         }
     }
 
-    val currentStories by rememberUpdatedState(stories)
+    val storyIds = if (settings.markScrolledPostsRead) {
+        remember(stories) { stories.map { it.id } }
+    } else emptyList()
+    val currentStoryIds by rememberUpdatedState(storyIds)
     LaunchedEffect(
         listState, searchMode, settings.markScrolledPostsRead,
         controller.presentation.selectedTypeIndex, controller.mainListGeneration,
@@ -235,7 +249,7 @@ internal fun StoriesList(
         if (!settings.markScrolledPostsRead || searchMode != controller.searching) return@LaunchedEffect
         val tracker = ScrolledPastStoriesTracker()
         snapshotFlow {
-            Triple(currentStories.map { it.id }, listState.firstVisibleItemIndex,
+            Triple(currentStoryIds, listState.firstVisibleItemIndex,
                 listState.isScrollInProgress && !controller.isStoryPreviewShowing())
         }.distinctUntilChanged().collect { (ids, first, scrolling) ->
             val passed = tracker.update(ids, first, scrolling)
@@ -254,14 +268,25 @@ internal fun StoriesList(
             }
     }
 
-    LaunchedEffect(listState, stories, visibleCount, onVisibleStoriesChanged) {
-        snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.mapNotNull { item ->
-                item.index.takeIf { it in 0 until visibleCount }?.let(stories::getOrNull)
+    if (onVisibleStoriesChanged != null) {
+        val currentStories by rememberUpdatedState(stories)
+        val currentVisibleCount by rememberUpdatedState(visibleCount)
+        val submitCandidates by rememberUpdatedState(onVisibleStoriesChanged)
+        val visibleIndices by remember(listState) {
+            derivedStateOf(structuralEqualityPolicy()) {
+                val visible = listState.layoutInfo.visibleItemsInfo
+                (visible.firstOrNull()?.index ?: 0)..(visible.lastOrNull()?.index ?: -1)
             }
         }
-            .distinctUntilChanged()
-            .collect(onVisibleStoriesChanged)
+        LaunchedEffect(listState) {
+            snapshotFlow {
+                val rows = currentStories
+                val count = currentVisibleCount
+                visibleIndices.mapNotNull { index ->
+                    if (index < count) rows.getOrNull(index)?.toCommentPreloadCandidate() else null
+                }
+            }.collect { submitCandidates(it) }
+        }
     }
 
     val paneInsetsHandled = LocalSplitPaneLayout.current.supportsTwoPane
@@ -302,6 +327,7 @@ internal fun StoriesList(
                     items = stories,
                     itemCount = visibleCount,
                     state = listState,
+                    cacheWindow = remember { LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 1f) },
                     key = { story -> story.id },
                     contentType = { story -> if (story.isComment) "comment" else "story" },
                     modifier = Modifier
@@ -487,6 +513,7 @@ internal fun StoriesList(
                                 StoryRow(
                                     model = model,
                                     style = style,
+                                    typographyOverride = rowTypography,
                                     modifier = itemModifier,
                                     listItem = true,
                                     pageBackground = MaterialTheme.colorScheme.pageBackground,

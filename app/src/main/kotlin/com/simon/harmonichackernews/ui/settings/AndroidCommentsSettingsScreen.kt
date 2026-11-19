@@ -10,6 +10,7 @@ fun AndroidCommentsSettingsScreen(
     onSpacingRequested: () -> Unit,
     onThreadDepthRequested: () -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
+    onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     twoPane: Boolean = false,
 ) {
@@ -22,6 +23,7 @@ fun AndroidCommentsSettingsScreen(
         onSpacingRequested = onSpacingRequested,
         onThreadDepthRequested = onThreadDepthRequested,
         onQuoteHighlightingRequested = onQuoteHighlightingRequested,
+        onMonoBlocksRequested = onMonoBlocksRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
     )
 }

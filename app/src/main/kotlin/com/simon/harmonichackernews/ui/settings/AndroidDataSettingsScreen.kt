@@ -21,8 +21,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.platform.AndroidTextDocuments
-import com.simon.harmonichackernews.settings.DataSettingsCounts
-import com.simon.harmonichackernews.settings.DataSettingsDialogState
 import com.simon.harmonichackernews.settings.DataSettingsRuntimeEffect
 import com.simon.harmonichackernews.platform.PresentationCopy
 import kotlinx.coroutines.CancellationException
@@ -54,7 +52,6 @@ fun AndroidDataSettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appComposition = LocalHarmonicUiDependencies.current
-    val settingsRepository = appComposition.settings
     val runtime = remember(appComposition, scope) {
         appComposition.createDataSettingsRuntime(scope) {
             appComposition.platform.timeFormatting
@@ -186,59 +183,20 @@ fun AndroidDataSettingsScreen(
         }
     }
 
-    val dataSnapshot = runtimeState.snapshot
-    val bookmarkCount = dataSnapshot.bookmarkCount
-    DataSettingsRoute(
-        repository = settingsRepository,
-        counts = DataSettingsCounts(
-            bookmarks = bookmarkCount,
-            history = dataSnapshot.historyCount,
-            hiddenPostCount = dataSnapshot.hiddenPostCount,
-            postCache = dataSnapshot.postCacheCount,
-            tintCache = dataSnapshot.tintCacheCount,
-            aiModelsBytes = dataSnapshot.aiModelBytes,
-        ),
-        loggedIn = dataSnapshot.loggedIn,
+    DataSettingsRuntimeContent(
+        repository = appComposition.settings,
+        runtime = runtime,
+        state = runtimeState,
         showNavigation = showNavigation,
         onBack = onBack,
-        onAction = runtime::handleDataSettingsAction,
-        contentVersion = runtimeState.revision,
-    )
-
-    when (runtimeState.dialog) {
-        DataSettingsDialogState.IMPORT -> ImportBookmarksDialog(
-            onDismiss = { runtime.showDialog(null) },
-            onImport = runtime::requestImport,
-        )
-
-        DataSettingsDialogState.RESET -> ResetSettingsConfirmationDialog(
-            onReset = runtime::resetSettings,
-            onDismiss = { runtime.showDialog(null) },
-        )
-
-        DataSettingsDialogState.LINKS -> MessageActionDialog(
+    ) { onDismiss ->
+        MessageActionDialog(
             message = "Since Harmonic does not own the domain news.ycombinator.com, " +
                 "intercepting links needs to be enabled manually.\n\n" +
                 "Go to \"Open by default\" → \"Add link\" in the linked app settings page.",
             neutralLabel = "Go to settings",
             onNeutral = runtime::openAppLinkSettings,
-            onDismiss = { runtime.showDialog(null) },
-        )
-
-        DataSettingsDialogState.AI_MODELS -> ClearAiModelsConfirmationDialog(
-            modelNames = dataSnapshot.aiModelNames,
-            onClear = runtime::clearAiModels,
-            onDismiss = { runtime.showDialog(null) },
-        )
-        null -> Unit
-    }
-
-    runtimeState.favoriteIds?.let { ids ->
-        AddBookmarksToFavoritesDialog(
-            bookmarkIds = ids.toIntArray(),
-            onDismiss = {
-                runtime.dismissFavorites()
-            },
+            onDismiss = onDismiss,
         )
     }
 }

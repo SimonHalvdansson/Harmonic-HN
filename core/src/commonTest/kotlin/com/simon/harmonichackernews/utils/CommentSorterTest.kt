@@ -7,6 +7,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
 class CommentSorterTest {
+    @Test fun timestampAndDefaultOrdersHandleExtremesAndKeepTiesStable() {
+        val comments = mutableListOf(Comment().apply { id = 0; depth = -1 })
+        listOf(Int.MIN_VALUE, Int.MAX_VALUE, 0, Int.MAX_VALUE).forEachIndexed { index, value ->
+            comments += Comment().apply { id = index + 1; depth = 0; time = value; sortOrder = value }
+        }
+        CommentSorter.sort(comments, CommentSorter.NEWEST_FIRST)
+        assertEquals(listOf(0, 2, 4, 3, 1), comments.map(Comment::id))
+        CommentSorter.sort(comments, CommentSorter.OLDEST_FIRST)
+        assertEquals(listOf(0, 1, 3, 2, 4), comments.map(Comment::id))
+        CommentSorter.sort(comments, CommentSorter.NEWEST_FIRST)
+        CommentSorter.sort(comments, CommentSorter.DEFAULT)
+        assertEquals(listOf(0, 1, 3, 2, 4), comments.map(Comment::id))
+    }
+
     @Test fun childListsRemainIndependentMutableAndReplaceable() {
         val first = Comment()
         val second = Comment()

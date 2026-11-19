@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.settings
 
+import com.simon.harmonichackernews.app.AppMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,31 +47,38 @@ class AppLaunchStateStoreTest {
     }
 
     @Test
-    fun versionUpgradeIsConsumedOnlyForNewerVersions() {
-        val store = AppLaunchStateStore(TestKeyValueStore())
+    fun changelogAppearsOncePerMajorOrMinorUpgrade() {
+        val preferences = TestKeyValueStore()
+        val store = AppLaunchStateStore(preferences)
+        fun launch(name: String, code: Int, enabled: Boolean = true) =
+            store.consumeLaunchDialog(AppMetadata(versionName = name, versionCode = code), enabled)
 
-        assertTrue(store.consumeVersionUpgrade(12))
-        assertFalse(store.consumeVersionUpgrade(12))
-        assertFalse(store.consumeVersionUpgrade(11))
-        assertTrue(store.consumeVersionUpgrade(13))
+        assertEquals(AppLaunchDialog.WELCOME, launch("3.2.7", 89))
+        store.markWelcomeDialogShown()
+        assertEquals(AppLaunchDialog.NONE, launch("3.2.7", 89))
+        assertEquals(AppLaunchDialog.NONE, launch("3.2.8", 90))
+        assertEquals(AppLaunchDialog.CHANGELOG, launch("3.3.1", 92))
+        assertEquals(AppLaunchDialog.NONE, launch("3.2.8", 90))
+        assertEquals(AppLaunchDialog.NONE, launch("3.3.1", 92))
+        assertEquals(AppLaunchDialog.CHANGELOG, launch("4.0", 93))
+        assertEquals(AppLaunchDialog.NONE, launch("4.0.1", 94))
+        assertEquals(AppLaunchDialog.NONE, launch("4.1", 95, enabled = false))
+        assertEquals(AppLaunchDialog.NONE, launch("4.1.1", 96))
     }
 
     @Test
-    fun welcomeTakesPriorityWhileStillConsumingTheCurrentVersion() {
-        val store = AppLaunchStateStore(TestKeyValueStore())
+    fun existingInstallUsesItsLastBuildNumberForTheFirstUpgrade() {
+        fun upgrade(previousCode: Int, versionName: String): AppLaunchDialog {
+            val preferences = TestKeyValueStore()
+            preferences.putInt(AppLaunchPreferenceKeys.LAST_VERSION, previousCode)
+            val store = AppLaunchStateStore(preferences)
+            store.markWelcomeDialogShown()
+            return store.consumeLaunchDialog(AppMetadata(versionName = versionName, versionCode = 90), true)
+        }
 
-        assertEquals(
-            AppLaunchDialog.WELCOME,
-            store.consumeLaunchDialog(currentVersion = 12, showChangelog = true),
-        )
-        store.markWelcomeDialogShown()
-        assertEquals(
-            AppLaunchDialog.NONE,
-            store.consumeLaunchDialog(currentVersion = 12, showChangelog = true),
-        )
-        assertEquals(
-            AppLaunchDialog.CHANGELOG,
-            store.consumeLaunchDialog(currentVersion = 13, showChangelog = true),
-        )
+        assertEquals(AppLaunchDialog.NONE, upgrade(89, "3.2.8"))
+        assertEquals(AppLaunchDialog.NONE, upgrade(81, "3.2.8"))
+        assertEquals(AppLaunchDialog.CHANGELOG, upgrade(80, "3.2.8"))
+        assertEquals(AppLaunchDialog.CHANGELOG, upgrade(89, "3.3"))
     }
 }

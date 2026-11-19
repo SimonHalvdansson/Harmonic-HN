@@ -43,6 +43,8 @@ object UserPreferenceKeys {
     const val PALETTE_TINT_AVOID_BACKGROUND_COLOR = "pref_palette_tint_avoid_background_color"
     const val MARK_SCROLLED_POSTS_READ = "pref_mark_scrolled_posts_read"
     const val GRAY_OUT_CLICKED = "pref_gray_out_clicked"
+    const val CLICKED_OPACITY = "pref_clicked_opacity"
+    const val DIM_CLICKED_BACKGROUND = "pref_dim_clicked_background"
     const val HOTNESS = "pref_hotness"
     const val FAVICON_PROVIDER = "pref_favicon_provider"
     const val FONT = "pref_font"
@@ -61,7 +63,9 @@ object UserPreferenceKeys {
     const val COMMENTS_HEADER_PREVIEW_IMAGE = "pref_enable_comments_header_preview_image"
     const val COMMENTS_HEADER_TINT = "pref_enable_comments_header_tint"
     const val COMMENTS_HEADER_TINT_SOURCE = "pref_comments_header_tint_source"
+    const val COMMENTS_HEADER_MINIMALISTIC = "pref_comments_header_minimalistic"
     const val COMMENTS_HEADER_DOMAIN = "pref_comments_header_domain"
+    const val COMMENTS_HEADER_SUMMARY = "pref_comments_header_summary"
     const val COMMENTS_HEADER_CATEGORIES = "pref_comments_header_categories"
     const val COMMENTS_HEADER_FAVICON = "pref_comments_header_favicon"
     const val COMMENTS_HEADER_POINTS = "pref_comments_header_points"
@@ -79,6 +83,7 @@ object UserPreferenceKeys {
     const val QUOTE_HIGHLIGHT_COLOR = "pref_quote_highlight_color"
     const val QUOTE_HIGHLIGHT_STYLE = "pref_quote_highlight_style"
     const val QUOTE_PADDING = "pref_quote_padding"
+    const val SCROLL_MONO_BLOCKS = "pref_scroll_mono_blocks"
     const val HIGHLIGHT_QUOTES = "pref_highlight_quotes"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
@@ -113,6 +118,7 @@ object UserPreferenceKeys {
     const val WEBVIEW_MATCH_THEME = "pref_webview_match_theme"
     const val LINK_PREVIEWS_ENABLED = "pref_link_previews_enabled"
     const val READER_MODE_ENABLED = "pref_webview_reader_mode_enabled"
+    const val READ_ALOUD_MINI_PLAYER = "pref_read_aloud_mini_player"
     const val READER_MODE_DEFAULT = "pref_webview_reader_mode_default"
     const val WEBVIEW_ADBLOCK = "pref_webview_adblock"
     const val CLOSE_WEBVIEW_ON_BACK = "pref_close_webview_on_back"
@@ -184,6 +190,8 @@ class StoredUserSettings(
                     boolean(UserPreferenceKeys.TINT_CARD_USING_PREVIEW, true),
                 paletteTintConfigKey = paletteConfig,
                 dimReadStories = boolean(UserPreferenceKeys.GRAY_OUT_CLICKED, true),
+                clickedOpacity = integer(UserPreferenceKeys.CLICKED_OPACITY, 0).coerceIn(-100, 100),
+                dimClickedBackground = boolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, true),
                 markScrolledPostsRead = boolean(UserPreferenceKeys.MARK_SCROLLED_POSTS_READ, false) &&
                     !boolean(UserPreferenceKeys.HIDE_CLICKED, false),
                 hotnessThreshold = string(UserPreferenceKeys.HOTNESS, "-1").toIntOrNull() ?: -1,
@@ -222,8 +230,10 @@ class StoredUserSettings(
             return CommentPreferences(
                 collapseParent = boolean(UserPreferenceKeys.COLLAPSE_PARENT, false),
                 showFavicons = boolean(UserPreferenceKeys.COMMENTS_HEADER_FAVICON, true),
+                minimalisticHeader = boolean(UserPreferenceKeys.COMMENTS_HEADER_MINIMALISTIC, false),
                 showHeaderDomain = boolean(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN, true),
                 showHeaderPoints = boolean(UserPreferenceKeys.COMMENTS_HEADER_POINTS, true),
+                showHeaderSummary = boolean(UserPreferenceKeys.COMMENTS_HEADER_SUMMARY, false),
                 showHeaderCategories = boolean(UserPreferenceKeys.COMMENTS_HEADER_CATEGORIES, true),
                 headerButtons = CommentsHeaderButtons(CommentsHeaderButton.entries
                     .filter { it.configurable && store.contains(it.storageKey) }
@@ -255,6 +265,7 @@ class StoredUserSettings(
                 indicatorThickness = CommentIndicatorThickness.fromStored(
                     string(UserPreferenceKeys.COMMENT_INDICATOR_THICKNESS, "standard"),
                 ),
+                scrollMonoBlocks = boolean(UserPreferenceKeys.SCROLL_MONO_BLOCKS, true),
                 highlightQuotes = boolean(UserPreferenceKeys.HIGHLIGHT_QUOTES, false),
                 quotePadding = boolean(UserPreferenceKeys.QUOTE_PADDING, true),
                 quoteSpacing = QuoteSpacing.fromStored(string(UserPreferenceKeys.QUOTE_SPACING, "comfortable")),
@@ -331,6 +342,7 @@ class StoredUserSettings(
                 ),
                 matchWebViewTheme = boolean(UserPreferenceKeys.WEBVIEW_MATCH_THEME, false),
                 readerModeEnabled = readerModeEnabled,
+                readAloudMiniPlayer = boolean(UserPreferenceKeys.READ_ALOUD_MINI_PLAYER, false),
                 readerModeDefault = readerModeEnabled &&
                     boolean(UserPreferenceKeys.READER_MODE_DEFAULT, false),
                 blockAds = boolean(UserPreferenceKeys.WEBVIEW_ADBLOCK, false),

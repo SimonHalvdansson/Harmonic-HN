@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.presentation
 
+import com.fleeksoft.ksoup.Ksoup
 import com.simon.harmonichackernews.data.Comment
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,6 +14,28 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentSearchSessionTest {
+    @Test
+    fun indexedTextAndMatchesFollowHtmlTextSemantics() = runTest {
+        val inputs = listOf("Plain Text", " a   b ", "<p>A&amp;B</p><p>Second</p>",
+            "Straße &amp; CAFÉ", "<pre>  pre\n text</pre>", "a\u00a0b", "A\u200bB")
+        val thread = CommentThreadStore().apply {
+            reset(null)
+            replaceParsedComments(null, inputs.mapIndexed { i, text -> comment(text).apply { id = i + 1 } },
+                "Default", false)
+        }
+        val session = CommentSearchSession(backgroundScope, thread, StandardTestDispatcher(testScheduler))
+        session.setActive(true)
+        runCurrent()
+        val expected = inputs.map { Ksoup.parse(it).text().lowercase() }
+        val indexed = thread.capturePreparationInput().searchIndex
+        assertEquals(expected, inputs.indices.map { indexed.getValue(it + 1).text })
+        for (query in listOf("PLAIN", "a b", "a&b", "second", "café", "PRE", "ab", "absent")) {
+            thread.setSearchQuery(query)
+            assertEquals(inputs.indices.filter { query.lowercase() in expected[it] }.map { it + 1 },
+                thread.state.value.searchResultIds)
+        }
+    }
+
     @Test
     fun preparationIsLazyAndReopeningReusesUnchangedText() = runTest {
         val thread = thread("first")

@@ -40,12 +40,11 @@ class CommentThreadRepository(
     /** Shared by fresh loads and both ready/in-flight preloads when a discussion is opened. */
     suspend fun reconcileMissingTopLevelComments(
         result: CommentThreadLoadResult.Algolia,
-        topLevelCommentIds: List<Int>,
         filteredUsers: Set<String>,
         onPending: suspend () -> Unit = {},
     ): CommentThreadLoadResult.Algolia = missingTopLevelComments.reconcile(
         result,
-        topLevelCommentIds.ifEmpty { result.parsed.cacheSummary?.topLevelCommentIds.orEmpty() },
+        result.parsed.cacheSummary?.topLevelCommentIds.orEmpty(),
         filteredUsers,
         onPending,
     )
@@ -81,6 +80,7 @@ class CommentThreadRepository(
         onAlgoliaFallback: () -> Unit = {},
         algoliaRequest: AlgoliaCommentRequest? = null,
         reuseDisplay: AlgoliaCommentsDisplayReuse? = null,
+        refreshTopLevelOrder: Boolean = false,
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
@@ -98,13 +98,12 @@ class CommentThreadRepository(
                         algoliaRepository.getItemJson(storyId)
                     }
                 }
-                val resolvedIds = if (topLevelCommentIds.isEmpty()) {
-                    async { resolveTopLevelCommentIds(storyId, topLevelCommentIds) }
+                val orderedIds = if (refreshTopLevelOrder || topLevelCommentIds.isEmpty()) {
+                    fetchTopLevelCommentIds(storyId).ifEmpty { topLevelCommentIds }
                 } else {
-                    null
+                    topLevelCommentIds
                 }
                 val responseText = response.await()
-                val orderedIds = resolvedIds?.await() ?: topLevelCommentIds
                 CommentThreadLoadResult.Algolia(
                     responseText,
                     algoliaCommentsParser.parseForDisplay(
@@ -128,16 +127,7 @@ class CommentThreadRepository(
         }
     }
 
-    /**
-     * Algolia returns a useful comment tree but not Hacker News' ranked top-level order. A story
-     * opened from a deep link may not carry its `kids` array, so resolve it before parsing cached
-     * or network comment JSON.
-     */
-    internal suspend fun resolveTopLevelCommentIds(
-        storyId: Int,
-        knownIds: List<Int>,
-    ): List<Int> {
-        if (knownIds.isNotEmpty()) return knownIds
+    private suspend fun fetchTopLevelCommentIds(storyId: Int): List<Int> {
         return try {
             hackerNewsRepository.getStory(storyId)?.kids?.toList().orEmpty()
         } catch (error: CancellationException) {

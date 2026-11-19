@@ -18,7 +18,7 @@ import com.simon.harmonichackernews.presentation.StoriesState
 import com.simon.harmonichackernews.presentation.CommentsPreloadCoordinator
 import com.simon.harmonichackernews.presentation.WebContentPolicy
 import com.simon.harmonichackernews.presentation.WebPreloadEnvironment
-import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.presentation.CommentPreloadCandidate
 import com.simon.harmonichackernews.navigation.EditorDestination
 import com.simon.harmonichackernews.navigation.EditorType
 import com.simon.harmonichackernews.navigation.MainDestination
@@ -293,7 +293,7 @@ class AndroidStoriesCoordinator(
         syncComposeState()
     }
 
-    fun updateVisibleStories(stories: List<StoryListItemSnapshot>) {
+    fun updateVisibleStories(stories: List<CommentPreloadCandidate>) {
         commentsPreloadCoordinator.updateVisibleStories(stories)
     }
 

@@ -37,6 +37,8 @@ internal fun StoryDisplaySettings.toStoryRowStyle(
     preferredFont = font,
     textSize = storyTextSize,
     dimmed = dimReadStories && context.isRead,
+    clickedOpacity = clickedOpacity,
+    dimClickedBackground = dimClickedBackground,
     commented = context.commented,
     paletteTintConfigKey = paletteTintMode,
 )
@@ -52,6 +54,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     is CommentRowStyleContext.Thread -> CommentRowStyle(
         spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
+        scrollMonoBlocks = scrollMonoBlocks,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,
@@ -75,6 +78,7 @@ internal fun CommentDisplaySettings.toCommentRowStyle(
     CommentRowStyleContext.Search -> CommentRowStyle(
         spacingScale = com.simon.harmonichackernews.settings.RowSpacingPreferences.scale(spacing),
         highlightQuotes = highlightQuotes,
+        scrollMonoBlocks = scrollMonoBlocks,
         quoteSpacing = quoteSpacing,
         quoteHighlightColor = quoteHighlightColor,
         quoteHighlightStyle = quoteHighlightStyle,

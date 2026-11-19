@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
@@ -42,9 +40,10 @@ class StoryCategoryLocationTest {
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 StoriesSettingsRoute(
                     repository = settings, categorySettings = categories,
-                    previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
+                    previewModel = SettingsStoryPreviewModel,
                     showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {},
-                    onManageFrontpages = {}, onPaletteTintRequested = {}, faviconDialog = { _, _, _, _ -> },
+                    onManageFrontpages = {}, onPaletteTintRequested = {},
+                    onClickedPostsRequested = {},
                 )
             }
         }

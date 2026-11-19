@@ -20,11 +20,16 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -73,6 +78,7 @@ internal data class CommentActionSharedTransitionState(
     val hideTargetContent: Boolean,
     val drawOverlayShadows: Boolean,
     val source: CommentActionSourceGeometry?,
+    val sourceViewportTop: Float,
     val sourceSnapshot: ImageBitmap?,
     val targetContainer: Rect?,
     val predictiveBackProgress: () -> Float,
@@ -83,6 +89,12 @@ internal data class CommentActionSharedTransitionState(
     val updateTargetBounds: (CommentActionTargetElement, Rect) -> Unit,
     val updateTargetLayer: (CommentActionTargetElement, GraphicsLayer) -> Unit,
 )
+
+// Only pixels below the floating story header belong to the visible transition source.
+private fun CommentActionSharedTransitionState.sourceViewport(): Rect {
+    val top = (sourceViewportTop - rootBounds.top).coerceIn(0f, rootBounds.height)
+    return Rect(0f, top, rootBounds.width, rootBounds.height)
+}
 
 internal val LocalCommentActionSharedTransition =
     compositionLocalOf<CommentActionSharedTransitionState?> { null }
@@ -167,10 +179,37 @@ internal fun BoxScope.CommentActionContainerBackground(
 internal fun CommentActionTransitionOverlay(
     transition: CommentActionSharedTransitionState,
     targetColor: Color,
+    peekHeader: CommentsPeekHeaderState?,
+    scrimAlpha: () -> Float,
 ) {
     if (!transition.active || transition.source == null) return
     val drawCache = remember { SharedTransitionDrawCache() }
-    Box(Modifier.fillMaxSize()) {
+    val peekBounds = peekHeader?.layerBounds ?: Rect.Zero
+    val overlapsTarget = transition.targetContainer?.overlaps(peekBounds) == true
+    val peekOcclusion = if (peekHeader != null && !peekBounds.isEmpty &&
+        (peekBounds.overlaps(transition.source.container) || overlapsTarget)
+    ) {
+        val paint = remember { Paint().apply { blendMode = BlendMode.SrcAtop } }
+        Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.drawWithContent {
+            drawContent()
+            val layer = peekHeader.layer ?: return@drawWithContent
+            if (layer.isReleased) return@drawWithContent
+            val bounds = peekBounds.translate(-transition.rootBounds.topLeft)
+            val brightness = 1f - scrimAlpha()
+            paint.colorFilter = ColorFilter.tint(Color(brightness, brightness, brightness), BlendMode.Modulate)
+            // The list already draws the peek. Composite its live pixels only over the moving
+            // source, preserving the translucent edge and shadow right through the handoff.
+            // A tall resting dialog can cover the header. Hand that overlap to the live
+            // dialog along with the source content; otherwise keep the edge at full strength.
+            paint.alpha = if (overlapsTarget) sourceAlpha(transition.progress()) else 1f
+            if (paint.alpha > 0f) {
+                drawContext.canvas.saveLayer(bounds, paint)
+                translate(bounds.left, bounds.top) { drawLayer(layer) }
+                drawContext.canvas.restore()
+            }
+        }
+    } else Modifier
+    Box(Modifier.fillMaxSize().then(peekOcclusion)) {
         CommentActionMovingSurface(transition, targetColor)
         Canvas(Modifier.fillMaxSize()) {
             val source = checkNotNull(transition.source)
@@ -178,7 +217,7 @@ internal fun CommentActionTransitionOverlay(
             if (rootBounds.width <= 0f || rootBounds.height <= 0f) return@Canvas
             val rootOffset = rootBounds.topLeft
             val localSource = source.container.translate(-rootOffset.x, -rootOffset.y)
-            val viewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
+            val viewport = transition.sourceViewport()
             val visibleSource = localSource.intersectionOrNull(viewport) ?: return@Canvas
             val targetContainer = transition.targetContainer
                 ?.translate(-rootOffset.x, -rootOffset.y)
@@ -221,7 +260,7 @@ private fun CommentActionMovingSurface(transition: CommentActionSharedTransition
     if (rootBounds.width <= 0f || rootBounds.height <= 0f) return
     val rootOffset = rootBounds.topLeft
     val localSource = source.container.translate(-rootOffset.x, -rootOffset.y)
-    val viewport = Rect(0f, 0f, rootBounds.width, rootBounds.height)
+    val viewport = transition.sourceViewport()
     val visibleSource = localSource.intersectionOrNull(viewport) ?: return
     val targetContainer = transition.targetContainer
         ?.translate(-rootOffset.x, -rootOffset.y)
@@ -325,7 +364,7 @@ private fun DrawScope.drawCommentActionContent(
     val indicatorLayer = transition.source?.indicatorLayer
     if (indicatorBounds != null && indicatorLayer != null && !indicatorLayer.isReleased) {
         val visibleIndicator = indicatorBounds.intersectionOrNull(
-            Rect(0f, 0f, transition.rootBounds.width, transition.rootBounds.height),
+            transition.sourceViewport(),
         )
         if (visibleIndicator != null) {
             val destination = indicatorBounds.translate(

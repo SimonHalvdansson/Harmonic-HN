@@ -5,6 +5,12 @@ import com.simon.harmonichackernews.utils.StorySearchRanking
 import io.ktor.http.URLBuilder
 import kotlin.time.Clock
 
+enum class StorySearchSource(val label: String) {
+    ALL("All"),
+    BOOKMARKS("Bookmarks"),
+    HISTORY("History"),
+}
+
 class StorySearchController(
     private val clock: Clock = Clock.System,
 ) {
@@ -16,19 +22,14 @@ class StorySearchController(
     var dateRangeIndex: Int = 0
     var minimumPointsIndex: Int = 0
     var minimumCommentsIndex: Int = 0
-    var isOnlyRead: Boolean = false
-        private set
+    var source: StorySearchSource = StorySearchSource.ALL
 
     fun resetOptions() {
         sortIndex = 0
         dateRangeIndex = 0
         minimumPointsIndex = 0
         minimumCommentsIndex = 0
-        isOnlyRead = false
-    }
-
-    fun toggleOnlyRead() {
-        isOnlyRead = !isOnlyRead
+        source = StorySearchSource.ALL
     }
 
     val sortLabel: String
@@ -103,7 +104,7 @@ class StorySearchController(
         return query.orEmpty().trim { it <= ' ' }.lowercase()
     }
 
-    fun shouldIncludeOnlyReadStory(
+    fun shouldIncludeCollectionStory(
         story: Story,
         normalizedQuery: String,
         storyFilter: StoryFilter
@@ -130,7 +131,7 @@ class StorySearchController(
         return !storyFilter.shouldFilterStory(story)
     }
 
-    fun sortOnlyReadResults(stories: MutableList<Story>, query: String?) {
+    fun sortCollectionResults(stories: MutableList<Story>, query: String?) {
         if (sortIndex == 0) {
             StorySearchRanking.sortStoriesByRelevance(stories, query)
         } else {

@@ -38,6 +38,7 @@ enum class StoryStringPreference { DISPLAY_STYLE, CATEGORY_TAG_LOCATION }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
     HIGHLIGHT_QUOTES(UserPreferenceKeys.HIGHLIGHT_QUOTES),
+    SCROLL_MONO_BLOCKS(UserPreferenceKeys.SCROLL_MONO_BLOCKS),
     QUOTE_PADDING(UserPreferenceKeys.QUOTE_PADDING),
     ROUNDED_DEPTH_INDICATORS(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS),
     CONTINUOUS_DEPTH_INDICATORS(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS),
@@ -49,8 +50,10 @@ enum class CommentBooleanPreference(internal val storageKey: String) {
     SHOW_SCROLLBAR(UserPreferenceKeys.COMMENTS_SCROLLBAR),
     ANIMATE_CHANGES(UserPreferenceKeys.COMMENTS_ANIMATION),
     HEADER_TINT(UserPreferenceKeys.COMMENTS_HEADER_TINT),
+    HEADER_MINIMALISTIC(UserPreferenceKeys.COMMENTS_HEADER_MINIMALISTIC),
     HEADER_DOMAIN(UserPreferenceKeys.COMMENTS_HEADER_DOMAIN),
     HEADER_CATEGORIES(UserPreferenceKeys.COMMENTS_HEADER_CATEGORIES),
+    HEADER_SUMMARY(UserPreferenceKeys.COMMENTS_HEADER_SUMMARY),
     HEADER_FAVICON(UserPreferenceKeys.COMMENTS_HEADER_FAVICON),
     HEADER_POINTS(UserPreferenceKeys.COMMENTS_HEADER_POINTS),
     COMBINE_HEADER_ACTIONS(UserPreferenceKeys.COMMENTS_COMBINE_HEADER_ACTIONS),
@@ -76,6 +79,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
     READER_MODE_ENABLED(UserPreferenceKeys.READER_MODE_ENABLED),
     LINK_PREVIEWS_ENABLED(UserPreferenceKeys.LINK_PREVIEWS_ENABLED),
     READER_MODE_DEFAULT(UserPreferenceKeys.READER_MODE_DEFAULT),
+    READ_ALOUD_MINI_PLAYER(UserPreferenceKeys.READ_ALOUD_MINI_PLAYER),
     PULL_TO_OPEN_BROWSER(UserPreferenceKeys.PULL_TO_OPEN_BROWSER),
     EXTERNAL_BROWSER(UserPreferenceKeys.EXTERNAL_BROWSER),
     REDIRECT_NITTER(UserPreferenceKeys.REDIRECT_NITTER),
@@ -294,6 +298,9 @@ class AppSettingsRepository(
         tone: Int,
         avoidBackgroundColor: Boolean = PaletteTintPreferences.DEFAULT_AVOID_BACKGROUND_COLOR,
     ): Boolean = mutator.setPaletteTint(mode, strength, colorfulness, tone, avoidBackgroundColor)
+
+    fun setClickedOpacity(value: Int) = mutator.setClickedOpacity(value)
+    fun setDimClickedBackground(value: Boolean) = mutator.setDimClickedBackground(value)
 
     fun clearPaletteTint(): Boolean = mutator.clearPaletteTint()
 }

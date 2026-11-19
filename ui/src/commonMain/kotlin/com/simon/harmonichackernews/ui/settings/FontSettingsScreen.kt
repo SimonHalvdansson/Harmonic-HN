@@ -130,7 +130,7 @@ fun FontSettingsScreen(
         item {
             SettingsCard {
                 SegmentedSetting(
-                    title = "Apply",
+                    title = "Apply to",
                     options = listOf(false to "Posts and comments", true to "Everywhere"),
                     optionWeights = mapOf(false to 1.5f, true to 1f),
                     selected = applyEverywhere,

@@ -1,29 +1,27 @@
 package com.simon.harmonichackernews.ui.comments
 
-internal data class ScrollbarMetrics(
-    val scrollPosition: Float,
-    val visibleFraction: Float,
-)
+import androidx.compose.foundation.ScrollIndicatorState
+import androidx.compose.foundation.gestures.ScrollableState
 
-/** Normalize Compose's estimates while keeping the thumb at either end of the actual list. */
-internal fun commentsScrollbarMetrics(
-    scrollOffset: Int,
-    contentSize: Int,
-    viewportSize: Int,
-    canScrollBackward: Boolean,
-    canScrollForward: Boolean,
-): ScrollbarMetrics? {
-    if ((!canScrollBackward && !canScrollForward) || contentSize <= 0 || viewportSize <= 0 ||
-        contentSize == Int.MAX_VALUE || scrollOffset == Int.MAX_VALUE
-    ) return null
-    val scrollable = (contentSize - viewportSize).coerceAtLeast(0)
-    return ScrollbarMetrics(
-        scrollPosition = when {
-            !canScrollBackward -> 0f
-            !canScrollForward -> 1f
-            scrollable == 0 -> 0f
-            else -> (scrollOffset.toFloat() / scrollable).coerceIn(0f, 1f)
-        },
-        visibleFraction = (viewportSize.toFloat() / contentSize).coerceIn(0.04f, 1f),
-    )
+/** Lazy lists estimate their length from visible rows. Keep the thumb inside the track at both ends. */
+internal class CommentsScrollIndicator(
+    private val estimates: ScrollIndicatorState,
+    private val list: ScrollableState,
+) : ScrollIndicatorState by estimates {
+    override val contentSize: Int
+        get() = when {
+            !list.canScrollForward && !list.canScrollBackward -> 0
+            estimates.contentSize == Int.MAX_VALUE || estimates.scrollOffset == Int.MAX_VALUE -> 0
+            else -> estimates.contentSize
+        }
+
+    override val scrollOffset: Int
+        get() {
+            val end = (contentSize - viewportSize).coerceAtLeast(0)
+            return when {
+                !list.canScrollBackward -> 0
+                !list.canScrollForward -> end
+                else -> estimates.scrollOffset.coerceIn(0, end)
+            }
+        }
 }

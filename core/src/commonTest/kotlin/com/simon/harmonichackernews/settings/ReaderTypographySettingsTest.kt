@@ -3,6 +3,19 @@ package com.simon.harmonichackernews.settings
 import kotlin.test.*
 
 class ReaderTypographySettingsTest {
+    @Test fun miniPlayerIsOptInAndSurvivesSettingsTransfer() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        val transfer = SettingsTransfer(store, InMemoryKeyValueStore())
+        assertFalse(repository.snapshot().reading.readAloudMiniPlayer)
+        repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, true)
+        val backup = transfer.export()
+        repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, false)
+        assertFalse(repository.snapshot().reading.readAloudMiniPlayer)
+        assertIs<SettingsImportResult.Imported>(transfer.import(backup))
+        assertTrue(AppSettingsRepository(store, store.changes).snapshot().reading.readAloudMiniPlayer)
+    }
+
     @Test
     fun defaultsBoundsAndExplicitExistingSizes() {
         val store = InMemoryKeyValueStore()

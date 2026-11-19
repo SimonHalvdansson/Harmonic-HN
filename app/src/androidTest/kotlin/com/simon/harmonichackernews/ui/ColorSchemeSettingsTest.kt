@@ -43,12 +43,12 @@ class ColorSchemeSettingsTest {
                     LocalRippleConfiguration provides null,
                 ) {
                     HarmonicTheme(palette.colorScheme, dark) {
-                        ThemeSettingsRoute(repository,
-                            labels = ThemeRouteLabels("21:00 - 06:00", dark, true),
+                        ThemeSettingsRoute(repository, appearance = app.appearance,
+                            labels = ThemeRouteLabels(is24Hour = true, activeDark = dark),
                             showNavigation = false, onBack = {}, onThemeChanged = {},
                             resolvePreviewScheme = { scheme, previewDark, style ->
                                 harmonicThemePalette(compose.activity, ThemeSelection.forScheme(scheme, previewDark, style))
-                            }, dialogContent = { _, _, _ -> })
+                            })
                     }
                 }
             }
@@ -91,9 +91,9 @@ class ColorSchemeSettingsTest {
             assertEquals(expected.blue, actual.blue, .01f)
         }
         // Keep clear of the selected check mark in the top-right quadrant.
-        assertRole(expected.primary, .15f, .3f)
-        assertRole(expected.secondary, .7f, .7f)
-        assertRole(expected.tertiary, .3f, .7f)
+        assertRole(if (dark) expected.primary else expected.primaryContainer, .15f, .3f)
+        assertRole(if (dark) expected.secondary else expected.tertiaryContainer, .7f, .7f)
+        assertRole(if (dark) expected.tertiary else expected.secondaryContainer, .3f, .7f)
     }
 
     private fun pureBlackSwitch(tag: String) = compose.onNode(

@@ -20,6 +20,10 @@ internal object AskQuestionSuggestions {
 
     const val TEXT_FORMAT = "Return only a JSON array of two question strings, with no answers or other text."
 
+    private object FallbackPatterns {
+        val listPrefix = Regex("^(?:[-*•]|\\d+[.)])\\s+")
+    }
+
     fun parse(response: String, existing: List<String>): List<String> {
         val array = response.substringAfter('[', "").substringBeforeLast(']', "")
         val jsonQuestions = runCatching {
@@ -28,18 +32,24 @@ internal object AskQuestionSuggestions {
             }
         }.getOrNull()
         val candidates = jsonQuestions?.takeIf { it.isNotEmpty() } ?: response.lines().map {
-            it.trim().replace(Regex("^(?:[-*•]|\\d+[.)])\\s+"), "").trim('"')
+            it.trim().replace(FallbackPatterns.listPrefix, "").trim('"')
         }
         return validate(candidates, existing)
     }
 
     fun validate(candidates: List<String>, existing: List<String>): List<String> {
         val excluded = existing.map { it.trim().lowercase().trimEnd('?') }.toSet()
-        return candidates.map(String::trim)
-            .filter { it.length in 8..180 && it.endsWith('?') && '\n' !in it &&
-                it.lowercase().trimEnd('?') !in excluded }
-            .distinctBy { it.lowercase() }
-            .take(2)
-            .takeIf { it.size == 2 }.orEmpty()
+        val result = ArrayList<String>(2)
+        var firstKey: String? = null
+        for (candidate in candidates) {
+            val question = candidate.trim()
+            if (question.length !in 8..180 || !question.endsWith('?') || '\n' in question) continue
+            val key = question.lowercase()
+            if (key.trimEnd('?') in excluded || key == firstKey) continue
+            result.add(question)
+            if (result.size == 2) return result
+            firstKey = key
+        }
+        return emptyList()
     }
 }

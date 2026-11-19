@@ -72,7 +72,7 @@ private const val AboutBody =
         "my PhD in harmonic analysis and Harmonic has grown to a mature app. Seeing others contribute, " +
         "open meaningful issues on GitHub or just tell me they like the app is always super nice " +
         "and I'm very thankful to the community for helping with the maintenance. Together I " +
-        "think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"
+        "think we can keep Harmonic the (in my opinion) best Hacker News client!"
 
 private const val FeedbackBody =
     "Please submit it by opening an issue or starting a discussion on Harmonic’s GitHub page"

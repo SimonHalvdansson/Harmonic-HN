@@ -2,7 +2,6 @@ package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.resources.*
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,17 +27,13 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +51,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.ui.common.PredictiveBackDialog
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
+
+/** Retained Settings screens keep their drafts without displaying windows above another screen. */
+val LocalSettingsDialogsVisible = compositionLocalOf { true }
 
 @Composable
 fun SettingsAlertDialog(
@@ -75,6 +73,7 @@ fun SettingsAlertDialog(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     foreground: (@Composable BoxScope.() -> Unit)? = null,
 ) {
+    if (!LocalSettingsDialogsVisible.current) return
     val dialogMaxWidth = settingsDialogMaxWidth()
     SynchronizedSettingsDialogs {
         PredictiveBackDialog(
@@ -321,6 +320,7 @@ fun SingleChoiceDialog(
     options: List<Pair<String, String>>,
     selected: String,
     onDismiss: () -> Unit,
+    showDoneButton: Boolean = false,
     onSelected: (String) -> Unit,
 ) {
     SettingsAlertDialog(
@@ -361,92 +361,8 @@ fun SingleChoiceDialog(
                 }
             }
         },
-        confirmButton = {},
-        showButtons = false,
-    )
-}
-
-@Composable
-fun MultiChoiceDialog(
-    title: String,
-    options: List<String>,
-    selected: Set<String>,
-    onDismiss: () -> Unit,
-    onSelectionChanged: (Set<String>) -> Unit,
-    description: String? = null,
-) {
-    var workingSelection by remember(options, selected) {
-        mutableStateOf(selected)
-    }
-    SettingsAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { SettingsDialogTitle(title) },
-        edgeToEdgeContent = true,
-        scrollableContent = true,
-        text = {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 480.dp),
-            ) {
-                if (!description.isNullOrBlank()) {
-                    item(key = "description", contentType = "description") {
-                        Text(
-                            text = description,
-                            modifier = Modifier.padding(
-                                start = 24.dp,
-                                top = 4.dp,
-                                end = 24.dp,
-                                bottom = 12.dp,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = AppUiFontFamily,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                        )
-                    }
-                }
-                items(options, key = { it }, contentType = { "checkbox-option" }) { option ->
-                    val checked = option in workingSelection
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = 48.dp)
-                            .clickable(
-                                role = Role.Checkbox,
-                                onClick = {
-                                    workingSelection = if (checked) {
-                                        workingSelection - option
-                                    } else {
-                                        workingSelection + option
-                                    }
-                                },
-                            )
-                            .padding(horizontal = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SettingsCheckbox(checked = checked)
-                        Text(
-                            text = option,
-                            modifier = Modifier.padding(start = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = AppUiFontFamily,
-                            fontSize = 16.sp,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            SettingsDialogTextButton(onClick = { onSelectionChanged(workingSelection) }) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            SettingsDialogTextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
+        confirmButton = { SettingsDialogTextButton(onClick = onDismiss) { Text("Done") } },
+        showButtons = showDoneButton,
     )
 }
 

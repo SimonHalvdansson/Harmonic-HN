@@ -18,7 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
@@ -39,6 +39,7 @@ import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.utils.DomainNamePolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
 
@@ -54,7 +55,11 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
     var selected by rememberSaveable(categoryId, stateSaver = CategoryHistorySelectionSaver) {
         mutableStateOf<Set<Int>>(emptySet())
     }
-    var query by rememberSaveable(categoryId, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
+    val query = key(categoryId) { rememberTextFieldState() }
+    val searchText = query.text.toString()
+    LaunchedEffect(query) {
+        snapshotFlow { query.text.toString() }.drop(1).collect { listState.requestScrollToItem(0) }
+    }
     // Retain only a paging/scroll checkpoint, not potentially megabytes of story text in a Bundle.
     var loadedEnd by rememberSaveable(categoryId) { mutableIntStateOf(0) }
     val restoreEnd = remember(categoryId) { loadedEnd }
@@ -105,7 +110,7 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Int }.toSet() }
             .distinctUntilChanged().collect { visibleIds = it }
     }
-    LaunchedEffect(visibleIds, stories, query.text, configuration, adding, scoreRetry) {
+    LaunchedEffect(visibleIds, stories, searchText, configuration, adding, scoreRetry) {
         if (adding) return@LaunchedEffect
         try {
             if (scoreConfiguration !== configuration) {
@@ -115,7 +120,7 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
             }
             if (!hasCenter) return@LaunchedEffect
             val filtered = stories.filter {
-                it.title.contains(query.text, true) || DomainNamePolicy.fromUrl(it.url).orEmpty().contains(query.text, true)
+                it.title.contains(searchText, true) || DomainNamePolicy.fromUrl(it.url).orEmpty().contains(searchText, true)
             }
             val first = filtered.indexOfFirst { it.id in visibleIds }.coerceAtLeast(0)
             val last = filtered.indexOfLast { it.id in visibleIds }.coerceAtLeast(first)
@@ -158,7 +163,7 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
         restoring = false
     }
     val visibleStories = stories.filter {
-        it.title.contains(query.text, true) || DomainNamePolicy.fromUrl(it.url).orEmpty().contains(query.text, true)
+        it.title.contains(searchText, true) || DomainNamePolicy.fromUrl(it.url).orEmpty().contains(searchText, true)
     }
     SettingsAlertDialog(
         onDismissRequest = { if (!adding) dismissPicker() },
@@ -179,11 +184,9 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
                     fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else Spacer(Modifier.height(12.dp))
-                DialogSearchField(query, {
-                    if (!keyboardAction.isClosing) { query = it; listState.requestScrollToItem(0) }
-                }, "Search loaded history",
+                DialogSearchField(query, "Search loaded history",
                     Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 24.dp)
-                        .testTag("category-history-query"), enabled = !adding)
+                        .testTag("category-history-query"), enabled = !adding && !keyboardAction.isClosing)
                 AnimatedVisibility(visible = adding) {
                     Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
                         Text("Adding ${(progress + 1).coerceAtMost(selected.size)} of ${selected.size}…",

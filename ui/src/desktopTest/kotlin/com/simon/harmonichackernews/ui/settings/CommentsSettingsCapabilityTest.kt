@@ -21,11 +21,12 @@ class CommentsSettingsCapabilityTest {
     @Test fun portableHostsHideUnsupportedVolumeKeysWhileAndroidKeepsThem() = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("CommentsSettingsCapabilityTest")
         try {
-            for (portable in listOf(true, false)) {
+            for ((portable, peekSupported) in listOf(true to false, true to true, false to true)) {
                 val scene = ImageComposeScene(600, 4000) {
                     HarmonicTheme(HarmonicThemeCatalog.scheme("dynamic", false).colorScheme, false) {
                         CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
                             if (portable) PortableSettingsDetail(
+                                peekStoryHeaderSupported = peekSupported,
                                 section = SettingsSection.Comments, app = bootstrap.app, scene = bootstrap.scene,
                                 singlePane = true, onBack = {}, onNavigate = { _, _ -> },
                                 appIcon = ColorPainter(Color.Gray), debugPlatformVersion = "test",
@@ -33,7 +34,7 @@ class CommentsSettingsCapabilityTest {
                                 readerPreview = { _, _ -> },
                             ) else CommentsSettingsRoute(
                                 repository = bootstrap.app.settings, showNavigation = true, onBack = {}, onSpacingRequested = {},
-                                onThreadDepthRequested = {}, onQuoteHighlightingRequested = {}, onUserAvatarsRequested = {},
+                                onThreadDepthRequested = {}, onQuoteHighlightingRequested = {}, onMonoBlocksRequested = {}, onUserAvatarsRequested = {},
                             )
                         }
                     }
@@ -44,6 +45,7 @@ class CommentsSettingsCapabilityTest {
                     val text = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }
                         .flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }.map { it.text }
                     assertTrue("Navigation" in text, "The navigation settings must be rendered")
+                    assertEquals(peekSupported, "Peek story header" in text)
                     assertEquals(!portable, "Volume buttons for navigation" in text)
                 } finally { scene.close() }
             }

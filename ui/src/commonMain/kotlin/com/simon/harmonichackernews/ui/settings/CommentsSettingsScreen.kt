@@ -60,6 +60,7 @@ data class CommentsSettingsUiState(
     val smoothScroll: Boolean,
     val indicatorThickness: CommentIndicatorThickness = CommentIndicatorThickness.STANDARD,
     val highlightQuotes: Boolean = false,
+    val scrollMonoBlocks: Boolean = true,
     val quoteHighlightColor: QuoteHighlightColor = QuoteHighlightColor.MATERIAL,
     val quoteSpacing: QuoteSpacing = QuoteSpacing.COMFORTABLE,
     val quoteHighlightStyle: QuoteHighlightStyle = QuoteHighlightStyle.BOTH,
@@ -78,6 +79,7 @@ data class CommentsSettingsUiState(
 
 enum class CommentsBooleanSetting(internal val preference: CommentBooleanPreference) {
     HighlightQuotes(CommentBooleanPreference.HIGHLIGHT_QUOTES),
+    ScrollMonoBlocks(CommentBooleanPreference.SCROLL_MONO_BLOCKS),
     RoundedDepthIndicators(CommentBooleanPreference.ROUNDED_DEPTH_INDICATORS),
     ContinuousDepthIndicators(CommentBooleanPreference.CONTINUOUS_DEPTH_INDICATORS),
     CollectLinks(CommentBooleanPreference.COLLECT_REFERENCE_LINKS),
@@ -102,7 +104,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
 
-enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, Preload, HiddenComments }
+enum class CommentsSettingsDialog { Provider, VolumeNavigation, Preload, HiddenComments }
 
 @Composable
 fun CommentsSettingsScreen(
@@ -114,14 +116,17 @@ fun CommentsSettingsScreen(
     onTextSizeOffsetChanged: (Int) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
+    onSortingChanged: (CommentSortingPreference) -> Unit,
     onThreadDepthRequested: () -> Unit,
     onThreadDepthEnabledChanged: (Boolean) -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
+    onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
     onUserAvatarsEnabledChanged: (Boolean) -> Unit,
     onCollectedLinksModeChanged: (CollectedLinksMode) -> Unit,
     contentVersion: Int = 0,
     volumeNavigationSupported: Boolean = true,
+    peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
     twoPane: Boolean = false,
     focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
@@ -183,7 +188,7 @@ fun CommentsSettingsScreen(
                 )
             }
             row {
-                BooleanRow("Emphasize username and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
+                BooleanRow("Highlight author and time", Res.drawable.ic_dropdown_menu, state.emphasizeMetadata, CommentsBooleanSetting.EmphasizeMetadata, onBooleanChanged)
             }
             row {
                 NavigationSwitchSettingRow(
@@ -212,6 +217,15 @@ fun CommentsSettingsScreen(
                     onClick = onQuoteHighlightingRequested,
                     checked = state.highlightQuotes,
                     onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.HighlightQuotes, it) },
+                )
+            }
+            row {
+                NavigationSwitchSettingRow(
+                    title = stringResource(Res.string.settings_section_mono_blocks),
+                    icon = Res.drawable.ic_code_blocks,
+                    onClick = onMonoBlocksRequested,
+                    checked = state.scrollMonoBlocks,
+                    onCheckedChange = { onBooleanChanged(CommentsBooleanSetting.ScrollMonoBlocks, it) },
                 )
             }
             row {
@@ -268,14 +282,25 @@ fun CommentsSettingsScreen(
                 )
             }
             row {
-                DialogRow("Comment sorting", state.sorting.label, Res.drawable.ic_filter_list, CommentsSettingsDialog.Sorting, onDialogRequested)
+                SegmentedSetting(
+                    title = "Comment sorting",
+                    options = listOf(
+                        CommentSortingPreference.DEFAULT to "Default",
+                        CommentSortingPreference.NEWEST_FIRST to "Newest",
+                        CommentSortingPreference.OLDEST_FIRST to "Oldest",
+                        CommentSortingPreference.REPLY_COUNT to "Reply count",
+                    ),
+                    optionWeights = mapOf(CommentSortingPreference.REPLY_COUNT to 1.3f),
+                    selected = state.sorting,
+                    onSelected = onSortingChanged,
+                )
             }
             row {
                 DialogRow("Comments provider", state.provider.label, Res.drawable.ic_api, CommentsSettingsDialog.Provider, onDialogRequested)
             }
         }
         settingsCategory("Navigation") {
-            row {
+            if (peekStoryHeaderSupported) row {
                 BooleanRow(
                     "Peek story header",
                     Res.drawable.ic_arrow_upward,

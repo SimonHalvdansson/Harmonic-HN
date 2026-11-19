@@ -27,7 +27,7 @@ class ConstrainedFilterRulesTest {
         for (width in listOf(208, 280, 480)) for (scale in listOf(1f, 2f)) {
             val mode = mutableStateOf(TitleFilterMatchMode.WORDS_PHRASE)
             val harness = Harness(width, 240, scale) {
-                TitleFilterRuleEditorContent("AI", mode.value, {}, { mode.value = it }, true, FocusRequester(), {})
+                TitleFilterRuleEditorContent(androidx.compose.foundation.text.input.rememberTextFieldState("AI"), mode.value, { mode.value = it }, true, FocusRequester(), {})
             }
             try {
                 harness.frames()

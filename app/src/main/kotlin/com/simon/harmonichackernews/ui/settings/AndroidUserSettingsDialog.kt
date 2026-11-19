@@ -3,19 +3,9 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
-import com.simon.harmonichackernews.presentation.UserProfileLoadState
-import com.simon.harmonichackernews.presentation.UserProfileSessionEffect
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.months
 import org.jetbrains.compose.resources.stringArrayResource
@@ -27,99 +17,24 @@ fun AndroidUserSettingsDialog(
     onTagChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val appComposition = LocalHarmonicUiDependencies.current
-    val userTags = appComposition.userTags
-    val monthNames = stringArrayResource(Res.array.months)
-    val scene = appComposition.scene
-    val session = remember(scene, userName, monthNames) {
-        scene.userProfiles.open(userName).also { it.runtime.updateMonthNames(monthNames) }
-    }
-    val runtime = session.runtime
-    val runtimeState by runtime.state.collectAsStateWithLifecycle()
-    val settings by appComposition.settings.updates.collectAsStateWithLifecycle(
-        initialValue = appComposition.settings.snapshot(),
+    val dependencies = LocalHarmonicUiDependencies.current
+    UserProfileDialog(
+        scene = dependencies.scene,
+        settingsRepository = dependencies.settings,
+        userTags = dependencies.userTags,
+        userName = userName,
+        onDismiss = onDismiss,
+        onTagChanged = onTagChanged,
+        monthNames = stringArrayResource(Res.array.months),
+        onReportEmail = { username ->
+            val intent = Intent(
+                Intent.ACTION_SENDTO,
+                ("mailto:hn@ycombinator.com?subject=" +
+                    Uri.encode("Reporting user $username")).toUri(),
+            )
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(Intent.createChooser(intent, "Send report via"))
+            }
+        },
     )
-    var tagDialogOpen by rememberSaveable(userName) { mutableStateOf(false) }
-    var currentTag by remember(userName) { mutableStateOf(userTags.tagFor(userName)) }
-    var currentTagColor by remember(userName) { mutableStateOf(userTags.colorFor(userName)) }
-
-    LaunchedEffect(session) {
-        session.start()
-        session.effects.collect { effect ->
-            when (effect) {
-                is UserProfileSessionEffect.OpenSubmissions -> {
-                    onDismiss()
-                    appComposition.navigation.openSubmissions(effect.username)
-                }
-                is UserProfileSessionEffect.ComposeReportEmail -> {
-                    val intent = Intent(
-                        Intent.ACTION_SENDTO,
-                        ("mailto:hn@ycombinator.com?subject=" +
-                            Uri.encode("Reporting user ${effect.username}")).toUri(),
-                    )
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(Intent.createChooser(intent, "Send report via"))
-                    }
-                }
-                is UserProfileSessionEffect.Message ->
-                    appComposition.userMessages.show(effect.text)
-                UserProfileSessionEffect.Dismiss -> onDismiss()
-            }
-        }
-    }
-    DisposableEffect(session) {
-        onDispose {
-            if (scene.navigation.state.value.userRequest?.userName != userName) {
-                scene.userProfiles.release(session)
-            }
-        }
-    }
-
-    val state = when (val loadState = runtimeState.loadState) {
-        UserProfileLoadState.Loading -> UserDialogUiState.Loading
-        UserProfileLoadState.Error -> UserDialogUiState.Error
-        is UserProfileLoadState.Loaded -> UserDialogUiState.Loaded(
-            UserInfoUi(
-                id = loadState.profile.id,
-                meta = loadState.profile.meta,
-                about = loadState.profile.about,
-                hasSubmissions = loadState.profile.hasSubmissions,
-            ),
-        )
-    }
-    SynchronizedSettingsDialogs {
-        UserSettingsDialog(
-            requestedUserName = userName,
-            state = state,
-            tag = currentTag,
-            tagColor = currentTagColor,
-            blocked = runtimeState.blocked,
-            ownProfile = runtimeState.ownProfile,
-            identityResolved = runtimeState.identityResolved,
-            userAvatarsEnabled = settings.comments.userAvatarsEnabled,
-            userAvatarOptions = settings.comments.userAvatarOptions,
-            onDismiss = onDismiss,
-            onRetry = session::retry,
-            onOpenSubmissions = session::openSubmissions,
-            onEditTag = { tagDialogOpen = true },
-            onToggleBlocked = { session.toggleBlocked() },
-            onReport = session::report,
-            onOpenLink = { appComposition.links.open(it) },
-            nestedDialog = {
-                if (tagDialogOpen) {
-                    UserTagRoute(
-                        userName = userName,
-                        currentTag = currentTag,
-                        onDismiss = { tagDialogOpen = false },
-                        onSaved = { saved ->
-                            currentTag = saved
-                            currentTagColor = userTags.colorFor(userName)
-                            tagDialogOpen = false
-                            onTagChanged()
-                        },
-                    )
-                }
-            },
-        )
-    }
 }

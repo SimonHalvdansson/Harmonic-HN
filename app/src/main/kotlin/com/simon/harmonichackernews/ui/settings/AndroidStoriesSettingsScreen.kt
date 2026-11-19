@@ -13,21 +13,21 @@ fun AndroidStoriesSettingsScreen(
     onSpacingRequested: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
+    onClickedPostsRequested: () -> Unit,
     onArticleCategoriesRequested: () -> Unit,
 ) {
     val context = LocalContext.current
     val repository = LocalHarmonicUiDependencies.current.settings
-    val story = repository.snapshot().story
     StoriesSettingsRoute(
         repository = repository,
         categorySettings = LocalHarmonicUiDependencies.current.articleCategorySettings,
         previewModel = SettingsStoryPreviewModel,
-        faviconIcon = faviconProviderPainter(story.faviconProvider),
         showNavigation = showNavigation,
         onBack = onBack,
         onSpacingRequested = onSpacingRequested,
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
+        onClickedPostsRequested = onClickedPostsRequested,
         onArticleCategoriesRequested = onArticleCategoriesRequested,
         categoryAvailability = storyCategoryAvailability(),
         onPlatformEffect = { effect ->
@@ -35,13 +35,6 @@ fun AndroidStoriesSettingsScreen(
                 SettingsPlatformEffect.RefreshStoryWidgets -> refreshStoryWidgets(context)
                 SettingsPlatformEffect.ThemeChanged -> Unit
             }
-        },
-        faviconDialog = { selected, _, onSelected, dismiss ->
-            FaviconProviderRoute(
-                selected = selected,
-                onProviderSelected = onSelected,
-                onDismiss = dismiss,
-            )
         },
     )
 }
