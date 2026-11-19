@@ -147,7 +147,7 @@ internal fun settingsSearchCatalog(
         "Hide clicked posts" to "read stories viewed history hide read",
         "Gray out clicked posts" to "grey dim fade read stories viewed",
         "Mark scrolled posts as read" to "scroll past seen grey gray dim history automatic",
-        "Favicon provider" to "thumbnail logo website icon source google duckduckgo")
+        "Favicon provider" to "thumbnail logo website icon source google duckduckgo twenty icons")
 
     group(SettingsSection.Comments, "Comments display",
         "Display style" to "flat filled raised outlined cards border",

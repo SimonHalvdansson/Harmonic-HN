@@ -243,14 +243,12 @@ private fun PortableStoriesSettings(
     onArticleCategoriesRequested: () -> Unit,
     onSpacingRequested: () -> Unit,
 ) {
-    val story = app.settings.snapshot().story
     StoriesSettingsRoute(
         repository = app.settings,
         categorySettings = app.articleCategorySettings,
         previewModel = SettingsStoryPreviewModel.copy(
             tintFallbackArgb = HarmonicTheme.targetColorScheme.cardBackground.toArgb(),
         ),
-        faviconIcon = faviconProviderPainter(story.faviconProvider),
         onManageFrontpages = onManageFrontpages,
         onPaletteTintRequested = onPaletteTintRequested,
         onClickedPostsRequested = onClickedPostsRequested,

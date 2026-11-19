@@ -104,7 +104,7 @@ enum class CommentsBooleanSetting(internal val preference: CommentBooleanPrefere
     SmoothScroll(CommentBooleanPreference.SMOOTH_SCROLL),
 }
 
-enum class CommentsSettingsDialog { Sorting, Provider, VolumeNavigation, Preload, HiddenComments }
+enum class CommentsSettingsDialog { Provider, VolumeNavigation, Preload, HiddenComments }
 
 @Composable
 fun CommentsSettingsScreen(
@@ -116,6 +116,7 @@ fun CommentsSettingsScreen(
     onTextSizeOffsetChanged: (Int) -> Unit,
     onBooleanChanged: (CommentsBooleanSetting, Boolean) -> Unit,
     onDialogRequested: (CommentsSettingsDialog) -> Unit,
+    onSortingChanged: (CommentSortingPreference) -> Unit,
     onThreadDepthRequested: () -> Unit,
     onThreadDepthEnabledChanged: (Boolean) -> Unit,
     onQuoteHighlightingRequested: () -> Unit,
@@ -281,7 +282,18 @@ fun CommentsSettingsScreen(
                 )
             }
             row {
-                DialogRow("Comment sorting", state.sorting.label, Res.drawable.ic_filter_list, CommentsSettingsDialog.Sorting, onDialogRequested)
+                SegmentedSetting(
+                    title = "Comment sorting",
+                    options = listOf(
+                        CommentSortingPreference.DEFAULT to "Default",
+                        CommentSortingPreference.NEWEST_FIRST to "Newest",
+                        CommentSortingPreference.OLDEST_FIRST to "Oldest",
+                        CommentSortingPreference.REPLY_COUNT to "Reply count",
+                    ),
+                    optionWeights = mapOf(CommentSortingPreference.REPLY_COUNT to 1.3f),
+                    selected = state.sorting,
+                    onSelected = onSortingChanged,
+                )
             }
             row {
                 DialogRow("Comments provider", state.provider.label, Res.drawable.ic_api, CommentsSettingsDialog.Provider, onDialogRequested)

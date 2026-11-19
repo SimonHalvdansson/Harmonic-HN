@@ -41,8 +41,7 @@ class ColorSchemeSettingsPolicyTest {
         val stored = repository.snapshot()
         val active = stored.copy(pureBlackDarkMode = true)
         val stories = StoriesSettingsPresenter(repository).state(active,
-            com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel,
-            androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Gray))
+            com.simon.harmonichackernews.ui.content.SettingsStoryPreviewModel)
         val comments = CommentsSettingsPresenter(repository).state(active)
         assertEquals("flat", stories.displayStyle)
         kotlin.test.assertFalse(stories.tint)

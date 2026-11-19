@@ -320,6 +320,7 @@ fun SingleChoiceDialog(
     options: List<Pair<String, String>>,
     selected: String,
     onDismiss: () -> Unit,
+    showDoneButton: Boolean = false,
     onSelected: (String) -> Unit,
 ) {
     SettingsAlertDialog(
@@ -360,8 +361,8 @@ fun SingleChoiceDialog(
                 }
             }
         },
-        confirmButton = {},
-        showButtons = false,
+        confirmButton = { SettingsDialogTextButton(onClick = onDismiss) { Text("Done") } },
+        showButtons = showDoneButton,
     )
 }
 

@@ -5,8 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ImageComposeScene
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.semantics.*
 import com.simon.harmonichackernews.app.DesktopHarmonicAppBootstrap
 import com.simon.harmonichackernews.settings.CategoryTagLocation
@@ -36,7 +34,7 @@ class CategoryLocationSettingsTest {
             HarmonicTheme(palette.colorScheme, false) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app.app, app.scene)) {
                     StoriesSettingsRoute(repository = app.app.settings, categorySettings = app.app.articleCategorySettings,
-                        previewModel = SettingsStoryPreviewModel, faviconIcon = ColorPainter(Color.Gray),
+                        previewModel = SettingsStoryPreviewModel,
                         showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {}, onManageFrontpages = {},
                         onPaletteTintRequested = {}, onClickedPostsRequested = {},
                         categoryAvailability = availability,

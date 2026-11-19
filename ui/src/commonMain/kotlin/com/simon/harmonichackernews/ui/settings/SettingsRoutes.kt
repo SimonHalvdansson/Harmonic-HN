@@ -17,7 +17,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.format.DelimitedListPolicy
 import com.simon.harmonichackernews.settings.PaletteTintPreferences
 import com.simon.harmonichackernews.settings.AppSettingsRepository
@@ -25,7 +24,6 @@ import com.simon.harmonichackernews.settings.AiModelDefaultsUseCase
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import com.simon.harmonichackernews.settings.AiSummaryTextSetting
-import com.simon.harmonichackernews.settings.CommentSortingPreference
 import com.simon.harmonichackernews.settings.CommentVolumeNavigationMode
 import com.simon.harmonichackernews.settings.ContentFilterRepository
 import com.simon.harmonichackernews.settings.ContentFilterType
@@ -462,7 +460,6 @@ fun StoriesSettingsRoute(
     repository: AppSettingsRepository,
     categorySettings: com.simon.harmonichackernews.categorization.ArticleCategorySettings? = null,
     previewModel: StoryRowModel,
-    faviconIcon: Painter,
     showNavigation: Boolean,
     onBack: () -> Unit,
     onSpacingRequested: () -> Unit,
@@ -473,8 +470,7 @@ fun StoriesSettingsRoute(
     onArticleCategoriesRequested: () -> Unit = {},
     categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
 ) {
-    var refresh by remember { mutableIntStateOf(0) }
-    var dialog by rememberSaveable { mutableStateOf<StoriesSettingsDialog?>(null) }
+    var showHotnessDialog by rememberSaveable { mutableStateOf(false) }
     val presenter = remember(repository) { StoriesSettingsPresenter(repository) }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val story = settings.story
@@ -484,7 +480,7 @@ fun StoriesSettingsRoute(
     val previewCategories = if (categories?.enabled == true) categories.categories.filter { it.id in categories.selected }.take(2) else emptyList()
     val state = presenter.state(settings, previewModel.copy(
         categoryLabels = if (mockCategories) { if (enabled) listOf("AI", "Programming") else emptyList() } else previewCategories.map { categories!!.name(it) },
-        categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }), faviconIcon)
+        categoryIds = if (mockCategories) listOf("ai", "software") else previewCategories.map { it.id }))
         .copy(categorizationEnabled = enabled,
             canEnableCategorization = mockCategories || categoryAvailability.canEnable,
             categorizationUnavailableReason = if (mockCategories) null else categoryAvailability.reason)
@@ -510,11 +506,12 @@ fun StoriesSettingsRoute(
         onResetLayout = {
             presenter.resetLayout().forEach(onPlatformEffect)
         },
-        onDialogRequested = { dialog = it },
-        contentVersion = settings.hashCode() + refresh,
+        onFaviconProviderChanged = presenter::setFaviconProvider,
+        onHotnessRequested = { showHotnessDialog = true },
+        contentVersion = settings.hashCode(),
     )
-    when (dialog) {
-        StoriesSettingsDialog.Hotness -> SettingsChoiceDialog(
+    if (showHotnessDialog) {
+        SettingsChoiceDialog(
             "Highlight hot stories",
             listOf(
                 "-1" to "Never",
@@ -524,18 +521,9 @@ fun StoriesSettingsRoute(
                 "400" to "Points + comments > 400",
             ),
             story.hotnessThreshold.toString(),
-            { dialog = null },
+            { showHotnessDialog = false },
             presenter::setHotness,
         )
-        StoriesSettingsDialog.FaviconProvider -> FaviconProviderDialog(
-            selected = story.faviconProvider,
-            onProviderSelected = {
-                presenter.setFaviconProvider(it)
-                refresh++
-            },
-            onDismiss = { dialog = null },
-        )
-        null -> Unit
     }
 }
 
@@ -568,6 +556,7 @@ fun CommentsSettingsRoute(
         onBack = onBack,
         onSpacingRequested = onSpacingRequested,
         onDisplayStyleChanged = presenter::setDisplayStyle,
+        onSortingChanged = { presenter.setSorting(it.storedValue) },
         onCollectedLinksModeChanged = presenter::setCollectedLinksMode,
         onTextSizeOffsetChanged = presenter::setTextSizeOffset,
         onBooleanChanged = presenter::setBoolean,
@@ -581,24 +570,18 @@ fun CommentsSettingsRoute(
         contentVersion = settings.hashCode(),
     )
     when (dialog) {
-        CommentsSettingsDialog.Sorting -> SettingsChoiceDialog(
-            "Comment sorting",
-            CommentSortingPreference.entries.map { it.storedValue to it.label },
-            state.sorting.storedValue,
-            { dialog = null },
-            presenter::setSorting,
-        )
         CommentsSettingsDialog.Provider -> CommentsProviderDialog(
             selected = state.provider,
             onProviderSelected = { presenter.setProvider(it.storedValue) },
             onDismiss = { dialog = null },
         )
-        CommentsSettingsDialog.VolumeNavigation -> SettingsChoiceDialog(
-            "Volume buttons for navigation",
-            CommentVolumeNavigationMode.entries.map { it.storedValue to it.label },
-            state.volumeNavigation.storedValue,
-            { dialog = null },
-            presenter::setVolumeNavigation,
+        CommentsSettingsDialog.VolumeNavigation -> SingleChoiceDialog(
+            title = "Volume buttons for navigation",
+            options = CommentVolumeNavigationMode.entries.map { it.storedValue to it.label },
+            selected = state.volumeNavigation.storedValue,
+            onDismiss = { dialog = null },
+            showDoneButton = true,
+            onSelected = presenter::setVolumeNavigation,
         )
         CommentsSettingsDialog.HiddenComments -> HiddenCommentsDialog(
             hideFlaggedComments = state.hideFlaggedComments,

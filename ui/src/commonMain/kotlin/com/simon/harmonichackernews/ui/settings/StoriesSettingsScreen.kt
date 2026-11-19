@@ -6,11 +6,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.LookaheadScope
 import com.simon.harmonichackernews.ui.content.StoryRowPlacementAnimation
 import org.jetbrains.compose.resources.stringResource
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.graphics.painter.Painter
 import com.simon.harmonichackernews.settings.DisplayStyle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.StoryBooleanPreference
@@ -47,7 +45,6 @@ data class StoriesSettingsUiState(
     val hideRead: Boolean,
     val dimReadStories: Boolean,
     val faviconProvider: String,
-    val faviconIcon: Painter,
     val markScrolledPostsRead: Boolean = false,
     val swipeToHide: Boolean = false,
     val showDividers: Boolean = false,
@@ -80,7 +77,6 @@ enum class StoriesBooleanSetting(internal val preference: StoryBooleanPreference
 }
 
 enum class StoriesStringSetting { DisplayStyle, CategoryTagLocation }
-enum class StoriesSettingsDialog { Hotness, FaviconProvider }
 
 @Composable
 fun StoriesSettingsScreen(
@@ -93,7 +89,8 @@ fun StoriesSettingsScreen(
     onStringChanged: (StoriesStringSetting, String) -> Unit,
     onTextSizeOffsetChanged: (Int) -> Unit,
     onResetLayout: () -> Unit,
-    onDialogRequested: (StoriesSettingsDialog) -> Unit,
+    onFaviconProviderChanged: (String) -> Unit,
+    onHotnessRequested: () -> Unit,
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onClickedPostsRequested: () -> Unit,
@@ -261,7 +258,7 @@ fun StoriesSettingsScreen(
                     title = "Highlight hot stories",
                     summary = state.hotnessLabel,
                     icon = Res.drawable.ic_whatshot,
-                    onClick = { onDialogRequested(StoriesSettingsDialog.Hotness) },
+                    onClick = onHotnessRequested,
                 )
             }
             row {
@@ -310,14 +307,10 @@ fun StoriesSettingsScreen(
                     summary = if (state.hideRead) "Turn off Hide clicked posts first" else "Marks posts as read when you scroll past them")
             }
             row {
-                SettingRow(
-                    title = "Favicon provider",
-                    summary = state.faviconProvider,
-                    icon = null,
-                    iconPainter = state.faviconIcon,
-                    iconTint = Color.Unspecified,
+                FaviconProviderSetting(
+                    selected = state.faviconProvider,
                     enabled = !state.compact && state.showFavicons,
-                    onClick = { onDialogRequested(StoriesSettingsDialog.FaviconProvider) },
+                    onSelected = onFaviconProviderChanged,
                 )
             }
         }
