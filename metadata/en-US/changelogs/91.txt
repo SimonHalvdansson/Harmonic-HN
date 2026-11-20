@@ -1,0 +1,1 @@
+Harmonic now includes the source references and build script that F-Droid uses to rebuild its PDF decoders.

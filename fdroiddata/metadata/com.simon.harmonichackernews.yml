@@ -18,28 +18,28 @@ Binaries:
   https://github.com/SimonHalvdansson/Harmonic-HN/releases/download/v%v/app-release.apk
 
 Builds:
-  - versionName: 3.2.8
-    versionCode: 90
-    commit: 84cd2769a266770f799f75e699ba6ffefb1740b1
+  - versionName: 3.2.9
+    versionCode: 91
+    commit: v3.2.9
     subdir: app
+    submodules: true
     sudo:
       - apt-get update
       - apt-get install -y build-essential cmake pkg-config libssl-dev
-    patch:
-      - rebuild-pdf-wasm.patch
     gradle:
       - foss
     output: build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
     rm:
       - gradle/gradle-daemon-jvm.properties
       - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/*.wasm
+      - tools/pdf-wasm/sources/pdfium/testing
+      - tools/pdf-wasm/sources/qcms/build.js
+      - tools/pdf-wasm/sources/qcms/package.json
     prebuild:
       - sed -i '/foojay/d' ../settings.gradle
-      - bash ../fdroid-wasm.sh prepare
-      - rm ../fdroid-pdf-sources/qcms/{build.js,package.json}
     scanignore:
       - resources/src/commonMain/composeResources/files/article_categories.bin
-    build: bash ../fdroid-wasm.sh build
+    build: bash ../tools/pdf-wasm/build.sh
     ndk: 29.0.13113456
     preassemble:
       - verifyFossDependencies
@@ -49,12 +49,12 @@ AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a55
 MaintainerNotes: |-
   article_categories.bin contains training data for the article classifier. The generator and corpus are in tools/article_categories.
 
-  The build removes the three bundled PDF.js WebAssembly modules before scanning. For pdfjs-dist 6.3.289, JBIG2 requires Emscripten 5.0.0, OpenJPEG requires Emscripten 5.0.6, and QCMS requires Rust 1.97.1 with wasm-bindgen 0.2.126. The QCMS lockfile pins the crates resolved by the upstream release build. rebuild-pdf-wasm.patch verifies all three SHA-256 digests before packaging.
+  The build removes the bundled PDF.js WebAssembly modules before scanning. Harmonic pins the decoder sources as Git submodules. Its build script compiles JBIG2 with Emscripten 5.0.0, OpenJPEG with Emscripten 5.0.6, and QCMS with Rust 1.97.1 and wasm-bindgen 0.2.126. It checks all three SHA-256 digests before packaging.
 
   The upstream signer preserves Gradle's ZIP alignment.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v[0-9.]+
 UpdateCheckData: gradle.properties|harmonic\.versionCode=(\d+)|.|harmonic\.versionName=([\d.]+)
-CurrentVersion: 3.2.8
-CurrentVersionCode: 90
+CurrentVersion: 3.2.9
+CurrentVersionCode: 91

@@ -1,0 +1,20 @@
+[submodule "tools/pdf-wasm/sources/jbig2"]
+	path = tools/pdf-wasm/sources/jbig2
+	url = https://github.com/mozilla/pdf.js.jbig2.git
+	shallow = true
+[submodule "tools/pdf-wasm/sources/pdfium"]
+	path = tools/pdf-wasm/sources/pdfium
+	url = https://github.com/chromium/pdfium.git
+	shallow = true
+[submodule "tools/pdf-wasm/sources/openjpeg-wrapper"]
+	path = tools/pdf-wasm/sources/openjpeg-wrapper
+	url = https://github.com/mozilla/pdf.js.openjpeg.git
+	shallow = true
+[submodule "tools/pdf-wasm/sources/openjpeg"]
+	path = tools/pdf-wasm/sources/openjpeg
+	url = https://github.com/uclouvain/openjpeg.git
+	shallow = true
+[submodule "tools/pdf-wasm/sources/qcms"]
+	path = tools/pdf-wasm/sources/qcms
+	url = https://github.com/mozilla/pdf.js.qcms.git
+	shallow = true
