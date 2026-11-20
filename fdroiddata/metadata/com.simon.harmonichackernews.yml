@@ -18,9 +18,9 @@ Binaries:
   https://github.com/SimonHalvdansson/Harmonic-HN/releases/download/v%v/app-release.apk
 
 Builds:
-  - versionName: 3.2.7
-    versionCode: 89
-    commit: 0e819a7fd47921ae786d9e3a27a61576f626c50c
+  - versionName: 3.2.8
+    versionCode: 90
+    commit: 84cd2769a266770f799f75e699ba6ffefb1740b1
     subdir: app
     sudo:
       - apt-get update
@@ -30,8 +30,6 @@ Builds:
     gradle:
       - foss
     output: build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
-    srclibs:
-      - reproducible-apk-tools@ca728486d42a79f1c9ec0c6ec755c39f251911a8
     rm:
       - gradle/gradle-daemon-jvm.properties
       - resources/src/commonMain/composeResources/files/web/pdf/vendor/pdf.js/6.3.289/wasm/*.wasm
@@ -45,10 +43,6 @@ Builds:
     ndk: 29.0.13113456
     preassemble:
       - verifyFossDependencies
-    postbuild:
-      - python3 $$reproducible-apk-tools$$/zipalign.py --replace --pad-like-apksigner
-        -P 16 4 $$OUT$$ aligned.apk
-      - mv aligned.apk $$OUT$$
 
 AllowedAPKSigningKeys: fb12dbf6d0692512ed7018150637a1932eab09d67dbf9900457096a552f88ec6
 
@@ -57,10 +51,10 @@ MaintainerNotes: |-
 
   The build removes the three bundled PDF.js WebAssembly modules before scanning. For pdfjs-dist 6.3.289, JBIG2 requires Emscripten 5.0.0, OpenJPEG requires Emscripten 5.0.6, and QCMS requires Rust 1.97.1 with wasm-bindgen 0.2.126. The QCMS lockfile pins the crates resolved by the upstream release build. rebuild-pdf-wasm.patch verifies all three SHA-256 digests before packaging.
 
-  The release APK uses apksigner alignment fields with 16 KiB native library alignment.
+  The upstream signer preserves Gradle's ZIP alignment.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags v[0-9.]+
 UpdateCheckData: gradle.properties|harmonic\.versionCode=(\d+)|.|harmonic\.versionName=([\d.]+)
-CurrentVersion: 3.2.7
-CurrentVersionCode: 89
+CurrentVersion: 3.2.8
+CurrentVersionCode: 90
