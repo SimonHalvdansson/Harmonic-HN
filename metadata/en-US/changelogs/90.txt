@@ -1,0 +1,1 @@
+Long-press a link to see a rich preview. You can now scroll wide code blocks horizontally and optionally show article summaries in post headers. This release also improves comment search and makes Android reading history exports more reliable.

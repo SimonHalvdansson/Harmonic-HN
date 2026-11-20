@@ -12,10 +12,10 @@ jobs:
   android:
     runs-on: ubuntu-latest
     env:
+      ANDROID_BUILD_TOOLS_VERSION: '36.0.0'
       BUNDLETOOL_VERSION: '1.18.3'
       BUNDLETOOL_SHA256: 'A099CFA1543F55593BC2ED16A70A7C67FE54B1747BB7301F37FDFD6D91028E29'
       RELEASE_UNSIGNED_APK: app/build/outputs/apk/fossRelease/app-fossRelease-unsigned.apk
-      RELEASE_ALIGNED_APK: app/build/outputs/apk/fossRelease/app-release-aligned.apk
       RELEASE_SIGNED_APK: app/build/outputs/apk/fossRelease/app-release.apk
       RELEASE_BUNDLE: app/build/outputs/bundle/playRelease/app-playRelease.aab
       RELEASE_LLM_APKS: app/build/outputs/apk/playRelease/app-release-llm.apks
@@ -29,8 +29,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
-      - name: Install NDK for stripping packaged native libraries
-        run: sdkmanager "ndk;29.0.13113456"
+      - name: Install Android signing tools and NDK
+        run: sdkmanager "build-tools;$ANDROID_BUILD_TOOLS_VERSION" "ndk;29.0.13113456"
       - name: Build with Gradle
         run: >-
           ./gradlew
@@ -71,15 +71,18 @@ jobs:
             -o "$BUNDLETOOL_JAR"
           echo "${BUNDLETOOL_SHA256}  ${BUNDLETOOL_JAR}" | sha256sum --check -
 
-          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          "$BUILD_TOOLS_DIR/zipalign" -p -f 4 "$RELEASE_UNSIGNED_APK" "$RELEASE_ALIGNED_APK"
+          BUILD_TOOLS_DIR="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION"
+          # Preserve Gradle's ZIP layout so F-Droid can verify the upstream signature.
+          "$BUILD_TOOLS_DIR/zipalign" -c -P 16 4 "$RELEASE_UNSIGNED_APK"
           "$BUILD_TOOLS_DIR/apksigner" sign \
+            --alignment-preserved true \
+            --v1-signing-enabled false \
             --ks "$KEYSTORE_PATH" \
             --ks-key-alias "$ANDROID_SIGNING_KEY_ALIAS" \
             --ks-pass env:ANDROID_SIGNING_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_SIGNING_KEY_PASSWORD \
             --out "$RELEASE_SIGNED_APK" \
-            "$RELEASE_ALIGNED_APK"
+            "$RELEASE_UNSIGNED_APK"
           "$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs "$RELEASE_SIGNED_APK"
 
           java -jar "$BUNDLETOOL_JAR" build-apks \
