@@ -20,7 +20,7 @@ Binaries:
 Builds:
   - versionName: 3.2.9
     versionCode: 91
-    commit: v3.2.9
+    commit: 83492be687c7d745b108b417ca051d3aae20aa3d
     subdir: app
     submodules: true
     sudo:
@@ -35,8 +35,7 @@ Builds:
       - tools/pdf-wasm/sources/pdfium/testing
       - tools/pdf-wasm/sources/qcms/build.js
       - tools/pdf-wasm/sources/qcms/package.json
-    prebuild:
-      - sed -i '/foojay/d' ../settings.gradle
+    prebuild: sed -i '/foojay/d' ../settings.gradle
     scanignore:
       - resources/src/commonMain/composeResources/files/article_categories.bin
     build: bash ../tools/pdf-wasm/build.sh
