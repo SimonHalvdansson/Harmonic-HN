@@ -6,18 +6,20 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.serialization.json.Json
 import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NativeArticleCategoriesTest {
-    private class Engine : NativeArticleEmbeddingEngine {
+    private class Engine(private val supportsPartialCategoryMatching: Boolean = false) : NativeArticleEmbeddingEngine {
         var signature = "revision-1"
         var available = true
         var quota = Int.MAX_VALUE
         val inputs = mutableListOf<String>()
         var beforeEmbed: suspend () -> Unit = {}
-        override suspend fun model() = if (available) NativeEmbeddingModel(signature, "Test system", 4, 256) else null
+        override suspend fun model() = if (available) NativeEmbeddingModel(signature, "Test system", 4, 256,
+            supportsPartialCategoryMatching = supportsPartialCategoryMatching) else null
         override suspend fun embed(text: String): FloatArray {
             if (quota-- <= 0) throw EmbeddingQuotaException()
             beforeEmbed()
@@ -27,7 +29,7 @@ class NativeArticleCategoriesTest {
     }
 
     @Test fun quotaPreservesRoundRobinCoverageAndEachNormalRequestAddsOne() = runTest {
-        val engine = Engine().apply { quota = 2 }
+        val engine = Engine(supportsPartialCategoryMatching = true).apply { quota = 2 }
         val training = training()
         val provider = NativeArticleCategories(engine, InMemoryArticleEmbeddingCache(), training)
         provider.refresh()
@@ -57,6 +59,7 @@ class NativeArticleCategoriesTest {
         provider.prepareInitial { true }
         assertEquals(1, engine.inputs.size, "Automatic preparation must not retry a quota pause")
         engine.quota = 1
+        assertTrue(provider.scores("Opened while preparation is paused", null).isEmpty())
         provider.prepareInitial(force = true) { true }
         assertEquals(listOf("AI first", "Space first"), engine.inputs)
         assertEquals(2, provider.state.value.completed)
@@ -147,7 +150,7 @@ class NativeArticleCategoriesTest {
     }
 
     @Test fun failedExtraRequestDoesNotDiscardNormalResult() = runTest {
-        val engine = Engine().apply { quota = 2 }
+        val engine = Engine(supportsPartialCategoryMatching = true).apply { quota = 2 }
         val provider = NativeArticleCategories(engine, InMemoryArticleEmbeddingCache(), training())
         provider.refresh(); provider.prepareInitial { true }
         engine.quota = 1
@@ -165,6 +168,37 @@ class NativeArticleCategoriesTest {
         assertEquals(1, provider.state.value.completed)
         provider.prepareInitial { true }
         assertFalse(provider.state.value.incomplete)
+    }
+
+    @Test fun storyMatchingWaitsUntilAllSystemExamplesArePrepared() = runTest {
+        val engine = Engine()
+        val finish = CompletableDeferred<Unit>()
+        engine.beforeEmbed = { if (engine.inputs.size == 2) finish.await() }
+        val repository = training().apply { loadDefaults() }
+        val settings = ArticleCategorySettings(InMemoryKeyValueStore(), emptyFlow(), { repository.categories })
+        settings.setEnabled(true)
+        val runtime = ArticleCategoryRuntime(settings, null, null, backgroundScope,
+            training = repository, nativeEngine = engine, nativeCache = InMemoryArticleEmbeddingCache())
+        runtime.start(); runCurrent()
+        try {
+            val progress = runtime.state.value.native
+            assertEquals(2, progress.completed)
+            assertTrue(progress.preparing)
+            assertFalse(progress.readyForMatching)
+            val request = async { runtime.scoresForStory(123, "Opened mid-preparation", null, null) }
+            runCurrent()
+            assertTrue(request.isCompleted, "Opening a story must not queue inference behind preparation")
+            assertTrue(request.await().isEmpty())
+            assertNull(runtime.cachedResult(123, "Opened mid-preparation", null))
+        } finally {
+            finish.complete(Unit)
+        }
+        runCurrent()
+        assertTrue(runtime.state.value.native.readyForMatching)
+        val scores = runtime.scoresForStory(123, "Opened mid-preparation", null, null)
+        assertEquals(2, scores.size)
+        assertEquals(scores, runtime.cachedScores(123, "Opened mid-preparation", null))
+        assertEquals(1, engine.inputs.count { it == "Opened mid-preparation" })
     }
 
     @Test fun nativeRuntimeWorksWithoutDownloadedModelAndRechecksOnForeground() = runTest {

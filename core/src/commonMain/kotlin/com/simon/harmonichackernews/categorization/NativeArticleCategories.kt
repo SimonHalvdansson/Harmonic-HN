@@ -19,6 +19,9 @@ data class NativeEmbeddingProgress(
     val revision: Int = 0,
 ) {
     val incomplete: Boolean get() = model != null && completed < total
+    val readyForMatching: Boolean get() = model != null && total > 0 && !preparing &&
+        (completed == total || model.supportsPartialCategoryMatching)
+    internal val spaceKey: String? get() = model?.let { "${it.signature}:${it.dimensions}:$revision" }
 }
 
 /** Foreground-only, serialized inference. Every successful vector is durable before the next call. */
@@ -83,7 +86,9 @@ class NativeArticleCategories(
         trainingInputs = ordered.toSet()
         vectors.keys.retainAll(trainingInputs)
         ordered.forEach { lookup(it) }
-        pending = ordered.filterNot { it in vectors }
+        val missing = ordered.filterNot { it in vectors }
+        if (pending.isEmpty() && missing.isNotEmpty()) initialAttempted = false
+        pending = missing
         updateSpace()
         mutableState.value = state.value.copy(completed = ordered.size - pending.size, total = ordered.size,
             revision = state.value.revision + 1)
@@ -135,13 +140,13 @@ class NativeArticleCategories(
             mutableState.value = state.value.copy(paused = true)
             false
         } catch (_: Exception) {
-            mutableState.value = state.value.copy(paused = true, error = "Preparation will retry as you browse.")
+            mutableState.value = state.value.copy(paused = true, error = "Resume preparation in category settings.")
             false
         }
     }
 
     suspend fun scores(title: String, description: String?, canContinue: () -> Boolean = { true }): List<ArticleCategoryScore> = mutex.withLock {
-        if (!canContinue()) return@withLock emptyList()
+        if (!state.value.readyForMatching || !canContinue()) return@withLock emptyList()
         val text = input(title, description)
         val cached = lookup(text)
         val vector = cached ?: embedCached(text)

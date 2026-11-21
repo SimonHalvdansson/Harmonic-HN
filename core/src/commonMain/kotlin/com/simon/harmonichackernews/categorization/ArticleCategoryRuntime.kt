@@ -95,9 +95,7 @@ class ArticleCategoryRuntime(
 
     private fun cachedStory(storyId: Int, title: String, url: String?): StoryScores? =
         storyScores.value[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(training?.state?.value, settings.snapshot().maxInputTokens, nativeSpaceKey()) }
-    private fun nativeSpaceKey(): String? = native?.state?.value?.takeIf { usingNative }?.let { progress ->
-        progress.model?.let { "${it.signature}:${it.dimensions}:${progress.revision}" }
-    }
+    private fun nativeSpaceKey(): String? = if (usingNative) native?.state?.value?.spaceKey else null
     private val mutableState = MutableStateFlow(ArticleCategoryRuntimeState(native = NativeEmbeddingProgress(checked = native == null)))
     val state = mutableState.asStateFlow()
     val supported: Boolean get() = usingNative || (engine != null && models?.isIncluded == true)
@@ -256,17 +254,22 @@ class ArticleCategoryRuntime(
 
     private suspend fun computeScores(storyId: Int?, title: String, url: String?, description: String?): List<ArticleCategoryScore> {
         if (usingNative && title.isNotBlank() && settings.snapshot().enabled && resources.value.foreground && !resources.value.paused) {
+            val provider = checkNotNull(native)
+            val progress = provider.state.value
+            if (!progress.readyForMatching) return emptyList()
             val input = ArticleCategories.input(title, description)
             val hasDescription = input != ArticleCategories.input(title, null)
             if (storyId != null) cachedStory(storyId, title, url)?.takeIf { it.covers(input, hasDescription) }?.let { return it.scores }
             val configuration = training?.state?.value
-            val signature = native!!.state.value.model?.signature
             return try {
-                val scores = native.scores(title, description) { usingNative && settings.snapshot().enabled && resources.value.foreground && !resources.value.paused }
-                if (!usingNative || configuration !== training?.state?.value || signature != native.state.value.model?.signature ||
+                val scores = provider.scores(title, description) { usingNative && settings.snapshot().enabled && resources.value.foreground && !resources.value.paused }
+                val current = provider.state.value
+                if (!current.readyForMatching || progress.model != current.model ||
+                    (progress.model?.supportsPartialCategoryMatching != true && progress.revision != current.revision) ||
+                    !usingNative || configuration !== training?.state?.value ||
                     !settings.snapshot().enabled || !resources.value.foreground || resources.value.paused) return emptyList()
                 if (storyId != null) {
-                    val entry = StoryScores(input, hasDescription, configuration, settings.snapshot().maxInputTokens, scores, nativeSpaceKey())
+                    val entry = StoryScores(input, hasDescription, configuration, settings.snapshot().maxInputTokens, scores, current.spaceKey)
                     storyScores.update { old -> LinkedHashMap(old).apply {
                         val key = StoryKey(storyId, title, url.orEmpty())
                         remove(key)

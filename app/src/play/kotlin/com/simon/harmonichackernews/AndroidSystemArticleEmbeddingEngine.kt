@@ -25,6 +25,8 @@ class AndroidSystemArticleEmbeddingEngine : NativeArticleEmbeddingEngine {
                 dimensions = metadata.dimension,
                 tokenLimit = model.getTokenLimit(),
                 modelName = "EmbeddingGemma 2",
+                // AICore quotas can spread example preparation over multiple browsing sessions.
+                supportsPartialCategoryMatching = true,
             )
             active = model
             return result

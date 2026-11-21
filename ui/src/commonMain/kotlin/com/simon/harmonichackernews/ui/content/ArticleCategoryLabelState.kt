@@ -28,7 +28,9 @@ internal fun rememberArticleCategoryPresentation(
     requestDelayMillis: Long = 180,
     cachedDescription: (suspend () -> String?)? = null,
 ): ArticleCategoryLabelPresentation {
+    val native = runtimeState.native
     if (runtime == null || !preferences.enabled || preferences.selected.isEmpty() || !eligible || title.isNullOrBlank() ||
+        (preferences.preferSystemEmbeddings && (!native.checked || (native.model != null && !native.readyForMatching))) ||
         runtimeState.status in setOf(ArticleCategoryStatus.OFF, ArticleCategoryStatus.NEEDS_MODEL, ArticleCategoryStatus.UNAVAILABLE)) {
         return ArticleCategoryLabelPresentation.Empty
     }

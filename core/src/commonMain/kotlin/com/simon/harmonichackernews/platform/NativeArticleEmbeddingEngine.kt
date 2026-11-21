@@ -7,6 +7,7 @@ data class NativeEmbeddingModel(
     val dimensions: Int,
     val tokenLimit: Int? = null,
     val modelName: String? = null,
+    val supportsPartialCategoryMatching: Boolean = false,
 )
 
 interface NativeArticleEmbeddingEngine {
