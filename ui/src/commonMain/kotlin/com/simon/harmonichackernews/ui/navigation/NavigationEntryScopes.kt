@@ -6,12 +6,14 @@ import androidx.compose.runtime.MutableDoubleState
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableLongState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SnapshotMutationPolicy
 import androidx.compose.runtime.snapshots.SnapshotMutableState
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -26,13 +28,14 @@ private val LocalEntryContent = staticCompositionLocalOf<@Composable () -> Unit>
 
 /** Nav3 owns state and ViewModels; the surface compositor owns placement and exit animations. */
 internal class NavigationEntryScopes<K : Any> {
-    var entries: Map<K, NavEntry<K>> = emptyMap()
+    var entries: Map<K, NavEntry<K>> by mutableStateOf(emptyMap())
 
     @Composable
     fun Content(key: K, content: @Composable () -> Unit) {
-        // Capture the decorated entry while it is in the stack. A removed entry keeps this scope
-        // through its exit animation; Nav3 clears it after both stack and composition release it.
-        val entry = remember(this, key) { checkNotNull(entries[key]) }
+        // A transition can first compose a layer after its entry was popped. Only mount
+        // live entries, then keep the captured scope until the exit leaves composition.
+        var retained by remember(this, key) { mutableStateOf(entries[key]) }
+        val entry = retained ?: entries[key]?.also { retained = it } ?: return
         CompositionLocalProvider(LocalEntryContent provides content) { entry.Content() }
     }
 }
@@ -41,9 +44,9 @@ internal class NavigationEntryScopes<K : Any> {
 internal fun <K : Any> rememberNavigationEntryScopes(keys: List<K>): NavigationEntryScopes<K> {
     val parent = LocalSaveableStateRegistry.current
     val snapshots = remember(parent) { parent?.let(::SnapshotSaveableStateRegistry) }
-    var entries: List<NavEntry<K>> = emptyList()
+    val scopes = remember { NavigationEntryScopes<K>() }
     CompositionLocalProvider(LocalSaveableStateRegistry provides snapshots) {
-        entries = rememberDecoratedNavEntries(
+        val entries = rememberDecoratedNavEntries(
             backStack = keys,
             entryDecorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator(),
@@ -51,8 +54,9 @@ internal fun <K : Any> rememberNavigationEntryScopes(keys: List<K>): NavigationE
             ),
             entryProvider = { key -> NavEntry(key, contentKey = key.toString()) { LocalEntryContent.current() } },
         )
+        scopes.entries = keys.zip(entries).toMap()
     }
-    return remember { NavigationEntryScopes<K>() }.also { it.entries = keys.zip(entries).toMap() }
+    return scopes
 }
 
 /**

@@ -5,6 +5,7 @@ import androidx.compose.runtime.BroadcastFrameClock
 import androidx.compose.runtime.Composition
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.MutableDoubleState
 import androidx.compose.runtime.MutableFloatState
@@ -17,12 +18,16 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.SavedStateHandle
@@ -36,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
+import javax.swing.SwingUtilities
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
@@ -49,6 +55,43 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NavigationEntryScopesTest {
+    @Test
+    fun movableContentFirstInsertedAfterPopWaitsForALiveEntry() = SwingUtilities.invokeAndWait {
+        var stack by mutableStateOf(listOf("list", "detail"))
+        var showDetail by mutableStateOf(false)
+        var mounts = 0
+        val scene = ImageComposeScene(100, 100, Density(1f)) {
+            val scopes = rememberNavigationEntryScopes(stack)
+            val detail = remember {
+                movableContentOf {
+                    scopes.Content("detail") {
+                        DisposableEffect(Unit) {
+                            mounts++
+                            onDispose {}
+                        }
+                    }
+                }
+            }
+            if (showDetail) detail()
+        }
+        var time = 0L
+        fun frame() = scene.render(time.also { time += 16_666_667L }).close()
+        try {
+            frame()
+            // The transition requests its first composition after the logical pop.
+            stack = listOf("list")
+            showDetail = true
+            frame()
+            assertEquals(0, mounts)
+            // Settings routes can reuse a key while the outgoing slot is still present.
+            stack = listOf("list", "detail")
+            frame()
+            assertEquals(1, mounts)
+        } finally {
+            scene.close()
+        }
+    }
+
     @Test
     fun disposingAnEntryCannotRewriteAnAlreadySavedActivitySnapshot() = runTest {
         val owner = Owner()
