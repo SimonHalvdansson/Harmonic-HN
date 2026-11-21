@@ -48,6 +48,12 @@ class CommentsFeatureListener(
     )
     override fun onHeaderAction(action: CommentsHeaderAction) =
         store.accept(CommentsIntent.HeaderAction(action))
+
+    override fun onSummarizeDiscussion(regenerate: Boolean) =
+        store.accept(CommentsIntent.SummarizeDiscussion(regenerate))
+
+    override fun onDismissDiscussionSummary() =
+        store.accept(CommentsIntent.DismissDiscussionSummary)
     override fun onShareAction(action: CommentsShareAction) =
         store.accept(CommentsIntent.ShareAction(action))
     override fun onMoreAction(action: CommentsMoreAction) =

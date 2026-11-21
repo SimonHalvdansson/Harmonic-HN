@@ -6,6 +6,12 @@ import kotlinx.coroutines.flow.flow
 
 /** Shared debug backend: no credentials, extraction, downloads, or inference required. */
 object MockAiResponses {
+    fun discussionSummary(): Flow<StorySummaryEvent> = stream(
+        "- **Main theme:** commenters weigh convenience against long-term maintenance.\n" +
+            "- **Disagreement:** some favor a simpler solution; others value flexibility.\n\n" +
+            "This is a sample discussion summary for testing.",
+    )
+
     fun summary(): Flow<StorySummaryEvent> = stream(
         "- **The main idea:** small improvements can make a familiar workflow easier to use.\n" +
             "- **The trade-off:** convenience still needs to be balanced with reliability and control.\n" +
