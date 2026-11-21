@@ -28,7 +28,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -40,8 +39,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -69,9 +66,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -89,6 +87,8 @@ import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simon.harmonichackernews.settings.DisplayStyle
@@ -155,6 +155,7 @@ internal fun commentSurfaceColor(baseBackground: Color, textColor: Color, highli
 private class CommentRowGeometry {
     var coordinates: LayoutCoordinates? = null
     var contentLayer: GraphicsLayer? = null
+    var indicatorLocalBounds = Rect.Zero
     var indicatorCoordinates: LayoutCoordinates? = null
     var indicatorLayer: GraphicsLayer? = null
     var containerColor: Color = Color.Transparent
@@ -184,7 +185,7 @@ private class CommentRowGeometry {
             containerBorderWidthDp = containerBorderWidthDp,
             contentLayer = contentLayer?.takeUnless(GraphicsLayer::isReleased),
             indicatorBounds = indicatorCoordinates?.takeIf { it.isAttached }?.let {
-                Rect(it.positionInWindow(), Size(it.size.width.toFloat(), it.size.height.toFloat()))
+                indicatorLocalBounds.translate(it.positionInWindow())
             },
             indicatorLayer = indicatorLayer?.takeUnless(GraphicsLayer::isReleased),
             currentGeometry = ::snapshot,
@@ -1050,6 +1051,9 @@ private fun CommentSurface(
         animateChanges = style.animateChanges,
         label = "comment content vertical padding",
     )
+    val detachedLayer = if (detachedProgress > 0f && itemGeometry != null && captureSource) {
+        rememberGraphicsLayer()
+    } else null
     SideEffect {
         itemGeometry?.containerColor = background
         itemGeometry?.containerCornerRadiusDp = if (style.hasBackground) 8f else 0f
@@ -1057,7 +1061,8 @@ private fun CommentSurface(
         itemGeometry?.containerBorderColor = colors.outlineVariant
         itemGeometry?.containerBorderWidthDp =
             if (style.showOutline) 1f else 0f
-        if (detachedProgress == 0f) itemGeometry?.indicatorLayer = null
+        itemGeometry?.indicatorLayer = detachedLayer
+        if (detachedProgress == 0f) itemGeometry?.indicatorCoordinates = null
     }
     val contentCaptureModifier = if (itemGeometry != null && captureSource) {
         Modifier.captureCommentActionSourceContent { itemGeometry.contentLayer = it }
@@ -1072,127 +1077,95 @@ private fun CommentSurface(
             .onPlaced { itemGeometry.coordinates = it }
             .then(contentCaptureModifier)
     }
+    val detachedIndicator = if (detachedProgress > 0f) {
+        val radius = indicatorWidth / 2 * indicatorGeometry.rounding
+        Modifier.commentDepthIndicator(
+            width = indicatorWidth,
+            shape = RoundedCornerShape(
+                topStart = radius, topEnd = radius,
+                bottomStart = radius * (1f - continuationBelow),
+                bottomEnd = radius * (1f - continuationBelow),
+            ),
+            color = indicatorColor.copy(alpha = indicatorColor.alpha * indicatorAlpha * detachedProgress),
+            geometry = itemGeometry,
+            captureLayer = detachedLayer,
+        )
+    } else Modifier
     Column(modifier) {
-        Box(
-            Modifier.fillMaxWidth().padding(horizontal = shadowPadding, vertical = verticalShadowPadding),
-        ) {
-            val indicatorCaptureModifier = if (itemGeometry != null && captureSource && detachedProgress > 0f) {
-                Modifier.captureCommentActionSourceContent { itemGeometry.indicatorLayer = it }
-            } else {
-                Modifier
-            }
-            if (detachedProgress > 0f) Box(
-                Modifier.matchParentSize()
-                    .wrapContentWidth(Alignment.Start)
-                    .width(indicatorWidth)
-                    .onPlaced { itemGeometry?.indicatorCoordinates = it }
-                    .then(indicatorCaptureModifier)
-                    .drawWithCache {
-                        val width = indicatorWidth.roundToPx().toFloat()
-                        val radius = indicatorWidth / 2 * indicatorGeometry.rounding
-                        val outline = RoundedCornerShape(
-                            topStart = radius,
-                            topEnd = radius,
-                            bottomStart = radius * (1f - continuationBelow),
-                            bottomEnd = radius * (1f - continuationBelow),
-                        ).createOutline(Size(width, size.height), layoutDirection, this)
-                        onDrawBehind {
-                            drawOutline(
-                                outline,
-                                indicatorColor.copy(alpha = indicatorColor.alpha * indicatorAlpha * detachedProgress),
-                            )
-                        }
-                    },
-            )
-            Layout(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = externalInset)
-                    .shadow((cardProgress * 1f).dp, shape, clip = false)
-                    .clip(shape)
-                    .background(background)
-                    .drawWithCache {
-                        val outline = shape.createOutline(size, layoutDirection, this)
-                        // The outer half is clipped by the surface shape. Draw before the
-                        // children so an attached depth indicator owns the full start edge,
-                        // including its top and bottom pixels in the shared action transition.
-                        val stroke = Stroke(2.dp.toPx())
-                        onDrawBehind {
-                            drawOutline(
-                                outline,
-                                colors.outlineVariant.copy(alpha = outlineAlpha),
-                                style = stroke,
-                            )
-                        }
+        Column(
+            Modifier.fillMaxWidth()
+                .padding(horizontal = shadowPadding, vertical = verticalShadowPadding)
+                .then(detachedIndicator)
+                .padding(start = externalInset)
+                .shadow((cardProgress * 1f).dp, shape, clip = false)
+                .clip(shape)
+                .background(background)
+                .drawWithCache {
+                    val outline = shape.createOutline(size, layoutDirection, this)
+                    // The outer half is clipped by the surface shape. Draw before the
+                    // children so an attached depth indicator owns the full start edge,
+                    // including its top and bottom pixels in the shared action transition.
+                    val stroke = Stroke(2.dp.toPx())
+                    onDrawBehind {
+                        drawOutline(
+                            outline,
+                            colors.outlineVariant.copy(alpha = outlineAlpha),
+                            style = stroke,
+                        )
                     }
-                    .combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
-                        onClick = onClick,
-                        onLongClick = onLongClick,
-                    )
-                    .then(
-                        onLongClick?.let { callback ->
-                            Modifier.onSecondaryClick { callback() }
-                        } ?: Modifier,
-                    )
-                    .then(sourceCaptureModifier),
-                content = {
-                    Box(
-                        Modifier
-                            .width(internalIndicatorWidth)
-                            .graphicsLayer(alpha = indicatorAlpha * (1f - detachedProgress))
-                            .background(
-                                indicatorColor,
-                                RoundedCornerShape(
-                                    topStart = indicatorRadius,
-                                    topEnd = indicatorRadius,
-                                    bottomStart = indicatorRadius * (1f - continuationBelow),
-                                    bottomEnd = indicatorRadius * (1f - continuationBelow),
-                                ),
-                            ),
-                    )
-                    Column(
-                        Modifier.padding(
-                            start = contentStartPadding + 4.dp * detachedProgress,
-                            top = contentVerticalPadding,
-                            end = contentEndPadding,
-                            bottom = contentVerticalPadding,
-                        ),
-                    ) { content() }
-                },
-            ) { measurables, constraints ->
-                val indicatorWidthPx = internalIndicatorWidth.roundToPx()
-                    .coerceAtMost(constraints.maxWidth)
-                val indicatorMarginPx = (indicatorMargin * (1f - detachedProgress)).roundToPx()
-                    .coerceAtMost((constraints.maxWidth - indicatorWidthPx).coerceAtLeast(0))
-                val contentWidth = (
-                    constraints.maxWidth - indicatorWidthPx - indicatorMarginPx
-                ).coerceAtLeast(0)
-                val contentPlaceable = measurables[1].measure(
-                    constraints.copy(
-                        minWidth = contentWidth,
-                        maxWidth = contentWidth,
-                        minHeight = 0,
-                    ),
-                )
-                val rowHeight = contentPlaceable.height
-                val indicatorPlaceable = measurables[0].measure(
-                    constraints.copy(
-                        minWidth = indicatorWidthPx,
-                        maxWidth = indicatorWidthPx,
-                        minHeight = rowHeight,
-                        maxHeight = rowHeight,
-                    ),
-                )
-
-                layout(constraints.maxWidth, rowHeight) {
-                    indicatorPlaceable.placeRelative(0, 0)
-                    contentPlaceable.placeRelative(
-                        indicatorWidthPx + indicatorMarginPx,
-                        0,
-                    )
                 }
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+                .then(
+                    onLongClick?.let { callback ->
+                        Modifier.onSecondaryClick { callback() }
+                    } ?: Modifier,
+                )
+                .then(sourceCaptureModifier)
+                .commentDepthIndicator(
+                    width = internalIndicatorWidth,
+                    shape = RoundedCornerShape(
+                        topStart = indicatorRadius,
+                        bottomStart = indicatorRadius * (1f - continuationBelow),
+                    ),
+                    color = indicatorColor.copy(alpha = indicatorColor.alpha * indicatorAlpha * (1f - detachedProgress)),
+                )
+                .padding(start = internalIndicatorWidth)
+                .padding(start = indicatorMargin * (1f - detachedProgress))
+                .padding(
+                    start = contentStartPadding + 4.dp * detachedProgress,
+                    top = contentVerticalPadding,
+                    end = contentEndPadding,
+                    bottom = contentVerticalPadding,
+                ),
+        ) { content() }
+    }
+}
+
+/** A lazy-list row can be taller than Compose can encode in fixed child constraints. */
+private fun Modifier.commentDepthIndicator(
+    width: Dp,
+    shape: RoundedCornerShape,
+    color: Color,
+    geometry: CommentRowGeometry? = null,
+    captureLayer: GraphicsLayer? = null,
+): Modifier {
+    if (width <= 0.dp) return this
+    val trackPosition = if (geometry == null) Modifier else Modifier.onPlaced { geometry.indicatorCoordinates = it }
+    return then(trackPosition).drawWithCache {
+        val railWidth = width.roundToPx().coerceAtMost(size.width.roundToInt())
+        val railSize = Size(railWidth.toFloat(), size.height)
+        val left = if (layoutDirection == LayoutDirection.Ltr) 0f else size.width - railSize.width
+        geometry?.indicatorLocalBounds = Rect(Offset(left, 0f), railSize)
+        val outline = shape.createOutline(railSize, layoutDirection, this)
+        captureLayer?.record(size = IntSize(railWidth, size.height.roundToInt())) { drawOutline(outline, color) }
+        onDrawBehind {
+            translate(left = left) {
+                if (captureLayer == null) drawOutline(outline, color) else drawLayer(captureLayer)
             }
         }
     }
