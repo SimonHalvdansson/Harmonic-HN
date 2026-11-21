@@ -12,6 +12,7 @@ data class SettingsSearchCapabilities(
     val twoPane: Boolean = false,
     val commentsSwipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
+    val articleCategories: Boolean = true,
 )
 
 internal data class SettingsSearchAvailability(
@@ -91,11 +92,13 @@ internal fun settingsSearchCatalog(
     page(SettingsSection.AiSummary,
         "artificial intelligence llm ask chat summarize summarise gemini nano gemma qwen llama phi local offline download models" +
             if (availability.cloudAiSupported) " ollama openai anthropic cloud" else "")
-    page(SettingsSection.ArticleCategories, "embeddinggemma embeddings categorize categorization categories labels topics similarity sensitivity cutoff experimental")
-    page(SettingsSection.CategoryExploration, "how categories work embeddings cosine similarity map umap tsne pca examples")
-    group(SettingsSection.AiSummary, "", "Article categories" to "tag stories embeddings embeddinggemma labels topics")
-    group(SettingsSection.ArticleCategories, "", "Categorize stories" to "enable embeddings", "Similarity cutoff" to "sensitivity threshold",
-        "Input token limit" to "embeddings context length maximum 128 256 512 1024")
+    if (capabilities.articleCategories) {
+        page(SettingsSection.ArticleCategories, "embeddinggemma embeddings categorize categorization categories labels topics similarity sensitivity cutoff experimental")
+        page(SettingsSection.CategoryExploration, "how categories work embeddings cosine similarity map umap tsne pca examples")
+        group(SettingsSection.AiSummary, "", "Article categories" to "tag stories embeddings embeddinggemma labels topics")
+        group(SettingsSection.ArticleCategories, "", "Categorize stories" to "enable embeddings", "Similarity cutoff" to "sensitivity threshold",
+            "Input token limit" to "embeddings context length maximum 128 256 512 1024")
+    }
     page(SettingsSection.Data, "storage cache backup restore export import bookmarks history")
     page(SettingsSection.About, "version github privacy changelog updates")
     page(SettingsSection.Licenses, "open source libraries copyright dependencies")
@@ -122,8 +125,9 @@ internal fun settingsSearchCatalog(
         "Header pill" to "rounded surface color primary secondary tertiary toolbar",
         "Pill elevation" to "header shadow raised depth")
 
+    if (capabilities.articleCategories) group(SettingsSection.Stories, "Layout",
+        "Category tag location" to "article categorization labels title metadata domain tags placement")
     group(SettingsSection.Stories, "Layout",
-        "Category tag location" to "article categorization labels title metadata domain tags placement",
         "Preview image" to "images pictures photos cover large small thumbnails",
         "Borderless image" to "edge to edge photo cover padding margins",
         "Text size" to "font bigger smaller accessibility zoom",
@@ -188,13 +192,14 @@ internal fun settingsSearchCatalog(
     group(SettingsSection.UserAvatars, "Customize",
         "Frame shape" to "avatar circle rounded square squircle hexagon",
         "Colors" to "colours profile images material original")
+    if (capabilities.articleCategories) group(SettingsSection.HeaderDisplay, "Layout",
+        "Article category tags" to "categorization labels post header")
     group(SettingsSection.HeaderDisplay, "Layout",
         "Preview image" to "header photo cover picture",
         "Post details" to "metadata title author points time score row",
         "Minimalistic" to "compact post header expand collapse buttons preview image",
         "Domain" to "website url host",
         "Summary" to "article description excerpt post header link preview",
-        "Article category tags" to "categorization labels post header",
         "Thumbnail" to "favicon website logo icon",
         "Points" to "score votes post header indicator")
     group(SettingsSection.HeaderDisplay, "Appearance",

@@ -21,6 +21,15 @@ class SettingsSearchTest {
         settingsSearchCatalog(labels, availability)
     private fun target(title: String): SettingsSearchEntry = entries().first { it.title == title }
 
+    @Test fun articleCategoryVisibilityCoversPagesAndControlsInOtherSections() {
+        val routes = setOf(SettingsSection.ArticleCategories.route, SettingsSection.CategoryExploration.route)
+        val controls = setOf("Article categories", "Category tag location", "Article category tags")
+        val hidden = entries(SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(articleCategories = false)))
+        assertFalse(hidden.any { it.screenRoute in routes || it.title in controls })
+        assertTrue(entries().map { it.screenRoute }.containsAll(routes))
+        assertTrue(entries().map { it.title }.containsAll(controls))
+    }
+
     @Test fun spacingAndDividersNavigateToTheirOwnPages() {
         val entries = entries()
         val dividerTargets = entries.filter { it.title == "Dividers" }

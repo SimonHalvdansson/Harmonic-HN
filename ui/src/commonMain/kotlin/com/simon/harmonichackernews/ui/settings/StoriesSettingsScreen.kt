@@ -94,7 +94,7 @@ fun StoriesSettingsScreen(
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onClickedPostsRequested: () -> Unit,
-    onArticleCategoriesRequested: () -> Unit = {},
+    onArticleCategoriesRequested: (() -> Unit)? = {},
     onCategorizationEnabledChanged: (Boolean) -> Unit = {},
     contentVersion: Int = 0,
 ) {
@@ -182,25 +182,27 @@ fun StoriesSettingsScreen(
                     onCheckedChange = { onBooleanChanged(StoriesBooleanSetting.Tint, it) },
                 )
             }
-            row {
-                NavigationSwitchSettingRow(
-                    title = "Article category tags",
-                    summary = state.categorizationUnavailableReason,
-                    icon = Res.drawable.ic_label,
-                    checked = state.categorizationEnabled,
-                    switchEnabled = state.canEnableCategorization || state.categorizationEnabled,
-                    onClick = onArticleCategoriesRequested,
-                    onCheckedChange = onCategorizationEnabledChanged,
-                )
-            }
-            row {
-                SegmentedSetting(
-                    title = "Category tag location",
-                    options = com.simon.harmonichackernews.settings.CategoryTagLocation.entries.map { it to it.label },
-                    selected = state.categoryTagLocation,
-                    enabled = state.categorizationEnabled,
-                    onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
-                )
+            if (onArticleCategoriesRequested != null) {
+                row {
+                    NavigationSwitchSettingRow(
+                        title = "Article category tags",
+                        summary = state.categorizationUnavailableReason,
+                        icon = Res.drawable.ic_label,
+                        checked = state.categorizationEnabled,
+                        switchEnabled = state.canEnableCategorization || state.categorizationEnabled,
+                        onClick = onArticleCategoriesRequested,
+                        onCheckedChange = onCategorizationEnabledChanged,
+                    )
+                }
+                row {
+                    SegmentedSetting(
+                        title = "Category tag location",
+                        options = com.simon.harmonichackernews.settings.CategoryTagLocation.entries.map { it to it.label },
+                        selected = state.categoryTagLocation,
+                        enabled = state.categorizationEnabled,
+                        onSelected = { onStringChanged(StoriesStringSetting.CategoryTagLocation, it.storedValue) },
+                    )
+                }
             }
             row {
                 SettingRow(

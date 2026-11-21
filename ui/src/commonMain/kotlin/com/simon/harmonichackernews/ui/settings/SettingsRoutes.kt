@@ -467,7 +467,7 @@ fun StoriesSettingsRoute(
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onClickedPostsRequested: () -> Unit,
-    onArticleCategoriesRequested: () -> Unit = {},
+    onArticleCategoriesRequested: (() -> Unit)? = {},
     categoryAvailability: StoryCategoryAvailability = StoryCategoryAvailability(),
 ) {
     var showHotnessDialog by rememberSaveable { mutableStateOf(false) }

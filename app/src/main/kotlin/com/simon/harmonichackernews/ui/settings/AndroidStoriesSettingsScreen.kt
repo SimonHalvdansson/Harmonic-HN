@@ -14,13 +14,13 @@ fun AndroidStoriesSettingsScreen(
     onManageFrontpages: () -> Unit,
     onPaletteTintRequested: () -> Unit,
     onClickedPostsRequested: () -> Unit,
-    onArticleCategoriesRequested: () -> Unit,
+    onArticleCategoriesRequested: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val repository = LocalHarmonicUiDependencies.current.settings
     StoriesSettingsRoute(
         repository = repository,
-        categorySettings = LocalHarmonicUiDependencies.current.articleCategorySettings,
+        categorySettings = LocalHarmonicUiDependencies.current.articleCategorySettings.takeIf { onArticleCategoriesRequested != null },
         previewModel = SettingsStoryPreviewModel,
         showNavigation = showNavigation,
         onBack = onBack,

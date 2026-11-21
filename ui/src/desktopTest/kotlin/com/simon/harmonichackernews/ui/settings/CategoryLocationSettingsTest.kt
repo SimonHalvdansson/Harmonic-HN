@@ -29,6 +29,7 @@ class CategoryLocationSettingsTest {
         StoriesSettingsPresenter(app.app.settings).setPreviewImageMode(mode)
         var availability by mutableStateOf(StoryCategoryAvailability(false, "Download to enable"))
         var categoryNavigationCount = 0
+        var openCategories by mutableStateOf<(() -> Unit)?>({ categoryNavigationCount++ })
         val scene = ImageComposeScene(420, 1000) {
             val palette = HarmonicThemeCatalog.scheme("dynamic", false)
             HarmonicTheme(palette.colorScheme, false) {
@@ -38,7 +39,7 @@ class CategoryLocationSettingsTest {
                         showNavigation = true, onBack = {}, onSpacingRequested = {}, onPlatformEffect = {}, onManageFrontpages = {},
                         onPaletteTintRequested = {}, onClickedPostsRequested = {},
                         categoryAvailability = availability,
-                        onArticleCategoriesRequested = { categoryNavigationCount++ })
+                        onArticleCategoriesRequested = openCategories)
                 }
             }
         }
@@ -165,6 +166,13 @@ class CategoryLocationSettingsTest {
             categorySwitch().config[SemanticsActions.OnClick].action!!.invoke()
             frames()
             assertNotNull(options("Under title").config.getOrNull(SemanticsProperties.Disabled))
+            openCategories = null
+            frames()
+            val visibleText = scene.semanticsOwners.flatMap { walk(it.unmergedRootSemanticsNode) }
+                .flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty() }.map { it.text }
+            assertTrue("Display style" in visibleText)
+            assertFalse("Article category tags" in visibleText)
+            assertFalse("Category tag location" in visibleText)
         } finally { DebugStoryCategoryPreview.enabled = false; DebugStoryCategoryPreview.showTags = true; scene.close(); app.close() }
     }
 }

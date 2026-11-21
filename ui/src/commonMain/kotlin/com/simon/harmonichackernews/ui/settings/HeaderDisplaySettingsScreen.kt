@@ -127,6 +127,7 @@ import dev.chrisbanes.haze.rememberHazeState
 fun HeaderDisplaySettingsRoute(
     repository: AppSettingsRepository,
     onBack: () -> Unit,
+    showArticleCategories: Boolean = true,
     statusBarProtection: @Composable (Color, Dp) -> Unit = { _, _ -> },
 ) {
     val dependencies = LocalHarmonicUiDependencies.current
@@ -222,7 +223,7 @@ fun HeaderDisplaySettingsRoute(
             }
         },
         pinnedContent = {
-            val labels = if (!categoryPreferences.enabled) emptyList() else when (sample) {
+            val labels = if (!showArticleCategories || !categoryPreferences.enabled) emptyList() else when (sample) {
                 HeaderPreviewSample.TEXT_POST, HeaderPreviewSample.LINK_PREVIEW -> listOf("Programming")
                 else -> listOf("Science", "Math")
             }
@@ -295,15 +296,17 @@ fun HeaderDisplaySettingsRoute(
                         checked = settings.comments.showHeaderSummary,
                         onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_SUMMARY, it) },
                     )
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Article category tags",
-                        icon = Res.drawable.ic_label,
-                        enabled = categoryPreferences.enabled,
-                        summary = if (!categoryPreferences.enabled) "Turn on Article categories" else null,
-                        checked = settings.comments.showHeaderCategories,
-                        onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_CATEGORIES, it) },
-                    )
+                    if (showArticleCategories) {
+                        SettingsDivider()
+                        SwitchSettingRow(
+                            title = "Article category tags",
+                            icon = Res.drawable.ic_label,
+                            enabled = categoryPreferences.enabled,
+                            summary = if (!categoryPreferences.enabled) "Turn on Article categories" else null,
+                            checked = settings.comments.showHeaderCategories,
+                            onCheckedChange = { repository.setCommentBoolean(CommentBooleanPreference.HEADER_CATEGORIES, it) },
+                        )
+                    }
                     if (!platformStyle.backButtonRequired) {
                         SettingsDivider()
                         SwitchSettingRow(

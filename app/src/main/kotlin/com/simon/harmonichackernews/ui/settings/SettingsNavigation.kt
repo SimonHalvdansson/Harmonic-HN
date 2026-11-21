@@ -2,6 +2,7 @@ package com.simon.harmonichackernews.ui.settings
 
 import android.content.pm.PackageManager
 import android.os.Build
+import com.simon.harmonichackernews.BuildConfig
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import com.simon.harmonichackernews.platform.accountOrNull
@@ -36,6 +37,8 @@ fun SettingsShell(
 ) {
     val context = LocalContext.current
     val dependencies = LocalHarmonicUiDependencies.current
+    val showArticleCategories = BuildConfig.BUILD_TYPE != "fossRelease"
+    val categorySettings = dependencies.articleCategorySettings.takeIf { showArticleCategories }
     val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
@@ -64,7 +67,8 @@ fun SettingsShell(
         navigation = navigation,
         directive = directive,
         supportsTwoPane = supportsTwoPane,
-        searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true),
+        searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true,
+            articleCategories = showArticleCategories),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,
@@ -83,7 +87,16 @@ fun SettingsShell(
             )
         },
         renderDetail = { section, singlePane, onBack, onNavigate ->
-            when (section) {
+            val openArticleCategories: (() -> Unit)? = if (showArticleCategories) {
+                { onNavigate(SettingsSection.ArticleCategories, true) }
+            } else null
+            // A restored settings destination can predate the FOSS visibility restriction.
+            val destination = when (section) {
+                SettingsSection.ArticleCategories, SettingsSection.CategoryExploration ->
+                    if (showArticleCategories) section else SettingsSection.AiSummary
+                else -> section
+            }
+            when (destination) {
                 SettingsSection.Search -> Unit // Shared search content belongs to SettingsNavigationShell.
                 SettingsSection.Appearance -> AndroidAppearanceSettingsScreen(
                     showNavigation = singlePane,
@@ -120,7 +133,7 @@ fun SettingsShell(
                     onManageFrontpages = { onNavigate(SettingsSection.Frontpages, true) },
                     onPaletteTintRequested = { onNavigate(SettingsSection.PaletteTint, true) },
                     onClickedPostsRequested = { onNavigate(SettingsSection.ClickedPosts, true) },
-                    onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
+                    onArticleCategoriesRequested = openArticleCategories,
                 )
                 SettingsSection.Frontpages -> ManageFrontpagesSettingsRoute(
                     repository = dependencies.settings,
@@ -139,13 +152,14 @@ fun SettingsShell(
                 )
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.MonoBlocks -> MonoBlocksSettingsRoute(dependencies.settings, onBack)
-                SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(dependencies.settings, dependencies.articleCategorySettings, onBack)
+                SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(dependencies.settings, categorySettings, onBack)
                 SettingsSection.CommentsSpacing -> CommentsSpacingSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.HeaderDisplay -> HeaderDisplaySettingsRoute(
                     dependencies.settings, onBack,
+                    showArticleCategories = showArticleCategories,
                     statusBarProtection = { color, height -> StatusBarProtection(color, height) },
                 )
-                SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(dependencies.settings, onBack, dependencies.articleCategorySettings)
+                SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(dependencies.settings, onBack, categorySettings)
                 SettingsSection.UserAvatars -> UserAvatarSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
                     repository = dependencies.settings,
@@ -168,7 +182,7 @@ fun SettingsShell(
                 SettingsSection.AiSummary -> AndroidAiSummarySettingsScreen(
                     showNavigation = singlePane,
                     onBack = onBack,
-                    onArticleCategoriesRequested = { onNavigate(SettingsSection.ArticleCategories, true) },
+                    onArticleCategoriesRequested = openArticleCategories,
                 )
                 SettingsSection.ArticleCategories -> ArticleCategorySettingsScreen(onBack,
                     onHowItWorks = { onNavigate(SettingsSection.CategoryExploration, true) })

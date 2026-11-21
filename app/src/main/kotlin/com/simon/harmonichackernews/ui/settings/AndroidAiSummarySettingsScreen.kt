@@ -18,7 +18,7 @@ import com.simon.harmonichackernews.presentation.UserMessageDuration
 fun AndroidAiSummarySettingsScreen(
     showNavigation: Boolean,
     onBack: () -> Unit,
-    onArticleCategoriesRequested: () -> Unit = {},
+    onArticleCategoriesRequested: (() -> Unit)? = null,
 ) {
     val appComposition = LocalHarmonicUiDependencies.current
     val repository = appComposition.aiSummarySettings
