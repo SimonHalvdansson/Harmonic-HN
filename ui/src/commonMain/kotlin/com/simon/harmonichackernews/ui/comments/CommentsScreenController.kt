@@ -16,6 +16,8 @@ import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
+import com.simon.harmonichackernews.summary.DiscussionSummaryState
+import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
@@ -54,6 +56,9 @@ data class CommentsScreenState(
     val pollVoteInFlightOptionId: Int? = null,
     val storySummaryLoading: Boolean = false,
     val summaryDiagnostics: StorySummaryDiagnostics? = null,
+    val discussionSummary: DiscussionSummaryState = DiscussionSummaryState(),
+    val canSummarizeDiscussion: Boolean = false,
+    val discussionRequestBlocked: Boolean = false,
     val headerPreviewResource: StoryPreviewResourceState? = null,
     val commentFavoriteLoadingId: Int = -1,
     val commentVoteLoadingId: Int = -1,
@@ -128,6 +133,9 @@ class CommentsScreenController private constructor(
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
     val storySummaryLoading: Boolean get() = screenState.storySummaryLoading
+    val discussionSummary: DiscussionSummaryState get() = screenState.discussionSummary
+    val canSummarizeDiscussion: Boolean get() = screenState.canSummarizeDiscussion
+    val discussionRequestBlocked: Boolean get() = screenState.discussionRequestBlocked
     val summaryDiagnostics: StorySummaryDiagnostics?
         get() = screenState.summaryDiagnostics
     val headerPreviewResource: StoryPreviewResourceState?
@@ -557,7 +565,10 @@ class CommentsScreenController private constructor(
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
-    fun isCommentActionOverlayShowing(): Boolean = commentActionOverlay != null || postAsk != null
+    // Android only composes the Ask host once an overlay is requested. A discussion has no
+    // source card to open Ask directly, so count its pending request before the host mounts.
+    fun isCommentActionOverlayShowing(): Boolean =
+        commentActionOverlay != null || postAsk != null || discussionSummary.visible
 
     fun getVisibleCommentActionId(): Int = commentActionOverlay?.comment?.id ?: -1
 
@@ -579,7 +590,8 @@ class CommentsScreenController private constructor(
         private set
 
     fun openPostAsk(state: PostAskState) {
-        if (isCommentActionOverlayShowing()) return
+        if (commentActionOverlay != null || postAsk != null) return
+        if (discussionSummary.visible && state.subject !is AskSource.Discussion) return
         postAsk = state
         askOpen = true
         listener.onCommentActionOverlayVisibilityChanged(true)
@@ -597,6 +609,9 @@ class CommentsScreenController private constructor(
     }
 
     fun closeAsk() {
+        if (postAsk?.subject is AskSource.Discussion || (postAsk == null && discussionSummary.visible)) {
+            listener.onDismissDiscussionSummary()
+        }
         askOpen = false
         askBackProgress = 0f
     }
@@ -607,7 +622,7 @@ class CommentsScreenController private constructor(
     }
 
     fun requestDismissCommentActions() {
-        if (askOpen) {
+        if (askOpen || (postAsk == null && discussionSummary.visible)) {
             closeAsk()
             return
         }
@@ -974,6 +989,8 @@ class CommentsScreenController private constructor(
             tintColorArgb: Int,
         ): Int?
         fun onHeaderAction(action: CommentsHeaderAction)
+        fun onSummarizeDiscussion(regenerate: Boolean = false) = Unit
+        fun onDismissDiscussionSummary() = Unit
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)
         fun onSearchResultSelected(comment: PortableCommentItem)

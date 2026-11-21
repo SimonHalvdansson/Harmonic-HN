@@ -7,6 +7,8 @@ import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 sealed interface AskSource {
     val story: StoryListItemSnapshot
 
+    data class Discussion(override val story: StoryListItemSnapshot) : AskSource
+
     data class Comment(
         override val story: StoryListItemSnapshot,
         val comment: PortableCommentItem,

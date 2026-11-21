@@ -33,6 +33,7 @@ import com.simon.harmonichackernews.presentation.SubmissionsSessionState
 import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 import com.simon.harmonichackernews.settings.UserSettings
+import com.simon.harmonichackernews.summary.DiscussionSummaryRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -197,6 +198,10 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
             ) == true
         },
         summaryRuntime = createStorySummaryRuntime(featureScope),
+        discussionRuntime = DiscussionSummaryRuntime(
+            featureScope, aiSummarySettings, network.summaryUseCase, localSummaryEngine,
+            mock = { host.userSettings.debug.mockAiAnswers },
+        ),
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         loadCachedStoryHeader = { storyCache.loadStoryHeader(it) },
         isThreadCached = storyCache::hasStoryPayload,

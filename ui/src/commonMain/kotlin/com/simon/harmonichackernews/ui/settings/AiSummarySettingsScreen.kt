@@ -69,7 +69,8 @@ fun AiSummarySettingsScreen(
                 summary = state.disabledReason.takeIf { !state.configurationComplete },
             )
             Text(
-                text = "Summarize articles and use Ask to ask questions about articles and comments with your selected AI model.",
+                text = "Summarize articles or discussions, or use Ask about an article or comment. " +
+                    "In Cloud mode, discussion summaries send public comment text to your configured provider.",
                 modifier = Modifier.padding(horizontal = 24.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = AppUiFontFamily,

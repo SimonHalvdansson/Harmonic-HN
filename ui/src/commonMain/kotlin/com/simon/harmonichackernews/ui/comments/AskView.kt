@@ -78,8 +78,11 @@ internal fun AskSurface(
     val dependencies = LocalHarmonicUiDependencies.current
     val comment = (subject as? AskSource.Comment)?.comment
     val post = subject as? AskSource.Post
+    val isDiscussion = subject is AskSource.Discussion
+    val summary = if (isDiscussion) controller.discussionSummary else null
+    val canAskDiscussion = !isDiscussion || (summary?.running == false && summary.text.isNotBlank())
     val sourceKey = comment?.id ?: subject.story.id
-    val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=${comment?.id}"
+    val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=$sourceKey"
     val scope = rememberCoroutineScope()
     val discussion = remember(subject) {
         AskConversation(
@@ -88,6 +91,7 @@ internal fun AskSurface(
             dependencies.localSummaryEngine, subject,
             mockAnswers = { dependencies.userSettings.debug.mockAiAnswers },
             builtInModelSelected = { dependencies.localModels?.selectedModel?.downloadable == false },
+            discussionContext = { controller.discussionSummary },
         )
     }
     val state = discussion.state.collectAsState().value
@@ -159,13 +163,13 @@ internal fun AskSurface(
         }
     }
     fun send() {
-        if (draft.isBlank() || state.running || resetting) return
+        if (draft.isBlank() || state.running || resetting || !canAskDiscussion) return
         discussion.ask(draft)
         draft = ""
         keyboard?.hide()
     }
     fun sendSuggestion(question: String) {
-        if (state.running || resetting) return
+        if (state.running || resetting || !canAskDiscussion) return
         val morph = AskQuestionMorph(question, state.turns.size, remainingQuestions)
         questionMorph = morph
         keyboard?.hide()
@@ -191,9 +195,17 @@ internal fun AskSurface(
             AskLayout(
                 header = {
                     HarmonicTopAppBar(
-                        title = if (post != null) "Ask about this post" else "Ask about this comment",
+                        title = when {
+                            isDiscussion -> "Ask about this discussion"
+                            post != null -> "Ask about this post"
+                            else -> "Ask about this comment"
+                        },
                         onBack = controller::closeAsk,
-                        navigationContentDescription = if (post != null) "Back to summary" else "Back to comment",
+                        navigationContentDescription = when {
+                            isDiscussion -> "Back to comments"
+                            post != null -> "Back to summary"
+                            else -> "Back to comment"
+                        },
                         toolbarHeight = 64.dp * density.fontScale.coerceAtLeast(1f),
                         navigationContainerColor = lerp(color, MaterialTheme.colorScheme.onSurface, 0.06f),
                     )
@@ -204,7 +216,7 @@ internal fun AskSurface(
                         onDraftChanged = { draft = it },
                         hasTurns = state.turns.isNotEmpty(),
                         running = state.running,
-                        enabled = !resetting,
+                        enabled = !resetting && canAskDiscussion,
                         onSend = ::send,
                         onStop = discussion::stop,
                         surfaceColor = color,
@@ -231,6 +243,36 @@ internal fun AskSurface(
                     item(key = "subject", contentType = "ask-subject") {
                         Column {
                             val linkColor = MaterialTheme.colorScheme.primary
+                            if (summary != null) {
+                                Text(subject.story.title.orEmpty(), style = MaterialTheme.typography.titleMedium)
+                                Spacer(Modifier.height(12.dp))
+                                Text("Discussion summary", color = linkColor, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(8.dp))
+                                if (summary.running && summary.text.isBlank()) HarmonicLoadingIndicator(Modifier.size(24.dp))
+                                summary.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                                if (summary.text.isNotBlank()) SelectionContainer {
+                                    SummaryMarkdownText(summary.text, MaterialTheme.colorScheme.onSurface, linkColor,
+                                        typography.family, typography.commentTextSize.sp,
+                                        (typography.commentTextSize + 2f).sp, onOpenLink = {}, baseUrl = baseUrl,
+                                        enableBoldFormatting = settings.enableSummaryBoldFormatting,
+                                        animateStreamingText = summary.running, animationContentKey = sourceKey)
+                                }
+                                if (summary.error == null) summary.coverage?.let {
+                                    val count = if (it.included == it.eligible) "${it.included}" else "${it.included} of ${it.eligible}"
+                                    val cached = if (it.cached) " (cached)" else ""
+                                    val shortened = if (it.shortened > 0) " Some comments were shortened." else ""
+                                    Text("Based on $count loaded ${if (it.eligible == 1) "comment" else "comments"}$cached.$shortened",
+                                        modifier = Modifier.padding(top = 8.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (summary.truncated) Text("The model stopped before completing the summary.")
+                                if (!summary.running && controller.canSummarizeDiscussion &&
+                                    !controller.discussionRequestBlocked && !state.running && state.turns.isEmpty()) {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { controller.listener.onSummarizeDiscussion(regenerate = true) },
+                                    ) { Text(if (summary.error == null) "Regenerate" else "Retry") }
+                                }
+                            } else {
                             val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
                                 htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
                                     LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
@@ -304,6 +346,7 @@ internal fun AskSurface(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontSize = 13.sp, lineHeight = 18.sp)
                             }
+                            }
                             if (state.omittedTurns > 0) {
                                 Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
                                     modifier = Modifier.padding(top = 20.dp),
@@ -311,7 +354,7 @@ internal fun AskSurface(
                                     fontSize = 13.sp, lineHeight = 18.sp)
                             }
                             AnimatedVisibility(
-                                visible = state.turns.isEmpty(),
+                                visible = state.turns.isEmpty() && canAskDiscussion,
                                 exit = fadeOut(tween(120)) + shrinkVertically(tween(240, easing = AskEasing)),
                             ) {
                                 val questionVisibility = this
