@@ -10,6 +10,10 @@ import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -27,6 +31,8 @@ data class DiscussionSummaryState(
     val error: String? = null,
     val truncated: Boolean = false,
     val sourceText: String? = null,
+    val progressMessage: String = "Preparing comments…",
+    val inputCharacters: Int = 0,
 )
 
 class DiscussionSummaryRuntime(
@@ -36,6 +42,7 @@ class DiscussionSummaryRuntime(
     private val local: LocalSummaryEngine?,
     private val mock: () -> Boolean,
     private val preparationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val cloudFirstOutputTimeoutMillis: Long = 45_000L,
 ) {
     private val mutableState = MutableStateFlow(DiscussionSummaryState())
     val state = mutableState.asStateFlow()
@@ -75,14 +82,17 @@ class DiscussionSummaryRuntime(
                     else listOf(16_000, 8_000, 4_000, 2_000)
                 var previousText: String? = null
                 var contextError: Exception? = null
+                var noOutputRetries = 0
                 for ((index, limit) in budgets.withIndex()) {
                     val input = withContext(preparationDispatcher) {
                         prepareDiscussionSummary(title, body, comments, cached, limit) { ensureActive() }
                     } ?: throw DiscussionFailure("There are no readable comments that fit in this summary.")
                     if (input.text == previousText && index != budgets.lastIndex) continue
-                    if (input.text == previousText) throw checkNotNull(contextError)
+                    if (input.text == previousText) throw contextError
+                        ?: DiscussionNoOutputException("The AI model did not respond to this request. Try again or choose a faster model.")
                     previousText = input.text
-                    update { it.copy(coverage = input.coverage) }
+                    update { it.copy(coverage = input.coverage, inputCharacters = input.text.length,
+                        progressMessage = "Waiting for AI model…") }
                     var emittedText = false
                     var result: StorySummaryEvent.Success? = null
                     try {
@@ -102,14 +112,17 @@ class DiscussionSummaryRuntime(
                                 streamResponses = config.streamResponses,
                             ))
                         }
-                        events.collect { event ->
+                        collectWithFirstOutputTimeout(events, if (cloud != null && config.streamResponses) cloudFirstOutputTimeoutMillis else null) { event ->
                             when (event) {
                                 is StorySummaryEvent.Progress -> {
                                     emittedText = emittedText || event.text.isNotBlank()
-                                    if (config.streamResponses) update { it.copy(text = event.text) }
+                                    if (event.text.isNotBlank()) update { it.copy(
+                                        text = if (config.streamResponses) event.text else it.text,
+                                        progressMessage = "Generating summary…",
+                                    ) }
                                 }
                                 is StorySummaryEvent.Success -> result = event
-                                is StorySummaryEvent.Failure -> error(event.message)
+                                is StorySummaryEvent.Failure -> throw DiscussionFailure(event.message)
                                 else -> Unit
                             }
                         }
@@ -118,6 +131,12 @@ class DiscussionSummaryRuntime(
                         if (!emittedText && result == null && index < budgets.lastIndex &&
                             AskConversation.isContextLimitError(error.message)) {
                             contextError = error
+                            update { it.copy(progressMessage = "Context too large; trying fewer comments…") }
+                            continue
+                        }
+                        if (!emittedText && result == null && error is DiscussionNoOutputException &&
+                            cloud != null && noOutputRetries++ == 0 && index < budgets.lastIndex) {
+                            update { it.copy(progressMessage = "Model did not respond; trying fewer comments…") }
                             continue
                         }
                         throw error
@@ -125,7 +144,7 @@ class DiscussionSummaryRuntime(
                     val complete = result?.takeIf { it.text.isNotBlank() }
                         ?: throw DiscussionFailure("The model returned no summary. Please retry.")
                     update { it.copy(running = false, text = complete.text, truncated = complete.truncated,
-                        sourceText = input.text) }
+                        sourceText = input.text, progressMessage = "Summary complete") }
                     return@launch
                 }
             } catch (cancelled: CancellationException) {
@@ -136,9 +155,14 @@ class DiscussionSummaryRuntime(
                     error is DiscussionFailure -> error.message
                     AskConversation.isContextLimitError(error.message) ->
                         "This discussion is too large for the selected model."
+                    error is DiscussionNoOutputException -> error.message
+                    error.message?.contains("timeout", ignoreCase = true) == true ||
+                        error.message?.contains("timed out", ignoreCase = true) == true ->
+                        "The AI provider timed out. Try again or choose a faster model."
                     else -> "Couldn't summarize the discussion. Check your AI settings or try again."
                 }
-                update { it.copy(running = false, error = message, text = "") }
+                update { it.copy(running = false, error = message, text = "",
+                    progressMessage = "Summary failed") }
             }
         }
     }
@@ -155,6 +179,51 @@ class DiscussionSummaryRuntime(
         mutableState.value = DiscussionSummaryState()
     }
 
+    // Bound the wait before the cloud provider sends its first token. Once it starts streaming,
+    // the normal provider request deadline applies. Local inference has its own model lifecycle.
+    private suspend fun collectWithFirstOutputTimeout(
+        events: kotlinx.coroutines.flow.Flow<StorySummaryEvent>,
+        timeoutMillis: Long?,
+        onEvent: suspend (StorySummaryEvent) -> Unit,
+    ) {
+        if (timeoutMillis == null) {
+            events.collect(onEvent)
+            return
+        }
+        supervisorScope {
+            val firstOutput = CompletableDeferred<Unit>()
+            var timedOut = false
+            val worker = async {
+                events.collect { event ->
+                    onEvent(event)
+                    if ((event is StorySummaryEvent.Progress && event.text.isNotBlank()) ||
+                        (event is StorySummaryEvent.Success && event.text.isNotBlank())) {
+                        firstOutput.complete(Unit)
+                    }
+                }
+            }
+            val watchdog = launch {
+                delay(timeoutMillis)
+                if (!firstOutput.isCompleted && worker.isActive) {
+                    timedOut = true
+                    worker.cancel()
+                }
+            }
+            try {
+                worker.await()
+            } catch (cancelled: CancellationException) {
+                if (timedOut) throw DiscussionNoOutputException(
+                    "The AI model did not begin responding within ${timeoutMillis / 1_000} seconds. " +
+                        "Try again or choose a faster model.",
+                )
+                throw cancelled
+            } finally {
+                watchdog.cancel()
+            }
+        }
+    }
+
+    private class DiscussionNoOutputException(override val message: String) : Exception(message)
     private class DiscussionFailure(override val message: String) : Exception(message)
 
     private companion object {

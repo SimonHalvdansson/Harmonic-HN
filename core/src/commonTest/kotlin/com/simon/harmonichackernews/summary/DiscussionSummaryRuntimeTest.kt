@@ -95,6 +95,68 @@ class DiscussionSummaryRuntimeTest {
         assertEquals("", runtime.state.value.text)
     }
 
+    @Test fun ninetyOneLongCommentsRecoverWhenCloudNeverStartsStreaming() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        settings.setBaseUrl("https://example.com/v1")
+        settings.setModel("slow-model")
+        assertTrue(settings.setText(AiSummaryTextSetting.API_KEY, "test-key"))
+        val lengths = mutableListOf<Int>()
+        val cloud = SummaryUseCase(object : CloudSummaryRepository {
+            override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = error("Not used")
+            override suspend fun extractMainContent(url: String): String = error("Not used")
+            override fun summarize(config: CloudSummaryConfig, text: String?) = flow {
+                lengths += text.orEmpty().length
+                if (lengths.size == 1) awaitCancellation()
+                emit(CloudSummaryEvent.Success("Recovered on smaller input"))
+            }
+        })
+        val comments = listOf(source.first()) + (2..92).map { id ->
+            PortableCommentItem(CommentSnapshot(id, parentId = 1, text = "Long reply ".repeat(200)),
+                CommentPresentationSnapshot(sortOrder = id))
+        }
+        val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
+            cloudFirstOutputTimeoutMillis = 100)
+        runtime.open("Post", null, comments, false, false)
+        advanceUntilIdle()
+        assertEquals(2, lengths.size)
+        assertTrue(lengths[1] < lengths[0])
+        assertEquals("Recovered on smaller input", runtime.state.value.text)
+        assertEquals(null, runtime.state.value.error)
+        assertEquals("Summary complete", runtime.state.value.progressMessage)
+    }
+
+    @Test fun ninetyOneShortCommentsFailClearlyInsteadOfRepeatedlyWaitingOnSameInput() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        settings.setBaseUrl("https://example.com/v1")
+        settings.setModel("unresponsive-model")
+        assertTrue(settings.setText(AiSummaryTextSetting.API_KEY, "test-key"))
+        var requests = 0
+        val cloud = SummaryUseCase(object : CloudSummaryRepository {
+            override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = error("Not used")
+            override suspend fun extractMainContent(url: String): String = error("Not used")
+            override fun summarize(config: CloudSummaryConfig, text: String?) = flow<CloudSummaryEvent> {
+                requests++
+                awaitCancellation()
+            }
+        })
+        val comments = listOf(source.first()) + (2..92).map { id ->
+            PortableCommentItem(CommentSnapshot(id, parentId = 1, text = "Short reply"),
+                CommentPresentationSnapshot(sortOrder = id))
+        }
+        val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
+            cloudFirstOutputTimeoutMillis = 100)
+        runtime.open("Post", null, comments, false, false)
+        advanceUntilIdle()
+        assertEquals(1, requests)
+        assertFalse(runtime.state.value.running)
+        assertTrue(runtime.state.value.error.orEmpty().contains("did not respond"))
+        assertTrue(runtime.state.value.inputCharacters > 0)
+    }
+
     @Test fun cloudUsesConfiguredProviderAndDoesNotRetryOnceOutputHasStarted() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)

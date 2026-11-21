@@ -80,7 +80,15 @@ internal fun AskSurface(
     val post = subject as? AskSource.Post
     val isDiscussion = subject is AskSource.Discussion
     val summary = if (isDiscussion) controller.discussionSummary else null
-    val canAskDiscussion = !isDiscussion || (summary?.running == false && summary.text.isNotBlank())
+    val canAskDiscussion = !isDiscussion || (summary?.running == false && summary.error == null && summary.text.isNotBlank())
+    var summaryElapsedSeconds by remember(subject) { mutableIntStateOf(0) }
+    LaunchedEffect(summary?.running) {
+        summaryElapsedSeconds = 0
+        while (summary?.running == true) {
+            delay(1_000)
+            summaryElapsedSeconds++
+        }
+    }
     val sourceKey = comment?.id ?: subject.story.id
     val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=$sourceKey"
     val scope = rememberCoroutineScope()
@@ -248,7 +256,22 @@ internal fun AskSurface(
                                 Spacer(Modifier.height(12.dp))
                                 Text("Discussion summary", color = linkColor, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
-                                if (summary.running && summary.text.isBlank()) HarmonicLoadingIndicator(Modifier.size(24.dp))
+                                if (summary.running) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        HarmonicLoadingIndicator(Modifier.size(24.dp))
+                                        Spacer(Modifier.width(10.dp))
+                                        Text("${summary.progressMessage} ${summaryElapsedSeconds}s",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    if (summary.inputCharacters > 0) {
+                                        Text("${summary.coverage?.included ?: 0} comments, " +
+                                            "${summary.inputCharacters} input characters",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    androidx.compose.material3.TextButton(onClick = controller::closeAsk) {
+                                        Text("Cancel summary")
+                                    }
+                                }
                                 summary.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                                 if (summary.text.isNotBlank()) SelectionContainer {
                                     SummaryMarkdownText(summary.text, MaterialTheme.colorScheme.onSurface, linkColor,
