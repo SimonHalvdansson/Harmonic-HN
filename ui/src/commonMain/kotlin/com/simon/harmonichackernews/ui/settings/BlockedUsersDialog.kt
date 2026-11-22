@@ -174,7 +174,6 @@ fun BlockedUsersDialog(
     )
 }
 
-/** The empty field makes confirming a formerly folded identity an explicit user decision. */
 @Composable
 fun LegacyUsernameReviewDialog(
     title: String,
@@ -182,9 +181,11 @@ fun LegacyUsernameReviewDialog(
     savedTag: String? = null,
     onResolve: (String) -> String?,
     onDismiss: () -> Unit,
+    profileDialog: (@Composable (String, () -> Unit) -> Unit)? = null,
 ) {
     var username by rememberSaveable(savedUsername) { mutableStateOf(if (savedTag == null) "" else savedUsername) }
     var error by rememberSaveable(savedUsername) { mutableStateOf<String?>(null) }
+    var previewUsername by rememberSaveable(savedUsername) { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     val dismissal = remember { SettingsDialogDismissState() }
     fun dismiss() = dismissal.request(onDismiss)
@@ -209,7 +210,7 @@ fun LegacyUsernameReviewDialog(
                 val explanation = if (savedTag == null) {
                     "The saved username “$savedUsername” may have lost its capitalization in an older version. It is inactive until you confirm the exact HN username."
                 } else {
-                    "Older versions may have saved “$savedUsername” in lowercase. Confirm the spelling used on Hacker News to tag that account."
+                    "An older version of Harmonic saved this username as “$savedUsername”. Enter the spelling shown on the Hacker News profile."
                 }
                 Text(explanation,
                     fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -226,6 +227,13 @@ fun LegacyUsernameReviewDialog(
                     ),
                     keyboardActions = KeyboardActions(onDone = { confirm() }),
                 )
+                if (profileDialog != null) {
+                    val candidate = username.trim()
+                    SettingsDialogTextButton(
+                        onClick = { dismissal.request { previewUsername = candidate } },
+                        enabled = candidate.equals(savedUsername, ignoreCase = true) && !dismissal.isClosing,
+                    ) { Text("View profile") }
+                }
             }
         },
         confirmButton = {
@@ -235,6 +243,9 @@ fun LegacyUsernameReviewDialog(
         },
         dismissButton = {
             SettingsDialogTextButton(onClick = ::dismiss, enabled = !dismissal.isClosing) { Text("Cancel") }
+        },
+        foreground = {
+            previewUsername?.let { name -> profileDialog?.invoke(name) { previewUsername = null } }
         },
     )
 }

@@ -781,6 +781,9 @@ fun FiltersTagsSettingsRoute(
                     }
                 },
                 onDismiss = { legacyTagUser = null },
+                profileDialog = { name, dismiss ->
+                    profileDialog(name, dismiss) { refresh++ }
+                },
             )
         }
     }

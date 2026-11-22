@@ -1,6 +1,8 @@
 package com.simon.harmonichackernews.ui.settings
 
 import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
+import com.simon.harmonichackernews.ui.theme.themeBackground
 import com.simon.harmonichackernews.ui.content.userTagColor
 
 import androidx.compose.animation.AnimatedContent
@@ -13,7 +15,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -183,18 +184,21 @@ fun FiltersTagsSettingsScreen(
         }
         if (state.legacyTags.isNotEmpty()) item {
             SettingsCategory("Confirm older usernames (${state.legacyTags.size})") {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Older versions saved some usernames in lowercase. Confirm the capitalization to limit a tag to the account you intended.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                }
+                Text(
+                    "These usernames were saved in lowercase. Confirm the spelling shown on Hacker News to apply each tag to that account only.",
+                    modifier = Modifier.fillMaxWidth().themeBackground { cardBackground }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    fontFamily = AppUiFontFamily, fontSize = 14.sp, lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SettingsDivider()
                 state.legacyTags.forEachIndexed { index, entry ->
                     SettingRow(
                         title = entry.username,
                         summary = entry.tag,
                         summaryColor = userTagColor(entry.color),
                         icon = Res.drawable.ic_person,
-                        onClick = { onLegacyTagReviewRequested(entry.username) },
+                        onClick = { onProfileRequested(entry.username) },
                         trailing = {
                             Row {
                                 IconButton(onClick = { onLegacyTagReviewRequested(entry.username) }) {

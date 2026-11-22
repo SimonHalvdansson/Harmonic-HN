@@ -12,7 +12,11 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.material3.Text
+import com.simon.harmonichackernews.ui.settings.SettingsAlertDialog
+import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -21,7 +25,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
@@ -89,7 +93,7 @@ class UsernameIdentityDialogsTest {
     }
 
     @Test
-    fun legacyConfirmationRequiresDeliberateInputAndRetainsConflicts() {
+    fun previewingEditedUsernamePreservesDraftAndRequiresExplicitConfirmation() {
         var attempted: String? = null
         var dismissed = false
         val conflict = "That exact user already has a tag. Both saved tags have been kept."
@@ -99,11 +103,24 @@ class UsernameIdentityDialogsTest {
                 LegacyUsernameReviewDialog(
                     title = "Confirm tagged user", savedUsername = "alice", savedTag = "Legacy label",
                     onResolve = { attempted = it; conflict }, onDismiss = { dismissed = true },
+                    profileDialog = { name, close ->
+                        SettingsAlertDialog(
+                            onDismissRequest = close,
+                            title = { Text("Profile for $name") },
+                            confirmButton = { SettingsDialogTextButton(onClick = close) { Text("Done") } },
+                        )
+                    },
                 )
             }
         }
-        compose.onNodeWithText("Confirm username").assertIsNotEnabled()
-        compose.onNode(hasSetTextAction()).performTextInput("Alice")
+        compose.onNode(hasSetTextAction()).performTextReplacement("OtherUser")
+        compose.onNodeWithText("View profile").assertIsNotEnabled()
+        compose.onNode(hasSetTextAction()).performTextReplacement("Alice")
+        compose.onNodeWithText("View profile").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Profile for Alice")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Done").performClick()
+        compose.onNodeWithText("Alice").assertExists()
+        compose.runOnIdle { assertEquals(null, attempted) }
         compose.onNodeWithText("Confirm username").performClick()
         compose.waitUntil(5_000) { attempted != null }
         assertEquals("Alice", attempted)

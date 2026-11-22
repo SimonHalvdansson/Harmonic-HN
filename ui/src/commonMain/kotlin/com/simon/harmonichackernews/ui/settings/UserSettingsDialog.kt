@@ -249,7 +249,7 @@ private fun UserLoadError(onRetry: () -> Unit) {
             fontSize = 16.sp,
         )
         Text(
-            text = "Check the usernameâ€™s capitalization. HN profile names are case-sensitive.",
+            text = "Check the capitalization. Hacker News usernames are case-sensitive.",
             modifier = Modifier.padding(bottom = 10.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = AppUiFontFamily,
