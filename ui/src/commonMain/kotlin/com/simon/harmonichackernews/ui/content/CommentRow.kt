@@ -27,6 +27,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -389,6 +395,8 @@ fun CommentRow(
     ),
     age: String = relativeTimeOnResume(comment.time),
     userTagColor: UserTagColor = UserTagColor.Theme,
+    isThreadRow: Boolean = false,
+    clickActionLabel: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val bodySize = animatedCommentValue(
@@ -407,6 +415,14 @@ fun CommentRow(
         label = "runtime comment indicator color",
     )
     val textCollapsed = !forceExpanded && !comment.expanded && collapseParent
+    val expandLabel = if (isThreadRow) {
+        val action = if (comment.expanded) "Collapse" else "Expand"
+        when (subtreeReplyCount) {
+            0 -> "$action comment"
+            1 -> "$action 1 reply"
+            else -> "$action $subtreeReplyCount replies"
+        }
+    } else null
     val renderModel = remember(
         comment.id,
         comment.expandedAnchorText,
@@ -538,6 +554,9 @@ fun CommentRow(
             highlighted = highlighted,
             itemGeometry = itemGeometry,
             captureSource = captureActionSource || pendingActionSourceGesture != null,
+            clickLabel = clickActionLabel ?: if (showActionsOnClick && isThreadRow) "Open comment actions" else expandLabel,
+            longClickLabel = if (showActionsOnClick) expandLabel else if (isThreadRow) "Open comment actions" else null,
+            expanded = comment.expanded.takeIf { isThreadRow && (collapseParent || subtreeReplyCount > 0) },
             onClick = {
                 if (showActionsOnClick) {
                     pendingActionSourceGesture = CommentActionSourceGesture.Click
@@ -554,9 +573,7 @@ fun CommentRow(
                     }
                 }
             } else {
-                // Keep a no-op long-click handler so a held search result is consumed as a
-                // long press instead of being reinterpreted as its normal click on release.
-                {}
+                null
             },
         ) {
             CommentMeta(
@@ -973,6 +990,9 @@ private fun CommentSurface(
     captureSource: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
+    clickLabel: String? = null,
+    longClickLabel: String? = null,
+    expanded: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -1117,9 +1137,27 @@ private fun CommentSurface(
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(color = colors.onSurfaceVariant.copy(alpha = 0.35f)),
+                    onClickLabel = clickLabel,
                     onClick = onClick,
+                    onLongClickLabel = longClickLabel,
                     onLongClick = onLongClick,
                 )
+                .then(if (expanded == null) Modifier else Modifier.semantics {
+                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                })
+                .then(if (onLongClick == null && clickLabel != null) Modifier.pointerInput(Unit) {
+                    // Holding a search result must not select it on release. Handle that gesture
+                    // separately so accessibility exposes only the action the result supports.
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        val held = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                        held.consume()
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                        } while (event.changes.any { it.pressed })
+                    }
+                } else Modifier)
                 .then(
                     onLongClick?.let { callback ->
                         Modifier.onSecondaryClick { callback() }

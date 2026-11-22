@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.data.presentationSnapshot
 import com.simon.harmonichackernews.data.toSnapshot
 import com.simon.harmonichackernews.data.applySnapshot
 import com.simon.harmonichackernews.utils.CommentSorter
+import com.simon.harmonichackernews.network.OfficialBranchGap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -222,6 +223,9 @@ class CommentThreadStore {
             collapseTopLevel: Boolean,
             preserveExisting: Boolean,
             extendInitialBaseline: Boolean = false,
+            preserveTopLevelExpansion: Boolean = false,
+            missingBranches: List<OfficialBranchGap> = emptyList(),
+            filteredUsers: Set<String> = emptySet(),
         ): PreparedInitialCommentThread {
             val detachedStory = Story().applySnapshot(story)
             val prepared = CommentThreadStore()
@@ -246,14 +250,42 @@ class CommentThreadStore {
             // Incoming objects can also be retained by cache preparation. Sort and collapse only
             // detached copies so retrying after a UI interaction cannot change that input.
             val incoming = parsedComments.map { comment ->
-                PortableCommentItem(comment.toSnapshot(), comment.presentationSnapshot()).detachedComment()
+                PortableCommentItem(comment.toSnapshot(), comment.presentationSnapshot()).detachedComment().also {
+                    if (preserveTopLevelExpansion && collapseTopLevel && it.depth == 0) it.expanded = false
+                }
             }
-            prepared.replaceParsedComments(detachedStory, incoming, input.state.sorting, collapseTopLevel)
+            val restored = if (missingBranches.isEmpty()) incoming else
+                fillCachedBranches(incoming, missingBranches, input.state.allComments, filteredUsers)
+            prepared.replaceParsedComments(detachedStory, restored, input.state.sorting, collapseTopLevel && !preserveTopLevelExpansion)
             return PreparedInitialCommentThread(
                 prepared.allComments.toList(), prepared.filteredComments.toList(),
                 prepared.state.value, prepared.visibilityTopology,
                 checkNotNull(prepared.initialCommentIds), prepared.searchableTextById.toMap(),
             )
+        }
+
+        /** Only failed request slots can reuse old rows. Successful deletions and filters stay removed. */
+        private fun fillCachedBranches(fresh: List<Comment>, gaps: List<OfficialBranchGap>,
+            previous: List<PortableCommentItem>, filteredUsers: Set<String>): List<Comment> = buildList {
+            val blocked = filteredUsers.mapNotNullTo(mutableSetOf()) { it.trim().takeIf(String::isNotEmpty) }
+            val previousIndex = previous.indices.associateBy { previous[it].id }
+            var offset = 0
+            for (gap in gaps) {
+                addAll(fresh.subList(offset, gap.insertionIndex))
+                offset = gap.insertionIndex
+                val start = previousIndex[gap.id]?.takeIf { it > 0 } ?: continue
+                val oldDepth = previous[start].depth
+                var index = start
+                do {
+                    val item = previous[index++]
+                    if (item.by?.trim() in blocked) {
+                        while (index < previous.size && previous[index].depth > item.depth) index++
+                    } else {
+                        add(item.detachedComment().also { it.depth += gap.depth - oldDepth })
+                    }
+                } while (index < previous.size && previous[index].depth > oldDepth)
+            }
+            addAll(fresh.subList(offset, fresh.size))
         }
 
         private fun PortableCommentItem.detachedComment() = Comment().apply {

@@ -3,6 +3,7 @@
 package com.simon.harmonichackernews.ui
 
 import androidx.activity.ComponentActivity
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +55,61 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class CommentAppearanceRegressionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 30)
+    fun nativeAccessibilityNodeAnnouncesCommentActionsAndExpandedState() {
+        val app = (compose.activity.application as HarmonicApplication).composition
+        val scene = app.createScene()
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        var expanded by mutableStateOf(true)
+        var swapped by mutableStateOf(false)
+        val style = CommentRowStyle(DisplayStyle.FLAT, 16f, false, false, "none", false, "devicedefault", animateChanges = false)
+        try {
+            compose.setContent {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(app, scene)) {
+                    HarmonicTheme(HarmonicThemeCatalog.resolve("light", false).colorScheme, false) {
+                        CommentRow(
+                            comment = PortableCommentItem(CommentSnapshot(id = 2, author = "reader", text = "Parent", expandedAnchorText = "Parent"),
+                                CommentPresentationSnapshot(expanded = expanded)),
+                            style = style, storyAuthor = null, accountUser = null, userTag = null, age = "1h",
+                            subtreeReplyCount = 3, collapseParent = true, showTopLevelIndicator = false, isThreadRow = true,
+                            showActionsOnClick = swapped,
+                            onToggleExpanded = { if (!swapped) expanded = !expanded },
+                            onShowActions = { if (swapped) expanded = !expanded },
+                            onLinkLongClick = { _, _, _ -> }, onReferenceLongClick = { _, _, _ -> },
+                        )
+                    }
+                }
+            }
+            fun findRow(node: AccessibilityNodeInfo?, label: String, actionId: Int): AccessibilityNodeInfo? {
+                if (node == null) return null
+                if (node.actionList.any { it.id == actionId && it.label?.toString() == label }) return node
+                return (0 until node.childCount).firstNotNullOfOrNull { findRow(node.getChild(it), label, actionId) }
+            }
+            fun row(label: String, state: String, action: Int = AccessibilityNodeInfo.ACTION_CLICK): AccessibilityNodeInfo {
+                var matching: AccessibilityNodeInfo? = null
+                compose.waitUntil(timeoutMillis = 5_000) {
+                    matching = findRow(automation.rootInActiveWindow, label, action)
+                    matching?.stateDescription?.toString() == state
+                }
+                return requireNotNull(matching)
+            }
+            val parent = row("Collapse 3 replies", "Expanded")
+            assertTrue(parent.actionList.any { it.label?.toString() == "Open comment actions" })
+            assertTrue(parent.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            row("Expand 3 replies", "Collapsed")
+            compose.runOnIdle { swapped = true }
+            val reversed = row("Open comment actions", "Collapsed")
+            assertTrue(reversed.actionList.any {
+                it.id == AccessibilityNodeInfo.ACTION_LONG_CLICK && it.label?.toString() == "Expand 3 replies"
+            })
+            assertTrue(reversed.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK))
+            row("Collapse 3 replies", "Expanded", AccessibilityNodeInfo.ACTION_LONG_CLICK)
+        } finally {
+            scene.close()
+        }
+    }
 
     @Test
     fun linkedCommentIsVisibleAndUsesTheSearchBlinkUntilItExpires() {

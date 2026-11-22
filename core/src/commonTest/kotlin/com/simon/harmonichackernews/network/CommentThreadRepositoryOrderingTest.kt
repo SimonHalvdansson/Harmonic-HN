@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -16,9 +17,65 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertFailsWith
 
 class CommentThreadRepositoryOrderingTest {
+    @Test
+    fun publishesCompletedBranchesAndRetriesOnlyTransientFailuresInTheirOriginalPositions() = runTest {
+        val releaseFirst = CompletableDeferred<Unit>()
+        val firstProgress = CompletableDeferred<List<Int>>()
+        val secondProgress = CompletableDeferred<List<Int>>()
+        val requested = mutableListOf<Int>()
+        var recovered = false
+        val source = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().also { it.kids = intArrayOf(1, 2, 3, 4, 5, 6) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("unused")
+            override suspend fun getComment(id: Int): Comment? {
+                requested.add(id)
+                when (id) {
+                    1 -> releaseFirst.await()
+                    3 -> return null
+                    5 -> throw HttpStatusException(404, "Not found", "item/5")
+                    10 -> if (!recovered) error("offline")
+                }
+                return Comment().also {
+                    it.id = id
+                    it.by = if (id == 4) "blocked" else "reader"
+                    it.kidsIds = when (id) {
+                        1 -> intArrayOf(10, 11)
+                        4 -> intArrayOf(40)
+                        10 -> intArrayOf(100)
+                        else -> null
+                    }
+                }
+            }
+        }
+        val loading = async {
+            OfficialCommentThreadLoader(source).load(42, setOf("blocked"), true) {
+                val ids = it.comments.map(Comment::id)
+                if (!firstProgress.complete(ids)) secondProgress.complete(ids)
+            }
+        }
+        assertEquals(listOf(2), firstProgress.await())
+        assertEquals(listOf(2, 6), secondProgress.await())
+        releaseFirst.complete(Unit)
+        val partial = assertIs<CommentThreadLoadResult.Official>(loading.await())
+        assertEquals(listOf(1, 11, 2, 6), partial.comments.map(Comment::id))
+        val retry = assertNotNull(partial.retry)
+        assertEquals(1, retry.count)
+        assertTrue(40 !in requested)
+        requested.clear()
+        recovered = true
+        val complete = retry.load()
+        assertEquals(listOf(10, 100), requested)
+        assertEquals(listOf(1, 10, 100, 11, 2, 6), complete.comments.map(Comment::id))
+        assertEquals(listOf(0, 1, 2, 1, 0, 0), complete.comments.map(Comment::depth))
+        assertTrue(complete.usedAsFallback)
+        assertNull(complete.retry)
+    }
+
     @Test
     fun cancelledTransportCancelsTheCoordinatorInsteadOfLeavingItWaiting() = runTest {
         val repository = object : HackerNewsRepository {

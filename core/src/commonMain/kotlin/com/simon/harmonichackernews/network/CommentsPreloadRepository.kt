@@ -11,6 +11,10 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
  * Small application-scoped cache of fully downloaded and prepared comment discussions.
@@ -50,7 +54,8 @@ class CommentsPreloadRepository(
 
     private class PendingPreload {
         val result = CompletableDeferred<PreparedCommentsThread?>()
-        var oversizedConsumed = false
+        val progress = MutableStateFlow<CommentThreadLoadResult.Official?>(null)
+        var consumed = false
     }
     private val inFlight = mutableMapOf<PreloadKey, PendingPreload>()
 
@@ -98,8 +103,8 @@ class CommentsPreloadRepository(
             filteredUsers,
             CommentThreadSource.OFFICIAL,
         )
-        return prepare(key) {
-            when (val loaded = loader.load(storyId, key.filteredUsers, usedAsFallback = false)) {
+        return prepare(key) { pending ->
+            when (val loaded = loader.load(storyId, key.filteredUsers, usedAsFallback = false) { pending.progress.value = it }) {
                 is CommentThreadLoadResult.Official -> PreloadedOfficialCommentsThread(
                     storyId = storyId,
                     topLevelCommentIds = key.topLevelCommentIds,
@@ -108,6 +113,7 @@ class CommentsPreloadRepository(
                     comments = loaded.comments,
                     usedAsFallback = loaded.usedAsFallback,
                     loadedAtMillis = nowMillis(),
+                    retry = loaded.retry,
                 )
                 is CommentThreadLoadResult.Algolia,
                 is CommentThreadLoadResult.Failure,
@@ -118,7 +124,7 @@ class CommentsPreloadRepository(
 
     private suspend fun prepare(
         key: PreloadKey,
-        load: suspend () -> PreparedCommentsThread?,
+        load: suspend (PendingPreload) -> PreparedCommentsThread?,
     ): PreparedCommentsThread? {
         var creator = false
         val deferred = mutex.withLock {
@@ -132,7 +138,7 @@ class CommentsPreloadRepository(
         if (creator) {
             var cancellation: CancellationException? = null
             val loaded = try {
-                load()
+                load(deferred)
             } catch (error: CancellationException) {
                 cancellation = error
                 null
@@ -142,7 +148,7 @@ class CommentsPreloadRepository(
             withContext(NonCancellable) {
                 mutex.withLock {
                     inFlight.remove(key)
-                    if (loaded != null && loaded.estimatedRetainedBytes <= maxRetainedBytes) {
+                    if (loaded != null && canRetain(loaded)) {
                         entries.value = entries.value + (key to loaded)
                         trimLocked()
                     }
@@ -188,6 +194,8 @@ class CommentsPreloadRepository(
         storyId: Int,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
+        awaitInFlight: Boolean = true,
+        onProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)? = null,
     ): PreloadedOfficialCommentsThread? {
         if (storyId <= 0) return null
         return takePrepared(
@@ -197,12 +205,15 @@ class CommentsPreloadRepository(
                 filteredUsers,
                 CommentThreadSource.OFFICIAL,
             ),
+            awaitInFlight,
+            onProgress,
         ) as? PreloadedOfficialCommentsThread
     }
 
     private suspend fun takePrepared(
         key: PreloadKey,
         awaitInFlight: Boolean = true,
+        onProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)? = null,
     ): PreparedCommentsThread? {
         val pending = mutex.withLock {
             removeExpiredLocked()
@@ -212,18 +223,24 @@ class CommentsPreloadRepository(
             }
             inFlight[key].takeIf { awaitInFlight }
         } ?: return null
-        val loaded = pending.result.await() ?: return null
+        val loaded = (if (onProgress == null) pending.result.await() else coroutineScope {
+            val updates = launch { pending.progress.filterNotNull().collect { onProgress(it) } }
+            try { pending.result.await() } finally { updates.cancelAndJoin() }
+        }) ?: return null
         return mutex.withLock {
             removeExpiredLocked()
             entries.value[key]?.also { entries.value = entries.value - key }
                 // A currently opening screen can consume a large result once without retaining it
                 // in the application cache. The models are mutable, so never share that handoff.
                 ?: loaded.takeIf {
-                    it.estimatedRetainedBytes > maxRetainedBytes && !pending.oversizedConsumed &&
+                    !canRetain(it) && !pending.consumed &&
                         it.loadedAtMillis >= nowMillis() - maxAgeMillis
-                }?.also { pending.oversizedConsumed = true }
+                }?.also { pending.consumed = true }
         }
     }
+
+    private fun canRetain(thread: PreparedCommentsThread): Boolean =
+        (thread !is PreloadedOfficialCommentsThread || thread.retry == null) && thread.estimatedRetainedBytes <= maxRetainedBytes
 
     suspend fun isPrepared(
         storyId: Int,
@@ -339,6 +356,7 @@ data class PreloadedOfficialCommentsThread(
     val comments: MutableList<Comment>,
     val usedAsFallback: Boolean,
     override val loadedAtMillis: Long,
+    val retry: OfficialCommentRetry? = null,
 ) : PreparedCommentsThread {
     override val estimatedRetainedBytes: Long = 512L +
         2L * (story.text?.length ?: 0) + comments.sumOf {

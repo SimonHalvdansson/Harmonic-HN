@@ -46,7 +46,7 @@ class HeaderStoryTextGestureTest {
             MaterialTheme {
                 CommentsPreviewPlatformProvider(platform {}) {
                     SelectionContainer {
-                        HeaderStoryTextBlock(html, trim.value, FontFamily.SansSerif, 16f) { _, _, _ ->
+                        HeaderStoryTextBlock(html, trim.value, scrollMonoBlocks = false, FontFamily.SansSerif, 16f) { _, _, _ ->
                             error("Ordinary text has no link preview")
                         }
                     }
@@ -74,7 +74,7 @@ class HeaderStoryTextGestureTest {
                 CommentsPreviewPlatformProvider(platform { clicks += it }) {
                     Box(Modifier.padding(start = 16.dp, top = topPadding.value)) {
                         SelectionContainer {
-                            HeaderStoryTextBlock(html.value, false, FontFamily.SansSerif, 16f) { target, label, bounds ->
+                            HeaderStoryTextBlock(html.value, false, scrollMonoBlocks = false, FontFamily.SansSerif, 16f) { target, label, bounds ->
                                 previews += Triple(target, label, bounds)
                             }
                         }

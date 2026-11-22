@@ -14,6 +14,9 @@ import com.simon.harmonichackernews.network.CommentThreadRepository
 import com.simon.harmonichackernews.network.HackerNewsActionResult
 import com.simon.harmonichackernews.network.HackerNewsVotingService
 import com.simon.harmonichackernews.network.PollOptionsLoader
+import com.simon.harmonichackernews.network.OfficialCommentRetry
+import com.simon.harmonichackernews.network.OfficialBranchGap
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +55,8 @@ data class CommentsPresenterState(
     val commentVoteLoadingId: Int = -1,
     val commentVoteLoadingAction: CommentMenuAction? = null,
     val downvotedCommentIds: Set<Int> = emptySet(),
+    val loadingOfficialBranches: Boolean = false,
+    val failedOfficialBranches: Int = 0,
 )
 
 sealed interface CommentsAction {
@@ -117,6 +122,7 @@ sealed interface CommentsAction {
     data class LoadPollOptions(val story: Story, val forceRefresh: Boolean = false) : CommentsAction
     data class VotePollOption(val optionId: Int) : CommentsAction
     data object CancelThreadLoad : CommentsAction
+    data object RetryOfficialBranches : CommentsAction
     data object CancelPollOptionsLoad : CommentsAction
     data object CancelPollVote : CommentsAction
 }
@@ -134,6 +140,7 @@ sealed interface CommentsPresenterEffect {
         val broadcastStoryUpdate: Boolean = false,
         val headerChanged: Boolean = false,
         val usedOfficialFallback: Boolean = false,
+        val incompleteOfficialThread: Boolean = false,
     ) : CommentsPresenterEffect
     data class ThreadFailed(
         val requestId: Int,
@@ -218,6 +225,7 @@ class CommentsPresenter(
     private val mutableEffects = MutableSharedFlow<CommentsPresenterEffect>(extraBufferCapacity = 8)
     override val effects: SharedFlow<CommentsPresenterEffect> = mutableEffects.asSharedFlow()
     private var threadLoadJob: Job? = null
+    private var retryOfficialBranches: (suspend () -> Unit)? = null
     private var pollOptionsLoadJob: Job? = null
     private var pollOptionsStoryId: Int = 0
     private var pollOptionsLoadStarted = false
@@ -242,8 +250,11 @@ class CommentsPresenter(
         val action = intent
         when (action) {
             is CommentsAction.ResetThread -> {
+                threadLoadJob?.cancel()
+                retryOfficialBranches = null
+                threadLoadSession.invalidate()
                 thread.reset(action.story, action.header, action.sorting)
-                publish(showingCached = false)
+                publish(showingCached = false, loadingOfficialBranches = false, failedOfficialBranches = 0)
             }
             is CommentsAction.SetSorting -> thread.setSorting(action.sorting)
             is CommentsAction.ToggleExpanded -> thread.toggleExpanded(action.commentId)
@@ -313,12 +324,33 @@ class CommentsPresenter(
                     direction = action.direction,
                 ) }
             is CommentsAction.LoadThread -> loadThread(action)
+            CommentsAction.RetryOfficialBranches -> {
+                val retry = retryOfficialBranches ?: return
+                val failed = state.value.failedOfficialBranches
+                retryOfficialBranches = null
+                publish(loadingOfficialBranches = true, failedOfficialBranches = 0)
+                threadLoadJob = scope.launch {
+                    try {
+                        retry()
+                    } catch (cancelled: CancellationException) {
+                        // The transport may cancel one request while the screen is still open.
+                        if (isActive) {
+                            retryOfficialBranches = retry
+                            publish(loadingOfficialBranches = false, failedOfficialBranches = failed)
+                        }
+                        throw cancelled
+                    }
+                }
+            }
             is CommentsAction.LoadPollOptions -> loadPollOptions(action.story, action.forceRefresh)
             is CommentsAction.VotePollOption -> votePollOption(action.optionId)
             CommentsAction.CancelThreadLoad -> {
                 threadLoadJob?.cancel()
                 threadLoadJob = null
                 threadLoadSession.invalidate()
+                retryOfficialBranches = null
+                val incomplete = state.value.loadingOfficialBranches || state.value.failedOfficialBranches > 0
+                publish(loaded = state.value.loaded && !incomplete, loadingOfficialBranches = false, failedOfficialBranches = 0)
             }
             CommentsAction.CancelPollOptionsLoad -> cancelPollOptionsLoad()
             CommentsAction.CancelPollVote -> cancelPollVote()
@@ -467,12 +499,13 @@ class CommentsPresenter(
 
     private fun loadThread(action: CommentsAction.LoadThread) {
         threadLoadJob?.cancel()
+        retryOfficialBranches = null
         if (action.openingRequest?.isClosed == true) return
         if (thread.state.value.sorting != action.sorting) thread.setSorting(action.sorting)
         val storyId = action.story.id
         val knownTopLevelCommentIds = action.story.kids?.toList().orEmpty()
         val requestId = threadLoadSession.begin(storyId)
-        publish(usingOfficialApiFallback = false, failure = null)
+        publish(usingOfficialApiFallback = false, failure = null, loadingOfficialBranches = false, failedOfficialBranches = 0)
         // Only HTTP starts here. Cache reads, parsing and publication stay in their existing
         // scheduled load job; a navigation lease may already have started the same transfer.
         val useAlgoliaPreloads = action.useAlgolia && !action.userInitiated
@@ -515,11 +548,12 @@ class CommentsPresenter(
                 )
                 return@launch
             }
-            val preloadedOfficial = if (!action.useAlgolia) {
+            val preloadedOfficial = if (!action.useAlgolia && !action.userInitiated) {
                 commentThreadRepository.takePreloadedOfficial(
                     storyId,
                     topLevelCommentIds,
                     action.filteredUsers,
+                    awaitInFlight = false,
                 )
             } else {
                 null
@@ -612,7 +646,21 @@ class CommentsPresenter(
                     storyId, topLevelCommentIds, action.filteredUsers,
                 )
             } else null
-            val result = pendingPreload?.let {
+            // A partial live response must never remove previously displayed or cached rows.
+            val hasPreviousComments = thread.allComments.size > 1
+            val onOfficialProgress: suspend (CommentThreadLoadResult.Official) -> Unit = { progress ->
+                if (threadLoadSession.isCurrent(requestId, storyId) && !hasPreviousComments) {
+                    applyOfficialThread(action, requestId, progress.story, progress.comments, progress.usedAsFallback,
+                        extendInitialBaseline, loadingMore = true)
+                }
+            }
+            val pendingOfficial = if (!action.useAlgolia && !action.userInitiated) {
+                commentThreadRepository.takePreloadedOfficial(storyId, knownTopLevelCommentIds, action.filteredUsers,
+                    onProgress = onOfficialProgress)
+            } else null
+            val result = pendingOfficial?.let {
+                CommentThreadLoadResult.Official(it.story, it.comments, it.usedAsFallback, it.retry)
+            } ?: pendingPreload?.let {
                 CommentThreadLoadResult.Algolia(it.response, it.parsed)
             } ?: commentThreadRepository.load(
                 storyId = storyId,
@@ -627,6 +675,7 @@ class CommentsPresenter(
                 },
                 algoliaRequest = request,
                 refreshTopLevelOrder = action.userInitiated,
+                onOfficialProgress = onOfficialProgress,
                 onAlgoliaFallback = {
                     if (threadLoadSession.isCurrent(requestId, storyId)) {
                         publish(usingOfficialApiFallback = true)
@@ -684,6 +733,7 @@ class CommentsPresenter(
                         comments = result.comments,
                         usedAsFallback = result.usedAsFallback,
                         extendInitialBaseline = extendInitialBaseline,
+                        retry = result.retry,
                     )
                 }
                 is CommentThreadLoadResult.Failure -> {
@@ -703,9 +753,14 @@ class CommentsPresenter(
             }
         }.also { job ->
             val cancellation = request?.invokeOnClose { job.cancel() }
-            job.invokeOnCompletion {
+            job.invokeOnCompletion { cause ->
                 cancellation?.dispose()
                 request?.close()
+                if (cause is CancellationException) scope.launch {
+                    if (threadLoadSession.isCurrent(requestId, storyId) && state.value.loadingOfficialBranches) {
+                        publish(loadingOfficialBranches = false, refreshing = false, failure = StoryLoadFailure.GENERAL)
+                    }
+                }
             }
         }
     }
@@ -750,19 +805,36 @@ class CommentsPresenter(
         comments: MutableList<Comment>,
         usedAsFallback: Boolean,
         extendInitialBaseline: Boolean,
+        loadingMore: Boolean = false,
+        retry: OfficialCommentRetry? = null,
     ) {
+        if (!threadLoadSession.isCurrent(requestId, action.story.id)) return
+        val hadComments = thread.allComments.size > 1
         CommentsPresentationPolicy.mergeOfficialStoryHeader(action.story, officialStory)
-        if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = false, extendInitialBaseline)) return
-        publish(loaded = true, refreshing = false, failure = null, showingCached = false)
+        if (!applyPreparedUpdate(action, requestId, comments, preserveExisting = true, extendInitialBaseline,
+                preserveTopLevelExpansion = true, missingBranches = retry?.gaps.orEmpty())) return
+        retryOfficialBranches = retry?.let { missing ->
+            suspend {
+                val result = missing.load()
+                applyOfficialThread(action, requestId, result.story, result.comments, result.usedAsFallback,
+                    extendInitialBaseline, retry = result.retry)
+            }
+        }
+        publish(loaded = true, refreshing = if (loadingMore) state.value.refreshing else false, failure = null,
+            showingCached = false, loadingOfficialBranches = loadingMore,
+            failedOfficialBranches = retry?.count ?: 0)
+        if (loadingMore && (hadComments || action.restoreScrollFromCache)) return
         mutableEffects.emit(
             CommentsPresenterEffect.ThreadApplied(
                 requestId = requestId,
                 storyId = action.story.id,
                 contentApplied = true,
-                networkCompleted = true,
+                networkCompleted = !loadingMore,
+                restoreScroll = action.restoreScrollFromCache,
                 headerChanged = true,
-                broadcastStoryUpdate = true,
+                broadcastStoryUpdate = !loadingMore,
                 usedOfficialFallback = usedAsFallback,
+                incompleteOfficialThread = loadingMore || retry != null,
             ),
         )
     }
@@ -900,6 +972,8 @@ class CommentsPresenter(
         comments: List<Comment>,
         preserveExisting: Boolean,
         extendInitialBaseline: Boolean,
+        preserveTopLevelExpansion: Boolean = false,
+        missingBranches: List<OfficialBranchGap> = emptyList(),
     ): Boolean {
         while (threadLoadSession.isCurrent(requestId, action.story.id)) {
             val input = thread.capturePreparationInput()
@@ -907,6 +981,7 @@ class CommentsPresenter(
             val prepared = withContext(threadPreparationDispatcher) {
                 CommentThreadStore.prepareUpdate(
                     input, story, comments, action.collapseTopLevel, preserveExisting, extendInitialBaseline,
+                    preserveTopLevelExpansion, missingBranches, action.filteredUsers,
                 )
             }
             if (!thread.hasLoadedComments) prepareInitialContent(prepared.state)
@@ -937,6 +1012,8 @@ class CommentsPresenter(
         commentVoteLoadingId: Int = state.value.commentVoteLoadingId,
         commentVoteLoadingAction: CommentMenuAction? = state.value.commentVoteLoadingAction,
         downvotedCommentIds: Set<Int> = state.value.downvotedCommentIds,
+        loadingOfficialBranches: Boolean = state.value.loadingOfficialBranches,
+        failedOfficialBranches: Int = state.value.failedOfficialBranches,
     ) {
         sessionState.lastLoaded = lastLoadedMillis
         sessionState.commentsLoaded = loaded
@@ -964,6 +1041,8 @@ class CommentsPresenter(
             commentVoteLoadingId = commentVoteLoadingId,
             commentVoteLoadingAction = commentVoteLoadingAction,
             downvotedCommentIds = downvotedCommentIds,
+            loadingOfficialBranches = loadingOfficialBranches,
+            failedOfficialBranches = failedOfficialBranches,
         )
     }
 

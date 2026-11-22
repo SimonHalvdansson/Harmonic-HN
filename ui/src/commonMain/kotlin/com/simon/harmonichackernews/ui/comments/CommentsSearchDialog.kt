@@ -166,6 +166,7 @@ fun CommentsSearchContent(
             searchTerm = searchTerm,
             animateSearchMatches = true,
             enableLongClick = false,
+            clickActionLabel = "Show comment in thread",
             onToggleExpanded = { _ -> onCommentSelected(comment) },
             onShowActions = {},
             onLinkLongClick = { url, title, bounds ->

@@ -10,11 +10,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * Selects the configured comments source and owns the transport-neutral Algolia-to-official-API
@@ -65,10 +73,14 @@ class CommentThreadRepository(
         storyId: Int,
         topLevelCommentIds: List<Int> = emptyList(),
         filteredUsers: Set<String> = emptySet(),
+        awaitInFlight: Boolean = true,
+        onProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)? = null,
     ): PreloadedOfficialCommentsThread? = preloads?.takeOfficialOrAwait(
         storyId,
         topLevelCommentIds,
         filteredUsers,
+        awaitInFlight,
+        onProgress,
     )
 
     suspend fun load(
@@ -81,11 +93,12 @@ class CommentThreadRepository(
         algoliaRequest: AlgoliaCommentRequest? = null,
         reuseDisplay: AlgoliaCommentsDisplayReuse? = null,
         refreshTopLevelOrder: Boolean = false,
+        onOfficialProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)? = null,
     ): CommentThreadLoadResult {
         require(storyId > 0) { "A positive Hacker News item ID is required" }
 
         if (!useAlgolia) {
-            return officialLoader.load(storyId, filteredUsers, usedAsFallback = false)
+            return officialLoader.load(storyId, filteredUsers, usedAsFallback = false, onOfficialProgress)
         }
 
         return try {
@@ -116,7 +129,7 @@ class CommentThreadRepository(
         } catch (error: Exception) {
             if (error.shouldFallBackToOfficialApi()) {
                 onAlgoliaFallback()
-                officialLoader.load(storyId, filteredUsers, usedAsFallback = true)
+                officialLoader.load(storyId, filteredUsers, usedAsFallback = true, onOfficialProgress)
             } else {
                 CommentThreadLoadResult.Failure(
                     noInternet = error !is HttpStatusException,
@@ -151,7 +164,7 @@ class CommentThreadRepository(
             this is HttpStatusException && (statusCode == 404 || statusCode >= 500)
 }
 
-/** Downloads and prepares a complete comment forest from the official per-item HN API. */
+/** Loads HN's per-item API with bounded concurrency and publishes settled top-level branches. */
 class OfficialCommentThreadLoader(
     private val hackerNewsRepository: HackerNewsRepository,
 ) {
@@ -162,6 +175,7 @@ class OfficialCommentThreadLoader(
         storyId: Int,
         filteredUsers: Set<String>,
         usedAsFallback: Boolean,
+        onProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)? = null,
     ): CommentThreadLoadResult {
         return try {
             val story = hackerNewsRepository.getStory(storyId)
@@ -172,8 +186,10 @@ class OfficialCommentThreadLoader(
             val normalizedFilteredUsers = filteredUsers.mapNotNullTo(mutableSetOf()) {
                 it.trim().takeIf(String::isNotEmpty)
             }
-            val comments = loadCommentForest(story.kids ?: intArrayOf(), normalizedFilteredUsers)
-            CommentThreadLoadResult.Official(story, comments, usedAsFallback)
+            val ids = story.kids ?: intArrayOf()
+            val roots = MutableList<Branch?>(ids.size) { null }
+            val pending = ids.mapIndexed { index, id -> CommentWork(id, 0, roots, index, index) }
+            loadCommentForest(story, usedAsFallback, normalizedFilteredUsers, roots, pending, onProgress)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -185,12 +201,21 @@ class OfficialCommentThreadLoader(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun loadCommentForest(
-        topLevelIds: IntArray,
+        story: Story,
+        usedAsFallback: Boolean,
         filteredUsers: Set<String>,
-    ): MutableList<Comment> = coroutineScope {
-        if (topLevelIds.isEmpty()) return@coroutineScope mutableListOf()
-        val roots = MutableList<LoadedCommentBranch?>(topLevelIds.size) { null }
+        roots: List<Branch?>,
+        pending: List<CommentWork>,
+        onProgress: (suspend (CommentThreadLoadResult.Official) -> Unit)?,
+    ): CommentThreadLoadResult.Official = coroutineScope {
+        val failed = mutableListOf<CommentWork>()
+        val outstanding = IntArray(roots.size)
+        pending.forEach { outstanding[it.rootIndex]++ }
+        var lastPublication: TimeMark? = null
+        var progressPending = false
+        if (pending.isEmpty()) return@coroutineScope CommentThreadLoadResult.Official(story, mutableListOf(), usedAsFallback)
         val work = Channel<CommentWork>(Channel.UNLIMITED)
         val completed = Channel<CompletedComment>(WORKER_COUNT)
         // Only these workers suspend in the transport. The coordinator owns the tree and queue,
@@ -198,38 +223,63 @@ class OfficialCommentThreadLoader(
         val workers = List(WORKER_COUNT) {
             launch {
                 for (next in work) {
-                    val comment = try {
-                        requests.withPermit { hackerNewsRepository.getComment(next.id) }
+                    val result = try {
+                        CompletedComment(next, requests.withPermit { hackerNewsRepository.getComment(next.id) })
                     } catch (error: CancellationException) {
                         // A transport may cancel its own request while the parent is still active.
                         // Propagate that cancellation rather than leave the coordinator waiting.
                         this@coroutineScope.cancel(error)
                         throw error
-                    } catch (_: Exception) {
-                        null
+                    } catch (error: Exception) {
+                        val missing = error is HttpStatusException && (error.statusCode == 404 || error.statusCode == 410)
+                        CompletedComment(next, null, failed = !missing)
                     }
-                    completed.send(CompletedComment(next, comment))
+                    completed.send(result)
                 }
             }
         }
         try {
-            topLevelIds.forEachIndexed { index, id ->
-                work.send(CommentWork(id, 0, roots, index))
+            pending.forEach { work.send(it) }
+            var remaining = pending.size
+            suspend fun publishProgress() {
+                onProgress?.invoke(CommentThreadLoadResult.Official(story, flatten(roots, outstanding), usedAsFallback))
+                lastPublication = TimeSource.Monotonic.markNow()
+                progressPending = false
             }
-            var remaining = topLevelIds.size
             while (remaining > 0) {
-                val (next, comment) = completed.receive()
+                val response = if (progressPending) {
+                    val waitMillis = (PROGRESS_INTERVAL_MS - checkNotNull(lastPublication).elapsedNow().inWholeMilliseconds).coerceAtLeast(0)
+                    select<CompletedComment?> {
+                        onTimeout(waitMillis) { null }
+                        completed.onReceive { it }
+                    }
+                } else completed.receive()
+                if (response == null) {
+                    publishProgress()
+                    continue
+                }
+                val (next, comment, requestFailed) = response
                 remaining--
-                val author = comment?.by?.trim() ?: continue
-                if (author in filteredUsers) continue
-                comment.expanded = true
-                comment.depth = next.depth
-                val childIds = comment.kidsIds
-                val children = MutableList<LoadedCommentBranch?>(childIds?.size ?: 0) { null }
-                next.destination[next.index] = LoadedCommentBranch(comment, children)
-                childIds?.forEachIndexed { index, id ->
-                    work.send(CommentWork(id, next.depth + 1, children, index))
-                    remaining++
+                outstanding[next.rootIndex]--
+                next.destination[next.index] = if (requestFailed) {
+                    failed.add(next)
+                    Missing(next.id, next.depth)
+                } else null
+                val author = comment?.by?.trim()
+                if (comment != null && author != null && author !in filteredUsers) {
+                    comment.expanded = true
+                    comment.depth = next.depth
+                    val childIds = comment.kidsIds
+                    val children = MutableList<Branch?>(childIds?.size ?: 0) { null }
+                    next.destination[next.index] = Loaded(comment, children)
+                    childIds?.forEachIndexed { index, id ->
+                        work.send(CommentWork(id, next.depth + 1, children, index, next.rootIndex))
+                        outstanding[next.rootIndex]++
+                        remaining++
+                    }
+                }
+                if (onProgress != null && remaining > 0 && outstanding[next.rootIndex] == 0 && roots[next.rootIndex] is Loaded) {
+                    if (lastPublication == null) publishProgress() else progressPending = true
                 }
             }
         } finally {
@@ -237,37 +287,68 @@ class OfficialCommentThreadLoader(
             workers.forEach { it.cancel() }
             completed.cancel()
         }
-        // Each branch retains only its direct children. Flatten once after loading so a deeply
-        // nested reply is not copied into every ancestor's intermediate list.
-        val pending = ArrayDeque<LoadedCommentBranch>()
-        for (index in roots.indices.reversed()) roots[index]?.let(pending::addLast)
-        val comments = mutableListOf<Comment>()
-        while (pending.isNotEmpty()) {
-            coroutineContext.ensureActive()
-            val branch = pending.removeLast()
-            comments.add(branch.comment)
-            for (index in branch.children.indices.reversed()) {
-                branch.children[index]?.let(pending::addLast)
-            }
+        val gaps = mutableListOf<OfficialBranchGap>()
+        val comments = flatten(roots, gaps = gaps)
+        val retry = if (failed.isEmpty()) null else OfficialCommentRetry(gaps) {
+            loadCommentForest(story, usedAsFallback, filteredUsers, roots, failed, onProgress = null)
         }
-        comments
+        CommentThreadLoadResult.Official(story, comments, usedAsFallback, retry)
     }
 
-    private class LoadedCommentBranch(val comment: Comment, val children: List<LoadedCommentBranch?>)
+    private suspend fun flatten(roots: List<Branch?>, outstanding: IntArray? = null,
+        gaps: MutableList<OfficialBranchGap>? = null): MutableList<Comment> {
+        val pending = ArrayDeque<Branch>()
+        for (index in roots.indices.reversed()) {
+            if (outstanding == null || outstanding[index] == 0) roots[index]?.let(pending::addLast)
+        }
+        val comments = mutableListOf<Comment>()
+        while (pending.isNotEmpty()) {
+            currentCoroutineContext().ensureActive()
+            when (val branch = pending.removeLast()) {
+                is Missing -> gaps?.add(OfficialBranchGap(branch.id, branch.depth, comments.size))
+                is Loaded -> {
+                    comments.add(branch.comment)
+                    for (index in branch.children.indices.reversed()) branch.children[index]?.let(pending::addLast)
+                }
+            }
+        }
+        return comments
+    }
+
+    private sealed interface Branch
+    private class Loaded(val comment: Comment, val children: List<Branch?>) : Branch
+    private class Missing(val id: Int, val depth: Int) : Branch
 
     private class CommentWork(
         val id: Int,
         val depth: Int,
-        val destination: MutableList<LoadedCommentBranch?>,
+        val destination: MutableList<Branch?>,
         val index: Int,
+        val rootIndex: Int,
     )
 
-    private data class CompletedComment(val work: CommentWork, val comment: Comment?)
+    private data class CompletedComment(val work: CommentWork, val comment: Comment?, val failed: Boolean = false)
 
     private companion object {
         const val WORKER_COUNT = 8
+        const val PROGRESS_INTERVAL_MS = 200L
     }
 }
+
+/** Retains the positions of missing subtrees so retry can reuse all successful requests. */
+class OfficialCommentRetry internal constructor(
+    internal val gaps: List<OfficialBranchGap>,
+    private val retry: suspend () -> CommentThreadLoadResult.Official,
+) {
+    val count: Int get() = gaps.size
+    private val mutex = Mutex()
+    private var completed: CommentThreadLoadResult.Official? = null
+    suspend fun load(): CommentThreadLoadResult.Official = mutex.withLock {
+        completed ?: retry().also { completed = it }
+    }
+}
+
+internal data class OfficialBranchGap(val id: Int, val depth: Int, val insertionIndex: Int)
 
 enum class CommentThreadSource {
     ALGOLIA,
@@ -284,6 +365,7 @@ sealed interface CommentThreadLoadResult {
         val story: Story,
         val comments: MutableList<Comment>,
         val usedAsFallback: Boolean,
+        val retry: OfficialCommentRetry? = null,
     ) : CommentThreadLoadResult
 
     data class Failure(

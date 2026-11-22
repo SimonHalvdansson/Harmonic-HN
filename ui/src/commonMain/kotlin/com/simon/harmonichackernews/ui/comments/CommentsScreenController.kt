@@ -67,6 +67,8 @@ data class CommentsScreenState(
     val searchQuery: String = "",
     val searchPreparing: Boolean = false,
     val searchResults: List<PortableCommentItem> = emptyList(),
+    val loadingOfficialBranches: Boolean = false,
+    val failedOfficialBranches: Int = 0,
 )
 
 class CommentsScreenController private constructor(
@@ -984,6 +986,7 @@ class CommentsScreenController private constructor(
             tintColorArgb: Int,
         ): Int?
         fun onHeaderAction(action: CommentsHeaderAction)
+        fun onRetryOfficialBranches() {}
         fun onSummarizeDiscussion() = Unit
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)

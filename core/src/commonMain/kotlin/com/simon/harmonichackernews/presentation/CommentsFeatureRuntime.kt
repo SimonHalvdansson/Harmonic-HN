@@ -572,9 +572,12 @@ class CommentsFeatureRuntime(
     fun consumeCommentTarget(): CommentTargetResolution {
         val commentId = sessionState.scrollToCommentId
         if (commentId <= 0) return CommentTargetResolution.None
-        sessionState.scrollToCommentId = -1
         val comment = thread.findComment(commentId)
-            ?: return CommentTargetResolution.NotFound(commentId)
+        if (comment == null && (state.loadingOfficialBranches || state.failedOfficialBranches > 0)) {
+            return CommentTargetResolution.None
+        }
+        sessionState.scrollToCommentId = -1
+        if (comment == null) return CommentTargetResolution.NotFound(commentId)
         expandParents(comment.id)
         return CommentTargetResolution.Found(commentId)
     }
@@ -802,7 +805,7 @@ class CommentsFeatureRuntime(
                             headerChanged = effect.headerChanged,
                         ),
                     )
-                    requestAutomaticSummaryIfEligible()
+                    if (!effect.incompleteOfficialThread) requestAutomaticSummaryIfEligible()
                 }
                 // Ready/state effects must reach the host without waiting for cache hashing or
                 // disk writes. Keep writes in this collector to preserve their existing order.

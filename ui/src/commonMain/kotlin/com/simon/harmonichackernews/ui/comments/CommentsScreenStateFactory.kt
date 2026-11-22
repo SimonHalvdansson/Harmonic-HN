@@ -53,6 +53,8 @@ object CommentsScreenStateFactory {
             loadingFailedServerError = state.failure ==
                 StoryLoadFailure.NOT_FOUND && !debugSampleLoaded,
             usingOfficialApiFallback = state.usingOfficialApiFallback && !debugSampleLoaded,
+            loadingOfficialBranches = state.loadingOfficialBranches,
+            failedOfficialBranches = state.failedOfficialBranches,
             showRefreshPrompt = state.showRefreshPrompt && !debugSampleLoaded,
             lastRefreshed = state.lastLoadedMillis,
             opThreadFilterEnabled = thread.opThreadFilterEnabled,

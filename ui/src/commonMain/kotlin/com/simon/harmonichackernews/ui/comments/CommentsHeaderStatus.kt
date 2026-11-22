@@ -107,6 +107,8 @@ fun OpFilterBanner(controller: CommentsScreenController) {
 private enum class HeaderStatusState {
     Loading,
     Failed,
+    MissingBranches,
+    LoadingBranches,
     Empty,
     Refresh,
     None,
@@ -135,6 +137,8 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
     AnimatedContent(
         modifier = Modifier.fillMaxWidth(),
         targetState = when {
+            controller.screenState.failedOfficialBranches > 0 -> HeaderStatusState.MissingBranches
+            controller.screenState.loadingOfficialBranches -> HeaderStatusState.LoadingBranches
             showLoading -> HeaderStatusState.Loading
             controller.loadingFailed -> HeaderStatusState.Failed
             showEmpty -> HeaderStatusState.Empty
@@ -156,6 +160,24 @@ fun CommentsHeaderStatus(controller: CommentsScreenController, lastRefreshedText
         label = "comments header status",
     ) { state ->
         when (state) {
+            HeaderStatusState.LoadingBranches -> Text(
+                "Loading more comments…",
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HeaderStatusState.MissingBranches -> Column(
+                Modifier.fillMaxWidth().padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("Some replies couldn’t load", color = MaterialTheme.colorScheme.onSurface)
+                OutlinedButton(
+                    onClick = controller.listener::onRetryOfficialBranches,
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
+                    Text("Retry missing replies")
+                }
+            }
             HeaderStatusState.Loading -> {
                 val exitAlpha by transition.animateFloat(
                     transitionSpec = { tween(90) },

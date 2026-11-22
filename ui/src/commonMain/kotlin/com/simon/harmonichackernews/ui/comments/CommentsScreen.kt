@@ -519,6 +519,7 @@ fun CommentsScreen(
                     userTagColor = userTags.colorFor(item.comment.by),
                     subtreeReplyCount = item.subtreeReplyCount,
                     collapseParent = settings.collapseParent,
+                    isThreadRow = true,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,
                     nextCommentDepth = animatedRows.rows.getOrNull(index + 1)?.comment?.depth,
                     highlighted = item.comment.id == controller.highlightedCommentId,

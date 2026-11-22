@@ -64,6 +64,77 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPresenterTest {
     @Test
+    fun officialProgressAndTargetedRetryPreserveReaderExpansionAndClearOnNavigation() = runTest {
+        val releaseSecond = CompletableDeferred<Unit>()
+        var recovered = false
+        var includeThird = false
+        val requested = mutableListOf<Int>()
+        val official = object : HackerNewsRepository by UnusedHackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story("Thread", id, false, false).apply {
+                kids = if (includeThird) intArrayOf(1, 2, 3) else intArrayOf(1, 2)
+            }
+            override suspend fun getComment(id: Int): Comment {
+                requested += id
+                if (id == 2) {
+                    releaseSecond.await()
+                    if (!recovered) error("unavailable")
+                }
+                return Comment().also {
+                    it.id = id
+                    it.by = "reader$id"
+                    it.parent = if (id == 11) 1 else 42
+                    if (id == 1) it.kidsIds = intArrayOf(11)
+                }
+            }
+        }
+        val session = CommentsSessionState()
+        val presenter = CommentsPresenter(backgroundScope, session,
+            CommentThreadRepository(FakeAlgoliaRepository("{}"), official),
+            UnusedPollOptions, savedItemActions(), UnusedVotingService)
+        val story = Story("Thread", 42, false, false)
+        val runtime = CommentsFeatureRuntime(backgroundScope, session, presenter) { 42L }
+        runtime.initialize(story, false, 2, "Default", false)
+        presenter.dispatch(CommentsAction.LoadThread(story, false, emptySet(), "Default", true, null, false))
+        runCurrent()
+        assertEquals(listOf(1, 11), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertTrue(presenter.state.value.loadingOfficialBranches)
+        assertEquals(CommentTargetResolution.None, runtime.consumeCommentTarget())
+        presenter.dispatch(CommentsAction.ToggleExpanded(1))
+        releaseSecond.complete(Unit)
+        runCurrent()
+        assertEquals(1, presenter.state.value.failedOfficialBranches)
+        assertEquals(CommentTargetResolution.None, runtime.consumeCommentTarget())
+        assertFalse(presenter.state.value.loadingOfficialBranches)
+        assertTrue(presenter.thread.state.value.allComments.first { it.id == 1 }.expanded)
+        recovered = true
+        presenter.dispatch(CommentsAction.RetryOfficialBranches)
+        presenter.dispatch(CommentsAction.RetryOfficialBranches)
+        runCurrent()
+        assertEquals(listOf(1, 11, 2), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        assertTrue(presenter.thread.state.value.allComments.first { it.id == 1 }.expanded)
+        assertEquals(0, presenter.state.value.failedOfficialBranches)
+        assertEquals(CommentTargetResolution.Found(2), runtime.consumeCommentTarget())
+        assertEquals(2, requested.count { it == 2 })
+        assertEquals(1, requested.count { it == 11 })
+        recovered = false
+        includeThird = true
+        presenter.dispatch(CommentsAction.LoadThread(story, false, emptySet(), "Default", true, null, false))
+        runCurrent()
+        assertEquals(1, presenter.state.value.failedOfficialBranches)
+        assertEquals(listOf(1, 11, 2, 3), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        presenter.dispatch(CommentsAction.LoadThread(story, false, setOf("reader2"), "Default", true, null, false))
+        runCurrent()
+        assertEquals(listOf(1, 11, 3), presenter.thread.state.value.allComments.drop(1).map { it.id })
+        presenter.dispatch(CommentsAction.CancelThreadLoad)
+        assertEquals(0, presenter.state.value.failedOfficialBranches)
+        assertFalse(session.commentsLoaded)
+        val before = requested.size
+        presenter.dispatch(CommentsAction.RetryOfficialBranches)
+        runCurrent()
+        assertEquals(before, requested.size)
+    }
+
+    @Test
     fun unsuccessfulRecoveryCompletesAnUnchangedEmptyCacheWithoutStayingLoading() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val response = """{"id":42,"title":"Discussion","type":"story","children":[]}"""

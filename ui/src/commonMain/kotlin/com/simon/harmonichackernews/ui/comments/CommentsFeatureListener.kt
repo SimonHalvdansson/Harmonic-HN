@@ -48,6 +48,7 @@ class CommentsFeatureListener(
     )
     override fun onHeaderAction(action: CommentsHeaderAction) =
         store.accept(CommentsIntent.HeaderAction(action))
+    override fun onRetryOfficialBranches() = store.accept(CommentsIntent.RetryOfficialBranches)
 
     override fun onSummarizeDiscussion() =
         store.accept(CommentsIntent.SummarizeDiscussion)

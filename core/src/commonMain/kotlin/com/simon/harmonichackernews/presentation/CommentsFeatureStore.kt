@@ -50,6 +50,7 @@ sealed interface CommentsIntent {
     data object OpenHeaderLink : CommentsIntent
     data class HeaderPreviewImageResult(val imageUrl: String, val success: Boolean) : CommentsIntent
     data class HeaderAction(val action: CommentsHeaderAction) : CommentsIntent
+    data object RetryOfficialBranches : CommentsIntent
     data object SummarizeDiscussion : CommentsIntent
     data class ShareAction(val action: CommentsShareAction) : CommentsIntent
     data class MoreAction(val action: CommentsMoreAction) : CommentsIntent
@@ -177,6 +178,7 @@ class CommentsFeatureStore internal constructor(
             is CommentsIntent.HeaderPreviewImageResult ->
                 runtime.completeHeaderPreviewImageLoad(intent.imageUrl, intent.success)
             is CommentsIntent.HeaderAction -> runtime.handleHeaderAction(intent.action)
+            CommentsIntent.RetryOfficialBranches -> runtime.presenter.dispatch(CommentsAction.RetryOfficialBranches)
             CommentsIntent.SummarizeDiscussion -> runtime.openDiscussionSummary()
             is CommentsIntent.ShareAction -> runtime.handleShareAction(intent.action)
             is CommentsIntent.MoreAction -> runtime.handleMoreAction(intent.action)

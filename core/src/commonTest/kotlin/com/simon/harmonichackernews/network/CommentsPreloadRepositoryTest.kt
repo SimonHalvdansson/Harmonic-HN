@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
@@ -21,6 +22,37 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentsPreloadRepositoryTest {
+    @Test
+    fun joiningAnOfficialPreloadReceivesProgressAndAnUncachedRetryableResult() = runTest {
+        val lastBranch = CompletableDeferred<Unit>()
+        val ready = CompletableDeferred<List<Int>>()
+        val source = object : HackerNewsRepository {
+            override suspend fun getStory(id: Int) = Story().apply { kids = intArrayOf(1, 2) }
+            override suspend fun getStoryIds(type: StoryType): List<Int> = error("unused")
+            override suspend fun getComment(id: Int): Comment {
+                if (id == 2) {
+                    lastBranch.await()
+                    error("offline")
+                }
+                return Comment().also { it.id = id; it.by = "reader" }
+            }
+        }
+        val preloads = CommentsPreloadRepository(RecordingAlgoliaRepository(RESPONSE),
+            OfficialCommentThreadLoader(source), nowMillis = { 100 })
+        val loading = launch { preloads.preloadOfficial(42) }
+        runCurrent()
+        assertNull(preloads.takeOfficialOrAwait(42, awaitInFlight = false))
+        val joined = async {
+            preloads.takeOfficialOrAwait(42) { ready.complete(it.comments.map(Comment::id)) }
+        }
+        assertEquals(listOf(1), ready.await())
+        lastBranch.complete(Unit)
+        loading.join()
+        assertEquals(1, assertNotNull(joined.await()).retry?.count)
+        assertFalse(preloads.isOfficialPrepared(42))
+        assertEquals(0, preloads.preparedCount())
+    }
+
     @Test
     fun weightedBudgetEvictsOldestThreadBeforeEntryLimit() = runTest {
         var now = 0L
