@@ -38,7 +38,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
     val app = LocalHarmonicUiDependencies.current
     val repository = app.articleCategorySettings
     val preferences by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
-    val configuration by app.articleCategoryTraining.state.collectAsStateWithLifecycle()
+    val trainingRevision by app.articleCategoryTraining.revision.collectAsStateWithLifecycle()
     val runtime by app.articleCategories.state.collectAsStateWithLifecycle()
     val models = app.localModels
     val manager = models?.cachedState?.collectAsStateWithLifecycle()?.value
@@ -74,7 +74,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
         if (!transferring) cancellingDownload = false
     }
 
-    LaunchedEffect(configuration) {
+    LaunchedEffect(trainingRevision) {
         try {
             counts = preferences.categories.associate { it.id to app.articleCategoryTraining.examples(it.id).size }
         } catch (cancelled: CancellationException) { throw cancelled }
@@ -82,7 +82,7 @@ fun ArticleCategorySettingsScreen(onBack: () -> Unit, onHowItWorks: () -> Unit) 
     }
 
     SettingsPage(title = "Article categories", showNavigation = true, onBack = onBack,
-        contentVersion = preferences.hashCode() + configuration.hashCode() + (transfer?.hashCode() ?: 0)) {
+        contentVersion = preferences.hashCode() + trainingRevision.hashCode() + (transfer?.hashCode() ?: 0)) {
         item {
             SettingsMainToggle(
                 title = "Categorize stories",

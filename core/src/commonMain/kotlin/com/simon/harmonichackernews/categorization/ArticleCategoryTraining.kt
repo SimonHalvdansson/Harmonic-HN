@@ -5,6 +5,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -46,6 +47,17 @@ internal data class ArticleTrainingSeed(
     val representationVersion: String,
 )
 
+/** Feed preferences and the native classifier's example texts do not need saved float arrays. */
+@Serializable
+private data class ArticleTrainingCatalog(
+    val customCategories: List<ArticleCategory> = emptyList(),
+    val excluded: Map<String, Set<Int>> = emptyMap(),
+    val added: Map<String, List<TrainingStoryReference>> = emptyMap(),
+)
+
+@Serializable
+private data class TrainingStoryReference(val story: ArticleTrainingStory)
+
 /** User examples are local content. Removing model weights never deletes this training data. */
 class ArticleCategoryTraining(
     private val store: KeyValueStore,
@@ -58,12 +70,28 @@ class ArticleCategoryTraining(
     internal fun setNativeSpace(space: NativeCategorySpace?) { nativeSpace = space }
 
     private val json = Json { ignoreUnknownKeys = true }
-    private val mutableState = MutableStateFlow(
-        runCatching { store.getString(STORAGE_KEY)?.let { json.decodeFromString<ArticleTrainingConfiguration>(it) } }
-            .getOrNull() ?: ArticleTrainingConfiguration(),
-    )
-    val state = mutableState.asStateFlow()
-    val categories: List<ArticleCategory> get() = ArticleCategories.defaults + state.value.customCategories
+    private val configuration = lazy {
+        MutableStateFlow(
+            runCatching { store.getString(STORAGE_KEY)?.let { json.decodeFromString<ArticleTrainingConfiguration>(it) } }
+                .getOrNull() ?: ArticleTrainingConfiguration(),
+        )
+    }
+    private val mutableState by configuration
+    val state by lazy { mutableState.asStateFlow() }
+    private val mutableRevision = MutableStateFlow(0L)
+    val revision = mutableRevision.asStateFlow()
+    private val initialCatalog by lazy {
+        runCatching { store.getString(STORAGE_KEY)?.let { json.decodeFromString<ArticleTrainingCatalog>(it) } }
+            .getOrNull() ?: ArticleTrainingCatalog()
+    }
+    val categories: List<ArticleCategory> get() = ArticleCategories.defaults +
+        if (configuration.isInitialized()) state.value.customCategories else initialCatalog.customCategories
+    fun hasEditedExamples(categoryId: String): Boolean = if (configuration.isInitialized()) {
+        val config = state.value
+        !config.excluded[categoryId].isNullOrEmpty() || !config.added[categoryId].isNullOrEmpty()
+    } else {
+        !initialCatalog.excluded[categoryId].isNullOrEmpty() || !initialCatalog.added[categoryId].isNullOrEmpty()
+    }
     private val loader = CompletableDeferred<suspend () -> ByteArray>()
     private val defaultsLock = Mutex()
     private var seed: ArticleTrainingSeed? = null
@@ -109,13 +137,18 @@ class ArticleCategoryTraining(
 
     suspend fun examples(categoryId: String): List<ArticleTrainingStory> {
         loadDefaults()
-        return examples(categoryId, state.value)
+        if (configuration.isInitialized()) return examples(categoryId, state.value)
+        return examples(categoryId, initialCatalog.excluded[categoryId].orEmpty(),
+            initialCatalog.added[categoryId].orEmpty().map { it.story })
     }
 
-    private fun examples(categoryId: String, config: ArticleTrainingConfiguration): List<ArticleTrainingStory> {
-        val ids = seed?.assignments?.get(categoryId).orEmpty().toSet() - config.excluded[categoryId].orEmpty()
-        return (seed?.stories.orEmpty().filter { it.id in ids } + config.added[categoryId].orEmpty().map { it.story })
-            .distinctBy { it.id }
+    private fun examples(categoryId: String, config: ArticleTrainingConfiguration) = examples(
+        categoryId, config.excluded[categoryId].orEmpty(), config.added[categoryId].orEmpty().map { it.story },
+    )
+
+    private fun examples(categoryId: String, excluded: Set<Int>, added: List<ArticleTrainingStory>): List<ArticleTrainingStory> {
+        val ids = seed?.assignments?.get(categoryId).orEmpty().toSet() - excluded
+        return (seed?.stories.orEmpty().filter { it.id in ids } + added).distinctBy { it.id }
     }
 
     fun create(name: String): String {
@@ -167,7 +200,7 @@ class ArticleCategoryTraining(
 
     suspend fun centers(titleOnly: Boolean = false): Map<String, FloatArray> {
         nativeSpace?.let { return if (titleOnly) it.titleCenters else it.centers }
-        val config = state.value
+        val config = if (configuration.isInitialized()) state.value else withContext(Dispatchers.Default) { state.value }
         return centers(config, titleOnly)
     }
 
@@ -240,6 +273,7 @@ class ArticleCategoryTraining(
         mutableState.value = config
         cachedCenters = null
         cachedTitleCenters = null
+        mutableRevision.update { it + 1 }
     }
 
     private fun hasPreview(story: ArticleTrainingStory): Boolean =

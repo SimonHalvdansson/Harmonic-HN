@@ -35,7 +35,8 @@ import org.jetbrains.compose.resources.painterResource
 internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDismiss: () -> Unit) {
     val app = LocalHarmonicUiDependencies.current
     val training = app.articleCategoryTraining
-    val configuration by training.state.collectAsStateWithLifecycle()
+    val trainingRevision by training.revision.collectAsStateWithLifecycle()
+    val editedExamples = remember(category.id, training, trainingRevision) { training.hasEditedExamples(category.id) }
     val manager = app.localModels?.cachedState?.collectAsStateWithLifecycle()?.value
     val runtime by app.articleCategories.state.collectAsStateWithLifecycle()
     val canTrain = app.articleCategories.modelReady
@@ -50,7 +51,7 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
     var error by remember { mutableStateOf<String?>(null) }
     val builtIn = ArticleCategories.defaults.any { it.id == category.id }
 
-    LaunchedEffect(category.id, configuration, runtime.trainingVersion) {
+    LaunchedEffect(category.id, trainingRevision, runtime.trainingVersion) {
         try {
             similarities = training.exampleSimilarities(category.id)
             examples = training.examples(category.id)
@@ -74,8 +75,7 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (builtIn) {
-                    IconButton(onClick = { reset = true }, enabled = configuration.excluded[category.id].orEmpty().isNotEmpty() ||
-                        configuration.added[category.id].orEmpty().isNotEmpty()) {
+                    IconButton(onClick = { reset = true }, enabled = editedExamples) {
                         Icon(painterResource(Res.drawable.ic_refresh), "Restore default examples")
                     }
                 } else {
@@ -97,7 +97,7 @@ internal fun ArticleCategoryEditor(category: ArticleCategory, name: String, onDi
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (error != null) Text(error.orEmpty(), Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.error)
             if (examples == null && error == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(24.dp))
-            if (!builtIn && configuration.added[category.id].orEmpty().isNotEmpty()) Row(
+            if (!builtIn && !examples.isNullOrEmpty()) Row(
                 Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.End,
             ) {
                 TextButton(onClick = { reset = true }) { Text("Clear examples", fontFamily = AppUiFontFamily) }

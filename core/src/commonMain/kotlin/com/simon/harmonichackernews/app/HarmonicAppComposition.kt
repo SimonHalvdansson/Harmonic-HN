@@ -116,7 +116,7 @@ class HarmonicAppComposition(
     val articleCategoryTraining = com.simon.harmonichackernews.categorization.ArticleCategoryTraining(host.appDataStore)
     val articleCategorySettings = com.simon.harmonichackernews.categorization.ArticleCategorySettings(
         host.settingsStore, host.settingsChanges, { articleCategoryTraining.categories },
-        articleCategoryTraining.state.map { Unit },
+        articleCategoryTraining.revision.map { Unit },
     )
     val articleCategories = com.simon.harmonichackernews.categorization.ArticleCategoryRuntime(
         articleCategorySettings, localModels, host.articleEmbeddingEngine, network.scope,

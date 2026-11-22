@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.simon.harmonichackernews.categorization.ArticleTrainingStory
-import com.simon.harmonichackernews.categorization.ArticleTrainingConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
@@ -74,8 +73,8 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
     var error by remember { mutableStateOf<String?>(null) }
     var retryOffset by remember { mutableStateOf<Int?>(null) }
     var addJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val configuration by app.articleCategoryTraining.state.collectAsStateWithLifecycle()
-    var scoreConfiguration by remember { mutableStateOf<ArticleTrainingConfiguration?>(null) }
+    val trainingRevision by app.articleCategoryTraining.revision.collectAsStateWithLifecycle()
+    var scoreRevision by remember { mutableStateOf<Long?>(null) }
     var similarities by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
     var hasCenter by remember { mutableStateOf(true) }
     var visibleIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -110,13 +109,13 @@ internal fun ArticleCategoryHistoryPicker(categoryId: String, name: String, exis
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Int }.toSet() }
             .distinctUntilChanged().collect { visibleIds = it }
     }
-    LaunchedEffect(visibleIds, stories, searchText, configuration, adding, scoreRetry) {
+    LaunchedEffect(visibleIds, stories, searchText, trainingRevision, adding, scoreRetry) {
         if (adding) return@LaunchedEffect
         try {
-            if (scoreConfiguration !== configuration) {
+            if (scoreRevision != trainingRevision) {
                 similarities = app.articleCategoryTraining.exampleSimilarities(categoryId)
                 hasCenter = categoryId in app.articleCategoryTraining.centers()
-                scoreConfiguration = configuration
+                scoreRevision = trainingRevision
             }
             if (!hasCenter) return@LaunchedEffect
             val filtered = stories.filter {

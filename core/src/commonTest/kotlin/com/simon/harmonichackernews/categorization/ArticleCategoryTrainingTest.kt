@@ -1,12 +1,40 @@
 package com.simon.harmonichackernews.categorization
 
 import com.simon.harmonichackernews.settings.InMemoryKeyValueStore
+import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.*
 
 class ArticleCategoryTrainingTest {
+    @Test
+    fun openingTheFeedAndReadingExampleTitlesLeaveSavedVectorsForFirstScoringUse() = runTest {
+        val storage = InMemoryKeyValueStore()
+        val original = ArticleCategoryTraining(storage) { FloatArray(768) }
+        original.setDefaultLoader { seedBytes() }
+        val category = original.create("Custom")
+        original.addExamples(category, listOf(EmbeddedTrainingStory(ArticleTrainingStory(99, "Robot"), unit(2).toList())))
+        var reads = 0
+        val counted = object : KeyValueStore by storage {
+            override fun getString(key: String, default: String?): String? {
+                if (key == ArticleCategoryTraining.STORAGE_KEY) reads++
+                return storage.getString(key, default)
+            }
+        }
+        val training = ArticleCategoryTraining(counted) { FloatArray(768) }
+        training.setDefaultLoader { seedBytes() }
+        assertEquals(0L, training.revision.value)
+        assertEquals(0, reads)
+        assertEquals("Custom", training.categories.last().name)
+        assertEquals(listOf("Robot"), training.examples(category).map { it.title })
+        assertEquals(1, reads)
+        assertEquals(1f, training.centers().getValue(category)[2])
+        assertEquals(2, reads)
+        training.centers(true)
+        assertEquals(2, reads)
+    }
+
     @Test
     fun storedExamplesAreComparedWithTheCurrentCenterWithoutInference() = runTest {
         val training = ArticleCategoryTraining(InMemoryKeyValueStore(), { FloatArray(768) }).apply { setDefaultLoader { seedBytes() } }

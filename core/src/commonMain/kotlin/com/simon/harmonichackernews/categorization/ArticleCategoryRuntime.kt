@@ -64,13 +64,13 @@ class ArticleCategoryRuntime(
     private data class StoryScores(
         val input: String,
         val hasDescription: Boolean,
-        val configuration: ArticleTrainingConfiguration?,
+        val trainingRevision: Long?,
         val maxInputTokens: Int,
         val scores: List<ArticleCategoryScore>,
         val space: String? = null,
     ) {
-        fun matches(configuration: ArticleTrainingConfiguration?, maxInputTokens: Int, space: String? = null) =
-            this.configuration === configuration && this.maxInputTokens == maxInputTokens && this.space == space
+        fun matches(trainingRevision: Long?, maxInputTokens: Int, space: String? = null) =
+            this.trainingRevision == trainingRevision && this.maxInputTokens == maxInputTokens && this.space == space
         fun covers(input: String, hasDescription: Boolean) = this.input == input || (this.hasDescription && !hasDescription)
         fun result() = ArticleCategoryResult(scores,
             if (hasDescription) ArticleCategoryInputSource.PREVIEW_TEXT else ArticleCategoryInputSource.TITLE_ONLY)
@@ -89,12 +89,12 @@ class ArticleCategoryRuntime(
         cachedStory(storyId, title, url)?.result()
 
     fun observeResult(storyId: Int, title: String, url: String?): Flow<ArticleCategoryResult?> =
-        combine(storyScores, training?.state ?: flowOf<ArticleTrainingConfiguration?>(null), settings.updates) { entries, configuration, preferences ->
+        combine(storyScores, training?.revision ?: flowOf<Long?>(null), settings.updates) { entries, configuration, preferences ->
             entries[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(configuration, preferences.maxInputTokens, nativeSpaceKey()) }?.result()
         }.distinctUntilChanged()
 
     private fun cachedStory(storyId: Int, title: String, url: String?): StoryScores? =
-        storyScores.value[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(training?.state?.value, settings.snapshot().maxInputTokens, nativeSpaceKey()) }
+        storyScores.value[StoryKey(storyId, title, url.orEmpty())]?.takeIf { it.matches(training?.revision?.value, settings.snapshot().maxInputTokens, nativeSpaceKey()) }
     private fun nativeSpaceKey(): String? = if (usingNative) native?.state?.value?.spaceKey else null
     private val mutableState = MutableStateFlow(ArticleCategoryRuntimeState(native = NativeEmbeddingProgress(checked = native == null)))
     val state = mutableState.asStateFlow()
@@ -151,7 +151,7 @@ class ArticleCategoryRuntime(
                         combine(resources.map { it.foreground }.distinctUntilChanged(), retries) { foreground, _ -> foreground }
                             .collect { foreground -> if (foreground) lock.withLock { provider.refresh() } }
                     }
-                    combine(settings.updates, resources, training!!.state,
+                    combine(settings.updates, resources, training!!.revision,
                         provider.state.map { it.checked to it.model?.signature }.distinctUntilChanged()) { preferences, resource, configuration, model ->
                         Triple(preferences.enabled && resource.foreground && !resource.paused, configuration, model)
                     }.collect { (active, _, model) ->
@@ -196,12 +196,12 @@ class ArticleCategoryRuntime(
             }
             combine(settings.updates, service.cachedState,
                 combine(retries, native?.state?.map { it.checked to it.model?.signature }?.distinctUntilChanged() ?: flowOf(true to null)) { retry, nativeState -> retry to nativeState },
-                training?.state ?: flowOf(ArticleTrainingConfiguration()), resources) { preferences, manager, retry, configuration, resourceState ->
+                training?.revision ?: flowOf(null), resources) { preferences, manager, retry, configuration, resourceState ->
                 val available = modelReady && manager.statuses[LocalModelCatalog.MODEL_EMBEDDING_GEMMA_2]?.state == LocalModelTransferState.DOWNLOADED
                 (Triple(preferences.enabled to preferences.maxInputTokens, available, retry to preferences.preferSystemEmbeddings) to configuration) to resourceState
             }.distinctUntilChanged().collect { (configuration, resourceState) ->
                 if (native?.state?.value?.checked == false || usingNative) return@collect
-                val currentTraining = training?.state?.value
+                val currentTraining = training?.revision?.value
                 val maxInputTokens = settings.snapshot().maxInputTokens
                 storyScores.update { entries ->
                     if (entries.values.any { !it.matches(currentTraining, maxInputTokens) }) entries.filterValues { it.matches(currentTraining, maxInputTokens) }
@@ -260,13 +260,13 @@ class ArticleCategoryRuntime(
             val input = ArticleCategories.input(title, description)
             val hasDescription = input != ArticleCategories.input(title, null)
             if (storyId != null) cachedStory(storyId, title, url)?.takeIf { it.covers(input, hasDescription) }?.let { return it.scores }
-            val configuration = training?.state?.value
+            val configuration = training?.revision?.value
             return try {
                 val scores = provider.scores(title, description) { usingNative && settings.snapshot().enabled && resources.value.foreground && !resources.value.paused }
                 val current = provider.state.value
                 if (!current.readyForMatching || progress.model != current.model ||
                     (progress.model?.supportsPartialCategoryMatching != true && progress.revision != current.revision) ||
-                    !usingNative || configuration !== training?.state?.value ||
+                    !usingNative || configuration != training?.revision?.value ||
                     !settings.snapshot().enabled || !resources.value.foreground || resources.value.paused) return emptyList()
                 if (storyId != null) {
                     val entry = StoryScores(input, hasDescription, configuration, settings.snapshot().maxInputTokens, scores, current.spaceKey)
@@ -296,12 +296,12 @@ class ArticleCategoryRuntime(
                 // Once native inference starts it cannot be interrupted. Keep its completed result
                 // even if the row scrolls away, rather than repeating the same work on its return.
                 withContext(NonCancellable + scoringDispatcher) {
-                    val configuration = training?.state?.value
+                    val configuration = training?.revision?.value
                     val embedding = cachedEmbedding(input)
                     if (usingNative || resources.value.paused || !resources.value.foreground || !settings.snapshot().enabled) return@withContext emptyList()
                     val titleOnly = !hasDescription
                     val scores = ArticleCategories.scores(project(embedding, titleOnly), training?.centers(titleOnly) ?: prototypes(titleOnly))
-                    if (configuration !== training?.state?.value || maxInputTokens != settings.snapshot().maxInputTokens) return@withContext emptyList()
+                    if (configuration != training?.revision?.value || maxInputTokens != settings.snapshot().maxInputTokens) return@withContext emptyList()
                     if (storyId != null) storyScores.update { entries ->
                         LinkedHashMap(entries.filterValues { it.matches(configuration, maxInputTokens) }).apply {
                             val key = StoryKey(storyId, title, url.orEmpty())
