@@ -80,6 +80,9 @@ fun CommentsHeaderActions(
     onButtonsOverflowChanged: (List<CommentsHeaderButton>) -> Unit = {},
 ) {
     val story = controller.story
+    val articleSummaryAvailable = story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully
+    val discussion = controller.discussionSummary
+    val discussionSummaryAvailable = controller.canSummarizeDiscussion && (discussion.running || discussion.text.isBlank())
     val hasAccount = settings.hasAccountDetails
     val canReply = hasAccount && !AgePolicy.isOlderThanTwoWeeks(story.createdAtEpochSeconds)
     val combineActions = hasAccount && settings.combineHeaderActions
@@ -126,8 +129,7 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.VOTE -> hasAccount && !combineActions
             CommentsHeaderButton.FAVORITE -> hasAccount
             CommentsHeaderButton.BOOKMARK -> bookmarksEnabled
-            CommentsHeaderButton.SUMMARIZE -> controller.canSummarizeDiscussion ||
-                (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully)
+            CommentsHeaderButton.SUMMARIZE -> articleSummaryAvailable || discussionSummaryAvailable
             CommentsHeaderButton.SIDE_BY_SIDE -> controller.sideBySideAvailable
             CommentsHeaderButton.OPEN_PARENT -> story.isComment && story.parentId > 0
             CommentsHeaderButton.OPEN_TOP_LEVEL -> story.isComment && story.rootStoryId > 0
@@ -147,7 +149,7 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.FAVORITE -> if (favorited) "Remove favorite" else "Favorite"
             CommentsHeaderButton.BOOKMARK -> if (bookmarked) "Remove bookmark" else "Bookmark"
             CommentsHeaderButton.SIDE_BY_SIDE -> if (controller.sideBySideActive) "Exit side by side" else button.label
-            CommentsHeaderButton.SUMMARIZE -> if (story.isLink && settings.canProvideSummary) button.label
+            CommentsHeaderButton.SUMMARIZE -> if (articleSummaryAvailable) button.label
                 else "Summarize discussion"
             else -> button.label
         }
@@ -155,12 +157,13 @@ fun CommentsHeaderActions(
             button == CommentsHeaderButton.VOTE && upvoted -> Res.drawable.ic_thumb_up_filled
             button == CommentsHeaderButton.FAVORITE && favorited -> Res.drawable.ic_star_filled
             button == CommentsHeaderButton.BOOKMARK && bookmarked -> Res.drawable.ic_bookmark_filled
+            button == CommentsHeaderButton.SUMMARIZE && !articleSummaryAvailable -> Res.drawable.ic_assistant
             else -> button.icon
         }
         val loading = when (button) {
             CommentsHeaderButton.VOTE -> controller.storyVoteLoading
             CommentsHeaderButton.FAVORITE -> controller.storyFavoriteLoading
-            CommentsHeaderButton.SUMMARIZE -> controller.storySummaryLoading
+            CommentsHeaderButton.SUMMARIZE -> if (articleSummaryAvailable) controller.storySummaryLoading else discussion.running
             CommentsHeaderButton.REFRESH -> controller.refreshButtonInProgress
             else -> false
         }
@@ -194,7 +197,7 @@ fun CommentsHeaderActions(
                 CommentsHeaderButton.VOTE -> controller.listener.onHeaderAction(CommentsHeaderAction.VOTE)
                 CommentsHeaderButton.FAVORITE -> controller.listener.onHeaderAction(CommentsHeaderAction.FAVORITE)
                 CommentsHeaderButton.BOOKMARK -> controller.listener.onHeaderAction(CommentsHeaderAction.BOOKMARK)
-                CommentsHeaderButton.SUMMARIZE -> if (story.isLink && settings.canProvideSummary) {
+                CommentsHeaderButton.SUMMARIZE -> if (articleSummaryAvailable) {
                     controller.listener.onHeaderAction(CommentsHeaderAction.SUMMARIZE)
                 } else {
                     controller.listener.onSummarizeDiscussion()
@@ -237,8 +240,8 @@ fun CommentsHeaderActions(
             ) {
                 Box {
                     HeaderActionButton(action, Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize), story.id,
-                        onLongClick = if (action.action == CommentsHeaderButton.SUMMARIZE && controller.canSummarizeDiscussion &&
-                            !controller.discussionRequestBlocked) {
+                        onLongClick = if (action.action == CommentsHeaderButton.SUMMARIZE && discussionSummaryAvailable &&
+                            !discussion.running && !controller.discussionRequestBlocked) {
                             { controller.listener.onSummarizeDiscussion() }
                         } else null,
                     ) {
@@ -273,9 +276,9 @@ fun CommentsHeaderActions(
                 archiveExpanded = archiveExpanded,
                 controller = controller,
                 overflowActions = overflow.filterNot {
-                    it.action == CommentsHeaderButton.SUMMARIZE && !(story.isLink && settings.canProvideSummary)
+                    it.action == CommentsHeaderButton.SUMMARIZE && !articleSummaryAvailable
                 },
-                showDiscussionSummary = !previewCommentActions && controller.canSummarizeDiscussion,
+                showDiscussionSummary = !previewCommentActions && discussionSummaryAvailable,
                 onAction = onAction,
                 onDismiss = dismissMenus,
                 onSubmenuBack = { sortExpanded = false; archiveExpanded = false },
@@ -487,9 +490,8 @@ private fun MoreMenu(
                         if (showDiscussionSummary) {
                             DropdownMenuItem(
                                 text = { CommentsMenuText("Summarize discussion") },
-                                leadingIcon = { Icon(painterResource(CommentsHeaderButton.SUMMARIZE.icon), null) },
-                                enabled = !controller.discussionRequestBlocked && !controller.discussionSummary.running &&
-                                    controller.discussionSummary.text.isBlank(),
+                                leadingIcon = { Icon(painterResource(Res.drawable.ic_assistant), null) },
+                                enabled = !controller.discussionRequestBlocked && !controller.discussionSummary.running,
                                 onClick = {
                                     onDismiss()
                                     controller.listener.onSummarizeDiscussion()
