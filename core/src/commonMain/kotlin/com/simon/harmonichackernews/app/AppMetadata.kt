@@ -24,30 +24,96 @@ data class LicenseEntry(
     val creator: String,
     val licenseType: String,
     val url: String,
-)
+    val noticeFile: String,
+    val attribution: String? = null,
+    val termsUrl: String? = null,
+) {
+    companion object {
+        fun apache2(name: String, creator: String, url: String, attribution: String? = null) =
+            LicenseEntry(name, creator, "Apache License 2.0", url, "apache_2.txt", attribution)
+    }
+}
 
 /** Dependencies and adapted source code shared by every Harmonic KMP host. */
 object CommonLicenseCatalog {
     val entries = listOf(
-        LicenseEntry("Kotlin standard library", "JetBrains", "Apache License 2.0", "https://kotlinlang.org/"),
-        LicenseEntry("kotlinx.coroutines", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
-        LicenseEntry("kotlinx.serialization", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.serialization"),
-        LicenseEntry("FlatBuffers", "Google", "Apache License 2.0", "https://github.com/google/flatbuffers/blob/v25.2.10/LICENSE"),
-        LicenseEntry("kotlinx.io", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx-io"),
-        LicenseEntry("kotlinx.collections.immutable", "JetBrains", "Apache License 2.0", "https://github.com/Kotlin/kotlinx.collections.immutable"),
-        LicenseEntry("Ktor", "JetBrains", "Apache License 2.0", "https://ktor.io/"),
-        LicenseEntry("kuri", "dexpace and Omar Aljarrah", "MIT License", "https://github.com/dexpace/kuri"),
-        LicenseEntry("Unicode character data", "Unicode, Inc.", "Unicode License v3", "https://www.unicode.org/license.txt"),
-        LicenseEntry("Compose Multiplatform", "JetBrains", "Apache License 2.0", "https://www.jetbrains.com/compose-multiplatform/"),
-        LicenseEntry("Haze", "Chris Banes", "Apache License 2.0", "https://github.com/chrisbanes/haze"),
-        LicenseEntry("Coil", "Coil contributors", "Apache License 2.0", "https://coil-kt.github.io/coil/"),
-        LicenseEntry("Ksoup", "FleekSoft", "MIT License", "https://github.com/fleeksoft/ksoup"),
-        LicenseEntry("Compose LaTeX", "huarangmeng", "MIT License", "https://github.com/huarangmeng/latex"),
-        LicenseEntry("KaTeX math fonts", "KaTeX contributors", "MIT License", "https://github.com/KaTeX/KaTeX"),
-        LicenseEntry("Palette algorithms", "Android Open Source Project and KMPalette contributors", "Apache License 2.0", "https://github.com/jordond/kmpalette"),
-        LicenseEntry("pdf.js", "Mozilla", "Apache License 2.0", "https://mozilla.github.io/pdf.js/"),
-        LicenseEntry("Readability", "Mozilla", "Apache License 2.0", "https://github.com/mozilla/readability"),
-        LicenseEntry("Materialistic", "Hidroh", "Apache License 2.0", "https://github.com/hidroh/materialistic"),
+        LicenseEntry.apache2("Kotlin standard library", "JetBrains", "https://kotlinlang.org/"),
+        LicenseEntry.apache2(
+            "kotlinx.coroutines",
+            "JetBrains",
+            "https://github.com/Kotlin/kotlinx.coroutines",
+            "Copyright 2000-2020 JetBrains s.r.o. and Kotlin Programming Language contributors.",
+        ),
+        LicenseEntry.apache2("kotlinx.serialization", "JetBrains", "https://github.com/Kotlin/kotlinx.serialization"),
+        LicenseEntry.apache2(
+            "FlatBuffers",
+            "Google",
+            "https://github.com/google/flatbuffers",
+            "Copyright 2021 Google Inc. All rights reserved.",
+        ),
+        LicenseEntry.apache2("kotlinx.io", "JetBrains", "https://github.com/Kotlin/kotlinx-io"),
+        LicenseEntry.apache2(
+            "kotlinx.collections.immutable",
+            "JetBrains",
+            "https://github.com/Kotlin/kotlinx.collections.immutable",
+        ),
+        LicenseEntry.apache2("Ktor", "JetBrains", "https://ktor.io/", "Copyright 2000-2023 JetBrains s.r.o."),
+        LicenseEntry("kuri", "dexpace and Omar Aljarrah", "MIT License", "https://github.com/dexpace/kuri", "kuri.txt"),
+        LicenseEntry(
+            "Unicode character data",
+            "Unicode, Inc.",
+            "Unicode License v3",
+            "https://www.unicode.org/ucd/",
+            "unicode_3.txt",
+        ),
+        LicenseEntry.apache2(
+            "Compose Multiplatform",
+            "JetBrains",
+            "https://www.jetbrains.com/compose-multiplatform/",
+            "Copyright 2020-2021 JetBrains s.r.o. and and respective authors and developers.",
+        ),
+        LicenseEntry.apache2("Haze", "Chris Banes", "https://github.com/chrisbanes/haze", "Copyright 2024 Chris Banes"),
+        LicenseEntry.apache2(
+            "Coil",
+            "Coil contributors",
+            "https://coil-kt.github.io/coil/",
+            "Copyright 2026 Coil Contributors",
+        ),
+        LicenseEntry("Ksoup", "FleekSoft", "MIT License", "https://github.com/fleeksoft/ksoup", "ksoup.txt"),
+        LicenseEntry(
+            "Compose LaTeX",
+            "huarangmeng",
+            "MIT License",
+            "https://github.com/huarangmeng/latex",
+            "compose_latex.txt",
+        ),
+        LicenseEntry(
+            "KaTeX math fonts",
+            "Khan Academy and contributors",
+            "MIT License",
+            "https://github.com/KaTeX/katex-fonts",
+            "katex_fonts.txt",
+            "Copyright (c) 2013-2020 Khan Academy and other contributors.",
+        ),
+        LicenseEntry.apache2(
+            "Palette algorithms",
+            "Android Open Source Project and KMPalette contributors",
+            "https://github.com/jordond/kmpalette",
+            "Copyright 2018 The Android Open Source Project. Adapted from the androidx-palette module in KMPalette.",
+        ),
+        LicenseEntry.apache2("pdf.js", "Mozilla", "https://mozilla.github.io/pdf.js/", "Copyright 2024 Mozilla Foundation"),
+        LicenseEntry.apache2(
+            "Readability",
+            "Mozilla",
+            "https://github.com/mozilla/readability",
+            "Copyright (c) 2010 Arc90 Inc",
+        ),
+        LicenseEntry.apache2(
+            "Materialistic",
+            "Hidroh",
+            "https://github.com/hidroh/materialistic",
+            "Copyright 2015 Ha Duy Trung",
+        ),
     )
 
     fun withPlatform(platformEntries: List<LicenseEntry>): List<LicenseEntry> =
@@ -69,11 +135,12 @@ object LocalAiLicenseCatalog {
             "Google",
             "ML Kit Terms of Service",
             "https://developers.google.com/ml-kit/genai",
+            "ml_kit_genai.txt",
+            termsUrl = "https://developers.google.com/ml-kit/terms",
         ),
-        LicenseEntry(
+        LicenseEntry.apache2(
             "LiteRT-LM",
             "Google",
-            "Apache License 2.0",
             "https://github.com/google-ai-edge/LiteRT-LM",
         ),
     )

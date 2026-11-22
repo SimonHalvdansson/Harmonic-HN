@@ -1,0 +1,3 @@
+Google licenses the ML Kit GenAI APIs under the Google APIs Terms of Service, the ML Kit Terms of Service and the ML Kit GenAI API Additional Terms of Service. The additional terms also cover the foundation models accessed through these APIs.
+
+The GenAI terms set age and use restrictions, including limits on production use of preview services and on extracting the underlying models. Developers must inform users about Google's processing of ML Kit usage metrics. The full terms also cover generated content and prohibited uses.

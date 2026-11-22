@@ -24,8 +24,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +66,7 @@ import com.simon.harmonichackernews.resources.library_logo_kotlin
 import com.simon.harmonichackernews.resources.library_logo_ksoup
 import com.simon.harmonichackernews.resources.library_logo_ktor
 import com.simon.harmonichackernews.resources.library_logo_kuri
+import com.simon.harmonichackernews.resources.ic_open_in_new
 import com.simon.harmonichackernews.resources.ic_translate
 import com.simon.harmonichackernews.resources.library_logo_litert_lm
 import com.simon.harmonichackernews.resources.library_logo_material_components
@@ -69,6 +75,11 @@ import com.simon.harmonichackernews.resources.library_logo_mlkit
 import com.simon.harmonichackernews.resources.library_logo_pdfjs
 import com.simon.harmonichackernews.resources.library_logo_readability
 import com.simon.harmonichackernews.resources.settings_section_licenses
+import com.simon.harmonichackernews.ui.common.OutlinedButton
+import com.simon.harmonichackernews.ui.settings.LocalSettingsLicenseUrl
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.DrawableResource
@@ -95,6 +106,8 @@ private val InsetLicenseIcons = setOf(
 @Composable
 fun LicensesScreen(
     licenses: List<LicenseEntryUi>,
+    showNotice: Boolean,
+    onShowNotice: () -> Unit,
     onBack: () -> Unit,
     onOpenLicense: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -104,6 +117,8 @@ fun LicensesScreen(
     topBarNavigationInset: Dp = 0.dp,
     platformTextStyle: TextStyle = TextStyle.Default,
 ) {
+    val selection = LocalSettingsLicenseUrl.current
+    val selected = if (showNotice) licenses.find { it.url == selection.value } else null
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier
@@ -116,9 +131,9 @@ fun LicensesScreen(
             ),
     ) {
         HarmonicTopAppBar(
-            title = stringResource(Res.string.settings_section_licenses),
+            title = selected?.name ?: stringResource(Res.string.settings_section_licenses),
             onBack = onBack,
-            navigationContentDescription = "Back to About",
+            navigationContentDescription = if (selected == null) "Back" else "Back to licenses",
             toolbarHeight = topBarHeight,
             navigationHeight = topBarNavigationHeight,
             navigationInset = topBarNavigationInset,
@@ -147,20 +162,70 @@ fun LicensesScreen(
                         .background(colors.cardBackground)
                         .border(1.dp, colors.outlineVariant, LicenseCardShape),
                 ) {
-                    LicenseHeader(platformTextStyle)
-                    HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
-                    licenses.forEachIndexed { index, license ->
-                        LicenseRow(
-                            license = license,
-                            onClick = { onOpenLicense(license.url) },
-                            platformTextStyle = platformTextStyle,
-                        )
-                        if (index != licenses.lastIndex) {
-                            HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+                    if (selected != null) {
+                        key(selected.url) { LicenseNotice(selected, onOpenLicense, platformTextStyle) }
+                    } else {
+                        LicenseHeader(platformTextStyle)
+                        HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+                        licenses.forEachIndexed { index, license ->
+                            LicenseRow(
+                                license = license,
+                                onClick = {
+                                    selection.value = license.url
+                                    onShowNotice()
+                                },
+                                platformTextStyle = platformTextStyle,
+                            )
+                            if (index != licenses.lastIndex) {
+                                HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LicenseNotice(license: LicenseEntry, openUrl: (String) -> Unit, platformTextStyle: TextStyle) {
+    val notice by produceState("", license.noticeFile) {
+        value = try {
+            withContext(Dispatchers.IO) {
+                val source = Res.readBytes("files/licenses/${license.noticeFile}").decodeToString()
+                // Let text wrap to the viewport while retaining upstream paragraph breaks.
+                source.trim().lines().joinToString("\n") { it.trim() }.split("\n\n")
+                    .joinToString("\n\n") { it.replace('\n', ' ') }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            "Visit the project website to read its license."
+        }
+    }
+    val colors = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Text(license.licenseType, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+            fontFamily = AppUiFontFamily, color = colors.onSurface, style = platformTextStyle)
+        Text(license.creator, fontSize = 14.sp, fontFamily = AppUiFontFamily,
+            color = colors.onSurfaceVariant, style = platformTextStyle)
+        OutlinedButton(onClick = { openUrl(license.url) }, modifier = Modifier.padding(vertical = 8.dp)) {
+            Icon(painterResource(Res.drawable.ic_open_in_new), null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Project website", fontFamily = AppUiFontFamily)
+        }
+        SelectionContainer {
+            Text(
+                text = listOfNotNull(license.attribution, notice).joinToString("\n\n"),
+                fontFamily = AppUiFontFamily,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = colors.onSurface,
+                style = platformTextStyle,
+            )
+        }
+        license.termsUrl?.let { url ->
+            OutlinedButton(onClick = { openUrl(url) }) { Text("Read full terms") }
         }
     }
 }
@@ -209,7 +274,7 @@ private fun LicenseRow(
             append(", by ")
             append(license.creator)
         }
-        append(". Open project page.")
+        append(". View license details.")
     }
     Row(
         modifier = Modifier

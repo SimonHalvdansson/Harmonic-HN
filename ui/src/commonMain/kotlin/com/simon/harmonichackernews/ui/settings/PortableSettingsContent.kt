@@ -180,7 +180,9 @@ fun PortableSettingsDetail(
             onOpenPrivacy = { scene.links.open(app.metadata.privacyUrl) },
             showNavigation = singlePane,
         )
-        SettingsSection.Licenses -> LicensesScreen(
+        SettingsSection.Licenses, SettingsSection.LicenseNotice -> LicensesScreen(
+            showNotice = section == SettingsSection.LicenseNotice,
+            onShowNotice = { onNavigate(SettingsSection.LicenseNotice, true) },
             licenses = CommonLicenseCatalog.entries,
             onBack = onBack,
             onOpenLicense = { scene.links.open(it) },

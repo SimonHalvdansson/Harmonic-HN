@@ -216,7 +216,7 @@ fun SettingsListScreen(
                                     selectedSection == SettingsSection.ClickedPosts ||
                                     selectedSection == SettingsSection.StoriesSpacing) ||
                                 entry.section == SettingsSection.About &&
-                                selectedSection == SettingsSection.Licenses
+                                (selectedSection == SettingsSection.Licenses || selectedSection == SettingsSection.LicenseNotice)
                             SettingsNavigationRow(
                                 title = stringResource(entry.section.titleResource),
                                 summary = if (entry.section == SettingsSection.About) {

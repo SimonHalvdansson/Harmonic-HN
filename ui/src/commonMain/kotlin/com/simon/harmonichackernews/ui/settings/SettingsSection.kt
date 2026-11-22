@@ -68,6 +68,7 @@ enum class SettingsSection(
     Glass("glass", Res.string.settings_section_glass),
     About("about", Res.string.settings_section_about),
     Licenses("licenses", Res.string.settings_section_licenses),
+    LicenseNotice("license_notice", Res.string.settings_section_licenses),
     ;
 
     companion object {

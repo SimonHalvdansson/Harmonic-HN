@@ -14,6 +14,9 @@ import com.simon.harmonichackernews.ui.navigation.ActivityBackPreview
 import com.simon.harmonichackernews.ui.navigation.ActivityNavigationStack
 import com.simon.harmonichackernews.ui.navigation.SplitPaneViewport
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +41,7 @@ import com.simon.harmonichackernews.ui.navigation.activityNavigationPopContentTr
 
 /** The retained destination keeps its own navigation origin, including in two-pane layouts. */
 internal val LocalSettingsParentSection = staticCompositionLocalOf<SettingsSection?> { null }
+internal val LocalSettingsLicenseUrl = staticCompositionLocalOf<MutableState<String?>> { error("Missing settings license selection") }
 internal val LocalSettingsFocusHideComments = staticCompositionLocalOf { false }
 
 private data object SettingsListDestination : NavKey
@@ -100,6 +104,7 @@ fun SettingsNavigationShell(
     val scrollToTopEnabled = LocalStatusBarScrollToTopEnabled.current
     val navigationState by navigation.state.collectAsStateWithLifecycle()
     val searchEntries = rememberSettingsSearchEntries(searchCapabilities)
+    val licenseUrl = rememberSaveable { mutableStateOf<String?>(null) }
     val searchTarget = searchEntries.firstOrNull { it.id == navigationState.searchResultId }
     val retainedContent = rememberSettingsRetainedContent(navigationState, isTwoPane)
     val listContent: @Composable (SettingsSection, Boolean, () -> Unit, (SettingsSection) -> Unit) -> Unit =
@@ -116,6 +121,7 @@ fun SettingsNavigationShell(
                 val parent = navigationState.detailStack.getOrNull(navigationState.detailStack.indexOf(section) - 1)
                 CompositionLocalProvider(
                     LocalSettingsParentSection provides parent,
+                    LocalSettingsLicenseUrl provides licenseUrl,
                     LocalSettingsFocusHideComments provides (navigation.focusHideComments && searchTarget == null),
                     LocalSettingsFocusSetting provides searchTarget?.takeIf { it.screenRoute == section.route }?.settingTitle,
                     LocalStatusBarScrollToTopEnabled provides (scrollToTopEnabled &&
@@ -158,7 +164,9 @@ fun SettingsNavigationShell(
             // is not a real navigation destination and must not be persisted. Persisting it immediately
             // pushes Appearance again and makes Up from every detail land there instead of on the list.
             LaunchedEffect(navigationState.detailStack) {
-                navigationState.detailStack.lastOrNull()?.takeUnless { it == SettingsSection.Search }?.let(onSectionChanged)
+                navigationState.detailStack.lastOrNull()?.takeUnless {
+                    it == SettingsSection.Search || it == SettingsSection.LicenseNotice
+                }?.let(onSectionChanged)
             }
             LaunchedEffect(isTwoPane) { navigation.updateLayout(isTwoPane) }
 

@@ -220,7 +220,9 @@ fun SettingsShell(
                     showNavigation = singlePane,
                     singlePane = singlePane,
                 )
-                SettingsSection.Licenses -> AndroidLicensesScreen(
+                SettingsSection.Licenses, SettingsSection.LicenseNotice -> AndroidLicensesScreen(
+                    showNotice = section == SettingsSection.LicenseNotice,
+                    onShowNotice = { onNavigate(SettingsSection.LicenseNotice, true) },
                     onBack = onBack,
                     onOpenLicense = { dependencies.links.open(it) },
                     singlePane = singlePane,

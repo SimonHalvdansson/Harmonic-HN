@@ -13,12 +13,17 @@ import com.simon.harmonichackernews.app.LicenseEntry
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 
 private val AndroidLicenses = listOf(
-    LicenseEntry("AndroidSVG", "Paul LeBeau, Cave Rock Software Ltd.", "Apache License 2.0", "https://bigbadaboom.github.io/androidsvg/"),
-    LicenseEntry("AndroidX", "Google", "Apache License 2.0", "https://developer.android.com/jetpack/androidx"),
+    LicenseEntry.apache2(
+        "AndroidSVG", "Paul LeBeau, Cave Rock Software Ltd.", "https://bigbadaboom.github.io/androidsvg/",
+        "Copyright 2013-2018 Cave Rock Software Ltd",
+    ),
+    LicenseEntry.apache2("AndroidX", "Google", "https://developer.android.com/jetpack/androidx"),
 )
 
 @Composable
 fun AndroidLicensesScreen(
+    showNotice: Boolean,
+    onShowNotice: () -> Unit,
     onBack: () -> Unit,
     onOpenLicense: (String) -> Unit,
     singlePane: Boolean,
@@ -28,6 +33,8 @@ fun AndroidLicensesScreen(
     val licenses = remember(includeLocalAi) { licenseEntries(includeLocalAi) }
     LicensesScreen(
         licenses = licenses,
+        showNotice = showNotice,
+        onShowNotice = onShowNotice,
         onBack = onBack,
         onOpenLicense = onOpenLicense,
         modifier = modifier,
