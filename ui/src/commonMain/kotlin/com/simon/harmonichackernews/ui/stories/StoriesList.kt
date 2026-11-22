@@ -244,6 +244,10 @@ internal fun StoriesList(
     val peek = remember(listState, searchMode, controller.presentation.selectedTypeIndex, revealThreshold) {
         FeedControlsReveal(revealThreshold)
     }
+    // A fling or programmatic return can reach the top after the last user scroll event.
+    LaunchedEffect(peek) {
+        snapshotFlow { listState.canScrollBackward }.collect { if (!it) peek.reset() }
+    }
     val currentCollapse = rememberUpdatedState { headerCollapsePx }
     val peekScroll = remember(peek, headerHeight) {
         object : NestedScrollConnection {

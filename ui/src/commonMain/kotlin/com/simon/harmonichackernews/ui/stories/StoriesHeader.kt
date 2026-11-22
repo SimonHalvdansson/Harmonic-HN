@@ -85,6 +85,10 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -103,6 +107,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.settings.StoryListSelector
 import com.simon.harmonichackernews.settings.StoriesHeaderPill
@@ -175,10 +180,14 @@ internal class FeedControlsReveal(private val threshold: Float) {
     var visible by mutableStateOf(false)
         private set
 
+    fun reset() {
+        travel = 0f
+        visible = false
+    }
+
     fun onScroll(delta: Float, atTop: Boolean, headerHidden: Boolean) {
         if (atTop) {
-            travel = 0f
-            visible = false
+            reset()
             return
         }
         if (delta == 0f) return
@@ -211,6 +220,15 @@ internal fun frontpageHeaderTopSpacing(compact: Boolean) = if (compact) 8.dp els
 internal fun frontpageHeaderBottomSpacing(compact: Boolean) = if (compact) 4.dp else 8.dp
 internal fun frontpageHeaderIdleStatusSpacing(compact: Boolean) = if (compact) 6.dp else 18.dp
 
+// Both the scrolling and peeking positions reach zero on the same frame as the list.
+internal fun storiesControlsOffsetPx(collapsePx: Int, heightPx: Float, peekLiftPx: Float, reveal: Float): Float {
+    if (collapsePx <= 0 || heightPx <= 0f) return 0f
+    val travel = collapsePx.toFloat().coerceIn(0f, heightPx)
+    val fraction = travel / heightPx
+    val eased = fraction * fraction * (3f - 2f * fraction)
+    return -lerp(travel, peekLiftPx * eased, reveal)
+}
+
 @Composable
 internal fun StoriesHeader(
     controller: StoriesScreenController,
@@ -236,6 +254,7 @@ internal fun StoriesHeader(
         mutableStateOf(if (settings.headerPill == StoriesHeaderPill.OFF) 56.dp else 68.dp)
     }
     val reveal = animateFloatAsState(if (revealControls) 1f else 0f, tween(150), label = "Feed controls")
+    val background = MaterialTheme.colorScheme.pageBackground
     Box(modifier.fillMaxWidth()) {
         StoriesHeaderContent(
             controller, onTypeSelected, searchMode, tapToUpdateExitProgress, suppressLastUpdated,
@@ -247,10 +266,22 @@ internal fun StoriesHeader(
             // keep a single anchor as the floating controls meet the regular header at the top.
             Box(
                 Modifier.fillMaxWidth().graphicsLayer {
-                    val natural = -collapsePx().toFloat()
-                    val hidden = natural.coerceAtLeast(-size.height)
-                    translationY = hidden + ((4.dp - topSpacing).toPx() - hidden) * reveal.value
-                }.background(MaterialTheme.colorScheme.pageBackground)
+                    translationY = storiesControlsOffsetPx(collapsePx(), size.height, (topSpacing - 4.dp).toPx(), reveal.value)
+                }.drawWithCache {
+                    val fadeHeight = 16.dp.toPx()
+                    val brush = Brush.verticalGradient(
+                        colors = listOf(background, background.copy(alpha = 0f)),
+                        startY = size.height,
+                        endY = size.height + fadeHeight,
+                    )
+                    val edge = Offset(0f, size.height)
+                    val fadeSize = Size(size.width, fadeHeight)
+                    onDrawBehind {
+                        drawRect(background)
+                        val alpha = reveal.value * (collapsePx() / size.height.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                        if (alpha > 0f) drawRect(brush, topLeft = edge, size = fadeSize, alpha = alpha)
+                    }
+                }
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                     .padding(top = topInset + topSpacing),
             ) {

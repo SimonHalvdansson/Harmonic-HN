@@ -7,6 +7,24 @@ import kotlin.test.assertTrue
 
 class StoriesHeaderCollapseTest {
     @Test
+    fun peekingControlsMoveMonotonicallyToTheirRestingPosition() {
+        for (lift in listOf(4f, 24f)) {
+            for (reveal in listOf(0f, .25f, .5f, .75f, 1f)) {
+                val height = 100f
+                var previous = storiesControlsOffsetPx(200, height, lift, reveal)
+                for (collapse in 199 downTo 0) {
+                    val offset = storiesControlsOffsetPx(collapse, height, lift, reveal)
+                    assertTrue(offset in previous..0f)
+                    previous = offset
+                }
+                assertEquals(0f, previous)
+            }
+            assertEquals(-lift, storiesControlsOffsetPx(200, 100f, lift, 1f))
+            assertEquals(-lift / 2, storiesControlsOffsetPx(50, 100f, lift, 1f))
+        }
+    }
+
+    @Test
     fun deliberateReverseScrollRevealsControlsUntilForwardScrollOrTop() {
         val peek = FeedControlsReveal(24f)
         peek.onScroll(30f, atTop = false, headerHidden = false)
