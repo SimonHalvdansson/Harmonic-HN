@@ -1327,7 +1327,6 @@ internal class AndroidCommentsWebViewController(
             try {
                 if (!rendererProcessGone) {
                     webViewToDestroy.stopLoading()
-                    webViewToDestroy.clearHistory()
                     // WebView's resource cache is shared by every browser in this app. Keep it
                     // across article closes so revisits and other retained panes can reuse it.
                     webViewToDestroy.onPause()
